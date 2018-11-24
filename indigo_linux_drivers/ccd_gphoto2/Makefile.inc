@@ -1,8 +1,8 @@
 SDK_DIR = externals/libraw
 
-SDK_INCLUDE = -I$(SDK_DIR)
-SDK_LIB = -L$(SDK_DIR)/lib/.libs -lraw
-SDK_LIB_A = $(SDK_DIR)/lib/.libs/libraw.a
+SDK_INCLUDE = -I$(SDK_DIR)/build/include
+SDK_LIB = -L$(SDK_DIR)/build/lib -lraw
+SDK_LIB_A = $(SDK_DIR)/build/lib/libraw.a
 
 MAKE_SDK = $(SDK_LIB_A)
 SDK_CONFIGURE = $(SDK_DIR)/configure

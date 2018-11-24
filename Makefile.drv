@@ -99,14 +99,14 @@ endif
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^
 ifneq ($(SDK_LIB_SO),)
-	install -m 0644 $(SDK_LIB_SO)* $(BUILD_LIB)
+	install -m 0644 $(addsuffix *$(SOEXT), $(basename $(SDK_LIB_SO))) $(BUILD_LIB)
 endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -lindigo $(SDK_LIB)
+	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(SDK_LIB) -lindigo $(LDFLAGS)
 
 $(DRIVER_EXECUTABLE): $(DRIVER_MAIN_O) $(DRIVER_A)
-	$(CC) -o $@ $^ -lindigo $(SDK_LIB) $(LDFLAGS) 
+	$(CC) -o $@ $^ $(SDK_LIB) -lindigo $(LDFLAGS)
 
 install: status $(INSTALL_SDK)
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
@@ -114,7 +114,7 @@ ifneq ($(DRIVER_EXECUTABLE),)
 	install -m 0755 $(DRIVER_EXECUTABLE) $(INSTALL_BIN)
 endif
 ifneq ($(SDK_LIB_SO),)
-	install -m 0644 $(SDK_LIB_SO)* $(INSTALL_LIB)
+	install -m 0644 $(addsuffix *$(SOEXT), $(basename $(SDK_LIB_SO))) $(INSTALL_LIB)
 endif
 ifneq ($(RULES),)
 	install -m 0644 $(RULES) $(INSTALL_RULES)/99-$(DRIVER).rules
@@ -130,30 +130,53 @@ endif
 uninstall: status
 	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER) $(INSTALL_RULES)/99-$(DRIVER).rules $(INSTALL_SHARE)/indi/indi_go_$(subst indigo_,,$(DRIVER)).xml $(addprefix $(FIRMWARE_TARGET)/, $(notdir $(FIRMWARE)))
 ifneq ($(SDK_LIB_SO),)
-	rm -f $(INSTALL_LIB)/$(SDK_LIB_SO)*
+	rm -f $(addprefix $(INSTALL_LIB)/, $(notdir $(addsuffix *.$(SOEXT), $(basename $(SDK_LIB_SO)))))
 endif
 
 clean: status
 	rm -f $(DRIVER_O) $(DRIVER_MAIN_O) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 ifneq ($(wildcard $(SDK_DIR)/Makefile),)
 	make -C $(SDK_DIR) clean
+ifneq ($(SDK_LIB_A),)
+	rm -f $(SDK_LIB_A)
+endif
+ifneq ($(SDK_LIB_SO),)
+	rm -f $(addsuffix *.$(SOEXT), $(basename $(SDK_LIB_SO))) $(addsuffix .la, $(basename $(SDK_LIB_SO)))
+endif
+endif
+ifneq ($(SDK_LIB_SO),)
+	rm -f $(addprefix $(BUILD_LIB)/, $(notdir $(addsuffix *.$(SOEXT), $(basename $(SDK_LIB_SO)))))
 endif
 
-clean-all:
-ifneq ($(wildcard $(SDK_DIR)/Configure),)
+clean-all: clean
+ifneq ($(wildcard $(SDK_DIR)/configure),)
 ifneq ($(wildcard $(SDK_DIR)/Makefile),)
 	make -C $(SDK_DIR) maintainer-clean
+	rm -rf $(SDK_DIR)/build
 endif
 endif
 
 $(SDK_LIB_A): $(SDK_DIR)/Makefile
+ifneq ($(wildcard $(SDK_CONFIGURE_IN)),)
+	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR) install
+else
 	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR)
+endif
+
+$(SDK_LIB_SO): $(SDK_DIR)/Makefile
+ifneq ($(wildcard $(SDK_CONFIGURE_IN)),)
+	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR) install
+else
+	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)"; make -C $(SDK_DIR)
+endif
+
+$(SDK_DIR)/Makefile: $(SDK_CONFIGURE)
+ifneq ($(SDK_LIB_A),)
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=no --enable-static=yes $(CONFIGURE_FLAGS)
+else
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=yes --enable-static=no $(CONFIGURE_FLAGS)
+endif
 
 $(SDK_DIR)/configure: $(SDK_CONFIGURE_IN)
 	cd $(SDK_DIR); autoreconf -fiv
 
-$(SDK_DIR)/Makefile: $(SDK_CONFIGURE)
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd $(SDK_DIR); ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes $(CONFIGURE_FLAGS)
-
-$(SDK_LIB_SO): $(SDK_DIR)/Makefile
-	export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)" make -C $(SDK_DIR)

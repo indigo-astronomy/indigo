@@ -39,7 +39,7 @@ status:
 clean:
 	rm -f $(BUILD_BIN)/indigo_prop_tool
 
-clean-all:
+clean-all: clean
 
 $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
 	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) -lindigo
