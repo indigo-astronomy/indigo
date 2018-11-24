@@ -1,0 +1,47 @@
+Thu Apr  6 15:09:08 2016 - 0.15 (skipping 0.14 to catch up with NexStarCtl)
+	- added full SkyWatcher support
+	- distinguish between SkyWatcher and Celestron
+	- new command tc_get_orientation();
+	- documentation fixes
+	- several new calls
+Sat Sep  5 03:38:23 2015 - 0.13
+	- Fix typo
+Sat Mar 29 15:45:07 2014 - 0.11
+	- added PEC record/playback, download/upload
+Wed Mar 12 10:46:06 2014 - 0.10
+	- remove some debug messages
+	- CGEM mount is reconized
+Sun Mar  9 21:10:07 2014 - 0.09
+	- fix data len in tc_set_backlash().
+Sun Mar  9 16:29:27 2014 - 0.08
+	- test fix and document tc_get_autoguide_rate(), tc_set_autoguide_rate(),
+	  tc_get_backlash(), tc_set_backlash().
+Thu Mar  6 18:22:21 2014 - Untested
+	- add named function return codes rather than numbers
+	- implemented, but not tested tc_get_autoguide_rate(),
+	  tc_set_autoguide_rate(), tc_get_backlash(), tc_set_backlash().
+Wed Dec  4 23:37:29 2013 - 0.07
+	- change version number to more reasonable notation
+	- fix tc_get_time() one hour offset if DST/ST is incorrect
+Wed Dec  4 01:22:46 2013
+	- read_telescope(): unsigned char -> char
+	- fixed some warnings on MacOSX
+	- tc_set_time() fix since RTC time expects UT
+Tue Dec  3 11:33:19 2013
+	- tc_set_time() sets date/time to RTC too, if available
+	- updated libnexstar.man
+Sun Nov  3 12:58:20 2013 - 0.1-a5
+	- fix ID of Advanced VX
+Fri Oct 25 14:56:41 2013 - 0.1-a4
+	- added get_model_name()
+Sat Oct 12 18:24:11 2013 - 0.1-a3
+	- made it C++ linkable
+Sun Sep 29 16:44:53 2013 - 0.1-a1
+	- implemented all the major commands
+	- fixed read_telescope()
+	- fixed open_telescope() for raw mode
+	- fixed declination +90 shown as -270
+Wed Sep 25 15:44:42 2013
+	-libnexstar: builds as .so and .a
+	-implemented several functions
+	-not tested yet
