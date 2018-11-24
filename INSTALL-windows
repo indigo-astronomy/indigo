@@ -1,0 +1,125 @@
+Installation instructions for the Windows platform
+---------------------------------------------------
+(Note: this could go in the main INSTALL file)
+
+The instructions are rather long; they detail what I had to go through
+install libdc1394. It's not very difficult though. If you have
+problems or comments about these instructions, please contact the
+mailing list libdc1394-devel@lists.sf.net. The mailing list is
+private, but you can send messages even if you are not a member; you
+will just have to wait for moderation on your first message.
+
+
+0. Unplug all 1394 cameras on your system.
+
+Windows tries to be smart but more often than not it isn't. Don't give
+it something to chew on ;)
+
+
+
+1. Install MinGW and Msys
+
+Use the project's installer to install both MinGW and Msys
+http://sourceforge.net/projects/mingw/files/Installer/mingw-get/
+
+
+
+2. CMU driver installation
+
+This windows version of libdc1394 uses the CMU 1394 driver at its
+core. For this reason you should first download and install this
+driver.
+
+** Attention: if you have a Point Grey driver installed on your
+   computer (FlyCapture,...), you should first remove it
+   thouroughly. Verify after its removal that the camera is not
+   recognized as a Point Grey camera anymore, but as an "Imaging
+   Device" (in the device manager). Any attempt to use the CMU driver
+   and/or libdc1394 will fail if Windows is still complaining about
+   the missing "pgrcam.sys" file, among others. Verify that no file in
+   windows/inf/ refers to pgrcam.sys and check the following
+   directories for PGR files: /Windows/System32/drivers,
+   /Windows/System32/DRVSTORE and /Windows/System32/ReinstallBackups.
+   Editing the registry may be necessary too (augh!).
+
+Get the CMU driver at http://www.cs.cmu.edu/~iwan/1394/
+We recommend you use the installer "1394camera646-unsigned.exe", as
+this is the version on which this library is based.
+
+After the installer has run, you may need to tell Windows to use the
+CMU driver. Plug a camera, verify that the CMU demo app sees it and
+that you can get a live feed. If not, go to the hardware manager and
+check the driver status of your camera. If drivers are not attached to
+it, you must use the "have disk" option and point Windows to the
+location of the INF file, normally c:\Program Files\CMU\1394Camera
+\Driver. Don't let Windows look for drivers on its own. After you have
+confirmed that the drivers used by the camera are the CMU drivers,
+re-test using the CMU demo app.
+
+Note 1: in the CMU demo app, you need to reset the camera before you
+can control it.
+Note 2: the CMU app sometimes fails to start a Format_7 stream. I
+recommend that you start by selecting a standard video mode
+(e.g. 640x480 MONO)
+Note 3: on 64bit systems, the CMU driver is installed in c:\Program
+Files (x86)\CMU\1394Camera\Driver (note the extra "(x86)")
+
+Once the CMU stuff is working fine, run the Msys shell and copy the
+library files and headers to your mingw system:
+
+cp /Program\ Files/CMU/1394Camera/lib/1394camera.lib /mingw/lib/lib1394camera.a
+cp /Program\ Files/CMU/1394Camera/include/1394camapi.h /mingw/include/
+cp /Program\ Files/CMU/1394Camera/include/1394common.h /mingw/include/
+
+Tip 1: Use slashes ("/") when working in Msys, not backslashes ("\")
+Tip 2: Installation should be done in the /mingw directory, NOT the
+msys directory.
+
+
+
+3. SDL installation (optional)
+
+A new example program is being used to test the windows platform:
+dc1394_iso. This program requires SDL, so if you want to compile it
+you should install SDL first.
+
+Get SDL at http://www.libsdl.org/release/SDL-1.2.14.tar.gz
+Don't use 1.2.15, the files are buggy (this may have been fixed
+recently). Put the tarball in your Msys home, usually something like
+c:/mingw/msys/1.0/home/<username>/
+
+tar -xvzf SDL-1.2.14.tar.gz
+cd SDL-1.2.14
+./configure --prefix=/mingw/
+make
+make install
+
+
+
+4. libdc1394 (at last!)
+
+If you reed this, you already have the tarball or GIT snapshot. Put it
+alongside the SDL library in your Msys home directory (see above), and
+again:
+
+tar -xvzf libdc1394.tar.gz
+cd libdc1394
+./configure --prefix=/mingw/
+make
+make install
+
+To test the library, run dc1394_iso.exe. If your camera does not
+support the modes hardcoded in that example, you may need to adjust
+some #define statements in dc1394_iso.c
+
+Note: when using Msys, stderr is not dumped on the terminal but in a
+file. If you run the example from the directory of its location, the
+output file should be ./.libs/stderr.txt
+
+If you get a nice live video, congratulations! If not, please contact
+the mailing list (libdc1394-devel@lists.sf.net).
+
+
+
+Damien & Satofumi
+
