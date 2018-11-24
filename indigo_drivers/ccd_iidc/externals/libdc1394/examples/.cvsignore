@@ -1,0 +1,12 @@
+.deps
+.libs
+Makefile
+Makefile.in
+grab_gray_image
+grab_gray_image_dma
+grab_color_image
+grab_color_image2
+grab_partial_image
+dc1394_multiview
+dc1394_vloopback
+helloworld

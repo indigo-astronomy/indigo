@@ -1,0 +1,75 @@
+                   1394-Based Digital Camera Control Library
+                   =========================================
+
+
+1. About the 1394-Based Digital Camera Control Library
+
+This library provides functionality to control any camera that conforms to the
+1394-Based Digital Camera Specification written by the 1394 Trade Association
+(http://www.1394ta.com). The specs can be downloaded for free here:
+http://damien.douxchamps.net/ieee1394/libdc1394/iidc_specifications.php.
+On Linux, Libdc1394 utilizes the lowlevel functionality provided by libraw1394
+to communicate with the camera. When compiled for the legacy Linux stack,
+Libdc1394 also uses the video1394 kernel module for the DMA capture of the
+video flow.
+
+The library is originally designed to work on Linux and was ported to OSX by
+David Moore in 2006. A Windows version is in the works.
+
+
+2. Copyleft
+
+The 1394-Based Digital Camera Control Library is licensed under the Lesser
+General Public License (short LGPL, see file COPYING in the source
+distribution).  Other files in the source archives not belonging to but being
+part of the build procedure of libraw1394 are under their own licenses, as
+stated at the top of the individual files.
+
+
+3. API documentation
+
+A basic description of each function can be found on libdc1394 website:
+http://damien.douxchamps.net/ieee1394/libdc1394/ You can also find information
+for all functions in the various header files dc1394/*.h. There are sample
+programs in the examples/ directory which can be helpful for learning. For a
+more comprehensive demonstration of the features of libdc1394, review the
+Coriander application source code, available at
+http://damien.douxchamps.net/ieee1394/coriander/ or read the IIDC
+specifications.
+
+
+4. Maintainer
+
+The maintainer of the 1394-Based Digital Camera Control Library is currently
+Damien Douxchamps. Send suggestions, bug reports and fixes to the mailing
+list libdc1394-devel@lists.sf.net. Subscription to the list is encouraged, but
+not necessary (non-subscribers are moderated). See the file AUTHORS for a
+complete list of contributors.
+
+
+5. Quick installation guide
+
+To compile and install libdc1394 from a release tarball simply do the
+following:
+
+./configure
+make
+make install
+
+Obviously, you need to be root when executing the last statement if you wish to
+do a system-wide installation. To compile and install libdc1394 from a git
+source tree do the following:
+
+autoreconf -i -s
+./configure
+make
+make install
+
+Details on getting a source tree from the git repository is beyond the scope of
+this small readme but the following command should give you the latest trunk:
+
+git clone git://libdc1394.git.sourceforge.net/gitroot/libdc1394/libdc1394
+
+--
+2000-01-13  Gord Peters
+2008-01-05  Damien Douxchamps
