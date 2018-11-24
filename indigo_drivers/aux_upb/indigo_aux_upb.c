@@ -322,7 +322,7 @@ static void aux_timer_callback(indigo_device *device) {
 		if ((token = strtok(NULL, ":"))) { // Autodew
 			bool state = token[0] == '1';
 			if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != state) {
-				indigo_set_switch(AUX_HEATER_OUTLET_STATE_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 				updateAutoHeater = true;
 			}
 		}
