@@ -10,7 +10,7 @@
 **/*.la
 **/.deps
 **/*.log
-/build/
+build/
 /externals/
 indigo_private_drivers/
 indigo.xcodeproj/project.xcworkspace/
