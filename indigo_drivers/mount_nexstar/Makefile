@@ -80,8 +80,15 @@ clean: status
 	rm -f $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 clean-all:
-	rm -rf $(SDK_DIR)
+ifneq ($(wildcard $(SDK_DIR)/Makefile),)
+	make -C $(SDK_DIR) maintainer-clean
+endif
 
-$(SDK_LIB_A):
-	git clone https://github.com/indigo-astronomy/libnexstar.git externals/libnexstar
-	cd externals/libnexstar; autoreconf -fiv; ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
+$(SDK_LIB_A): $(SDK_DIR)/Makefile
+	make -C $(SDK_DIR) install
+
+$(SDK_DIR)/Makefile: $(SDK_DIR)/configure
+	cd $(SDK_DIR); ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic
+
+$(SDK_DIR)/configure: $(SDK_DIR)/configure.in
+	cd $(SDK_DIR); autoreconf -fiv
