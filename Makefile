@@ -44,7 +44,6 @@ UNTESTED_DRIVERS = aux_dsusb aux_rts focuser_lakeside focuser_optec guider_gpusb
 DEVELOPED_DRIVERS = agent_imager mount_synscan system_ascol
 OPTIONAL_DRIVERS = ccd_andor
 
-
 #---------------------------------------------------------------------
 #
 #	Platform detection
@@ -78,6 +77,7 @@ else
 		ifeq ($(ARCH_DETECTED),aarch64)
 			ARCH_DETECTED = arm64
 			DEBIAN_ARCH = arm64
+			EXCLUDED_DRIVERS = ccd_sbig
 		endif
 		ifeq ($(ARCH_DETECTED),i686)
 			ARCH_DETECTED = x86
