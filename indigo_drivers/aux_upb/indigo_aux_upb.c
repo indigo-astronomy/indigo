@@ -37,6 +37,15 @@
 
 #include <sys/time.h>
 #include <sys/termios.h>
+
+#if defined(INDIGO_MACOS)
+#include <libusb-1.0/libusb.h>
+#elif defined(INDIGO_FREEBSD)
+#include <libusb.h>
+#else
+#include <libusb-1.0/libusb.h>
+#endif
+
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
 #include "indigo_aux_upb.h"
@@ -50,6 +59,12 @@
 #define AUX_POWER_OUTLET_NAME_4_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 3)
 #define AUX_HEATER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 4)
 #define AUX_HEATER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 5)
+#define AUX_USB_PORT_NAME_1_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 6)
+#define AUX_USB_PORT_NAME_2_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 7)
+#define AUX_USB_PORT_NAME_3_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 8)
+#define AUX_USB_PORT_NAME_4_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 9)
+#define AUX_USB_PORT_NAME_5_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 10)
+#define AUX_USB_PORT_NAME_6_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 11)
 
 #define AUX_POWER_OUTLET_PROPERTY						(PRIVATE_DATA->power_outlet_property)
 #define AUX_POWER_OUTLET_1_ITEM							(AUX_POWER_OUTLET_PROPERTY->items + 0)
@@ -80,6 +95,22 @@
 #define AUX_HEATER_OUTLET_CURRENT_PROPERTY	(PRIVATE_DATA->heater_outlet_current_property)
 #define AUX_HEATER_OUTLET_CURRENT_1_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 0)
 #define AUX_HEATER_OUTLET_CURRENT_2_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 1)
+
+#define AUX_USB_PORT_PROPERTY								(PRIVATE_DATA->usb_port_property)
+#define AUX_USB_PORT_1_ITEM									(AUX_USB_PORT_PROPERTY->items + 0)
+#define AUX_USB_PORT_2_ITEM									(AUX_USB_PORT_PROPERTY->items + 1)
+#define AUX_USB_PORT_3_ITEM									(AUX_USB_PORT_PROPERTY->items + 2)
+#define AUX_USB_PORT_4_ITEM									(AUX_USB_PORT_PROPERTY->items + 3)
+#define AUX_USB_PORT_5_ITEM									(AUX_USB_PORT_PROPERTY->items + 4)
+#define AUX_USB_PORT_6_ITEM									(AUX_USB_PORT_PROPERTY->items + 5)
+
+#define AUX_USB_PORT_STATE_PROPERTY					(PRIVATE_DATA->usb_port_state_property)
+#define AUX_USB_PORT_STATE_1_ITEM						(AUX_USB_PORT_STATE_PROPERTY->items + 0)
+#define AUX_USB_PORT_STATE_2_ITEM						(AUX_USB_PORT_STATE_PROPERTY->items + 1)
+#define AUX_USB_PORT_STATE_3_ITEM						(AUX_USB_PORT_STATE_PROPERTY->items + 2)
+#define AUX_USB_PORT_STATE_4_ITEM						(AUX_USB_PORT_STATE_PROPERTY->items + 3)
+#define AUX_USB_PORT_STATE_5_ITEM						(AUX_USB_PORT_STATE_PROPERTY->items + 4)
+#define AUX_USB_PORT_STATE_6_ITEM						(AUX_USB_PORT_STATE_PROPERTY->items + 5)
 
 #define AUX_WEATHER_PROPERTY								(PRIVATE_DATA->weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM				(AUX_WEATHER_PROPERTY->items + 0)
@@ -119,12 +150,15 @@ typedef struct {
 	indigo_property *heater_outlet_property;
 	indigo_property *heater_outlet_state_property;
 	indigo_property *heater_outlet_current_property;
+	indigo_property *usb_port_property;
+	indigo_property *usb_port_state_property;
 	indigo_property *heating_mode_property;
 	indigo_property *weather_property;
 	indigo_property *info_property;
 	indigo_property *hub_property;
 	indigo_property *reboot_property;
 	int count;
+	libusb_device_handle *smart_hub;
 } upb_private_data;
 
 static bool upb_command(indigo_device *device, char *command, char *response, int max) {
@@ -406,7 +440,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- OUTLET_NAMES
-		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "X_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
+		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "X_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AUX_POWER_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "Outlet #1", "Outlet #1");
@@ -415,6 +449,12 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_text_item(AUX_POWER_OUTLET_NAME_4_ITEM, AUX_POWER_OUTLET_NAME_4_ITEM_NAME, "Outlet #4", "Outlet #4");
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_1_ITEM, AUX_HEATER_OUTLET_NAME_1_ITEM_NAME, "Heater #1", "Heater #1");
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_2_ITEM, AUX_HEATER_OUTLET_NAME_2_ITEM_NAME, "Heater #2", "Heater #2");
+		indigo_init_text_item(AUX_USB_PORT_NAME_1_ITEM, AUX_USB_PORT_NAME_1_ITEM_NAME, "Port #1", "Port #1");
+		indigo_init_text_item(AUX_USB_PORT_NAME_2_ITEM, AUX_USB_PORT_NAME_2_ITEM_NAME, "Port #2", "Port #2");
+		indigo_init_text_item(AUX_USB_PORT_NAME_3_ITEM, AUX_USB_PORT_NAME_3_ITEM_NAME, "Port #3", "Port #3");
+		indigo_init_text_item(AUX_USB_PORT_NAME_4_ITEM, AUX_USB_PORT_NAME_4_ITEM_NAME, "Port #4", "Port #4");
+		indigo_init_text_item(AUX_USB_PORT_NAME_5_ITEM, AUX_USB_PORT_NAME_5_ITEM_NAME, "Port #5", "Port #5");
+		indigo_init_text_item(AUX_USB_PORT_NAME_6_ITEM, AUX_USB_PORT_NAME_6_ITEM_NAME, "Port #6", "Port #6");
 		// -------------------------------------------------------------------------------- POWER OUTLETS
 		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 		if (AUX_POWER_OUTLET_PROPERTY == NULL)
@@ -458,6 +498,25 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AUX_DEW_CONTROL_MANUAL_ITEM, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, "Manual", true);
 		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", true);
+		// -------------------------------------------------------------------------------- USB PORTS
+		AUX_USB_PORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_USB_PORT_PROPERTY_NAME, AUX_GROUP, "USB ports", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 6);
+		if (AUX_USB_PORT_PROPERTY == NULL)
+		return INDIGO_FAILED;
+		indigo_init_switch_item(AUX_USB_PORT_1_ITEM, AUX_USB_PORT_1_ITEM_NAME, "Port #1", true);
+		indigo_init_switch_item(AUX_USB_PORT_2_ITEM, AUX_USB_PORT_2_ITEM_NAME, "Port #2", true);
+		indigo_init_switch_item(AUX_USB_PORT_3_ITEM, AUX_USB_PORT_3_ITEM_NAME, "Port #3", true);
+		indigo_init_switch_item(AUX_USB_PORT_4_ITEM, AUX_USB_PORT_4_ITEM_NAME, "Port #4", true);
+		indigo_init_switch_item(AUX_USB_PORT_5_ITEM, AUX_USB_PORT_5_ITEM_NAME, "Port #5", true);
+		indigo_init_switch_item(AUX_USB_PORT_6_ITEM, AUX_USB_PORT_6_ITEM_NAME, "Port #6", true);
+		AUX_USB_PORT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_USB_PORT_STATE_PROPERTY_NAME, AUX_GROUP, "USB ports state", INDIGO_OK_STATE, 6);
+		if (AUX_USB_PORT_STATE_PROPERTY == NULL)
+		return INDIGO_FAILED;
+		indigo_init_light_item(AUX_USB_PORT_STATE_1_ITEM, AUX_USB_PORT_STATE_1_ITEM_NAME, "Port #1 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_USB_PORT_STATE_2_ITEM, AUX_USB_PORT_STATE_2_ITEM_NAME, "Port #2 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_USB_PORT_STATE_3_ITEM, AUX_USB_PORT_STATE_3_ITEM_NAME, "Port #3 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_USB_PORT_STATE_4_ITEM, AUX_USB_PORT_STATE_4_ITEM_NAME, "Port #4 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_USB_PORT_STATE_5_ITEM, AUX_USB_PORT_STATE_5_ITEM_NAME, "Port #5 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_USB_PORT_STATE_6_ITEM, AUX_USB_PORT_STATE_6_ITEM_NAME, "Port #6 state", INDIGO_OK_STATE);
 		// -------------------------------------------------------------------------------- WEATHER
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_WEATHER_PROPERTY == NULL)
@@ -521,6 +580,10 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 		if (indigo_property_match(AUX_HEATER_OUTLET_CURRENT_PROPERTY, property))
 			indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
+		if (indigo_property_match(AUX_USB_PORT_PROPERTY, property))
+			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
+		if (indigo_property_match(AUX_USB_PORT_STATE_PROPERTY, property))
+			indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 		if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property))
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
@@ -654,6 +717,24 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
 				indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
 				indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+				
+				libusb_context *ctx = NULL;
+				libusb_device **usb_devices;
+				struct libusb_device_descriptor descriptor;
+				ssize_t total = libusb_get_device_list(ctx, &usb_devices);
+				AUX_USB_PORT_PROPERTY->hidden = true;
+				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+				for (int i = 0; i < total; i++) {
+					libusb_device *dev = usb_devices[i];
+					if (libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == 0x0424 && descriptor.idProduct == 0x2517) {
+						if (libusb_open(dev, &PRIVATE_DATA->smart_hub) == LIBUSB_SUCCESS) {
+							AUX_USB_PORT_PROPERTY->hidden = false;
+							AUX_USB_PORT_STATE_PROPERTY->hidden = false;
+							indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
+							indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
+						}
+					}
+				}
 				PRIVATE_DATA->aux_timer = indigo_set_timer(device, 0, aux_timer_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -674,12 +755,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			if (AUX_POWER_OUTLET_4_ITEM->sw.value)
 				command[6] = '1';
 			upb_command(device, command, response, sizeof(response));
+			indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
@@ -708,6 +793,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 		}
 		snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 		snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
@@ -727,6 +814,12 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_POWER_OUTLET_CURRENT_4_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_POWER_OUTLET_NAME_4_ITEM->text.value);
 		snprintf(AUX_HEATER_OUTLET_CURRENT_1_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 		snprintf(AUX_HEATER_OUTLET_CURRENT_2_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_USB_PORT_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_1_ITEM->text.value);
+		snprintf(AUX_USB_PORT_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_2_ITEM->text.value);
+		snprintf(AUX_USB_PORT_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_3_ITEM->text.value);
+		snprintf(AUX_USB_PORT_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_4_ITEM->text.value);
+		snprintf(AUX_USB_PORT_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_5_ITEM->text.value);
+		snprintf(AUX_USB_PORT_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
 		if (IS_CONNECTED) {
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -805,6 +898,8 @@ static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+	indigo_release_property(AUX_USB_PORT_PROPERTY);
+	indigo_release_property(AUX_USB_PORT_STATE_PROPERTY);
 	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
 	indigo_release_property(AUX_POWER_OUTLET_STATE_PROPERTY);
 	indigo_release_property(AUX_POWER_OUTLET_CURRENT_PROPERTY);
