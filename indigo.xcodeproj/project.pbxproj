@@ -1981,90 +1981,6 @@
 		59C8AE6E21A9D79900C3594F /* libusb_release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = libusb_release.xcconfig; sourceTree = "<group>"; };
 		59C8AE6F21A9D79900C3594F /* configure.ac */ = {isa = PBXFileReference; lastKnownFileType = text; path = configure.ac; sourceTree = "<group>"; };
 		59C8AE7021A9D79900C3594F /* INSTALL_WIN.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = INSTALL_WIN.txt; sourceTree = "<group>"; };
-		59C8AE7221A9D79900C3594F /* libusb_dll_2005.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_dll_2005.vcproj; sourceTree = "<group>"; };
-		59C8AE7321A9D79900C3594F /* xusb_2005.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = xusb_2005.vcproj; sourceTree = "<group>"; };
-		59C8AE7421A9D79900C3594F /* libusb_wince.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_wince.sln; sourceTree = "<group>"; };
-		59C8AE7521A9D79900C3594F /* inttypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = inttypes.h; sourceTree = "<group>"; };
-		59C8AE7621A9D79900C3594F /* libusb_dll_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_dll_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AE7721A9D79900C3594F /* hotplugtest_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = hotplugtest_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AE7821A9D79900C3594F /* ddk_build.cmd */ = {isa = PBXFileReference; lastKnownFileType = text; path = ddk_build.cmd; sourceTree = "<group>"; };
-		59C8AE7921A9D79900C3594F /* missing.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = missing.c; sourceTree = "<group>"; };
-		59C8AE7A21A9D79900C3594F /* xusb_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = xusb_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AE7B21A9D79900C3594F /* libusb_dll_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_dll_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AE7C21A9D79900C3594F /* hotplugtest_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = hotplugtest_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AE7D21A9D79900C3594F /* testlibusb_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = testlibusb_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AE7E21A9D79900C3594F /* getopt_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = getopt_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AE7F21A9D79900C3594F /* stress_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = stress_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AE8021A9D79900C3594F /* libusb_static_wince.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_static_wince.vcproj; sourceTree = "<group>"; };
-		59C8AE8121A9D79900C3594F /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
-		59C8AE8221A9D79900C3594F /* libusb_static_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_static_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AE8321A9D79900C3594F /* hotplugtest_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = hotplugtest_sources; sourceTree = "<group>"; };
-		59C8AE8421A9D79900C3594F /* listdevs_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = listdevs_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AE8521A9D79900C3594F /* fxload_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fxload_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AE8621A9D79900C3594F /* hotplugtest_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = hotplugtest_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AE8721A9D79900C3594F /* testlibusb_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = testlibusb_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AE8821A9D79900C3594F /* xusb_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = xusb_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AE8921A9D79900C3594F /* libusb_dll_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_dll_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AE8A21A9D79900C3594F /* getopt_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = getopt_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AE8B21A9D79900C3594F /* stress_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = stress_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AE8C21A9D79900C3594F /* libusb_2015.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_2015.sln; sourceTree = "<group>"; };
-		59C8AE8D21A9D79900C3594F /* listdevs_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = listdevs_sources; sourceTree = "<group>"; };
-		59C8AE8E21A9D79900C3594F /* listdevs_wince.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = listdevs_wince.vcproj; sourceTree = "<group>"; };
-		59C8AE8F21A9D79900C3594F /* libusb_2017.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_2017.sln; sourceTree = "<group>"; };
-		59C8AE9021A9D79900C3594F /* listdevs_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = listdevs_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AE9121A9D79900C3594F /* fxload_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fxload_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AE9221A9D79900C3594F /* getopt_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = getopt_sources; sourceTree = "<group>"; };
-		59C8AE9321A9D79900C3594F /* libusb_static_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_static_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AE9421A9D79900C3594F /* listdevs_2005.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = listdevs_2005.vcproj; sourceTree = "<group>"; };
-		59C8AE9521A9D79900C3594F /* libusb_2012.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_2012.sln; sourceTree = "<group>"; };
-		59C8AE9621A9D79900C3594F /* fxload_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fxload_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AE9721A9D79900C3594F /* fxload_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = fxload_sources; sourceTree = "<group>"; };
-		59C8AE9821A9D79900C3594F /* libusb_2013.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_2013.sln; sourceTree = "<group>"; };
-		59C8AE9921A9D79900C3594F /* stress_2005.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = stress_2005.vcproj; sourceTree = "<group>"; };
-		59C8AE9A21A9D79900C3594F /* libusb_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_sources; sourceTree = "<group>"; };
-		59C8AE9B21A9D79900C3594F /* libusb_2005.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_2005.sln; sourceTree = "<group>"; };
-		59C8AE9C21A9D79900C3594F /* xusb_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = xusb_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AE9D21A9D79900C3594F /* stress_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = stress_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AE9E21A9D79900C3594F /* libusb_2010.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_2010.sln; sourceTree = "<group>"; };
-		59C8AE9F21A9D79900C3594F /* stress_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = stress_sources; sourceTree = "<group>"; };
-		59C8AEA021A9D79900C3594F /* libusb_dll.dsp */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_dll.dsp; sourceTree = "<group>"; };
-		59C8AEA121A9D79900C3594F /* xusb_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = xusb_sources; sourceTree = "<group>"; };
-		59C8AEA221A9D79900C3594F /* missing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = missing.h; sourceTree = "<group>"; };
-		59C8AEA321A9D79900C3594F /* getopt_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = getopt_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AEA421A9D79900C3594F /* libusb_static.dsp */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb_static.dsp; sourceTree = "<group>"; };
-		59C8AEA521A9D79900C3594F /* testlibusb_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = testlibusb_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AEA621A9D79900C3594F /* libusb.dsw */ = {isa = PBXFileReference; lastKnownFileType = text; path = libusb.dsw; sourceTree = "<group>"; };
-		59C8AEA721A9D79900C3594F /* listdevs_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = listdevs_2013.vcxproj; sourceTree = "<group>"; };
-		59C8AEA821A9D79900C3594F /* xusb.dsp */ = {isa = PBXFileReference; lastKnownFileType = text; path = xusb.dsp; sourceTree = "<group>"; };
-		59C8AEA921A9D79900C3594F /* getopt_2005.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = getopt_2005.vcproj; sourceTree = "<group>"; };
-		59C8AEAA21A9D79900C3594F /* listdevs_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = listdevs_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AEAB21A9D79900C3594F /* fxload_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fxload_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AEAC21A9D79900C3594F /* libusb_static_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_static_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AEAD21A9D79900C3594F /* listdevs.dsp */ = {isa = PBXFileReference; lastKnownFileType = text; path = listdevs.dsp; sourceTree = "<group>"; };
-		59C8AEAE21A9D79900C3594F /* getopt_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = getopt_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AEAF21A9D79900C3594F /* stress_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = stress_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AEB021A9D79900C3594F /* xusb_wince.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = xusb_wince.vcproj; sourceTree = "<group>"; };
-		59C8AEB121A9D79900C3594F /* hotplugtest_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = hotplugtest_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AEB221A9D79900C3594F /* testlibusb_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = testlibusb_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AEB321A9D79900C3594F /* stress_wince.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = stress_wince.vcproj; sourceTree = "<group>"; };
-		59C8AEB421A9D79900C3594F /* xusb_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = xusb_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AEB521A9D79900C3594F /* libusb_dll_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_dll_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AEB621A9D79900C3594F /* errno.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = errno.h; sourceTree = "<group>"; };
-		59C8AEB721A9D79900C3594F /* libusb_static_2012.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_static_2012.vcxproj; sourceTree = "<group>"; };
-		59C8AEB821A9D79900C3594F /* listdevs_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = listdevs_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AEB921A9D79900C3594F /* fxload_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fxload_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AEBA21A9D79900C3594F /* testlibusb_sources */ = {isa = PBXFileReference; lastKnownFileType = text; path = testlibusb_sources; sourceTree = "<group>"; };
-		59C8AEBB21A9D79900C3594F /* libusb_dll_wince.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_dll_wince.vcproj; sourceTree = "<group>"; };
-		59C8AEBC21A9D79900C3594F /* getopt_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = getopt_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AEBD21A9D79900C3594F /* stress_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = stress_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AEBE21A9D79900C3594F /* xusb_2015.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = xusb_2015.vcxproj; sourceTree = "<group>"; };
-		59C8AEBF21A9D79900C3594F /* libusb_dll_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_dll_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AEC021A9D79900C3594F /* hotplugtest_2017.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = hotplugtest_2017.vcxproj; sourceTree = "<group>"; };
-		59C8AEC121A9D79900C3594F /* testlibusb_2010.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = testlibusb_2010.vcxproj; sourceTree = "<group>"; };
-		59C8AEC221A9D79900C3594F /* libusb_static_2005.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_static_2005.vcproj; sourceTree = "<group>"; };
-		59C8AEC321A9D79900C3594F /* appveyor.bat */ = {isa = PBXFileReference; lastKnownFileType = text; path = appveyor.bat; sourceTree = "<group>"; };
-		59C8AEC421A9D79900C3594F /* stdint.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stdint.h; sourceTree = "<group>"; };
-		59C8AEC521A9D79900C3594F /* libusb_static_2013.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libusb_static_2013.vcxproj; sourceTree = "<group>"; };
 		59C8AEC621A9D79900C3594F /* ChangeLog */ = {isa = PBXFileReference; lastKnownFileType = text; path = ChangeLog; sourceTree = "<group>"; };
 		59C8AEC721A9D79900C3594F /* appveyor_minGW.bat */ = {isa = PBXFileReference; lastKnownFileType = text; path = appveyor_minGW.bat; sourceTree = "<group>"; };
 		59C8AEC821A9D79900C3594F /* AUTHORS */ = {isa = PBXFileReference; lastKnownFileType = text; path = AUTHORS; sourceTree = "<group>"; };
@@ -5656,12 +5572,12 @@
 			path = arm64;
 			sourceTree = "<group>";
 		};
-		59A52D4721A330FB000B6F27 /* armhf */ = {
+		59A52D4721A330FB000B6F27 /* arm */ = {
 			isa = PBXGroup;
 			children = (
 				59A52D4821A330FB000B6F27 /* libsbigudrv.a */,
 			);
-			path = armhf;
+			path = arm;
 			sourceTree = "<group>";
 		};
 		59A52D4A21A330FB000B6F27 /* x86 */ = {
@@ -5694,7 +5610,7 @@
 			children = (
 				59A52D4D21A330FB000B6F27 /* x64 */,
 				59A52D4A21A330FB000B6F27 /* x86 */,
-				59A52D4721A330FB000B6F27 /* armhf */,
+				59A52D4721A330FB000B6F27 /* arm */,
 				59A52D4421A330FB000B6F27 /* arm64 */,
 			);
 			path = Linux;
@@ -7768,7 +7684,6 @@
 				59C8AE6421A9D79900C3594F /* Xcode */,
 				59C8AE6F21A9D79900C3594F /* configure.ac */,
 				59C8AE7021A9D79900C3594F /* INSTALL_WIN.txt */,
-				59C8AE7121A9D79900C3594F /* msvc */,
 				59C8AEC621A9D79900C3594F /* ChangeLog */,
 				59C8AEC721A9D79900C3594F /* appveyor_minGW.bat */,
 				59C8AEC821A9D79900C3594F /* AUTHORS */,
@@ -7826,97 +7741,6 @@
 				59C8AF4B21A9D79900C3594F /* hotplugtest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		59C8AE7121A9D79900C3594F /* msvc */ = {
-			isa = PBXGroup;
-			children = (
-				59C8AE7221A9D79900C3594F /* libusb_dll_2005.vcproj */,
-				59C8AE7321A9D79900C3594F /* xusb_2005.vcproj */,
-				59C8AE7421A9D79900C3594F /* libusb_wince.sln */,
-				59C8AE7521A9D79900C3594F /* inttypes.h */,
-				59C8AE7621A9D79900C3594F /* libusb_dll_2013.vcxproj */,
-				59C8AE7721A9D79900C3594F /* hotplugtest_2013.vcxproj */,
-				59C8AE7821A9D79900C3594F /* ddk_build.cmd */,
-				59C8AE7921A9D79900C3594F /* missing.c */,
-				59C8AE7A21A9D79900C3594F /* xusb_2010.vcxproj */,
-				59C8AE7B21A9D79900C3594F /* libusb_dll_2012.vcxproj */,
-				59C8AE7C21A9D79900C3594F /* hotplugtest_2012.vcxproj */,
-				59C8AE7D21A9D79900C3594F /* testlibusb_2015.vcxproj */,
-				59C8AE7E21A9D79900C3594F /* getopt_2015.vcxproj */,
-				59C8AE7F21A9D79900C3594F /* stress_2010.vcxproj */,
-				59C8AE8021A9D79900C3594F /* libusb_static_wince.vcproj */,
-				59C8AE8121A9D79900C3594F /* config.h */,
-				59C8AE8221A9D79900C3594F /* libusb_static_2017.vcxproj */,
-				59C8AE8321A9D79900C3594F /* hotplugtest_sources */,
-				59C8AE8421A9D79900C3594F /* listdevs_2015.vcxproj */,
-				59C8AE8521A9D79900C3594F /* fxload_2010.vcxproj */,
-				59C8AE8621A9D79900C3594F /* hotplugtest_2010.vcxproj */,
-				59C8AE8721A9D79900C3594F /* testlibusb_2017.vcxproj */,
-				59C8AE8821A9D79900C3594F /* xusb_2012.vcxproj */,
-				59C8AE8921A9D79900C3594F /* libusb_dll_2010.vcxproj */,
-				59C8AE8A21A9D79900C3594F /* getopt_2017.vcxproj */,
-				59C8AE8B21A9D79900C3594F /* stress_2012.vcxproj */,
-				59C8AE8C21A9D79900C3594F /* libusb_2015.sln */,
-				59C8AE8D21A9D79900C3594F /* listdevs_sources */,
-				59C8AE8E21A9D79900C3594F /* listdevs_wince.vcproj */,
-				59C8AE8F21A9D79900C3594F /* libusb_2017.sln */,
-				59C8AE9021A9D79900C3594F /* listdevs_2017.vcxproj */,
-				59C8AE9121A9D79900C3594F /* fxload_2012.vcxproj */,
-				59C8AE9221A9D79900C3594F /* getopt_sources */,
-				59C8AE9321A9D79900C3594F /* libusb_static_2015.vcxproj */,
-				59C8AE9421A9D79900C3594F /* listdevs_2005.vcproj */,
-				59C8AE9521A9D79900C3594F /* libusb_2012.sln */,
-				59C8AE9621A9D79900C3594F /* fxload_2013.vcxproj */,
-				59C8AE9721A9D79900C3594F /* fxload_sources */,
-				59C8AE9821A9D79900C3594F /* libusb_2013.sln */,
-				59C8AE9921A9D79900C3594F /* stress_2005.vcproj */,
-				59C8AE9A21A9D79900C3594F /* libusb_sources */,
-				59C8AE9B21A9D79900C3594F /* libusb_2005.sln */,
-				59C8AE9C21A9D79900C3594F /* xusb_2013.vcxproj */,
-				59C8AE9D21A9D79900C3594F /* stress_2013.vcxproj */,
-				59C8AE9E21A9D79900C3594F /* libusb_2010.sln */,
-				59C8AE9F21A9D79900C3594F /* stress_sources */,
-				59C8AEA021A9D79900C3594F /* libusb_dll.dsp */,
-				59C8AEA121A9D79900C3594F /* xusb_sources */,
-				59C8AEA221A9D79900C3594F /* missing.h */,
-				59C8AEA321A9D79900C3594F /* getopt_2013.vcxproj */,
-				59C8AEA421A9D79900C3594F /* libusb_static.dsp */,
-				59C8AEA521A9D79900C3594F /* testlibusb_2013.vcxproj */,
-				59C8AEA621A9D79900C3594F /* libusb.dsw */,
-				59C8AEA721A9D79900C3594F /* listdevs_2013.vcxproj */,
-				59C8AEA821A9D79900C3594F /* xusb.dsp */,
-				59C8AEA921A9D79900C3594F /* getopt_2005.vcproj */,
-				59C8AEAA21A9D79900C3594F /* listdevs_2012.vcxproj */,
-				59C8AEAB21A9D79900C3594F /* fxload_2017.vcxproj */,
-				59C8AEAC21A9D79900C3594F /* libusb_static_2010.vcxproj */,
-				59C8AEAD21A9D79900C3594F /* listdevs.dsp */,
-				59C8AEAE21A9D79900C3594F /* getopt_2012.vcxproj */,
-				59C8AEAF21A9D79900C3594F /* stress_2017.vcxproj */,
-				59C8AEB021A9D79900C3594F /* xusb_wince.vcproj */,
-				59C8AEB121A9D79900C3594F /* hotplugtest_2015.vcxproj */,
-				59C8AEB221A9D79900C3594F /* testlibusb_2012.vcxproj */,
-				59C8AEB321A9D79900C3594F /* stress_wince.vcproj */,
-				59C8AEB421A9D79900C3594F /* xusb_2017.vcxproj */,
-				59C8AEB521A9D79900C3594F /* libusb_dll_2015.vcxproj */,
-				59C8AEB621A9D79900C3594F /* errno.h */,
-				59C8AEB721A9D79900C3594F /* libusb_static_2012.vcxproj */,
-				59C8AEB821A9D79900C3594F /* listdevs_2010.vcxproj */,
-				59C8AEB921A9D79900C3594F /* fxload_2015.vcxproj */,
-				59C8AEBA21A9D79900C3594F /* testlibusb_sources */,
-				59C8AEBB21A9D79900C3594F /* libusb_dll_wince.vcproj */,
-				59C8AEBC21A9D79900C3594F /* getopt_2010.vcxproj */,
-				59C8AEBD21A9D79900C3594F /* stress_2015.vcxproj */,
-				59C8AEBE21A9D79900C3594F /* xusb_2015.vcxproj */,
-				59C8AEBF21A9D79900C3594F /* libusb_dll_2017.vcxproj */,
-				59C8AEC021A9D79900C3594F /* hotplugtest_2017.vcxproj */,
-				59C8AEC121A9D79900C3594F /* testlibusb_2010.vcxproj */,
-				59C8AEC221A9D79900C3594F /* libusb_static_2005.vcproj */,
-				59C8AEC321A9D79900C3594F /* appveyor.bat */,
-				59C8AEC421A9D79900C3594F /* stdint.h */,
-				59C8AEC521A9D79900C3594F /* libusb_static_2013.vcxproj */,
-			);
-			path = msvc;
 			sourceTree = "<group>";
 		};
 		59C8AECB21A9D79900C3594F /* tests */ = {
