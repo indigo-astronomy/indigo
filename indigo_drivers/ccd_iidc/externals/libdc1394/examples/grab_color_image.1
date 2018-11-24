@@ -1,0 +1,17 @@
+.TH GRAB_COLOR_IMAGE "1" "January 2004" "grab_color_image" "User Commands"
+.SH NAME
+grab_color_image \- grab an image using libdc1394
+.SH SYNOPSIS
+.B grab_color_image [\fI\-\-guid=/dev/video1394/x\fR] [filename.ppm]
+.SH DESCRIPTION
+Get one image using libdc1394 and store it as a portable pix map (ppm) image.
+.SH OPTIONS
+.TP
+\fb\-\-guid\fR
+specifies camera to use. default is the first camera found in the system.
+\fB\-\-help\fR
+print help message
+.PP
+.SH AUTHOR
+This manual page was written by Peter De Schrijver <p2@debian.org> for the Debian GNU/Linux system (but may be used by others) and added to upstream by Peter Antoniac <theseinfeld@users.sf.net>.
+

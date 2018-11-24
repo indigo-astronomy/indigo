@@ -1,0 +1,53 @@
+.TH DC1394_MULTIVIEW "1" "December 2003" "dc1394_multiview " "User Commands"
+.SH NAME
+dc1394_multiview \- display format0 camera video
+.SH SYNOPSIS
+.B dc1394_multiview [\fI\-\-fps=[1,3,15,30]\fR] [\fI\-\-res=[0,1,2]\fR] [\fI\-\-device=/dev/video1394/x\fR]
+.SH DESCRIPTION
+View format0-only camera video from one or more cameras.
+.SH OPTIONS
+.TP
+\fB\-\-fps\fR
+frames per second. default is 7. The 30 fps setting is incompatible with the 640x480 RGB8 resolution setting.
+.TP
+\fB\-\-res\fR
+resolution. 0 is 320x240 (default), 1 = 640x480 YUV4:1:1, 2 = 640x480 RGB8
+.TP
+\fB\-\-device\fR
+specifies video1394 device to use (optional). default is /dev/video1394/<port#>
+.TP
+\fB\-\-help\fR
+print help message
+.PP
+.SH KEYBOARD CONTROLS
+.TP
+\fBq\fR
+quit
+.TP
+\fB< or ,\fR 
+scale -50%
+.TP
+\fB> or .\fR 
+scale +50%
+.TP
+\fB0\fR
+pause
+.TP
+\fB1\fR
+set framerate to 1.875 fps
+.TP
+\fB2\fR
+set framerate to 3.75 fps
+.TP
+\fB3\fR
+set framerate to 7.5 fps
+.TP
+\fB4\fR
+set framerate to 15 fps
+.TP
+\fB5\fR
+set framerate to 30 fps
+.SH AUTHOR
+This manual page was written by Peter De Schrijver <p2@debian.org> for the Debian GNU/Linux system (but may be used by others) and added to upstream by Peter Antoniac <theseinfeld@users.sf.net>.
+
+

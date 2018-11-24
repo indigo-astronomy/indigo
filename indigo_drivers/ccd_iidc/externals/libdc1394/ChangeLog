@@ -1,0 +1,1896 @@
+2013-03-24  David Moore  <david.moore@gmail.com>
+	* Make dc1394_capture_schedule_with_runloop() and
+	dc1394_capture_set_callback() available for USB cameras on Mac OS X.
+	Contributed by Rodolphe Pineau <pineau@rti-zone.org>.
+
+2011-11-15  David Moore  <david.moore@gmail.com>
+	* Update NEWS and version for release 2.1.4.
+
+2011-08-28  Damien Douxchamps  http://damien.douxchamps.net/
+	* Add PROT_WRITE for DMA buffers under juju.
+
+2011-08-21  Damien Douxchamps  http://damien.douxchamps.net/
+	* Fix SF patch 3298986 (downsample bayer function error)
+	* Fix usb_init function name (-> dc1394_usb_init)
+	* Fix missing "#ifdef __cplusplus". (SF patch 2655785)
+
+2011-03-27  David Moore  <david.moore@gmail.com>
+	* Conditionally compile dc1394_vloopback only when linux/video.h exists
+
+2011-01-02  David Moore  <david.moore@gmail.com>
+	* dc1394/conversions.h: Fix typo in DC1394_STEREO_METHOD_MIN
+	* Update NEWS, README, AUTHORS and version for release 2.1.3.
+
+2010-04-18  David Moore  <david.moore@gmail.com>
+	* Change dequeue/enqueue to return error code if usb transfer has error.
+
+2010-04-17  David Moore  <david.moore@gmail.com>
+	* Updated firewire-{cdev,constants}.h to latest version and MIT license.
+	* On Mac OS, add needed frameworks to link line (found by Holger Rapp)
+
+2009-09-19  David Moore  <dcm@acm.org>
+	* Fix for usb writes larger than 1 quadlet found by Shane Anderson.
+
+2009-06-10  David Moore  <dcm@acm.org>
+	* Update NEWS and version for release 2.1.2.
+	* Revert 5cf24a2051fc77b35dacb6bf33bc500acd533488,
+	  "support for 32 Format7 video modes" since it breaks v2 ABI.
+	  Will reintroduce later in a backwards compatible way.
+
+2009-05-31  David Moore  <dcm@acm.org>
+	* Update NEWS, AUTHORS and version for release 2.1.1.
+
+2009-05-30  David Moore  <dcm@acm.org>
+	* Match only /dev/fw[0-9]* as device names on Juju.  From Stefan Richter.
+	* Provide more debugging output at capture start time
+
+2009-05-29  David Moore  <dcm@acm.org>
+	* Implemented dc1394_camera_set_broadcast and
+	  dc1394_camera_get_broadcast for Juju.  Requires kernel 2.6.30.
+
+2009-05-26  David Moore  <dcm@acm.org>
+	* Implemented dc1394_read_cycle_timer function for Juju.
+
+2009-05-25  David Moore  <dcm@acm.org>
+	* Added timestamp support to the juju platform.
+	* Added automatic iso allocation to juju using the new support
+	  in kernel 2.6.30.  Older kernels fall back to guessing a good
+	  channel number.
+
+2009-04-14 Peter Antoniac http://sourceforge.net/users/theseinfeld
+	* SVN 594: Fixed the bug from error reporting [LP bug #360520]
+		   https://bugs.edge.launchpad.net/libdc1394/+bug/360520 for
+		   dc1394_deinterlace_stereo_frames return wrong value on
+		   success
+	* SVN 593: Documentation: added missing manual files for the examples
+		   directory. These files existed in the packaging but were
+		   missing in our upstream.
+
+2009-04-12 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 592: [IIDC 1.32] support 32 Format7 video modes
+	* SVN 591: Apply patch 6 from Mike Lundy: return errors from
+		   delegates for some conversion functions.
+	* SVN 590: Apply patch 3 from Mike Lundy: prepend CFLAGS instead of
+		   appending them (thus allowing user-specific override)
+	* SVN 589: Apply patch 2 from Mike Lundy: properly initialize
+		   Basler-specific structs.
+	* SVN 588: Apply patch 1 from Mike Lundy: disable option for not
+		   building example programs.
+
+2009-02-18 David Moore  <dcm@acm.org>
+	* SVN 587: Juju: Fix missing frames when host controller is OHCI 1.0
+		   and packets-per-frame is not a multiple of 8.
+
+2009-02-09 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 586: Apply a patch from Damien Dusha that adds proper memory
+		   allocation verifications in AdaptBuffer functions.
+
+2009-01-29 David Moore  <dcm@acm.org>
+	* SVN 585: Update version and AUTHORS for 2.1.0.  RELEASE 2.1.0.
+
+2009-01-26 David Moore  <dcm@acm.org>
+	* SVN 584: Remove private includes from dc1394/linux/capture.h
+
+2009-01-13 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 583: - fix allocation errors in conversions.c and bayer.c
+		   - fix bayer conversion problem with cameras sending
+		     16bit RAW over MONO16 format.
+		   Both fixes thanks to Damien Dusha.
+
+2009-01-12 David Moore  <dcm@acm.org>
+	* SVN 582: Add missing libusb_set_configuration() and
+		   libusb_release_interface() calls to usb backend.
+
+2009-01-05 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 581: configure.in: add quotes around args that use
+		   $LIBUSB_LIBS as there may be more than one lib (which
+		   leads to a "too many arguments" error)
+
+2009-01-04 David Moore  <dcm@acm.org>
+	* SVN 580: Include pkgconfig macros in acinclude.m4 for the benefit
+		   of SVN users that don't have pkgconfig installed.
+	* SVN 579: Don't let configure fail if libusb-1.0 is not present
+
+2009-01-02 David Moore  <dcm@acm.org>
+	* SVN 578: Add the "usb" platform, for support of devices that do
+		   IIDC-over-USB such as the Point Grey Chameleon and
+		   Firefly MV cameras.  Support will be automatically
+		   enabled if libusb 1.0 is found at configure-time.
+
+2008-12-30 David Moore  <dcm@acm.org>
+	* SVN 577: Juju: Retry busy transactions
+
+2008-12-23 David Moore  <dcm@acm.org>
+	* SVN 576: Fix Mac OS build.
+	* SVN 575: Improve Mac OS error message when iso bandwidth is depleted.
+	* SVN 574: Fix Mac OS build.
+	* SVN 573: Package a local copy of the juju headers so there are no
+		   versioning problems with different Linux configurations.
+	* SVN 572: Choose platform at run-time, not compile-time.  This
+		   eliminates the --with-juju-dir configure option.
+	* SVN 571: Add more error-checking to example programs
+
+2008-12-12 David Moore  <dcm@acm.org>
+	* SVN 570: Update NEWS
+	* SVN 569: Update version and AUTHORS for 2.0.3.  RELEASE 2.0.3.
+
+2008-12-05 David Moore  <dcm@acm.org>
+	* SVN 568: Added AC_CANONICAL_SYSTEM to configure.in.  Thanks to
+		   Tully Foote.
+	* SVN 567: Fix acinclude.m4 for newer versions of autoconf
+	* SVN 566: Fix image size bug in dc1394_deinterlace_stereo_frames.
+		   Thanks to Maya Cakmak and Jeremy Leibs.
+
+2008-08-28 David Moore  <dcm@acm.org>
+	* SVN 565: Potential crash fix for Mac OS 10.4.  Thanks to Salvatore
+		   Desiano for tracking it down.
+
+2008-08-27 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 564: last set of blind changes.
+
+2008-08-26 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 563: more blind fixes for the MSW port. 
+
+2008-08-21 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 562: attempt to fix incoherences in the msw port, part 2. There
+		   is still a lot of work to be done in camera detection and
+		   ISO channel/bandwidth allocation. For instance, the
+		   platform_* functions are inexistant in MSW.
+
+2008-08-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 561: attempt to fix incoherences in the msw port.
+
+2008-03-26 David Moore  <dcm@acm.org>
+	* SVN 560: Fix alignment problem during reads on some platforms with
+		   juju
+
+2008-05-28 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 559: fixed wrong returned values for dc1394_trigger_get_polarity.
+		   Thanks to Clement Menier.
+
+2008-05-17 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 558: applied patch from Olaf Kaehler (missing #ifdef cpluspluc)
+		   Corrected the email address of the list in the Readme.
+
+2008-05-08 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 557: Update the lt verions to 23,0,1. RELEASE 2.0.2
+		   (Note: the SOversion is 22.0.2)
+	* SVN 556: the wrong file was uploaded for the new example, fixed.
+
+2008-05-02 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 555: add a new example
+
+2008-03-26 David Moore  <dcm@acm.org>
+	* SVN 554: Fix build of Juju when in separate dir
+
+2008-03-16 David Moore  <dcm@acm.org>
+	* SVN 553: Update NEWS
+	* SVN 552: Add function dc1394_capture_is_frame_corrupt() to test if
+		   a dequeued frame is corrupt.  Integrity checking code
+		   currently exists only on Mac OS.  Other platforms return
+		   DC1394_FALSE.
+
+2008-03-12 David Moore  <dcm@acm.org>
+	* SVN 551: Automatically resume dequeue() if EINTR is encountered.
+	* SVN 550: Bug fix dc1394_camera_get_node on Juju and Linux.
+	* SVN 549: Implement dc1394_camera_get_node for Mac OS.
+
+2008-03-11 David Moore  <dcm@acm.org>
+	* SVN 548: Make linux-specific function dc1394_camera_get_node()
+		   globally available and implement stubs for other platforms.
+		   Add generation argument to dc1394_camera_get_node.
+		   Rename dc1394_camera_get_port to
+		   dc1394_camera_get_linux_port.
+
+2008-03-10 David Moore  <dcm@acm.org>
+	* SVN 547: On Linux, use a different DMA file descriptor for each
+		   camera on the same controller.
+
+2008-02-28 David Moore  <dcm@acm.org>
+	* SVN 546: On Mac OS, scan received iso packet headers and drop
+		   frames with any errors.
+
+2008-02-25 David Moore  <dcm@acm.org>
+	* SVN 545: Do usleep(500) between read/write retries on juju.
+	* SVN 544: Fix the debug log handler so it produces output.
+
+2008-02-21 David Moore  <dcm@acm.org>
+	* SVN 543: Correct the order of operations at the start of juju
+		   capture so that any manual channel settings are preserved.
+
+2008-02-12 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 542: Return an error if the camera enumeration fails (thanks to
+		   Jasper Leemans)
+
+2008-02-10 Peter Antoniac http://sourceforge.net/users/theseinfeld
+	* SVN 541: Corrections in the man pages white spaces
+	* SVN 540: Added man pages to make install and to make dist
+
+2008-02-07 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 539: Add linux functions to get port and node. This is
+		   provided by a new header file linux/control.h
+
+2008-02-06 Peter Antoniac http://sourceforge.net/users/theseinfeld
+	* SVN 538: Documentation problems with newer Doxygen package:
+		- Changed Doxygen.in to fit the new standards.
+		- Added man pages to the examples for easier packaging.
+		- Changed the Release number to 2.0.2 to make it ready
+		  for the next release.
+		- Changes in *.h to fit the new documentation standards.
+		- Added Andrew Straw to the list of Authors for his
+		  contribution to packaging, man pages, etc.
+
+2008-01-15 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 537: Release 2.0.1
+
+2008-01-14 David Moore  <dcm@acm.org>
+	* SVN 536: Updated NEWS.
+	* SVN 535: Removed edge-sense bayer algorithm.  Removed the
+		   now-obsolete --without-patents option.
+
+2008-01-12 David Moore  <dcm@acm.org>
+	* SVN 534: Fixed some Mac OS compile warnings.
+	* SVN 533: Removed internal-only includes from dc1394.h and added
+		   missing includes to other source files.
+
+2008-01-09 Peter Antoniac http://sourceforge.net/users/theseinfeld
+	* SVN 532: added Doxyfile.in to the Makefile.am EXTRA_DIST for
+		inclussion in the packaging.
+
+2008-01-09 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 531: add an option "--without-patents" to the configure script.
+
+2008-01-08 David Moore  <dcm@acm.org>
+	* SVN 530: Fix for iSight and other multi-unit cameras on Mac OS X.
+
+2008-01-05 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 529: Update NEWS, README and AUTHORS. Release 2.0.0.
+
+2008-01-04 David Moore  <dcm@acm.org>
+	* SVN 528: Fix newlines in some example status messages
+
+2007-12-28 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 527: Update GPL/author statements
+
+2007-12-27 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 526: fix compilation issues with the previous change.
+	* SVN 525: Change the name of two utilitary functions that were very
+		   confusing:
+		   - dc1394_get_color_coding_depth >
+			 dc1394_get_color_coding_data_depth
+		   - dc1394_get_bits_per_pixel >
+			 dc1394_get_color_coding_bit_size
+		   Version numbers bumped to 22,0,0.
+
+2007-12-26 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 524: Prevent a camera from appearing twice when two interface
+		   cards linked to the same computer are bridged.
+	* SVN 523: Go around a firmware problem in the iSight (v1.0.3): two
+		   vendor leaves are present but there's no model leaf, even
+		   though the second 'vendor' leaf is clearly the model leaf.
+
+2007-12-17 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 522: Write a very basic, one-line description of (almost) every
+		   function.
+	* SVN 521: little cleanup in the example programs
+	* SVN 520: comments don't end with "\n", so that custom handlers can
+		   choose what to do (use "\r", for instance). Instead, the
+		   "\n" is added in the default handlers. Some vararg
+		   comments have also been also reinstated.
+
+2007-12-16 David Moore  <dcm@acm.org>
+	* SVN 519: Convert tabs to spaces and delete trailing whitespace.
+
+2007-12-14 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 518: Change indentation from 2 to 4 spaces 
+	* SVN 517: Framework for the Doxygen comments. 
+	* SVN 516: Version 2.0.0-rc9
+
+2007-12-13 David Moore  <dcm@acm.org>
+	* SVN 515: Add basler_sff_registry.h to dc1394/vendor/Makefile.am
+
+2007-12-13 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 514: Version 2.0.0-rc8
+	* SVN 513: Fix redefinition of MIN and MAX macros (Rudolf Leitgeb)
+
+2007-12-12 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 512: -DDC1394_DLL_EXPORTS is MSW only. Also, don't change the
+		   CFLAGS but instead use AM_CFLAGS.
+	* SVN 511: Split control.h into several header files.
+	* SVN 510: merge checksum.c/h into utils.c/h
+
+2007-12-12 David Moore <dcm@acm.org>
+	* SVN 509: Removed LIBDC1394_VERSION* from control.h and updated
+		   libtool version info in configure.in.
+	* SVN 508: Fix isochronous declarations.
+	* SVN 507: Remove internal.h include from vendor include files
+
+2007-12-12 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 506: fix dc1394_error_get_string().
+	* SVN 505: change bit_depth -> data_depth for coherency.
+
+2007-12-11 David Moore  <dcm@acm.org>
+	* SVN 504: Added isochronous allocation API in iso.c/iso.h.  Also
+		   includes platform-specific API additions.  Only implemented
+		   for the linux platform as of now.
+
+2007-12-11 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 503: Cleanup example programs
+	* SVN 502: Fix broadcast control
+	* SVN 501: Add the definition of two offsets (640, 644) which contain
+		   error bits for features. The functionality is not
+		   implemented yet; this will wait until 2.0.0 is released.
+	* SVN 500: Implement broadcast function. Error returned under juju,
+		   osx and msw.
+	* SVN 499: Small change in the numbering of the enum types (control.h).
+		   This allows 256 format7 modes, which may happen in 1.32.
+
+2007-12-10 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 498: make system_*log_handler and *log_data static. Tell a word
+		   about DC1394_DEBUG in log.h (Rudolf Leitgeb)
+	* SVN 497: Finalize the error API
+	* SVN 496: Added two boolean members to dc1394video_frame_t:
+		   little_endian and data_in_padding.
+
+2007-12-07 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 495: Compile fix for juju (thanks to Chao Wang)
+	* SVN 494: Compile fix for juju (thanks to Chris Rankin)
+
+2007-12-06 David Moore  <dcm@acm.org>
+	* SVN 493: Compile fix for Mac OS X.
+
+2007-12-06 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 492: Changed some comments from error to debug.
+	* SVN 491: Printing functions now all have a file descriptor argument.
+	* SVN 490: Replace all fprintf errors by logging. Some lowest level
+		   errors using fprintf remain. Definitely needs testing on
+		   other platforms than Linux. 2-3 more internal functions had
+		   their dc1394_ prefix removed.
+	* SVN 489: Retire dc1394_cleanup_iso_channel_and_bandwidth.
+	* SVN 488: reserve dc1394_ prefix for exported functions.
+		   channel/bandwidth functions still have the prefix since
+		   we plan to export them soon.
+	* SVN 487: - Applied a consistant naming scheme for all functions.
+		   - Temporary (?) implementation of a DC1394_DEBUG
+		     compiler flag
+
+2007-12-05 David Moore  <dcm@acm.org>
+	* SVN 486: Allow retries when reading config ROMs under linux to
+		   deal with sluggish cameras.
+	* SVN 485: fix broken _get_string functions, which weren't actually
+		   returning any data.
+	* SVN 484: clean up error handling in grab_gray_image
+
+2007-12-04 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 483: add "-std=gnu99" to compiler options
+	* SVN 482: add log.h.
+	* SVN 481: Updated logging mechanism to auto-print __LINE__, __FILE__
+		   and __FUNCTION__. log.h was re-created for that purpose.
+	* SVN 480: Fix leftover DC1394_NO_FRAME in OSX (Josh Rooke-Ley)
+
+2007-12-03 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 479: Error codes are now negative.
+	* SVN 478: capture_dequeue returns success if no frame is available
+		   in POLL mode, but the frame will be NULL.
+
+2007-12-02 David Moore  <dcm@acm.org>
+	* SVN 477: Move dc1394_capture_set_device_filename to linux-specific
+		   header.
+	* SVN 476: Remove volatile fields from the public dc1394camera_t
+	* SVN 475: configure.in: fix automake error
+
+2007-12-02 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 472-4: better error code returned by register access functions
+
+2007-12-01 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 471: fix missing declarations of "err" introduced in SVN 466
+		   (thanks to Chris Rankin)
+	* SVN 470: perform byte_per_packet name changes in juju, osx and msw
+		   too (thanks to Chris Rankin)
+
+2007-11-30 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 469: Rename byte_per_packet to packet_size everywhere. Perform a
+		   few cleanups rearding that too.
+	* SVN 468: Revert SVN 464 and harmonize #includes.
+	* SVN 467: Minor changes in header files. 
+	* SVN 466: Add auto-iso stop in capture_stop functions 
+	* SVN 465: Implement auto-iso for capture setup (beta).
+	* SVN 464: Fix #include in utils.h (Johann Schoonees)
+
+2007-11-29 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 463: Cleanup error codes, check enum types in *_set_* functions,
+		   remove error messages in conversion functions (replaced by
+		   returning a proper error code)
+	* SVN 462: Remove the error DC1394_NO_CAMERA since it's not used
+		   anymore
+	* SVN 461: Merge three functions (feature mode capabilities) into a
+		   single one
+	* SVN 460: - slightly different interface for message logging
+		   - enum types should have mutually exclusive values
+		   - add min/max/num values for several enum types
+		   - merge log.h in control.h
+
+2007-11-28 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 459: added new error API, beta (Rudolf Leitgeb)
+	* SVN 458: update of the README (Frederic Vernier)
+	* SVN 457: fix color converion in grab_color_image2 (Frederic Vernier)
+	* SVN 456: rename long function name dc1394_memory_is_save_in_operation
+		   to shorter dc1394_memory_busy.
+	* SVN 455: reinstate the verification code for video mode, format and
+		   iso status
+	* SVN 454: - temporarily remove the definition of the broadcast
+		     function in control.h, since it's code has been
+		     commented-out in control.c.
+		   - remove video_mode, framerate and is_iso_on from
+		     dc1394camera_t. 
+
+2007-11-27 David Moore  <dcm@acm.org>
+	* SVN 453: Reinstate the "unit_directory" field of dc1394camera_t
+
+2007-11-27 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 452: Initialize dc1394_camera_t.flags to zero when a new
+		   camera is created.
+	* SVN 451: Rename register access functions to dc1394_*.
+		   Move the camera detection API earlier in control.h
+	* SVN 450: Fix missing Basler error strings in internal.c
+
+2007-11-26 David Moore  <dcm@acm.org>
+	* SVN 449: Fix dc1394_multiview and dc1394_vloopback for new API
+	* SVN 448: Update svn:ignore
+	* SVN 447: Massive update of the platform specific API to support
+		   the new enumeration API.  The new platform API is defined
+		   in platform.h and is private to libdc1394.  Enumeration
+		   functionality has split off into enumeration.c.  Some
+		   naming inconsistencies of public functions have also been
+		   addressed -- mostly functions in register.h.
+		   dc1394_find_cameras() is now officially gone.  The examples
+		   have been updated to reflect the new method of camera
+		   enumeration.  Platform code for Linux, Juju, and Mac OS X
+		   has been updated for the new enumeration API.
+
+2007-11-14 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 446: Add the unit argument to the call to dc1394_new_camera
+		   in juju/control.c. The argument is hardcoded to zero, so
+		   you can only access the unit 0 on juju (same as on osx).
+		   To be further updated...
+
+2007-11-12 David Moore  <dcm@acm.org>
+	* SVN 445: Fix mmap error with Mac OS Leopard (from Mark)
+
+2007-11-10 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 444: Verify the format, mode, framerate and ISO speed at
+		   boot time because some older cameras may have invalid
+		   data there.
+
+2007-10-31 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 443: Force the unit number to be zero on OSX, otherwise
+		   compilation fails. To be updated with a proper scan of
+		   units later.
+	* SVN 442: Initialise some variables to zero to avoid valgrind
+		   warnings (Fabien Spindler)
+	* SVN 441: Don't free the raw1394 handle when we see a hub (Fabien
+		   Spindler)
+
+2007-10-25 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 440: Fixed bad #define in two example programs. Thanks to
+		   Edward Rankin.
+	* SVN 439: dc1394_get_one_shot never returned DC1394_TRUE but 2^31
+		   instead. Fixed by Damien Delannay.
+
+2007-10-21 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 438: Fix SVN version in the changelog
+	* SVN 437: Add a pause between ROM readings in camera detection
+	* SVN 436: Several bugs corrected by Irv Elshoff in the camera
+		   detection code (Linux only).
+
+2007-09-26 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 435: Updated the AUTHORS file.
+
+2007-09-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 434: Updated the definition of DC1394_BAYER_METHOD_MAX
+		   (Johann Schoonees)
+
+2007-09-19 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 433: fixed some warnings that appeared when using the
+		   "-pedantic" compilation option (variadic macros and
+		   // comments)
+
+2007-09-18 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 432: Removed spurious comma in the declaration of
+		   dc1394trigger_source_t (Johann Schoonees)
+
+2007-09-17 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 431: Add a "flags" member (uint32_t) to dc1394camera_t struct.
+	* SVN 430: Change the name dc1394id_t to dc1394camera_id_t to avoid
+		   confusion with future IDs that could be created later in
+		   libdc1394.
+
+2007-09-14 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 429: Introduce a new type: dc1394id_t. It contains the GUID
+		   and the unit number for unique identification. The function
+		   dc1394_is_same_camera(id1, id2) can be used to compare ids.
+
+2007-09-13 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 428: Support for multi-unit cameras. Thanks to Karl Regier
+		   for the patch. Tested with coriander and test_new_api,
+		   but on Linux only.
+
+2007-09-05 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 427: Fixed borders in bayer.c (thanks to Johann Schoonees)
+
+2007-09-03 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 426: don't display warnings if a node is not a camera.
+
+2007-08-28 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 425: Image data returned in the dc1394_video_frame_t struct was
+		   read-only (Linux). It doesn't cost anything to make it
+		   writable, so from now on you can overwite captured image
+		   data. Thanks to Ferenc Kahlesz for the modification.
+
+2007-08-23 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 424: - Change the split between dc1394_update_camera_info and
+		     _dc1394_get_iidc_version so that getting the IIDC version
+		     also gets the GUID at the same time. This reduces the
+		     number of operations required to tell if a node is IIDC
+		     compliant or not.
+		   - dc1394camera_t member "euid_64"'s name changed to "guid"
+
+2007-08-22 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 423: moved the include of config.h into internal.h
+	* SVN 422: little fixes in the new camera detection API.
+	* SVN 421: Reverted some changes concerning where #includes are placed.
+		   This was changed for windows compatibility but breaks
+		   compilation of programs using the library (on Linux).
+
+2007-08-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 420: again, changes on the new camera detection API.
+
+2007-08-16 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 419: more changes on the new camera detection API.
+	* SVN 418: first changes on the new camera detection API.
+
+2007-08-15 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 417: First alpha implementation of the new API for camera
+		   detection. It consists in wrappers around existing
+		   functions. An example (test_new_api) is provided to...
+		   test this new API.
+	* SVN 416: remove topology.c/h and raw1394support.h. This gets rid of
+		   GPL files that were tainting the library license. Thanks to
+		   Olaf Hering for spoting this. The topology data is now only
+		   available on MSW (not in OSX and Linux).
+
+2007-08-14 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 415: basler_cff.h needed <string.h>
+	* SVN 414: Merged patch from Vladimir Avdonin for the compilation and
+		   use of libdc1394 on MS Windows XP.
+
+2007-08-03 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 413: Removed unnecessary function to set the color filter
+		   (the latter is read only!). Thanks to Johann Schoonees.
+
+2007-07-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 411: Applied AVT patch from Seemant Kulleen
+
+2007-07-11 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 410: execute a "SLOW_DOWN" only if the ROM read or write fails,
+		   not everytime. This makes much more sense and also makes
+		   applications much faster (example: coriander starts in
+		   0.5 seconds instead of 3 seconds). The SLOW_DOWN thing
+		   could maybe be removed entirely. Thanks to Tony Hague for
+		   spotting this very hairy bug.
+
+2007-07-08 David Moore  <dcm@acm.org>
+	* SVN 409: Better socket cleanup in Mac OS capture code (from
+		   Simon Andersson). 
+
+2007-07-07 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 408: Applied the AVT patch from Mark Munte (with small extra
+		   cosmetic changes)
+
+2007-06-24 David Moore  <dcm@acm.org>
+	* SVN 407: Applied modified version of Kristian Høgsberg's patch to
+		   bring Juju support up to date with kernel 2.6.22.
+
+2007-06-19 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 406: added missing checksum.c/h. Thanks to Robert Harle.
+	* SVN 405: - update feature detection rules. Explanation written in
+		     control.c.
+		   - Member one_push renamed to one_push_capable as it is a
+		     capability.
+		   - Fixed typo in error message
+
+2007-06-18 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 404: fixed missing * in dc1394_format7_get_byte_per_packet
+		   (thanks to Stian Skjelstad)
+
+2007-06-14 Mikael Olenfalk <mikael.olenfalk@gmail.com>
+	* SVN 403: Damien forgot to add the new files...
+	* SVN 402: - added Basler Smart Feature Framework support
+		   - vendor/basler.[ch]: the entry functions for Basler SFF
+		     support
+		   - vendor/basler_sff.h: types used for SFF
+		   - vendor/basler_sff_registry.[ch]: internal functions and
+     		     types for implemented SFF functionality
+
+2007-06-06 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 401: Solved juju include problems (capture.h does not exist).
+		   Version 2.0.0-rc7. 
+	* SVN 400: Include juju directory in the package. Thanks to Desmond for
+		   spotting this.
+
+2007-06-05 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 399: Forgot to change some version numbers. This is 2.0.0-rc6.
+	* SVN 398: Version 2.0.0-rc6
+
+2007-06-04 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 397: get optional function registers only if the IIDC version is
+		   > 1.30 (not >= 1.30). Thanks to Etienne Bieber.
+
+2007-05-08 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 396: added an example program to capture video from a Ladybug
+		   camera (Point Grey).
+
+2007-04-26 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 395: add memset's in linux/capture.c to avoid valgrind errors
+		   (thanks to Jon Schewe)
+	* SVN 394: changed "min_bytes" to "unit_bytes" in
+		   dc1394_format7_get_packet_para()
+
+2007-03-18 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 393: Add a "juju" directory for the new kernel stack from Kristian
+		   Hogsberg. Thanks to... Kristian Hogsberg for the big patch ;)
+
+2007-03-12 Peter Antoniac http://sourceforge.net/users/theseinfeld
+	* SVN 392: changed Makefile.am, configure.in to include the Doxygen part.
+		   Added: acinclude.m4, aminclude.am and Doxyfile.in to configure
+		   the Doxygen part. This changes enable the doxygen documentation
+		   generation for the project, without interference with previous
+		   framework. Added/changed some comments in the Header files
+		   (dc1394/control.h, dc1394/conversions.h, dc1394/register.h,
+		   dc1394/utils.h) to demonstrate the way the documentation works.
+
+2007-03-01 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 391: change the function returning the number of bytes per pixel
+		   to a function that returns bits per pixel. That way we stay
+		   with int's and avoid round-off errors.
+
+2007-02-23 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 390: rewrite the ROI setting function. This fixes a serious issue
+		   that occured when changing F7 parameters (color coding,
+		   among others)
+
+2007-02-21 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 389: rewite the expression defining the stride; cosmetic changes
+		   to the latest changelog entries
+
+2007-02-20 David Moore http://davemoore.org/
+	* SVN 388: Improvements to error handling in channel/bandwidth
+		   allocation.
+	* SVN 387: Bug fixes for trigger source get/set
+
+2007-02-19 David Moore http://davemoore.org/
+	* SVN 386: Changed DC1394_CAPTURE_FLAGS_DEFAULT to be interpreted at
+		    runtime rather than at compile-time.
+	* SVN 385: Fixed Mac OS to honor flags argument of
+		   dc1394_capture_setup().
+	* SVN 384: Added missing function dc1394_video_get_iso_channel().
+	* SVN 383: Add new function dc1394_read_cycle_timer() to get the value
+		   of the bus's cycle timer synchronized with the system time.
+		   Implemented for both Mac OS X and Linux.
+
+2007-02-18 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 382: Add a flag argument to the capture setup function to allow
+		   finetuning of the automatic channel/bandwidth allocation.
+		   Adding an extra "DC1394_CAPTURE_FLAGS_DEFAULT" to every call
+		   to dc1394_capture_setup() will yield the same behaviour as
+		   before. Also removed old "_dma" examples.
+
+2007-02-11 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 381: fix camera detection that failed if probing for optional
+		   capabilities returned an error. Thanks to Mark Munte.
+
+2007-02-13 Peter Antoniac http://sourceforge.net/users/theseinfeld
+	* SVN 380: changed libdc1394.pc to libdc1394-2.pc to avoid pkg-config
+		   conflicts when using both versions (v1 - v2) of libdc1394.
+
+2007-02-11 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 379: fixed the previous valgrind fix. Thanks to Robert
+		   Olsen, Jon Schewe and Andy Gotz.
+
+2007-02-08 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 378: removed two extra handshakes in format7 functions.
+
+2007-02-07 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 377: comment spurious debug message
+	* SVN 376: Allow changing format7 properties while capture is
+		   running IF the current video mode is different from
+		   the video mode to be modified.
+	* SVN 375: fix typo in Makefile.am
+	* SVN 374: RAW16 formats are considered grayscale in conversion
+		   functions.
+
+2007-02-02 David Moore http://davemoore.org/
+	* SVN 373: Fix another typo in trigger mode detection.
+	* SVN 372: Avoid possible buffer overflow in topology code.
+	* SVN 371: Fix typo in trigger mode detection.
+
+2007-02-01 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 370: Allow to change the pinstate of AVT IO pins.
+		   Thanks to Chris French.
+	* SVN 369: Update examples to stop transmission before we stop
+		   capture.
+	* SVN 368: Do not fail to detect a camera if it does not have the
+		   optional functions register. Thanks to Fabien Spindler.
+	* SVN 367: set a default video mode if none is set at boot time.
+		   Thanks to Matthias Hanel.
+	* SVN 366: bayer downsampling function now take the INPUT image
+		   size as argument. It used to take the OUTPUT image size
+		   as argument but this is counter intuitive. 
+		   Thanks to Matthias Barkhoff.
+	* SVN 365: allow debayering of MONO8 and MONO16 formats.
+		   Thanks to Matthias Barkhoff.
+
+2007-01-30 David Moore http://davemoore.org/
+	* SVN 364: pkgincludedir fix below still wasn't quite right
+
+2007-01-29 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 363: fix the definition pkgincludedir in configure.in
+		   Thanks to Frederic Devernay.
+
+2007-01-27 David Moore http://davemoore.org/
+	* SVN 362: Apply patch from Matt Robinson for the Mac OS capture
+		   routine to wait for thread creation with a semaphore.
+
+2007-01-24 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 361: Set some variables to zero to avoid valgrind errors.
+		   Thanks to Jon Schewe.
+	* SVN 360: Fixed strobe control register offset. Thanks again to
+		   Matthias Hanel.
+	* SVN 359: don't require cameras (>=1.31) to have a data depth
+		   register. Thanks to Matthias Hanel.
+	* SVN 358: fixed YUV422 byte order. Thanks to Thomas Woellert.
+
+2007-01-22 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 357: use only format7mode0 in the example program
+		   grab_partial_image. Remove the unused definition of
+		   dc1394ring_buffer_policy_t. Thanks to Damien Delannay.
+
+2007-01-22 Peter Antoniac http://sourceforge.net/users/theseinfeld
+	* SVN 356: reverse the order of entries in the ChangeLog and reformat
+		   some (mine-)fields. Changed most email addresses to URLs to
+		   avoid spam. Changed the format of the dates too.
+
+2007-01-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 355: release 2.0.0-rc5
+
+2007-01-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 354: Added Parallel Input/Output (PIO) functions. Prepared some
+	  	   support functions for SIO and strobe control. Misc cleanups.
+	* SVN 353: Remove the check of err_flag_2 for now: it seems not to work
+	  	   proprely. (Thanks to Damien Delannay)
+	* SVN 352: fix coherency of the format_7 mode used in
+	  	   grab_partial_image.c (Thanks to Damien Delannay)
+	* SVN 351: remove save_channel and load_channel from the dc1394camera_t
+	  	   structure. Also remove the functions
+		   dc1394_memory_get_save/load_ch() from the API.
+
+2007-01-18 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 350: fixed missing dc1394_capture_enqueue() in
+	  	   grab_partial_image.c (Thanks to Damien Delannay)
+	* SVN 349: update the error message in case we hit the the vmalloc limit.
+	  	   (Thanks to Peter Antoniac)
+
+2007-01-09 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 348: print a smart error message when vmalloc fails due to
+	  	   VMALLOC_RESERVED that is too low. Ideally, this limit should
+	  	   be probed dynamically as it can change from machine to
+		   machine.
+
+2006-12-24 David Moore http://sourceforge.net/users/dmoore/
+	* SVN 347: Make dc1394_video_set_iso_channel() a public function.
+	* SVN 346: Added new function dc1394_reset_bus() and a command-line
+	  	   utility called dc1394_reset_bus that will..... reset the bus.
+	* SVN 345: Added support for 800 Mb speeds to Mac OS X (Thanks Mark 
+	  	   Munte)
+	* SVN 344: Updated Mac OS X support to allow the select() call by using
+	  	   dc1394_capture_get_fileno ().  It does this by using a
+		   separate thread for capture.
+
+2006-12-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 343: "channel adjust" functions for AVT Pike cameras (patch from
+	  	   Mark Munte)
+
+2006-12-20 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 342: correct changelog date (as you can see I need some sleep...)
+	* SVN 341: remove debug statements
+	* SVN 340: fixed missing update of allocated_image_bytes in the frame
+	  	   conversion functions.
+
+2006-12-14 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 339: fixed a function prototype (another mismatch between .c and
+	  	   .h files!)
+
+2006-12-12 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 338: added instructions on how to build the package (especially
+		   from SVN) in the README file.
+
+2006-12-12 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 337: New AHD Bayer interpolation (imported from DCRAW by Samuel
+	  	   Audet). There may be issues with mulitiple processor systems.
+	* SVN 336: Try to fix a pointer problem in the topology acquisition
+
+2006-12-08 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 335: Fix the badly fixed memory leak. Thanks to Daniel Drake.
+
+2006-12-07 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 334: Fixed memory leak in Linux capture code (Fabien Spindler)
+
+2006-12-06 Damien Douxchamps http://damien.douxchamps.net/
+	* SVN 333: fixed a bug in absolute settings. The caching of offsets has
+	  	   been removed (Don Murray)	
+
+2006-12-04 Damien Douxchamps http://damien.douxchamps.net/
+	* removed extra error string definition for raw1394 failure (SVN 332)
+	* removed the error code related to raw1394 capture (SVN 331)
+	* fixed error check in dc1394_set_roi (Mikael Olenfalk)
+	* fixed inconsistancy in bayer decoding functions (Georg Glock) (SVN 330)
+
+2006-11-22 Damien Douxchamps http://damien.douxchamps.net/
+	* ... don't forget to do this for OSX too. (SVN329)
+	* fixed the bad prototype of dc1394_capture_dequeue: we need a
+	  frame** and not a frame*, of course. (SVN328)
+
+2006-11-21 Damien Douxchamps http://damien.douxchamps.net/
+	* Removed legacy raw1394 code
+	* Removed references to DMA since all capture functions are now DMA
+	* Renamed DC1394_VIDEO1394_* to DC1394_CAPTURE_POLICY_*
+	* Enqueue and Dequeue functions now both return an error code
+	* Adapted the examples
+	* Removed the two DMA examples	
+
+2006-11-17 Damien Douxchamps http://damien.douxchamps.net/
+	* Fixed the number of memory channels detected (Thanks to Georg Glock)
+
+2006-11-08 David Moore http://sourceforge.net/users/dmoore/
+	* Fixed Mac OS X regression caused by 2006-11-02 patches
+
+2006-11-02 Damien Douxchamps http://damien.douxchamps.net/
+	* applied 3 patches from Daniel Drake for AVT functions:
+	  1. new functions that write/read more than one register at a time
+	  2. correct shading control and fully implement it
+	  3. read/write shading images
+
+2006-11-03 Damien Douxchamps http://damien.douxchamps.net/
+	* Release 2.0.0-pre4
+
+2006-11-03 Damien Douxchamps http://damien.douxchamps.net/
+	* Create more handles to avoid conflicts in the grabselfid function
+	  (thanks to Irv Elshoff)
+	* Added the function dc1394_format7_get_roi()
+
+2006-10-23 David Moore http://sourceforge.net/users/dmoore/
+	* fixed math error in computing timestamps during capture
+
+2006-10-20 David Moore http://sourceforge.net/users/dmoore/
+	* added new example program grab_partial_image_dma
+	* converted octlet_t/quadlet_t/nodeid_t to uint64_t/uint32_t/uint16_t
+
+2006-10-16 David Moore http://sourceforge.net/users/dmoore/
+	* Migrated from CVS to SVN
+	* Changed Version_2_0 to the default branch (HEAD)
+	* Modified directory structure (libdc1394 -> dc1394)
+	* Changed default tarball filename to libdc1394
+	* Changed the get_data_depth() functions to compute a guess when the
+	  register is not available (thanks to AgBr and Daniel Westhoff for
+	  finding this one).
+
+2006-10-10 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed the value returned by dc1394_get_operation_mode (thanks to Georg
+	  Glock for spotting the bug).
+
+2006-10-10 Damien Douxchamps http://damien.douxchamps.net/
+	* added new conversion functions that work on dc1394video_frame_t.
+
+2006-10-07 David Moore http://sourceforge.net/users/dmoore/
+	* Fixed computation of packets per frame for cameras that do not support
+	  the PACKET_PER_FRAME register.
+
+2006-10-05 David Moore http://sourceforge.net/users/dmoore/
+	* Fixed Linux compile error
+
+2006-10-03 David Moore http://sourceforge.net/users/dmoore/
+	* Migrated both Linux and Mac OS capture routines to use the new
+	  enqueue/dequeue semantics for DMA-based capture.
+	* Ported examples to new capture API.
+	* Added new example grab_gray_image_dma that demonstrates the new API.
+	* Mac OS compile fix suggested by Rudi Leitgeb.
+	* Mac OS improved cleanup during capture_stop() suggested by Matt
+	  Robinson.
+	* Added new Linux-only function dc1394_capture_get_dma_fd().
+	* Better Linux error checking when /dev/video1394 is not readable.
+
+2006-09-25 Damien Douxchamps http://damien.douxchamps.net/
+	* Added pkg-config file (thx to Daniel Drake)
+
+2006-09-24 Damien Douxchamps http://damien.douxchamps.net/
+	* Added PHY specs detection (Linux only). Currently this is limited to
+	  PHY speed, PHY power class and PHY delay.
+
+2006-09-14 David Moore http://sourceforge.net/users/dmoore/
+	* Added possible fix for runtime capture hangs on PPC Mac OS.
+
+2006-08-21 Damien Douxchamps http://damien.douxchamps.net/
+	* fix bad #includes related to libdc1394 in the example programs (thx to
+	  Thomas Passot)
+
+2006-08-30 David Moore http://sourceforge.net/users/dmoore/
+	* Unset Mac OS X run_loop at capture stop to ensure it can be used later
+	  in a different thread.
+
+2006-08-21 Damien Douxchamps http://damien.douxchamps.net/
+	* Fixed missing error message in dc1394_internal.h (thanks to
+	  Argentum Brom)
+	* Fixed a compilation error with an AVT function
+	* Removed spurious error concerning libraw1394 when compiling under OSX
+	  (thanks to Aidan Lane)
+	* new example minimalist program (helloworld.c)
+
+2006-08-17 Damien Douxchamps http://damien.douxchamps.net/
+	* small beautifications and further cleanup of int types.
+
+2006-08-16 Mikael Olenfalk <mikael.olenfalk@tobii.com>
+	* removed defines of uint_t, uchar_t, uint32_t and uint64_t from
+	  dc1394_control.h, includes stdint.h instead because including
+	  dc1394_control.h breaks the BOOST libraries
+	* fixed all files to use defines from stdint.h:
+	  uint_t -> uint32_t
+	  uchar_t -> uint8_t
+
+2006-08-08 Damien Douxchamps http://damien.douxchamps.net/
+	* add PIO, SIO and strobe CSR register offset in dc1394camera_t. For
+	  future use.
+	* following a suggestion of David Moore, don't allocate ISO/bandwidth in
+	  dc1394_video_set_transmission(). This way we can start the transmission
+	  from another program or a remote host.
+	* release 2.0.0-rc3
+
+2006-08-03 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed invalid query of F7 color filter when a cam is not > IIDC 1.31
+	  (from David Moore)
+
+2006-08-02 David Moore http://sourceforge.net/users/dmoore/
+	* Added the "update" mechanism to the Mac OS X NuDCL program according
+	  to suggestions from Apple engineers.
+	* Added a few missing Mac OS X capture utility functions
+
+2006-08-02 Damien Douxchamps http://damien.douxchamps.net/
+	* introduce missing dc1394_capture_get_frames_behind()
+	* camera casting (camera > craw) in OSX changed to a macro.
+
+2006-08-02 Damien Douxchamps http://damien.douxchamps.net/
+	* update the number of ports to 16, remove duplicate declaration
+	(James Sherman)
+
+2006-08-02 Damien Douxchamps http://damien.douxchamps.net/
+	* remove debug output in channel allocations (Phil Lamoreaux)
+
+2006-07-31 David Moore http://sourceforge.net/users/dmoore/
+	* Major addition of Mac OS X control and capture functions
+
+2006-07-26 Brant Gurganus <gurganbl@rose-hulman.edu>
+	* Corrected Makefile.am in examples directory for VPATH builds
+	* Updated more Autoconf macros to more non-obsolete variants
+
+2006-07-25 Damien Douxchamps http://damien.douxchamps.net/
+	* removed autogen.sh. From now on you should use autoreconf instead.
+	* small update of configure.in
+
+2006-07-25 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed serious issues concerning camera and feature detection
+
+2006-07-23 Damien Douxchamps http://damien.douxchamps.net/
+	* code cleanup
+	* minor fixes
+	* proper error codes are now returned
+	* some new/changed/removed error codes
+	* intriduced a new typedef replacing the drop-frames argument. We now
+	  use either DC1394_RING_BUFFER_NEXT or DC1394_RING_BUFFER_LAST
+	* Oh yeah, and this is release RC1!!
+
+2006-07-04 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed missing tranmission stop command in the examples, thanks to
+	  Diego Ruiz
+
+2006-06-12 Damien Douxchamps http://damien.douxchamps.net/
+	* Important changes to allow compilation on other platforms (OSX comes
+	  in mind) Many thanks to David Moore for the phatt patch!
+
+2006-06-08 Damien Douxchamps http://damien.douxchamps.net/
+	* allow color filter access only when IIDC version is >= 1.31. Thanks to
+	  Alain Perrier.
+	* missing #ifdef c++ added in dc1394_vendor_pixelink.h
+
+2006-06-05 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed a bug in the low-level access of absolute control registers.
+	  Thanks to David Moore for the patch.
+
+2006-05-15 Damien Douxchamps http://damien.douxchamps.net/
+	* new vendor specific extensions for pixelink cameras thanks to Aravind
+	  Sundaresan and James Sherman.
+
+2006-05-02 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed a bug in AVT functions. Also added a check of the busy flag
+	  after setting the DSNU and BLEMISH controls.
+
+2006-04-24 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed missing "#ifdef __cplusplus" in dc1394_register.h. Thanks to
+	  Rober for bringing this to my attention.
+
+2006-04-07 Damien Douxchamps http://damien.douxchamps.net/
+	* applied a patch from Seemant Kulleen and Phil Lamoreaux which fixes
+	  the AVT mirroring function (it used to return DC1394_FAILURE
+	  everytime).
+
+2006-04-04 Damien Douxchamps http://damien.douxchamps.net/
+	* Add missing definition of dc1394_external_trigger_get_power() (the
+	  prototype was in the .h but nothing was in the .c!). Thanks to Diego 
+	  Ruiz for the tip!
+
+2006-03-31 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed missing dc1394_free_cameras() in dc1394_find_cameras. Thanks to
+	  Jack Morrison for finding this bug.
+
+2006-03-28 Damien Douxchamps http://damien.douxchamps.net/
+	* added missing dc1394_external_trigger_get_supported_sources()
+	* this ChangeLog now respects the 80-columns format.
+
+2006-03-24 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed serious error with raw capture (garbled images of 1/4 size)
+	* fixed grab_gray_image
+	* merged dc1394_absolute.c in dc1394_control.c
+	* a new function can be used to set a camera in broadcast mode.
+	* functions that can influence capture settings are disabled (and return
+	  and error) if called while capture is set.
+	* fixed the signedness of a few arguments of dc1394_format7_set_roi()
+	  (thanks to James Sherman)
+	* properly free iso channel allocation if bandwidth allocation fails
+	  (James Sherman too)
+
+2006-03-23 Damien Douxchamps http://damien.douxchamps.net/
+	* Capture functions have been simplified both in content and interface. One
+	  must now do the video settings before calling the capture_setup(_dma)
+	  functions. This allows F7 capture to be merged in the other capture
+	  functions. Oh, and names have been changed too ;-( Needless to say it's a
+	  compatibility break. Hopefuly the last big one.
+	* A new function that sets up a format7 ROI is born from the ashes of the
+	  f7 capture function.
+	* ISO channels and bandwidth are now allocated for RAW1394 too.
+	* two more error handling macros have been added. The name of the macros
+	  have changed too. The macros are now:
+	  - DC1394_ERR (returns)
+	  - DC1394_ERR_RTN (returns an error code)
+	  - DC1394_ERR_CLN (execute cleanup function, then returns)
+	  - DC1394_ERR_CLN_RTN (cleanup followed by the return of an error code)
+
+2006-03-22 Damien Douxchamps http://damien.douxchamps.net/
+	* Applied a patch from Seemant Kulleen (replaces CLK_TCK with
+	  CLOCKS_PER_SEC)
+
+2006-03-19 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed broken link to "dc1394_internal.h" in dc1394_vendor_avt.h.
+	* manual iso channel allocation is available. Iso channels handling
+	  was upgraded too.
+	* release 2.0.0-pre6
+
+2006-02-12 Damien Douxchamps http://damien.douxchamps.net/
+	* upgraded grab_gray_image
+
+2006-01-25 Damien Douxchamps http://damien.douxchamps.net/
+	* trigger modes > 3 added (4, 5, 14 and 15)
+	* trigger source selection implemented
+
+2006-02-07 Damien Douxchamps http://damien.douxchamps.net/
+	* force a DC1394_SLOW_DOWN delay even when the transaction returns
+	  successfuly Otherwise we can have too many requests following each
+	  other and the camera does not have time to adapt its ROM to reflect
+	  the changes made by the previous transaction. Thanks to Dirk Farin for
+	  finding this bug.
+	* fixed a missing device assignement in _dc1394_open_dma_device. From
+	  Dirk Farin again ;-)
+
+2006-01-25 Damien Douxchamps http://damien.douxchamps.net/
+	* cleaned up _dc1394_open_dma_device()
+	* fixed dc1394_dma_release_camera()
+
+2006-01-23 Damien Douxchamps http://damien.douxchamps.net/
+	* RAW8 and RAW16 formats are considered grayscale for conversion. If you
+	  want color you should run de-bayering before.
+
+2006-01-10 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed the order of size/position changes in _dc1394_basic_format7_setup
+	  thanks to Boris Zingerman.
+	* added a test for Xv libraries.
+	* dc1394_register.h is now exported.
+
+2006-01-03 Damien Douxchamps http://damien.douxchamps.net/
+	* fix missing "#ifdef __cplusplus", thanks to Boris Zingerman.
+
+2005-12-27 Damien Douxchamps http://damien.douxchamps.net/
+	* update in the name conventions, notably replacing 'mode' by 'video 
+	  mode'	and 'color mode' by 'color coding', 'feature_id' by 'feature', 
+	  etc...
+	* more code cleanup and name changes
+	* fixed a serious bug in feature detection. This was due to some macros
+	  that were changing the value of the feature_id argument, resulting in
+	  subsequent tests to be performed on features IDs like 2 or 3 or 15,
+	  while	those should have been 418, 419 or 431. It dod not have much
+	  consequences thanks to most features falling into the 'default'
+	  section, but it killed the trigger stuff.
+
+2005-12-26 Damien Douxchamps http://damien.douxchamps.net/
+	* further hides formats. Only "video modes" are now visible, with the
+	  exception of "Format_7".
+	* added a member 'color_coding' to dc1394formatmode_t.
+	* updated conversion functions and cleanup their interface.
+
+2005-12-23 Damien Douxchamps http://damien.douxchamps.net/
+	* following a suggestion from Frederic Devernay, I have changed two
+	  things in the library installation:
+	  - the binaries are installed as libdc1394.a/la/so instead of 
+	  libdc1394_control.a/la/so.
+	  - the include files are now located in dc1394/ instead of libdc1394/
+	  This should allow simultaneous installation of the v1 and v2 libraries
+	  while sticking to the usual naming conventions. One more thing must be
+	  done: renaming the source files from dc1394_whatever.c/h to 
+	  whatever.c/h.
+	  This requires a support request on SF so I don't do it at this time.
+	* updarte some utility functions so that they work with format_7
+
+2005-12-20 Damien Douxchamps http://damien.douxchamps.net/
+	* fixes concerning the auto ISO channel allocation
+
+2005-12-19 Damien Douxchamps http://damien.douxchamps.net/
+	* start implementation of automatic ISO channel/bandwidth  allocation
+	* updated configure script (we now require libraw1394 >= 1.2.0)
+	* removed the old libraw1394 code since we need new stuff anyway.
+
+2005-12-21 Damien Douxchamps http://damien.douxchamps.net/
+	* Added VNG bayer decoding, thanks to Frederic Devernay. The trunk of
+	  the original code is from dcraw. It's very, very slow but looks nice.
+
+2005-12-18 Damien Douxchamps http://damien.douxchamps.net/
+	* stronger typing: most enum types have now defined types, like
+	  dc1394framerate_t or dc1394video_mode_t
+	* changed the video mode names from DC1394_MODE_xxx to
+	  DC1394_VIDEO_MODE_xxx
+
+2005-12-12 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed the absolute settings.
+
+2005-12-11 Damien Douxchamps http://damien.douxchamps.net/
+	* removed the frame_rate member of the capture struct: it was a simple copy
+	  of an input parameter.
+	* the type of image buffers is uchat_t*, NOT uint_t*.
+	* new functions to access the capture data (image buffer and fill time).
+	  The capture structure will removed from the API, but I don't know how
+	  yet.
+
+2005-12-10 Damien Douxchamps http://damien.douxchamps.net/
+	* new function to get the data depth of 16-bit video.
+	* also check /dev/video1394-X when auto-opening the video1394 device file
+
+2005-12-02 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed the headers and functions for software trigger access (thanks to
+	  Daniel Drake for spotting the bug)
+	* use the 'restrict' C99 keyword for the conversion functions prototypes.
+	  (thanks to Frederic Devernay)
+
+2005-10-29 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed bad help message in grab_color_image (thanks to Hugo Costelha)
+
+2005-10-16 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed a memory leak in the camera detection
+
+2005-10-14 Damien Douxchamps http://damien.douxchamps.net/
+	* removed manual input of the video1394 device filename argument. The
+	  video device can be specified by a new function call before the setup: 
+	  dc1394_set_dma_device_filename(dc1394camera_t* camera, char *filename);
+	  If this call is not made the setup functions will try different common
+	  device names (/dev/video1394/x and /dev/video1394).
+
+2005-10-11 Damien Douxchamps http://damien.douxchamps.net/
+	* we were not looking at a non-initialized
+	"camera->capture.dma_device_file" instead of the function argument
+	"dma_device_file" (Thanks to Irv Elshoff)
+
+2005-10-03 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed bad array adressing in dc1394_format7_get_modeset()
+
+2005-09-09 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed compilation errors. Duh!
+	* removed debug by default (Joshua Lamorie)
+	* include dc1394capture_t struct into dc1394camera_t struct. This avoids
+	  duplicate infomation (channel, port, node) but more importantly 
+	  improves the interface by simplifying it a bit more.
+
+2005-08-30 Damien Douxchamps http://damien.douxchamps.net/	
+	* fixed the check of iidc 1.31 software version: probing the UDD should
+	  come before that.
+	* fixed vendor/model strings: they are optional now (there seems to be a
+	  bug in Apple iSight rev 1.03 about this: two tags 0x81 are present but
+	  no 0x82 can be found)
+	* Thanks to 'danalien' for the debug inputs.
+
+2005-08-18 Damien Douxchamps http://damien.douxchamps.net/	
+	* fixed memory leak in capture functions (dma device name not freed)
+	* fixed trigger capabilities detection (Markus Niebel)
+
+2005-08-31 Damien Douxchamps http://damien.douxchamps.net/
+	* set several debug statements for testing with the iSight
+
+2005-08-30 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed invalid definition
+
+2005-09-09 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed leak or invalid free with the dma_device_file (Johann Schoonees,
+	  Joshua Lamorie). Additional cleanups too.
+	* _dc1394_basic_format7_setup() was called before setting port, etc.
+	  Fixed.
+
+2005-09-01 Damien Douxchamps http://damien.douxchamps.net/
+	* added debug modes in dc1394_register.h
+	* fixed macro definitions: added braces around the code
+	* removed debug statements introduced above.
+	* added version definitions in dc1394_control.h
+
+2005-08-17 Damien Douxchamps http://damien.douxchamps.net/
+	* added functions to grab all the properties of a format7 mode
+	  with a single call. This required the addition of new format7
+	  mode and modeset structures. The code of these functions comes
+	  from Coriander.
+
+2005-08-10 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed .c/.h coherency, again (Joshua Lamorie)
+
+2005-08-05 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed wrong color filter definitions and functions (Tony Hague)
+
+2005-08-04 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed .c/.h coherency after a report from Irv Elshoff
+	* version 2.0.0-pre4
+
+2005-08-02 Damien Douxchamps http://damien.douxchamps.net/
+	* Now compiles with GCC-4.0
+	* type for functions returns is now dc1394error_t (was int)
+
+2005-07-28 Damien Douxchamps http://damien.douxchamps.net/
+	* Interface harmonization (there's still some work to do)
+
+2005-07-05 Damien Douxchamps http://damien.douxchamps.net/
+	* Applied patch from Olaf Hering (check mem allocs properly)
+
+2005-07-04 Damien Douxchamps http://damien.douxchamps.net/
+	* Applied patch from Tim Lapawa (check handle creation failure in
+	  dc1394_find_cameras)
+
+2005-06-22 Damien Douxchamps http://damien.douxchamps.net/
+	* Removed the error check after the call to dc1394_get_camera_info in
+	  dc1394_find_cameras. This will let the program go around weird
+	  devices like some hubs/repeaters which have next to zero ROM.
+
+2005-06-17 Damien Douxchamps http://damien.douxchamps.net/
+	* Fixed a bug in the camera detection (Jason Meltzer)
+
+2005-06-13 Damien Douxchamps http://damien.douxchamps.net/
+	* Release 2.0.0-pre3
+
+2005-05-31 Damien Douxchamps http://damien.douxchamps.net/
+	* randomize DC1394_SLOW_DOWN (Toshiyuki Umeda)
+	* fixed autogen.sh with recent automake versions (Toshiyuki Umeda)
+
+2005-05-25 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed multi-port/multi-camera detection thanks to Toshiyuki Umeda.
+
+2005-05-25 Damien Douxchamps http://damien.douxchamps.net/
+	* added a handle check in dc1394_find_cameras
+	* fixed raw1394_set_port issue in the same function (Toshiyuki Umeda)
+	* new error code for failure of handle creation
+
+2005-05-20 Damien Douxchamps http://damien.douxchamps.net/
+	* all constant definitions now start with DC1394_
+
+2005-05-11 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed camera detection: a tagged register that is not found should
+	  not make the function dc1394_find_cameras() fail. It should just skip
+	  that device.
+
+2005-05-10 Damien Douxchamps http://damien.douxchamps.net/
+	* introduced structures for lists of framerates, modes,...
+
+2005-05-09 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed _dc1394_get_quadlets_per_packet
+	* more additional fixes and updates
+	* fixed important f7 bug
+
+2005-05-06 Damien Douxchamps http://damien.douxchamps.net/
+	* updated the format7 color formats detection.
+	* import some more hacks from coriander.
+
+2005-05-06 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed a few bugs created during the previous changes.
+	* version set to 2.0.0-pre1
+
+2005-05-03 Damien Douxchamps http://damien.douxchamps.net/
+	* new functions to get modes and framerates
+	* most references to image FORMATS have been removed as we can deduce
+	  that from the MODE. Therefore only video modes are presented to the
+	  user.
+	* added a bunch of utilities to the file new file dc1394_utils.c/h.
+	  Some of these come from Coriander but are so generic that they fit
+	  better in libdc1394.
+	* added conversion functions from coriander, including the Bayer stuff.
+	* stronger typing. Fixed confusion between int and unsigned int.
+
+2005-05-02 Damien Douxchamps http://damien.douxchamps.net/
+	* debugged everything. Both RAW and VIDEO1394 caoture are OK.
+	* removed duplicate functions for feature value read/write
+	* updated dc1394_print_camera_info
+	* renamed some constant definitions
+
+2005-05-01 Damien Douxchamps http://damien.douxchamps.net/
+	* new camera detection functions. compiles but untested.
+	* cleaned up dc1394_control.h, removed some capture functions.
+	  The latter change has no effect on the available functionalities.
+	* plan to remove all dc1394_get/set_<feature_name>_value since it is
+	  a duplicate from dc1394_get_feature_value. This will require
+	  functions with a variable number of arguments to handle white
+	  balance, temperature and white shading.
+	* wrote all comments for the error reporting function DC1394_ERR_CHK
+
+2005-04-28 Damien Douxchamps http://damien.douxchamps.net/
+	* new error reporting mechanism. compiles but untested.
+
+2005-04-27 Damien Douxchamps http://damien.douxchamps.net/
+	* updated error checking in AVT functions
+	* separated private functions in dc1394_internal.c
+	* added "_AVT" in the AVT offset names to avoid conflicts
+
+2005-04-20 Damien Douxchamps http://damien.douxchamps.net/
+	* after the latest updates everything works except RAW capture.
+
+2005-04-19 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed big addressing problem
+
+2005-04-19 Damien Douxchamps http://damien.douxchamps.net/
+	* more cleaning and reordering. files dc1394_offsets.h and
+	  dc1394_register.c/h created to avoid a big mess in dc1394_control.c.
+
+2005-04-19 Damien Douxchamps http://damien.douxchamps.net/
+	* added AVT advanced functions and cleaned up the registers/offsets
+	  detection
+
+2005-04-06 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed bandwidth usage estimation
+
+2005-03-25 Damien Douxchamps http://damien.douxchamps.net/
+	* added missing feature strings (thx to Obelix for spotting this)
+
+2005-02-28 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed definition of IIDC_VERSION_MIN (thx to D. Bahadir for spotting
+	  this)
+
+2005-02-13 Damien Douxchamps http://damien.douxchamps.net/
+	* Version 1.1.0
+
+2005-01-31 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed 1394b bandwidth usage
+
+2005-01-27 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed 1394b operation thanks to inputs and patches from Christoph Ganser.
+
+2005-01-26 Damien Douxchamps http://damien.douxchamps.net/
+	* update the get/set_operation_mode functions.
+	* applied a patch from Yves Jaeger to add software trigger functions
+	* updated the configure.in script to link properly against libraw1394
+	  (Peter 'p2' De Schrijver)
+	* removed the deprecated file acconfig.h and updated configure.in
+	  accordingly.
+
+2004-11-12 Damien Douxchamps http://damien.douxchamps.net/
+	* update for previous fix: use NUM_FRAMERATES
+
+2004-11-11 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed format quadlets per packet access in
+	  _dc1394_get_quadlets_per_packet()
+
+2004-10-28 Damien Douxchamps http://damien.douxchamps.net/
+	* Applied a patch from F. Devernay to allow compilation on x86_64.
+
+2004-09-30 Damien Douxchamps http://damien.douxchamps.net/
+	* Fixed small issue in the IIDC version detection
+
+2004-09-30 Damien Douxchamps http://damien.douxchamps.net/
+	* Introduced the IIDC_VERSION_X_XX definitions. Interface version is now
+	  12.
+
+2004-09-17 Damien Douxchamps http://damien.douxchamps.net/
+	* Added most IIDC 1.31 functions and definitions
+
+2004-09-13 Damien Douxchamps http://damien.douxchamps.net/
+	* Corrected library version
+	* Remove 1.31 changes that I committed by mistake
+
+2004-09-07 Damien Douxchamps http://damien.douxchamps.net/
+	* Applied a patch from David Ergo to fix broken raw capture in libdc0.9.5.
+
+2004-08-10 Damien Douxchamps http://damien.douxchamps.net/
+	* Applied patch from Johann Schoonees to remove extra buffering.
+	  Yet another compatibility break.
+
+2004-04-07 Damien Douxchamps http://damien.douxchamps.net/
+	* Attempt to fix the BPP arithmetic (floating point) exception that occurs
+	  with weird hardware.
+
+2004-02-20 Damien Douxchamps http://damien.douxchamps.net/
+	* applied patch from Johann Schoonees for extra buffering option.
+	  This breaks compatibility for the capture functions. Examples have
+	  been updated.
+
+2004-02-20 Kristoffer Delforge http://sourceforge.net/users/delforge/
+	* changed a >= to > in dc1394_capture.c:99
+	* changed a >= to = in dc1394_capture.c:112
+	* don't use intermediate "char* device" in dc1394_capture.c:247
+
+2004-02-16 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed an endianess issue. Thanks to Tim Canham for spotting this bug.
+
+2004-02-10 Kristoffer Delforge http://sourceforge.net/users/delforge/
+	* dc1394_dma_setup_capture uses F7 setup if necessary. Image parameters
+	  are default to QUERY_FROM_CAMERA, as in dc1394_setup_capture
+	* remove duplicate "cams[i].dma_last_buffer = last_buffer_orig;" in
+	dc1394_capture.c
+	* moved declarations to the beginning of functions.
+
+2004-02-06 Kristoffer Delforge http://sourceforge.net/users/delforge/
+	* use FEATURE_TO_ABS_VALUE_OFFSET in QueryAbsoluteCSROffset
+	* check that mode id is within boundaries in GetCameraFormat7Register
+	  and SetCameraFormat7Register
+	* moved declarations to beginning of the function
+	* removed unnecessary 'if's.
+	* removed unnecessary 'else's.
+
+2004-02-04 Kristoffer Delforge http://sourceforge.net/users/delforge/
+	* fixed trigger polarity bug
+	* fixed default format7 csr value bug (was "-1" instead of the new "0")
+	* revert FORMAT_STILL_IMAGE change.
+
+2004-02-04 Damien Douxchamps http://damien.douxchamps.net/
+	* apply patches from Tim Evers and Johann Schoonees
+
+2004-02-04 Kristoffer Delforge http://sourceforge.net/users/delforge/
+	* fixed uninitialized values in dc1394camerahandle_t
+	* changed 0xffff to DC1394_NO_CAMERA in dc1394_get_sorted_camera_nodes
+	* changed some calue by &value[0] in dc1394_get_camera_info
+	* removed unnecessary '& 0xFFFF' in dc1394_get_camera_info
+	* simplify FEATURE_TRIGGER check in dc1394_get_camera_feature
+	* added printf warning before return in dc1394_print_feature
+	* replaced '== DC1394_FAILURE' by '!= DC1394_SUCCESS'
+	* removed FORMAT_STILL_IMAGE definition to 390, it messes up with the
+	  number of available formats
+	* replaced a 0x1<<31 by ON_VALUE
+
+2004-02-03 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed bpp issue in _dc1394_basic_format7_setup
+	* fixed missing *4 in boundary check of GetConfigROMTaggedRegister
+
+2004-01-31 Damien Douxchamps http://damien.douxchamps.net/
+	* Version 0.9.3
+
+2004-01-29 Tim Evers <tim@klimt.gom.com>
+	* libdc1394/dc1394_capture.c (_dc1394_dma_multi_capture_private):
+	  in Poll-mode return DC1394_NO_FRAME not FAILURE
+
+2004-01-28 Damien Douxchamps http://damien.douxchamps.net/
+	* added a polling policy to the DMA capture functions using the
+	  patch from Tim Evers.
+	* by popular request, the direct register manipulation functions
+	  GetCameraControlRegister and SetCameraControlRegister are now
+	  accessible.
+
+2004-01-26 Damien Douxchamps http://damien.douxchamps.net/
+	* version is now properly memorized. This caused several problems
+	  with format_7 cameras.
+
+2004-01-21 Damien Douxchamps http://damien.douxchamps.net/
+	* print a warning when format7 BPP is zero.
+
+2004-01-20 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* dc1394_multiview.c: bugfix segfault
+
+2004-01-19 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* dc1394_control.h: added dc1394_free_camera_nodes
+	* updated examples to call dc1394_free_camera_nodes
+	* examples/dc1394_vloopback.c: workaround potential linux/videodev.h
+	  problems on some distros' kernel headers.
+
+2004-01-17 Damien Douxchamps http://damien.douxchamps.net/
+	* f7 csr caching by T.Evers
+
+2004-01-15 Damien Douxchamps http://damien.douxchamps.net/
+	* little additional fix regarding F7 and version issues.
+
+2004-01-14 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* libdc1394/ieee1394-ioctl.h: removed unnecessary
+	* examples/dc1394_vloopback: added support for palettes yuv422p and
+	  yuv420p, added support for scaling up to 1024x768, greater v4l
+	  application compatibility.
+
+2004-01-14 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed a bug related to IIDC version in format7 functions. All registers
+	  specific of v1.30 are now only probed if the version is 1.30.
+
+2004-01-04 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* simplify video1394 includes and correct Damien's ChangLog entry about
+	  kernel 2.4 compatibility.
+	* examples/dc1394_vloopback.c: minor bugfixes.
+	* autogen.sh: add missing libtoolize.
+
+2003-12-24 Damien Douxchamps http://damien.douxchamps.net/
+	* updated the IOCTLs for kernels 2.4.21+ and 2.6.0+. This breaks
+	  compatibility with previous kernel versions.
+
+2003-12-17 Damien Douxchamps http://damien.douxchamps.net/
+	* temporary fix for bpp settings in dc1394_format7_basic_setup
+
+2003-12-15 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed significant bug regarding IIDC specs revision detection
+	  (in dc1394_get_sw_revision).
+
+2003-12-04 Damien Douxchamps http://damien.douxchamps.net/
+	* little tag commit for version 0.9.2
+
+2003-11-15 Damien Douxchamps http://damien.douxchamps.net/
+	* fixes/additions by Johann Schoonees:
+	* fixed format7 capture setup function missing some parameters 
+	* fixed compil warning in dc1394_absolute.c, line 261.
+	* fixed harmless but misleading bug in dc1394_format7.c: line 802 should
+	  be removed.
+	* add functions dc1394_get_one_shot and dc1394_get_multi_shot.
+	* changed dc1394_get_camera_misc_info to avoid probing memory psec
+	  registers if no user memory is available. This is necessary for the
+	  iSight camera from Apple, which does not implement registers 0x618h 
+	  thru 0x62Ch.
+
+2003-09-23 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* examples/grab_color_image.c: fix locating cam by guid on any port
+	* examples/dc1394_vloopback.c: add --guid option like grab_color_image
+	  and renamed some options, and added root detection and reset
+
+2003-09-15 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed format7 capture setting when the current size register is
+	initialized to zero at the camera boot.
+	  
+2003-09-02 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* examples/grab_color_image.c: remove auto settings, add --guid option,
+	  add filename argument.
+	* examples/dc1394_vloopback.c: add scaling, set default mode to mmap,
+	  add mmap double buffering, add pipe mode option, adjust palette by
+	  option (pipe) or by ioctl, lookup default v4l device name via procfs,
+	  daemon option.
+
+2003-09-02 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* examples/*.c: call dc1394_destroy_handle() to cleanup mem and show
+	  proper technique
+	* examples/dc1394_multiview.c: show new proper technique of 
+	  multi-capture by creating a handle for each camera as opposed to port.
+	* examples/gray_color_image.c: new example similar to grab_gray_image,
+	  but also contains example code how to locate first camera on any port
+	  and attempt to make the camera non-root.
+
+
+2003-08-28 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed feature detection: we now use both 0x404 and 0x5XX registers in
+	  dc1394_is_feature_present. dc1394_query_feature_control is deprecated
+	  and has been commented out. 
+
+2003-08-20 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* use command register base from config rom offset instead of hardcoded
+	* make raw1394 userdata point to a new dc1394_camerahandle struct 
+	  containing port, software version, and command register base
+
+2003-08-13 Damien Douxchamps http://damien.douxchamps.net/
+	* dc1394_control.c: cleanup config ROM code; fix for Point
+	  Grey cameras
+
+2003-08-12 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* dc1394_control.c: make config ROM reading more generic,
+	  remove tab indenting to make consistent
+	* configure.in: incrmement lib revision
+
+2003-07-02 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed some F7 issues. Thanks to Kero van Gelder.
+	* changed total_bytes to unsigned long long int in
+	  dc1394_query_format7_total_bytes.
+
+2003-06-30 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed bytes_per_packet setting in _dc1394_basic_format7_setup
+	* cancelled the previous commit (18/7/2003): it was a mistake.
+
+2002-11-20 Damien Douxchamps http://damien.douxchamps.net/
+	* Use a little trick from Martin Gramatke to avoid misinterpreta-
+	  tion of TOTAL_BYTES registers. We don't use the latter register
+	  anymore.
+
+2002-11-18 Damien Douxchamps http://damien.douxchamps.net/
+	* we now use packet_per_frame correctly for format7. This should
+	  fix 'walking' frames in DMA mode.
+
+2002-10-27 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* added examples/dc1394_vloopback.c to demonstrate how to make
+	  digital camera format0 a Video4Linux source.
+
+2002-10-23 Damien Douxchamps http://damien.douxchamps.net/
+	* fixed missing <<16 shift in dc394_get_format7_unit_position
+
+2002-10-22 Damien Douxchamps http://damien.douxchamps.net/
+	* added "dc1394bool_t abs_control" to "dc1394_feature_info" struct
+	* fixed, cleaned-up and finalized the absolute control code
+
+2002-10-22 Damien Douxchamps http://damien.douxchamps.net/
+	* applied Christophe Achard patch, with some modifications.
+
+2002-09-27 Damien Douxchamps http://damien.douxchamps.net/
+	* more v1.30 handshake update to handle backward compatibility
+	  with v1.20
+
+2002-09-23 Damien Douxchamps http://damien.douxchamps.net/
+	* debugged absolute settings. Tested for shutter without problems.
+
+2002-09-22 Damien Douxchamps http://damien.douxchamps.net/
+	* added absolute feature setting functions. This is a first hack. 
+
+2002-09-10 Damien Douxchamps http://damien.douxchamps.net/
+	* even more v1.30 handshake update (now with proper error handling)
+
+2002-09-09 Damien Douxchamps http://damien.douxchamps.net/
+	* more v1.30 handshake update
+
+2002-09-03 Damien Douxchamps http://damien.douxchamps.net/
+	* Bugfix in v1.30 format7 capture handshake. Thanks to Yasutoshi Onishi
+	  for pointing it out.
+
+2002-08-22 Damien Douxchamps http://damien.douxchamps.net/
+	* Updated support for PointGrey cameras (added the 0x800002
+	  software revision code)
+
+2002-08-20 Damien Douxchamps http://damien.douxchamps.net/
+	* added support for Point Grey cameras, which support IIDC with
+	  a little tweak (modifications in dc1394_is_camera).
+
+2002-08-07 Damien Douxchamps http://damien.douxchamps.net/
+	* added several format7 functions for IIDC 1.30 compatibility.
+	* first quick hack of IIDC 1.30 handshaking for byte-per-packet
+	  setting in format7. This happens in _dc1394_basic_format7_setup.
+
+2002-07-28 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* dc1394_capture.c: added drop_frames boolean to
+	  dc1394_dma_setup_capture().
+	* bumped versions to 0.9 since interface has changed some.
+	  Correct libtool versions:
+		major=9, interface changed
+		revision=0, first implementation of this interface
+	  age=0 for no backwards compatibilty
+	* examples/dc1394_multicapture: added drop_frames support, cleanup.
+
+2002-07-21 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* added examples/dc1394_multiview.c to test/demonstrate multicapture
+	  over multiple ports.
+
+2002-05-10 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* dc1394_capture.c, dc1394_control.h:
+	  bugfixes in dc1394_cameracapture, dc1394_dma_multi_capture(),
+	  and _dc1394_dma_basic_setup() to better support grabbing all
+	  frames.
+	* dc1394_capture.c: dc1394_dma_setup_capture() modified to take
+	  dma_device_file as a param to force users to set it.
+
+2002-03-26 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* Applied David Moore's <david@startbox.com> patch to avoid getting
+	old captures with dma_multi_capture.
+	* Applied John Stanley's <stanley@peak.org> patch to use multiple
+	  cameras on mutliple ports (hosts).
+	  NOTE: the new dc1394_destroy_handle() in dc1394_control.h
+	  NOTE: the dma device file defaults to the video1394 devfs default
+	  naming convention when not specified: /dev/video1394/<port>
+
+2002-03-18 Damien Douxchamps http://damien.douxchamps.net/
+	* dc1394_control.c: fixed bug in dc1394_set_feature_on_off: it
+	would only set 'on' if the feature was 'off', no matter what
+	was the argument.
+	* dc1394_control.c: fixed quadlet-per-packet for format_0, mode_4,
+	15fps (was 280, should have been 480)
+
+2002-03-15 Damien Douxchamps http://damien.douxchamps.net/
+	* dc1394_control.h: updated format7 functions
+	* dc1394_format7.c: updated dc1394_query_format7_color_coding_id
+	  so that it now returns a valid COLOR_FORMAT7_X value.
+
+2002-01-31 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* dc1394_control.h: added dma_device_member to struct 
+	  dc1394_cameracapture. This enables support for mutliple
+	  host adapters as well as the new video1394 devfs names.
+	* dc1394_capture.c: _dc1394_dma_basic_setup() uses 
+	  above struct member to open video1394 device. If the
+	  char pointer is null, then it defaults to "/dev/video1394"
+	  for backwards compatibility.
+	* kernel-video1394.h: synchronize with video1394.h changes made
+	  Oct 21 and included in kernel 2.4.17!!
+
+2001-11-23 Damien Douxchamps http://damien.douxchamps.net/
+	* use dc1394 feature-indexed function in
+	  dc1394_(get/set)_trigger_on_off
+
+---- v0.8.3 released -------------------------------------------------
+
+2001-09-24 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* moved src -> libdc1394
+	* included examples subdir in autoconf and automake
+	* added examples/Makefile.am
+	* examples build, but do not automatically install 
+
+2001-09-08 Dan Dennedy http://sourceforge.net/users/ddennedy/
+	* Updated kernel-video1394.h against current CVS version
+
+2001-07-03 Gord Peters http://sourceforge.net/users/gordp/
+	* Added functions to control the trigger feature:
+	  -dc1394_set_trigger_on_off()
+	  -dc1394_get_trigger_on_off()
+	  (addition by Audun Jan Myrhol <audun.myrhol@q-free.com>)
+
+2001-06-07 Gord Peters http://sourceforge.net/users/gordp/
+	* Applied Dan Dennedy's patch which fixes image capture with newest
+	  version of libraw1394 (0.9) and fixes a small spelling mistake
+
+2001-04-30 Gord Peters http://sourceforge.net/users/gordp/
+	* Fixed problem with dc1394_get_camera_feature() failing due to feature
+	  id being modified by feature to offset macros (fix by Li Ming)
+
+2001-04-24 Gord Peters http://sourceforge.net/users/gordp/
+	* Fixed problem with dc1394_auto_on_off() ignoring the value passed in
+	  when setting auto mode on or off (fix by Li Ming
+	  <ming@mpi-sb.mpg.de>)
+
+2001-04-16 Gord Peters http://sourceforge.net/users/gordp/
+	* Fixed feature counting for loops in dc1394_control.c (Dan Dennedy)
+	* Fixed get/set_trigger_mode functions in dc1394_control.c to work with
+	  new enumerations (Damien Douxchamps)
+	* Fixed color coding ID functions in dc1394_format7.c to conform to new
+	  enumerations (Damien Douxchamps)
+
+2001-04-12 Gord Peters http://sourceforge.net/users/gordp/
+	* Fixed dc1394_get/set_video_mode/format/framerate to work with new
+	  enumerations.
+	* Fixed FEATURE_TO_VALUE/INQUIRY_OFFSET macros to work for both
+	  FEATURE_HI and FEATURE_LO queries.
+	* Exposed dc1394_feature_desc (feature description array).
+	* Created dc1394_internal.h for definitions internal to the library
+	* Moved some definitions from dc1394_control.h to dc1394_internal.h
+
+2001-04-11 Gord Peters http://sourceforge.net/users/gordp/
+	* Added patch from Dan Dennedy which included:
+	  - resume iso receive in camera setup
+	  - new dc1394_dma_unlisten() function in dc1394_capture.c
+	  - mutually exclusive format enumerations
+	* Made all enumerations mutually exclusive by 32 rather that 16
+	* Fixed code which broke due to enumeration change
+	* Added macros for feature to offset querying in dc1394_control.c
+	* Added backwards compatibility to Format 7 register access code
+
+2001-02-06 Gord Peters http://sourceforge.net/users/gordp/
+	* Added libraw1394 version detection to configuration process
+	* Added compile options for different versions of libraw1394
+	* Cleaned things up a bit
+
+2000-02-01 Gord Peters http://sourceforge.net/users/gordp/
+	* Updated to use new version of libraw1394
+	* Changed error handling to use new libraw1394 error handling
+	* Code beautification
+
+2000-10-16 <curmson@ri.cmu.edu>
+	* Changed return values of external functions so that they return
+	  DC1394_SUCCESS or DC1394_FAILURE instead of returning the subsystem
+	  retval (allowing checks such as if (dc1394_call()<0) {error handle}
+	  (breaks compatability with old library)
+	* Added routines to nicely handle setting up multiple cameras to 
+	  capture frames simultaneously
+	* Added routines and structures that represent the entire feature set 
+	  of a camera, and can interrogate a camera to get the feature set in a
+	  somewhat optimized way
+	* Added routines that return cameras nodes described by their unique ID
+	* Fixed dc1394_get_camera_info 
+	* functions added are:
+	  dc1394_get_camera_feature_set
+	  dc1394_get_caemra_feature
+	  dc1394_print_feature
+	  dc1394_print_feature_set
+	  dc1394_create_handle
+	  dc1394_get_camera_nodes
+	  dc1394_get_sorted_camera_nodes
+	  dc1394_print_camera_info
+	  dc1394_setup_camera
+	  dc1394_release_camera
+	  dc1394_multi_capture
+	* structures added are:
+	  dc1394_cameracapture 
+	  dc1394_feature_info
+	  dc1394_feature_set
+
+2000-03-13 Gord Peters http://sourceforge.net/users/gordp/
+	* Incorporated more changes suggested by Per Dalgas Jakobsen to
+	  further clean up the code.  Structured the rest of the code to
+	  be uniform with these changes.
+	* Changed the names of dc1394_get_current_value() and
+	  dc1394_set_current_value() to dc1394_get_feature_value() and
+	  dc1394_set_feature_value() (breaking compatibility with old library)
+	* Added target_temperature parameter to dc1394_get_temperature()
+	  (again breaking compatibility with old library)
+
+2000-03-13 Gord Peters http://sourceforge.net/users/gordp/
+	* Incorporated changes suggested by Per Dalgas Jakobsen.  This
+	  effectively removes all the endian dependent code (much cleaner).
+
+2000-02-04 Gord Peters http://sourceforge.net/users/gordp/
+	* Added more convenience functions and new functions to set auto mode,
+	  turn features on/off, use one push auto mode, and read min/max values
+	  for features
+	* Fixed bug in reading the min value of a feature
+	* Fixed major bug in version 0.2 with setting the value of a feature
+	  (caused all other feature attributes to be cleared in the process)
+
+2000-02-02 Gord Peters http://sourceforge.net/users/gordp/
+	* Fixed a bunch of bugs regarding the return value of raw1394_read()
+	  (ie. it's >= 0 on no error, < 0 on error)
+
+2000-02-01 Gord Peters http://sourceforge.net/users/gordp/
+	* Removed test pattern code since that is not part of the
+	  1394-based Digital Camera spec.  It's specific to my TI camera.
+	* Added tons of new functionality for querying and setting features
+	  on the camera.
+
+2000-01-26 Gord Peters http://sourceforge.net/users/gordp/
+	* Fixed bug with #ifdef being using instead of #if for testing if
+	  !WORDS_BIGENDIAN
+
+2000-01-20 Gord Peters http://sourceforge.net/users/gordp/
+	* Implemented conditional code for big endian/little endian machines
+	  and changed autoconfig script to test for endianness.  Added file
+	  src/config.h.in to define WORDS_BIGENDIAN.
+
+2000-01-19 Gord Peters http://sourceforge.net/users/gordp/
+	* Converted values in dc1394_control.c to compensate for conversion
+	  from little endian to big endian when transferred over 1394 bus.
+
+2000-01-17 Gord Peters http://sourceforge.net/users/gordp/
+	* Put underscore in front of #ifdef in dc1394_control.h for convention
+	* Added extern "C" to dc1394_control.h for C++ support
+	* Made constants in dc1394_control.c explicitly ULL, UL, or U
