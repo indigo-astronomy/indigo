@@ -85,5 +85,5 @@ uninstall: status
 clean: status
 	rm -f *.o external/DDHidLib/*.o $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
-clean-all:
+clean-all: clean
 

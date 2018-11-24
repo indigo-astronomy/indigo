@@ -218,7 +218,7 @@ endif
 	@$(MAKE)	-C indigo_server clean
 	@$(MAKE)	-C indigo_tools clean
 
-clean-all: clean
+clean-all:
 	@$(MAKE)	-C indigo_libs clean-all
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean-all
 ifeq ($(OS_DETECTED),Darwin)

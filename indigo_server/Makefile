@@ -39,7 +39,7 @@ status:
 clean:
 	rm -f $(BUILD_BIN)/indigo_server
 
-clean-all:
+clean-all: clean
 	rm -f *.data resource/*.data
 
 $(BUILD_BIN)/indigo_server: ctrlpanel indigo_server.o $(SIMULATOR_LIBS)
