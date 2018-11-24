@@ -1,1 +1,1 @@
-LDFLAGS += -lstdc++
+LDFLAGS += -lstdc++ -ludev
