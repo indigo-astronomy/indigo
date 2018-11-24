@@ -30,7 +30,7 @@ DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 
 SDK_DIR = externals/libnexstar
-SDK_INCLUDE = -I$(SDK_DIR)/include
+SDK_INCLUDE = $(SDK_DIR)/include
 SDK_LIB = $(SDK_DIR)/libnexstar.a
 
 ifeq ($(OS_DETECTED),Darwin)
@@ -57,7 +57,7 @@ status:
 	@printf "\n"
 
 indigo_mount_nexstar.o: indigo_mount_nexstar.c
-	$(CC)  $(CXXFLAGS) -c -Iexternals -o $@ $<
+	$(CC)  $(CXXFLAGS) -c -I$(SDK_INCLUDE) -o $@ $<
 
 $(DRIVER_A): indigo_mount_nexstar.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -66,7 +66,7 @@ $(DRIVER_SO): $(DRIVER_A)
 	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -L$(SDK_DIR) -lnexstar -lindigo
 
 $(DRIVER_EXECUTABLE): indigo_mount_nexstar_main.o $(DRIVER_A)
-	$(CC) -o $@ $^ -lindigo -L$(SDK_DIR) -lnexstar -lstdc++ $(LDFLAGS) 
+	$(CC) -o $@ $^ -lindigo -L$(SDK_DIR) -lnexstar -lstdc++ $(LDFLAGS)
 
 install: status
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
@@ -79,10 +79,8 @@ clean: status
 	rm -f $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 clean-all:
-	rm -rf externals/libnexstar
+	rm -rf $(SDK_DIR)
 
 $(SDK_LIB):
 	git clone https://github.com/indigo-astronomy/libnexstar.git externals/libnexstar
 	cd externals/libnexstar; autoreconf -fiv; ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
-
-
