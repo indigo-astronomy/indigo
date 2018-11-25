@@ -25,15 +25,24 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <assert.h>
 #include <pthread.h>
 #include <math.h>
 #include <fcntl.h>
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <unistd.h>
+#endif
+#if defined(INDIGO_WINDOWS)
+#include <io.h>
+#define ssize_t size_t
+#pragma warning(disable:4996)
+#endif
 
 #include "indigo_base64.h"
 #include "indigo_xml.h"

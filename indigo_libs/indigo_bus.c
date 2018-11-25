@@ -29,10 +29,17 @@
 #include <time.h>
 #include <assert.h>
 #include <pthread.h>
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <sys/time.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#endif
+#if defined(INDIGO_WINDOWS)
+#include <io.h>
+#include <winsock2.h>
+#pragma warning(disable:4996)
+#endif
 
 #include "indigo_bus.h"
 #include "indigo_names.h"
@@ -99,6 +106,28 @@ int indigo_main_argc = 0;
 char indigo_last_message[128 * 1024];
 char indigo_log_name[255] = {0};
 
+#if defined(INDIGO_WINDOWS)
+
+// https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
+
+int gettimeofday(struct timeval * tp, struct timezone * tzp) {
+  static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
+
+  SYSTEMTIME  system_time;
+  FILETIME    file_time;
+  uint64_t    time;
+
+  GetSystemTime(&system_time);
+  SystemTimeToFileTime(&system_time, &file_time);
+  time = ((uint64_t) file_time.dwLowDateTime);
+  time += ((uint64_t) file_time.dwHighDateTime) << 32;
+
+  tp->tv_sec = (long) ((time - EPOCH) / 10000000L);
+  tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
+  return 0;
+}
+#endif
+
 void indigo_log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
@@ -106,7 +135,8 @@ void indigo_log_message(const char *format, va_list args) {
 	char *line = indigo_last_message;
 	if (indigo_log_message_handler != NULL) {
 		indigo_log_message_handler(indigo_last_message);
-	} else if (indigo_use_syslog) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+  } else if (indigo_use_syslog) {
 		static bool initialize = true;
 		if (initialize)
 			openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
@@ -122,11 +152,12 @@ void indigo_log_message(const char *format, va_list args) {
 			else
 				line = NULL;
 		}
+#endif
 	} else {
 		char timestamp[16];
 		struct timeval tmnow;
 		gettimeofday(&tmnow, NULL);
-		strftime (timestamp, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
+		strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
 #ifdef INDIGO_MACOS
 		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
 #else
@@ -760,7 +791,12 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if ((count != 2) || (http_result != 200)){
 		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
-		shutdown(socket, SHUT_RDWR);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+    shutdown(socket, SHUT_RDWR);
+#endif
+#if defined(INDIGO_WINDOWS)
+    shutdown(socket, SD_BOTH);
+#endif
 		close(socket);
 		return false;
 	}
@@ -788,8 +824,13 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	clean_return:
 	INDIGO_DEBUG(indigo_debug("%s() = %d", __FUNCTION__, res));
-	shutdown(socket, SHUT_RDWR);
-	close(socket);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+  shutdown(socket, SHUT_RDWR);
+#endif
+#if defined(INDIGO_WINDOWS)
+  shutdown(socket, SD_BOTH);
+#endif
+  close(socket);
 	return res;
 }
 
