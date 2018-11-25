@@ -257,6 +257,7 @@ static bool asi_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIOpenCamera(%d) = %d", id, res);
 		res = ASIInitCamera(id);
 		if (res) {
 			ASICloseCamera(id);
@@ -265,6 +266,7 @@ static bool asi_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
 		if (PRIVATE_DATA->buffer == NULL) {
 			if(PRIVATE_DATA->info.IsColorCam)
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
@@ -289,18 +291,21 @@ static bool asi_setup_exposure(indigo_device *device, double exposure, int frame
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetROIFormat(%d) = %d", id, res);
 		return false;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetROIFormat(%d) = %d", id, res);
 	res = ASISetStartPos(id, frame_left/horizontal_bin, frame_top/vertical_bin);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetStartPos(%d) = %d", id, res);
 		return false;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetStartPos(%d) = %d", id, res);
 	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
 		return false;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
 	PRIVATE_DATA->exp_bin_x = horizontal_bin;
 	PRIVATE_DATA->exp_bin_y = vertical_bin;
 	PRIVATE_DATA->exp_frame_width = frame_width;
@@ -323,7 +328,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartExposure(%d) = %d", id, res);
 		return false;
 	}
-
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIStartExposure(%d) = %d", id, res);
 	return true;
 }
 
@@ -340,7 +345,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		usleep(2000);
 	}
-	if(status == ASI_EXP_SUCCESS) {
+	if (status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -348,6 +353,7 @@ static bool asi_read_pixels(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
 			return false;
 		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
 		if (PRIVATE_DATA->is_asi120)
 			usleep(150000);
 		return true;
@@ -355,16 +361,19 @@ static bool asi_read_pixels(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
 		return false;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
 }
 
 static bool asi_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-	ASI_ERROR_CODE err = ASIStopExposure(PRIVATE_DATA->dev_id);
-
+	ASI_ERROR_CODE res = ASIStopExposure(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if(err) return false;
-	else return true;
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStopExposure(%d) = %d", PRIVATE_DATA->dev_id, res);
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIStopExposure(%d) = %d", PRIVATE_DATA->dev_id, res);
+	return true;
 }
 
 static bool asi_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
@@ -379,7 +388,10 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 	if (PRIVATE_DATA->has_temperature_sensor) {
 		res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res);
+		if (res)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res);
+		else
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res);
 		*current = temp_x10/10.0; /* ASI_TEMPERATURE gives temp x 10 */
 	} else {
 		*current = 0;
@@ -391,22 +403,32 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 	}
 
 	res = ASIGetControlValue(id, ASI_COOLER_ON, &current_status, &unused);
-	if(res) {
+	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
 		return false;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
 
 	if (current_status != status) {
 		res = ASISetControlValue(id, ASI_COOLER_ON, status, false);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
+		if (res)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
+		else
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
 	} else if(status) {
 		res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+		if (res)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+		else
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
 	}
 
 	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
-	if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
+	if (res)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
+	else
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -420,6 +442,7 @@ static void asi_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASICloseCamera(%d, ASI_COOLER_POWER_PERC)", PRIVATE_DATA->dev_id);
 		indigo_global_unlock(device);
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
@@ -484,12 +507,14 @@ static void streaming_timer_callback(indigo_device *device) {
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartVideoCapture(%d) = %d", id, res);
 		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIStartVideoCapture(%d) = %d", id, res);
 			while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				res = ASIGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, timeout);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetVideoData((%d) = %d", id, res);
 					break;
 				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetVideoData((%d) = %d", id, res);
 				if (color_string) {
 					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, keywords);
 				} else {
@@ -503,6 +528,8 @@ static void streaming_timer_callback(indigo_device *device) {
 			res = ASIStopVideoCapture(id);
 			if (res)
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
+			else
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
