@@ -192,6 +192,7 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateInfo = false;
 	bool updateAutoHeater = false;
 	bool updateHub = false;
+	bool updateUSBPorts = false;
 	if (upb_command(device, "PA", response, sizeof(response))) {
 		char *token = strtok(response, ":");
 		if ((token = strtok(NULL, ":"))) { // Voltage
@@ -387,6 +388,33 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 	}
+	if (PRIVATE_DATA->smart_hub) {
+		for (int i = 1; i < 7; i++) {
+			uint32_t port_state;
+			int rc;
+			if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+				bool is_enabled = port_state & 0x00000100;
+				indigo_property_state state = INDIGO_IDLE_STATE;
+				if (port_state & 0x00000015) {
+					state = INDIGO_BUSY_STATE;
+				}
+				if (port_state & 0x00000002) {
+					state = INDIGO_OK_STATE;
+				}
+				if (port_state & 0x00000008) {
+					state = INDIGO_ALERT_STATE;
+				}
+				if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled || AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
+					AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = is_enabled;
+					AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+					updateUSBPorts = true;
+				}
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+				break;
+			}
+		}
+	}
 	if (updatePowerOutlet) {
 		AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
@@ -426,6 +454,12 @@ static void aux_timer_callback(indigo_device *device) {
 	if (updateHub) {
 		X_AUX_HUB_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
+	}
+	if (updateUSBPorts) {
+		AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+		AUX_USB_PORT_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 	}
 	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
 }
@@ -727,14 +761,40 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				for (int i = 0; i < total; i++) {
 					libusb_device *dev = usb_devices[i];
 					if (libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == 0x0424 && descriptor.idProduct == 0x2517) {
-						if (libusb_open(dev, &PRIVATE_DATA->smart_hub) == LIBUSB_SUCCESS) {
+						int rc;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB hub found");
+						if ((rc = libusb_open(dev, &PRIVATE_DATA->smart_hub)) == LIBUSB_SUCCESS) {
+							for (int i = 1; i < 7; i++) {
+								uint32_t port_state;
+								if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+									indigo_property_state state = INDIGO_IDLE_STATE;
+									if (port_state & 0x00000015) {
+										state = INDIGO_BUSY_STATE;
+									}
+									if (port_state & 0x00000002) {
+										state = INDIGO_OK_STATE;
+									}
+									if (port_state & 0x00000008) {
+										state = INDIGO_ALERT_STATE;
+									}
+									AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = port_state & 0x00000100;
+									AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+								} else {
+									INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+									break;
+								}
+							}
 							AUX_USB_PORT_PROPERTY->hidden = false;
 							AUX_USB_PORT_STATE_PROPERTY->hidden = false;
 							indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 							indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to USB hub (%s)", libusb_strerror(rc));
 						}
+						break;
 					}
 				}
+				libusb_free_device_list(usb_devices, 1);
 				PRIVATE_DATA->aux_timer = indigo_set_timer(device, 0, aux_timer_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -773,6 +833,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
+			if (PRIVATE_DATA->smart_hub) {
+				libusb_close(PRIVATE_DATA->smart_hub);
+				PRIVATE_DATA->smart_hub = 0;
+			}
 			if (--PRIVATE_DATA->count == 0) {
 				if (PRIVATE_DATA->handle > 0) {
 					upb_command(device, "PL:0", response, sizeof(response));
@@ -862,6 +926,41 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			upb_command(device, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? "PD:1" : "PD:0", response, sizeof(response));
 			AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(AUX_USB_PORT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_USB_PORT
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(AUX_USB_PORT_PROPERTY, property, false);
+			if (PRIVATE_DATA->smart_hub) {
+				AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
+				for (int i = 1; i < 7; i++) {
+					uint32_t port_state;
+					int rc;
+					if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+						bool is_enabled = port_state & 0x00000100;
+						if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
+							if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value) {
+								rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
+							} else {
+								rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_CLEAR_FEATURE, 8, i, NULL, 0, 3000);
+							}
+							if (rc < 0) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set USB port status (%s)", libusb_strerror(rc));
+								AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+								break;
+							}
+						}
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+						AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
+				}
+			} else {
+				AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_AUX_HUB_PROPERTY, property)) {

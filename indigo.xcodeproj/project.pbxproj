@@ -72,10 +72,6 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
-		598C583A21A75B2A001CA8C0 /* deg2str.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C57F721A75B1A001CA8C0 /* deg2str.h */; };
-		598C583B21A75B2B001CA8C0 /* nexstar.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C57F821A75B1A001CA8C0 /* nexstar.h */; };
-		598C583C21A75B2B001CA8C0 /* nexstar_pec.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C57F921A75B1A001CA8C0 /* nexstar_pec.h */; };
-		598C583D21A75B34001CA8C0 /* libnexstar.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598C582621A75B1A001CA8C0 /* libnexstar.a */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
 		59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 595355EC1F6B140300478BEC /* libftd2xx.a */; };
@@ -128,6 +124,7 @@
 		59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
 		59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */; };
 		59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */; };
+		59C8AF7A21AAE9B600C3594F /* libnexstar.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59C8AF7521AAE98600C3594F /* libnexstar.a */; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
 		59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
@@ -937,13 +934,11 @@
 		598C57E321A75B1A001CA8C0 /* libnexstar.man */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.man; sourceTree = "<group>"; };
 		598C57E421A75B1A001CA8C0 /* libtool */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = libtool; sourceTree = "<group>"; };
 		598C57E521A75B1A001CA8C0 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
-		598C57E721A75B1A001CA8C0 /* libnexstar.pc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.pc; sourceTree = "<group>"; };
 		598C57E821A75B1A001CA8C0 /* INSTALL */ = {isa = PBXFileReference; lastKnownFileType = text; path = INSTALL; sourceTree = "<group>"; };
 		598C57E921A75B1A001CA8C0 /* nexstar_pec.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexstar_pec.lo; sourceTree = "<group>"; };
 		598C57EA21A75B1A001CA8C0 /* ltmain.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ltmain.sh; sourceTree = "<group>"; };
 		598C57EB21A75B1A001CA8C0 /* configure */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = configure; sourceTree = "<group>"; };
 		598C57EC21A75B1A001CA8C0 /* ChangeLog */ = {isa = PBXFileReference; lastKnownFileType = text; path = ChangeLog; sourceTree = "<group>"; };
-		598C57ED21A75B1A001CA8C0 /* libnexstar.la */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.la; sourceTree = "<group>"; };
 		598C57EF21A75B1A001CA8C0 /* traces.0 */ = {isa = PBXFileReference; lastKnownFileType = text; path = traces.0; sourceTree = "<group>"; };
 		598C57F021A75B1A001CA8C0 /* traces.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = traces.1; sourceTree = "<group>"; };
 		598C57F121A75B1A001CA8C0 /* output.0 */ = {isa = PBXFileReference; lastKnownFileType = text; path = output.0; sourceTree = "<group>"; };
@@ -951,9 +946,6 @@
 		598C57F321A75B1A001CA8C0 /* requests */ = {isa = PBXFileReference; lastKnownFileType = text; path = requests; sourceTree = "<group>"; };
 		598C57F421A75B1A001CA8C0 /* AUTHORS */ = {isa = PBXFileReference; lastKnownFileType = text; path = AUTHORS; sourceTree = "<group>"; };
 		598C57F521A75B1A001CA8C0 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		598C57F721A75B1A001CA8C0 /* deg2str.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = deg2str.h; sourceTree = "<group>"; };
-		598C57F821A75B1A001CA8C0 /* nexstar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar.h; sourceTree = "<group>"; };
-		598C57F921A75B1A001CA8C0 /* nexstar_pec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar_pec.h; sourceTree = "<group>"; };
 		598C57FA21A75B1A001CA8C0 /* deg2str.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = deg2str.lo; sourceTree = "<group>"; };
 		598C57FB21A75B1A001CA8C0 /* config.guess */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.guess; sourceTree = "<group>"; };
 		598C57FC21A75B1A001CA8C0 /* depcomp */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = depcomp; sourceTree = "<group>"; };
@@ -993,11 +985,9 @@
 		598C582321A75B1A001CA8C0 /* deg2str.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = deg2str.Plo; sourceTree = "<group>"; };
 		598C582421A75B1A001CA8C0 /* nex_open.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = nex_open.Plo; sourceTree = "<group>"; };
 		598C582521A75B1A001CA8C0 /* nexstar_pec.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexstar_pec.Plo; sourceTree = "<group>"; };
-		598C582621A75B1A001CA8C0 /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libnexstar.a; sourceTree = "<group>"; };
 		598C582721A75B1A001CA8C0 /* libnexstar.pc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.pc; sourceTree = "<group>"; };
 		598C582821A75B1A001CA8C0 /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
 		598C582921A75B1A001CA8C0 /* aclocal.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = aclocal.m4; sourceTree = "<group>"; };
-		598C582D21A75B1A001CA8C0 /* libnexstar.7 */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.7; sourceTree = "<group>"; };
 		598C582F21A75B1A001CA8C0 /* nex_open.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = nex_open.c; sourceTree = "<group>"; };
 		598C583021A75B1A001CA8C0 /* nexstar.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = nexstar.c; sourceTree = "<group>"; };
 		598C583121A75B1A001CA8C0 /* deg2str.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = deg2str.c; sourceTree = "<group>"; };
@@ -2084,6 +2074,13 @@
 		59C8AF3321A9D79900C3594F /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
 		59C8AF3421A9D79900C3594F /* autogen.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = autogen.sh; sourceTree = "<group>"; };
 		59C8AF3521A9D79900C3594F /* PORTING */ = {isa = PBXFileReference; lastKnownFileType = text; path = PORTING; sourceTree = "<group>"; };
+		59C8AF6E21AAE98600C3594F /* deg2str.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = deg2str.h; sourceTree = "<group>"; };
+		59C8AF6F21AAE98600C3594F /* nexstar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar.h; sourceTree = "<group>"; };
+		59C8AF7021AAE98600C3594F /* nexstar_pec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar_pec.h; sourceTree = "<group>"; };
+		59C8AF7321AAE98600C3594F /* libnexstar.pc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.pc; sourceTree = "<group>"; };
+		59C8AF7421AAE98600C3594F /* libnexstar.la */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.la; sourceTree = "<group>"; };
+		59C8AF7521AAE98600C3594F /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libnexstar.a; sourceTree = "<group>"; };
+		59C8AF7921AAE98600C3594F /* libnexstar.7 */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.7; sourceTree = "<group>"; };
 		59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_sx.rules; sourceTree = "<group>"; };
 		59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_ssag.rules; sourceTree = "<group>"; };
 		59C8E7F81DBBDF7400AA3F0A /* indigo_wheel_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_sx_main.c; sourceTree = "<group>"; };
@@ -4242,6 +4239,7 @@
 				591B017521A49F55006A1CD8 /* libaltaircam.dylib in Frameworks */,
 				591B017321A49F4A006A1CD8 /* libtoupcam.dylib in Frameworks */,
 				59AAF37921A743DF00EFBB61 /* libUSB2ST4Conv.a in Frameworks */,
+				59C8AF7A21AAE9B600C3594F /* libnexstar.a in Frameworks */,
 				591B017621A49F63006A1CD8 /* libatikcameras.dylib in Frameworks */,
 				59292E5720D4224F0042E939 /* libcurl.tbd in Frameworks */,
 				59986D751F9BA10900D68DC1 /* libqsiapi.a in Frameworks */,
@@ -4250,7 +4248,6 @@
 				59AAF37C21A7449800EFBB61 /* libqsiapi.a in Frameworks */,
 				59F756251DCE5022002CFC82 /* libusb.dylib in Frameworks */,
 				59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */,
-				598C583D21A75B34001CA8C0 /* libnexstar.a in Frameworks */,
 				59AAF37821A743BA00EFBB61 /* libEFWFilter.a in Frameworks */,
 				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
 				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
@@ -5198,20 +5195,18 @@
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
 			isa = PBXGroup;
 			children = (
+				59C8AF6C21AAE98600C3594F /* build */,
 				598C57E221A75B1A001CA8C0 /* man */,
 				598C57E421A75B1A001CA8C0 /* libtool */,
 				598C57E521A75B1A001CA8C0 /* install-sh */,
-				598C57E621A75B1A001CA8C0 /* pkgconfig */,
 				598C57E821A75B1A001CA8C0 /* INSTALL */,
 				598C57E921A75B1A001CA8C0 /* nexstar_pec.lo */,
 				598C57EA21A75B1A001CA8C0 /* ltmain.sh */,
 				598C57EB21A75B1A001CA8C0 /* configure */,
 				598C57EC21A75B1A001CA8C0 /* ChangeLog */,
-				598C57ED21A75B1A001CA8C0 /* libnexstar.la */,
 				598C57EE21A75B1A001CA8C0 /* autom4te.cache */,
 				598C57F421A75B1A001CA8C0 /* AUTHORS */,
 				598C57F521A75B1A001CA8C0 /* Makefile */,
-				598C57F621A75B1A001CA8C0 /* include */,
 				598C57FA21A75B1A001CA8C0 /* deg2str.lo */,
 				598C57FB21A75B1A001CA8C0 /* config.guess */,
 				598C57FC21A75B1A001CA8C0 /* depcomp */,
@@ -5237,11 +5232,9 @@
 				598C581F21A75B1A001CA8C0 /* nex_open.lo */,
 				598C582021A75B1A001CA8C0 /* config.log */,
 				598C582121A75B1A001CA8C0 /* .deps */,
-				598C582621A75B1A001CA8C0 /* libnexstar.a */,
 				598C582721A75B1A001CA8C0 /* libnexstar.pc */,
 				598C582821A75B1A001CA8C0 /* Makefile.in */,
 				598C582921A75B1A001CA8C0 /* aclocal.m4 */,
-				598C582A21A75B1A001CA8C0 /* share */,
 				598C582E21A75B1A001CA8C0 /* src */,
 			);
 			path = libnexstar;
@@ -5255,14 +5248,6 @@
 			path = man;
 			sourceTree = "<group>";
 		};
-		598C57E621A75B1A001CA8C0 /* pkgconfig */ = {
-			isa = PBXGroup;
-			children = (
-				598C57E721A75B1A001CA8C0 /* libnexstar.pc */,
-			);
-			path = pkgconfig;
-			sourceTree = "<group>";
-		};
 		598C57EE21A75B1A001CA8C0 /* autom4te.cache */ = {
 			isa = PBXGroup;
 			children = (
@@ -5273,16 +5258,6 @@
 				598C57F321A75B1A001CA8C0 /* requests */,
 			);
 			path = autom4te.cache;
-			sourceTree = "<group>";
-		};
-		598C57F621A75B1A001CA8C0 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				598C57F721A75B1A001CA8C0 /* deg2str.h */,
-				598C57F821A75B1A001CA8C0 /* nexstar.h */,
-				598C57F921A75B1A001CA8C0 /* nexstar_pec.h */,
-			);
-			path = include;
 			sourceTree = "<group>";
 		};
 		598C580C21A75B1A001CA8C0 /* examples */ = {
@@ -5337,30 +5312,6 @@
 				598C582521A75B1A001CA8C0 /* nexstar_pec.Plo */,
 			);
 			path = .deps;
-			sourceTree = "<group>";
-		};
-		598C582A21A75B1A001CA8C0 /* share */ = {
-			isa = PBXGroup;
-			children = (
-				598C582B21A75B1A001CA8C0 /* man */,
-			);
-			path = share;
-			sourceTree = "<group>";
-		};
-		598C582B21A75B1A001CA8C0 /* man */ = {
-			isa = PBXGroup;
-			children = (
-				598C582C21A75B1A001CA8C0 /* man7 */,
-			);
-			path = man;
-			sourceTree = "<group>";
-		};
-		598C582C21A75B1A001CA8C0 /* man7 */ = {
-			isa = PBXGroup;
-			children = (
-				598C582D21A75B1A001CA8C0 /* libnexstar.7 */,
-			);
-			path = man7;
 			sourceTree = "<group>";
 		};
 		598C582E21A75B1A001CA8C0 /* src */ = {
@@ -7890,6 +7841,68 @@
 				59C8AF2E21A9D79900C3594F /* sunos_usb.c */,
 			);
 			path = os;
+			sourceTree = "<group>";
+		};
+		59C8AF6C21AAE98600C3594F /* build */ = {
+			isa = PBXGroup;
+			children = (
+				59C8AF6D21AAE98600C3594F /* include */,
+				59C8AF7121AAE98600C3594F /* lib */,
+				59C8AF7621AAE98600C3594F /* share */,
+			);
+			path = build;
+			sourceTree = "<group>";
+		};
+		59C8AF6D21AAE98600C3594F /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59C8AF6E21AAE98600C3594F /* deg2str.h */,
+				59C8AF6F21AAE98600C3594F /* nexstar.h */,
+				59C8AF7021AAE98600C3594F /* nexstar_pec.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59C8AF7121AAE98600C3594F /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59C8AF7221AAE98600C3594F /* pkgconfig */,
+				59C8AF7421AAE98600C3594F /* libnexstar.la */,
+				59C8AF7521AAE98600C3594F /* libnexstar.a */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59C8AF7221AAE98600C3594F /* pkgconfig */ = {
+			isa = PBXGroup;
+			children = (
+				59C8AF7321AAE98600C3594F /* libnexstar.pc */,
+			);
+			path = pkgconfig;
+			sourceTree = "<group>";
+		};
+		59C8AF7621AAE98600C3594F /* share */ = {
+			isa = PBXGroup;
+			children = (
+				59C8AF7721AAE98600C3594F /* man */,
+			);
+			path = share;
+			sourceTree = "<group>";
+		};
+		59C8AF7721AAE98600C3594F /* man */ = {
+			isa = PBXGroup;
+			children = (
+				59C8AF7821AAE98600C3594F /* man7 */,
+			);
+			path = man;
+			sourceTree = "<group>";
+		};
+		59C8AF7821AAE98600C3594F /* man7 */ = {
+			isa = PBXGroup;
+			children = (
+				59C8AF7921AAE98600C3594F /* libnexstar.7 */,
+			);
+			path = man7;
 			sourceTree = "<group>";
 		};
 		59C8E7CC1DBBC00000AA3F0A /* externals */ = {
@@ -11694,7 +11707,6 @@
 				9D59D62720D3F829009EA8FF /* CamRegMirror.h in Headers */,
 				9DB918091DFEA42E00678721 /* indigo_io.h in Headers */,
 				59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */,
-				598C583C21A75B2B001CA8C0 /* nexstar_pec.h in Headers */,
 				9D59D5EC20D3F829009EA8FF /* Alta.h in Headers */,
 				9D59D65620D3F829009EA8FF /* ImgFix.h in Headers */,
 				9DAD523E21258801002FCC79 /* indigo_guider_cgusbst4.h in Headers */,
@@ -11756,8 +11768,6 @@
 				9D59D5FB20D3F829009EA8FF /* CcdAcqParams.h in Headers */,
 				9D59D66020D3F82A009EA8FF /* apgHelper.h in Headers */,
 				9D59D65120D3F829009EA8FF /* CamGen2ModeFsm.h in Headers */,
-				598C583B21A75B2B001CA8C0 /* nexstar.h in Headers */,
-				598C583A21A75B2A001CA8C0 /* deg2str.h in Headers */,
 				9D59D64E20D3F829009EA8FF /* ApgTimer.h in Headers */,
 				59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */,
 				9D59D5F320D3F829009EA8FF /* COMHelper.h in Headers */,
@@ -12605,6 +12615,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/lib/.libs",
 					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar",
+					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/build/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -12634,6 +12645,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/lib/.libs",
 					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar",
+					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/build/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
