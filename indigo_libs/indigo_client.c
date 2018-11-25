@@ -25,32 +25,37 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <libgen.h>
-#include <dlfcn.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <sys/types.h>
 #include <errno.h>
-#include <arpa/inet.h>
 #include <signal.h>
 #include <assert.h>
+#include <pthread.h>
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <unistd.h>
+#include <libgen.h>
+#include <dlfcn.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
+#if defined(INDIGO_WINDOWS)
+#include <io.h>
+#include <winsock2.h>
+#pragma warning(disable:4996)
+#endif
 
 #include "indigo_client_xml.h"
 #include "indigo_client.h"
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
-indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
-indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 static int used_driver_slots = 0;
-static int used_server_slots = 0;
 static int used_subprocess_slots = 0;
 
 static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle, bool init, indigo_driver_entry **driver) {
@@ -122,7 +127,7 @@ indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indig
 
 #if defined(INDIGO_MACOS)
 #define SO_NAME ".dylib"
-#else
+#elif defined(INDIGO_LINUX)
 #define SO_NAME ".so"
 #endif
 
@@ -159,109 +164,8 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 	return add_driver(entry_point, dl_handle, init, driver);
 }
 
-void indigo_service_name(const char *host, int port, char *name) {
-	strncpy(name, host, INDIGO_NAME_SIZE);
-	char *lastone = name + strlen(name) - 1;
-	if (*lastone == '.')
-		*lastone = 0;
-	char * local = strstr(name, ".local");
-	if (local != NULL && (!strcmp(local, ".local")))
-		*local = 0;
-	if (port != 7624) {
-		sprintf(name + strlen(name), ":%d", port);
-	}
-}
-
-static void *server_thread(indigo_server_entry *server) {
-	INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
-	while (server->socket >= 0) {
-		server->socket = 0;
-		struct hostent *host_entry = gethostbyname(server->host);
-		if (host_entry == NULL) {
-			INDIGO_ERROR(indigo_error("Can't resolve host name %s (%s)", server->host, strerror(errno)));
-		} else if ((server->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-			INDIGO_ERROR(indigo_error("Can't create socket (%s)", strerror(errno)));
-		} else {
-			struct sockaddr_in serv_addr;
-			memcpy(&serv_addr.sin_addr, host_entry->h_addr_list[0], host_entry->h_length);
-			serv_addr.sin_family = AF_INET;
-			serv_addr.sin_port = htons(server->port);
-			if (connect(server->socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-				close(server->socket);
-				server->socket = 0;
-			}
-		}
-		if (server->socket > 0) {
-			if (*server->name == 0) {
-				indigo_service_name(server->host, server->port, server->name);
-			}
-			char  url[INDIGO_NAME_SIZE];
-			snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
-			INDIGO_LOG(indigo_log("Server %s:%d (%s, %s) connected", server->host, server->port, server->name, url));
-			server->protocol_adapter = indigo_xml_client_adapter(server->name, url, server->socket, server->socket);
-			indigo_attach_device(server->protocol_adapter);
-			indigo_xml_parse(server->protocol_adapter, NULL);
-			indigo_detach_device(server->protocol_adapter);
-			free(server->protocol_adapter->device_context);
-			free(server->protocol_adapter);
-			close(server->socket);
-			INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
-		}
-		sleep(5);
-	}
-	server->thread_started = false;
-	INDIGO_LOG(indigo_log("Server %s:%d thread stopped", server->host, server->port));
-	return NULL;
-}
-
-indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server) {
-	int empty_slot = used_server_slots;
-	pthread_mutex_lock(&mutex);
-	for (int dc = 0; dc < used_server_slots;  dc++) {
-		if (indigo_available_servers[dc].socket > 0 && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
-			INDIGO_LOG(indigo_log("Server %s:%d already connected", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
-			if (server != NULL)
-				*server = &indigo_available_servers[dc];
-			pthread_mutex_unlock(&mutex);
-			return INDIGO_DUPLICATED;
-		} else if (!indigo_available_servers[dc].thread_started) {
-			empty_slot = dc;
-		}
-	}
-	if (empty_slot > INDIGO_MAX_SERVERS) {
-		pthread_mutex_unlock(&mutex);
-		return INDIGO_TOO_MANY_ELEMENTS;
-	}
-	if (name != NULL) {
-		strncpy(indigo_available_servers[empty_slot].name, name, INDIGO_NAME_SIZE);
-	} else {
-		*indigo_available_servers[empty_slot].name = 0;
-	}
-	strncpy(indigo_available_servers[empty_slot].host, host, INDIGO_NAME_SIZE);
-	indigo_available_servers[empty_slot].port = port;
-	indigo_available_servers[empty_slot].socket = 0;
-	if (pthread_create(&indigo_available_servers[empty_slot].thread, NULL, (void*)(void *)server_thread, &indigo_available_servers[empty_slot]) != 0) {
-		pthread_mutex_unlock(&mutex);
-		return INDIGO_FAILED;
-	}
-	indigo_available_servers[empty_slot].thread_started = true;
-	if (empty_slot == used_server_slots)
-		used_server_slots++;
-	pthread_mutex_unlock(&mutex);
-	if (server != NULL)
-		*server = &indigo_available_servers[empty_slot];
-	return INDIGO_OK;
-}
-
-indigo_result indigo_disconnect_server(indigo_server_entry *server) {
-	assert(server != NULL);
-	pthread_mutex_lock(&mutex);
-	if (server->socket > 0)
-		close(server->socket);
-	server->socket = -1;
-	pthread_mutex_unlock(&mutex);
-	return INDIGO_OK;
-}
+indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
+indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
 
 static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	INDIGO_LOG(indigo_log("Subprocess %s thread started", subprocess->executable));
@@ -356,3 +260,116 @@ indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess) {
 	return INDIGO_OK;
 }
 
+#endif
+
+static int used_server_slots = 0;
+indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
+
+void indigo_service_name(const char *host, int port, char *name) {
+  strncpy(name, host, INDIGO_NAME_SIZE);
+  char *lastone = name + strlen(name) - 1;
+  if (*lastone == '.')
+    *lastone = 0;
+  char * local = strstr(name, ".local");
+  if (local != NULL && (!strcmp(local, ".local")))
+    *local = 0;
+  if (port != 7624) {
+    sprintf(name + strlen(name), ":%d", port);
+  }
+}
+
+static void *server_thread(indigo_server_entry *server) {
+  INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
+  while (server->socket >= 0) {
+    server->socket = 0;
+    struct hostent *host_entry = gethostbyname(server->host);
+    if (host_entry == NULL) {
+      INDIGO_ERROR(indigo_error("Can't resolve host name %s (%s)", server->host, strerror(errno)));
+    } else if ((server->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+      INDIGO_ERROR(indigo_error("Can't create socket (%s)", strerror(errno)));
+    } else {
+      struct sockaddr_in serv_addr;
+      memcpy(&serv_addr.sin_addr, host_entry->h_addr_list[0], host_entry->h_length);
+      serv_addr.sin_family = AF_INET;
+      serv_addr.sin_port = htons(server->port);
+      if (connect(server->socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(server->socket);
+        server->socket = 0;
+      }
+    }
+    if (server->socket > 0) {
+      if (*server->name == 0) {
+        indigo_service_name(server->host, server->port, server->name);
+      }
+      char  url[INDIGO_NAME_SIZE];
+      snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
+      INDIGO_LOG(indigo_log("Server %s:%d (%s, %s) connected", server->host, server->port, server->name, url));
+      server->protocol_adapter = indigo_xml_client_adapter(server->name, url, server->socket, server->socket);
+      indigo_attach_device(server->protocol_adapter);
+      indigo_xml_parse(server->protocol_adapter, NULL);
+      indigo_detach_device(server->protocol_adapter);
+      free(server->protocol_adapter->device_context);
+      free(server->protocol_adapter);
+      close(server->socket);
+      INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
+    }
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+    sleep(5); 
+#endif
+#if defined(INDIGO_WINDOWS)
+    Sleep(5);
+#endif
+  }
+  server->thread_started = false;
+  INDIGO_LOG(indigo_log("Server %s:%d thread stopped", server->host, server->port));
+  return NULL;
+}
+
+indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server) {
+  int empty_slot = used_server_slots;
+  pthread_mutex_lock(&mutex);
+  for (int dc = 0; dc < used_server_slots; dc++) {
+    if (indigo_available_servers[dc].socket > 0 && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
+      INDIGO_LOG(indigo_log("Server %s:%d already connected", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
+      if (server != NULL)
+        *server = &indigo_available_servers[dc];
+      pthread_mutex_unlock(&mutex);
+      return INDIGO_DUPLICATED;
+    } else if (!indigo_available_servers[dc].thread_started) {
+      empty_slot = dc;
+    }
+  }
+  if (empty_slot > INDIGO_MAX_SERVERS) {
+    pthread_mutex_unlock(&mutex);
+    return INDIGO_TOO_MANY_ELEMENTS;
+  }
+  if (name != NULL) {
+    strncpy(indigo_available_servers[empty_slot].name, name, INDIGO_NAME_SIZE);
+  } else {
+    *indigo_available_servers[empty_slot].name = 0;
+  }
+  strncpy(indigo_available_servers[empty_slot].host, host, INDIGO_NAME_SIZE);
+  indigo_available_servers[empty_slot].port = port;
+  indigo_available_servers[empty_slot].socket = 0;
+  if (pthread_create(&indigo_available_servers[empty_slot].thread, NULL, (void*) (void *) server_thread, &indigo_available_servers[empty_slot]) != 0) {
+    pthread_mutex_unlock(&mutex);
+    return INDIGO_FAILED;
+  }
+  indigo_available_servers[empty_slot].thread_started = true;
+  if (empty_slot == used_server_slots)
+    used_server_slots++;
+  pthread_mutex_unlock(&mutex);
+  if (server != NULL)
+    *server = &indigo_available_servers[empty_slot];
+  return INDIGO_OK;
+}
+
+indigo_result indigo_disconnect_server(indigo_server_entry *server) {
+  assert(server != NULL);
+  pthread_mutex_lock(&mutex);
+  if (server->socket > 0)
+    close(server->socket);
+  server->socket = -1;
+  pthread_mutex_unlock(&mutex);
+  return INDIGO_OK;
+}
