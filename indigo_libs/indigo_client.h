@@ -68,10 +68,6 @@ typedef struct {
  */
 extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
 
-/** Array of all available servers.
- */
-extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
-
 /** Array of all available subprocesses.
  */
 extern indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
@@ -110,6 +106,10 @@ typedef struct {
 	indigo_device *protocol_adapter;        ///< server protocol adapter
 } indigo_server_entry;
 
+
+/** Array of all available servers.
+ */
+extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 
 /** Create bonjour service name.
  */
