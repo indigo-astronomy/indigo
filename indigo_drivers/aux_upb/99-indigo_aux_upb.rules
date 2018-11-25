@@ -1,1 +1,2 @@
 SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{product}=="*UPB*", SYMLINK+="ttyUPB",  MODE="0666"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0424", ATTRS{idProduct}=="2517", MODE="0666"
