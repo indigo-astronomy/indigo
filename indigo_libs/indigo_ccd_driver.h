@@ -313,9 +313,9 @@ extern "C" {
  */
 
 typedef struct {
-	unsigned signature; // 8bit mono = RAW1 = 0x31574152, 16bit mono = RAW2 = 0x32574152, 24bit RGB = RAW3 = 0x33574152
-	unsigned width;
-	unsigned height;
+	uint32_t signature; // 8bit mono = RAW1 = 0x31574152, 16bit mono = RAW2 = 0x32574152, 24bit RGB = RAW3 = 0x33574152
+	uint32_t width;
+	uint32_t height;
 } indigo_raw_header;
 
 /**
