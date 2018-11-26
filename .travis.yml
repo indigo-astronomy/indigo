@@ -4,19 +4,13 @@ dist: xenial
 
 matrix:
   include:
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-4.9
-            - build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl
-      env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+    - os: osx
+      osx_image: xcode10
 
-    # works on Precise and Trusty
+    - os: osx
+      osx_image: xcode10.1
+
+    # works on Xenial
     - os: linux
       addons:
         apt:
@@ -28,7 +22,7 @@ matrix:
       env:
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
 
-    # works on Precise and Trusty
+    # works on Xenial
     - os: linux
       addons:
         apt:
@@ -40,7 +34,7 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
-    # works on Precise and Trusty
+    # works on Xenial
     - os: linux
       addons:
         apt:
@@ -53,6 +47,7 @@ matrix:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
 before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then sh tools/cltools.sh ; fi
   - eval "${MATRIX_EVAL}"
 
 script: make
