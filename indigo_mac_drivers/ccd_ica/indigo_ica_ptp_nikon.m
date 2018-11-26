@@ -560,7 +560,7 @@ static struct info {
 -(void)processPropertyDescription:(PTPProperty *)property {
   switch (property.propertyCode) {
     case PTPPropertyCodeCompressionSetting: {
-      if (![super.name.uppercaseString containsString:@"D850"])
+      if (!([super.name.uppercaseString hasSuffix:@"D5"] || [super.name.uppercaseString hasSuffix:@"D5_FU1"] || [super.name.uppercaseString hasSuffix:@"D500"] || [super.name.uppercaseString hasSuffix:@"D7500"] || [super.name.uppercaseString hasSuffix:@"D850"] || [super.name.uppercaseString hasSuffix:@"Z7"] || [super.name.uppercaseString hasSuffix:@"Z 7"]))
         return [super processPropertyDescription:property];
       NSDictionary *map = @{ @0: @"JPEG basic", @1: @"JPEG basic *", @2: @"JPEG normal", @3: @"JPEG normal *", @4: @"JPEG fine", @5: @"JPEG  fine *", @6: @"TIFF (RGB)", @7: @"NEF", @8: @"NEF + JPEG basic", @9: @"NEF + JPEG basic *", @10: @"NEF + JPEG normal", @11: @"NEF + JPEG normal *", @12: @"NEF + JPEG fine", @13: @"NEF + JPEG fine *" };
       self.imagesPerShot = (property.value.intValue > 7) ? 2 : 1;
