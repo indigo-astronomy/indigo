@@ -30,14 +30,19 @@
 #include <stdbool.h>
 
 #include "indigo_bus.h"
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include "indigo_driver.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define INDIGO_MAX_DRIVERS    100
 #define INDIGO_MAX_SERVERS    10
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#define INDIGO_MAX_DRIVERS    100
 
 /** Driver entry type.
  */
@@ -49,35 +54,19 @@ typedef struct {
 	bool initialized;												///< driver is initialized
 } indigo_driver_entry;
 
-/** Remote server entry type.
+/** Remote executable entry type.
  */
 typedef struct {
-	char name[INDIGO_NAME_SIZE];            ///< service name
-	char host[INDIGO_NAME_SIZE];            ///< server host name
-	int port;                               ///< server port
-	pthread_t thread;                       ///< client thread ID
-	bool thread_started;                    ///< client thread started/stopped
-	int socket;                             ///< stream socket
-	indigo_device *protocol_adapter;        ///< server protocol adapter
-} indigo_server_entry;
-
-/** Remote server entry type.
- */
-typedef struct {
-	char executable[INDIGO_NAME_SIZE];      ///< executable path name
-	pthread_t thread;                       ///< client thread ID
-	bool thread_started;                    ///< client thread started/stopped
-	int pid;																///< process pid
-	indigo_device *protocol_adapter;        ///< server protocol adapter
+  char executable[INDIGO_NAME_SIZE];      ///< executable path name
+  pthread_t thread;                       ///< client thread ID
+  bool thread_started;                    ///< client thread started/stopped
+  int pid;																///< process pid
+  indigo_device *protocol_adapter;        ///< server protocol adapter
 } indigo_subprocess_entry;
 
 /** Array of all available drivers (statically & dynamically linked).
  */
 extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
-
-/** Array of all available servers.
- */
-extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 
 /** Array of all available subprocesses.
  */
@@ -95,6 +84,33 @@ extern indigo_result indigo_remove_driver(indigo_driver_entry *driver);
  */
 extern indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver);
 
+/** Start thread for subprocess.
+ */
+extern indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess);
+
+/** Stop thread for subprocess.
+ */
+extern indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess);
+
+#endif
+
+/** Remote server entry type.
+ */
+typedef struct {
+	char name[INDIGO_NAME_SIZE];            ///< service name
+	char host[INDIGO_NAME_SIZE];            ///< server host name
+	int port;                               ///< server port
+	pthread_t thread;                       ///< client thread ID
+	bool thread_started;                    ///< client thread started/stopped
+	int socket;                             ///< stream socket
+	indigo_device *protocol_adapter;        ///< server protocol adapter
+} indigo_server_entry;
+
+
+/** Array of all available servers.
+ */
+extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
+
 /** Create bonjour service name.
  */
 void indigo_service_name(const char *host, int port, char *name);
@@ -106,14 +122,6 @@ extern indigo_result indigo_connect_server(const char *name, const char *host, i
 /** Disconnect and stop thread for remote server.
  */
 extern indigo_result indigo_disconnect_server(indigo_server_entry *server);
-
-/** Start thread for subprocess.
- */
-extern indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess);
-
-/** Stop thread for subprocess.
- */
-extern indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess);
 
 #ifdef __cplusplus
 }
