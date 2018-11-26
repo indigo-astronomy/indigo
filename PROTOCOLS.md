@@ -37,6 +37,8 @@ In case of successful handshake for version 2.0 the following extensions can be 
 2. BLOBs can be referenced by URL instead of inline BASE64 encoding with url parameter in oneBLOB tag, e.g.
 
 ```
+→ <enableBLOB>URL</enableBLOB>
+...
 ← <setBLOBVector device='CCD Simulator' name='CCD_IMAGE' state='Ok'>
     <oneBLOB name='%s' url='http://localhost:7624/blob/0x10381d798.fits?1534933649001'/>
   </setBLOBVector>
