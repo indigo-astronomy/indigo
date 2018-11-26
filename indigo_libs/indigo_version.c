@@ -28,6 +28,10 @@
 #include "indigo_version.h"
 #include "indigo_names.h"
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4996)
+#endif
+
 // <getProperties version='1.7' name='CONFIG'/>
 
 struct property_mapping {

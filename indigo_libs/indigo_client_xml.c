@@ -27,10 +27,20 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <pthread.h>
 #include <assert.h>
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <unistd.h>
+#endif
+
+#if defined(INDIGO_WINDOWS)
+#include <io.h>
+#define ssize_t size_t
+#define close _close
+#pragma warning(disable:4996)
+#endif
 
 #include "indigo_xml.h"
 #include "indigo_io.h"

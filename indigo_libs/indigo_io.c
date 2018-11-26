@@ -28,19 +28,29 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <unistd.h>
-#include <termios.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <netdb.h>
 #include <pthread.h>
 #include <sys/types.h>
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <unistd.h>
+#include <termios.h>
+#include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
+
+#if defined(INDIGO_WINDOWS)
+#include <io.h>
+#include <winsock2.h>
+#pragma warning(disable:4996)
+#endif
 
 #include "indigo_bus.h"
 #include "indigo_io.h"
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 int indigo_open_serial(const char *dev_file) {
 	return indigo_open_serial_with_speed(dev_file, 9600);
@@ -76,6 +86,7 @@ int indigo_open_serial_with_speed(const char *dev_file, int speed) {
 
 	return dev_fd;
 }
+#endif
 
 int indigo_open_tcp(const char *host, int port) {
 	struct sockaddr_in srv_info;
