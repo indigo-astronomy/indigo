@@ -29,13 +29,16 @@
 #include "indigo_driver.h"
 #include "indigo_mount_driver.h"
 #include "indigo_guider_driver.h"
+#include "indigo_dome_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define SYSTEM_ASCOL_NAME              "Telescope system"
-#define SYSTEM_ASCOL_GUIDER_NAME       "Telescope system (guider)"
+#define SYSTEM_ASCOL_NAME              "ASCOL Telescope"
+#define SYSTEM_ASCOL_GUIDER_NAME       "ASCOL Guider"
+#define SYSTEM_ASCOL_FOCUSER_NAME      "ASCOL Focuser"
+#define SYSTEM_ASCOL_DOME_NAME         "ASCOL Dome"
 
 
 /** Create ASCOL system device instance
