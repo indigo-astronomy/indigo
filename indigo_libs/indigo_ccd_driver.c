@@ -174,10 +174,11 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, CCD_FRAME_TYPE_DARK_ITEM_NAME, "Dark", false);
 			indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, CCD_FRAME_TYPE_FLAT_ITEM_NAME, "Flat", false);
 			// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
-			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 			if (CCD_IMAGE_FORMAT_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_FITS_ITEM, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, "FITS format", true);
+			indigo_init_switch_item(CCD_IMAGE_FORMAT_XISF_ITEM, CCD_IMAGE_FORMAT_XISF_ITEM_NAME, "XISF format", false);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, "Raw data", false);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_JPEG_ITEM, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME, "JPEG format", false);
 			// -------------------------------------------------------------------------------- CCD_IMAGE
@@ -778,6 +779,88 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			}
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
+		INDIGO_DEBUG(clock_t start = clock());
+		time_t timer;
+		struct tm* tm_info;
+		char now[21];
+		time(&timer);
+		tm_info = gmtime(&timer);
+		strftime(now, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
+		char *header = data;
+		strcpy(header, "XISF0100");
+		header += 16;
+		memset(header, 0, FITS_HEADER_SIZE);
+		sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
+		header += strlen(header);
+		char *frame_type = "Light";
+		if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
+			frame_type ="Flat";
+		else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
+			frame_type ="Bias";
+		else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
+			frame_type ="Dark";
+		if (naxis == 2 && byte_per_pixel == 1) {
+			sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+		} else if (naxis == 2 && byte_per_pixel == 2) {
+			sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt16' colorSpace='Gray' byteOrder='%s' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, little_endian ? "little" : "big", FITS_HEADER_SIZE, blobsize);
+		} else if (naxis == 3 && byte_per_pixel == 1) {
+			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+		}
+		header += strlen(header);
+		sprintf(header, "<Property id='Observation:Time:End' type='TimePoint' value='%s'/>", now);
+		header += strlen(header);
+		sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
+		header += strlen(header);
+		sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
+		header += strlen(header);
+		sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%.5f'/>", CCD_EXPOSURE_ITEM->number.target);
+		header += strlen(header);
+		sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%.2f'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+		header += strlen(header);
+		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
+			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%.2f'/>", CCD_TEMPERATURE_ITEM->number.value, CCD_TEMPERATURE_ITEM->number.target);
+		}
+		header += strlen(header);
+		if (!CCD_GAIN_PROPERTY->hidden) {
+			sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%g'/>", CCD_GAIN_ITEM->number.value);
+			header += strlen(header);
+		}
+		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+			if (!strncmp(item->text.value, "FILTER=", 7)) {
+				sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value='%s'/>", item->text.value + 7);
+				header += strlen(header);
+			} else if (!strncmp(item->text.value, "FOCUS=", 6)) {
+				sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value + 6);
+				header += strlen(header);
+			}
+		}
+		if (keywords) {
+			while (keywords->type) {
+				if (!strcmp(keywords->name, "BAYERPAT")) {
+					sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2'/>", keywords->string);
+					header += strlen(header);
+				}
+				keywords++;
+			}
+		}
+		sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%d</Property>", now, INDIGO_BUILD);
+		header += strlen(header);
+#ifdef INDIGO_LINUX
+		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
+#endif
+#ifdef INDIGO_MACOS
+		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>macOS</Property>");
+#endif
+#ifdef INDIGO_WINDOWS
+		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Windows</Property>");
+#endif
+		header += strlen(header);
+		sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
+		header += strlen(header);
+		*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data);
+		INDIGO_DEBUG(indigo_debug("RAW to XISF conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 		if (naxis == 2 && byte_per_pixel == 1)
@@ -901,6 +984,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		char *suffix;
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			suffix = ".fits";
+		} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
+			suffix = ".xisf";
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 			suffix = ".raw";
 		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
@@ -941,6 +1026,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
+				} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
+					if (!indigo_write(handle, data, FITS_HEADER_SIZE + blobsize)) {
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+						message = strerror(errno);
+					}
 				} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 					if (!indigo_write(handle, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), blobsize + sizeof(indigo_raw_header))) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -970,6 +1060,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			CCD_IMAGE_ITEM->blob.value = data;
 			CCD_IMAGE_ITEM->blob.size = FITS_HEADER_SIZE + blobsize;
 			strncpy(CCD_IMAGE_ITEM->blob.format, ".fits", INDIGO_NAME_SIZE);
+		} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
+			CCD_IMAGE_ITEM->blob.value = data;
+			CCD_IMAGE_ITEM->blob.size = FITS_HEADER_SIZE + blobsize;
+			strncpy(CCD_IMAGE_ITEM->blob.format, ".xisf", INDIGO_NAME_SIZE);
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 			CCD_IMAGE_ITEM->blob.value = data + FITS_HEADER_SIZE - sizeof(indigo_raw_header);
 			CCD_IMAGE_ITEM->blob.size = blobsize + sizeof(indigo_raw_header);

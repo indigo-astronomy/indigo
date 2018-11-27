@@ -249,13 +249,17 @@ extern "C" {
  */
 #define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+0)
 
+/** CCD_IMAGE_FORMAT.XISF property item pointer.
+ */
+#define CCD_IMAGE_FORMAT_XISF_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
+	
 /** CCD_IMAGE_FORMAT.RAW property item pointer.
  */
-#define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+1)
+#define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+2)
 
 /** CCD_IMAGE_FORMAT.JPEG property item pointer.
  */
-#define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+2)
+#define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+3)
 
 /** CCD_IMAGE_FILE property pointer, property is mandatory, read-only property.
  */

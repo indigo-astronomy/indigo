@@ -421,6 +421,10 @@
  */
 #define CCD_IMAGE_FORMAT_FITS_ITEM_NAME       "FITS"
 
+/** CCD_IMAGE_FORMAT.FITS property item name.
+ */
+#define CCD_IMAGE_FORMAT_XISF_ITEM_NAME       "XISF"
+
 /** CCD_IMAGE_FORMAT.JPEG property item name.
  */
 #define CCD_IMAGE_FORMAT_JPEG_ITEM_NAME       "JPEG"
