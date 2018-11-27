@@ -25,9 +25,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "indigo_driver_xml.h"
-
 #include "indigo_ccd_gphoto2.h"
 
 int main(int argc, const char * argv[]) {
