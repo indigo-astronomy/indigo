@@ -141,7 +141,6 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_RULES)
 	install -d -m 0755 $(INSTALL_FIRMWARE)
 
-install: INSTALL_ROOT = $(INDIGO_ROOT)/install
 install: reconfigure init all
 	@$(MAKE)	-C indigo_libs install
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
@@ -154,7 +153,6 @@ endif
 	@$(MAKE)	-C indigo_server install
 	@$(MAKE)	-C indigo_tools install
 
-uninstall: INSTALL_ROOT = $(INDIGO_ROOT)/install
 uninstall: reconfigure init
 	@$(MAKE)	-C indigo_libs uninstall
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
