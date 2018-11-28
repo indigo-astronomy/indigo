@@ -12533,7 +12533,7 @@
 		9D97F8151D9A8A1900582EAF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				LD_RUNPATH_SEARCH_PATHS = /Users/polakovic/Development/indigo/build/lib;
+				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -12563,7 +12563,7 @@
 		9D97F8161D9A8A1900582EAF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				LD_RUNPATH_SEARCH_PATHS = /Users/polakovic/Development/indigo/build/lib;
+				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
