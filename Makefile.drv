@@ -61,7 +61,7 @@ ifeq ($(OS_DETECTED),Linux)
 	SDK_LIB_A ?= $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.a)
 	SDK_LIB_SO ?= $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.so)
 endif
-SDK_LIB ?= $(addprefix -L, $(dir $(SDK_LIB_A) $(SDK_LIB_SO))) $(addprefix -l, $(subst lib, , $(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO)))))
+SDK_LIB ?= $(addprefix -L, $(dir $(SDK_LIB_A))) $(addprefix -l, $(subst lib, , $(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO)))))
 
 FIRMWARE ?= $(strip $(wildcard bin_externals/*/firmware/*) $(wildcard *.hex))
 FIRMWARE_TARGET ?= $(INSTALL_FIRMWARE)
@@ -99,7 +99,11 @@ endif
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^
 ifneq ($(SDK_LIB_SO),)
-	install -m 0644 $(addsuffix *$(SOEXT), $(basename $(SDK_LIB_SO))) $(BUILD_LIB)
+	install -m 0644 $(SDK_LIB_SO) $(BUILD_LIB)
+ifeq ($(OS_DETECTED),Darwin)
+	install_name_tool -id $(BUILD_LIB)/$(notdir $(SDK_LIB_SO)) $(BUILD_LIB)/$(notdir $(SDK_LIB_SO))
+	$(FIX_SDK_LIB_SO)
+endif
 endif
 
 $(DRIVER_SO): $(DRIVER_A)
@@ -172,9 +176,9 @@ endif
 
 $(SDK_DIR)/Makefile: $(SDK_CONFIGURE)
 ifneq ($(SDK_LIB_A),)
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=no --enable-static=yes $(CONFIGURE_FLAGS)
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; export = DYLD_LIBRARY_PATH=$(BUILD_LIB); cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=no --enable-static=yes $(CONFIGURE_FLAGS)
 else
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=yes --enable-static=no $(CONFIGURE_FLAGS)
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; export = DYLD_LIBRARY_PATH=$(BUILD_LIB); cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=yes --enable-static=no $(CONFIGURE_FLAGS)
 endif
 
 $(SDK_DIR)/configure: $(SDK_CONFIGURE_IN)
