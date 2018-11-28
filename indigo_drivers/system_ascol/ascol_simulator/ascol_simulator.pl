@@ -1229,18 +1229,15 @@ sub main() {
 			if ($cmd[0] eq "DOON") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
 				if (($do_state == DO_OFF) && ($cmd[1] eq "1")) {
 					$do_state = DO_STOP;
-					print_client($client, "1\n");
-					next;
 				}
 				if (($do_state == DO_STOP) and ($sl_state == SL_CLOSE)
 				    && ($cmd[1] eq "0")) {
 					$do_state = DO_OFF;
-					print_client($client, "1\n");
-					next;
 				}
-				print_client($client, "ERR\n");
+				print_client($client, "1\n");
 				next;
 			}
 			# ----------- Dome Slit Open ---------- #
