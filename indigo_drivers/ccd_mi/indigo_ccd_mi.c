@@ -95,7 +95,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		if (state != -1)
 			state = gxccd_read_image(PRIVATE_DATA->camera, (char *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), PRIVATE_DATA->image_width * PRIVATE_DATA->image_height * 2);
 		if (state != -1) {
-			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, 16, true, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, 16, true, true, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
