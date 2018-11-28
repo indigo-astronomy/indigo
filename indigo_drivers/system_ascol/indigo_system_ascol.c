@@ -174,6 +174,15 @@
 #define GUIDE_MODE_PROPERTY_NAME           "ASCOL_GUIDE_MODE"
 #define GUIDE_MODE_OFF_ITEM_NAME           "OFF"
 
+// DOME
+#define DOME_POWER_PROPERTY                (PRIVATE_DATA->dome_power_property)
+#define DOME_ON_ITEM                       (DOME_POWER_PROPERTY->items+0)
+#define DOME_OFF_ITEM                      (DOME_POWER_PROPERTY->items+1)
+#define DOME_POWER_PROPERTY_NAME           "ASCOL_DOME_POWER"
+#define DOME_ON_ITEM_NAME                  "ON"
+#define DOME_OFF_ITEM_NAME                 "OFF"
+
+
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
@@ -193,7 +202,7 @@ typedef struct {
 	ascol_glst_t glst;
 	ascol_oimv_t oimv;
 	ascol_glme_t glme;
-	indigo_timer *state_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
+	indigo_timer *mount_state_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
 	indigo_property *alarm_property;
@@ -216,7 +225,8 @@ typedef struct {
 
 	// Dome
 	int target_position, current_position;
-	indigo_timer *position_timer;
+	indigo_timer *dome_state_timer, *position_timer;
+	indigo_property *dome_power_property;
 } ascol_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -810,7 +820,7 @@ static void park_timer_callback(indigo_device *device) {
 }
 
 
-static void state_timer_callback(indigo_device *device) {
+static void mount_state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static ascol_oimv_t prev_oimv = {0};
 	static ascol_glme_t prev_glme = {0};
@@ -818,7 +828,6 @@ static void state_timer_callback(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
 		ALARM_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1056,6 +1065,7 @@ static void state_timer_callback(indigo_device *device) {
 	/* should be copied every time as there are several properties
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	OIL_MEASURE:
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
@@ -1127,7 +1137,7 @@ static void state_timer_callback(indigo_device *device) {
 
 	RESCHEDULE_TIMER:
 	first_call = false;
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->state_timer);
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->mount_state_timer);
 }
 
 
@@ -1168,6 +1178,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		strncpy(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP, INDIGO_NAME_SIZE);
 
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
+		MOUNT_SNOOP_DEVICES_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------- ALARM
 		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
 		if (ALARM_PROPERTY == NULL)
@@ -1416,7 +1427,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 					device->is_connected = true;
 					/* start updates */
-					PRIVATE_DATA->state_timer = indigo_set_timer(device, 0, state_timer_callback);
+					PRIVATE_DATA->mount_state_timer = indigo_set_timer(device, 0, mount_state_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1424,7 +1435,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->state_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->mount_state_timer);
 				mount_close(device);
 				indigo_delete_property(device, ALARM_PROPERTY, NULL);
 				indigo_delete_property(device, OIL_STATE_PROPERTY, NULL);
@@ -1660,7 +1671,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	indigo_cancel_timer(device, &PRIVATE_DATA->state_timer);
+	indigo_cancel_timer(device, &PRIVATE_DATA->mount_state_timer);
 
 	indigo_release_property(ALARM_PROPERTY);
 	indigo_release_property(OIL_STATE_PROPERTY);
@@ -1879,6 +1890,99 @@ static indigo_result guider_detach(indigo_device *device) {
 
 
 // -------------------------------------------------------------------------------- DOME
+
+static void dome_state_timer_callback(indigo_device *device) {
+/*	static ascol_glst_t prev_glst = {0};
+	static bool first_call = true;
+
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
+		OIL_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, OIL_STATE_PROPERTY, "Could not read Global Status");
+		goto OIL_MEASURE;
+	}
+
+	if (first_call || (prev_glst.oil_state != PRIVATE_DATA->glst.oil_state) ||
+	   (OIL_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		OIL_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		ascol_get_oil_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(OIL_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		indigo_update_property(device, OIL_STATE_PROPERTY, NULL);
+
+		if (PRIVATE_DATA->glst.oil_state == OIL_STATE_OFF) {
+			OIL_ON_ITEM->sw.value = false;
+			OIL_OFF_ITEM->sw.value = true;
+			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
+		} else if(PRIVATE_DATA->glst.oil_state == OIL_STATE_ON) {
+			OIL_ON_ITEM->sw.value = true;
+			OIL_OFF_ITEM->sw.value = false;
+			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			OIL_ON_ITEM->sw.value = true;
+			OIL_OFF_ITEM->sw.value = false;
+			OIL_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, OIL_POWER_PROPERTY, NULL);
+	}
+
+	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
+	   (prev_glst.flap_coude_state != PRIVATE_DATA->glst.flap_coude_state)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating FLAP_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		FLAP_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		ascol_get_flap_tube_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(TUBE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		ascol_get_flap_coude_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(COUDE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		indigo_update_property(device, FLAP_STATE_PROPERTY, NULL);
+	}
+//	/* should be copied every time as there are several properties
+//	   relaying on this and we have no track which one changed
+	prev_glst = PRIVATE_DATA->glst;
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+
+	RESCHEDULE_TIMER:
+	first_call = false;
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->state_timer);
+	*/
+}
+
+
+
+
+static void mount_handle_dome_power(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (DOME_ON_ITEM->sw.value) {
+		res = ascol_DOON(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOON(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_DOON(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		DOME_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		DOME_ON_ITEM->sw.value = !DOME_ON_ITEM->sw.value;
+		DOME_OFF_ITEM->sw.value = !DOME_OFF_ITEM->sw.value;
+		DOME_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOON(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
+}
+
+
+static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(DOME_POWER_PROPERTY, property))
+			indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
+	}
+	return indigo_dome_enumerate_properties(device, NULL, NULL);
+}
+
 static void dome_timer_callback(indigo_device *device) {
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
@@ -1933,6 +2037,29 @@ static indigo_result dome_attach(indigo_device *device) {
 	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_ITEM->number.value = 1;
+		// -------------------------------------------------------------------------------- AUTHENTICATION_PROPERTY
+		AUTHENTICATION_PROPERTY->hidden = false;
+		AUTHENTICATION_PROPERTY->count = 1;
+		// -------------------------------------------------------------------------------- DEVICE_PORT
+		DEVICE_PORT_PROPERTY->hidden = false;
+		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		// -------------------------------------------------------------------------------- DEVICE_PORTS
+		DEVICE_PORTS_PROPERTY->hidden = true;
+		// --------------------------------------------------------------------------------
+		DOME_SNOOP_DEVICES_PROPERTY->hidden = true;
+		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
+		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = true;
+		DOME_DIMENSION_PROPERTY->hidden = true;
+		DOME_SYNC_PROPERTY->hidden = true;
+		DOME_SPEED_PROPERTY->hidden = true;
+
+		// -------------------------------------------------------------------------- OIL_POWER
+		DOME_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_POWER_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (DOME_POWER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(DOME_ON_ITEM, DOME_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(DOME_OFF_ITEM, DOME_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -1947,7 +2074,36 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (!device->is_connected) {
+				if (mount_open(device)) {
+					int dev_id = PRIVATE_DATA->dev_id;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
+					device->is_connected = true;
+					/* start updates */
+					PRIVATE_DATA->dome_state_timer = indigo_set_timer(device, 0, dome_state_timer_callback);
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
+			}
+		} else {
+			if (device->is_connected) {
+				indigo_cancel_timer(device, &PRIVATE_DATA->dome_state_timer);
+				mount_close(device);
+				indigo_delete_property(device, OIL_POWER_PROPERTY, NULL);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+	} else if (indigo_property_match(DOME_POWER_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_POWER_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(DOME_POWER_PROPERTY, property, false);
+			mount_handle_dome_power(device);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
@@ -1963,34 +2119,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0.5, dome_timer_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
-		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		double alt, az;
-		if (indigo_fix_dome_coordinates(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &alt, &az) == INDIGO_OK) {
-			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
-			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
-			if (dif < 180) {
-				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
-				DOME_STEPS_ITEM->number.value = dif;
-			} else if (dif > 180) {
-				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
-				DOME_STEPS_ITEM->number.value = 360 - dif;
-			}
-			DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-			indigo_set_timer(device, 0.5, dome_timer_callback);
-		} else {
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Invalid coordinates");
-		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
@@ -2047,6 +2175,10 @@ static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	indigo_cancel_timer(device, &PRIVATE_DATA->dome_state_timer);
+	indigo_release_property(DOME_POWER_PROPERTY);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
 }
@@ -2081,7 +2213,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
 		SYSTEM_ASCOL_DOME_NAME,
 		dome_attach,
-		indigo_dome_enumerate_properties,
+		ascol_dome_enumerate_properties,
 		dome_change_property,
 		NULL,
 		dome_detach
