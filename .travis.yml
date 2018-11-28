@@ -50,4 +50,6 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then sh tools/cltools.sh ; fi
   - eval "${MATRIX_EVAL}"
 
-script: make
+script:
+  - make
+  - indigo_test/test_suite.sh
