@@ -83,7 +83,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (ArtemisGetImageData(PRIVATE_DATA->handle, &left, &top, &width, &height, &binx, &biny) == ARTEMIS_OK) {
 		void *buffer = ArtemisImageBuffer(PRIVATE_DATA->handle);
 		memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, buffer, width * height * 2);
-		indigo_process_image(device, PRIVATE_DATA->buffer, width, height, 16, true, NULL);
+		indigo_process_image(device, PRIVATE_DATA->buffer, width, height, 16, true, true, NULL);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	} else {

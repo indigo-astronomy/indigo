@@ -394,6 +394,7 @@ static int process_dslr_image_debayer(indigo_device *device,
                              processed_image->width, processed_image->height,
                              processed_image->bits * processed_image->colors,
                              true, /* little_endian */
+														 true, /* RBG order */
                              keywords);
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "input data: "

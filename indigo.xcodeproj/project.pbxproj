@@ -3458,6 +3458,7 @@
 		59DEC8CB21ADE04D00BF7958 /* libnexstar.la */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libnexstar.la; sourceTree = "<group>"; };
 		59DEC8CC21ADE04D00BF7958 /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libnexstar.a; sourceTree = "<group>"; };
 		59DEC8D021ADE04D00BF7958 /* libnexstar.7 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libnexstar.7; sourceTree = "<group>"; };
+		59DEC8D321AF5DAA00BF7958 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59E38B4F1F1577A000187839 /* indigo_ica_ptp_canon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_canon.h; sourceTree = "<group>"; };
 		59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_canon.m; sourceTree = "<group>"; };
 		59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
@@ -11349,6 +11350,7 @@
 			isa = PBXGroup;
 			children = (
 				594107C81EC8E30900C44F92 /* README.md */,
+				59DEC8D321AF5DAA00BF7958 /* Makefile.inc */,
 				9D9EA6A21DBE1F7300E11841 /* indigo_ccd_atik.h */,
 				9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */,
 				9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */,

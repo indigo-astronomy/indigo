@@ -222,7 +222,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
 					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
 					DEFAULT_BPP,
-					false, keywords
+					true, true, keywords
 				);
 			} else {
 				indigo_process_image(
@@ -231,7 +231,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
 					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
 					DEFAULT_BPP,
-					false, NULL
+					true, true, NULL
 				);
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
