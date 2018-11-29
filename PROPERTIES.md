@@ -75,6 +75,7 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 <tr><td></td><td></td><td></td><td></td><td>FLAT</td><td>yes</td><td></td></tr>
 <tr><td>CCD_IMAGE_FORMAT</td><td>switch</td><td>no</td><td>yes</td><td>RAW</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>FITS</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>XISF</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>JPEG</td><td>yes</td><td></td></tr>
 <tr><td>CCD_IMAGE_FILE</td><td>text</td><td>no</td><td>yes</td><td>FILE</td><td>yes</td><td></td></tr>
 <tr><td>CCD_TEMPERATURE</td><td>number</td><td></td><td>no</td><td>TEMPERATURE</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
@@ -230,6 +231,24 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 <tr><td></td><td></td><td></td><td></td><td>OUTLET_2</td><td>no</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>OUTLET_3</td><td>no</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>OUTLET_4</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_USB_PORT</td><td>switch</td><td>no</td><td>no</td><td>PORT_1</td><td>yes</td><td>Enable USB ports on smart hub</td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_2</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_3</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_4</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_5</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_6</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_7</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_8</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_USB_PORT_STATE</td><td>light</td><td>yes</td><td>no</td><td>PORT_1</td><td>yes</td><td>USB port state (IDLE = unused or disabled, OK = used, BUSY = transient state, ALERT = over-current etc.)</td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_2</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_3</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_4</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_5</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_6</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_7</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PORT_8</td><td>no</td><td></td></tr>
 
 <tr><td>AUX_DEW_CONTROL</td><td>switch</td><td>no</td><td>no</td><td>MANUAL</td><td>yes</td><td>Use AUX_HEATER_OUTLET values</td></tr>
 <tr><td></td><td></td><td></td><td></td><td>AUTOMATIC</td><td>yes</td><td>Set power automatically</td></tr>
