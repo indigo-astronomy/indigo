@@ -176,9 +176,9 @@ endif
 
 $(SDK_DIR)/Makefile: $(SDK_CONFIGURE)
 ifneq ($(SDK_LIB_A),)
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; export = DYLD_LIBRARY_PATH=$(BUILD_LIB); cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=no --enable-static=yes $(CONFIGURE_FLAGS)
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; export DYLD_LIBRARY_PATH=$(BUILD_LIB); cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=no --enable-static=yes $(CONFIGURE_FLAGS)
 else
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; export = DYLD_LIBRARY_PATH=$(BUILD_LIB); cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=yes --enable-static=no $(CONFIGURE_FLAGS)
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; export DYLD_LIBRARY_PATH=$(BUILD_LIB); cd $(SDK_DIR); ./configure --prefix=$(abspath $(SDK_DIR)/build) --enable-shared=yes --enable-static=no $(CONFIGURE_FLAGS)
 endif
 
 $(SDK_DIR)/configure: $(SDK_CONFIGURE_IN)
