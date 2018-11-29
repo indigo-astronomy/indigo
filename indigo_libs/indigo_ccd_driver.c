@@ -826,7 +826,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		} else if (naxis == 3 && byte_per_pixel == 1) {
 			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		} else if (naxis == 3 && byte_per_pixel == 2) {
-			sprintf(header, "<Image geometry='%d:%d:6' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		}
 		header += strlen(header);
 		sprintf(header, "<Property id='Observation:Time:End' type='TimePoint' value='%s'/>", now);
