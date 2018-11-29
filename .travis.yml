@@ -52,5 +52,5 @@ before_install:
 
 script:
   - make
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make package && sudo dpkg --install indigo*.deb ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make package && sudo dpkg --install indigo*.deb && sudo ldconfig ; fi
   - indigo_test/test_suite.sh

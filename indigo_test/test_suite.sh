@@ -24,6 +24,7 @@ INDIGO_DRIVERS_PATH="${INDIGO_PATH}/build/drivers"
 INDIGO_SERVER="${INDIGO_PATH}/build/bin/indigo_server"
 INDIGO_PROP_TOOL="${INDIGO_PATH}/build/bin/indigo_prop_tool"
 INDIGO_SERVER_PID=0
+LD_LIBRARY_PATH="${INDIGO_PATH}/indigo_drivers/ccd_iidc/externals/libdc1394/build/lib"
 
 #---------------- INDIGO functions -----------------#
 __start_indigo_server() {
@@ -52,9 +53,13 @@ __test_load_drivers() {
     local N=1
 
     __log "INFO: Starting test_load_drivers"
-    # Skip iidc driver due to issue with library not found.
-    # Skip sbig due to external drivers for macos are needed.
-    for n in `find ${INDIGO_DRIVERS_PATH} -type f -not -name "*.so" -not -name "*.a" -not -name "*.dylib" -not -name "*indigo_ccd_iidc*" -not -name "*indigo_ccd_sbig*"`;
+    # Skip SBIG due to external driver (in form of DMG file) for MacOS is needed.
+    for n in $(find ${INDIGO_DRIVERS_PATH} -type f \
+		    -not -name "*.so" \
+    	     	    -not -name "*.a" \
+		    -not -name "*.dylib" \
+		    -not -name "*indigo_ccd_sbig*" \
+	      );
     do
 	DRIVER=`basename ${n}`
 	${INDIGO_PROP_TOOL} "Server.LOAD.DRIVER=${DRIVER}"
