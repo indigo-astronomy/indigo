@@ -149,6 +149,7 @@
 		59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 59DD69D21FC1DC4900AEF0DF /* indigo_dome_simulator.h */; };
 		59DD69D71FC1DC4900AEF0DF /* indigo_dome_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59DD69D41FC1DC4900AEF0DF /* indigo_dome_simulator.c */; };
 		59DEC8D121ADE05C00BF7958 /* libnexstar.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59DEC8CC21ADE04D00BF7958 /* libnexstar.a */; };
+		59DEC8DD21B0685700BF7958 /* libdc1394.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59DEC8DC21B0684700BF7958 /* libdc1394.dylib */; };
 		59E38B531F1577A000187839 /* indigo_ica_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59E38B4F1F1577A000187839 /* indigo_ica_ptp_canon.h */; };
 		59E38B541F1577A000187839 /* indigo_ica_ptp_canon.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */; };
 		59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */; };
@@ -345,7 +346,6 @@
 		9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
 		9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
 		9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34741DCB270200588DB9 /* libstdc++.tbd */; };
-		9DC7830521A705D7009859FD /* libdc1394.22.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DC7830421A705D7009859FD /* libdc1394.22.dylib */; };
 		9DC7830721A7072C009859FD /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 9DC7830621A7072B009859FD /* Makefile */; };
 		9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
@@ -3459,6 +3459,7 @@
 		59DEC8CC21ADE04D00BF7958 /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libnexstar.a; sourceTree = "<group>"; };
 		59DEC8D021ADE04D00BF7958 /* libnexstar.7 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libnexstar.7; sourceTree = "<group>"; };
 		59DEC8D321AF5DAA00BF7958 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		59DEC8DC21B0684700BF7958 /* libdc1394.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libdc1394.dylib; sourceTree = "<group>"; };
 		59E38B4F1F1577A000187839 /* indigo_ica_ptp_canon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_canon.h; sourceTree = "<group>"; };
 		59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_canon.m; sourceTree = "<group>"; };
 		59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
@@ -4212,7 +4213,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9DC7830521A705D7009859FD /* libdc1394.22.dylib in Frameworks */,
 				59DEC8D121ADE05C00BF7958 /* libnexstar.a in Frameworks */,
 				59AAF37A21A743F900EFBB61 /* libASICamera2.a in Frameworks */,
 				591B017521A49F55006A1CD8 /* libaltaircam.dylib in Frameworks */,
@@ -4227,6 +4227,7 @@
 				59F756251DCE5022002CFC82 /* libusb.dylib in Frameworks */,
 				59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */,
 				59AAF37821A743BA00EFBB61 /* libEFWFilter.a in Frameworks */,
+				59DEC8DD21B0685700BF7958 /* libdc1394.dylib in Frameworks */,
 				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
 				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
 				9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */,
@@ -7786,8 +7787,10 @@
 			isa = PBXGroup;
 			children = (
 				9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */,
+				59DEC8DC21B0684700BF7958 /* libdc1394.dylib */,
 			);
-			path = externals;
+			name = externals;
+			path = build/lib;
 			sourceTree = "<group>";
 		};
 		59C8E7F71DBBDF2200AA3F0A /* wheel_sx */ = {
