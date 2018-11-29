@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/indigo-astronomy/indigo.svg?branch=master)](https://travis-ci.org/indigo-astronomy/indigo)
+[![Tag Version](https://img.shields.io/github/tag/indigo-astronomy/indigo.svg)](https://github.com/indigo-astronomy/indigo/tags)
+
 # INDIGO is the next generation of INDI, based on layered architecture and software bus.
 
 This is the list of requirements taken into the consideration:
@@ -7,6 +10,7 @@ This is the list of requirements taken into the consideration:
 3. Layered architecture to allow direct linking of the drivers into applications and or to replace wire protocol.
 4. Atomic approach to device drivers. E.g. if camera has imaging and guiding chip, driver should expose two independent simple devices instead of one complex. It is much easier and transparent for client.
 5. Drivers should support hot-plug at least for USB devices. If device is connected/disconnected while driver is running, its properties should appear/disappear on the bus.
+6. FITS, XISF, JPEG and RAW format supported directly by the framework.
 
 ## This is already done
 
@@ -117,8 +121,3 @@ Install XCode and download and build autoconf, automake and libtool (use tools/c
 `build/bin/indigo_server -v -s`
 
 and connect from any INDIGO/INDI client or web browser to localhost on port 7624...
-
-## Travis-CI status
-
-[![Build Status](https://travis-ci.org/indigo-astronomy/indigo.svg?branch=master)](https://travis-ci.org/indigo-astronomy/indigo)
-[![Tag Version](https://img.shields.io/github/tag/indigo-astronomy/indigo.svg)](https://github.com/indigo-astronomy/indigo/tags)
