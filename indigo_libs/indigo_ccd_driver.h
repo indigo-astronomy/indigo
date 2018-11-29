@@ -326,7 +326,7 @@ typedef struct {
  RAW image type
  */
 
-typedef enum { INDIGO_RAW_MONO8 = 0x31574152, INDIGO_RAW_MONO16 = 0x32574152, INDIGO_RAW_RGB24 = 0x33574152 } indigo_raw_type;
+typedef enum { INDIGO_RAW_MONO8 = 0x31574152, INDIGO_RAW_MONO16 = 0x32574152, INDIGO_RAW_RGB24 = 0x33574152, INDIGO_RAW_RGB48 = 0x36574152 } indigo_raw_type;
 
 /** CCD device context structure.
  */
@@ -398,7 +398,7 @@ typedef struct {
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
-extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, indigo_fits_keyword *keywords);
+extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords);
 
 /** Process DSLR image in image buffer (starting on data).
  */
