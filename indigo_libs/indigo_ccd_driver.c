@@ -604,10 +604,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(clock_t start = clock());
 		time_t timer;
 		struct tm* tm_info;
-		char now[20];
+		char date_time_end[20];
 		time(&timer);
 		tm_info = gmtime(&timer);
-		strftime(now, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
+		strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
 		char *header = data;
 		memset(header, ' ', FITS_HEADER_SIZE);
 		int t = sprintf(header, "SIMPLE  =                    T / file conforms to FITS standard");
@@ -680,7 +680,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			t = sprintf(header += 80, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
 			header[t] = ' ';
 		}
-		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", now);
+		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
 		header[t] = ' ';
 		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		header[t] = ' ';
@@ -802,10 +802,13 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(clock_t start = clock());
 		time_t timer;
 		struct tm* tm_info;
-		char now[21];
+		char date_time_end[21], date_time_start[21];
 		time(&timer);
 		tm_info = gmtime(&timer);
-		strftime(now, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
+		strftime(date_time_end, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
+		timer -= CCD_EXPOSURE_ITEM->number.target;
+		tm_info = gmtime(&timer);
+		strftime(date_time_start, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
 		char *header = data;
 		strcpy(header, "XISF0100");
 		header += 16;
@@ -829,7 +832,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		}
 		header += strlen(header);
-		sprintf(header, "<Property id='Observation:Time:End' type='TimePoint' value='%s'/>", now);
+		sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
 		header += strlen(header);
 		sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
 		header += strlen(header);
@@ -866,7 +869,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				keywords++;
 			}
 		}
-		sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%d</Property>", now, INDIGO_BUILD);
+		sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%d</Property>", date_time_end, INDIGO_BUILD);
 		header += strlen(header);
 #ifdef INDIGO_LINUX
 		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
@@ -890,7 +893,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 			}
 		} else if (naxis == 3 && byte_per_pixel == 1) {
-			if (!byte_order_rgb) { // TODO: verify the correct byte order for RGB24 in XISF
+			if (!byte_order_rgb) {
 				unsigned char *b8 = data + FITS_HEADER_SIZE;
 				for (int i = 0; i < size; i++) {
 					unsigned char b = *b8;
