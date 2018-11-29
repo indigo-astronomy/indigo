@@ -1900,6 +1900,7 @@ static indigo_result guider_detach(indigo_device *device) {
 static void dome_state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static bool first_call = true;
+	static double prev_dome_az = 0;
 	char *descrs, *descr;
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
@@ -1908,13 +1909,13 @@ static void dome_state_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
 		DOME_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STATE_PROPERTY, "Could not read Global Status");
-		goto RESCHEDULE_TIMER;
+		goto DOPO;
 	}
 
 	if (first_call || (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state) ||
-	   (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
+	   (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating DOME_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
-		DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		ascol_get_dome_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(DOME_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
@@ -1922,25 +1923,48 @@ static void dome_state_timer_callback(indigo_device *device) {
 		if (PRIVATE_DATA->glst.dome_state == DOME_STATE_OFF) {
 			DOME_ON_ITEM->sw.value = false;
 			DOME_OFF_ITEM->sw.value = true;
-			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else if((PRIVATE_DATA->glst.dome_state == DOME_STATE_STOP) ||
 		          (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP)) {
 			DOME_ON_ITEM->sw.value = true;
 			DOME_OFF_ITEM->sw.value = false;
-			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			DOME_ON_ITEM->sw.value = true;
 			DOME_OFF_ITEM->sw.value = false;
-			DOME_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+			DOME_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
+		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
+
+		if (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) {
+			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
+		}
 	}
 	/* should be copied every time as there are several properties
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
 
-	RESCHEDULE_TIMER:
+	DOPO:
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_DOPO(PRIVATE_DATA->dev_id, &DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOPO(%d) = %d", PRIVATE_DATA->dev_id, res);
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Could not read Dome Position");
+		goto RESCHEDULE_TIMER;
+	}
+	if (first_call || (prev_dome_az != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) ||
+	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+	}
+
+	RESCHEDULE_TIMER:
 	first_call = false;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->dome_state_timer);
 }
@@ -1966,6 +1990,27 @@ static void mount_handle_dome_power(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOON(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
+}
+
+
+static void dome_handle_coordinates(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+
+	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	/* GOTO requested */
+	res = ascol_DOSA(PRIVATE_DATA->dev_id, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOSA(%d) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_DOGA(PRIVATE_DATA->dev_id);
+		if (res != INDIGO_OK) {
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOGA(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 }
 
 
@@ -2122,6 +2167,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0.5, dome_timer_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
+			dome_handle_coordinates(device);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
