@@ -891,6 +891,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
+			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
+			indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 		}
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
