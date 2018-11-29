@@ -225,7 +225,7 @@ static void exposure_timer_callback(indigo_device *device) {
         }
         err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
         INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, NULL);
+        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, true, NULL);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			} else {
@@ -271,7 +271,7 @@ static void streaming_timer_callback(indigo_device *device) {
         }
         err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
         INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, NULL);
+        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, true, NULL);
 			} else {
         if (frame != NULL) {
           err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
