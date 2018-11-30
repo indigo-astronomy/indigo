@@ -1909,6 +1909,7 @@ static indigo_result guider_detach(indigo_device *device) {
 static void dome_state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static bool first_call = true;
+	static bool update_horizontal = false;
 	static double prev_dome_az = 0;
 	char *descrs, *descr;
 
@@ -1923,6 +1924,7 @@ static void dome_state_timer_callback(indigo_device *device) {
 
 	if (first_call || (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state) ||
 	   (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (DOME_AUTO_MODE_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating DOME_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		ascol_get_dome_state(PRIVATE_DATA->glst, &descr, &descrs);
@@ -1934,12 +1936,14 @@ static void dome_state_timer_callback(indigo_device *device) {
 			DOME_OFF_ITEM->sw.value = true;
 			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			update_horizontal = true;
 		} else if((PRIVATE_DATA->glst.dome_state == DOME_STATE_STOP) ||
 		          (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP)) {
 			DOME_ON_ITEM->sw.value = true;
 			DOME_OFF_ITEM->sw.value = false;
 			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			update_horizontal = true;
 		} else {
 			DOME_ON_ITEM->sw.value = true;
 			DOME_OFF_ITEM->sw.value = false;
@@ -1951,6 +1955,10 @@ static void dome_state_timer_callback(indigo_device *device) {
 		if (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) {
 			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
+		}
+		if (DOME_AUTO_MODE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			DOME_AUTO_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
 		}
 	}
 	/* should be copied every time as there are several properties
@@ -1968,9 +1976,11 @@ static void dome_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Could not read Dome Position");
 		goto RESCHEDULE_TIMER;
 	}
-	if (first_call || (prev_dome_az != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) ||
+	if (first_call || update_horizontal ||
+	   (prev_dome_az != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) ||
 	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		update_horizontal = false;
 	}
 
 	RESCHEDULE_TIMER:
