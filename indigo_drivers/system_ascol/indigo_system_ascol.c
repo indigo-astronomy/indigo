@@ -1977,6 +1977,23 @@ static void dome_state_timer_callback(indigo_device *device) {
 			indigo_update_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
 		}
 	}
+
+	if (update_all || (prev_glst.slit_state != PRIVATE_DATA->glst.slit_state) ||
+	   (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		if (PRIVATE_DATA->glst.slit_state == SF_STATE_OPEN) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+			DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+		} else if (PRIVATE_DATA->glst.slit_state == SF_STATE_CLOSE) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+			DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
+		} else {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+	}
+
 	/* should be copied every time as there are several properties
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
@@ -2048,6 +2065,29 @@ static void dome_handle_auto_mode(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOAM(%d) /ascol_DOST() = %d", PRIVATE_DATA->dev_id, res);
 	}
 	indigo_update_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
+}
+
+
+static void dome_handle_slit(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
+		res = ascol_DOSO(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOSO(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_DOSO(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOSO(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		DOME_SHUTTER_OPENED_ITEM->sw.value = !DOME_SHUTTER_OPENED_ITEM->sw.value;
+		DOME_SHUTTER_CLOSED_ITEM->sw.value = !DOME_SHUTTER_CLOSED_ITEM->sw.value;
+		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOSO(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
 
 
@@ -2279,9 +2319,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
-		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
+			dome_handle_slit(device);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
