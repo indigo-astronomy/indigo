@@ -839,7 +839,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static ascol_oimv_t prev_oimv = {0};
 	static ascol_glme_t prev_glme = {0};
-	static bool first_call = true;
+	static bool update_all = true;
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
@@ -860,7 +860,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 
 	char *descr, *descrs;
 	int index;
-	if (first_call || memcmp(prev_glst.alarm_bits, PRIVATE_DATA->glst.alarm_bits, 10)) {
+	if (update_all || memcmp(prev_glst.alarm_bits, PRIVATE_DATA->glst.alarm_bits, 10)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating ALARM_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		ALARM_PROPERTY->state = INDIGO_OK_STATE;
 		index = 0;
@@ -880,7 +880,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, ALARM_PROPERTY, NULL);
 	}
 
-	if (first_call || (prev_glst.state_bits != PRIVATE_DATA->glst.state_bits)) {
+	if (update_all || (prev_glst.state_bits != PRIVATE_DATA->glst.state_bits)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating AXIS_CALIBRATED_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		AXIS_CALIBRATED_PROPERTY->state = INDIGO_OK_STATE;
 		if(IS_RA_CALIBRATED(PRIVATE_DATA->glst)) {
@@ -898,7 +898,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
 	}
 
-	if (first_call || (prev_glst.oil_state != PRIVATE_DATA->glst.oil_state) ||
+	if (update_all || (prev_glst.oil_state != PRIVATE_DATA->glst.oil_state) ||
 	   (OIL_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		OIL_STATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -922,7 +922,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, OIL_POWER_PROPERTY, NULL);
 	}
 
-	if (first_call || (prev_glst.telescope_state != PRIVATE_DATA->glst.telescope_state) ||
+	if (update_all || (prev_glst.telescope_state != PRIVATE_DATA->glst.telescope_state) ||
 	   (prev_glst.ra_axis_state != PRIVATE_DATA->glst.ra_axis_state) ||
 	   (prev_glst.de_axis_state != PRIVATE_DATA->glst.de_axis_state) ||
 	   (TELESCOPE_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
@@ -992,7 +992,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DEC_CALIBRATION_PROPERTY, NULL);
 	}
 
-	if (first_call || (IS_ABEARRATION_CORR(prev_glst) != IS_ABEARRATION_CORR(PRIVATE_DATA->glst)) ||
+	if (update_all || (IS_ABEARRATION_CORR(prev_glst) != IS_ABEARRATION_CORR(PRIVATE_DATA->glst)) ||
 	   (ABERRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		ABERRATION_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_ABEARRATION_CORR(PRIVATE_DATA->glst)) {
@@ -1005,7 +1005,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, ABERRATION_PROPERTY, NULL);
 	}
 
-	if (first_call || (IS_PRECESSION_CORR(prev_glst) != IS_PRECESSION_CORR(PRIVATE_DATA->glst)) ||
+	if (update_all || (IS_PRECESSION_CORR(prev_glst) != IS_PRECESSION_CORR(PRIVATE_DATA->glst)) ||
 	   (PRECESSION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		PRECESSION_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_PRECESSION_CORR(PRIVATE_DATA->glst)) {
@@ -1018,7 +1018,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, PRECESSION_PROPERTY, NULL);
 	}
 
-	if (first_call || (IS_REFRACTION_CORR(prev_glst) != IS_REFRACTION_CORR(PRIVATE_DATA->glst)) ||
+	if (update_all || (IS_REFRACTION_CORR(prev_glst) != IS_REFRACTION_CORR(PRIVATE_DATA->glst)) ||
 	   (REFRACTION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		REFRACTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_REFRACTION_CORR(PRIVATE_DATA->glst)) {
@@ -1031,7 +1031,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, REFRACTION_PROPERTY, NULL);
 	}
 
-	if (first_call || (IS_ERR_MODEL_CORR(prev_glst) != IS_ERR_MODEL_CORR(PRIVATE_DATA->glst)) ||
+	if (update_all || (IS_ERR_MODEL_CORR(prev_glst) != IS_ERR_MODEL_CORR(PRIVATE_DATA->glst)) ||
 	   (ERROR_CORRECTION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		ERROR_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_ERR_MODEL_CORR(PRIVATE_DATA->glst)) {
@@ -1044,17 +1044,17 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 	}
 
-	if (first_call || (prev_glst.selected_model_index != PRIVATE_DATA->glst.selected_model_index) ||
+	if (update_all || (prev_glst.selected_model_index != PRIVATE_DATA->glst.selected_model_index) ||
 	   (CORRECTION_MODEL_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		CORRECTION_MODEL_PROPERTY->state = INDIGO_OK_STATE;
-		if (!first_call && ((int)CORRECTION_MODEL_INDEX_ITEM->number.value != PRIVATE_DATA->glst.selected_model_index)) {
+		if (!update_all && ((int)CORRECTION_MODEL_INDEX_ITEM->number.value != PRIVATE_DATA->glst.selected_model_index)) {
 			CORRECTION_MODEL_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		CORRECTION_MODEL_INDEX_ITEM->number.value = (double)PRIVATE_DATA->glst.selected_model_index;
 		indigo_update_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 	}
 
-	if (first_call || (IS_GUIDE_MODE_ON(prev_glst) != IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) ||
+	if (update_all || (IS_GUIDE_MODE_ON(prev_glst) != IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) ||
 	   (GUIDE_MODE_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		GUIDE_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) {
@@ -1067,7 +1067,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, GUIDE_MODE_PROPERTY, NULL);
 	}
 
-	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
+	if (update_all || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
 	   (prev_glst.flap_coude_state != PRIVATE_DATA->glst.flap_coude_state)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating FLAP_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		FLAP_STATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1093,7 +1093,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		goto METEO_MEASURE;
 	}
 
-	if (first_call || memcmp(&prev_oimv, &PRIVATE_DATA->oimv, sizeof(prev_oimv))) {
+	if (update_all || memcmp(&prev_oimv, &PRIVATE_DATA->oimv, sizeof(prev_oimv))) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIMV_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		OIMV_PROPERTY->state = INDIGO_OK_STATE;
 		for (int index = 0; index < ASCOL_OIMV_N; index++) {
@@ -1114,7 +1114,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		goto UPDATE_RA_DE;
 	}
 
-	if (first_call || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
+	if (update_all || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating GLME_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		GLME_PROPERTY->state = INDIGO_OK_STATE;
 		for (int index = 0; index < ASCOL_GLME_N; index++) {
@@ -1151,7 +1151,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
 	RESCHEDULE_TIMER:
-	first_call = false;
+	update_all = false;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->mount_state_timer);
 }
 
@@ -1908,10 +1908,17 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static void dome_state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
-	static bool first_call = true;
+	static bool update_all = true;
 	static bool update_horizontal = false;
 	static double prev_dome_az = 0;
 	char *descrs, *descr;
+
+	if (DOME_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		update_all = true;
+		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		DOME_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
@@ -1922,7 +1929,7 @@ static void dome_state_timer_callback(indigo_device *device) {
 		goto DOPO;
 	}
 
-	if (first_call || (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state) ||
+	if (update_all || (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state) ||
 	   (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_AUTO_MODE_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
@@ -1937,8 +1944,8 @@ static void dome_state_timer_callback(indigo_device *device) {
 			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			update_horizontal = true;
-		} else if((PRIVATE_DATA->glst.dome_state == DOME_STATE_STOP) ||
-		          (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP)) {
+		} else if ((PRIVATE_DATA->glst.dome_state == DOME_STATE_STOP) ||
+		           (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP)) {
 			DOME_ON_ITEM->sw.value = true;
 			DOME_OFF_ITEM->sw.value = false;
 			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1952,12 +1959,21 @@ static void dome_state_timer_callback(indigo_device *device) {
 		}
 		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 
-		if (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (update_all || (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
 			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
 		}
-		if (DOME_AUTO_MODE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (update_all || (DOME_AUTO_MODE_PROPERTY->state == INDIGO_BUSY_STATE)) {
 			DOME_AUTO_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			if ((PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP) ||
+			    (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_MINUS) ||
+			    (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_PLUS)) {
+				DOME_AUTO_MODE_ON_ITEM->sw.value = true;
+				DOME_AUTO_MODE_OFF_ITEM->sw.value = false;
+			} else {
+				DOME_AUTO_MODE_ON_ITEM->sw.value = false;
+				DOME_AUTO_MODE_OFF_ITEM->sw.value = true;
+			}
 			indigo_update_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
 		}
 	}
@@ -1976,7 +1992,7 @@ static void dome_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Could not read Dome Position");
 		goto RESCHEDULE_TIMER;
 	}
-	if (first_call || update_horizontal ||
+	if (update_all || update_horizontal ||
 	   (prev_dome_az != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) ||
 	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -1984,12 +2000,12 @@ static void dome_state_timer_callback(indigo_device *device) {
 	}
 
 	RESCHEDULE_TIMER:
-	first_call = false;
+	update_all = false;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->dome_state_timer);
 }
 
 
-static void mount_handle_dome_power(indigo_device *device) {
+static void dome_handle_power(indigo_device *device) {
 	int res = ASCOL_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (DOME_ON_ITEM->sw.value) {
@@ -2012,7 +2028,7 @@ static void mount_handle_dome_power(indigo_device *device) {
 }
 
 
-static void mount_handle_dome_auto_mode(indigo_device *device) {
+static void dome_handle_auto_mode(indigo_device *device) {
 	int res = ASCOL_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (DOME_AUTO_MODE_ON_ITEM->sw.value) {
@@ -2035,12 +2051,30 @@ static void mount_handle_dome_auto_mode(indigo_device *device) {
 }
 
 
+static void dome_handle_abort(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (DOME_ABORT_MOTION_ITEM->sw.value) {
+		res = ascol_DOST(PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOST(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOAM(%d) /ascol_DOST() = %d", PRIVATE_DATA->dev_id, res);
+	}
+	//DOME_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+}
+
+
 static void dome_handle_coordinates(indigo_device *device) {
 	int res = INDIGO_OK;
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	res = ascol_DOSA(PRIVATE_DATA->dev_id, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target);
 	if (res != INDIGO_OK) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2053,6 +2087,7 @@ static void dome_handle_coordinates(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 }
 
 
@@ -2202,14 +2237,14 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_POWER_PROPERTY
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(DOME_POWER_PROPERTY, property, false);
-			mount_handle_dome_power(device);
+			dome_handle_power(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_AUTO_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_AUTO_MODE_PROPERTY
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(DOME_AUTO_MODE_PROPERTY, property, false);
-			mount_handle_dome_auto_mode(device);
+			dome_handle_auto_mode(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
@@ -2237,15 +2272,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
-		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
-		if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
+			dome_handle_abort(device);
 		}
-		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		DOME_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
