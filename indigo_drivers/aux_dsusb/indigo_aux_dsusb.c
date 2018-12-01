@@ -23,7 +23,7 @@
  \file indigo_aux_dsusb.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_dsusb"
 
 #include <stdlib.h>
@@ -140,6 +140,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(X_CCD_EXPOSURE_PROPERTY, property, false);
 		if (X_CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
 			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			libdsusb_focus(PRIVATE_DATA->device_context);
+			usleep(100000);
 			libdsusb_start(PRIVATE_DATA->device_context);
 			PRIVATE_DATA->timer_callback = indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 		}
@@ -246,7 +248,7 @@ indigo_result indigo_aux_dsusb(indigo_driver_action action, indigo_driver_info *
 	libdsusb_debug = &debug;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Shoestring DSUSB shutter", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	SET_DRIVER_INFO(info, "Shoestring DSUSB shutter release", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
