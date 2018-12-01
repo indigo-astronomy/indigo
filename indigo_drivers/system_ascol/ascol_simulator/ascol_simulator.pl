@@ -1300,7 +1300,11 @@ sub main() {
 			if ($cmd[0] eq "DOGR") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
-				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
+				if (($do_state == DO_OFF) || ($do_state == DO_AUTO_PLUS) ||
+				    ($do_state == DO_AUTO_MINUS) || ($do_state == DO_AUTO_STOP)) {
+					print_client($client, "1\n");
+					next;
+				}
 				if ($do_pos > 0) {
 					$do_state = DO_SLEW_PLUS;
 				} else {
@@ -1315,7 +1319,11 @@ sub main() {
 			if ($cmd[0] eq "DOGA") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
-				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
+				if (($do_state == DO_OFF) || ($do_state == DO_AUTO_PLUS) ||
+				    ($do_state == DO_AUTO_MINUS) || ($do_state == DO_AUTO_STOP)) {
+					print_client($client, "1\n");
+					next;
+				}
 				if ($do_pos > ($do_pos_cur + 180.0) % 360) {
 					$do_state = DO_SLEW_MINUS;
 				} else {
@@ -1329,7 +1337,12 @@ sub main() {
 			if ($cmd[0] eq "DOAM") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
-				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
+				if (($do_state == DO_OFF) ||
+				    ($do_state == DO_SLEW_MINUS) ||
+				    ($do_state == DO_SLEW_PLUS)) {
+					print_client($client, "1\n");
+					next;
+				}
 				if ($west) {
 					$do_state = DO_AUTO_PLUS;
 				} else {
