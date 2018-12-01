@@ -31,6 +31,32 @@ __bin_exists() {
     [[ ! -f ${1} ]] && { __log_error "cannot find binary '${1}'" ; exit 1; }
 }
 
+__hash_func() {
+    __hash_index "${1}" || echo ${HASH_VALS[$?]}
+}
+
+__hash_index() {
+    case ${1} in
+        'indigo_ccd_simulator') return 1;;
+        'indigo_ccd_asi') return 2;;
+        'indigo_ccd_ica') return 3;;
+	'indigo_ccd_qhy') return 4;;
+	'indigo_ccd_atik') return 5;;
+	'indigo_ccd_dsi') return 6;;
+	'indigo_ccd_altair') return 7;;
+	'indigo_ccd_fli') return 8;;
+	'indigo_ccd_iidc') return 9;;
+	'indigo_ccd_qsi') return 10;;
+	'indigo_ccd_mi') return 11;;
+	'indigo_ccd_sbig') return 12;;
+	'indigo_ccd_sx') return 13;;
+	'indigo_ccd_touptek') return 14;;
+	'indigo_ccd_apogee') return 15;;
+	'indigo_ccd_ssag') return 16;;
+	'indigo_ccd_gphoto2') return 17;;
+    esac
+}
+
 __usage() {
     echo -e "usage: ${0}\n" \
 	   "\t-t, --travis-test\n" \
@@ -39,6 +65,25 @@ __usage() {
     exit 1
 }
 
+HASH_VALS=("",
+           "Camera Simulator"
+           "ZWO ASI Camera"
+           "ICA Camera"
+	   "QHY Camera"
+	   "Atik Camera"
+	   "Meade DSI Camera"
+	   "AltairAstro Camera"
+	   "FLI Camera"
+	   "IIDC Compatible Camera"
+	   "QSI Camera"
+	   "Moravian Instruments Camera"
+	   "SBIG Camera"
+	   "Starlight Xpress Camera"
+	   "ToupTek Camera"
+	   "Apogee Camera"
+	   "SSAG/QHY5 Camera"
+	   "Gphoto2 Camera")
+
 INDIGO_TEST_PATH=$(dirname $(__realpath $0))
 INDIGO_PATH="${INDIGO_TEST_PATH}/.."
 INDIGO_DRIVERS_PATH="${INDIGO_PATH}/build/drivers"
@@ -46,24 +91,6 @@ INDIGO_SERVER="${INDIGO_PATH}/build/bin/indigo_server"
 INDIGO_PROP_TOOL="${INDIGO_PATH}/build/bin/indigo_prop_tool"
 INDIGO_SERVER_PID=0
 LD_LIBRARY_PATH="${INDIGO_PATH}/indigo_drivers/ccd_iidc/externals/libdc1394/build/lib"
-declare -A DRIVER_NAME=(
-    [indigo_ccd_simulator]="Camera Simulator" 
-    [indigo_ccd_asi]="ZWO ASI Camera"
-    [indigo_ccd_ica]="ICA Camera"
-    [indigo_ccd_qhy]="QHY Camera"
-    [indigo_ccd_atik]="Atik Camera"
-    [indigo_ccd_dsi]="Meade DSI Camera"
-    [indigo_ccd_altair]="AltairAstro Camera"
-    [indigo_ccd_fli]="FLI Camera"
-    [indigo_ccd_iidc]="IIDC Compatible Camera"
-    [indigo_ccd_qsi]="QSI Camera"
-    [indigo_ccd_mi]="Moravian Instruments Camera"
-    [indigo_ccd_sbig]="SBIG Camera"
-    [indigo_ccd_sx]="Starlight Xpress Camera"
-    [indigo_ccd_touptek]="ToupTek Camera"
-    [indigo_ccd_apogee]="Apogee Camera"
-    [indigo_ccd_ssag]="SSAG/QHY5 Camera"
-    [indigo_ccd_gphoto2]="Gphoto2 Camera")
 
 #---------------- INDIGO functions -----------------#
 __start_indigo_server() {
@@ -132,7 +159,8 @@ __test_load_drivers() {
 __test_capture() {
 
     [[ "$#" -ne 1 ]] && { log_error "wrong number of arguments"; exit 1; }
-    [[ ! ${DRIVER_NAME[${1}]+_} ]] && { echo "driver '${1}' does not exist test suite"; exit 1; }
+    [[ -z $(__hash_func "${1}") ]] &&
+	{ echo "driver '${1}' does not exist test suite"; exit 1; }
 
     local TMPDIR="$(mktemp -q -d -t "$(basename "$0").XXXXXX" 2>/dev/null || mktemp -q -d)/"
     # Note, if longer exposure times are added, then make sure the
@@ -142,7 +170,7 @@ __test_capture() {
     # Load CCD driver.
     __set_verify_property "Server.LOAD.DRIVER=${1}" \
     			  "Server.DRIVERS" \
-    			  "${DRIVER_NAME[${1}]} = ON" \
+			  "$(__hash_func ${1}) = ON" \
     			  "1"
 
     # Verify driver is loaded.
@@ -182,7 +210,7 @@ __test_capture() {
 	# Check FITS file exists.
 	fn="${TMPDIR}IMAGE_$(printf "%03d" ${cnt}).fits"
 	[[ ! -f  ${fn} ]] && { echo "exposure '${e} secs' failed, FIT file '${fn}' does not exist"; exit 1; }
-	__log_info "FIT file '${fn}' of size $(stat --printf="%s" ${fn}) bytes successfully created"
+	__log_info "FIT file '${fn}' of size $(wc -c ${fn} | awk '{print $1}') bytes successfully created"
 	
     done
 }
@@ -213,13 +241,14 @@ do
 done
 
 # Check for missing arguments.
-[[ ${TRAVIS_TEST} -eq 0 ]] && [[ -z "${CAPTURE_TEST}" ]] && { echo "missing which test to run"; __usage; }
+[[ ${TRAVIS_TEST} -eq 0 ]] && [[ -z "${CAPTURE_TEST}" ]] &&
+    { echo "missing which test to run"; __usage; }
 
 #------------------- Tests INDIGO ------------------#
 # If capture test is chosen, then first make sure we have in
 # assoziative array the proper mapping, before we start the indigo server.
-[[ ! -z "${CAPTURE_TEST}" ]] && [[ ! ${DRIVER_NAME[${CAPTURE_TEST}]+_} ]] \
-    && { echo "driver '${CAPTURE_TEST}' does not exist test suite"; exit 1; }
+[[ "${CAPTURE_TEST}" ]] && [[ -z $(__hash_func "${CAPTURE_TEST}") ]] &&
+    { echo "driver '${CAPTURE_TEST}' does not exist test suite"; exit 1; }
 
 __start_indigo_server
 
