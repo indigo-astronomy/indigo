@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 
 #include <stdio.h>
@@ -438,13 +438,14 @@ static double parse_shutterspeed(const char *s)
 	uint8_t cnt = 0;
 	char *token;
 	double nom_denom[2] = {0, 0};
-	char *str = NULL;
+	char *str;
+	char *saveptr;
 
 	str = strdup(s);
-	token = strtok(str, delim);
+	token = strtok_r(str, delim, &saveptr);
 	while (token != NULL) {
 		nom_denom[cnt++ % 2] = atof(token);
-		token = strtok(NULL, delim);
+		token = strtok_r(NULL, delim, &saveptr);
 	}
 
 	if (str)
@@ -571,10 +572,10 @@ static int enumerate_widget(const char *key, indigo_device *device,
 
 		char label[96] = {0};
 
-		strncpy(label, widget_choice, sizeof(label));
+		strncpy(label, widget_choice, sizeof(label) - 1);
 		if (!strcmp(property->name, DSLR_SHUTTER_PROPERTY_NAME)) {
 
-			double shutter_d = 0.0;
+			double shutter_d;
 			shutter_d = parse_shutterspeed(widget_choice);
 			if (shutter_d > 0.0)
 				snprintf(label, sizeof(label), "%f", shutter_d);
@@ -789,7 +790,6 @@ static void counter_timer_callback(indigo_device *device)
 
 static void exposure_timer_callback(indigo_device *device)
 {
-	int rc;
 	void *retval;
 
 	PRIVATE_DATA->counter_timer = NULL;
@@ -799,9 +799,10 @@ static void exposure_timer_callback(indigo_device *device)
 		return;
 
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		int rc;
+
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-
 		rc = pthread_join(thread_id_capture, &retval);
 		if (rc) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_join", rc);
@@ -1158,7 +1159,7 @@ static void *thread_capture(void *user_data)
 	memcpy(PRIVATE_DATA->buffer, buffer, buffer_size);
 	PRIVATE_DATA->buffer_size = buffer_size;
 
-	char *suffix = NULL;
+	char *suffix;
 
 	memset(PRIVATE_DATA->filename_suffix, 0,
 	       sizeof(PRIVATE_DATA->filename_suffix));
@@ -1249,7 +1250,6 @@ static void shutterspeed_closest(indigo_device *device)
 		return;
 
 	const double val = CCD_EXPOSURE_ITEM->number.value;
-	double number_shutter;
 
 	if (val < 0)
 		return;
@@ -1258,6 +1258,7 @@ static void shutterspeed_closest(indigo_device *device)
 			CCD_EXPOSURE_ITEM->number.value =
 			CCD_EXPOSURE_ITEM->number.min;
 	} else {
+		double number_shutter;
 		double number_closest = 3600;
 		int pos_new = 0;
 		int pos_old;
@@ -1901,7 +1902,7 @@ static int device_connect(indigo_device *gphoto2_template,
 			  const struct gphoto2_id_s *gphoto2_id, const int slot)
 {
 	int rc;
-	gphoto2_private_data *private_data = NULL;
+	gphoto2_private_data *private_data;
 	indigo_device *device = NULL;
 
 	private_data = calloc(1, sizeof(gphoto2_private_data));
@@ -2037,7 +2038,7 @@ out:
 
 static int device_detach(const struct gphoto2_id_s *gphoto2_id)
 {
-	int rc, slot;
+	int rc = -1, slot;
 	gphoto2_private_data *private_data = NULL;
 
 	slot = find_device_slot(gphoto2_id);
