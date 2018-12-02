@@ -177,4 +177,4 @@ ifeq ($(ARCH_DETECTED),x64)
 	rm -rf /tmp/libftd2xx-x86_64-1.4.6.tgz /tmp/release
 endif
 endif
-	ar -d $(BUILD_LIB)/libftd2xx.a  poll_posix.o core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o
+	ar -d $(BUILD_LIB)/libftd2xx.a core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o poll_posix.o threads_posix.o 
