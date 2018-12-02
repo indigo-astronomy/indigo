@@ -8,4 +8,4 @@ MAKE_SDK = $(SDK_LIB_A)
 SDK_CONFIGURE = $(SDK_DIR)/configure
 SDK_CONFIGURE_IN = $(SDK_DIR)/configure.ac
 
-LDFLAGS += -lstdc++ -lftd2xx -usb-1.0
+LDFLAGS += -lstdc++ -lftd2xx -lusb-1.0
