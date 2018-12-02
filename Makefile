@@ -152,6 +152,9 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 	@$(MAKE)	-C indigo_server install
 	@$(MAKE)	-C indigo_tools install
+ifeq ($(OS_DETECTED),Linux)
+	sudo udevadm control --reload-rules
+endif
 
 uninstall: reconfigure init
 	@$(MAKE)	-C indigo_libs uninstall
@@ -164,6 +167,9 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 	@$(MAKE)	-C indigo_server uninstall
 	@$(MAKE)	-C indigo_tools uninstall
+ifeq ($(OS_DETECTED),Linux)
+	sudo udevadm control --reload-rules
+endif
 
 ifeq ($(OS_DETECTED),Linux)
 package: INSTALL_ROOT = $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
