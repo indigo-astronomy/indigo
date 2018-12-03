@@ -58,8 +58,8 @@ static const char *oimv_units[] = {
 	"bar",
 	"%",
 	"%",
-	"deg C",
-	"deg C"
+	"°C",
+	"°C"
 };
 
 static const char *glme_descriptions[] = {
@@ -73,13 +73,13 @@ static const char *glme_descriptions[] = {
 };
 
 static const char *glme_units[] = {
-	"deg C",
+	"°C",
 	"hPa",
 	"%rh",
-	"deg C",
-	"deg C",
-	"deg C",
-	"deg C"
+	"°C",
+	"°C",
+	"°C",
+	"°C"
 };
 
 /* Oil state descriptions */
@@ -276,12 +276,12 @@ static const char *alarm_descr[] = {
 	"Horizontal limiting II. step absolute sensor",
 	"Horizontal limiting II. step relative sensor",
 	"Switched on jumper of limitation",
-	"Mercurial switch -8 degrees",
-	"Mercurial switch +8 degrees",
-	"Mercurial switch +/-4 degrees",
-	"Limiting of hour axis I -180 to 330 degrees absolute sensor",
+	"Mercurial switch -8°",
+	"Mercurial switch +8°",
+	"Mercurial switch +/-4°",
+	"Limiting of hour axis I -180° to 330° absolute sensor",
 	/* Bank 1 */
-	"Limiting of hour axis I -180 to 330 degrees relative sensor",
+	"Limiting of hour axis I -180° to 330° relative sensor",
 	"Limiting of hour axis - SH3",
 	"Limiting of hour axis - SH4",
 	"Alarm humidity level",
@@ -305,8 +305,8 @@ static const char *alarm_descr[] = {
 	"STOP on handler 3",
 	"STOP on handler 4",
 	"STOP on handler 5",
-	"Limiting of hour axis II -185 to 335 degrees",
-	"Limiting of declination axis II -30 to 210 degrees",
+	"Limiting of hour axis II -185° to 335°",
+	"Limiting of declination axis II -30° to 210°",
 	"Error: centering",
 	"Error: shutter of tube",
 	"Error: shutter of coude",
