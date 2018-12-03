@@ -141,29 +141,49 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_RULES)
 	install -d -m 0755 $(INSTALL_FIRMWARE)
 
+install: INSTALL_ROOT = /
+install: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
+install: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
+install: INSTALL_ETC = $(INSTALL_ROOT)/etc
+install: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
+install: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
+install: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 install: reconfigure init all
-	@$(MAKE)	-C indigo_libs install
-	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
+	@sudo $(MAKE)	-C indigo_libs install
+	@sudo $(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 ifeq ($(OS_DETECTED),Darwin)
-	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
+	@sudo $(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
 endif
 ifeq ($(OS_DETECTED),Linux)
-	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
+	@sudo $(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
-	@$(MAKE)	-C indigo_server install
-	@$(MAKE)	-C indigo_tools install
+	@sudo $(MAKE)	-C indigo_server install
+	@sudo $(MAKE)	-C indigo_tools install
+ifeq ($(OS_DETECTED),Linux)
+	sudo udevadm control --reload-rules
+endif
 
+uninstall: INSTALL_ROOT = /
+uninstall: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
+uninstall: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
+uninstall: INSTALL_ETC = $(INSTALL_ROOT)/etc
+uninstall: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
+uninstall: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
+uninstall: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 uninstall: reconfigure init
-	@$(MAKE)	-C indigo_libs uninstall
-	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
+	@sudo $(MAKE)	-C indigo_libs uninstall
+	@sudo $(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
 ifeq ($(OS_DETECTED),Darwin)
-	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs uninstall
+	@sudo $(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs uninstall
 endif
 ifeq ($(OS_DETECTED),Linux)
-	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs uninstall
+	@sudo $(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs uninstall
 endif
-	@$(MAKE)	-C indigo_server uninstall
-	@$(MAKE)	-C indigo_tools uninstall
+	@sudo $(MAKE)	-C indigo_server uninstall
+	@sudo $(MAKE)	-C indigo_tools uninstall
+ifeq ($(OS_DETECTED),Linux)
+	sudo udevadm control --reload-rules
+endif
 
 ifeq ($(OS_DETECTED),Linux)
 package: INSTALL_ROOT = $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
