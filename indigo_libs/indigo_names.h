@@ -1471,13 +1471,26 @@
 #define DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME							"ALT"
 
 //----------------------------------------------------------------------
-/** DOME_SYNC property name.
+/** DOME_AUTO_SYNC property name.
  */
-#define DOME_SYNC_PROPERTY_NAME						                    "DOME_SYNC"
+#define DOME_AUTO_SYNC_PROPERTY_NAME						                    "DOME_AUTO_SYNC"
 
-/** DOME_SYNC.THRESHOLD property item name.
+/** DOME_AUTO_SYNC.ENABLE property item name.
  */
-#define DOME_SYNC_THRESHOLD_ITEM_NAME							"THRESHOLD"
+#define DOME_AUTO_SYNC_ENABLE_ITEM_NAME							"ENABLE"
+
+/** DOME_AUTO_SYNC.DISABLE property item name.
+ */
+#define DOME_AUTO_SYNC_DISABLE_ITEM_NAME							"DISABLE"
+
+//----------------------------------------------------------------------
+/** DOME_SYNC_PARAMETERS property name.
+ */
+#define DOME_SYNC_PARAMETERS_PROPERTY_NAME					"DOME_SYNC_PARAMETERS"
+
+/** DOME_SYNC_PROPERTY.SYNC_THRESHOLD property item name.
+ */
+#define DOME_SYNC_THRESHOLD_ITEM_NAME						"SYNC_THRESHOLD"
 
 //----------------------------------------------------------------------
 /** DOME_ABORT_MOTION property name.
