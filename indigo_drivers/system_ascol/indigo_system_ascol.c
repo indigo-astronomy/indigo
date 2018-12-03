@@ -61,6 +61,7 @@
 #define TELESCOPE_STATE_GROUP              "Telescope Status"
 #define METEO_DATA_GROUP                   "Meteo Data"
 #define SWITCHES_GROUP                     "System Switches"
+#define OIL_GROUP                          "Oil"
 #define CORRECTIONS_GROUP                  "Corrections"
 
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
@@ -1210,7 +1211,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		}
 		ALARM_PROPERTY->count = index;
 		// --------------------------------------------------------------------------- OIL STATE
-		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, OIL_GROUP, "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
 		if (OIL_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(OIL_STATE_ITEM, OIL_STATE_ITEM_NAME, "State", "");
@@ -1231,7 +1232,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		char item_name[INDIGO_NAME_SIZE];
 		char item_label[INDIGO_NAME_SIZE];
 		// --------------------------------------------------------------------------- OIMV
-		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
+		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, OIL_GROUP, "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
 		if (OIMV_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -1259,7 +1260,7 @@ static indigo_result mount_attach(indigo_device *device) {
 			indigo_init_number_item(GLME_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
 		}
 		// -------------------------------------------------------------------------- OIL_POWER
-		OIL_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, OIL_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Oil Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		OIL_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, OIL_POWER_PROPERTY_NAME, OIL_GROUP, "Oil Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (OIL_POWER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
