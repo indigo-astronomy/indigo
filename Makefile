@@ -141,13 +141,6 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_RULES)
 	install -d -m 0755 $(INSTALL_FIRMWARE)
 
-install: INSTALL_ROOT = /
-install: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
-install: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
-install: INSTALL_ETC = $(INSTALL_ROOT)/etc
-install: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
-install: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
-install: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 install: reconfigure init all
 	@sudo $(MAKE)	-C indigo_libs install
 	@sudo $(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
@@ -163,13 +156,6 @@ ifeq ($(OS_DETECTED),Linux)
 	sudo udevadm control --reload-rules
 endif
 
-uninstall: INSTALL_ROOT = /
-uninstall: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
-uninstall: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
-uninstall: INSTALL_ETC = $(INSTALL_ROOT)/etc
-uninstall: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
-uninstall: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
-uninstall: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 uninstall: reconfigure init
 	@sudo $(MAKE)	-C indigo_libs uninstall
 	@sudo $(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
