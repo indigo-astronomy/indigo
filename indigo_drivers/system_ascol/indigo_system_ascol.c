@@ -187,13 +187,6 @@
 #define DOME_STATE_PROPERTY_NAME            "ASCOL_DOME_STATE"
 #define DOME_STATE_ITEM_NAME                "STATE"
 
-#define DOME_AUTO_MODE_PROPERTY            (PRIVATE_DATA->dome_auto_mode_property)
-#define DOME_AUTO_MODE_ON_ITEM             (DOME_AUTO_MODE_PROPERTY->items+0)
-#define DOME_AUTO_MODE_OFF_ITEM            (DOME_AUTO_MODE_PROPERTY->items+1)
-#define DOME_AUTO_MODE_PROPERTY_NAME       "ASCOL_DOME_AUTO_MODE"
-#define DOME_AUTO_MODE_ON_ITEM_NAME        "ON"
-#define DOME_AUTO_MODE_OFF_ITEM_NAME       "OFF"
-
 #define DOME_SHUTTER_STATE_PROPERTY         (PRIVATE_DATA->dome_shutter_state_property)
 #define DOME_SHUTTER_STATE_ITEM             (DOME_SHUTTER_STATE_PROPERTY->items+0)
 #define DOME_SHUTTER_STATE_PROPERTY_NAME    "ASCOL_DOME_SHUTTER_STATE"
@@ -245,7 +238,6 @@ typedef struct {
 	indigo_timer *dome_state_timer, *position_timer;
 	indigo_property *dome_power_property;
 	indigo_property *dome_state_property;
-	indigo_property *dome_auto_mode_property;
 	indigo_property *dome_shutter_state_property;
 
 } ascol_private_data;
@@ -1939,7 +1931,7 @@ static void dome_state_timer_callback(indigo_device *device) {
 
 	if (update_all || (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state) ||
 	   (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
-	   (DOME_AUTO_MODE_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (DOME_AUTO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating DOME_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		ascol_get_dome_state(PRIVATE_DATA->glst, &descr, &descrs);
@@ -1971,18 +1963,18 @@ static void dome_state_timer_callback(indigo_device *device) {
 			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
 		}
-		if (update_all || (DOME_AUTO_MODE_PROPERTY->state == INDIGO_BUSY_STATE)) {
-			DOME_AUTO_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (update_all || (DOME_AUTO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE)) {
+			DOME_AUTO_SYNC_PROPERTY->state = INDIGO_OK_STATE;
 			if ((PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP) ||
 			    (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_MINUS) ||
 			    (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_PLUS)) {
-				DOME_AUTO_MODE_ON_ITEM->sw.value = true;
-				DOME_AUTO_MODE_OFF_ITEM->sw.value = false;
+				DOME_AUTO_SYNC_ENABLE_ITEM->sw.value = true;
+				DOME_AUTO_SYNC_DISABLE_ITEM->sw.value = false;
 			} else {
-				DOME_AUTO_MODE_ON_ITEM->sw.value = false;
-				DOME_AUTO_MODE_OFF_ITEM->sw.value = true;
+				DOME_AUTO_SYNC_ENABLE_ITEM->sw.value = false;
+				DOME_AUTO_SYNC_DISABLE_ITEM->sw.value = true;
 			}
-			indigo_update_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
+			indigo_update_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
 		}
 	}
 
@@ -2062,7 +2054,7 @@ static void dome_handle_power(indigo_device *device) {
 static void dome_handle_auto_mode(indigo_device *device) {
 	int res = ASCOL_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	if (DOME_AUTO_MODE_ON_ITEM->sw.value) {
+	if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
 		res = ascol_DOAM(PRIVATE_DATA->dev_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOAM(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else {
@@ -2071,14 +2063,14 @@ static void dome_handle_auto_mode(indigo_device *device) {
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if(res == ASCOL_OK) {
-		DOME_AUTO_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+		DOME_AUTO_SYNC_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
-		DOME_AUTO_MODE_ON_ITEM->sw.value = !DOME_AUTO_MODE_ON_ITEM->sw.value;
-		DOME_AUTO_MODE_OFF_ITEM->sw.value = !DOME_AUTO_MODE_OFF_ITEM->sw.value;
-		DOME_AUTO_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_AUTO_SYNC_ENABLE_ITEM->sw.value = !DOME_AUTO_SYNC_ENABLE_ITEM->sw.value;
+		DOME_AUTO_SYNC_DISABLE_ITEM->sw.value = !DOME_AUTO_SYNC_DISABLE_ITEM->sw.value;
+		DOME_AUTO_SYNC_PROPERTY->state = INDIGO_ALERT_STATE;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOAM(%d) /ascol_DOST() = %d", PRIVATE_DATA->dev_id, res);
 	}
-	indigo_update_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
+	indigo_update_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
 }
 
 
@@ -2151,8 +2143,6 @@ static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indi
 			indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
 		if (indigo_property_match(DOME_STATE_PROPERTY, property))
 			indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
-		if (indigo_property_match(DOME_AUTO_MODE_PROPERTY, property))
-			indigo_define_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -2224,7 +2214,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
 		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
-		DOME_AUTO_SYNC_PROPERTY->hidden = true;
+		DOME_SYNC_PARAMETERS_PROPERTY->hidden = true;
 		DOME_SPEED_PROPERTY->hidden = true;
 
 		// -------------------------------------------------------------------------- DOME_POWER
@@ -2239,13 +2229,6 @@ static indigo_result dome_attach(indigo_device *device) {
 		if (DOME_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(DOME_STATE_ITEM, DOME_STATE_ITEM_NAME, "State", "");
-		// -------------------------------------------------------------------------- DOME_AUTO_MODE
-		DOME_AUTO_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_AUTO_MODE_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome Autotrack", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DOME_AUTO_MODE_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		indigo_init_switch_item(DOME_AUTO_MODE_ON_ITEM, DOME_AUTO_MODE_ON_ITEM_NAME, "On", false);
-		indigo_init_switch_item(DOME_AUTO_MODE_OFF_ITEM, DOME_AUTO_MODE_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------- DOME SHUTTER STATE
 		DOME_SHUTTER_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, DOME_SHUTTER_STATE_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome Shutter State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
 		if (DOME_SHUTTER_STATE_PROPERTY == NULL)
@@ -2272,7 +2255,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
 					indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
-					indigo_define_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
 					indigo_define_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
 					device->is_connected = true;
 					/* start updates */
@@ -2288,7 +2270,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				mount_close(device);
 				indigo_delete_property(device, DOME_POWER_PROPERTY, NULL);
 				indigo_delete_property(device, DOME_STATE_PROPERTY, NULL);
-				indigo_delete_property(device, DOME_AUTO_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2301,10 +2282,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			dome_handle_power(device);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_AUTO_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DOME_AUTO_MODE_PROPERTY
+	} else if (indigo_property_match(DOME_AUTO_SYNC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_AUTO_SYNC_PROPERTY
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(DOME_AUTO_MODE_PROPERTY, property, false);
+			indigo_property_copy_values(DOME_AUTO_SYNC_PROPERTY, property, false);
 			dome_handle_auto_mode(device);
 		}
 		return INDIGO_OK;
@@ -2386,7 +2367,6 @@ static indigo_result dome_detach(indigo_device *device) {
 	indigo_cancel_timer(device, &PRIVATE_DATA->dome_state_timer);
 	indigo_release_property(DOME_POWER_PROPERTY);
 	indigo_release_property(DOME_STATE_PROPERTY);
-	indigo_release_property(DOME_AUTO_MODE_PROPERTY);
 	indigo_release_property(DOME_SHUTTER_STATE_PROPERTY);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
