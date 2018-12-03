@@ -94,13 +94,26 @@ extern "C" {
  */
 #define DOME_HORIZONTAL_COORDINATES_ALT_ITEM								(DOME_HORIZONTAL_COORDINATES_PROPERTY->items+1)
 
-/** DOME_SYNC property pointer, property is optional, property change request should be fully handled by dome driver
+/** DOME_AUTO_SYNC property pointer, property is optional, property change request should be fully handled by dome driver
  */
-#define DOME_SYNC_PROPERTY			(DOME_CONTEXT->dome_sync_property)
+#define DOME_AUTO_SYNC_PROPERTY								(DOME_CONTEXT->dome_auto_sync_property)
 
-/** DOME_SYNC.THRESHOLD property item pointer.
+/** DOME_AUTO_SYNC.ENABLE property item pointer.
  */
-#define DOME_SYNC_THRESHOLD_ITEM								(DOME_SYNC_PROPERTY->items+0)
+#define DOME_AUTO_SYNC_ENABLE_ITEM							(DOME_AUTO_SYNC_PROPERTY->items+0)
+
+/** DOME_AUTO_SYNC.DISABLE property item pointer.
+ */
+#define DOME_AUTO_SYNC_DISABLE_ITEM							(DOME_AUTO_SYNC_PROPERTY->items+1)
+
+/** DOME_SYNC_PARAMETERS property pointer, property is optional, property change request should be fully handled by dome driver
+ */
+#define DOME_SYNC_PARAMETERS_PROPERTY						(DOME_CONTEXT->dome_sync_parameters_property)
+
+/** DOME_SYNC_PARAMETERS.THRESHOLD property item pointer.
+ */
+#define DOME_SYNC_THRESHOLD_ITEM							(DOME_SYNC_PARAMETERS_PROPERTY->items+0)
+
 
 /** DOME_ABORT_MOTION property pointer, property is optional, property change request should be fully handled by dome driver
  */
@@ -137,7 +150,7 @@ extern "C" {
 //----------------------------------------------
 /** DOME_DIMENSION property pointer, property is optional
  */
-#define DOME_DIMENSION_PROPERTY										(DOME_CONTEXT->dome_measurement_property)
+#define DOME_DIMENSION_PROPERTY										(DOME_CONTEXT->dome_dimension_property)
 
 /** DOME_DIMENSION.RADIUS property item pointer.
  */
@@ -182,7 +195,7 @@ extern "C" {
 /** DOME_SNOOP_DEVICES property pointer, property is optional.
  */
 #define DOME_SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->dome_snoop_devices_property)
-	
+
 /** DOME_SNOOP_DEVICES_PROPERTY.MOUNT property item pointer.
  */
 #define DOME_SNOOP_MOUNT_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+0)
@@ -190,7 +203,7 @@ extern "C" {
 /** DOME_SNOOP_DEVICES_PROPERTY.GPS property item pointer.
  */
 #define DOME_SNOOP_GPS_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+1)
-	
+
 
 /** Dome device context structure.
  */
@@ -201,11 +214,12 @@ typedef struct {
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
 	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
-	indigo_property *dome_sync_property;										///< DOME_SYNC property pointer
+	indigo_property *dome_auto_sync_property;										///< DOME_AUTO_SYNC property pointer
+	indigo_property *dome_sync_parameters_property;									///< DOME_SYNC_PARAMETERS property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
-	indigo_property *dome_measurement_property;							///< DOME_PARK property pointer
+	indigo_property *dome_dimension_property;							///< DOME_DIMENSION property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
 	indigo_property *dome_snoop_devices_property;								///< DOME_SNOOP_DEVICES property pointer
 	indigo_timer *sync_timer;

@@ -2224,7 +2224,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
 		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
-		DOME_SYNC_PROPERTY->hidden = true;
+		DOME_AUTO_SYNC_PROPERTY->hidden = true;
 		DOME_SPEED_PROPERTY->hidden = true;
 
 		// -------------------------------------------------------------------------- DOME_POWER
