@@ -234,7 +234,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(DEVICE_PRIVATE_DATA != NULL);
 	if (indigo_filter_device_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
-		strcpy(FILTER_DEVICE_LIST_PROPERTY->name, AGENT_CCD_LIST_PROPERTY_NAME);
+		strcpy(FILTER_DEVICE_LIST_PROPERTY->name, FILTER_CCD_LIST_PROPERTY_NAME);
 		strcpy(FILTER_DEVICE_LIST_PROPERTY->label, "Camera list");
 		// -------------------------------------------------------------------------------- Batch properties
 		AGENT_IMAGER_BATCH_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, "Batch", "Batch settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
@@ -263,6 +263,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_blob_item(AGENT_IMAGER_PREVIEW_IMAGE_ITEM, AGENT_IMAGER_PREVIEW_IMAGE_ITEM_NAME, "Image preview");
 		indigo_init_blob_item(AGENT_IMAGER_PREVIEW_HISTO_ITEM, AGENT_IMAGER_PREVIEW_HISTO_ITEM_NAME, "Image histogram");
+		// -------------------------------------------------------------------------------- Related decvices properties
+		FILTER_RELATED_WHEEL_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_FOCUSER_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_MOUNT_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_GUIDER_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_GPS_LIST_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -346,7 +352,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(AGENT_IMAGER_BATCH_PROPERTY);
-	indigo_define_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
+	indigo_release_property(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_PREVIEW_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);

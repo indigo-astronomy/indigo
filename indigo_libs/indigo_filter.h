@@ -49,7 +49,51 @@ extern "C" {
 
 #define FILTER_DEVICE_LIST_PROPERTY					(FILTER_DEVICE_CONTEXT->filter_device_list_property)
 
-/** Wheel device context structure.
+/** Related ccd list switch property.
+*/
+#define FILTER_RELATED_CCD_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_ccd_list_property)
+
+/** Related wheel list switch property.
+*/
+#define FILTER_RELATED_WHEEL_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_wheel_list_property)
+
+/** Related focuser list switch property.
+*/
+#define FILTER_RELATED_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_focuser_list_property)
+
+/** Related mount list switch property.
+*/
+#define FILTER_RELATED_MOUNT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_mount_list_property)
+
+/** Related guider list switch property.
+*/
+#define FILTER_RELATED_GUIDER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_guider_list_property)
+
+/** Related dome list switch property.
+*/
+#define FILTER_RELATED_DOME_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_dome_list_property)
+
+/** Related gps list switch property.
+*/
+#define FILTER_RELATED_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_gps_list_property)
+
+/** Related aux #1 list switch property.
+*/
+#define FILTER_RELATED_AUX_1_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_1_list_property)
+
+/** Related aux #2 list switch property.
+*/
+#define FILTER_RELATED_AUX_2_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_2_list_property)
+
+/** Related aux #3 list switch property.
+*/
+#define FILTER_RELATED_AUX_3_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_3_list_property)
+
+/** Related aux #4 list switch property.
+*/
+#define FILTER_RELATED_AUX_4_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_4_list_property)
+
+/** Filter device context structure.
  */
 typedef struct {
 	indigo_device_context device_context;       ///< device context base
@@ -57,7 +101,29 @@ typedef struct {
 	indigo_client *client;
 	indigo_device_interface device_interface;
 	char device_name[INDIGO_NAME_SIZE];
+	char related_ccd_name[INDIGO_NAME_SIZE];
+	char related_wheel_name[INDIGO_NAME_SIZE];
+	char related_focuser_name[INDIGO_NAME_SIZE];
+	char related_mount_name[INDIGO_NAME_SIZE];
+	char related_guider_name[INDIGO_NAME_SIZE];
+	char related_dome_name[INDIGO_NAME_SIZE];
+	char related_gps_name[INDIGO_NAME_SIZE];
+	char related_aux_1_name[INDIGO_NAME_SIZE];
+	char related_aux_2_name[INDIGO_NAME_SIZE];
+	char related_aux_3_name[INDIGO_NAME_SIZE];
+	char related_aux_4_name[INDIGO_NAME_SIZE];
 	indigo_property *filter_device_list_property;
+	indigo_property *filter_related_ccd_list_property;
+	indigo_property *filter_related_wheel_list_property;
+	indigo_property *filter_related_focuser_list_property;
+	indigo_property *filter_related_mount_list_property;
+	indigo_property *filter_related_guider_list_property;
+	indigo_property *filter_related_dome_list_property;
+	indigo_property *filter_related_gps_list_property;
+	indigo_property *filter_related_aux_1_list_property;
+	indigo_property *filter_related_aux_2_list_property;
+	indigo_property *filter_related_aux_3_list_property;
+	indigo_property *filter_related_aux_4_list_property;
 	indigo_property *device_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 } indigo_filter_context;
