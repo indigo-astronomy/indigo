@@ -88,8 +88,10 @@ use constant TE_CLU3_TIME => 26;
 my $te_tracking = 0;
 
 my $te_state = TE_OFF;
-my $te_rd_move_time = 0;
-my $te_hd_move_time = 0;
+my $te_rd_abs_move_time = 0;
+my $te_hd_abs_move_time = 0;
+my $te_rd_rel_move_time = 0;
+my $te_hd_rel_move_time = 0;
 
 # Hour Axis states
 use constant HA_STOP => 0;
@@ -197,14 +199,22 @@ my $client;
 
 my $set_ra = 0;
 my $set_de = 0;
-my $req_ra = 0;
-my $req_de = 0;
+
+my $req_abs_ra = 0;
+my $req_abs_de = 0;
+my $req_rel_ra = 0;
+my $req_rel_de = 0;
+
 my $west = 0;
 my $set_ha = 0;
-my $req_ha = 0;
 
-my $newrd = 0;
-my $newhd = 0;
+my $req_abs_ha = 0;
+my $req_rel_ha = 0;
+
+my $new_abs_rd = 0;
+my $new_rel_rd = 0;
+my $new_abs_hd = 0;
+my $new_rel_hd = 0;
 
 my $fo_pos = 0;
 my $fo_state = FO_OFF;
@@ -376,13 +386,13 @@ sub update_state {
 	}
 
 	# TELSECOPE state
-	if ($te_rd_move_time != 0) {
-		$elapsed_time = time() - $te_rd_move_time;
+	if ($te_rd_abs_move_time != 0) {
+		$elapsed_time = time() - $te_rd_abs_move_time;
 		if ($elapsed_time > TE_CLU3_TIME) {
-			$set_ra=$req_ra;
-			$set_de=$req_de;
+			$set_ra=$req_abs_ra;
+			$set_de=$req_abs_de;
 			$te_state = TE_TRACK;
-			$te_rd_move_time = 0;
+			$te_rd_abs_move_time = 0;
 		} elsif ($elapsed_time > TE_DECC3_TIME) {
 			$te_state = TE_ST_CLU3;
 		} elsif ($elapsed_time > TE_CLU2_TIME) {
@@ -396,13 +406,53 @@ sub update_state {
 		}
 	}
 
-	if ($te_hd_move_time != 0) {
-		$elapsed_time = time() - $te_hd_move_time;
+	if ($te_rd_rel_move_time != 0) {
+		$elapsed_time = time() - $te_rd_rel_move_time;
 		if ($elapsed_time > TE_CLU3_TIME) {
-			$set_ha=$req_ha;
-			$set_de=$req_de;
+			$set_ra += $req_rel_ra/3600.0;
+			$set_de += $req_rel_de/3600.0;
+			$te_state = TE_TRACK;
+			$te_rd_rel_move_time = 0;
+		} elsif ($elapsed_time > TE_DECC3_TIME) {
+			$te_state = TE_ST_CLU3;
+		} elsif ($elapsed_time > TE_CLU2_TIME) {
+			$te_state = TE_ST_DECC3;
+		} elsif ($elapsed_time > TE_DECC2_TIME) {
+			$te_state = TE_ST_CLU2;
+		} elsif ($elapsed_time > TE_SLEW_TIME) {
+			$te_state = TE_ST_DECC2;
+		} elsif ($elapsed_time > TE_CLU1_TIME) {
+			$te_state = TE_ST_SLEW;
+		}
+	}
+
+	if ($te_hd_abs_move_time != 0) {
+		$elapsed_time = time() - $te_hd_abs_move_time;
+		if ($elapsed_time > TE_CLU3_TIME) {
+			$set_ha = $req_abs_ha;
+			$set_de = $req_abs_de;
 			$te_state = TE_STOP;
-			$te_hd_move_time = 0;
+			$te_hd_abs_move_time = 0;
+		} elsif ($elapsed_time > TE_DECC3_TIME) {
+			$te_state = TE_SS_CLU3;
+		} elsif ($elapsed_time > TE_CLU2_TIME) {
+			$te_state = TE_SS_DECC3;
+		} elsif ($elapsed_time > TE_DECC2_TIME) {
+			$te_state = TE_SS_CLU2;
+		} elsif ($elapsed_time > TE_SLEW_TIME) {
+			$te_state = TE_SS_DECC2;
+		} elsif ($elapsed_time > TE_CLU1_TIME) {
+			$te_state = TE_SS_SLEW;
+		}
+	}
+
+	if ($te_hd_rel_move_time != 0) {
+		$elapsed_time = time() - $te_hd_rel_move_time;
+		if ($elapsed_time > TE_CLU3_TIME) {
+			$set_ha += $req_rel_ha/3600.0;
+			$set_de += $req_rel_de/3600.0;
+			$te_state = TE_STOP;
+			$te_hd_rel_move_time = 0;
 		} elsif ($elapsed_time > TE_DECC3_TIME) {
 			$te_state = TE_SS_CLU3;
 		} elsif ($elapsed_time > TE_CLU2_TIME) {
@@ -839,10 +889,10 @@ sub main() {
 				my $de = parse_de($cmd[2]);
 				if (!defined($ra) or !defined($de)) {print_client($client, "ERR\n"); next; }
 				if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print_client($client, "ERR\n"); next; };
-				$req_ra = $ra;
-				$req_de = $de;
+				$req_abs_ra = $ra;
+				$req_abs_de = $de;
 				$west = $cmd[3];
-				$newrd = 1;
+				$new_abs_rd = 1;
 				print_client($client, "1\n");
 				next;
 			}
@@ -852,30 +902,51 @@ sub main() {
 				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
 					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
-					$req_ra += $cmd[1];
-					$req_de += $cmd[2];
-					$newrd = 1;
+					$req_rel_ra = $cmd[1];
+					$req_rel_de = $cmd[2];
+					$new_rel_rd = 1;
 					print_client($client, "1\n");
 					next;
 				}
 			}
 
-			if (($cmd[0] eq "TGRA") or ($cmd[0] eq "TGRR")) {
+			if ($cmd[0] eq "TGRA") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
 				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					if($newrd) {
+					if($new_abs_rd) {
 						$te_state = TE_ST_CLU1;
-						$newrd = 0;
-						$te_rd_move_time = time();
+						$new_abs_rd = 0;
+						$te_rd_abs_move_time = time();
 					}
 				} else {
 					# simplyfy stop -> should go to state transition
 					$te_state = TE_TRACK;
-					$newrd = 1;
-					$te_rd_move_time = 0;
+					$new_abs_rd = 1;
+					$te_rd_abs_move_time = 0;
+				}
+				print_client($client, "1\n");
+				next;
+			}
+
+			if ($cmd[0] eq "TGRR") {
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
+				if ($cmd[1] == 1) {
+					if($new_rel_rd) {
+						$te_state = TE_ST_CLU1;
+						$new_rel_rd = 0;
+						$te_rd_rel_move_time = time();
+					}
+				} else {
+					# simplyfy stop -> should go to state transition
+					$te_state = TE_TRACK;
+					$new_rel_rd = 1;
+					$te_rd_rel_move_time = 0;
 				}
 				print_client($client, "1\n");
 				next;
@@ -886,9 +957,9 @@ sub main() {
 				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -180, 330, 4) and in_range($cmd[2], -90, 270, 4)) {
 					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
-					$req_ha	= $cmd[1];
-					$req_de	= $cmd[2];
-					$newhd = 1;
+					$req_abs_ha = $cmd[1];
+					$req_abs_de = $cmd[2];
+					$new_abs_hd = 1;
 					print_client($client, "1\n");
 					next;
 				}
@@ -899,31 +970,52 @@ sub main() {
 				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
 					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
-					$req_ha += $cmd[1];
-					$req_de += $cmd[2];
-					$newhd = 1;
+					$req_rel_ha = $cmd[1];
+					$req_rel_de = $cmd[2];
+					$new_rel_hd = 1;
 					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			# ----- GOTO HA and DEC ----- #
-			if (($cmd[0] eq "TGHA") or ($cmd[0] eq "TGHR")) {
+			if ($cmd[0] eq "TGHA") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
 				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					if($newhd) {
+					if($new_abs_hd) {
 						$te_state = TE_SS_CLU1;
-						$newrd = 0;
-						$te_hd_move_time = time();
+						$new_abs_hd = 0;
+						$te_hd_abs_move_time = time();
 					}
 				} else {
 					# simplyfy stop -> shuld go to state transition
 					$te_state = TE_STOP;
-					$newhd = 1;
-					$te_hd_move_time = 0;
+					$new_abs_hd = 1;
+					$te_hd_abs_move_time = 0;
+				}
+				print_client($client, "1\n");
+				next;
+			}
+
+			if ($cmd[0] eq "TGHR") {
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
+				if ($cmd[1] == 1) {
+					if($new_rel_hd) {
+						$te_state = TE_SS_CLU1;
+						$new_rel_hd = 0;
+						$te_hd_rel_move_time = time();
+					}
+				} else {
+					# simplyfy stop -> shuld go to state transition
+					$te_state = TE_STOP;
+					$new_rel_hd = 1;
+					$te_hd_rel_move_time = 0;
 				}
 				print_client($client, "1\n");
 				next;
@@ -1062,15 +1154,15 @@ sub main() {
 
 			if ($cmd[0] eq "TRRA") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
-				my $ra = dd2dms($req_ra, 1);
-				my $de = dd2dms($req_de, 0);
+				my $ra = dd2dms($req_abs_ra, 1);
+				my $de = dd2dms($req_abs_de, 0);
 				print_client($client, "$ra $de $west\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TRHA") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
-				my $resp = sprintf "%.4f %.4f\n", $req_ha - 180, $req_de;
+				my $resp = sprintf "%.4f %.4f\n", $req_abs_ha - 180, $req_abs_de;
 				print_client($client, $resp);
 				next;
 			}
