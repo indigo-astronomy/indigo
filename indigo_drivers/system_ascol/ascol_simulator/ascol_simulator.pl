@@ -212,9 +212,9 @@ my $req_abs_ha = 0;
 my $req_rel_ha = 0;
 
 my $new_abs_rd = 0;
-my $new_rel_rd = 0;
+#my $new_rel_rd = 0;
 my $new_abs_hd = 0;
-my $new_rel_hd = 0;
+#my $new_rel_hd = 0;
 
 my $fo_pos = 0;
 my $fo_state = FO_OFF;
@@ -904,7 +904,7 @@ sub main() {
 					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$req_rel_ra = $cmd[1];
 					$req_rel_de = $cmd[2];
-					$new_rel_rd = 1;
+					#$new_rel_rd = 1;
 					print_client($client, "1\n");
 					next;
 				}
@@ -919,6 +919,7 @@ sub main() {
 					if($new_abs_rd) {
 						$te_state = TE_ST_CLU1;
 						$new_abs_rd = 0;
+						#$new_rel_rd = 1;
 						$te_rd_abs_move_time = time();
 					}
 				} else {
@@ -935,17 +936,18 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
+				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					if($new_rel_rd) {
+					#if($new_rel_rd) {
 						$te_state = TE_ST_CLU1;
-						$new_rel_rd = 0;
+						#$new_rel_rd = 0;
+						$new_abs_rd = 1;
 						$te_rd_rel_move_time = time();
-					}
+					#}
 				} else {
 					# simplyfy stop -> should go to state transition
 					$te_state = TE_TRACK;
-					$new_rel_rd = 1;
+					#$new_rel_rd = 1;
 					$te_rd_rel_move_time = 0;
 				}
 				print_client($client, "1\n");
@@ -972,7 +974,7 @@ sub main() {
 					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$req_rel_ha = $cmd[1];
 					$req_rel_de = $cmd[2];
-					$new_rel_hd = 1;
+					#$new_rel_hd = 1;
 					print_client($client, "1\n");
 					next;
 				}
@@ -988,6 +990,7 @@ sub main() {
 					if($new_abs_hd) {
 						$te_state = TE_SS_CLU1;
 						$new_abs_hd = 0;
+						#$new_rel_hd = 1;
 						$te_hd_abs_move_time = time();
 					}
 				} else {
@@ -1004,17 +1007,18 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
+				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					if($new_rel_hd) {
+					#if($new_rel_hd) {
 						$te_state = TE_SS_CLU1;
-						$new_rel_hd = 0;
+						#$new_rel_hd = 0;
+						$new_abs_hd = 1;
 						$te_hd_rel_move_time = time();
-					}
+					#}
 				} else {
 					# simplyfy stop -> shuld go to state transition
 					$te_state = TE_STOP;
-					$new_rel_hd = 1;
+					#$new_rel_hd = 1;
 					$te_hd_rel_move_time = 0;
 				}
 				print_client($client, "1\n");
