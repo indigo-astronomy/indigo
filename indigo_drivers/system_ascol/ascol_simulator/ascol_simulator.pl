@@ -1167,6 +1167,20 @@ sub main() {
 				next;
 			}
 
+			if ($cmd[0] eq "TRRR") {
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				my $resp = sprintf "%.2f %.2f\n", $req_rel_ra, $req_rel_de;
+				print_client($client, $resp);
+				next;
+			}
+
+			if ($cmd[0] eq "TRHR") {
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				my $resp = sprintf "%.2f %.2f\n", $req_rel_ha, $req_rel_de;
+				print_client($client, $resp);
+				next;
+			}
+
 			if ($cmd[0] eq "TSGV") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
