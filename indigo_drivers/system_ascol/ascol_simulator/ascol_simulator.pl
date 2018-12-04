@@ -1060,6 +1060,21 @@ sub main() {
 				next;
 			}
 
+			if ($cmd[0] eq "TRRA") {
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				my $ra = dd2dms($req_ra, 1);
+				my $de = dd2dms($req_de, 0);
+				print_client($client, "$ra $de $west\n");
+				next;
+			}
+
+			if ($cmd[0] eq "TRHA") {
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				my $resp = sprintf "%.4f %.4f\n", $req_ha - 180, $req_de;
+				print_client($client, $resp);
+				next;
+			}
+
 			if ($cmd[0] eq "TSGV") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
