@@ -257,6 +257,7 @@ int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int preci
 int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int east);
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
+int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *east);
 
 /* Global commands */
 int ascol_GLLG(int devfd, char *password);
@@ -295,8 +296,12 @@ int ascol_GLUT(int devfd, double *ut);
 #define ascol_TSS3(devfd, speed) (ascol_1_double_param_cmd(devfd, "TSS3", speed, 2))
 #define ascol_TRS3(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS3", speed))
 
-int ascol_TRRD(int devfd, double *ra, double *de, char *east);
+#define ascol_TRRA(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRA", ra, de, east))
+#define ascol_TRRD(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRD", ra, de, east))
 #define ascol_TRHD(devfd, ha, de) (ascol_2_double_return_cmd(devfd, "TRHD", ha, de))
+#define ascol_TRRR(devfd, ra_rel, de_rel) (ascol_2_double_return_cmd(devfd, "TRRR", ra_rel, de_rel))
+#define ascol_TRHA(devfd, ha, de) (ascol_2_double_return_cmd(devfd, "TRHA", ra, de))
+#define ascol_TRHR(devfd, ha_rel, de_rel) (ascol_2_double_return_cmd(devfd, "TRHR", ha_rel, de_rel))
 
 #define ascol_TSGV(devfd, ra_gv, de_gv) (ascol_2_double_param_cmd(devfd, "TSGV", ra_gv, 1, de_gv, 1))
 #define ascol_TRGV(devfd, ra_gv, de_gv) (ascol_2_double_return_cmd(devfd, "TRGV", ra_gv, de_gv))
