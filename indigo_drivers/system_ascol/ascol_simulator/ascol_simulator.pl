@@ -343,6 +343,15 @@ sub dd2dms($$) {
 
 	my $sec = $input;
 
+	if ($sec >= 59.9995) {
+		$min++;
+		$sec = 0;
+	}
+	if ($min >= 60) {
+		$hours++;
+		$min = 0;
+	}
+
 	my $result;
 	if ($hours) {
 		$result = sprintf("%02d%02d%06.3f", $deg, $min, $sec);
