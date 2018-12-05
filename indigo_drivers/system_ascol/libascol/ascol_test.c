@@ -103,12 +103,19 @@ int main() {
 		printf("GLME[%d] = %lf %s (%s)\n", i, glme.value[i], glme.unit[i], glme.description[i]);
 	}
 
-	printf("\n===== ascol_TSRA() =====\n");
+	printf("\n===== ascol_TSRA() / ascol_TRRA =====\n");
+
+        res = ascol_TRRA(fd, &ra, &de, &east);
+        printf("TRRA = %d <- %lf %lf %d\n", res, ra, de, east);
+
 	res = ascol_TSRA(fd, 15.5, -10.111111, 1);
 	printf("TSRA = %d\n", res);
 
 	ascol_TGRA(fd, ASCOL_ON);
 	sleep(30);
+
+	res = ascol_TRRA(fd, &ra, &de, &east);
+        printf("TRRA = %d <- %lf %lf %d\n", res, ra, de, east);
 
 	printf("\n===== ascol_TRRD() =====\n");
 	res = ascol_TRRD(fd, &ra, &de, &east);
