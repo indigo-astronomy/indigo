@@ -18,7 +18,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
-            - build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1
+            - build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc
       env:
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
 
@@ -30,7 +30,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-            - build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1
+            - build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
@@ -42,7 +42,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
-            - build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1
+            - build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
@@ -53,4 +53,4 @@ before_install:
 script:
   - make
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make package && sudo dpkg --install indigo*.deb && sudo ldconfig ; fi
-  - indigo_test/test_suite.sh --driver-test --format-test indigo_ccd_simulator
+  - indigo_test/test_suite.sh --driver-test --format-test indigo_ccd_simulator --capture-test indigo_ccd_simulator
