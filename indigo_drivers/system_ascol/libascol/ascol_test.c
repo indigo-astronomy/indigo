@@ -125,6 +125,14 @@ int main() {
 	res = ascol_TRHD(fd, &ha, &de);
 	printf("TRHD = %d <- %lf %lf\n", res, ha, de);
 
+	printf("\n===== ascol_TSRR() =====\n");
+        res = ascol_TSRR(fd, 0.01, 2.01);
+        printf("TSRR = %d\n", res);
+
+	printf("\n===== ascol_TRRR() =====\n");
+        res = ascol_TRRR(fd, &ra, &de);
+        printf("TRRR = %d <- %lf %lf\n", res, ra, de);
+
 	printf("\n===== ascol_TEON() =====\n");
 	res = ascol_TEON(fd, ASCOL_ON);
 	printf("TEON = %d\n", res);
