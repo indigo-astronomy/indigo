@@ -736,15 +736,14 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 }
 
 
-/* Comands that require output manipulation and can not be mapped by the functions above */
-
-int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
-	const char cmd[] = "TRRD\n";
+int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *east) {
+	char cmd[ASCOL_MSG_LEN] = {0};
 	char resp[ASCOL_MSG_LEN] = {0};
 	char ra_s[ASCOL_MSG_LEN];
 	char de_s[ASCOL_MSG_LEN];
 	int east_c;
 
+	snprintf(cmd, ASCOL_MSG_LEN, "%s\n", cmd_name);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
@@ -769,6 +768,7 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	return ASCOL_OK;
 }
 
+/* Comands that require output manipulation and can not be mapped by the functions above */
 
 int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 	const char cmd[] = "OIMV\n";
