@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Written by Thomas Stibor <thomas@stibor.net>
-VERSION="0.1.2"
+VERSION="0.1.3"
 
 # ANSI color codes.
 COL_R='\033[0;31m'
@@ -107,13 +107,14 @@ __start_indigo_server() {
 __stop_indigo_server() {
     [[ ! `ps aux | grep "[i]ndigo_server"` ]] && { __log_error "indigo server is not running" ; exit 1; }
 
-    kill -9 ${INDIGO_SERVER_PID}
+    killall -9 indigo_server
     if [[ $? -ne 0 ]]; then
-	__log_error "cannot kill indigo_server with PID: ${INDIGO_SERVER_PID}"
+	__log_error "cannot kill indigo_server"
 	exit 1
     else
-	__log_info "killed indigo_server with PID: ${INDIGO_SERVER_PID}"
+	__log_info "killed indigo_server"
     fi
+    sleep 1
 }
 
 __set_verify_property() {
@@ -134,9 +135,22 @@ __set_verify_property() {
     __log_info "setting property '${SET_ARG}' was successful"
 }
 
+__echo_driver_name() {
+
+    local DRIVER_NAME=$(${INDIGO_PROP_TOOL} list \
+			    | grep "INFO.DEVICE_NAME" \
+			    | grep -v "Guider\|(wheel)\|(focuser)\|DSLR" \
+			    | awk '{split($0, a, "."); print a[1]}')
+
+    echo "${DRIVER_NAME}"
+}
+
 #-------------- INDIGO test functions --------------#
 __test_load_drivers() {
+
     local N=1
+
+    __start_indigo_server
 
     __log_info "starting test_load_drivers"
     # Skip SBIG due to external driver (in form of DMG file) for MacOS is needed.
@@ -156,6 +170,8 @@ __test_load_drivers() {
 	__log_info "successfully loaded driver '${DRIVER}'"
 	N=$((N + 1))
     done
+
+    __stop_indigo_server
 }
 
 __test_capture() {
@@ -164,57 +180,74 @@ __test_capture() {
     [[ -z $(__hash_func "${1}") ]] &&
 	{ echo "driver '${1}' does not exist test suite"; exit 1; }
 
+    __start_indigo_server
+
     local TMPDIR="$(mktemp -q -d -t "$(basename "$0").XXXXXX" 2>/dev/null || mktemp -q -d)/"
+    local DRIVER_NAME=""
+
     # Note, if longer exposure times are added, then make sure the
     # indigo_prop_tool time out is properly set. At current it is set to 1 second.
-    declare -a EXP_TIMES=("0.01" "0.05" "0.1" "0.5")
-    
+    declare -a EXP_TIMES=("0.01" "0.05" "0.1" "0.5" "1")
+
     # Load CCD driver.
     __set_verify_property "Server.LOAD.DRIVER=${1}" \
     			  "Server.DRIVERS" \
 			  "$(__hash_func ${1}) = ON" \
     			  "1"
 
+    DRIVER_NAME=$(__echo_driver_name)
+
     # Verify driver is loaded.
-    __set_verify_property "CCD Imager Simulator.CONNECTION.CONNECTED=ON" \
-    			  "CCD Imager Simulator.CONNECTION" \
+    __set_verify_property "${DRIVER_NAME}.CONNECTION.CONNECTED=ON" \
+			  "${DRIVER_NAME}.CONNECTION" \
     			  "CONNECTED = ON" \
     			  "1"
 
     # Set image format.
-    __set_verify_property "CCD Imager Simulator.CCD_IMAGE_FORMAT.FITS=ON" \
-    			  "CCD Imager Simulator.CCD_IMAGE_FORMAT" \
-    			  "FITS = ON" \
+    __set_verify_property "${DRIVER_NAME}.CCD_IMAGE_FORMAT.RAW=ON" \
+			  "${DRIVER_NAME}.CCD_IMAGE_FORMAT" \
+			  "RAW = ON" \
     			  "1"
 
     # Set local mode.
-    __set_verify_property "CCD Imager Simulator.CCD_UPLOAD_MODE.LOCAL=ON" \
-    			  "CCD Imager Simulator.CCD_UPLOAD_MODE" \
+    __set_verify_property "${DRIVER_NAME}.CCD_UPLOAD_MODE.LOCAL=ON" \
+			  "${DRIVER_NAME}.CCD_UPLOAD_MODE" \
     			  "LOCAL = ON" \
     			  "1"
 
     # Set directory.
-    __set_verify_property "CCD Imager Simulator.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
-    			  "CCD Imager Simulator.CCD_LOCAL_MODE" \
+    __set_verify_property "${DRIVER_NAME}.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
+			  "${DRIVER_NAME}.CCD_LOCAL_MODE" \
     			  "DIR = \"${TMPDIR}\"" \
     			  "1"
 
     local cnt=0
     local fn=""
+    local WAIT_TIME=0
     for e in "${EXP_TIMES[@]}"
     do
-	__set_verify_property "CCD Imager Simulator.CCD_EXPOSURE.EXPOSURE=${e}" \
-    			      "CCD Imager Simulator.CCD_EXPOSURE" \
+	if [[ "${1}" == "indigo_ccd_gphoto2" ]]; then
+	    WAIT_TIME=$(echo ${EXP_TIME} | awk '{print int($1+5)}')
+	else
+	    WAIT_TIME=$(echo ${EXP_TIME} | awk '{print int($1+2)}')
+	fi
+	__set_verify_property "${DRIVER_NAME}.CCD_EXPOSURE.EXPOSURE=${e}" \
+			      "${DRIVER_NAME}.CCD_EXPOSURE" \
     			      "EXPOSURE = 0" \
-    			      "1"
+			      "${WAIT_TIME}"
 	(( cnt++ ))
 
-	# Check FITS file exists.
-	fn="${TMPDIR}IMAGE_$(printf "%03d" ${cnt}).fits"
-	[[ ! -f  ${fn} ]] && { __log_error "exposure '${e} secs' failed, FIT file '${fn}' does not exist"; exit 1; }
-	__log_info "FIT file '${fn}' of size $(wc -c ${fn} | awk '{print $1}') bytes successfully created"
-	
+	# Check RAW file exists.
+	if [[ "${1}" == "indigo_ccd_gphoto2" ]]; then
+	    fn="${TMPDIR}IMAGE_$(printf "%03d" ${cnt}).CR2"
+	else
+	    fn="${TMPDIR}IMAGE_$(printf "%03d" ${cnt}).raw"
+	fi
+	[[ ! -f  ${fn} ]] && { __log_error "exposure '${e} secs' failed, RAW file '${fn}' does not exist"; exit 1; }
+	__log_info "RAW file '${fn}' of size $(wc -c ${fn} | awk '{print $1}') bytes successfully created"
     done
+
+    __stop_indigo_server
 }
 
 __test_format() {
@@ -223,8 +256,20 @@ __test_format() {
     [[ -z $(__hash_func "${1}") ]] &&
 	{ echo "driver '${1}' does not exist test suite"; exit 1; }
 
+    __start_indigo_server
+
+    local DRIVER_NAME=""
     local TMPDIR="$(mktemp -q -d -t "$(basename "$0").XXXXXX" 2>/dev/null || mktemp -q -d)/"
     declare -a IMG_FORMAT=("FITS" "XISF" "JPEG" "RAW")
+    local EXP_TIME=1 # Note, set exposure to 3 seconds to get it work also with buggy ASI120/130mm USB 2.0 cameras.
+    local WAIT_TIME=$(echo ${EXP_TIME} | awk '{print int($1+4)}')
+
+    if [[ "${1}" == "indigo_ccd_simulator" ]]; then
+	EXP_TIME=0.5
+	WAIT_TIME=$(echo ${EXP_TIME} | awk '{print int($1+2)}')
+    elif [[ "${1}" == "indigo_ccd_gphoto2" ]]; then
+	WAIT_TIME=$(echo ${EXP_TIME} | awk '{print int($1+10)}')
+    fi
 
     # Load CCD driver.
     __set_verify_property "Server.LOAD.DRIVER=${1}" \
@@ -232,36 +277,38 @@ __test_format() {
 			  "$(__hash_func ${1}) = ON" \
 			  "1"
 
+    DRIVER_NAME=$(__echo_driver_name)
+
     # Verify driver is loaded.
-    __set_verify_property "CCD Imager Simulator.CONNECTION.CONNECTED=ON" \
-			  "CCD Imager Simulator.CONNECTION" \
+    __set_verify_property "${DRIVER_NAME}.CONNECTION.CONNECTED=ON" \
+			  "${DRIVER_NAME}.CONNECTION" \
 			  "CONNECTED = ON" \
 			  "1"
 
     # Set local mode.
-    __set_verify_property "CCD Imager Simulator.CCD_UPLOAD_MODE.LOCAL=ON" \
-			  "CCD Imager Simulator.CCD_UPLOAD_MODE" \
+    __set_verify_property "${DRIVER_NAME}.CCD_UPLOAD_MODE.LOCAL=ON" \
+			  "${DRIVER_NAME}.CCD_UPLOAD_MODE" \
 			  "LOCAL = ON" \
 			  "1"
 
     # Set directory.
-    __set_verify_property "CCD Imager Simulator.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
-			  "CCD Imager Simulator.CCD_LOCAL_MODE" \
+    __set_verify_property "${DRIVER_NAME}.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
+			  "${DRIVER_NAME}.CCD_LOCAL_MODE" \
 			  "DIR = \"${TMPDIR}\"" \
 			  "1"
 
     local fn=""
     for f in "${IMG_FORMAT[@]}"
     do
-	__set_verify_property "CCD Imager Simulator.CCD_IMAGE_FORMAT.${f}=ON" \
-			      "CCD Imager Simulator.CCD_IMAGE_FORMAT" \
+	__set_verify_property "${DRIVER_NAME}.CCD_IMAGE_FORMAT.${f}=ON" \
+			      "${DRIVER_NAME}.CCD_IMAGE_FORMAT" \
 			      "${f} = ON" \
 			      "1"
 
-	__set_verify_property "CCD Imager Simulator.CCD_EXPOSURE.EXPOSURE=0.5" \
-			      "CCD Imager Simulator.CCD_EXPOSURE" \
+	__set_verify_property "${DRIVER_NAME}.CCD_EXPOSURE.EXPOSURE=${EXP_TIME}" \
+			      "${DRIVER_NAME}.CCD_EXPOSURE" \
 			      "EXPOSURE = 0" \
-			      "1"
+			      "${WAIT_TIME}"
 
 	fn="${TMPDIR}IMAGE_$(printf "%03d" 001).`echo "${f}" | awk '{print tolower($0)}'`"
 	local file_size=$(wc -c ${fn} | awk '{print $1}')
@@ -283,8 +330,9 @@ __test_format() {
 	fi
 
 	__log_info "${f} file '${fn}' of size ${file_size} bytes successfully created"
-
     done
+
+    __stop_indigo_server
 }
 
 #------------ Check required files exist -----------#
@@ -329,12 +377,8 @@ done
 [[ "${FORMAT_TEST}" ]] && [[ -z $(__hash_func "${FORMAT_TEST}") ]] &&
     { echo "driver '${FORMAT_TEST}' does not exist test suite"; exit 1; }
 
-__start_indigo_server
-
 [[ ${DRIVER_TEST} -ne 0 ]] && __test_load_drivers
 [[ ! -z "${CAPTURE_TEST}" ]] && __test_capture "${CAPTURE_TEST}"
 [[ ! -z "${FORMAT_TEST}" ]] && __test_format "${FORMAT_TEST}"
-
-__stop_indigo_server
 
 exit 0

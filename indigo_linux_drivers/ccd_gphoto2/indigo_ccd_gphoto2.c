@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 
 #include <stdio.h>
@@ -841,8 +841,7 @@ static void exposure_timer_callback(indigo_device *device)
 			}
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		/* Set exposure value to previous value when not otherwise intended. */
-		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target;
+		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2130,7 +2129,7 @@ indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Gghoto2 Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	SET_DRIVER_INFO(info, "Gphoto2 Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
