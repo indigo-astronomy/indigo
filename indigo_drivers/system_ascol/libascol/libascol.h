@@ -259,6 +259,7 @@ int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
 int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *east);
 
+
 /* Global Commands */
 
 /* GLobal LoGin */
@@ -276,7 +277,7 @@ int ascol_GLUT(int devfd, double *ut);
 
 /* Telescope Commands */
 
-/* TElescope ON or OFF */
+/* TElescope ON or off */
 #define ascol_TEON(devfd, on) (ascol_1_int_param_cmd(devfd, "TEON", on))
 
 /* TElescope TRack */
@@ -386,30 +387,71 @@ int ascol_GLUT(int devfd, double *ut);
 
 
 /* Focuser Commands */
+
+/* FOcus STop */
 #define ascol_FOST(devfd) (ascol_0_param_cmd(devfd, "FOST"))
+
+/* FOcus Go Relative */
 #define ascol_FOGR(devfd) (ascol_0_param_cmd(devfd, "FOGR"))
+
+/* FOcus Go Absolute */
 #define ascol_FOGA(devfd) (ascol_0_param_cmd(devfd, "FOGA"))
+
+/* FOcus Set Relative position */
 #define ascol_FOSR(devfd, pos) (ascol_1_double_param_cmd(devfd, "FOSR", pos, 2))
+
+/* FOcus Set Absolute position */
 #define ascol_FOSA(devfd, pos) (ascol_1_double_param_cmd(devfd, "FOSA", pos, 2))
+
+/* FOcus POsition */
 #define ascol_FOPO(devfd, pos) (ascol_1_double_return_cmd(devfd, "FOPO", pos))
 
+
 /* Dome Commands */
+
+/* DOme ON or off */
 #define ascol_DOON(devfd, on) (ascol_1_int_param_cmd(devfd, "DOON", on))
+
+/* DOme Slit Open */
 #define ascol_DOSO(devfd, on) (ascol_1_int_param_cmd(devfd, "DOSO", on))
+
+/* DOme POsition */
 #define ascol_DOPO(devfd, pos) (ascol_1_double_return_cmd(devfd, "DOPO", pos))
+
+/* DOme STop */
 #define ascol_DOST(devfd) (ascol_0_param_cmd(devfd, "DOST"))
+
+/* DOme Go Relative */
 #define ascol_DOGR(devfd) (ascol_0_param_cmd(devfd, "DOGR"))
+
+/* DOme Go Absolute */
 #define ascol_DOGA(devfd) (ascol_0_param_cmd(devfd, "DOGA"))
+
+/* DOme AutoMaded mode */
 #define ascol_DOAM(devfd) (ascol_0_param_cmd(devfd, "DOAM"))
+
+/* DOme Set Relative position */
 #define ascol_DOSR(devfd, pos) (ascol_1_double_param_cmd(devfd, "DOSR", pos, 2))
+
+/* DOme Set Absolute position */
 #define ascol_DOSA(devfd, pos) (ascol_1_double_param_cmd(devfd, "DOSA", pos, 2))
 
+
 /* Flap commands */
+
+/* Flap Tube Open or Close */
 #define ascol_FTOC(devfd, on) (ascol_1_int_param_cmd(devfd, "FTOC", on))
+
+/* Flaap Coude Open or Close */
 #define ascol_FCOC(devfd, on) (ascol_1_int_param_cmd(devfd, "FCOC", on))
 
+
 /* Oil Commands */
+
+/* OIl ON or off */
 #define ascol_OION(devfd, on) (ascol_1_int_param_cmd(devfd, "OION", on))
+
+/* OIl Measurement Values */
 int ascol_OIMV(int devfd, ascol_oimv_t *oimv);
 
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */
