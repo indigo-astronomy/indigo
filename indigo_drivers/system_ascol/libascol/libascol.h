@@ -259,58 +259,131 @@ int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
 int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *east);
 
-/* Global commands */
+/* Global Commands */
+
+/* GLobal LoGin */
 int ascol_GLLG(int devfd, char *password);
+
+/* GLobal MEteorological values */
 int ascol_GLME(int devfd, ascol_glme_t *glme);
+
+/* GLobal STate */
 int ascol_GLST(int devfd, ascol_glst_t *glst);
+
+/* GLobal read UTc */
 int ascol_GLUT(int devfd, double *ut);
 
+
 /* Telescope Commands */
+
+/* TElescope ON or OFF */
 #define ascol_TEON(devfd, on) (ascol_1_int_param_cmd(devfd, "TEON", on))
+
+/* TElescope TRack */
 #define ascol_TETR(devfd, on) (ascol_1_int_param_cmd(devfd, "TETR", on))
+
+/* TElescope Hour axis Calibration */
 #define ascol_TEHC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEHC", on))
+
+/* TElescope Declination axis Calibration */
 #define ascol_TEDC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEDC", on))
 
+/* Telescope Set new Right ascension and declination Absolute */
 #define ascol_TSRA(devfd, ra, de, east) (ascol_2_double_1_int_param_cmd(devfd, "TSRA", ra, 5, de, 5, east))
+
+/* Telescope Read new Right ascension and declination Absolute */
+#define ascol_TRRA(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRA", ra, de, east))
+
+/* Telescope Go to new Right ascension and declination Absolute */
 #define ascol_TGRA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRA", on))
+
+/* Telescope Set new Right ascension and declination Relative */
 #define ascol_TSRR(devfd, r_ra, r_de) (ascol_2_double_param_cmd(devfd, "TSRR", r_ra, 2, r_de, 2))
+
+/* Telescope Read new Right ascension and declination Relative */
+#define ascol_TRRR(devfd, ra_rel, de_rel) (ascol_2_double_return_cmd(devfd, "TRRR", ra_rel, de_rel))
+
+/* Telescope Go to new Right ascension and declination Relative */
 #define ascol_TGRR(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRR", on))
 
+/* Telescope Set new Hour and declination axis Absolute */
 #define ascol_TSHA(devfd, ha, de) (ascol_2_double_param_cmd(devfd, "TSHA", ha, 4, de, 4))
-#define ascol_TGHA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHA", on))
-#define ascol_TSHR(devfd, r_ha, r_de) (ascol_2_double_param_cmd(devfd, "TSHR", r_ha, 2, r_de, 2))
-#define ascol_TGHR(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHR", on))
 
-#define ascol_TSCS(devfd, model) (ascol_1_int_param_cmd(devfd, "TSCS", model))
-
-#define ascol_TSCA(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCA", on))
-#define ascol_TSCP(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCP", on))
-#define ascol_TSCR(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCR", on))
-#define ascol_TSCM(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCM", on))
-#define ascol_TSGM(devfd, on) (ascol_1_int_param_cmd(devfd, "TSGM", on))
-
-#define ascol_TSS1(devfd, speed) (ascol_1_double_param_cmd(devfd, "TSS1", speed, 2))
-#define ascol_TRS1(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS1", speed))
-#define ascol_TSS2(devfd, speed) (ascol_1_double_param_cmd(devfd, "TSS2", speed, 2))
-#define ascol_TRS2(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS2", speed))
-#define ascol_TSS3(devfd, speed) (ascol_1_double_param_cmd(devfd, "TSS3", speed, 2))
-#define ascol_TRS3(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS3", speed))
-
-#define ascol_TRRA(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRA", ra, de, east))
-#define ascol_TRRD(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRD", ra, de, east))
-#define ascol_TRHD(devfd, ha, de) (ascol_2_double_return_cmd(devfd, "TRHD", ha, de))
-#define ascol_TRRR(devfd, ra_rel, de_rel) (ascol_2_double_return_cmd(devfd, "TRRR", ra_rel, de_rel))
+/* Telescope Read new Hour and declination axis Absolute */
 #define ascol_TRHA(devfd, ha, de) (ascol_2_double_return_cmd(devfd, "TRHA", ra, de))
+
+/* Telescope Go to new Hour and declination axis Absolute */
+#define ascol_TGHA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHA", on))
+
+/* Telescope Set new Hour and declination axis Relative */
+#define ascol_TSHR(devfd, r_ha, r_de) (ascol_2_double_param_cmd(devfd, "TSHR", r_ha, 2, r_de, 2))
+
+/* Telescope Read new Hour and declination axis Relative */
 #define ascol_TRHR(devfd, ha_rel, de_rel) (ascol_2_double_return_cmd(devfd, "TRHR", ha_rel, de_rel))
 
+/* Telescope Go to new Hour and declination axis Relative */
+#define ascol_TGHR(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHR", on))
+
+/* Telescope Set Correction model Set */
+#define ascol_TSCS(devfd, model) (ascol_1_int_param_cmd(devfd, "TSCS", model))
+
+/* Telescope Set Correction of the Aberration */
+#define ascol_TSCA(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCA", on))
+
+/* Telescope Set Correction of the Precession and nutation */
+#define ascol_TSCP(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCP", on))
+
+/* Telescope Set Correction of the Refraction */
+#define ascol_TSCR(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCR", on))
+
+/* Telescope Set Correction of the telescope Model */
+#define ascol_TSCM(devfd, on) (ascol_1_int_param_cmd(devfd, "TSCM", on))
+
+/* Telescope Set Guiding Mode */
+#define ascol_TSGM(devfd, on) (ascol_1_int_param_cmd(devfd, "TSGM", on))
+
+/* Telescope Set Guiding Value */
 #define ascol_TSGV(devfd, ra_gv, de_gv) (ascol_2_double_param_cmd(devfd, "TSGV", ra_gv, 1, de_gv, 1))
+
+/* Telescope Read Guiding Value */
 #define ascol_TRGV(devfd, ra_gv, de_gv) (ascol_2_double_return_cmd(devfd, "TRGV", ra_gv, de_gv))
 
+/* TElescope declination CEntering */
+#define ascol_TECE(devfd, on) (ascol_1_int_param_cmd(devfd, "TECE", on))
+
+/* Telescope Set User Speed */
 #define ascol_TSUS(devfd, ra_us, de_us) (ascol_2_double_param_cmd(devfd, "TSUS", ra_us, 4, de_us, 4))
+
+/* Telescope Read User Speed */
 #define ascol_TRUS(devfd, ra_us, de_us) (ascol_2_double_return_cmd(devfd, "TRUS", ra_us, de_us))
 
+/* Telescope Set Speed 1 */
+#define ascol_TSS1(devfd, speed) (ascol_1_double_param_cmd(devfd, "TSS1", speed, 2))
+
+/* Telescope Read Speed 1 */
+#define ascol_TRS1(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS1", speed))
+
+/* Telescope Set Speed 2 */
+#define ascol_TSS2(devfd, speed) (ascol_1_double_param_cmd(devfd, "TSS2", speed, 2))
+
+/* Telescope Read Speed 2 */
+#define ascol_TRS2(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS2", speed))
+
+/* Telescope Set Speed 3 */
+#define ascol_TSS3(devfd, speed) (ascol_1_double_param_cmd(devfd, "TSS3", speed, 2))
+
+/* Telescope Read Speed 3 */
+#define ascol_TRS3(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS3", speed))
+
+/* Telescope Read Right ascension and Declination */
+#define ascol_TRRD(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRD", ra, de, east))
+
+/* Telescope Read Hour and Declination Axis */
+#define ascol_TRHD(devfd, ha, de) (ascol_2_double_return_cmd(devfd, "TRHD", ha, de))
+
+/* Telescope Set Guiding Corrections */
 #define ascol_TSGC(devfd, ra_gc, de_gc) (ascol_2_double_param_cmd(devfd, "TSGC", ra_gc, 1, de_gc, 1))
-#define ascol_TECE(devfd, on) (ascol_1_int_param_cmd(devfd, "TECE", on))
+
 
 /* Focuser Commands */
 #define ascol_FOST(devfd) (ascol_0_param_cmd(devfd, "FOST"))
