@@ -168,6 +168,21 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
+static indigo_result update_list(indigo_device *device, indigo_property *device_list, indigo_property *property, char *device_name) {
+	indigo_property_copy_values(device_list, property, false);
+	*device_name = 0;
+	for (int i = 1; i < device_list->count; i++) {
+		if (device_list->items[i].sw.value) {
+			device_list->state = INDIGO_OK_STATE;
+			strcpy(device_name, device_list->items[i].name);
+			indigo_update_property(device, device_list, NULL);
+			return INDIGO_OK;
+		}
+	}
+	indigo_update_property(device, device_list, NULL);
+	return INDIGO_OK;
+}
+
 indigo_result indigo_filter_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -199,148 +214,27 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, FILTER_DEVICE_LIST_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FILTER_RELATED_CCD_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_CCD_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_ccd_name = 0;
-		for (int i = 1; i < FILTER_RELATED_CCD_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_CCD_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_CCD_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_ccd_name, FILTER_RELATED_CCD_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_CCD_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_CCD_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_CCD_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_ccd_name);
 	} else if (indigo_property_match(FILTER_RELATED_WHEEL_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_WHEEL_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_wheel_name = 0;
-		for (int i = 1; i < FILTER_RELATED_WHEEL_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_WHEEL_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_WHEEL_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_wheel_name, FILTER_RELATED_WHEEL_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_WHEEL_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_WHEEL_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_WHEEL_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_wheel_name);
 	} else if (indigo_property_match(FILTER_RELATED_FOCUSER_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_FOCUSER_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_focuser_name = 0;
-		for (int i = 1; i < FILTER_RELATED_FOCUSER_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_FOCUSER_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_FOCUSER_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_focuser_name, FILTER_RELATED_FOCUSER_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_FOCUSER_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_FOCUSER_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_FOCUSER_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_focuser_name);
 	} else if (indigo_property_match(FILTER_RELATED_MOUNT_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_MOUNT_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_mount_name = 0;
-		for (int i = 1; i < FILTER_RELATED_MOUNT_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_MOUNT_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_MOUNT_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_mount_name, FILTER_RELATED_MOUNT_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_MOUNT_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_MOUNT_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_MOUNT_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_mount_name);
 	} else if (indigo_property_match(FILTER_RELATED_GUIDER_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_GUIDER_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_guider_name = 0;
-		for (int i = 1; i < FILTER_RELATED_GUIDER_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_GUIDER_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_GUIDER_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_guider_name, FILTER_RELATED_GUIDER_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_GUIDER_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_GUIDER_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_GUIDER_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_guider_name);
 	} else if (indigo_property_match(FILTER_RELATED_DOME_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_DOME_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_dome_name = 0;
-		for (int i = 1; i < FILTER_RELATED_DOME_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_DOME_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_DOME_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_dome_name, FILTER_RELATED_DOME_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_DOME_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_DOME_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_DOME_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_dome_name);
 	} else if (indigo_property_match(FILTER_RELATED_GPS_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_GPS_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_gps_name = 0;
-		for (int i = 1; i < FILTER_RELATED_GPS_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_GPS_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_GPS_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_gps_name, FILTER_RELATED_GPS_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_GPS_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_GPS_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_GPS_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_gps_name);
 	} else if (indigo_property_match(FILTER_RELATED_AUX_1_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_AUX_1_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_aux_1_name = 0;
-		for (int i = 1; i < FILTER_RELATED_AUX_1_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_AUX_1_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_AUX_1_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_aux_1_name, FILTER_RELATED_AUX_1_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_AUX_1_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_AUX_1_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_AUX_1_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_aux_1_name);
 	} else if (indigo_property_match(FILTER_RELATED_AUX_2_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_AUX_2_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_aux_1_name = 0;
-		for (int i = 1; i < FILTER_RELATED_AUX_2_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_AUX_2_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_AUX_2_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_aux_2_name, FILTER_RELATED_AUX_2_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_AUX_2_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_AUX_2_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_AUX_2_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_aux_2_name);
 	} else if (indigo_property_match(FILTER_RELATED_AUX_3_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_AUX_3_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_aux_3_name = 0;
-		for (int i = 1; i < FILTER_RELATED_AUX_3_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_AUX_3_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_AUX_3_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_aux_3_name, FILTER_RELATED_AUX_3_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_AUX_3_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_AUX_3_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_AUX_3_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_aux_3_name);
 	} else if (indigo_property_match(FILTER_RELATED_AUX_4_LIST_PROPERTY, property)) {
-		indigo_property_copy_values(FILTER_RELATED_AUX_4_LIST_PROPERTY, property, false);
-		*FILTER_DEVICE_CONTEXT->related_aux_4_name = 0;
-		for (int i = 1; i < FILTER_RELATED_AUX_4_LIST_PROPERTY->count; i++) {
-			if (FILTER_RELATED_AUX_4_LIST_PROPERTY->items[i].sw.value) {
-				FILTER_RELATED_AUX_4_LIST_PROPERTY->state = INDIGO_OK_STATE;
-				strcpy(FILTER_DEVICE_CONTEXT->related_aux_4_name, FILTER_RELATED_AUX_4_LIST_PROPERTY->items[i].name);
-				indigo_update_property(device, FILTER_RELATED_AUX_4_LIST_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		}
-		indigo_update_property(device, FILTER_RELATED_AUX_4_LIST_PROPERTY, NULL);
-		return INDIGO_OK;
+		return update_list(device, FILTER_RELATED_AUX_4_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_aux_4_name);
 	} else if (*FILTER_DEVICE_CONTEXT->device_name) {
 		indigo_property **agent_cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
@@ -391,6 +285,26 @@ indigo_result indigo_filter_client_attach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
+static bool device_in_list(indigo_property *device_list, indigo_property *property) {
+	int count = device_list->count;
+	for (int i = 1; i < count; i++) {
+		if (!strcmp(property->device, device_list->items[i].name)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static void add_to_list(indigo_device *device, indigo_property *device_list, indigo_property *property) {
+	int count = device_list->count;
+	if (count < INDIGO_FILTER_MAX_DEVICES) {
+		indigo_delete_property(device, device_list, NULL);
+		indigo_init_switch_item(device_list->items + count, property->device, property->device, false);
+		device_list->count++;
+		indigo_define_property(device, device_list, NULL);
+	}
+}
+
 indigo_result indigo_filter_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device)
 		return INDIGO_OK;
@@ -402,38 +316,43 @@ indigo_result indigo_filter_define_property(struct indigo_client *client, struct
 		if (interface) {
 			int mask = atoi(interface->text.value);
 			if (strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name)) {
-				if (mask & INDIGO_INTERFACE_WHEEL && !FILTER_CLIENT_CONTEXT->filter_related_wheel_list_property->hidden) {
-					bool found = false;
-					indigo_property *device_list = FILTER_CLIENT_CONTEXT->filter_related_wheel_list_property;
-					int count = device_list->count;
-					for (int i = 1; i < count; i++) {
-						if (!strcmp(property->device, device_list->items[i].name)) {
-							found = true;
-							break;
-						}
-					}
-					if (!found) {
-						indigo_delete_property(device, device_list, NULL);
-						indigo_init_switch_item(device_list->items + count, property->device, property->device, false);
-						device_list->count++;
-						indigo_define_property(device, device_list, NULL);
-					}
-				}
+				if (mask & INDIGO_INTERFACE_CCD && !FILTER_CLIENT_CONTEXT->filter_related_ccd_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_ccd_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_ccd_list_property, property);
+				if (mask & INDIGO_INTERFACE_WHEEL && !FILTER_CLIENT_CONTEXT->filter_related_wheel_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_wheel_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_wheel_list_property, property);
+				if (mask & INDIGO_INTERFACE_FOCUSER && !FILTER_CLIENT_CONTEXT->filter_related_focuser_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_focuser_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_focuser_list_property, property);
+				if (mask & INDIGO_INTERFACE_MOUNT && !FILTER_CLIENT_CONTEXT->filter_related_mount_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_mount_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_mount_list_property, property);
+				if (mask & INDIGO_INTERFACE_GUIDER && !FILTER_CLIENT_CONTEXT->filter_related_guider_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_guider_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_guider_list_property, property);
+				if (mask & INDIGO_INTERFACE_DOME && !FILTER_CLIENT_CONTEXT->filter_related_dome_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_dome_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_dome_list_property, property);
+				if (mask & INDIGO_INTERFACE_GPS && !FILTER_CLIENT_CONTEXT->filter_related_gps_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_gps_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_gps_list_property, property);
+				if (mask & INDIGO_INTERFACE_AUX && !FILTER_CLIENT_CONTEXT->filter_related_aux_1_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_aux_1_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_1_list_property, property);
+				if (mask & INDIGO_INTERFACE_AUX && !FILTER_CLIENT_CONTEXT->filter_related_aux_2_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_aux_2_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_2_list_property, property);
+				if (mask & INDIGO_INTERFACE_AUX && !FILTER_CLIENT_CONTEXT->filter_related_aux_3_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_aux_3_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_3_list_property, property);
+				if (mask & INDIGO_INTERFACE_AUX && !FILTER_CLIENT_CONTEXT->filter_related_aux_4_list_property->hidden)
+					if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_related_aux_4_list_property, property))
+						add_to_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_4_list_property, property);
 			}
 			if (mask & FILTER_CLIENT_CONTEXT->device_interface) {
-				indigo_property *device_list = FILTER_CLIENT_CONTEXT->filter_device_list_property;
-				int count = device_list->count;
-				for (int i = 1; i < count; i++) {
-					if (!strcmp(property->device, device_list->items[i].name)) {
-						return INDIGO_OK;
-					}
-				}
-				if (count < INDIGO_FILTER_MAX_DEVICES) {
-					indigo_delete_property(device, device_list, NULL);
-					indigo_init_switch_item(device_list->items + count, property->device, property->device, false);
-					device_list->count++;
-					indigo_define_property(device, device_list, NULL);
-				}
+				if (!device_in_list(FILTER_CLIENT_CONTEXT->filter_device_list_property, property))
+					add_to_list(device, FILTER_CLIENT_CONTEXT->filter_device_list_property, property);
 				return INDIGO_OK;
 			}
 		}
@@ -520,6 +439,26 @@ indigo_result indigo_filter_update_property(struct indigo_client *client, struct
 	return INDIGO_OK;
 }
 
+static void remove_from_list(indigo_device *device, indigo_property *device_list, indigo_property *property, char *device_name) {
+	for (int i = 1; i < device_list->count; i++) {
+		if (!strcmp(property->device, device_list->items[i].name)) {
+			if (device_list->items[i].sw.value) {
+				device_list->items[0].sw.value = true;
+				*device_name = 0;
+				device_list->state = INDIGO_ALERT_STATE;
+			}
+			int size = (device_list->count - i - 1) * sizeof(indigo_item);
+			if (size > 0) {
+				memcpy(device_list->items + i, device_list->items + i + 1, size);
+			}
+			indigo_delete_property(device, device_list, NULL);
+			device_list->count--;
+			indigo_define_property(device, device_list, NULL);
+			break;
+		}
+	}
+}
+
 indigo_result indigo_filter_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device)
 		return INDIGO_OK;
@@ -555,19 +494,18 @@ indigo_result indigo_filter_delete_property(indigo_client *client, struct indigo
 		}
 	}
 	if (*property->name == 0 || !strcmp(property->name, INFO_PROPERTY_NAME)) {
-		indigo_property *device_list = FILTER_CLIENT_CONTEXT->filter_device_list_property;
-		for (int i = 1; i < device_list->count; i++) {
-			if (!strcmp(property->device, device_list->items[i].name)) {
-				int size = (device_list->count - i - 1) * sizeof(indigo_item);
-				if (size > 0) {
-					memcpy(device_list->items + i, device_list->items + i + 1, size);
-				}
-				indigo_delete_property(device, device_list, NULL);
-				device_list->count--;
-				indigo_define_property(device, device_list, NULL);
-				break;
-			}
-		}
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_ccd_list_property, property, FILTER_CLIENT_CONTEXT->related_ccd_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_wheel_list_property, property, FILTER_CLIENT_CONTEXT->related_wheel_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_focuser_list_property, property, FILTER_CLIENT_CONTEXT->related_focuser_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_mount_list_property, property, FILTER_CLIENT_CONTEXT->related_mount_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_guider_list_property, property, FILTER_CLIENT_CONTEXT->related_guider_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_dome_list_property, property, FILTER_CLIENT_CONTEXT->related_dome_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_gps_list_property, property, FILTER_CLIENT_CONTEXT->related_gps_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_1_list_property, property, FILTER_CLIENT_CONTEXT->related_aux_1_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_2_list_property, property, FILTER_CLIENT_CONTEXT->related_aux_2_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_3_list_property, property, FILTER_CLIENT_CONTEXT->related_aux_3_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_aux_4_list_property, property, FILTER_CLIENT_CONTEXT->related_aux_4_name);
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_device_list_property, property, FILTER_CLIENT_CONTEXT->device_name);
 	}
 	return INDIGO_OK;
 }
