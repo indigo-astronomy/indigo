@@ -457,12 +457,9 @@ static indigo_result detach(indigo_device *device) {
 }
 
 static void server_main() {
-	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
-
 	indigo_start_usb_event_handler();
-
 	indigo_start();
-
+	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 	for (int i = 1; i < server_argc; i++) {
 		if ((!strcmp(server_argv[i], "-p") || !strcmp(server_argv[i], "--port")) && i < server_argc - 1) {
 			indigo_server_tcp_port = atoi(server_argv[i + 1]);
