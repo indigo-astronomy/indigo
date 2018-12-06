@@ -2453,7 +2453,33 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (!device->is_connected) {
+				if (mount_open(device)) {
+					int dev_id = PRIVATE_DATA->dev_id;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					//indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
+					//indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
+					//indigo_define_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
+					device->is_connected = true;
+					/* start updates */
+					//PRIVATE_DATA->dome_state_timer = indigo_set_timer(device, 0, dome_state_timer_callback);
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
+			}
+		} else {
+			if (device->is_connected) {
+				//indigo_cancel_timer(device, &PRIVATE_DATA->dome_state_timer);
+				mount_close(device);
+				//indigo_delete_property(device, DOME_POWER_PROPERTY, NULL);
+				//indigo_delete_property(device, DOME_STATE_PROPERTY, NULL);
+				//indigo_delete_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
