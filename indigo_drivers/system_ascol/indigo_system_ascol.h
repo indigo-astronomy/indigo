@@ -30,6 +30,7 @@
 #include "indigo_mount_driver.h"
 #include "indigo_guider_driver.h"
 #include "indigo_dome_driver.h"
+#include "indigo_focuser_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
