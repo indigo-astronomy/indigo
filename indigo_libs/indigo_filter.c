@@ -235,7 +235,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 		return update_list(device, FILTER_RELATED_AUX_3_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_aux_3_name);
 	} else if (indigo_property_match(FILTER_RELATED_AUX_4_LIST_PROPERTY, property)) {
 		return update_list(device, FILTER_RELATED_AUX_4_LIST_PROPERTY, property, FILTER_DEVICE_CONTEXT->related_aux_4_name);
-	} else if (*FILTER_DEVICE_CONTEXT->device_name) {
+	} else if (*FILTER_DEVICE_CONTEXT->device_name && !strcmp(FILTER_DEVICE_CONTEXT->device_name, property->device)) {
 		indigo_property **agent_cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (agent_cache[i] && indigo_property_match(agent_cache[i], property)) {
@@ -305,7 +305,7 @@ static void add_to_list(indigo_device *device, indigo_property *device_list, ind
 	}
 }
 
-indigo_result indigo_filter_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+indigo_result indigo_filter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device)
 		return INDIGO_OK;
 	device = FILTER_CLIENT_CONTEXT->device;
@@ -387,7 +387,7 @@ indigo_result indigo_filter_define_property(struct indigo_client *client, struct
 	return INDIGO_OK;
 }
 
-indigo_result indigo_filter_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+indigo_result indigo_filter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device)
 		return INDIGO_OK;
 	device = FILTER_CLIENT_CONTEXT->device;
@@ -459,7 +459,7 @@ static void remove_from_list(indigo_device *device, indigo_property *device_list
 	}
 }
 
-indigo_result indigo_filter_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device)
 		return INDIGO_OK;
 	device = FILTER_CLIENT_CONTEXT->device;

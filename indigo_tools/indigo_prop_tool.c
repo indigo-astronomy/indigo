@@ -312,7 +312,7 @@ static indigo_result client_attach(indigo_client *client) {
 }
 
 
-static indigo_result client_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
 	static bool called = false;
@@ -390,7 +390,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 }
 
 
-static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (change_requested) {
 		print_property_string(property, message);
 	} else {

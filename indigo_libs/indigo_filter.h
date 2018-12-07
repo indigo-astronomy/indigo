@@ -147,13 +147,13 @@ extern indigo_result indigo_filter_device_detach(indigo_device *device);
 extern indigo_result indigo_filter_client_attach(indigo_client *client);
 /** Client define property callback function.
  */
-extern indigo_result indigo_filter_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+extern indigo_result indigo_filter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 /** Client update property callback function.
  */
-extern indigo_result indigo_filter_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+extern indigo_result indigo_filter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 /** Client delete property callback function.
  */
-extern indigo_result indigo_filter_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+extern indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 /** Client attach callback function.
  */
 extern indigo_result indigo_filter_client_detach(indigo_client *client);

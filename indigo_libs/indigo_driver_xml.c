@@ -65,7 +65,7 @@ static const char *message_attribute(const char *message) {
 	return "";
 }
 
-static indigo_result xml_device_adapter_define_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result xml_device_adapter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
