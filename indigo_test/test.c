@@ -41,7 +41,7 @@ static indigo_result test_attach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
-static indigo_result test_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result test_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
@@ -51,7 +51,7 @@ static indigo_result test_define_property(struct indigo_client *client, struct i
 	return INDIGO_OK;
 }
 
-static indigo_result test_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result test_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {

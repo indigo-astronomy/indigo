@@ -81,7 +81,7 @@ static const char *escape(const char *s) {
 	return tmp;
 }
 
-static indigo_result json_define_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result json_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
@@ -200,7 +200,7 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 	return INDIGO_OK;
 }
 
-static indigo_result json_update_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result json_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
@@ -322,7 +322,7 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 	return INDIGO_OK;
 }
 
-static indigo_result json_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result json_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
@@ -357,7 +357,7 @@ static indigo_result json_delete_property(indigo_client *client, struct indigo_d
 	return INDIGO_OK;
 }
 
-static indigo_result json_message_property(indigo_client *client, struct indigo_device *device, const char *message) {
+static indigo_result json_message_property(indigo_client *client, indigo_device *device, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
 	if (!indigo_reshare_remote_devices && device->is_remote)

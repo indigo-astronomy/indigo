@@ -258,7 +258,7 @@ static indigo_result agent_client_attach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
-static indigo_result agent_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == CLIENT_PRIVATE_DATA->device)
 		return INDIGO_OK;
 	rule *r = CLIENT_PRIVATE_DATA->rules;
@@ -291,7 +291,7 @@ static indigo_result agent_define_property(struct indigo_client *client, struct 
 	return INDIGO_OK;
 }
 
-static indigo_result agent_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == CLIENT_PRIVATE_DATA->device)
 		return INDIGO_OK;
 	if (property->state == INDIGO_ALERT_STATE)
@@ -311,7 +311,7 @@ static indigo_result agent_update_property(struct indigo_client *client, struct 
 	return INDIGO_OK;
 }
 
-static indigo_result agent_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == CLIENT_PRIVATE_DATA->device)
 		return INDIGO_OK;
 	rule *r = CLIENT_PRIVATE_DATA->rules;
