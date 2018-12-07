@@ -175,6 +175,10 @@ static indigo_result update_list(indigo_device *device, indigo_property *device_
 		if (device_list->items[i].sw.value) {
 			device_list->state = INDIGO_OK_STATE;
 			strcpy(device_name, device_list->items[i].name);
+			indigo_property all_properties;
+			memset(&all_properties, 0, sizeof(all_properties));
+			strcpy(all_properties.device, device_name);
+			indigo_enumerate_properties(FILTER_DEVICE_CONTEXT->client, &all_properties);
 			indigo_update_property(device, device_list, NULL);
 			return INDIGO_OK;
 		}

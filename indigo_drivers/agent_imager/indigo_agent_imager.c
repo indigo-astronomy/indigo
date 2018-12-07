@@ -38,7 +38,7 @@
 #include "indigo_agent_imager.h"
 
 #define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
-#define CLIENT_PRIVATE_DATA										((agent_private_data *)client->client_context)
+#define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
 #define AGENT_IMAGER_BATCH_PROPERTY						(DEVICE_PRIVATE_DATA->agent_ccd_batch_property)
 #define AGENT_IMAGER_BATCH_COUNT_ITEM    			(AGENT_IMAGER_BATCH_PROPERTY->items+0)
@@ -90,14 +90,14 @@ static void set_headers(indigo_device *device) {
 	}
 	
 	if (*FILTER_DEVICE_CONTEXT->related_mount_name) {
-		sprintf(values[0], "SITELAT='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_lat), ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 3600)) % 3600);
-		sprintf(values[1], "SITELONG='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_long), ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 3600)) % 3600);
-		sprintf(values[2], "OBJCTRA='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 3600);
-		sprintf(values[3], "OBJCTDEC='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 3600);
+		sprintf(values[0], "SITELAT='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_lat), ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 3600)) % 60);
+		sprintf(values[1], "SITELONG='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_long), ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 3600)) % 60);
+		sprintf(values[2], "OBJCTRA='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
+		sprintf(values[3], "OBJCTDEC='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
 	}
 
 	if (*FILTER_DEVICE_CONTEXT->related_wheel_name && DEVICE_PRIVATE_DATA->filter_slot > 0) {
-		sprintf(values[4], "FILTER='%s'", DEVICE_PRIVATE_DATA->filter_names[DEVICE_PRIVATE_DATA->filter_slot]);
+		sprintf(values[4], "FILTER='%s'", DEVICE_PRIVATE_DATA->filter_names[DEVICE_PRIVATE_DATA->filter_slot - 1]);
 	}
 
 	if (*FILTER_DEVICE_CONTEXT->related_focuser_name) {
