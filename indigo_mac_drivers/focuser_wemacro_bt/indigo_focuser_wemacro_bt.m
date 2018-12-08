@@ -37,7 +37,6 @@
 
 #import <CoreBluetooth/CoreBluetooth.h>
 
-#include "indigo_driver_xml.h"
 #include "indigo_focuser_wemacro_bt.h"
 
 #define PRIVATE_DATA													((wemacro_private_data *)device->private_data)
@@ -143,12 +142,15 @@ static indigo_result focuser_detach(indigo_device *device);
 				[self deleteDevice];
 				hc08 = nil;
 				ffe1 = nil;
+				if (hc08)
+					CFBridgingRelease((__bridge void *)hc08);
 			}
 			break;
 		case CBManagerStatePoweredOn:
 			if (hc08 == nil) {
 				for (CBPeripheral *peripheral in [central retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"FFE0"]]]) {
 					if ([peripheral.name isEqualToString:@"HC-08"]) {
+						CFBridgingRetain(peripheral);
 						hc08 = peripheral;
 						peripheral.delegate = self;
 						[self createDevice];
@@ -173,6 +175,7 @@ static indigo_result focuser_detach(indigo_device *device);
 
 -(void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
 	if ([peripheral.name isEqualToString:@"HC-08"]) {
+		CFBridgingRetain(peripheral);
 		hc08 = peripheral;
 		peripheral.delegate = self;
 		[self createDevice];
