@@ -1,13 +1,15 @@
 #ifndef __toupcam_h__
 #define __toupcam_h__
 
-/* Version: 30.13299.2018.1112 */
+/* Version: 32.13483.2018.1206 */
 /*
    Platform & Architecture:
        (1) Win32:
               (a) x86: XP SP3 or above; CPU supports SSE2 instruction set or above
               (b) x64: Win7 or above
-       (2) WinRT: x86 and x64; Win10 or above
+			  (c) arm: Win10 or above
+			  (d) arm64: Win10 or above
+       (2) WinRT: x86, x64, arm, arm64; Win10 or above
        (3) macOS: x86 and x64 bundle; macOS 10.10 or above
        (4) Linux: kernel 2.6.27 or above
               (a) x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above
@@ -236,7 +238,7 @@ typedef struct {
 }ToupcamInstV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 30.13299.2018.1112
+    get the version of this dll/so/dylib, which is: 32.13483.2018.1206
 */
 #ifdef _WIN32
 toupcam_ports(const wchar_t*)   Toupcam_Version();
@@ -425,14 +427,12 @@ toupcam_ports(HRESULT)  Toupcam_put_AutoExpoEnable(HToupCam h, int bAutoExposure
 toupcam_ports(HRESULT)  Toupcam_get_AutoExpoTarget(HToupCam h, unsigned short* Target);
 toupcam_ports(HRESULT)  Toupcam_put_AutoExpoTarget(HToupCam h, unsigned short Target);
 
-#define TOUPCAM_MAX_AE_EXPTIME  350000  /* default: 350 ms */
-#define TOUPCAM_MAX_AE_AGAIN    500
-
 /*set the maximum auto exposure time and analog agin. The default maximum auto exposure time is 350ms */
 toupcam_ports(HRESULT)  Toupcam_put_MaxAutoExpoTimeAGain(HToupCam h, unsigned maxTime, unsigned short maxAGain);
 
 toupcam_ports(HRESULT)  Toupcam_get_ExpoTime(HToupCam h, unsigned* Time); /* in microseconds */
 toupcam_ports(HRESULT)  Toupcam_put_ExpoTime(HToupCam h, unsigned Time); /* in microseconds */
+toupcam_ports(HRESULT)  Toupcam_get_RealExpoTime(HToupCam h, unsigned* Time); /* in microseconds, based on 50HZ/60HZ/DC */
 toupcam_ports(HRESULT)  Toupcam_get_ExpTimeRange(HToupCam h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 toupcam_ports(HRESULT)  Toupcam_get_ExpoAGain(HToupCam h, unsigned short* AGain); /* percent, such as 300 */

@@ -1,13 +1,15 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 30.13270.2018.1102 */
+/* Version: 32.13483.2018.1206 */
 /*
    Platform & Architecture:
        (1) Win32:
               (a) x86: XP SP3 or above; CPU supports SSE2 instruction set or above
               (b) x64: Win7 or above
-       (2) WinRT: x86 and x64; Win10 or above
+			  (c) arm: Win10 or above
+			  (d) arm64: Win10 or above
+       (2) WinRT: x86, x64, arm, arm64; Win10 or above
        (3) macOS: x86 and x64 bundle; macOS 10.10 or above
        (4) Linux: kernel 2.6.27 or above
               (a) x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above
@@ -236,7 +238,7 @@ typedef struct {
 }AltaircamInstV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 30.13270.2018.1102
+    get the version of this dll/so/dylib, which is: 32.13483.2018.1206
 */
 #ifdef _WIN32
 altaircam_ports(const wchar_t*)   Altaircam_Version();
@@ -299,7 +301,7 @@ typedef void (__stdcall* PALTAIRCAM_EVENT_CALLBACK)(unsigned nEvent, void* pCall
 altaircam_ports(HRESULT)  Altaircam_StartPullModeWithCallback(HAltairCam h, PALTAIRCAM_EVENT_CALLBACK pEventCallback, void* pCallbackContext);
 
 #define ALTAIRCAM_FRAMEINFO_FLAG_SEQ          0x01 /* sequence number */
-#define ALTAIRCAM_FRAMEINFO_FLAG_TIMESTAMP    0x02
+#define ALTAIRCAM_FRAMEINFO_FLAG_TIMESTAMP    0x02 /* timestamp */
 
 typedef struct {
     unsigned            width;
@@ -425,14 +427,12 @@ altaircam_ports(HRESULT)  Altaircam_put_AutoExpoEnable(HAltairCam h, int bAutoEx
 altaircam_ports(HRESULT)  Altaircam_get_AutoExpoTarget(HAltairCam h, unsigned short* Target);
 altaircam_ports(HRESULT)  Altaircam_put_AutoExpoTarget(HAltairCam h, unsigned short Target);
 
-#define ALTAIRCAM_MAX_AE_EXPTIME  350000  /* default: 350 ms */
-#define ALTAIRCAM_MAX_AE_AGAIN    500
-
 /*set the maximum auto exposure time and analog agin. The default maximum auto exposure time is 350ms */
 altaircam_ports(HRESULT)  Altaircam_put_MaxAutoExpoTimeAGain(HAltairCam h, unsigned maxTime, unsigned short maxAGain);
 
 altaircam_ports(HRESULT)  Altaircam_get_ExpoTime(HAltairCam h, unsigned* Time); /* in microseconds */
 altaircam_ports(HRESULT)  Altaircam_put_ExpoTime(HAltairCam h, unsigned Time); /* in microseconds */
+altaircam_ports(HRESULT)  Altaircam_get_RealExpoTime(HAltairCam h, unsigned* Time); /* in microseconds, based on 50HZ/60HZ/DC */
 altaircam_ports(HRESULT)  Altaircam_get_ExpTimeRange(HAltairCam h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 altaircam_ports(HRESULT)  Altaircam_get_ExpoAGain(HAltairCam h, unsigned short* AGain); /* percent, such as 300 */
@@ -812,6 +812,22 @@ altaircam_ports(HRESULT)  Altaircam_StartOclWithSharedTexture(HAltairCam h, cons
 */
 altaircam_ports(double)   Altaircam_calc_ClarityFactor(const void* pImageData, int bits, unsigned nImgWidth, unsigned nImgHeight);
 
+/*
+    nBitCount: output bitmap bit count
+    when nBitDepth == 8:
+        nBitCount must be 24 or 32
+    when nBitDepth > 8
+        nBitCount:  24 -> RGB24
+                    32 -> RGB32
+                    48 -> RGB48
+                    64 -> RGB64
+*/
+altaircam_ports(void)     Altaircam_deBayerV2(unsigned nBayer, int nW, int nH, const void* input, void* output, unsigned char nBitDepth, unsigned char nBitCount);
+
+/*
+    obsolete, please use Altaircam_deBayerV2
+*/
+altaircam_deprecated
 altaircam_ports(void)     Altaircam_deBayer(unsigned nBayer, int nW, int nH, const void* input, void* output, unsigned char nBitDepth);
 
 typedef void (__stdcall* PALTAIRCAM_DEMOSAIC_CALLBACK)(unsigned nBayer, int nW, int nH, const void* input, void* output, unsigned char nBitDepth, void* pCallbackCtx);

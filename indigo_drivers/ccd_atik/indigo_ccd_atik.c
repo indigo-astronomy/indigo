@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -68,6 +68,13 @@ typedef struct {
 	bool can_check_temperature;
 } atik_private_data;
 
+static bool do_log = true;
+
+static void debug_log(const char *message) {
+	if (do_log)
+		indigo_debug("%s: SDK - %s", DRIVER_NAME, message);
+}
+
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
@@ -77,8 +84,10 @@ static void exposure_timer_callback(indigo_device *device) {
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);
 	if (remaining > 0)
 		usleep(remaining * 1000000);
+	do_log = false;
 	while (!ArtemisImageReady(PRIVATE_DATA->handle))
 		usleep(1000);
+	do_log = true;
 	int left, top, width, height, binx, biny;
 	if (ArtemisGetImageData(PRIVATE_DATA->handle, &left, &top, &width, &height, &binx, &biny) == ARTEMIS_OK) {
 		void *buffer = ArtemisImageBuffer(PRIVATE_DATA->handle);
@@ -130,6 +139,10 @@ static void ccd_connect_callback(indigo_device *device) {
 		struct ARTEMISPROPERTIES properties;
 		int temperature, flags, level, min_level, max_level, set_point;
 		if (ArtemisProperties(PRIVATE_DATA->handle, &properties) == ARTEMIS_OK) {
+			if (properties.nPixelsX == 3354 && properties.nPixelsY == 2529) {
+				properties.nPixelsX = 3326;
+				properties.nPixelsY = 2504;
+			}
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = properties.nPixelsX;
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = properties.nPixelsY;
 			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(properties.PixelMicronsX * 100)/100;
@@ -706,10 +719,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 }
 
 static libusb_hotplug_callback_handle callback_handle1, callback_handle2;
-
-static void debug_log(const char *message) {
-	indigo_debug("%s: SDK - %s", DRIVER_NAME, message);
-}
 
 indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *info) {
 	ArtemisSetDebugCallback(debug_log);
