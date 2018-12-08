@@ -132,6 +132,7 @@ static indigo_result focuser_detach(indigo_device *device);
 			if (stackrail == nil) {
 				for (CBPeripheral *peripheral in [central retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"FFE0"]]]) {
 					if ([peripheral.name isEqualToString:@"STACKRAIL"]) {
+						CFBridgingRetain(peripheral);
 						stackrail = peripheral;
 						peripheral.delegate = self;
 						[self createDevice];
@@ -156,6 +157,7 @@ static indigo_result focuser_detach(indigo_device *device);
 
 -(void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
 	if ([peripheral.name isEqualToString:@"STACKRAIL"]) {
+		CFBridgingRetain(peripheral);
 		stackrail = peripheral;
 		peripheral.delegate = self;
 		[self createDevice];
