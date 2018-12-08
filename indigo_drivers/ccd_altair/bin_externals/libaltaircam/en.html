@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 30.13270.2018.1102</li></ul>
+<ul><li>Version: 32.13483.2018.1206</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -17,9 +17,11 @@
         <ul>
           <li>x86: XP SP3 or above; CPU supports SSE2 instruction set or above</li>
           <li>x64: Win7 or above</li>
+		  <li>arm: Win10 or above</li>
+		  <li>arm64: Win10 or above</li>
         </ul>
       </li>
-	  <li>WinRT: x86 and x64; Windows10 or above</li>
+	  <li>WinRT: x86, x64, arm, arm64; Windows10 or above</li>
       <li>macOS: x86 and x64 bundle; macOS 10.10 or above</li>
       <li>Linux: kernel 2.6.27 or above
 	    <ul>
@@ -64,6 +66,16 @@ The SDK zip file contains all of the necessary resources and information:</p>
           altaircam.dll, dll file for x64.<br/>
          democpp.exe, x64 C++ demo exe file.</p>
       </blockquote></li>
+	  <li>arm
+     <blockquote>
+       <p align="left">altaircam.lib, lib file for arm.<br/>
+         altaircam.dll, dll file for arm.<br/>
+     </blockquote></li>
+	  <li>arm64
+     <blockquote>
+       <p align="left">altaircam.lib, lib file for arm64.<br/>
+         altaircam.dll, dll file for arm64.<br/>
+     </blockquote></li>
 	 <li>winrt
 		<blockquote>
 		DLL files for WinRT / UWP (Universal Windows Platform) / Windows Store App.<br/>
@@ -554,9 +566,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p>void* pCallbackCtx: callback context</p>
   </blockquote>
   <p><strong>Remarks:</strong></p><blockquote>
-  <p>This function is only available on macOS and Linux, it's unnecessary on Windows.</p>
+  <p>This function is only available on macOS and Linux.</p>
   <p>To process the device plug in / pull out in Windows, please refer to the MSDN(<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363224(v=vs.85).aspx">Device Management</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363215(v=vs.85).aspx">Detecting Media Insertion or Removal</a>).</p>
   <p>To process the device plug in / pull out in Linux / macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Altaircam_EnumV2(...) again to enum the cameras.</p>
+  <p>On macOS, IONotificationPortCreate series APIs can also be used as an alternative.</p>
   <p>Recommendation: for better rubustness, when notify of device insertion arrives, don't open handle of this device immediately, but open it <b>after delaying a short time (e.g., 200 milliseconds)</b>.</p>
 </blockquote>
 </li></ul>
@@ -1140,7 +1153,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     </blockquote>
     <p><strong>Remarks:</strong> If auto exposure is enabled, the exposure time and analog gain are controlled by software to make the average brightness of the target rectangle as close as possible to the auto exposure target. The auto exposure target value is the target brightness of the target rectangle (see Altaircam_put_AEAuxRect, Altaircam_get_AEAuxRect).</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Altaircam_get_ExpoTime, Altaircam_put_ExpoTime, Altaircam_get_ExpTimeRange</font></h2>
+<ul><li><h2><font color="#0000FF">Altaircam_get_ExpoTime, Altaircam_put_ExpoTime, Altaircam_get_ExpTimeRange, Altaircam_get_RealExpoTime</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1148,7 +1161,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p>unsigned Time: exposure time, unit: microsecond</p>
       <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
     </blockquote>
-  <p><strong>Remarks:</strong> exposure time related.</p>
+  <p><strong>Remarks:</strong> exposure time related. Altaircam_get_RealExpoTime get the real exposure time based on 50HZ/60HZ.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Altaircam_get_ExpoAGain, Altaircam_put_ExpoAGain, Altaircam_get_ExpoAGainRange</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1687,6 +1700,8 @@ public bool Snap(uint nResolutionIndex)
 <hr/>
 <h1><font color="#0000FF">7. Changelog</font></h1>
 <hr/>
+<p>v32: Addd support to Windows 10 on ARM and ARM64, both desktop and WinRT</p>
+<p>v31: Add Altaircam_deBayerV2, support RGB48 and RGB64</p>
 <p>v30: Add ALTAIRCAM_FLAG_CGHDR</p>
 <p>v29: Add AltaircamFrameInfoV2, a group of functions (PullImageV2 and StartPushModeV2), some cameras support frame sequence number and timestamp. Please see <a href="#infov2">here</a></p>
 <p>v28: Add Altaircam_read_Pipe, Altaircam_write_Pipe, Altaircam_feed_Pipe</p>
