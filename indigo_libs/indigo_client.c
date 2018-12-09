@@ -310,7 +310,9 @@ static void *server_thread(indigo_server_entry *server) {
       indigo_detach_device(server->protocol_adapter);
       free(server->protocol_adapter->device_context);
       free(server->protocol_adapter);
+			server->protocol_adapter = NULL;
       close(server->socket);
+			server->socket = 0;
       INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
     }
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
