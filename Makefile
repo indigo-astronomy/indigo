@@ -285,3 +285,27 @@ Makefile.inc: $(MAKEFILE_LIST)
 	@echo --------------------------------------------------------------------- Makefile.inc
 	@cat Makefile.inc
 	@echo ---------------------------------------------------------------------
+
+remote:
+	ssh ubuntu32.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
+	scp ubuntu32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb .
+	ssh ubuntu64.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
+	scp ubuntu64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb .
+	ssh raspi32.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
+	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
+	ssh raspi64.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
+	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
+
+init-repo:
+	aptly repo create -distribution=indigo -component=main indigo-release
+
+publish:
+	rm -f ~/Desktop/public
+	aptly repo remove indigo-release indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386 indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64 indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64
+	aptly repo add indigo-release indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb
+	aptly repo show -with-packages indigo-release
+	aptly publish -force-drop drop indigo
+	aptly publish repo indigo-release
+	ln -s ~/.aptly/public ~/Desktop
+
+
