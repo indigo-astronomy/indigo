@@ -827,11 +827,11 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+        dc1394_log_register_handler(DC1394_LOG_ERROR, errorlog_handler, NULL);
+        dc1394_log_register_handler(DC1394_LOG_WARNING, errorlog_handler, NULL);
+        dc1394_log_register_handler(DC1394_LOG_DEBUG, debuglog_handler, NULL);
 		context = dc1394_new();
 		if (context != NULL) {
-			dc1394_log_register_handler(DC1394_LOG_ERROR, errorlog_handler, NULL);
-			dc1394_log_register_handler(DC1394_LOG_WARNING, errorlog_handler, NULL);
-			dc1394_log_register_handler(DC1394_LOG_DEBUG, debuglog_handler, NULL);
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}
