@@ -301,7 +301,7 @@ init-repo:
 
 publish:
 	rm -f ~/Desktop/public
-	aptly repo remove indigo-release indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386 indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64 indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64
+	aptly repo remove indigo-release indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_i386 indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_amd64 indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_armhf indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_arm64
 	aptly repo add indigo-release indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb
 	aptly repo show -with-packages indigo-release
 	aptly publish -force-drop drop indigo
