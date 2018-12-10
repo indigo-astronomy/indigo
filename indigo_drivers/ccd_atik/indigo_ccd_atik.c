@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -84,9 +84,10 @@ static void exposure_timer_callback(indigo_device *device) {
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);
 	if (remaining > 0)
 		usleep(remaining * 1000000);
-	do_log = false;
-	while (!ArtemisImageReady(PRIVATE_DATA->handle))
+	while (!ArtemisImageReady(PRIVATE_DATA->handle)) {
+		do_log = false;
 		usleep(1000);
+	}
 	do_log = true;
 	int left, top, width, height, binx, biny;
 	if (ArtemisGetImageData(PRIVATE_DATA->handle, &left, &top, &width, &height, &binx, &biny) == ARTEMIS_OK) {
@@ -253,13 +254,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		while (true) {
 			int state = ArtemisCameraState(PRIVATE_DATA->handle);
+			do_log = true;
 			if (state == CAMERA_IDLE) {
 				ArtemisSetPreview(PRIVATE_DATA->handle, CCD_READ_MODE_HIGH_SPEED_ITEM->sw.value);
 				ArtemisSetDarkMode(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
 				ArtemisBin(PRIVATE_DATA->handle, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
 				ArtemisSubframe(PRIVATE_DATA->handle, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value);
-				//				ArtemisStartExposure(PRIVATE_DATA->handle, CCD_EXPOSURE_ITEM->number.target); // return value?
-				//				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 				if (ArtemisStartExposure(PRIVATE_DATA->handle, CCD_EXPOSURE_ITEM->number.target) == ARTEMIS_OK) {
 					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 				} else {
@@ -270,6 +270,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				break;
 			} else if (state == CAMERA_FLUSHING) {
 				usleep(1000);
+				do_log = false;
 			} else {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
