@@ -22,6 +22,6 @@ indigo_server indigo_aux_dsusb
 
 ## Comments
 
-## Status: Untested
+## Status: Stable
 
-Looking for device owners!!! :)
+Tested with physical device.

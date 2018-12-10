@@ -21,6 +21,6 @@ indigo_server indigo_guider_gpusb
 
 ## Comments
 
-## Status: Under development
+## Status: Stable
 
-Looking for device owners!!! :)
+Tested with physical device.
