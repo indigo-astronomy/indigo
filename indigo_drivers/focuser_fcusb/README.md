@@ -5,6 +5,7 @@ http://www.store.shoestringastronomy.com/products_fc.htm
 ## Supported devices
 * FCUSB
 * FCUSB2
+* FCUSB3
 
 This driver supports hot-plug (single device of each type).
 
@@ -26,4 +27,4 @@ A non-standard switch property "Frequency" is provided by this driver.
 
 ## Status: Stable
 
-Driver is developed and tested with the physical hardware.
+Driver is tested with the physical hardware.
