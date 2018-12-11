@@ -883,7 +883,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header += strlen(header);
 		sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
 		header += strlen(header);
-		*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data);
+		*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data) - 16;
 		if (naxis == 2 && byte_per_pixel == 2) {
 			if (!little_endian) {
 				short *b16 = (short *)(data + FITS_HEADER_SIZE);
