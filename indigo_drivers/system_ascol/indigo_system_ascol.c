@@ -2427,17 +2427,24 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// --------------------------------------------------------------------------------
+		AUTHENTICATION_PROPERTY->hidden = false;
+		AUTHENTICATION_PROPERTY->count = 1;
+		// -------------------------------------------------------------------------------- DEVICE_PORT
+		DEVICE_PORT_PROPERTY->hidden = false;
+		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		// -------------------------------------------------------------------------------- DEVICE_PORTS
+		DEVICE_PORTS_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE / FOCUSER_COMPENSATION
-		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-		FOCUSER_TEMPERATURE_ITEM->number.value = 25;
-		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-		FOCUSER_MODE_PROPERTY->hidden = false;
+		FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
+		FOCUSER_COMPENSATION_PROPERTY->hidden = true;
+		FOCUSER_MODE_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
-		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -2495,17 +2502,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0.5, focuser_timer_callback);
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
-		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
-		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		//FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_set_timer(device, 0.5, focuser_timer_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
