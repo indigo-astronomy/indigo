@@ -459,6 +459,7 @@
 		590B59D21F78544000086FD2 /* indigo_mount_temma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_temma.h; sourceTree = "<group>"; };
 		590B59D31F78544000086FD2 /* Temma.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Temma.pdf; sourceTree = "<group>"; };
 		590B59D61F79A68000086FD2 /* libnovas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnovas.a; path = build/lib/libnovas.a; sourceTree = "<group>"; };
+		590BCDFC21BEF8A1004DE869 /* test_suite.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = test_suite.sh; sourceTree = "<group>"; };
 		590DD780212013B500F2B978 /* Makefile.mingw */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.mingw; sourceTree = "<group>"; };
 		590DD781212013B500F2B978 /* LICENSE.LGPL */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE.LGPL; sourceTree = "<group>"; };
 		590DD782212013B500F2B978 /* README.cmake */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.cmake; sourceTree = "<group>"; };
@@ -4939,6 +4940,7 @@
 		592662AF1D9590630021746A /* indigo_test */ = {
 			isa = PBXGroup;
 			children = (
+				590BCDFC21BEF8A1004DE869 /* test_suite.sh */,
 				592662B01D9590630021746A /* test.c */,
 				59D382161D97348500E87393 /* client.c */,
 				59588C9F211B4A0200E9FC27 /* indigo.js */,
