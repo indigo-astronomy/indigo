@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Written by Thomas Stibor <thomas@stibor.net>
-VERSION="0.1.3"
+VERSION="0.1.4"
 
 # ANSI color codes.
 COL_R='\033[0;31m'
@@ -227,9 +227,9 @@ __test_capture() {
     for e in "${EXP_TIMES[@]}"
     do
 	if [[ "${1}" == "indigo_ccd_gphoto2" ]]; then
-	    WAIT_TIME=$(echo ${EXP_TIME} | awk '{print int($1+5)}')
+	    WAIT_TIME=$(echo ${e} | awk '{print int($1+5)}')
 	else
-	    WAIT_TIME=$(echo ${EXP_TIME} | awk '{print int($1+2)}')
+	    WAIT_TIME=$(echo ${e} | awk '{print int($1+2)}')
 	fi
 	__set_verify_property "${DRIVER_NAME}.CCD_EXPOSURE.EXPOSURE=${e}" \
 			      "${DRIVER_NAME}.CCD_EXPOSURE" \
