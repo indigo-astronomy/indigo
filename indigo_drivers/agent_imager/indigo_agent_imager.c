@@ -274,6 +274,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- Device properties
 		strcpy(FILTER_DEVICE_LIST_PROPERTY->name, FILTER_CCD_LIST_PROPERTY_NAME);
 		strcpy(FILTER_DEVICE_LIST_PROPERTY->label, "Camera list");
+		strcpy(FILTER_DEVICE_LIST_PROPERTY->items->label, "No camera");
 		// -------------------------------------------------------------------------------- Batch properties
 		AGENT_IMAGER_BATCH_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, "Batch", "Batch settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_IMAGER_BATCH_PROPERTY == NULL)
