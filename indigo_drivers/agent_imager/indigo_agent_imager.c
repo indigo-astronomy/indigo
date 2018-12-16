@@ -60,6 +60,8 @@
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
 
+#define AGENT_WHEEL_FILTER_PROPERTY					(DEVICE_PRIVATE_DATA->agent_wheel_filter_property)
+
 #define FILTER_SLOT_COUNT											24
 
 typedef struct {
@@ -68,8 +70,8 @@ typedef struct {
 	indigo_property *agent_ccd_preview_setup_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_abort_process_property;
-	char filter_names[FILTER_SLOT_COUNT][INDIGO_NAME_SIZE];
-	int filter_slot;
+	indigo_property *agent_wheel_filter_property;
+	char filter_name[INDIGO_NAME_SIZE];
 	int focuser_position;
 	double site_lat, site_long;
 	double mount_ra, mount_dec;
@@ -89,22 +91,22 @@ static void set_headers(indigo_device *device) {
 		*values[i] = 0;
 	}
 	
-	if (*FILTER_DEVICE_CONTEXT->related_mount_name) {
+	if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX + INDIGO_FILTER_LIST_COUNT]) {
 		sprintf(values[0], "SITELAT='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_lat), ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 3600)) % 60);
 		sprintf(values[1], "SITELONG='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_long), ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 3600)) % 60);
 		sprintf(values[2], "OBJCTRA='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 		sprintf(values[3], "OBJCTDEC='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
 	}
 
-	if (*FILTER_DEVICE_CONTEXT->related_wheel_name && DEVICE_PRIVATE_DATA->filter_slot > 0) {
-		sprintf(values[4], "FILTER='%s'", DEVICE_PRIVATE_DATA->filter_names[DEVICE_PRIVATE_DATA->filter_slot - 1]);
+	if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && *DEVICE_PRIVATE_DATA->filter_name) {
+		sprintf(values[4], "FILTER='%s'", DEVICE_PRIVATE_DATA->filter_name);
 	}
 
-	if (*FILTER_DEVICE_CONTEXT->related_focuser_name) {
+	if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) {
 		sprintf(values[5], "FOCUSPOS=%d", DEVICE_PRIVATE_DATA->focuser_position);
 	}
 	
-	indigo_change_text_property(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name, CCD_FITS_HEADERS_PROPERTY_NAME, 6, (const char **)items, (const char **)values);
+	indigo_change_text_property(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_FITS_HEADERS_PROPERTY_NAME, 6, (const char **)items, (const char **)values);
 }
 
 static void exposure_batch(indigo_device *device) {
@@ -112,7 +114,7 @@ static void exposure_batch(indigo_device *device) {
 	indigo_property *remote_exposure_property = NULL;
 	set_headers(device);
 	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name) && !strcmp(cache[j]->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(cache[j]->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 			remote_exposure_property = cache[j];
 			indigo_property *local_exposure_property = indigo_init_number_property(NULL, remote_exposure_property->device, remote_exposure_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, remote_exposure_property->count);
 			if (local_exposure_property) {
@@ -197,7 +199,7 @@ static void streaming_batch(indigo_device *device) {
 	indigo_property *remote_streaming_property = NULL;
 	set_headers(device);
 	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name) && !strcmp(cache[j]->name, CCD_STREAMING_PROPERTY_NAME)) {
+		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(cache[j]->name, CCD_STREAMING_PROPERTY_NAME)) {
 			remote_streaming_property = cache[j];
 			int exposure_index = -1;
 			int count_index = -1;
@@ -272,9 +274,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(DEVICE_PRIVATE_DATA != NULL);
 	if (indigo_filter_device_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
-		strcpy(FILTER_DEVICE_LIST_PROPERTY->name, FILTER_CCD_LIST_PROPERTY_NAME);
-		strcpy(FILTER_DEVICE_LIST_PROPERTY->label, "Camera list");
-		strcpy(FILTER_DEVICE_LIST_PROPERTY->items->label, "No camera");
+		FILTER_CCD_LIST_PROPERTY->hidden = false;
+		FILTER_WHEEL_LIST_PROPERTY->hidden = false;
+		FILTER_FOCUSER_LIST_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- Related decvices properties
+		FILTER_RELATED_MOUNT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Batch properties
 		AGENT_IMAGER_BATCH_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, "Batch", "Batch settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_IMAGER_BATCH_PROPERTY == NULL)
@@ -302,14 +306,21 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_blob_item(AGENT_IMAGER_PREVIEW_IMAGE_ITEM, AGENT_IMAGER_PREVIEW_IMAGE_ITEM_NAME, "Image preview");
 		indigo_init_blob_item(AGENT_IMAGER_PREVIEW_HISTO_ITEM, AGENT_IMAGER_PREVIEW_HISTO_ITEM_NAME, "Image histogram");
-		// -------------------------------------------------------------------------------- Related decvices properties
-		FILTER_RELATED_WHEEL_LIST_PROPERTY->hidden = false;
-		FILTER_RELATED_FOCUSER_LIST_PROPERTY->hidden = false;
-		FILTER_RELATED_MOUNT_LIST_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- Wheel helpers
+		AGENT_WHEEL_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Filter Wheel", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, FILTER_SLOT_COUNT);
+		if (AGENT_WHEEL_FILTER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		for (int i = 0; i < FILTER_SLOT_COUNT; i++) {
+			char name[8], label[32];
+			sprintf(name, "%d", i + 1);
+			sprintf(label, "Filter #%d", i + 1);
+			indigo_init_switch_item(AGENT_WHEEL_FILTER_PROPERTY->items + i, name, label, false);
+		}
+		AGENT_WHEEL_FILTER_PROPERTY->count = 0;
+		AGENT_WHEEL_FILTER_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-		DEVICE_PRIVATE_DATA->filter_slot = -1;
-		for (int i = 0; i < FILTER_SLOT_COUNT; i++)
-			sprintf(DEVICE_PRIVATE_DATA->filter_names[i], "Filter #%d", i + 1);
+		CONNECTION_PROPERTY->hidden = true;
+		*DEVICE_PRIVATE_DATA->filter_name = 0;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -319,16 +330,18 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_PREVIEW_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_PREVIEW_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
+		if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property))
+			indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+		if (indigo_property_match(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, property))
+			indigo_define_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
+		if (indigo_property_match(AGENT_IMAGER_PREVIEW_PROPERTY, property))
+			indigo_define_property(device, AGENT_IMAGER_PREVIEW_PROPERTY, NULL);
+		if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
+			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
+			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	}
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -347,7 +360,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_IMAGER_PREVIEW_SETUP_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
 	} else 	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
-		if (*FILTER_DEVICE_CONTEXT->device_name) {
+		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value) {
@@ -366,10 +379,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "%s: No CCD is selected", IMAGER_AGENT_NAME);
 		}
 	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
-		if (*FILTER_DEVICE_CONTEXT->device_name) {
+		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
 			if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				indigo_property *abort_property = indigo_init_switch_property(NULL, FILTER_DEVICE_CONTEXT->device_name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+				indigo_property *abort_property = indigo_init_switch_property(NULL, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_ABORT_EXPOSURE_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 				if (abort_property) {
 					indigo_init_switch_item(abort_property->items, CCD_ABORT_EXPOSURE_ITEM_NAME, "", true);
 					indigo_change_property(FILTER_DEVICE_CONTEXT->client, abort_property);
@@ -385,6 +398,17 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, "%s: No CCD is selected", IMAGER_AGENT_NAME);
 		}
+	} else 	if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
+		indigo_property_copy_values(AGENT_WHEEL_FILTER_PROPERTY, property, false);
+		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
+			if (AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value) {
+				indigo_property *slot_property = indigo_init_number_property(NULL, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX], WHEEL_SLOT_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+				indigo_init_number_item(slot_property->items, WHEEL_SLOT_ITEM_NAME, NULL, 0, 0, 0, i + 1);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, slot_property);
+			}
+		}
+		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
 	}
 	return indigo_filter_change_property(device, client, property);
 }
@@ -402,14 +426,25 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->related_wheel_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_wheel_name) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+		agent_wheel_filter_property->count = property->count;
 		for (int i = 0; i < property->count; i++)
-			strcpy(CLIENT_PRIVATE_DATA->filter_names[i], property->items[i].text.value);
-	} else if (*FILTER_CLIENT_CONTEXT->related_wheel_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_wheel_name) && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->filter_slot = property->items[0].number.value;
-	} else if (*FILTER_CLIENT_CONTEXT->related_focuser_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_focuser_name) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+			strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
+		agent_wheel_filter_property->hidden = false;
+		indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
+		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+		int value = property->items->number.value;
+		if (value)
+			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
+		else
+			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
+		agent_wheel_filter_property->state = property->state;
+		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
-	} else if (*FILTER_CLIENT_CONTEXT->related_mount_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_mount_name)) {
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX + INDIGO_FILTER_LIST_COUNT] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX + INDIGO_FILTER_LIST_COUNT])) {
 		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -432,21 +467,47 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name) && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+	if (!strcmp(property->device, IMAGER_AGENT_NAME) && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
+		if (property->items->sw.value) {
+			indigo_delete_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+			indigo_delete_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
+			indigo_delete_property(device, AGENT_IMAGER_PREVIEW_PROPERTY, NULL);
+			indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			indigo_delete_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+		} else {
+			indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+			indigo_define_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
+			indigo_define_property(device, AGENT_IMAGER_PREVIEW_PROPERTY, NULL);
+			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+		}
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TBD: make histo & preview");
 		} else {
 			CLIENT_PRIVATE_DATA->agent_ccd_preview_property->state = property->state;
 			indigo_update_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_ccd_preview_property, NULL);
 		}
-	} else if (*FILTER_CLIENT_CONTEXT->related_wheel_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_wheel_name) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+		agent_wheel_filter_property->count = property->count;
 		for (int i = 0; i < property->count; i++)
-			strcpy(CLIENT_PRIVATE_DATA->filter_names[i], property->items[i].text.value);
-	} else if (*FILTER_CLIENT_CONTEXT->related_wheel_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_wheel_name) && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->filter_slot = property->items[0].number.value;
-	} else if (*FILTER_CLIENT_CONTEXT->related_focuser_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_focuser_name) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+			strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
+		agent_wheel_filter_property->hidden = false;
+		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+		indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
+		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+		int value = property->items->number.value;
+		if (value)
+			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
+		else
+			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
+		agent_wheel_filter_property->state = property->state;
+		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
-	} else if (*FILTER_CLIENT_CONTEXT->related_mount_name && !strcmp(property->device, FILTER_CLIENT_CONTEXT->related_mount_name)) {
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX + INDIGO_FILTER_LIST_COUNT] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX + INDIGO_FILTER_LIST_COUNT])) {
 		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -468,6 +529,11 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	return indigo_filter_update_property(client, device, property, message);
 }
 
+static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME))
+		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_wheel_filter_property, NULL);
+	return indigo_filter_delete_property(client, device, property, message);
+}
 // -------------------------------------------------------------------------------- Initialization
 
 static agent_private_data *private_data = NULL;
@@ -490,7 +556,7 @@ indigo_result indigo_agent_imager(indigo_driver_action action, indigo_driver_inf
 		indigo_filter_client_attach,
 		agent_define_property,
 		agent_update_property,
-		indigo_filter_delete_property,
+		agent_delete_property,
 		NULL,
 		indigo_filter_client_detach
 	};
