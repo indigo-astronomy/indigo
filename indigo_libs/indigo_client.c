@@ -174,13 +174,13 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 		int input[2], output[2];
 		if (pipe(input) < 0 || pipe(output) < 0) {
 			INDIGO_ERROR(indigo_error("Can't create local pipe for subprocess %s (%s)", subprocess->executable, strerror(errno)));
-			subprocess->last_error = errno;
+			subprocess->last_error = strerror(errno);
 			return NULL;
 		}
 		subprocess->pid = fork();
 		if (subprocess->pid == -1) {
 			INDIGO_ERROR(indigo_error("Can't create subprocess %s (%s)", subprocess->executable, strerror(errno)));
-			subprocess->last_error = errno;
+			subprocess->last_error = strerror(errno);
 		} else if (subprocess->pid == 0) {
 			close(0);
 			dup2(output[0], 0);
@@ -236,7 +236,7 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 
 	strncpy(indigo_available_subprocesses[empty_slot].executable, executable, INDIGO_NAME_SIZE);
 	indigo_available_subprocesses[empty_slot].pid = 0;
-	indigo_available_subprocesses[empty_slot].last_error = 0;
+	indigo_available_subprocesses[empty_slot].last_error = NULL;
 	if (pthread_create(&indigo_available_subprocesses[empty_slot].thread, NULL, (void*)(void *)subprocess_thread, &indigo_available_subprocesses[empty_slot]) != 0) {
 		indigo_available_subprocesses[empty_slot].thread_started = false;
 		pthread_mutex_unlock(&mutex);
@@ -284,25 +284,26 @@ static void *server_thread(indigo_server_entry *server) {
   INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
   while (server->socket >= 0) {
     server->socket = 0;
-    struct hostent *host_entry = gethostbyname(server->host);
-    if (host_entry == NULL) {
-      INDIGO_LOG(indigo_error("Can't resolve host name %s (%s)", server->host, strerror(errno)));
-			server->last_error = errno;
-    } else if ((server->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		struct addrinfo hints = { 0 }, *address = NULL;
+		int result;
+		hints.ai_family = AF_INET;
+    if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
+      INDIGO_LOG(indigo_error("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
+			server->last_error = gai_strerror(result);
+    } else if ((server->socket = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
       INDIGO_LOG(indigo_error("Can't create socket (%s)", strerror(errno)));
-			server->last_error = errno;
+			server->last_error = strerror(errno);
     } else {
-      struct sockaddr_in serv_addr;
-      memcpy(&serv_addr.sin_addr, host_entry->h_addr_list[0], host_entry->h_length);
-      serv_addr.sin_family = AF_INET;
-      serv_addr.sin_port = htons(server->port);
-      if (connect(server->socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+     	((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
+      if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
 				INDIGO_LOG(indigo_error("Can't connect to socket (%s)", strerror(errno)));
-				server->last_error = errno;
+				server->last_error = strerror(errno);
         close(server->socket);
         server->socket = 0;
       }
     }
+		if (address)
+			freeaddrinfo(address);
     if (server->socket > 0) {
       if (*server->name == 0) {
         indigo_service_name(server->host, server->port, server->name);
@@ -359,7 +360,7 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
   strncpy(indigo_available_servers[empty_slot].host, host, INDIGO_NAME_SIZE);
   indigo_available_servers[empty_slot].port = port;
   indigo_available_servers[empty_slot].socket = 0;
-	indigo_available_servers[empty_slot].last_error = 0;
+	indigo_available_servers[empty_slot].last_error = NULL;
   if (pthread_create(&indigo_available_servers[empty_slot].thread, NULL, (void*) (void *) server_thread, &indigo_available_servers[empty_slot]) != 0) {
     pthread_mutex_unlock(&mutex);
     return INDIGO_FAILED;
