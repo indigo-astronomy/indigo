@@ -33,9 +33,22 @@
 extern "C" {
 #endif
 
+#define INDIGO_FILTER_LIST_COUNT							11
 #define INDIGO_FILTER_MAX_DEVICES							32
-#define INDIGO_FILTER_MAX_CACHED_PROPERTIES		128
+#define INDIGO_FILTER_MAX_CACHED_PROPERTIES		256
 	
+#define INDIGO_FILTER_CCD_INDEX								0
+#define INDIGO_FILTER_WHEEL_INDEX							1
+#define INDIGO_FILTER_FOCUSER_INDEX						2
+#define INDIGO_FILTER_MOUNT_INDEX							3
+#define INDIGO_FILTER_GUIDER_INDEX						4
+#define INDIGO_FILTER_DOME_INDEX							5
+#define INDIGO_FILTER_GPS_INDEX								6
+#define INDIGO_FILTER_AUX_1_INDEX							7
+#define INDIGO_FILTER_AUX_2_INDEX							8
+#define INDIGO_FILTER_AUX_3_INDEX							9
+#define INDIGO_FILTER_AUX_4_INDEX							10
+
 /** Device context pointer.
  */
 #define FILTER_DEVICE_CONTEXT                ((indigo_filter_context *)device->device_context)
@@ -44,54 +57,94 @@ extern "C" {
  */
 #define FILTER_CLIENT_CONTEXT                ((indigo_filter_context *)client->client_context)
 
-/** Device list switch property.
+/** CCD list switch property.
  */
 
-#define FILTER_DEVICE_LIST_PROPERTY					(FILTER_DEVICE_CONTEXT->filter_device_list_property)
+#define FILTER_CCD_LIST_PROPERTY					(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_CCD_INDEX])
 
-/** Related ccd list switch property.
+/** Wheel list switch property.
 */
-#define FILTER_RELATED_CCD_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_ccd_list_property)
+#define FILTER_WHEEL_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_WHEEL_INDEX])
 
+/** Focuser list switch property.
+*/
+#define FILTER_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_FOCUSER_INDEX])
+
+/** Mount list switch property.
+*/
+#define FILTER_MOUNT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_MOUNT_INDEX])
+
+/** Guider list switch property.
+*/
+#define FILTER_GUIDER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GUIDER_INDEX])
+
+/** Dome list switch property.
+*/
+#define FILTER_DOME_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_DOME_INDEX])
+
+/** GPS list switch property.
+*/
+#define FILTER_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GPS_INDEX])
+
+/** AUX #1 list switch property.
+*/
+#define FILTER_AUX_1_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_1_INDEX])
+
+/** AUX #2 list switch property.
+*/
+#define FILTER_AUX_2_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_2_INDEX])
+
+/** AUX #3 list switch property.
+*/
+#define FILTER_AUX_3_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_3_INDEX])
+
+/** AUX #4 list switch property.
+*/
+#define FILTER_AUX_4_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_4_INDEX])
+
+/** CCD list switch property.
+ */
+#define FILTER_RELATED_CCD_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_CCD_INDEX + INDIGO_FILTER_LIST_COUNT])
+	
 /** Related wheel list switch property.
 */
-#define FILTER_RELATED_WHEEL_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_wheel_list_property)
+#define FILTER_RELATED_WHEEL_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_WHEEL_INDEX + INDIGO_FILTER_LIST_COUNT])
 
 /** Related focuser list switch property.
 */
-#define FILTER_RELATED_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_focuser_list_property)
+#define FILTER_RELATED_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_FOCUSER_INDEX + INDIGO_FILTER_LIST_COUNT])
 
 /** Related mount list switch property.
 */
-#define FILTER_RELATED_MOUNT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_mount_list_property)
+#define FILTER_RELATED_MOUNT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_MOUNT_INDEX + INDIGO_FILTER_LIST_COUNT])
 
 /** Related guider list switch property.
 */
-#define FILTER_RELATED_GUIDER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_guider_list_property)
+#define FILTER_RELATED_GUIDER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GUIDER_INDEX + INDIGO_FILTER_LIST_COUNT])
 
 /** Related dome list switch property.
 */
-#define FILTER_RELATED_DOME_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_dome_list_property)
+#define FILTER_RELATED_DOME_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_DOME_INDEX + INDIGO_FILTER_LIST_COUNT])
 
-/** Related gps list switch property.
+/** Related GPS list switch property.
 */
-#define FILTER_RELATED_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_gps_list_property)
+#define FILTER_RELATED_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GPS_INDEX + INDIGO_FILTER_LIST_COUNT])
 
-/** Related aux #1 list switch property.
+/** Related AUX #1 list switch property.
 */
-#define FILTER_RELATED_AUX_1_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_1_list_property)
+#define FILTER_RELATED_AUX_1_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_1_INDEX + INDIGO_FILTER_LIST_COUNT])
 
-/** Related aux #2 list switch property.
+/** Related AUX #2 list switch property.
 */
-#define FILTER_RELATED_AUX_2_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_2_list_property)
+#define FILTER_RELATED_AUX_2_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_2_INDEX + INDIGO_FILTER_LIST_COUNT])
 
-/** Related aux #3 list switch property.
+/** Related AUX #3 list switch property.
 */
-#define FILTER_RELATED_AUX_3_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_3_list_property)
+#define FILTER_RELATED_AUX_3_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_3_INDEX + INDIGO_FILTER_LIST_COUNT])
 
-/** Related aux #4 list switch property.
+/** Related AUX #4 list switch property.
 */
-#define FILTER_RELATED_AUX_4_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_aux_4_list_property)
+#define FILTER_RELATED_AUX_4_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_4_INDEX + INDIGO_FILTER_LIST_COUNT])
 
 /** Filter device context structure.
  */
@@ -99,31 +152,8 @@ typedef struct {
 	indigo_device_context device_context;       ///< device context base
 	indigo_device *device;
 	indigo_client *client;
-	indigo_device_interface device_interface;
-	char device_name[INDIGO_NAME_SIZE];
-	char related_ccd_name[INDIGO_NAME_SIZE];
-	char related_wheel_name[INDIGO_NAME_SIZE];
-	char related_focuser_name[INDIGO_NAME_SIZE];
-	char related_mount_name[INDIGO_NAME_SIZE];
-	char related_guider_name[INDIGO_NAME_SIZE];
-	char related_dome_name[INDIGO_NAME_SIZE];
-	char related_gps_name[INDIGO_NAME_SIZE];
-	char related_aux_1_name[INDIGO_NAME_SIZE];
-	char related_aux_2_name[INDIGO_NAME_SIZE];
-	char related_aux_3_name[INDIGO_NAME_SIZE];
-	char related_aux_4_name[INDIGO_NAME_SIZE];
-	indigo_property *filter_device_list_property;
-	indigo_property *filter_related_ccd_list_property;
-	indigo_property *filter_related_wheel_list_property;
-	indigo_property *filter_related_focuser_list_property;
-	indigo_property *filter_related_mount_list_property;
-	indigo_property *filter_related_guider_list_property;
-	indigo_property *filter_related_dome_list_property;
-	indigo_property *filter_related_gps_list_property;
-	indigo_property *filter_related_aux_1_list_property;
-	indigo_property *filter_related_aux_2_list_property;
-	indigo_property *filter_related_aux_3_list_property;
-	indigo_property *filter_related_aux_4_list_property;
+	char device_name[2 * INDIGO_FILTER_LIST_COUNT][INDIGO_NAME_SIZE];
+	indigo_property *filter_device_list_properties[2 * INDIGO_FILTER_LIST_COUNT];
 	indigo_property *device_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 } indigo_filter_context;

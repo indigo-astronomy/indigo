@@ -80,7 +80,7 @@ typedef struct {
 	char dslr_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	pthread_mutex_t image_mutex;
 	double target_temperature, current_temperature;
-	int target_slot, current_slot;
+	int current_slot;
 	int target_position, current_position;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	double ra_offset, dec_offset;
@@ -725,14 +725,13 @@ static indigo_result guider_detach(indigo_device *device) {
 static void wheel_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->current_slot = (PRIVATE_DATA->current_slot) % (int)WHEEL_SLOT_ITEM->number.max + 1;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+	if (PRIVATE_DATA->current_slot == WHEEL_SLOT_ITEM->number.target) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->target_slot;
+		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	} else {
 		indigo_set_timer(device, 0.5, wheel_timer_callback);
-		WHEEL_SLOT_ITEM->number.value = 0;
 	}
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 static indigo_result wheel_attach(indigo_device *device) {
@@ -741,7 +740,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT, WHEEL_SLOT_NAME
 		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = FILTER_COUNT;
-		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = 1;
+		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
@@ -766,8 +765,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			WHEEL_SLOT_ITEM->number.value = 0;
 			indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
