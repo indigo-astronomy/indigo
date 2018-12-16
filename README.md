@@ -86,6 +86,7 @@ This is the list of requirements taken into the consideration:
 2. ASCOM driver for INDIGO focuser
 3. Apogee filter wheel driver
 4. SynScan (EQMod) mount driver
+5. ASCOL driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO
