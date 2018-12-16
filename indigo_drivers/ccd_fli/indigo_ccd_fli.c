@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -780,10 +780,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_COOLER_POWER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1056,7 +1056,7 @@ static void process_plug_event(indigo_device *unused) {
 		NULL,
 		ccd_detach
 		);
-	
+
 	pthread_mutex_lock(&device_mutex);
 	int slot = find_available_device_slot();
 	if (slot < 0) {
@@ -1064,7 +1064,7 @@ static void process_plug_event(indigo_device *unused) {
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	
+
 	char file_name[MAX_PATH];
 	int idx = find_plugged_device(file_name);
 	if (idx < 0) {
