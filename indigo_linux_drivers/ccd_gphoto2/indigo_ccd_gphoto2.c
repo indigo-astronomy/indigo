@@ -1510,6 +1510,13 @@ static indigo_result ccd_attach(indigo_device *device)
 				      "%s",
 				      PRIVATE_DATA->libgphoto2_version);
 
+		/*----------------------- SANITY CHECK -----------------------*/
+		if (!DSLR_SHUTTER_PROPERTY) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s (%s) cannot be initializated",
+					    "DSLR_SHUTTER_PROPERTY", GPHOTO2_NAME_SHUTTER);
+			assert(DSLR_SHUTTER_PROPERTY != NULL);
+		}
+
 		/*--------------------- CCD_EXPOSURE_ITEM --------------------*/
 		double number_min = 3600;
 		double number_max = -number_min;
