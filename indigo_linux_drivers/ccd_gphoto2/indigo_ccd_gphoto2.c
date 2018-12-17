@@ -121,6 +121,8 @@
 #define EOS_BULB_MODE                           NIKON_BULB_MODE
 #define EOS_BULB_MODE_LABEL                     NIKON_BULB_MODE_LABEL
 
+#define SONY_COMPRESSION			NIKON_COMPRESSION
+
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
 
 #define UNUSED(x)				(void)(x)
@@ -153,6 +155,7 @@
 enum vendor {
 	CANON = 0,
 	NIKON,
+	SONY,
 	OTHER
 };
 
@@ -425,7 +428,9 @@ static void vendor_identify_widget(indigo_device *device,
 			COMPRESSION = strdup(EOS_COMPRESSION);
 		else if (PRIVATE_DATA->vendor == NIKON)
 			COMPRESSION = strdup(NIKON_COMPRESSION);
-		else		/* EOS fallback. */
+		else if (PRIVATE_DATA->vendor == SONY)
+			COMPRESSION = strdup(SONY_COMPRESSION);
+		else	/* EOS fallback. */
 			COMPRESSION = strdup(EOS_COMPRESSION);
 	}
 }
@@ -1322,11 +1327,12 @@ static indigo_result ccd_attach(indigo_device *device)
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 				CCD_INFO_PROPERTY->hidden = false;
 			}
-			if (strstr(name, "CANON")) {
+			if (strstr(name, "CANON"))
 				PRIVATE_DATA->vendor = CANON;
-			}
 			else if (strstr(name, "NIKON"))
 				PRIVATE_DATA->vendor = NIKON;
+			else if (strstr(name, "SONY"))
+				PRIVATE_DATA->vendor = SONY;
 			else
 				PRIVATE_DATA->vendor = OTHER;
 		}
@@ -1555,7 +1561,8 @@ static indigo_result ccd_attach(indigo_device *device)
 						  PRIVATE_DATA->name_pure_raw_format);
 			} else if (!PRIVATE_DATA->name_best_jpeg_format && (
 					 STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "Large Fine JPEG") ||
-					 STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "JPEG Fine"))) {
+					 STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "JPEG Fine") ||
+					 STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "Extra Fine"))) {
 				PRIVATE_DATA->name_best_jpeg_format = strdup(DSLR_COMPRESSION_PROPERTY->items[i].name);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "CCD_IMAGE_FORMAT_PROPERTY JPEG uses compression format '%s'",
 						  PRIVATE_DATA->name_best_jpeg_format);
