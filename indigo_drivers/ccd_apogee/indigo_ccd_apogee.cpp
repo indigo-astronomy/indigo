@@ -822,11 +822,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					APG_GAIN_PROPERTY->count = APG_OFFSET_PROPERTY->count = num_adcs*num_channels;
 					indigo_define_property(device, APG_GAIN_PROPERTY, NULL);
 					indigo_define_property(device, APG_OFFSET_PROPERTY, NULL);
-
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
