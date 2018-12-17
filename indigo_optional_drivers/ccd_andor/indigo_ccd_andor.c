@@ -981,8 +981,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 
 				pthread_mutex_unlock(&driver_mutex);
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 			}
 		} else {
 			if (device->is_connected) {  /* Do not double close device */

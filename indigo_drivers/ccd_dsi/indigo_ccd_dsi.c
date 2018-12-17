@@ -399,6 +399,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					double temp = dsi_get_temperature(PRIVATE_DATA->dsi);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+					device->is_connected = true;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
 					if (temp > 1000) {  /* no sensor */
 						CCD_TEMPERATURE_PROPERTY->hidden = true;
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsi_get_temperature(%s) = NO_SENSOR", PRIVATE_DATA->dev_sid);
@@ -406,9 +410,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						PRIVATE_DATA->can_check_temperature = true;
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 					}
-
-					device->is_connected = true;
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);

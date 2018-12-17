@@ -969,12 +969,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					adjust_preset_switches(device);
 					indigo_define_property(device, ASI_PRESETS_PROPERTY, NULL);
 
+					device->is_connected = true;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					if (PRIVATE_DATA->has_temperature_sensor) {
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 					}
-
-					device->is_connected = true;
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1547,14 +1546,14 @@ static void process_plug_event(indigo_device *unused) {
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	
+
 	int id = find_plugged_device_id();
 	if (id == NO_DEVICE) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	
+
 	indigo_device *device = malloc(sizeof(indigo_device));
 	indigo_device *master_device = device;
 	int index = find_index_by_device_id(id);
@@ -1620,7 +1619,7 @@ static void process_unplug_event(indigo_device *unused) {
 			removed = true;
 			slot = find_device_slot(id);
 		}
-		
+
 		if (private_data) {
 			ASICloseCamera(id);
 			if (private_data->buffer != NULL) {

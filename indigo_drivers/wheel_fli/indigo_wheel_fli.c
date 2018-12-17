@@ -182,11 +182,12 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 						WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-						indigo_set_timer(device, 0, wheel_timer_callback);
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 						device->is_connected = true;
+
+						indigo_set_timer(device, 0, wheel_timer_callback);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -369,7 +370,7 @@ static void process_plug_event(indigo_device *unused) {
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	
+
 	char file_name[MAX_PATH];
 	int idx = find_plugged_device(file_name);
 	if (idx < 0) {
@@ -421,9 +422,9 @@ static void process_unplug_event(indigo_device *unused) {
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	
+
 	struct libusb_device_descriptor descriptor;
-	
+
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
