@@ -1250,7 +1250,7 @@ static void shutterspeed_closest(indigo_device *device)
 {
 	assert(device != NULL);
 
-	if (!CCD_EXPOSURE_ITEM || !DSLR_SHUTTER_PROPERTY)
+	if (!CCD_EXPOSURE_ITEM || !DSLR_SHUTTER_PROPERTY || DSLR_SHUTTER_PROPERTY->count == 0)
 		return;
 
 	const double val = CCD_EXPOSURE_ITEM->number.value;
