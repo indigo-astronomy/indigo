@@ -57,6 +57,15 @@
 	((strlen(str1) == strlen(str2)) &&		\
 	 (strncmp(str1, str2, strlen(str1)) == 0))
 
+#define ASSERT_PROPERTY(property, str)			\
+do {							\
+	if (!property) {				\
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,	\
+		"'%s' cannot be initializated", str);	\
+		assert(property != NULL);		\
+	}						\
+} while (0)
+
 #define GPHOTO2_NAME_DSLR			 "GPhoto2"
 #define GPHOTO2_NAME_SHUTTER			 "Shutter time"
 #define GPHOTO2_NAME_ISO			 "ISO"
@@ -430,8 +439,8 @@ static void vendor_identify_widget(indigo_device *device,
 			COMPRESSION = strdup(NIKON_COMPRESSION);
 		else if (PRIVATE_DATA->vendor == SONY)
 			COMPRESSION = strdup(SONY_COMPRESSION);
-		else	/* EOS fallback. */
-			COMPRESSION = strdup(EOS_COMPRESSION);
+		else	/* Nikon/Sony fallback. Most camera's employ "imagequality". */
+			COMPRESSION = strdup(NIKON_COMPRESSION);
 	}
 }
 
@@ -561,9 +570,25 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	if (!property)
 		goto cleanup;
 
-	const int n_choices = rc;
 	const char *widget_choice;
 	int i = 0;
+	const bool is_sony_alpha_a7r_iii = (!strcmp(EOS_SHUTTERSPEED, key) &&
+					    strstr(PRIVATE_DATA->gphoto2_id.name_extended,
+						   "Sony Alpha-A7R III"));
+	const char *widget_choice_sony_alpha_a7r_iii[] = {
+		"1/8000", "1/6400", "1/5000", "1/4000", "1/3200", "1/2500", "1/2000", "1/1600", "1/1250",
+		"1/1000", "1/800",  "1/640",  "1/500",  "1/400",  "1/320",  "1/250",  "1/200", 	"1/160",
+		"1/125",  "1/100",  "1/80",   "1/60",   "1/50",   "1/40",   "1/30",   "1/25", 	"1/25",
+		"1/15",   "1/13",   "1/10",   "1/8", 	"1/6", 	  "1/6",    "1/4",    "1/3", 	"4/10",
+		"5/10",   "6/10",   "8/10",   "10/10",  "13/10",  "16/10",  "20/10",  "25/10",  "32/10",
+		"40/10",  "40/10",  "60/10",  "80/10",  "100/10", "130/10", "150/10", "200/10", "250/10",
+		"300/10" };
+	const int n_choices = !is_sony_alpha_a7r_iii ? rc : 55;
+	if (is_sony_alpha_a7r_iii) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+				    "setting static shutterspeed for camera '%s'",
+				    PRIVATE_DATA->gphoto2_id.name_extended);
+	}
 
 	while (i < n_choices) {
 		rc = gp_widget_get_choice(child, i, &widget_choice);
@@ -581,14 +606,16 @@ static int enumerate_widget(const char *key, indigo_device *device,
 		if (!strcmp(property->name, DSLR_SHUTTER_PROPERTY_NAME)) {
 
 			double shutter_d;
-			shutter_d = parse_shutterspeed(widget_choice);
+			shutter_d = parse_shutterspeed(!is_sony_alpha_a7r_iii ?
+						       widget_choice : widget_choice_sony_alpha_a7r_iii[i]);
+
 			if (shutter_d > 0.0)
 				snprintf(label, sizeof(label), "%f", shutter_d);
 		}
 
 		/* Init and set value same as on camera. */
 		indigo_init_switch_item(property->items + i,
-					widget_choice,
+					!is_sony_alpha_a7r_iii ? widget_choice : widget_choice_sony_alpha_a7r_iii[i],
 					label,
 					val && !strcmp(val, widget_choice));
 		i++;
@@ -1516,13 +1543,7 @@ static indigo_result ccd_attach(indigo_device *device)
 				      "%s",
 				      PRIVATE_DATA->libgphoto2_version);
 
-		/*----------------------- SANITY CHECK -----------------------*/
-		if (!DSLR_SHUTTER_PROPERTY) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s (%s) cannot be initializated",
-					    "DSLR_SHUTTER_PROPERTY", GPHOTO2_NAME_SHUTTER);
-			assert(DSLR_SHUTTER_PROPERTY != NULL);
-		}
-
+		ASSERT_PROPERTY(DSLR_SHUTTER_PROPERTY, "DSLR_SHUTTER_PROPERTY");
 		/*--------------------- CCD_EXPOSURE_ITEM --------------------*/
 		double number_min = 3600;
 		double number_max = -number_min;
@@ -1544,12 +1565,15 @@ static indigo_result ccd_attach(indigo_device *device)
 		CCD_EXPOSURE_ITEM->number.max = number_max;
 #endif
 
+		ASSERT_PROPERTY(CCD_MODE_PROPERTY, "CCD_MODE_PROPERTY");
+		ASSERT_PROPERTY(CCD_STREAMING_PROPERTY, "CCD_STREAMING_PROPERTY");
 		/*----------------------- CCD-STREAMING ----------------------*/
 		if (can_preview(device)) {
 			CCD_MODE_PROPERTY->count = 1;
 			CCD_STREAMING_PROPERTY->hidden = false;
 		}
 
+		ASSERT_PROPERTY(DSLR_COMPRESSION_PROPERTY, "DSLR_COMPRESSION_PROPERTY");
 		/*----------------- BEST-JPEG-QUALITY-PURE-RAW ---------------*/
 		for (int i = 0; i < DSLR_COMPRESSION_PROPERTY->count; i++) {
 			if (!PRIVATE_DATA->name_pure_raw_format && (
