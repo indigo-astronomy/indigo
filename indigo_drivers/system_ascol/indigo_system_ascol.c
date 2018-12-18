@@ -194,6 +194,11 @@
 #define DOME_SHUTTER_STATE_ITEM_NAME        "STATE"
 
 
+#define FOCUSER_STATE_PROPERTY                 (PRIVATE_DATA->focus_state_property)
+#define FOCUSER_STATE_ITEM                     (FOCUSER_STATE_PROPERTY->items+0)
+#define FOCUSER_STATE_PROPERTY_NAME            "ASCOL_FOCUSER_STATE"
+#define FOCUSER_STATE_ITEM_NAME                "STATE"
+
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
@@ -235,11 +240,16 @@ typedef struct {
 	indigo_property *guide_mode_property;
 
 	// Dome
-	int target_position, current_position;
-	indigo_timer *dome_state_timer, *position_timer;
+	int dome_target_position, dome_current_position;
+	indigo_timer *dome_state_timer; // *position_timer;
 	indigo_property *dome_power_property;
 	indigo_property *dome_state_property;
 	indigo_property *dome_shutter_state_property;
+
+	// Focuse
+	int focus_target_position, focus_current_position;
+	indigo_timer *focus_state_timer;
+	indigo_property *focus_state_property;
 
 } ascol_private_data;
 
@@ -2147,6 +2157,8 @@ static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indi
 			indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
 		if (indigo_property_match(DOME_STATE_PROPERTY, property))
 			indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
+		if (indigo_property_match(DOME_SHUTTER_STATE_PROPERTY, property))
+			indigo_define_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -2154,7 +2166,7 @@ static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indi
 
 static void dome_timer_callback(indigo_device *device) {
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_target_position = PRIVATE_DATA->dome_current_position;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -2164,31 +2176,31 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_PARK_PROPERTY, "Unparked");
 		}
-		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
+		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && PRIVATE_DATA->dome_current_position != PRIVATE_DATA->dome_target_position) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
+			int dif = (int)(PRIVATE_DATA->dome_target_position - PRIVATE_DATA->dome_current_position + 360) % 360;
 			if (dif > DOME_SPEED_ITEM->number.value)
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = (int)(PRIVATE_DATA->current_position + DOME_SPEED_ITEM->number.value + 360) % 360;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = (int)(PRIVATE_DATA->dome_current_position + DOME_SPEED_ITEM->number.value + 360) % 360;
 			else
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = PRIVATE_DATA->dome_target_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_set_timer(device, 0.1, dome_timer_callback);
-		} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
+		} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && PRIVATE_DATA->dome_current_position != PRIVATE_DATA->dome_target_position) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			int dif = (int)(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position + 360) % 360;
+			int dif = (int)(PRIVATE_DATA->dome_current_position - PRIVATE_DATA->dome_target_position + 360) % 360;
 			if (dif > DOME_SPEED_ITEM->number.value)
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = (int)(PRIVATE_DATA->current_position - DOME_SPEED_ITEM->number.value + 360) % 360;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = (int)(PRIVATE_DATA->dome_current_position - DOME_SPEED_ITEM->number.value + 360) % 360;
 			else
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = PRIVATE_DATA->dome_target_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_set_timer(device, 0.1, dome_timer_callback);
 		} else {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
+			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -2304,12 +2316,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 		DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
 		if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value + 360) % 360;
+			PRIVATE_DATA->dome_target_position = (int)(PRIVATE_DATA->dome_current_position - DOME_STEPS_ITEM->number.value + 360) % 360;
 		} else if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value + 360) % 360;
+			PRIVATE_DATA->dome_target_position = (int)(PRIVATE_DATA->dome_current_position + DOME_STEPS_ITEM->number.value + 360) % 360;
 		}
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -2344,16 +2356,16 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->current_position > 180) {
+			if (PRIVATE_DATA->dome_current_position > 180) {
 				DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
-				DOME_STEPS_ITEM->number.value = 360 - PRIVATE_DATA->current_position;
-			} else if (PRIVATE_DATA->current_position < 180) {
+				DOME_STEPS_ITEM->number.value = 360 - PRIVATE_DATA->dome_current_position;
+			} else if (PRIVATE_DATA->dome_current_position < 180) {
 				DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
-				DOME_STEPS_ITEM->number.value = PRIVATE_DATA->current_position;
+				DOME_STEPS_ITEM->number.value = PRIVATE_DATA->dome_current_position;
 			}
-			PRIVATE_DATA->target_position = 0;
+			PRIVATE_DATA->dome_target_position = 0;
 			DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2386,36 +2398,45 @@ static indigo_result dome_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- FOCUSER
 
+static indigo_result ascol_focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(FOCUSER_STATE_PROPERTY, property))
+			indigo_define_property(device, FOCUSER_STATE_PROPERTY, NULL);
+	}
+	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+}
+
+
 static void focuser_timer_callback(indigo_device *device) {
 	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_target_position = PRIVATE_DATA->dome_current_position;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	} else {
-		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value && PRIVATE_DATA->current_position < PRIVATE_DATA->target_position) {
+		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value && PRIVATE_DATA->focus_current_position < PRIVATE_DATA->focus_target_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->target_position - PRIVATE_DATA->current_position > FOCUSER_SPEED_ITEM->number.value)
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (PRIVATE_DATA->current_position + FOCUSER_SPEED_ITEM->number.value);
+			if (PRIVATE_DATA->focus_target_position - PRIVATE_DATA->focus_current_position > FOCUSER_SPEED_ITEM->number.value)
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = (PRIVATE_DATA->focus_current_position + FOCUSER_SPEED_ITEM->number.value);
 			else
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = PRIVATE_DATA->focus_target_position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_set_timer(device, 0.1, focuser_timer_callback);
-		} else if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value && PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
+		} else if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value && PRIVATE_DATA->focus_current_position > PRIVATE_DATA->focus_target_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position > FOCUSER_SPEED_ITEM->number.value)
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (PRIVATE_DATA->current_position - FOCUSER_SPEED_ITEM->number.value);
+			if (PRIVATE_DATA->focus_current_position - PRIVATE_DATA->focus_target_position > FOCUSER_SPEED_ITEM->number.value)
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = (PRIVATE_DATA->focus_current_position - FOCUSER_SPEED_ITEM->number.value);
 			else
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = PRIVATE_DATA->focus_target_position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_set_timer(device, 0.1, focuser_timer_callback);
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -2445,9 +2466,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_MODE_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 		FOCUSER_BACKLASH_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- FOCUSER STATE
+		FOCUSER_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FOCUSER_STATE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
+		if (FOCUSER_STATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(FOCUSER_STATE_ITEM, FOCUSER_STATE_ITEM_NAME, "State", "");
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
+		return ascol_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -2465,12 +2491,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				if (mount_open(device)) {
 					int dev_id = PRIVATE_DATA->dev_id;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					//indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
-					//indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
-					//indigo_define_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_STATE_PROPERTY, NULL);
 					device->is_connected = true;
 					/* start updates */
-					//PRIVATE_DATA->dome_state_timer = indigo_set_timer(device, 0, dome_state_timer_callback);
+					//PRIVATE_DATA->focuser_state_timer = indigo_set_timer(device, 0, focuser_state_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -2480,9 +2504,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (device->is_connected) {
 				//indigo_cancel_timer(device, &PRIVATE_DATA->dome_state_timer);
 				mount_close(device);
-				//indigo_delete_property(device, DOME_POWER_PROPERTY, NULL);
-				//indigo_delete_property(device, DOME_STATE_PROPERTY, NULL);
-				//indigo_delete_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, FOCUSER_STATE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -2491,12 +2513,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+			PRIVATE_DATA->focus_target_position = PRIVATE_DATA->focus_current_position - FOCUSER_STEPS_ITEM->number.value;
 		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+			PRIVATE_DATA->focus_target_position = PRIVATE_DATA->focus_current_position + FOCUSER_STEPS_ITEM->number.value;
 		}
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -2517,7 +2539,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2534,6 +2556,10 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	//indigo_cancel_timer(device, &PRIVATE_DATA->focus_state_timer);
+	indigo_release_property(FOCUSER_STATE_PROPERTY);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
@@ -2576,7 +2602,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		SYSTEM_ASCOL_FOCUSER_NAME,
 		focuser_attach,
-		indigo_focuser_enumerate_properties,
+		ascol_focuser_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach
