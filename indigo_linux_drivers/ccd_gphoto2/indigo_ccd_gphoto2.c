@@ -2044,8 +2044,10 @@ static int device_attach(indigo_device *gphoto2_template,
 			 name, gphoto2_id->vendor, gphoto2_id->product,
 			 gphoto2_id->bus, gphoto2_id->port);
 
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "auto-detected device '%s'",
-				  gphoto2_id->name_extended);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "auto-detected device '%s' "
+				  "with libgphoto2 version: %s",
+				  gphoto2_id->name_extended,
+				  *gp_library_version(GP_VERSION_SHORT));
 
 		/* Device already exists in devices[...]. */
 		if (find_device_slot(gphoto2_id) >= 0)
