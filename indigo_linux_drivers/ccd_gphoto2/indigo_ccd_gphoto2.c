@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 
 #include <stdio.h>
@@ -195,6 +195,7 @@ typedef struct {
 	bool has_single_bulb_mode;
 	bool has_eos_remote_release;
 	int debayer_algorithm;
+	double exposure_min;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
@@ -1287,12 +1288,12 @@ static void shutterspeed_closest(indigo_device *device)
 	if (val == 0) {
 		CCD_EXPOSURE_ITEM->number.target =
 			CCD_EXPOSURE_ITEM->number.value =
-			CCD_EXPOSURE_ITEM->number.min;
+			PRIVATE_DATA->exposure_min;
 	} else {
 		double number_shutter;
 		double number_closest = 3600;
 		int pos_new = 0;
-		int pos_old;
+		int pos_old = 0;
 		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
 			if (DSLR_SHUTTER_PROPERTY->items[i].sw.value) {
 				/* If shutter is on bulb */
@@ -1559,7 +1560,13 @@ static indigo_result ccd_attach(indigo_device *device)
 			number_min = MIN(number_shutter, number_min);
 			number_max = MAX(number_shutter, number_max);
 		}
-		CCD_EXPOSURE_ITEM->number.min = number_min;
+		/* Usually we would assign number_min here, however,
+		   we use value 0 to be able of triggering in non-bulb mode
+		   the exposure of current set shutterspeed value. This is for being
+		   compatible with AstroDSLR of CloudMakers.
+		*/
+		PRIVATE_DATA->exposure_min = number_min;
+		CCD_EXPOSURE_ITEM->number.min = 0;
 		/* We could exposure actually until the universe collapses. */
 #ifdef UNIVERSE_COLLAPSES
 		CCD_EXPOSURE_ITEM->number.max = number_max;
@@ -1811,9 +1818,26 @@ static indigo_result ccd_change_property(indigo_device *device,
 			return INDIGO_OK;
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		/* Find non-bulb shutterspeed closest to client value. */
-		indigo_use_shortest_exposure_if_bias(device);
-		shutterspeed_closest(device);
+		if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value) {
+			CCD_EXPOSURE_ITEM->number.value =
+				CCD_EXPOSURE_ITEM->number.target =
+				PRIVATE_DATA->exposure_min;
+			CCD_STREAMING_EXPOSURE_ITEM->number.value =
+				CCD_STREAMING_EXPOSURE_ITEM->number.target =
+				PRIVATE_DATA->exposure_min;
+		}
+
+		if (CCD_EXPOSURE_ITEM->number.target == 0.0f &&
+		    !PRIVATE_DATA->shutterspeed_bulb &&
+		    !CCD_FRAME_TYPE_BIAS_ITEM->sw.value) {
+			/* If target value is 0 and shutterspeed is non-bulb,
+			   trigger exposure with current shutterspeed value.
+			   This is required to work with AstroDSLR program
+			   from CloudMakers. */
+			update_ccd_property(device, DSLR_SHUTTER_PROPERTY);
+		} else /* Find non-bulb shutterspeed closest to client value. */
+			shutterspeed_closest(device);
+
 		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
 
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2044,10 +2068,8 @@ static int device_attach(indigo_device *gphoto2_template,
 			 name, gphoto2_id->vendor, gphoto2_id->product,
 			 gphoto2_id->bus, gphoto2_id->port);
 
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "auto-detected device '%s' "
-				  "with libgphoto2 version: %s",
-				  gphoto2_id->name_extended,
-				  *gp_library_version(GP_VERSION_SHORT));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "auto-detected device '%s'",
+				  gphoto2_id->name_extended);
 
 		/* Device already exists in devices[...]. */
 		if (find_device_slot(gphoto2_id) >= 0)
@@ -2177,6 +2199,10 @@ indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "libgphoto2 version: %s",
+				  *gp_library_version(GP_VERSION_SHORT));
+
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL,
 							  LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED |
