@@ -122,13 +122,13 @@ bool synscan_configure(indigo_device* device) {
 		//  slewing routines.
 
 		//  Dump out mount data
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Total Steps:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Worm Steps:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raWormSteps, PRIVATE_DATA->decWormSteps);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Timer Freq:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raTimerFreq, PRIVATE_DATA->decTimerFreq);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  HS Factor:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raHighSpeedFactor, PRIVATE_DATA->decHighSpeedFactor);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Polarscope:  %s\n", PRIVATE_DATA->canSetPolarscopeBrightness ? "YES" : "NO");
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Home Pos:  RA == %10lu   DEC == %10lu\n", RA_HOME_POSITION, DEC_HOME_POSITION);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Zero Pos:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raZeroPos, PRIVATE_DATA->decZeroPos);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Total Steps:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Worm Steps:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raWormSteps, PRIVATE_DATA->decWormSteps);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Timer Freq:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raTimerFreq, PRIVATE_DATA->decTimerFreq);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  HS Factor:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raHighSpeedFactor, PRIVATE_DATA->decHighSpeedFactor);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Polarscope:  %s", PRIVATE_DATA->canSetPolarscopeBrightness ? "YES" : "NO");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Home Pos:  RA == %10lu   DEC == %10lu", RA_HOME_POSITION, DEC_HOME_POSITION);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Zero Pos:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raZeroPos, PRIVATE_DATA->decZeroPos);
 
 		//  Determine mount vendor and model
 	}
@@ -147,8 +147,7 @@ bool synscan_configure(indigo_device* device) {
 		if (!synscan_init_axis_position(device, kAxisRA, RA_HOME_POSITION))
 			return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA MOTOR INITIALIZED!");
-	}
-	else {
+	} else {
 		//  if mount was previously configured - assume that configuration is still valid
 
 		//  else this is also a fatal error - we don't know why the motors are not needing INIT
@@ -173,8 +172,7 @@ bool synscan_configure(indigo_device* device) {
 		if (!synscan_init_axis_position(device, kAxisDEC, DEC_HOME_POSITION))
 			return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR INITIALIZED!");
-	}
-	else {
+	} else {
 		//  if mount was previously configured - assume that configuration is still valid
 
 		//  else this is also a fatal error - we don't know why the motors are not needing INIT
@@ -195,7 +193,7 @@ bool synscan_configure(indigo_device* device) {
 
 	//  Read the current position
 	synscan_get_coords(device);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Position:  RA == %g   DEC == %g\n", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position: RA == %g, DEC == %g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
 
 	//  Consider the mount configured once we reach here
 	PRIVATE_DATA->mountConfigured = true;
@@ -313,8 +311,7 @@ static bool synscan_update_axis_to_rate(indigo_device* device, enum AxisID axis,
 	if (reconfigure) {
 		*result = false;
 		return true;
-	}
-	else {
+	} else {
 		*result = true;
 	}
 
@@ -393,8 +390,7 @@ void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, 
 	else if (epdec < 0.75) {
 		*dec = 0.5 - epdec;
 		west = true;
-	}
-	else // decPos in [0.75, 1.0]
+	} else // decPos in [0.75, 1.0]
 		*dec = epdec - 1.0;
 
 	//  Adjust for southern hemisphere
@@ -453,8 +449,7 @@ void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, 
 			*ha = ha_enc;
 		else
 			*ha = ha_enc - 1.0;
-	}
-	else {
+	} else {
 		if (west)
 			*ha = 0.5 - ha_enc;
 		else if (ha_enc < 0.5)
@@ -583,22 +578,20 @@ void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double 
 		decPos[0] = degw;
 		haPos[1] = hae;
 		decPos[1] = dege;
-	}
-	else {
+	} else {
 		haPos[0] = hae;
 		decPos[0] = dege;
 		haPos[1] = haw;
 		decPos[1] = degw;
 	}
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SOLUTIONS:\n");
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  OK:  %g,   %g\n", haPos[0], decPos[0]);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  UP:  %g,   %g\n", haPos[1], decPos[1]);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SOLUTIONS:");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  OK:  %g,   %g", haPos[0], decPos[0]);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  UP:  %g,   %g", haPos[1], decPos[1]);
 }
 
 
 void synscan_get_coords(indigo_device *device) {
-	char response[128];
 	long haPos, decPos;
 	//  Get the DEC first since we want the HA position to be changing as little as possible till
 	//  we combine it with LST to get RA
@@ -613,12 +606,10 @@ void synscan_stop_and_resume_tracking_for_axis(indigo_device* device, enum AxisI
 		if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 			PRIVATE_DATA->raDesiredRate = synscan_tracking_rate(device);
 			PRIVATE_DATA->raDesiredAxisMode = kAxisModeTracking;
-		}
-		else {
+		} else {
 			PRIVATE_DATA->raDesiredAxisMode = kAxisModeIdle;
 		}
-	}
-	else {
+	} else {
 		PRIVATE_DATA->decDesiredAxisMode = kAxisModeIdle;
 	}
 }
@@ -627,8 +618,7 @@ void synscan_slew_axis_at_rate(indigo_device* device, enum AxisID axis, double r
 	if (axis == kAxisRA) {
 		PRIVATE_DATA->raDesiredRate = rate;
 		PRIVATE_DATA->raDesiredAxisMode = kAxisModeManualSlewing;
-	}
-	else {
+	} else {
 		PRIVATE_DATA->decDesiredRate = rate;
 		PRIVATE_DATA->decDesiredAxisMode = kAxisModeManualSlewing;
 	}
@@ -659,7 +649,7 @@ static bool synscan_slew_axis_to_position(indigo_device* device, enum AxisID axi
 		//		if (cachedConfig->direction != d) {
 		//			//  Extend delta by the anti-backlash amount
 		//			delta += [self antibacklashStepsForAxis:axis];
-		//			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing ANTI-BACKLASH slew extension\n");
+		//			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing ANTI-BACKLASH slew extension");
 		//		}
 
 		AxisPosition slowdown = delta - 80000;
@@ -684,8 +674,7 @@ static bool synscan_slew_axis_to_position(indigo_device* device, enum AxisID axi
 void synscan_start_tracking_mode(indigo_device* device, enum TrackingMode mode) {
 	if (mode == kTrackingModeOff) {
 		PRIVATE_DATA->raDesiredAxisMode = kAxisModeIdle;
-	}
-	else {
+	} else {
 		PRIVATE_DATA->raDesiredRate = synscan_tracking_rate(device);
 		PRIVATE_DATA->raDesiredAxisMode = kAxisModeTracking;
 	}
@@ -913,7 +902,7 @@ static int synscan_select_best_encoder_point(indigo_device* device, double haPos
 
 					//  Check if the CW-UP point is within limits
 					if (cwup_h > leftLimitPosition || cwup_h < rightLimitPosition) {
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP HA IS OUTSIDE LIMITS - CANNOT SLEW CW UP\n");
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP HA IS OUTSIDE LIMITS - CANNOT SLEW CW UP");
 						return &eps[0];
 					}
 
@@ -922,14 +911,13 @@ static int synscan_select_best_encoder_point(indigo_device* device, double haPos
 	if (!south) {
 		//  Desirable if time to flip (reach 0.5) is better
 		if (0.5 - cwup_h > 0.5 - eps[0].ha) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP SLEW IS DESIRABLE!\n");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP SLEW IS DESIRABLE!");
 			return &eps[1];
 		}
-	}
-	else {
+	} else {
 		//  Desirable if time to flip (reach 0.0) is better
 		if (cwup_h > eps[0].ha) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP SLEW IS DESIRABLE!\n");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP SLEW IS DESIRABLE!");
 			return &eps[1];
 		}
 	}
@@ -972,7 +960,7 @@ void slew_timer_callback(indigo_device *device) {
 
 				//  Select best encoder point based on limits
 				int idx = synscan_select_best_encoder_point(device, haPos, decPos);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g     (HA %g / DEC %g)\n", haPos[idx], decPos[idx], ha, dec);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
 
 				//  Limits check
 
@@ -1012,7 +1000,7 @@ void slew_timer_callback(indigo_device *device) {
 
 				//  Select best encoder point based on limits
 				int idx = synscan_select_best_encoder_point(device, haPos, decPos);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g\n", haPos[idx], decPos[idx]);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g", haPos[idx], decPos[idx]);
 
 				//  Set the desired axis mode to slewing and provide the target coordinate
 
@@ -1053,8 +1041,7 @@ void slew_timer_callback(indigo_device *device) {
 				//    Start tracking if we need to
 				if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 					synscan_start_tracking_mode(device, mount_tracking_mode(device));
-				}
-				else {
+				} else {
 					PRIVATE_DATA->raDesiredAxisMode = kAxisModeIdle;
 				}
 
@@ -1141,7 +1128,7 @@ void synscan_park(indigo_device* device) {
 			 }
 
 			 //  Delay for the pulse duration
-			 INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing RA pulse %g secs\n", ra);
+			 INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing RA pulse %g secs", ra);
 			 [op waitUntilFinished];
 
 			 useconds_t duration = (useconds_t)lrint(fabs(ra) * 1000000);
@@ -1159,8 +1146,7 @@ void synscan_park(indigo_device* device) {
 			 _raGuideStatus = nil;
 			 [self didChangeValueForKey:@"raGuideStatus"];
 			 }];
-		}
-		else if (_raGuideStatus != nil) {
+		} else if (_raGuideStatus != nil) {
 			[self willChangeValueForKey:@"raGuideStatus"];
 			_raGuideStatus = nil;
 			[self didChangeValueForKey:@"raGuideStatus"];
@@ -1190,7 +1176,7 @@ void synscan_park(indigo_device* device) {
 			 }
 
 			 //  Delay for the pulse duration
-			 INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing DEC pulse %g secs\n", dec);
+			 INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing DEC pulse %g secs", dec);
 			 [op waitUntilFinished];
 			 useconds_t duration = (useconds_t)lrint(fabs(dec) * 1000000);
 			 if (duration < minimumPulseLength*1000)
@@ -1208,8 +1194,7 @@ void synscan_park(indigo_device* device) {
 			 _decGuideStatus = nil;
 			 [self didChangeValueForKey:@"decGuideStatus"];
 			 }];
-		}
-		else if (_decGuideStatus != nil) {
+		} else if (_decGuideStatus != nil) {
 			[self willChangeValueForKey:@"decGuideStatus"];
 			_decGuideStatus = nil;
 			[self didChangeValueForKey:@"decGuideStatus"];
@@ -1256,7 +1241,7 @@ void synscan_park(indigo_device* device) {
 		p.active = true;
 		[syncManager addPoint:p];
 
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SYNC DELTA RA: %g    DEC: %g\n", p.actual_ra - p.catalog_ra, p.actual_dec - p.catalog_dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SYNC DELTA RA: %g    DEC: %g", p.actual_ra - p.catalog_ra, p.actual_dec - p.catalog_dec);
 
 		//  User is telling us that current encoder positions (which are changing due to tracking) represent
 		//  the RA/DEC of self.slewTarget.
