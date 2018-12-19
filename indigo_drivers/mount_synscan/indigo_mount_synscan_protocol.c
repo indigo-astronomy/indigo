@@ -110,25 +110,25 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 				break;
 			if (result < 0) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1\n");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
 				return false;
 			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1\n");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
 				return false;
 			}
 		}
 
 		//  Send the command to the port
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CMD: [%s]\n", cmd);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CMD: [%s]", cmd);
 		if (!indigo_write(PRIVATE_DATA->handle, cmd, strlen(cmd))) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command failed\n");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command failed");
 			break;
 		}
 		if (!indigo_write(PRIVATE_DATA->handle, "\r", 1)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command terminator failed\n");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command terminator failed");
 			break;
 		}
 
@@ -138,7 +138,7 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 		while (total_bytes < sizeof(resp)) {
 			long bytes_read = read(PRIVATE_DATA->handle, &c, 1);
 			if (bytes_read == 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SYNSCAN_TIMEOUT\n");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SYNSCAN_TIMEOUT");
 				break;
 			}
 			if (bytes_read > 0) {
@@ -155,16 +155,16 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 		if (total_bytes <= 0) {
 		//NSData* resp = [self.transport readUpToChar:'\r' withTimeout:1000];
 		//if (!resp) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Reading response failed\n");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Reading response failed");
 			continue;
 		}
 
 		//  Check response syntax =...<cr>, if invalid retry
 		//const char* cresp = (const char*) [resp bytes];
 		size_t len = strlen(resp);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%s]\n", resp);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
 		if (len < 2 || resp[0] != '=' || resp[len - 1] != '\r') {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Response syntax error\n");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Response syntax error");
 			continue;
 		}
 
@@ -199,42 +199,42 @@ static bool synscan_command(indigo_device *device, char *command, char *response
 //			break;
 //		if (result < 0) {
 //			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1\n");
+//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
 //			return false;
 //		}
 //		result = read(PRIVATE_DATA->handle, &c, 1);
 //		if (result < 1) {
 //			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1\n");
+//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
 //			return false;
 //		}
 //	}
 	if (tcflush(PRIVATE_DATA->handle, TCIOFLUSH) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLUSH ERR\n");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLUSH ERR");
 	}
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 //	if (write(PRIVATE_DATA->handle, ":e1\r", 4) != 4) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED\n");
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
 //	}
 //	if (write(PRIVATE_DATA->handle, ":", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED\n");
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
 //	}
 //	usleep(100000);
 //	if (write(PRIVATE_DATA->handle, "e", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED\n");
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
 //	}
 //	usleep(100000);
 //	if (write(PRIVATE_DATA->handle, "1", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED\n");
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
 //	}
 //	usleep(100000);
 //	if (write(PRIVATE_DATA->handle, "\r", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED\n");
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
 //	}
 //	usleep(100000);
-//	if (write(PRIVATE_DATA->handle, "\n", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED\n");
+//	if (write(PRIVATE_DATA->handle, "", 1) != 1) {
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
 //	}
 //	usleep(100000);
 
@@ -255,12 +255,12 @@ static bool synscan_command(indigo_device *device, char *command, char *response
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result <= 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 2   %ld\n", result);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 2   %ld", result);
 				break;
 			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 2\n");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 2");
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
@@ -274,7 +274,7 @@ static bool synscan_command(indigo_device *device, char *command, char *response
 			response[index++] = c;
 		}
 //		int foo = indigo_read_line2(PRIVATE_DATA->handle, response, 19);
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "foo %d\n", foo);
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "foo %d", foo);
 
 		response[index] = 0;
 	}
@@ -357,7 +357,7 @@ bool synscan_axis_position(indigo_device* device, enum AxisID axis, long* v) {
 bool synscan_init_axis_position(indigo_device* device, enum AxisID axis, long pos) {
 	char buffer[11];
 	sprintf(buffer, ":E%c%s", axis, longToHex(pos));
-	//printf("*************************************************** INIT AXIS %s  (pos is %ld / 0x%lX\n", buffer, pos, pos);
+	//printf("*************************************************** INIT AXIS %s  (pos is %ld / 0x%lX", buffer, pos, pos);
 	return synscan_command(device, buffer, NULL);
 }
 
