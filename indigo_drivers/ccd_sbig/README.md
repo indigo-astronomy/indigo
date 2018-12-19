@@ -27,6 +27,15 @@ Driver is developed and tested with:
 * SBIG Camera Simulator
 
 ## NOTES
+### Legacy Filter wheels
+
+CFW8 and CFW6A are legacy filter wheels and can not be auto detected. In order to use
+them one should set environment variable SBIG_LEGACY_CFW to CFW8 or CFW6A like:
+
+export SBIG_LEGACY_CFW=CFW8
+
+This will expose the device even it is not really present.
+
 ### MacOS SDK distributed separately (MacOS only)
 
 On MacOS the driver requires the SDK provided by the camera manufacturer:
