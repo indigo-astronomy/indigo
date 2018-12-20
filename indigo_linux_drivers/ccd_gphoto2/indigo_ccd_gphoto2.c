@@ -2164,6 +2164,11 @@ static int device_attach(indigo_device *gphoto2_template,
 	if (rc < GP_OK)
 		goto out;
 
+	/* For some cameras such as Nikon D50 the elapsed time between
+	   gp_camera_autodetect(...) and gp_camera_init(...) calls is too short,
+	   and as a consequnce gp_camera_init(...) fails. */
+	nanosleep(&(struct timespec){0, 250000000UL}, NULL);
+
 	for (int c = 0; c < gp_list_count(list); c++) {
 		gp_list_get_name(list, c, &name);
 		gp_list_get_value(list, c, &value);
