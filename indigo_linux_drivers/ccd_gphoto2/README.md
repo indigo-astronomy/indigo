@@ -49,8 +49,10 @@ if an exposure value of 24 seconds is chosen, then the predefined value of 25 se
 indigo_ccd_gphoto2 driver. In bulb setting, any non-negative exposure value can be chosen,
 for instance exactly 24 seconds or 180 seconds. If highly precise exposure values
 below 1 seconds are required it is advised to operate in the shutterspeed setting, otherwise in bulb setting.
-If exposure time in INDIGO is set 0 seconds and camera is in non-bulb, then shutterspeed value 1/4000 is set.
-This is consistent with the statements above.
+Note, if exposure time is set to 0 seconds and camera is in non-bulb, then current shutterspeed value is used. For example, the
+current shutterspeed value is set to 5 seconds and the exposure time is set to 0 seconds. The camera exposures for 5 seconds
+although an exposure time of 0 seconds was specified. In other words, triggering an exposure of 0 seconds actually,
+triggers an exposure of current shutterspeed value.
 
 ### Mirror lockup
 Fast-flipping mirror can cause vibrations of the camera and the mount.

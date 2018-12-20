@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 
 #include <stdio.h>
@@ -70,7 +70,9 @@ do {							\
 #define GPHOTO2_NAME_SHUTTER			 "Shutter time"
 #define GPHOTO2_NAME_ISO			 "ISO"
 #define GPHOTO2_NAME_COMPRESSION		 "Compression"
+#define GPHOTO2_NAME_APERTURE	         	 "Aperture"
 #define GPHOTO2_NAME_WHITEBALANCE		 "Whitebalance"
+#define GPHOTO2_NAME_EXPOSURE_COMPENSATION       "Exposure compensation"
 #define GPHOTO2_NAME_ZOOM_PREVIEW                "Liveview zoom"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM        "5"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM       "1"
@@ -108,15 +110,19 @@ do {							\
 #define NIKON_SHUTTERSPEED			"shutterspeed"
 #define NIKON_WHITEBALANCE			"whitebalance"
 #define NIKON_CAPTURE_TARGET			"capturetarget"
+#define NIKON_CAPTURE_TARGET_LABEL              "Capture Target"
 #define NIKON_MEMORY_CARD			"Memory card"
 #define NIKON_BULB_MODE                         "bulb"
 #define NIKON_BULB_MODE_LABEL                   "Bulb Mode"
+#define NIKON_APERTURE  			"f-number"
+#define NIKON_EXPOSURE_COMPENSATION 		"exposurecompensation"
 
 #define EOS_ISO					NIKON_ISO
 #define EOS_COMPRESSION				"imageformat"
 #define EOS_SHUTTERSPEED			NIKON_SHUTTERSPEED
 #define EOS_WHITEBALANCE			NIKON_WHITEBALANCE
 #define EOS_CAPTURE_TARGET			NIKON_CAPTURE_TARGET
+#define EOS_CAPTURE_TARGET_LABEL                NIKON_CAPTURE_TARGET_LABEL
 #define EOS_MEMORY_CARD				NIKON_MEMORY_CARD
 #define EOS_ZOOM_PREVIEW                        "eoszoom"
 #define EOS_REMOTE_RELEASE		        "eosremoterelease"
@@ -129,8 +135,12 @@ do {							\
 #define EOS_REMOTE_RELEASE_LABEL                "Canon EOS Remote Release"
 #define EOS_BULB_MODE                           NIKON_BULB_MODE
 #define EOS_BULB_MODE_LABEL                     NIKON_BULB_MODE_LABEL
+#define EOS_APERTURE  			        "aperture"
+#define EOS_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
 
 #define SONY_COMPRESSION			NIKON_COMPRESSION
+#define SONY_APERTURE  			        NIKON_APERTURE
+#define SONY_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
 
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
 
@@ -140,7 +150,9 @@ do {							\
 #define DSLR_ISO_PROPERTY			(PRIVATE_DATA->dslr_iso_property)
 #define DSLR_SHUTTER_PROPERTY			(PRIVATE_DATA->dslr_shutter_property)
 #define DSLR_COMPRESSION_PROPERTY		(PRIVATE_DATA->dslr_compression_property)
+#define DSLR_APERTURE_PROPERTY		        (PRIVATE_DATA->dslr_aperture_property)
 #define DSLR_WHITEBALANCE_PROPERTY		(PRIVATE_DATA->dslr_whitebalance_property)
+#define DSLR_EXPOSURE_COMPENSATION_PROPERTY     (PRIVATE_DATA->dslr_exposure_compensation_property)
 #define DSLR_MIRROR_LOCKUP_PROPERTY		(PRIVATE_DATA->dslr_mirror_lockup_property)
 #define DSLR_MIRROR_LOCKUP_ITEM			(PRIVATE_DATA->dslr_mirror_lockup_property->items)
 #define DSLR_DELETE_IMAGE_PROPERTY		(PRIVATE_DATA->dslr_delete_image_property)
@@ -156,6 +168,7 @@ do {							\
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
 #define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
+#define APERTURE                                (PRIVATE_DATA->gphoto2_aperture_id)
 #define DSLR_ZOOM_PREVIEW_PROPERTY              (PRIVATE_DATA->dslr_zoom_preview_property)
 #define DSLR_ZOOM_PREVIEW_ON_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
 #define DSLR_ZOOM_PREVIEW_OFF_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
@@ -188,17 +201,22 @@ typedef struct {
 	char filename_suffix[9];
 	enum vendor vendor;
 	char *gphoto2_compression_id;
+	char *gphoto2_aperture_id;
 	char *name_best_jpeg_format;
 	char *name_pure_raw_format;
 	float mirror_lockup_secs;
 	bool shutterspeed_bulb;
 	bool has_single_bulb_mode;
 	bool has_eos_remote_release;
+	bool has_capture_target;
 	int debayer_algorithm;
+	double exposure_min;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
+	indigo_property *dslr_aperture_property;
 	indigo_property *dslr_whitebalance_property;
+	indigo_property *dslr_exposure_compensation_property;
 	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
@@ -439,8 +457,19 @@ static void vendor_identify_widget(indigo_device *device,
 			COMPRESSION = strdup(NIKON_COMPRESSION);
 		else if (PRIVATE_DATA->vendor == SONY)
 			COMPRESSION = strdup(SONY_COMPRESSION);
-		else	/* Nikon/Sony fallback. Most camera's employ "imagequality". */
+		else /* Nikon fallback. */
 			COMPRESSION = strdup(NIKON_COMPRESSION);
+	}
+
+	if (!strcmp(DSLR_APERTURE_PROPERTY_NAME, property_name)) {
+		if (PRIVATE_DATA->vendor == CANON)
+			APERTURE = strdup(EOS_APERTURE);
+		else if (PRIVATE_DATA->vendor == NIKON)
+			APERTURE = strdup(NIKON_APERTURE);
+		else if (PRIVATE_DATA->vendor == SONY)
+			APERTURE = strdup(SONY_APERTURE);
+		else /* Nikon fallback. */
+			APERTURE = strdup(NIKON_APERTURE);
 	}
 }
 
@@ -1049,17 +1078,22 @@ static void *thread_capture(void *user_data)
 		goto cleanup;
 	}
 
-	/* Store images on memory card. */
-	rc = gphoto2_set_key_val_char(EOS_CAPTURE_TARGET, EOS_MEMORY_CARD, device);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val_char '%s' '%s'",
-				    rc,
-				    PRIVATE_DATA->camera,
-				    context,
-				    EOS_CAPTURE_TARGET,
-				    EOS_MEMORY_CARD);
-		goto cleanup;
+	/* Sony Alpha-A7R III e.g. has no capture to memory card, just to RAM. */
+	if (PRIVATE_DATA->has_capture_target) {
+		/* Store images on memory card. */
+		rc = gphoto2_set_key_val_char(EOS_CAPTURE_TARGET,
+					      EOS_MEMORY_CARD, device);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gphoto2_set_key_val_char '%s' '%s'",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context,
+					    EOS_CAPTURE_TARGET,
+					    EOS_MEMORY_CARD);
+			goto cleanup;
+		}
 	}
 
 	/* This sets also camera_file->accesstype = GP_FILE_ACCESSTYPE_MEMORY. */
@@ -1211,6 +1245,11 @@ static void *thread_capture(void *user_data)
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context);
+		else
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "deleted image '%s' on camera '%s'",
+					  camera_file_path.name,
+					  PRIVATE_DATA->gphoto2_id.name);
+
 	}
 
 cleanup:
@@ -1287,12 +1326,12 @@ static void shutterspeed_closest(indigo_device *device)
 	if (val == 0) {
 		CCD_EXPOSURE_ITEM->number.target =
 			CCD_EXPOSURE_ITEM->number.value =
-			CCD_EXPOSURE_ITEM->number.min;
+			PRIVATE_DATA->exposure_min;
 	} else {
 		double number_shutter;
 		double number_closest = 3600;
 		int pos_new = 0;
-		int pos_old;
+		int pos_old = 0;
 		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
 			if (DSLR_SHUTTER_PROPERTY->items[i].sw.value) {
 				/* If shutter is on bulb */
@@ -1364,20 +1403,38 @@ static indigo_result ccd_attach(indigo_device *device)
 				PRIVATE_DATA->vendor = OTHER;
 		}
 
-		/*----------------------- IDENTIFY-VENDIR --------------------*/
+		/*----------------------- IDENTIFY-VENDOR --------------------*/
 		vendor_identify_widget(device, DSLR_COMPRESSION_PROPERTY_NAME);
+		vendor_identify_widget(device, DSLR_APERTURE_PROPERTY_NAME);
 
 		/*-------------------- HAS-SINGLE-BULB-MODE ------------------*/
 		PRIVATE_DATA->has_single_bulb_mode =
 			exists_widget_label(EOS_BULB_MODE_LABEL,
 					    device) == 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
+				  EOS_BULB_MODE_LABEL,
+				  PRIVATE_DATA->has_single_bulb_mode ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
 
 		/*------------------- HAS-EOS-REMOTE-RELEASE -----------------*/
 		PRIVATE_DATA->has_eos_remote_release =
 			exists_widget_label(EOS_REMOTE_RELEASE_LABEL,
 					    device) == 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
+				  EOS_REMOTE_RELEASE_LABEL,
+				  PRIVATE_DATA->has_eos_remote_release ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
 
-		/*------------------------- SHUTTER-TIME -----------------------*/
+		/*------------------- HAS-CAPTURE-TARGET ---------------------*/
+		PRIVATE_DATA->has_capture_target =
+			exists_widget_label(EOS_CAPTURE_TARGET_LABEL,
+					    device) == 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
+				  EOS_CAPTURE_TARGET_LABEL,
+				  PRIVATE_DATA->has_capture_target ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
+
+		/*------------------------- SHUTTER-TIME ---------------------*/
 		int count = enumerate_widget(EOS_SHUTTERSPEED, device, NULL);
 		DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL,
 								    device->name,
@@ -1390,7 +1447,7 @@ static indigo_result ccd_attach(indigo_device *device)
 								    count);
 		enumerate_widget(EOS_SHUTTERSPEED, device, DSLR_SHUTTER_PROPERTY);
 
-		/*---------------------------- ISO -----------------------------*/
+		/*---------------------------- ISO ---------------------------*/
 		count = enumerate_widget(EOS_ISO, device, NULL);
 		DSLR_ISO_PROPERTY = indigo_init_switch_property(NULL,
 								device->name,
@@ -1403,7 +1460,7 @@ static indigo_result ccd_attach(indigo_device *device)
 								count);
 		enumerate_widget(EOS_ISO, device, DSLR_ISO_PROPERTY);
 
-		/*------------------------ COMPRESSION -------------------------*/
+		/*------------------------ COMPRESSION -----------------------*/
 		count = enumerate_widget(COMPRESSION, device, NULL);
 		DSLR_COMPRESSION_PROPERTY = indigo_init_switch_property(NULL,
 									device->name,
@@ -1415,6 +1472,19 @@ static indigo_result ccd_attach(indigo_device *device)
 									INDIGO_ONE_OF_MANY_RULE,
 									count);
 		enumerate_widget(COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
+
+		/*------------------------- APERTURE  ------------------------*/
+		count = enumerate_widget(APERTURE, device, NULL);
+		DSLR_APERTURE_PROPERTY = indigo_init_switch_property(NULL,
+								     device->name,
+								     DSLR_APERTURE_PROPERTY_NAME,
+								     GPHOTO2_NAME_DSLR,
+								     GPHOTO2_NAME_APERTURE,
+								     INDIGO_OK_STATE,
+								     INDIGO_RW_PERM,
+								     INDIGO_ONE_OF_MANY_RULE,
+								     count);
+		enumerate_widget(APERTURE, device, DSLR_APERTURE_PROPERTY);
 
 		/*------------------------ WHITEBALANCE ----------------------*/
 		count = enumerate_widget(EOS_WHITEBALANCE, device, NULL);
@@ -1428,6 +1498,19 @@ static indigo_result ccd_attach(indigo_device *device)
 									 INDIGO_ONE_OF_MANY_RULE,
 									 count);
 		enumerate_widget(EOS_WHITEBALANCE, device, DSLR_WHITEBALANCE_PROPERTY);
+
+		/*------------------- EXPOSURE-COMPENSATION ------------------*/
+		count = enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, NULL);
+		DSLR_EXPOSURE_COMPENSATION_PROPERTY = indigo_init_switch_property(NULL,
+										  device->name,
+										  DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME,
+										  GPHOTO2_NAME_DSLR,
+										  GPHOTO2_NAME_EXPOSURE_COMPENSATION,
+										  INDIGO_OK_STATE,
+										  INDIGO_RW_PERM,
+										  INDIGO_ONE_OF_MANY_RULE,
+										  count);
+		enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, DSLR_EXPOSURE_COMPENSATION_PROPERTY);
 
 		/*----------------------- ZOOM-PREVIEW -----------------------*/
 		DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL,
@@ -1465,11 +1548,12 @@ static indigo_result ccd_attach(indigo_device *device)
 					"Seconds", 0, 30, 0.1, 0);
 
 		int rc = eos_mirror_lockup(0, device);
-		if (rc) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "mirror lockup not available for camera '%s'",
-					  PRIVATE_DATA->gphoto2_id.name);
+		if (rc)
 			DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
-		}
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' %s available for camera '%s'",
+				  "Mirror lockup (customfuncex)",
+				  !rc ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
 
 		/*------------------------ DELETE-IMAGE -----------------------*/
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL,
@@ -1559,7 +1643,13 @@ static indigo_result ccd_attach(indigo_device *device)
 			number_min = MIN(number_shutter, number_min);
 			number_max = MAX(number_shutter, number_max);
 		}
-		CCD_EXPOSURE_ITEM->number.min = number_min;
+		/* Usually we would assign number_min here, however,
+		   we use value 0 to be able of triggering in non-bulb mode
+		   the exposure of current set shutterspeed value. This is for being
+		   compatible with AstroDSLR of CloudMakers.
+		*/
+		PRIVATE_DATA->exposure_min = number_min;
+		CCD_EXPOSURE_ITEM->number.min = 0;
 		/* We could exposure actually until the universe collapses. */
 #ifdef UNIVERSE_COLLAPSES
 		CCD_EXPOSURE_ITEM->number.max = number_max;
@@ -1625,7 +1715,9 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_SHUTTER_PROPERTY);
 	indigo_release_property(DSLR_ISO_PROPERTY);
 	indigo_release_property(DSLR_COMPRESSION_PROPERTY);
+	indigo_release_property(DSLR_APERTURE_PROPERTY);
 	indigo_release_property(DSLR_WHITEBALANCE_PROPERTY);
+	indigo_release_property(DSLR_EXPOSURE_COMPENSATION_PROPERTY);
 	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
 	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
@@ -1634,6 +1726,9 @@ static indigo_result ccd_detach(indigo_device *device)
 
 	if (COMPRESSION)
 		free(COMPRESSION);
+
+	if (APERTURE)
+		free(APERTURE);
 
 	if (PRIVATE_DATA->buffer) {
 		free(PRIVATE_DATA->buffer);
@@ -1677,7 +1772,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
@@ -1688,7 +1785,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
@@ -1718,10 +1817,23 @@ static indigo_result ccd_change_property(indigo_device *device,
 				COMPRESSION);
 		return INDIGO_OK;
 	}
+	/*---------------------------- APERTURE ------------------------------*/
+	else if (indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_APERTURE_PROPERTY, property, false);
+		update_property(device, DSLR_APERTURE_PROPERTY,
+				APERTURE);
+		return INDIGO_OK;
+	}
 	/*--------------------------- WHITEBALANCE ----------------------------*/
 	else if (indigo_property_match(DSLR_WHITEBALANCE_PROPERTY, property)) {
 		indigo_property_copy_values(DSLR_WHITEBALANCE_PROPERTY, property, false);
 		update_property(device, DSLR_WHITEBALANCE_PROPERTY, EOS_WHITEBALANCE);
+		return INDIGO_OK;
+	}
+	/*----------------------- EXPOSURE-COMPENSATION ----------------------*/
+	else if (indigo_property_match(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property, false);
+		update_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, EOS_EXPOSURE_COMPENSATION);
 		return INDIGO_OK;
 	}
 	/*--------------------------- ZOOM-PREVIEW ---------------------------*/
@@ -1811,9 +1923,26 @@ static indigo_result ccd_change_property(indigo_device *device,
 			return INDIGO_OK;
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		/* Find non-bulb shutterspeed closest to client value. */
-		indigo_use_shortest_exposure_if_bias(device);
-		shutterspeed_closest(device);
+		if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value) {
+			CCD_EXPOSURE_ITEM->number.value =
+				CCD_EXPOSURE_ITEM->number.target =
+				PRIVATE_DATA->exposure_min;
+			CCD_STREAMING_EXPOSURE_ITEM->number.value =
+				CCD_STREAMING_EXPOSURE_ITEM->number.target =
+				PRIVATE_DATA->exposure_min;
+		}
+
+		if (CCD_EXPOSURE_ITEM->number.target == 0.0f &&
+		    !PRIVATE_DATA->shutterspeed_bulb &&
+		    !CCD_FRAME_TYPE_BIAS_ITEM->sw.value) {
+			/* If target value is 0 and shutterspeed is non-bulb,
+			   trigger exposure with current shutterspeed value.
+			   This is required to work with AstroDSLR program
+			   from CloudMakers. */
+			update_ccd_property(device, DSLR_SHUTTER_PROPERTY);
+		} else /* Find non-bulb shutterspeed closest to client value. */
+			shutterspeed_closest(device);
+
 		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
 
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1897,7 +2026,11 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_save_property(device, NULL,
 					     DSLR_COMPRESSION_PROPERTY);
 			indigo_save_property(device, NULL,
+					     DSLR_APERTURE_PROPERTY);
+			indigo_save_property(device, NULL,
 					     DSLR_WHITEBALANCE_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_EXPOSURE_COMPENSATION_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_MIRROR_LOCKUP_PROPERTY);
 			indigo_save_property(device, NULL,
@@ -2175,6 +2308,10 @@ indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "libgphoto2 version: %s",
+				  *gp_library_version(GP_VERSION_SHORT));
+
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL,
 							  LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED |
