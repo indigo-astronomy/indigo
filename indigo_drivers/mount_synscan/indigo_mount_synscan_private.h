@@ -15,7 +15,7 @@
 //#include "indigo_timer.h"
 #include "indigo_mount_synscan_driver.h"
 
-#define DRIVER_VERSION			0x0001
+#define DRIVER_VERSION			0x0002
 #define DRIVER_NAME					"indigo_mount_synscan"
 
 #define PRIVATE_DATA        ((synscan_private_data *)device->private_data)
@@ -70,9 +70,6 @@ typedef struct {
 	//indigo_property *command_guide_rate_property;
 
 	int device_count;
-	double currentHA;		//  radians
-	double currentRA;		//  radians
-	double currentDec;	//  radians
 	pthread_mutex_t port_mutex;
 	//char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	//double lastRA, lastDec;
