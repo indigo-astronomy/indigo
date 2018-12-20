@@ -85,6 +85,7 @@ static bool synscan_open(indigo_device *device) {
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		indigo_send_message(device, "Failed to connect to %s", name);
 		return false;
 	}
 }
@@ -104,17 +105,9 @@ static void mount_handle_coordinates(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 
 		/* GOTO requested */
-		if(MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+		if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 			PRIVATE_DATA->slew_state = SLEW_PHASE0;
 			PRIVATE_DATA->globalMode = kGlobalModeSlewing;
-		}
-		/* SYNC requested */
-		else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-	//		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-	//		if (res != RC_OK) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-	//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
-	//		}
 		}
 	}
 	indigo_update_coordinates(device, NULL);
@@ -247,9 +240,14 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 #endif
 
 static bool mount_cancel_slew(indigo_device *device) {
-	if (PRIVATE_DATA->globalMode == kGlobalModeParking || PRIVATE_DATA->globalMode == kGlobalModeSlewing) {
+	if (PRIVATE_DATA->globalMode != kGlobalModeParked) {
 		PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	}
+	
+	// Unconditionally stop motors for sure for case mount is out of control for any reason
+	synscan_stop_axis(device, kAxisRA);
+	synscan_stop_axis(device, kAxisDEC);
+
 	PRIVATE_DATA->raDesiredAxisMode = kAxisModeIdle;
 	PRIVATE_DATA->decDesiredAxisMode = kAxisModeIdle;
 
@@ -268,6 +266,10 @@ static bool mount_cancel_slew(indigo_device *device) {
 //	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 //	indigo_update_coordinates(device, NULL);
 
+	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+
 	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted.");
@@ -282,8 +284,11 @@ static void park_timer_callback(indigo_device *device) {
 			case PARK_PHASE0:
 				{
 					//  Compute the axis positions for parking
-					double ha = MOUNT_PARK_POSITION_HA_ITEM->number.value * M_PI / 12.0;
-					double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value * M_PI / 180.0;
+					double ha, dec;
+					indigo_translated_to_raw(device, MOUNT_PARK_POSITION_HA_ITEM->number.value, MOUNT_PARK_POSITION_DEC_ITEM->number.value, &ha, &dec);
+					ha *= M_PI / 12.0;
+					dec *= M_PI / 180.0;
+					
 					double haPos[2], decPos[2];
 					coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
@@ -353,29 +358,23 @@ static void position_timer_callback(indigo_device *device) {
 		double lst = indigo_lst(lng) * M_PI / 12.0;
 
 		//  Convert Encoder position to EQ
-		coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &PRIVATE_DATA->currentHA, &PRIVATE_DATA->currentDec);
+		double ha, dec;
+		coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &ha, &dec);
 
 		//  Add in LST to get RA
-		PRIVATE_DATA->currentRA = lst - PRIVATE_DATA->currentHA;
-		PRIVATE_DATA->currentRA *= 12.0 / M_PI;
-		PRIVATE_DATA->currentDec *= 180.0 / M_PI;
-		if (PRIVATE_DATA->currentRA < 0)
-			PRIVATE_DATA->currentRA += 24.0;
-		if (PRIVATE_DATA->currentRA >= 24.0)
-			PRIVATE_DATA->currentRA -= 24.0;
+		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - ha) * 12.0 / M_PI;
+		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = dec * 180.0 / M_PI;
+		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
+		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
 
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g", lst * 12.0 / M_PI, PRIVATE_DATA->currentHA);
+		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g", lst * 12.0 / M_PI, ha);
 
-		//		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
-		//		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
-		if (PRIVATE_DATA->slew_state == SLEW_NONE)
+		if (PRIVATE_DATA->slew_state == SLEW_NONE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 
-
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
+		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		indigo_update_coordinates(device, NULL);
 
 		//meade_get_utc(device);
@@ -405,8 +404,12 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
-		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
 		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, true);
+		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+		MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
+		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
+		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		MOUNT_POLARSCOPE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_POLARSCOPE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Polarscope", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (MOUNT_POLARSCOPE_PROPERTY == NULL)
@@ -459,6 +462,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher");
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "SynScan");
 
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+					
 					//  Start timers
 					PRIVATE_DATA->ha_axis_timer = indigo_set_timer(device, 0, ha_axis_timer_callback);
 					PRIVATE_DATA->dec_axis_timer = indigo_set_timer(device, 0, dec_axis_timer_callback);
@@ -521,13 +526,17 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
-		int ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-		int dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-		mount_handle_coordinates(device);
-		return INDIGO_OK;
+		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+			return indigo_mount_change_property(device, client, property);
+		} else {
+			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+			double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+			mount_handle_coordinates(device);
+			return INDIGO_OK;
+		}
 	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);

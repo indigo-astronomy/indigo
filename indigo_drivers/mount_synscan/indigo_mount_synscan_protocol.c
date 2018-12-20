@@ -122,7 +122,7 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 		}
 
 		//  Send the command to the port
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CMD: [%s]", cmd);
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "CMD: [%s]", cmd);
 		if (!indigo_write(PRIVATE_DATA->handle, cmd, strlen(cmd))) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command failed");
 			break;
@@ -162,10 +162,11 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 		//  Check response syntax =...<cr>, if invalid retry
 		//const char* cresp = (const char*) [resp bytes];
 		size_t len = strlen(resp);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
 		if (len < 2 || resp[0] != '=' || resp[len - 1] != '\r') {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Response syntax error");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s] - error", len - 1, resp);
 			continue;
+		} else {
+			INDIGO_DRIVER_TRACE(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
 		}
 
 		//  Extract response payload, return
