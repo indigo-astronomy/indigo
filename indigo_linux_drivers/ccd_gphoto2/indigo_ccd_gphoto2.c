@@ -70,6 +70,7 @@ do {							\
 #define GPHOTO2_NAME_SHUTTER			 "Shutter time"
 #define GPHOTO2_NAME_ISO			 "ISO"
 #define GPHOTO2_NAME_COMPRESSION		 "Compression"
+#define GPHOTO2_NAME_APERTURE	         	 "Aperture"
 #define GPHOTO2_NAME_WHITEBALANCE		 "Whitebalance"
 #define GPHOTO2_NAME_ZOOM_PREVIEW                "Liveview zoom"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM        "5"
@@ -112,6 +113,7 @@ do {							\
 #define NIKON_MEMORY_CARD			"Memory card"
 #define NIKON_BULB_MODE                         "bulb"
 #define NIKON_BULB_MODE_LABEL                   "Bulb Mode"
+#define NIKON_APERTURE  			"f-number"
 
 #define EOS_ISO					NIKON_ISO
 #define EOS_COMPRESSION				"imageformat"
@@ -131,8 +133,10 @@ do {							\
 #define EOS_REMOTE_RELEASE_LABEL                "Canon EOS Remote Release"
 #define EOS_BULB_MODE                           NIKON_BULB_MODE
 #define EOS_BULB_MODE_LABEL                     NIKON_BULB_MODE_LABEL
+#define EOS_APERTURE  			        "aperture"
 
 #define SONY_COMPRESSION			NIKON_COMPRESSION
+#define SONY_APERTURE  			        NIKON_APERTURE
 
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
 
@@ -142,6 +146,7 @@ do {							\
 #define DSLR_ISO_PROPERTY			(PRIVATE_DATA->dslr_iso_property)
 #define DSLR_SHUTTER_PROPERTY			(PRIVATE_DATA->dslr_shutter_property)
 #define DSLR_COMPRESSION_PROPERTY		(PRIVATE_DATA->dslr_compression_property)
+#define DSLR_APERTURE_PROPERTY		        (PRIVATE_DATA->dslr_aperture_property)
 #define DSLR_WHITEBALANCE_PROPERTY		(PRIVATE_DATA->dslr_whitebalance_property)
 #define DSLR_MIRROR_LOCKUP_PROPERTY		(PRIVATE_DATA->dslr_mirror_lockup_property)
 #define DSLR_MIRROR_LOCKUP_ITEM			(PRIVATE_DATA->dslr_mirror_lockup_property->items)
@@ -158,6 +163,7 @@ do {							\
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
 #define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
+#define APERTURE                                (PRIVATE_DATA->gphoto2_aperture_id)
 #define DSLR_ZOOM_PREVIEW_PROPERTY              (PRIVATE_DATA->dslr_zoom_preview_property)
 #define DSLR_ZOOM_PREVIEW_ON_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
 #define DSLR_ZOOM_PREVIEW_OFF_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
@@ -190,6 +196,7 @@ typedef struct {
 	char filename_suffix[9];
 	enum vendor vendor;
 	char *gphoto2_compression_id;
+	char *gphoto2_aperture_id;
 	char *name_best_jpeg_format;
 	char *name_pure_raw_format;
 	float mirror_lockup_secs;
@@ -202,6 +209,7 @@ typedef struct {
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
+	indigo_property *dslr_aperture_property;
 	indigo_property *dslr_whitebalance_property;
 	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_mirror_lockup_property;
@@ -443,8 +451,19 @@ static void vendor_identify_widget(indigo_device *device,
 			COMPRESSION = strdup(NIKON_COMPRESSION);
 		else if (PRIVATE_DATA->vendor == SONY)
 			COMPRESSION = strdup(SONY_COMPRESSION);
-		else	/* Nikon/Sony fallback. Most camera's employ "imagequality". */
+		else /* Nikon fallback. */
 			COMPRESSION = strdup(NIKON_COMPRESSION);
+	}
+
+	if (!strcmp(DSLR_APERTURE_PROPERTY_NAME, property_name)) {
+		if (PRIVATE_DATA->vendor == CANON)
+			APERTURE = strdup(EOS_APERTURE);
+		else if (PRIVATE_DATA->vendor == NIKON)
+			APERTURE = strdup(NIKON_APERTURE);
+		else if (PRIVATE_DATA->vendor == SONY)
+			APERTURE = strdup(SONY_APERTURE);
+		else /* Nikon fallback. */
+			APERTURE = strdup(NIKON_APERTURE);
 	}
 }
 
@@ -1378,8 +1397,9 @@ static indigo_result ccd_attach(indigo_device *device)
 				PRIVATE_DATA->vendor = OTHER;
 		}
 
-		/*----------------------- IDENTIFY-VENDIR --------------------*/
+		/*----------------------- IDENTIFY-VENDOR --------------------*/
 		vendor_identify_widget(device, DSLR_COMPRESSION_PROPERTY_NAME);
+		vendor_identify_widget(device, DSLR_APERTURE_PROPERTY_NAME);
 
 		/*-------------------- HAS-SINGLE-BULB-MODE ------------------*/
 		PRIVATE_DATA->has_single_bulb_mode =
@@ -1408,7 +1428,7 @@ static indigo_result ccd_attach(indigo_device *device)
 				  PRIVATE_DATA->has_capture_target ? "is" : "is not",
 				  PRIVATE_DATA->gphoto2_id.name);
 
-		/*------------------------- SHUTTER-TIME -----------------------*/
+		/*------------------------- SHUTTER-TIME ---------------------*/
 		int count = enumerate_widget(EOS_SHUTTERSPEED, device, NULL);
 		DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL,
 								    device->name,
@@ -1421,7 +1441,7 @@ static indigo_result ccd_attach(indigo_device *device)
 								    count);
 		enumerate_widget(EOS_SHUTTERSPEED, device, DSLR_SHUTTER_PROPERTY);
 
-		/*---------------------------- ISO -----------------------------*/
+		/*---------------------------- ISO ---------------------------*/
 		count = enumerate_widget(EOS_ISO, device, NULL);
 		DSLR_ISO_PROPERTY = indigo_init_switch_property(NULL,
 								device->name,
@@ -1434,7 +1454,7 @@ static indigo_result ccd_attach(indigo_device *device)
 								count);
 		enumerate_widget(EOS_ISO, device, DSLR_ISO_PROPERTY);
 
-		/*------------------------ COMPRESSION -------------------------*/
+		/*------------------------ COMPRESSION -----------------------*/
 		count = enumerate_widget(COMPRESSION, device, NULL);
 		DSLR_COMPRESSION_PROPERTY = indigo_init_switch_property(NULL,
 									device->name,
@@ -1446,6 +1466,19 @@ static indigo_result ccd_attach(indigo_device *device)
 									INDIGO_ONE_OF_MANY_RULE,
 									count);
 		enumerate_widget(COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
+
+		/*------------------------- APERTURE  ------------------------*/
+		count = enumerate_widget(APERTURE, device, NULL);
+		DSLR_APERTURE_PROPERTY = indigo_init_switch_property(NULL,
+								     device->name,
+								     DSLR_APERTURE_PROPERTY_NAME,
+								     GPHOTO2_NAME_DSLR,
+								     GPHOTO2_NAME_APERTURE,
+								     INDIGO_OK_STATE,
+								     INDIGO_RW_PERM,
+								     INDIGO_ONE_OF_MANY_RULE,
+								     count);
+		enumerate_widget(APERTURE, device, DSLR_APERTURE_PROPERTY);
 
 		/*------------------------ WHITEBALANCE ----------------------*/
 		count = enumerate_widget(EOS_WHITEBALANCE, device, NULL);
@@ -1663,6 +1696,7 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_SHUTTER_PROPERTY);
 	indigo_release_property(DSLR_ISO_PROPERTY);
 	indigo_release_property(DSLR_COMPRESSION_PROPERTY);
+	indigo_release_property(DSLR_APERTURE_PROPERTY);
 	indigo_release_property(DSLR_WHITEBALANCE_PROPERTY);
 	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
@@ -1672,6 +1706,9 @@ static indigo_result ccd_detach(indigo_device *device)
 
 	if (COMPRESSION)
 		free(COMPRESSION);
+
+	if (APERTURE)
+		free(APERTURE);
 
 	if (PRIVATE_DATA->buffer) {
 		free(PRIVATE_DATA->buffer);
@@ -1715,6 +1752,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
@@ -1726,6 +1764,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
@@ -1754,6 +1793,13 @@ static indigo_result ccd_change_property(indigo_device *device,
 		indigo_property_copy_values(DSLR_COMPRESSION_PROPERTY, property, false);
 		update_property(device, DSLR_COMPRESSION_PROPERTY,
 				COMPRESSION);
+		return INDIGO_OK;
+	}
+	/*---------------------------- APERTURE ------------------------------*/
+	else if (indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_APERTURE_PROPERTY, property, false);
+		update_property(device, DSLR_APERTURE_PROPERTY,
+				APERTURE);
 		return INDIGO_OK;
 	}
 	/*--------------------------- WHITEBALANCE ----------------------------*/
@@ -1951,6 +1997,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 					     DSLR_SHUTTER_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_COMPRESSION_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_APERTURE_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_WHITEBALANCE_PROPERTY);
 			indigo_save_property(device, NULL,
