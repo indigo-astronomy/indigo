@@ -72,6 +72,7 @@ do {							\
 #define GPHOTO2_NAME_COMPRESSION		 "Compression"
 #define GPHOTO2_NAME_APERTURE	         	 "Aperture"
 #define GPHOTO2_NAME_WHITEBALANCE		 "Whitebalance"
+#define GPHOTO2_NAME_EXPOSURE_COMPENSATION       "Exposure compensation"
 #define GPHOTO2_NAME_ZOOM_PREVIEW                "Liveview zoom"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM        "5"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM       "1"
@@ -114,6 +115,7 @@ do {							\
 #define NIKON_BULB_MODE                         "bulb"
 #define NIKON_BULB_MODE_LABEL                   "Bulb Mode"
 #define NIKON_APERTURE  			"f-number"
+#define NIKON_EXPOSURE_COMPENSATION 		"exposurecompensation"
 
 #define EOS_ISO					NIKON_ISO
 #define EOS_COMPRESSION				"imageformat"
@@ -134,9 +136,11 @@ do {							\
 #define EOS_BULB_MODE                           NIKON_BULB_MODE
 #define EOS_BULB_MODE_LABEL                     NIKON_BULB_MODE_LABEL
 #define EOS_APERTURE  			        "aperture"
+#define EOS_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
 
 #define SONY_COMPRESSION			NIKON_COMPRESSION
 #define SONY_APERTURE  			        NIKON_APERTURE
+#define SONY_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
 
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
 
@@ -148,6 +152,7 @@ do {							\
 #define DSLR_COMPRESSION_PROPERTY		(PRIVATE_DATA->dslr_compression_property)
 #define DSLR_APERTURE_PROPERTY		        (PRIVATE_DATA->dslr_aperture_property)
 #define DSLR_WHITEBALANCE_PROPERTY		(PRIVATE_DATA->dslr_whitebalance_property)
+#define DSLR_EXPOSURE_COMPENSATION_PROPERTY     (PRIVATE_DATA->dslr_exposure_compensation_property)
 #define DSLR_MIRROR_LOCKUP_PROPERTY		(PRIVATE_DATA->dslr_mirror_lockup_property)
 #define DSLR_MIRROR_LOCKUP_ITEM			(PRIVATE_DATA->dslr_mirror_lockup_property->items)
 #define DSLR_DELETE_IMAGE_PROPERTY		(PRIVATE_DATA->dslr_delete_image_property)
@@ -211,6 +216,7 @@ typedef struct {
 	indigo_property *dslr_compression_property;
 	indigo_property *dslr_aperture_property;
 	indigo_property *dslr_whitebalance_property;
+	indigo_property *dslr_exposure_compensation_property;
 	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
@@ -1493,6 +1499,19 @@ static indigo_result ccd_attach(indigo_device *device)
 									 count);
 		enumerate_widget(EOS_WHITEBALANCE, device, DSLR_WHITEBALANCE_PROPERTY);
 
+		/*------------------- EXPOSURE-COMPENSATION ------------------*/
+		count = enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, NULL);
+		DSLR_EXPOSURE_COMPENSATION_PROPERTY = indigo_init_switch_property(NULL,
+										  device->name,
+										  DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME,
+										  GPHOTO2_NAME_DSLR,
+										  GPHOTO2_NAME_EXPOSURE_COMPENSATION,
+										  INDIGO_OK_STATE,
+										  INDIGO_RW_PERM,
+										  INDIGO_ONE_OF_MANY_RULE,
+										  count);
+		enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, DSLR_EXPOSURE_COMPENSATION_PROPERTY);
+
 		/*----------------------- ZOOM-PREVIEW -----------------------*/
 		DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL,
 									 device->name,
@@ -1698,6 +1717,7 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_COMPRESSION_PROPERTY);
 	indigo_release_property(DSLR_APERTURE_PROPERTY);
 	indigo_release_property(DSLR_WHITEBALANCE_PROPERTY);
+	indigo_release_property(DSLR_EXPOSURE_COMPENSATION_PROPERTY);
 	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
 	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
@@ -1754,6 +1774,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
@@ -1766,6 +1787,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
@@ -1806,6 +1828,12 @@ static indigo_result ccd_change_property(indigo_device *device,
 	else if (indigo_property_match(DSLR_WHITEBALANCE_PROPERTY, property)) {
 		indigo_property_copy_values(DSLR_WHITEBALANCE_PROPERTY, property, false);
 		update_property(device, DSLR_WHITEBALANCE_PROPERTY, EOS_WHITEBALANCE);
+		return INDIGO_OK;
+	}
+	/*----------------------- EXPOSURE-COMPENSATION ----------------------*/
+	else if (indigo_property_match(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property, false);
+		update_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, EOS_EXPOSURE_COMPENSATION);
 		return INDIGO_OK;
 	}
 	/*--------------------------- ZOOM-PREVIEW ---------------------------*/
@@ -2001,6 +2029,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 					     DSLR_APERTURE_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_WHITEBALANCE_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_EXPOSURE_COMPENSATION_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_MIRROR_LOCKUP_PROPERTY);
 			indigo_save_property(device, NULL,
