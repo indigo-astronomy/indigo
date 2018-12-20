@@ -108,6 +108,7 @@ do {							\
 #define NIKON_SHUTTERSPEED			"shutterspeed"
 #define NIKON_WHITEBALANCE			"whitebalance"
 #define NIKON_CAPTURE_TARGET			"capturetarget"
+#define NIKON_CAPTURE_TARGET_LABEL              "Capture Target"
 #define NIKON_MEMORY_CARD			"Memory card"
 #define NIKON_BULB_MODE                         "bulb"
 #define NIKON_BULB_MODE_LABEL                   "Bulb Mode"
@@ -117,6 +118,7 @@ do {							\
 #define EOS_SHUTTERSPEED			NIKON_SHUTTERSPEED
 #define EOS_WHITEBALANCE			NIKON_WHITEBALANCE
 #define EOS_CAPTURE_TARGET			NIKON_CAPTURE_TARGET
+#define EOS_CAPTURE_TARGET_LABEL                NIKON_CAPTURE_TARGET_LABEL
 #define EOS_MEMORY_CARD				NIKON_MEMORY_CARD
 #define EOS_ZOOM_PREVIEW                        "eoszoom"
 #define EOS_REMOTE_RELEASE		        "eosremoterelease"
@@ -194,6 +196,7 @@ typedef struct {
 	bool shutterspeed_bulb;
 	bool has_single_bulb_mode;
 	bool has_eos_remote_release;
+	bool has_capture_target;
 	int debayer_algorithm;
 	double exposure_min;
 	indigo_property *dslr_shutter_property;
@@ -1050,17 +1053,22 @@ static void *thread_capture(void *user_data)
 		goto cleanup;
 	}
 
-	/* Store images on memory card. */
-	rc = gphoto2_set_key_val_char(EOS_CAPTURE_TARGET, EOS_MEMORY_CARD, device);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val_char '%s' '%s'",
-				    rc,
-				    PRIVATE_DATA->camera,
-				    context,
-				    EOS_CAPTURE_TARGET,
-				    EOS_MEMORY_CARD);
-		goto cleanup;
+	/* Sony Alpha-A7R III e.g. has no capture to memory card, just to RAM. */
+	if (PRIVATE_DATA->has_capture_target) {
+		/* Store images on memory card. */
+		rc = gphoto2_set_key_val_char(EOS_CAPTURE_TARGET,
+					      EOS_MEMORY_CARD, device);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gphoto2_set_key_val_char '%s' '%s'",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context,
+					    EOS_CAPTURE_TARGET,
+					    EOS_MEMORY_CARD);
+			goto cleanup;
+		}
 	}
 
 	/* This sets also camera_file->accesstype = GP_FILE_ACCESSTYPE_MEMORY. */
@@ -1212,6 +1220,11 @@ static void *thread_capture(void *user_data)
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context);
+		else
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "deleted image '%s' on camera '%s'",
+					  camera_file_path.name,
+					  PRIVATE_DATA->gphoto2_id.name);
+
 	}
 
 cleanup:
@@ -1372,11 +1385,28 @@ static indigo_result ccd_attach(indigo_device *device)
 		PRIVATE_DATA->has_single_bulb_mode =
 			exists_widget_label(EOS_BULB_MODE_LABEL,
 					    device) == 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
+				  EOS_BULB_MODE_LABEL,
+				  PRIVATE_DATA->has_single_bulb_mode ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
 
 		/*------------------- HAS-EOS-REMOTE-RELEASE -----------------*/
 		PRIVATE_DATA->has_eos_remote_release =
 			exists_widget_label(EOS_REMOTE_RELEASE_LABEL,
 					    device) == 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
+				  EOS_REMOTE_RELEASE_LABEL,
+				  PRIVATE_DATA->has_eos_remote_release ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
+
+		/*------------------- HAS-CAPTURE-TARGET ---------------------*/
+		PRIVATE_DATA->has_capture_target =
+			exists_widget_label(EOS_CAPTURE_TARGET_LABEL,
+					    device) == 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
+				  EOS_CAPTURE_TARGET_LABEL,
+				  PRIVATE_DATA->has_capture_target ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
 
 		/*------------------------- SHUTTER-TIME -----------------------*/
 		int count = enumerate_widget(EOS_SHUTTERSPEED, device, NULL);
@@ -1466,11 +1496,12 @@ static indigo_result ccd_attach(indigo_device *device)
 					"Seconds", 0, 30, 0.1, 0);
 
 		int rc = eos_mirror_lockup(0, device);
-		if (rc) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "mirror lockup not available for camera '%s'",
-					  PRIVATE_DATA->gphoto2_id.name);
+		if (rc)
 			DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
-		}
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' %s available for camera '%s'",
+				  "Mirror lockup (customfuncex)",
+				  !rc ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
 
 		/*------------------------ DELETE-IMAGE -----------------------*/
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL,
