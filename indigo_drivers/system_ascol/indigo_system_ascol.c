@@ -2168,6 +2168,7 @@ static void dome_state_timer_callback(indigo_device *device) {
 
 	RESCHEDULE_TIMER:
 	update_all = false;
+	prev_dome_az = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->dome_state_timer);
 }
 
@@ -2531,7 +2532,7 @@ static indigo_result dome_detach(indigo_device *device) {
 static void focus_state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static bool update_all = true;
-	static bool update_focus_pos = true;
+	static bool update_focus = true;
 	static double prev_focus_pos = 0;
 	char *descrs, *descr;
 
@@ -2545,33 +2546,21 @@ static void focus_state_timer_callback(indigo_device *device) {
 	}
 
 	if (update_all || (prev_glst.focus_state != PRIVATE_DATA->glst.focus_state) ||
-	   (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
-	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating DOME_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+	   (FOCUSER_STATE_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating FOCUSER_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		ascol_get_focus_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(FOCUSER_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		FOCUSER_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_STATE_PROPERTY, NULL);
-		/*
-		if (PRIVATE_DATA->glst.dome_state == DOME_STATE_OFF) {
-			DOME_ON_ITEM->sw.value = false;
-			DOME_OFF_ITEM->sw.value = true;
-			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			update_horizontal = true;
-		} else if ((PRIVATE_DATA->glst.dome_state == DOME_STATE_STOP) ||
-		           (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP)) {
-			DOME_ON_ITEM->sw.value = true;
-			DOME_OFF_ITEM->sw.value = false;
-			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			update_horizontal = true;
+
+		if ((PRIVATE_DATA->glst.focus_state == FOCUS_STATE_OFF) ||
+		   (PRIVATE_DATA->glst.focus_state == FOCUS_STATE_STOP)) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			update_focus = true;
 		} else {
-			DOME_ON_ITEM->sw.value = true;
-			DOME_OFF_ITEM->sw.value = false;
-			DOME_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		*/
 	}
 
 	/* should be copied every time as there are several properties
@@ -2589,16 +2578,17 @@ static void focus_state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Could not read Fosus Position");
 		goto RESCHEDULE_TIMER;
 	}
-	if (update_all || update_focus_pos ||
+	if (update_all || update_focus ||
 	   (prev_focus_pos != FOCUSER_POSITION_ITEM->number.value) ||
 	   (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		update_focus_pos = false;
+		update_focus = false;
 	}
 
 	RESCHEDULE_TIMER:
 	update_all = false;
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->dome_state_timer);
+	prev_focus_pos = FOCUSER_POSITION_ITEM->number.value;
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->focus_state_timer);
 }
 
 
@@ -2661,7 +2651,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		FOCUSER_SPEED_ITEM->number.value = 1;
+		FOCUSER_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE / FOCUSER_COMPENSATION
