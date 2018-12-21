@@ -95,6 +95,20 @@
 #define TUBE_FLAP_STATE_ITEM_NAME          "TUBE"
 #define COUDE_FLAP_STATE_ITEM_NAME         "COUDE"
 
+#define FLAP_TUBE_PROPERTY                 (PRIVATE_DATA->flap_tube_property)
+#define FLAP_TUBE_OPEN_ITEM                (FLAP_TUBE_PROPERTY->items+0)
+#define FLAP_TUBE_CLOSE_ITEM               (FLAP_TUBE_PROPERTY->items+1)
+#define FLAP_TUBE_PROPERTY_NAME            "ASCOL_FLAP_TUBE"
+#define FLAP_TUBE_OPEN_ITEM_NAME           "OPEN"
+#define FLAP_TUBE_CLOSE_ITEM_NAME          "CLOSE"
+
+#define FLAP_COUDE_PROPERTY                (PRIVATE_DATA->flap_coude_property)
+#define FLAP_COUDE_OPEN_ITEM               (FLAP_COUDE_PROPERTY->items+0)
+#define FLAP_COUDE_CLOSE_ITEM              (FLAP_COUDE_PROPERTY->items+1)
+#define FLAP_COUDE_PROPERTY_NAME           "ASCOL_COUDE_TUBE"
+#define FLAP_COUDE_OPEN_ITEM_NAME          "OPEN"
+#define FLAP_COUDE_CLOSE_ITEM_NAME         "CLOSE"
+
 #define GLME_PROPERTY                      (PRIVATE_DATA->glme_property)
 #define GLME_ITEMS(index)                  (GLME_PROPERTY->items+index)
 #define GLME_PROPERTY_NAME                 "ASCOL_GLME"
@@ -171,8 +185,8 @@
 #define GUIDE_MODE_PROPERTY                (PRIVATE_DATA->guide_mode_property)
 #define GUIDE_MODE_ON_ITEM                 (GUIDE_MODE_PROPERTY->items+0)
 #define GUIDE_MODE_OFF_ITEM                (GUIDE_MODE_PROPERTY->items+1)
-#define GUIDE_MODE_ON_ITEM_NAME            "ON"
 #define GUIDE_MODE_PROPERTY_NAME           "ASCOL_GUIDE_MODE"
+#define GUIDE_MODE_ON_ITEM_NAME            "ON"
 #define GUIDE_MODE_OFF_ITEM_NAME           "OFF"
 
 // DOME
@@ -226,6 +240,8 @@ typedef struct {
 	indigo_property *oimv_property;
 	indigo_property *mount_state_property;
 	indigo_property *flap_state_property;
+	indigo_property *flap_tube_property;
+	indigo_property *flap_coude_property;
 	indigo_property *glme_property;
 	indigo_property *oil_power_property;
 	indigo_property *telescope_power_property;
@@ -268,6 +284,10 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 		if (indigo_property_match(FLAP_STATE_PROPERTY, property))
 			indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
+		if (indigo_property_match(FLAP_TUBE_PROPERTY, property))
+			indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
+		if (indigo_property_match(FLAP_COUDE_PROPERTY, property))
+			indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
 		if (indigo_property_match(GLME_PROPERTY, property))
 			indigo_define_property(device, GLME_PROPERTY, NULL);
 		if (indigo_property_match(OIL_POWER_PROPERTY, property))
@@ -582,6 +602,48 @@ static void mount_handle_guide_mode(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGM(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	indigo_update_property(device, GUIDE_MODE_PROPERTY, NULL);
+}
+
+
+static void mount_handle_flap_tube(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (FLAP_TUBE_OPEN_ITEM->sw.value) {
+		res = ascol_FTOC(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FTOC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_FTOC(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FTOC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		FLAP_TUBE_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		FLAP_TUBE_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FTOC(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, FLAP_TUBE_PROPERTY, NULL);
+}
+
+
+static void mount_handle_flap_coude(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (FLAP_COUDE_OPEN_ITEM->sw.value) {
+		res = ascol_FCOC(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FCOC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_FCOC(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FCOC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		FLAP_COUDE_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		FLAP_COUDE_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FCOC(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, FLAP_COUDE_PROPERTY, NULL);
 }
 
 
@@ -1088,6 +1150,39 @@ static void mount_state_timer_callback(indigo_device *device) {
 		snprintf(COUDE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, FLAP_STATE_PROPERTY, NULL);
 	}
+
+	if (update_all || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
+	   (FLAP_TUBE_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		if (PRIVATE_DATA->glst.flap_tube_state == SF_STATE_OPEN) {
+			FLAP_TUBE_OPEN_ITEM->sw.value = true;
+			FLAP_TUBE_CLOSE_ITEM->sw.value = false;
+			FLAP_TUBE_PROPERTY->state = INDIGO_OK_STATE;
+		} else if(PRIVATE_DATA->glst.flap_tube_state == SF_STATE_CLOSE) {
+			FLAP_TUBE_OPEN_ITEM->sw.value = false;
+			FLAP_TUBE_CLOSE_ITEM->sw.value = true;
+			FLAP_TUBE_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FLAP_COUDE_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, FLAP_TUBE_PROPERTY, NULL);
+	}
+
+	if (update_all || (prev_glst.flap_coude_state != PRIVATE_DATA->glst.flap_coude_state) ||
+	   (FLAP_COUDE_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		if (PRIVATE_DATA->glst.flap_coude_state == SF_STATE_OPEN) {
+			FLAP_COUDE_OPEN_ITEM->sw.value = true;
+			FLAP_COUDE_CLOSE_ITEM->sw.value = false;
+			FLAP_COUDE_PROPERTY->state = INDIGO_OK_STATE;
+		} else if(PRIVATE_DATA->glst.flap_coude_state == SF_STATE_CLOSE) {
+			FLAP_COUDE_OPEN_ITEM->sw.value = false;
+			FLAP_COUDE_CLOSE_ITEM->sw.value = true;
+			FLAP_COUDE_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FLAP_COUDE_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, FLAP_COUDE_PROPERTY, NULL);
+	}
+
 	/* should be copied every time as there are several properties
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
@@ -1243,6 +1338,20 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		char item_name[INDIGO_NAME_SIZE];
 		char item_label[INDIGO_NAME_SIZE];
+		// -------------------------------------------------------------------------- FLAP_TUBE
+		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Tube Falp", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (FLAP_TUBE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(FLAP_TUBE_OPEN_ITEM, FLAP_TUBE_OPEN_ITEM_NAME, "Open", false);
+		indigo_init_switch_item(FLAP_TUBE_CLOSE_ITEM, FLAP_TUBE_CLOSE_ITEM_NAME, "Close", true);
+		// -------------------------------------------------------------------------- FLAP_COUDE
+		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Coude Falp", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (FLAP_COUDE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(FLAP_COUDE_OPEN_ITEM, FLAP_COUDE_OPEN_ITEM_NAME, "Open", false);
+		indigo_init_switch_item(FLAP_COUDE_CLOSE_ITEM, FLAP_COUDE_CLOSE_ITEM_NAME, "Close", true);
 		// --------------------------------------------------------------------------- OIMV
 		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, OIL_GROUP, "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
 		if (OIMV_PROPERTY == NULL)
@@ -1438,6 +1547,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, OIMV_PROPERTY, NULL);
 					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
+					indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
+					indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
 					indigo_define_property(device, GLME_PROPERTY, NULL);
 					indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 					indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
@@ -1468,6 +1579,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, OIMV_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, FLAP_TUBE_PROPERTY, NULL);
+				indigo_delete_property(device, FLAP_COUDE_PROPERTY, NULL);
 				indigo_delete_property(device, GLME_PROPERTY, NULL);
 				indigo_delete_property(device, OIL_POWER_PROPERTY, NULL);
 				indigo_delete_property(device, TELESCOPE_POWER_PROPERTY, NULL);
@@ -1623,6 +1736,21 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			mount_handle_guide_mode(device);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(FLAP_TUBE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FLAP_TUBE_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FLAP_TUBE_PROPERTY, property, false);
+			mount_handle_flap_tube(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(FLAP_COUDE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FLAP_COUDE_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FLAP_COUDE_PROPERTY, property, false);
+			mount_handle_flap_coude(device);
+		}
+		return INDIGO_OK;
+
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if(PRIVATE_DATA->parked) {
@@ -1704,6 +1832,8 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(OIMV_PROPERTY);
 	indigo_release_property(MOUNT_STATE_PROPERTY);
 	indigo_release_property(FLAP_STATE_PROPERTY);
+	indigo_release_property(FLAP_TUBE_PROPERTY);
+	indigo_release_property(FLAP_COUDE_PROPERTY);
 	indigo_release_property(GLME_PROPERTY);
 	indigo_release_property(OIL_POWER_PROPERTY);
 	indigo_release_property(TELESCOPE_POWER_PROPERTY);
