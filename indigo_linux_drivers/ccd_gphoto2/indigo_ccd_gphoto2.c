@@ -1925,7 +1925,59 @@ static indigo_result ccd_enumerate_properties(indigo_device *device,
 					      indigo_client *client,
 					      indigo_property *property)
 {
-	return indigo_ccd_enumerate_properties(device, client, property);
+	indigo_result result = INDIGO_OK;
+	if ((result = indigo_ccd_enumerate_properties(device, client, property))
+	    == INDIGO_OK) {
+		if (IS_CONNECTED) {
+
+			if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property))
+				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_ISO_PROPERTY, property))
+				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property))
+				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_APERTURE_PROPERTY, property))
+				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_WHITEBALANCE_PROPERTY, property))
+				indigo_define_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property))
+				indigo_define_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_EXPOSURE_METERING_PROPERTY, property))
+				indigo_define_property(device, DSLR_EXPOSURE_METERING_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_FOCUS_METERING_PROPERTY, property))
+				indigo_define_property(device, DSLR_FOCUS_METERING_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_EXPOSURE_PROGRAM_PROPERTY, property))
+				indigo_define_property(device, DSLR_EXPOSURE_PROGRAM_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_BATTERY_LEVEL_PROPERTY, property))
+				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
+				indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property))
+				indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
+				indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_DEBAYER_ALGORITHM_PROPERTY, property))
+				indigo_define_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
+
+			if (indigo_property_match(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, property))
+				indigo_define_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
+		}
+	}
+
+	return result;
 }
 
 static indigo_result ccd_change_property(indigo_device *device,
