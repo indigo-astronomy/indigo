@@ -2676,7 +2676,7 @@ static void focus_handle_abort(indigo_device *device) {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FOST(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
-	//DOME_ABORT_MOTION_ITEM->sw.value = false;
+
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 }
 
@@ -2703,6 +2703,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_MODE_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 		FOCUSER_BACKLASH_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- FOCUSER_STEPS
+		strncpy(FOCUSER_STEPS_ITEM->label,"Distance (mm)", INDIGO_VALUE_SIZE);
+		FOCUSER_STEPS_ITEM->number.min = 0;
+		FOCUSER_STEPS_ITEM->number.max = 49;
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		strncpy(FOCUSER_POSITION_ITEM->label,"Absolute position (mm)", INDIGO_VALUE_SIZE);
+		FOCUSER_POSITION_ITEM->number.min = 0;
+		FOCUSER_POSITION_ITEM->number.max = 100;
 		// -------------------------------------------------------------------------------- FOCUSER STATE
 		FOCUSER_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FOCUSER_STATE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
 		if (FOCUSER_STATE_PROPERTY == NULL)
@@ -2748,18 +2756,24 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		focus_handle_steps(device);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+			focus_handle_steps(device);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		focus_handle_position(device);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+			focus_handle_position(device);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		focus_handle_abort(device);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+			focus_handle_abort(device);
+		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}

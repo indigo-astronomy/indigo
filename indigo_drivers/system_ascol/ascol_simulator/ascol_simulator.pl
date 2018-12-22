@@ -523,6 +523,8 @@ sub update_state {
 		if ($elapsed_time > FO_REL_MOVING_TIME) {
 			$fo_state = FO_STOP;
 			$fo_pos += $req_rel_fo_pos;
+			$fo_pos = 100 if ($fo_pos > 100);
+			$fo_pos = 0 if ($fo_pos < 0);
 			$fo_rel_moving_time = 0;
 		}
 	}
