@@ -2537,6 +2537,13 @@ static void focus_state_timer_callback(indigo_device *device) {
 	static double prev_focus_pos = 0;
 	char *descrs, *descr;
 
+	if (FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		update_all = true;
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	}
+
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
 	if (res != ASCOL_OK) {
