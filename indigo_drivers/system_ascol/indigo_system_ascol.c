@@ -2655,42 +2655,24 @@ static indigo_result ascol_focuser_enumerate_properties(indigo_device *device, i
 }
 
 
-static void focuser_timer_callback(indigo_device *device) {
-	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_target_position = PRIVATE_DATA->dome_current_position;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-	} else {
-		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value && PRIVATE_DATA->focus_current_position < PRIVATE_DATA->focus_target_position) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->focus_target_position - PRIVATE_DATA->focus_current_position > FOCUSER_SPEED_ITEM->number.value)
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = (PRIVATE_DATA->focus_current_position + FOCUSER_SPEED_ITEM->number.value);
-			else
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = PRIVATE_DATA->focus_target_position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_set_timer(device, 0.1, focuser_timer_callback);
-		} else if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value && PRIVATE_DATA->focus_current_position > PRIVATE_DATA->focus_target_position) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->focus_current_position - PRIVATE_DATA->focus_target_position > FOCUSER_SPEED_ITEM->number.value)
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = (PRIVATE_DATA->focus_current_position - FOCUSER_SPEED_ITEM->number.value);
-			else
-				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position = PRIVATE_DATA->focus_target_position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_set_timer(device, 0.1, focuser_timer_callback);
-		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		}
+static void focus_handle_abort(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		res = ascol_FOST(PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FOST(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FOST(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	//DOME_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 }
+
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -2770,14 +2752,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->focus_current_position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		focus_handle_abort(device);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
