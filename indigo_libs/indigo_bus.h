@@ -152,9 +152,10 @@ typedef enum {
 
 /** Property item definition.
  */
-typedef struct {/* there is no .name =  because of g++ C99 bug affectinf string initialier */
+typedef struct {/* there is no .name =  because of g++ C99 bug affecting string initialier */
 	char name[INDIGO_NAME_SIZE];        ///< property wide unique item name
 	char label[INDIGO_VALUE_SIZE];      ///< item description in human readable form
+	char hints[INDIGO_VALUE_SIZE];			///< item GUI hints
 	union {
 		/** Text property item specific fields.
 		 */
@@ -163,7 +164,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affectinf string 
 		} text;
 		/** Number property item specific fields.
 		 */
-		struct {/* there is no .name =  because of g++ C99 bug affectinf string initialier */
+		struct {/* there is no .name =  because of g++ C99 bug affecting string initialier */
 			char format[INDIGO_VALUE_SIZE]; ///< item format (for number properties)
 			double min;                     ///< item min value (for number properties)
 			double max;                     ///< item max value (for number properties)
@@ -199,6 +200,7 @@ typedef struct {
 	char name[INDIGO_NAME_SIZE];        ///< device wide unique property name
 	char group[INDIGO_NAME_SIZE];       ///< property group in human readable form (presented as a tab or a subtree in GUI
 	char label[INDIGO_VALUE_SIZE];      ///< property description in human readable form
+	char hints[INDIGO_VALUE_SIZE];			///< property GUI hints
 	indigo_property_state state;        ///< property state
 	indigo_property_type type;          ///< property type
 	indigo_property_perm perm;          ///< property access permission
