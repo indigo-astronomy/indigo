@@ -44,10 +44,9 @@
 #define h2d(h) (h * 15.0)
 #define d2h(d) (d / 15.0)
 
-#define REFRESH_SECONDS (2)
+#define REFRESH_SECONDS (1)
 
 #define PRIVATE_DATA                    ((ascol_private_data *)device->private_data)
-
 
 #define COMMAND_GUIDE_RATE_PROPERTY     (PRIVATE_DATA->command_guide_rate_property)
 #define GUIDE_50_ITEM                   (COMMAND_GUIDE_RATE_PROPERTY->items+0)
@@ -64,11 +63,18 @@
 #define OIL_GROUP                          "Oil"
 #define CORRECTIONS_GROUP                  "Corrections"
 
+// Panel
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
 #define ALARM_ITEMS(index)                 (ALARM_PROPERTY->items+index)
 #define ALARM_PROPERTY_NAME                "ASCOL_ALARMS"
 #define ALARM_ITEM_NAME_BASE               "ALARM"
 
+#define GLME_PROPERTY                      (PRIVATE_DATA->glme_property)
+#define GLME_ITEMS(index)                  (GLME_PROPERTY->items+index)
+#define GLME_PROPERTY_NAME                 "ASCOL_GLME"
+#define GLME_ITEM_NAME_BASE                "VALUE"
+
+// Telescope
 #define OIL_STATE_PROPERTY                 (PRIVATE_DATA->oil_state_property)
 #define OIL_STATE_ITEM                     (OIL_STATE_PROPERTY->items+0)
 #define OIL_STATE_PROPERTY_NAME            "ASCOL_OIL_STATE"
@@ -108,11 +114,6 @@
 #define FLAP_COUDE_PROPERTY_NAME           "ASCOL_COUDE_TUBE"
 #define FLAP_COUDE_OPEN_ITEM_NAME          "OPEN"
 #define FLAP_COUDE_CLOSE_ITEM_NAME         "CLOSE"
-
-#define GLME_PROPERTY                      (PRIVATE_DATA->glme_property)
-#define GLME_ITEMS(index)                  (GLME_PROPERTY->items+index)
-#define GLME_PROPERTY_NAME                 "ASCOL_GLME"
-#define GLME_ITEM_NAME_BASE                "VALUE"
 
 #define OIL_POWER_PROPERTY                 (PRIVATE_DATA->oil_power_property)
 #define OIL_ON_ITEM                        (OIL_POWER_PROPERTY->items+0)
@@ -207,14 +208,14 @@
 #define DOME_SHUTTER_STATE_PROPERTY_NAME    "ASCOL_DOME_SHUTTER_STATE"
 #define DOME_SHUTTER_STATE_ITEM_NAME        "STATE"
 
+// Focuser
+#define FOCUSER_STATE_PROPERTY               (PRIVATE_DATA->focus_state_property)
+#define FOCUSER_STATE_ITEM                   (FOCUSER_STATE_PROPERTY->items+0)
+#define FOCUSER_STATE_PROPERTY_NAME          "ASCOL_FOCUSER_STATE"
+#define FOCUSER_STATE_ITEM_NAME              "STATE"
 
-#define FOCUSER_STATE_PROPERTY                 (PRIVATE_DATA->focus_state_property)
-#define FOCUSER_STATE_ITEM                     (FOCUSER_STATE_PROPERTY->items+0)
-#define FOCUSER_STATE_PROPERTY_NAME            "ASCOL_FOCUSER_STATE"
-#define FOCUSER_STATE_ITEM_NAME                "STATE"
-
-#define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
-#define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
+#define WARN_PARKED_MSG                      "Mount is parked, please unpark!"
+#define WARN_PARKING_PROGRESS_MSG            "Mount parking is in progress, please wait until complete!"
 
 // gp_bits is used as boolean
 #define is_connected                   gp_bits
@@ -238,6 +239,7 @@ typedef struct {
 	// Panel
 	indigo_timer *panel_timer;
 	indigo_property *alarm_property;
+	indigo_property *glme_property;
 
 	// Mount
 	indigo_timer *mount_state_timer,
@@ -252,7 +254,6 @@ typedef struct {
 	indigo_property *flap_state_property;
 	indigo_property *flap_tube_property;
 	indigo_property *flap_coude_property;
-	indigo_property *glme_property;
 	indigo_property *oil_power_property;
 	indigo_property *telescope_power_property;
 	indigo_property *axis_calibrated_property;
@@ -303,8 +304,6 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
 		if (indigo_property_match(FLAP_COUDE_PROPERTY, property))
 			indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
-		if (indigo_property_match(GLME_PROPERTY, property))
-			indigo_define_property(device, GLME_PROPERTY, NULL);
 		if (indigo_property_match(OIL_POWER_PROPERTY, property))
 			indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 		if (indigo_property_match(TELESCOPE_POWER_PROPERTY, property))
@@ -830,26 +829,6 @@ static void mount_handle_utc(indigo_device *device) {
 }
 
 
-static bool mount_set_utc_from_host(indigo_device *device) {
-	time_t utc_time = indigo_utc(NULL);
-	if (utc_time == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get host UT");
-		return false;
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	/* set mount time to UTC */
-	int res = 0; // tc_set_time(PRIVATE_DATA->dev_id, utc_time, 0, 0);
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
-		return false;
-	}
-	return true;
-}
-
-
 static bool mount_cancel_slew(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 
@@ -1191,7 +1170,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_OIMV(%d) = %d", PRIVATE_DATA->dev_id, res);
 		OIMV_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, OIMV_PROPERTY, "Could not read oil sensrs");
-		goto METEO_MEASURE;
+		goto UPDATE_RA_DE;
 	}
 
 	if (update_all || memcmp(&prev_oimv, &PRIVATE_DATA->oimv, sizeof(prev_oimv))) {
@@ -1202,27 +1181,6 @@ static void mount_state_timer_callback(indigo_device *device) {
 		}
 		indigo_update_property(device, OIMV_PROPERTY, NULL);
 		prev_oimv = PRIVATE_DATA->oimv;
-	}
-
-	METEO_MEASURE:
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	res = ascol_GLME(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glme);
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if (res != ASCOL_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLME(%d) = %d", PRIVATE_DATA->dev_id, res);
-		GLME_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, GLME_PROPERTY, "Could not read Meteo sensrs");
-		goto UPDATE_RA_DE;
-	}
-
-	if (update_all || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating GLME_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
-		GLME_PROPERTY->state = INDIGO_OK_STATE;
-		for (int index = 0; index < ASCOL_GLME_N; index++) {
-			GLME_ITEMS(index)->number.value = PRIVATE_DATA->glme.value[index];
-		}
-		indigo_update_property(device, GLME_PROPERTY, NULL);
-		prev_glme = PRIVATE_DATA->glme;
 	}
 
 	char east;
@@ -1285,7 +1243,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		//MOUNT_PARK_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
 		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
-		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
 
@@ -1342,20 +1300,6 @@ static indigo_result mount_attach(indigo_device *device) {
 			         PRIVATE_DATA->oimv.unit[index]
 			);
 			indigo_init_number_item(OIMV_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
-		}
-		// --------------------------------------------------------------------------- GLME
-		GLME_PROPERTY = indigo_init_number_property(NULL, device->name, GLME_PROPERTY_NAME, METEO_DATA_GROUP, "Meteo Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_GLME_N);
-		if (GLME_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		ascol_GLME(ASCOL_DESCRIBE, &PRIVATE_DATA->glme);
-		for (index = 0; index < ASCOL_GLME_N; index++) {
-			snprintf(item_name, INDIGO_NAME_SIZE, "%s_%d", GLME_ITEM_NAME_BASE, index);
-			snprintf(item_label, INDIGO_NAME_SIZE, "%s (%s)",
-			         PRIVATE_DATA->glme.description[index],
-			         PRIVATE_DATA->glme.unit[index]
-			);
-			indigo_init_number_item(GLME_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
 		}
 		// -------------------------------------------------------------------------- OIL_POWER
 		OIL_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, OIL_POWER_PROPERTY_NAME, OIL_GROUP, "Oil Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -1525,7 +1469,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
-					indigo_define_property(device, GLME_PROPERTY, NULL);
 					indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 					indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 					indigo_define_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
@@ -1556,7 +1499,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, FLAP_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_TUBE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_COUDE_PROPERTY, NULL);
-				indigo_delete_property(device, GLME_PROPERTY, NULL);
 				indigo_delete_property(device, OIL_POWER_PROPERTY, NULL);
 				indigo_delete_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 				indigo_delete_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
@@ -1626,20 +1568,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME_PROPERTY
-		indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
-		if(MOUNT_SET_HOST_TIME_ITEM->sw.value) {
-			if(mount_set_utc_from_host(device)) {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		}
-		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
-		MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(OIL_POWER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- OIL_POWER_PROPERTY
@@ -1808,7 +1736,6 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(FLAP_STATE_PROPERTY);
 	indigo_release_property(FLAP_TUBE_PROPERTY);
 	indigo_release_property(FLAP_COUDE_PROPERTY);
-	indigo_release_property(GLME_PROPERTY);
 	indigo_release_property(OIL_POWER_PROPERTY);
 	indigo_release_property(TELESCOPE_POWER_PROPERTY);
 	indigo_release_property(AXIS_CALIBRATED_PROPERTY);
@@ -2303,55 +2230,6 @@ static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indi
 }
 
 
-static void dome_timer_callback(indigo_device *device) {
-	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_target_position = PRIVATE_DATA->dome_current_position;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-	} else {
-		if (DOME_PARK_PROPERTY->state != INDIGO_BUSY_STATE && DOME_PARK_PARKED_ITEM->sw.value) {
-			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
-			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_PARK_PROPERTY, "Unparked");
-		}
-		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && PRIVATE_DATA->dome_current_position != PRIVATE_DATA->dome_target_position) {
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			int dif = (int)(PRIVATE_DATA->dome_target_position - PRIVATE_DATA->dome_current_position + 360) % 360;
-			if (dif > DOME_SPEED_ITEM->number.value)
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = (int)(PRIVATE_DATA->dome_current_position + DOME_SPEED_ITEM->number.value + 360) % 360;
-			else
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = PRIVATE_DATA->dome_target_position;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			indigo_set_timer(device, 0.1, dome_timer_callback);
-		} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && PRIVATE_DATA->dome_current_position != PRIVATE_DATA->dome_target_position) {
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			int dif = (int)(PRIVATE_DATA->dome_current_position - PRIVATE_DATA->dome_target_position + 360) % 360;
-			if (dif > DOME_SPEED_ITEM->number.value)
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = (int)(PRIVATE_DATA->dome_current_position - DOME_SPEED_ITEM->number.value + 360) % 360;
-			else
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position = PRIVATE_DATA->dome_target_position;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			indigo_set_timer(device, 0.1, dome_timer_callback);
-		} else {
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->dome_current_position;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			if (DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DOME_PARK_PROPERTY, "Parked");
-			}
-		}
-	}
-}
-
-
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -2503,7 +2381,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_set_timer(device, 0.5, dome_timer_callback);
 		}
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -2794,7 +2671,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // ---------------------------------------------------------------------------------- PANEL
 
-void panel_attach_devices(indigo_device *device) {
+static void panel_attach_devices(indigo_device *device) {
 	assert(device != NULL);
 
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
@@ -2856,7 +2733,7 @@ void panel_attach_devices(indigo_device *device) {
 }
 
 
-void panel_detach_devices() {
+static void panel_detach_devices() {
 	if (mount != NULL) {
 		indigo_detach_device(mount);
 		free(mount);
@@ -2891,7 +2768,7 @@ static void panel_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
 		ALARM_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status");
-		goto RESCHEDULE_TIMER;
+		goto METEO_MEASURE;
 	}
 
 	char *descr, *descrs;
@@ -2919,8 +2796,29 @@ static void panel_timer_callback(indigo_device *device) {
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
 
-	RESCHEDULE_TIMER:
+	METEO_MEASURE:
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_GLME(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glme);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLME(%d) = %d", PRIVATE_DATA->dev_id, res);
+		GLME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GLME_PROPERTY, "Could not read Meteo sensrs");
+		goto RESCHEDULE_TIMER;
+	}
+
+	if (update_all || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating GLME_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		GLME_PROPERTY->state = INDIGO_OK_STATE;
+		for (int index = 0; index < ASCOL_GLME_N; index++) {
+			GLME_ITEMS(index)->number.value = PRIVATE_DATA->glme.value[index];
+		}
+		indigo_update_property(device, GLME_PROPERTY, NULL);
+		prev_glme = PRIVATE_DATA->glme;
+	}
+
+	RESCHEDULE_TIMER:
 	update_all = false;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->panel_timer);
 }
@@ -2953,6 +2851,22 @@ static indigo_result panel_attach(indigo_device *device) {
 			}
 		}
 		ALARM_PROPERTY->count = index;
+		// --------------------------------------------------------------------------- GLME
+		char item_name[INDIGO_NAME_SIZE];
+		char item_label[INDIGO_NAME_SIZE];
+		GLME_PROPERTY = indigo_init_number_property(NULL, device->name, GLME_PROPERTY_NAME, METEO_DATA_GROUP, "Meteo Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_GLME_N);
+		if (GLME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		ascol_GLME(ASCOL_DESCRIBE, &PRIVATE_DATA->glme);
+		for (index = 0; index < ASCOL_GLME_N; index++) {
+			snprintf(item_name, INDIGO_NAME_SIZE, "%s_%d", GLME_ITEM_NAME_BASE, index);
+			snprintf(item_label, INDIGO_NAME_SIZE, "%s (%s)",
+			         PRIVATE_DATA->glme.description[index],
+			         PRIVATE_DATA->glme.unit[index]
+			);
+			indigo_init_number_item(GLME_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
+		}
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_aux_enumerate_properties(device, NULL, NULL);
@@ -2964,6 +2878,8 @@ static indigo_result panel_enumerate_properties(indigo_device *device, indigo_cl
 	if (IS_CONNECTED) {
 		if (indigo_property_match(ALARM_PROPERTY, property))
 			indigo_define_property(device, ALARM_PROPERTY, NULL);
+		if (indigo_property_match(GLME_PROPERTY, property))
+			indigo_define_property(device, GLME_PROPERTY, NULL);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -2980,6 +2896,7 @@ static indigo_result panel_change_property(indigo_device *device, indigo_client 
 				if (ascol_device_open(device)) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_define_property(device, ALARM_PROPERTY, NULL);
+					indigo_define_property(device, GLME_PROPERTY, NULL);
 					device->is_connected = true;
 					/* start updates */
 					PRIVATE_DATA->panel_timer = indigo_set_timer(device, 0, panel_timer_callback);
@@ -2995,6 +2912,7 @@ static indigo_result panel_change_property(indigo_device *device, indigo_client 
 				indigo_cancel_timer(device, &PRIVATE_DATA->panel_timer);
 				mount_close(device);
 				indigo_delete_property(device, ALARM_PROPERTY, NULL);
+				indigo_define_property(device, GLME_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -3009,7 +2927,10 @@ static indigo_result panel_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 		indigo_cancel_timer(device, &PRIVATE_DATA->panel_timer);
 	}
+
 	indigo_release_property(ALARM_PROPERTY);
+	indigo_release_property(GLME_PROPERTY);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }
