@@ -279,9 +279,16 @@ typedef struct {
 
 } ascol_private_data;
 
+static ascol_private_data *private_data = NULL;
+
+static indigo_device *panel = NULL;
+static indigo_device *mount = NULL;
+static indigo_device *mount_guider = NULL;
+static indigo_device *focuser = NULL;
+static indigo_device *dome = NULL;
+
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
-
 static indigo_result ascol_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (indigo_property_match(OIL_STATE_PROPERTY, property))
@@ -323,6 +330,7 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
+
 
 static bool ascol_device_open(indigo_device *device) {
 	if (device->is_connected) return false;
@@ -2785,6 +2793,93 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 
 // ---------------------------------------------------------------------------------- PANEL
+
+void panel_attach_devices(indigo_device *device) {
+	assert(device != NULL);
+
+	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
+		SYSTEM_ASCOL_NAME,
+		mount_attach,
+		ascol_mount_enumerate_properties,
+		mount_change_property,
+		NULL,
+		mount_detach
+	);
+	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
+		SYSTEM_ASCOL_GUIDER_NAME,
+		guider_attach,
+		ascol_guider_enumerate_properties,
+		guider_change_property,
+		NULL,
+		guider_detach
+	);
+	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
+		SYSTEM_ASCOL_DOME_NAME,
+		dome_attach,
+		ascol_dome_enumerate_properties,
+		dome_change_property,
+		NULL,
+		dome_detach
+	);
+	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
+		SYSTEM_ASCOL_FOCUSER_NAME,
+		focuser_attach,
+		ascol_focuser_enumerate_properties,
+		focuser_change_property,
+		NULL,
+		focuser_detach
+	);
+
+	mount = malloc(sizeof(indigo_device));
+	assert(mount != NULL);
+	memcpy(mount, &mount_template, sizeof(indigo_device));
+	mount->private_data = device->private_data;
+	indigo_attach_device(mount);
+
+	mount_guider = malloc(sizeof(indigo_device));
+	assert(mount_guider != NULL);
+	memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
+	mount_guider->private_data = device->private_data;
+	indigo_attach_device(mount_guider);
+
+	dome = malloc(sizeof(indigo_device));
+	assert(dome != NULL);
+	memcpy(dome, &dome_template, sizeof(indigo_device));
+	dome->private_data = device->private_data;
+	indigo_attach_device(dome);
+
+	focuser = malloc(sizeof(indigo_device));
+	assert(focuser != NULL);
+	memcpy(focuser, &focuser_template, sizeof(indigo_device));
+	focuser->private_data = device->private_data;
+	indigo_attach_device(focuser);
+}
+
+
+void panel_detach_devices() {
+	if (mount != NULL) {
+		indigo_detach_device(mount);
+		free(mount);
+		mount = NULL;
+	}
+	if (mount_guider != NULL) {
+		indigo_detach_device(mount_guider);
+		free(mount_guider);
+		mount_guider = NULL;
+	}
+	if (dome != NULL) {
+		indigo_detach_device(dome);
+		free(dome);
+		dome = NULL;
+	}
+	if (focuser != NULL) {
+		indigo_detach_device(focuser);
+		free(focuser);
+		dome = NULL;
+	}
+}
+
+
 static void panel_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static ascol_glme_t prev_glme = {0};
@@ -2888,6 +2983,7 @@ static indigo_result panel_change_property(indigo_device *device, indigo_client 
 					device->is_connected = true;
 					/* start updates */
 					PRIVATE_DATA->panel_timer = indigo_set_timer(device, 0, panel_timer_callback);
+					panel_attach_devices(device);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -2895,6 +2991,7 @@ static indigo_result panel_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			if (device->is_connected) {
+				panel_detach_devices();
 				indigo_cancel_timer(device, &PRIVATE_DATA->panel_timer);
 				mount_close(device);
 				indigo_delete_property(device, ALARM_PROPERTY, NULL);
@@ -2920,14 +3017,6 @@ static indigo_result panel_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static ascol_private_data *private_data = NULL;
-
-static indigo_device *panel = NULL;
-static indigo_device *mount = NULL;
-static indigo_device *mount_guider = NULL;
-static indigo_device *focuser = NULL;
-static indigo_device *dome = NULL;
-
 indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_info *info) {
 
 	static indigo_device panel_template = INDIGO_DEVICE_INITIALIZER(
@@ -2938,38 +3027,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		NULL,
 		panel_detach
 	);
-	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
-		SYSTEM_ASCOL_NAME,
-		mount_attach,
-		ascol_mount_enumerate_properties,
-		mount_change_property,
-		NULL,
-		mount_detach
-	);
-	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
-		SYSTEM_ASCOL_GUIDER_NAME,
-		guider_attach,
-		ascol_guider_enumerate_properties,
-		guider_change_property,
-		NULL,
-		guider_detach
-	);
-	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
-		SYSTEM_ASCOL_DOME_NAME,
-		dome_attach,
-		ascol_dome_enumerate_properties,
-		dome_change_property,
-		NULL,
-		dome_detach
-	);
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		SYSTEM_ASCOL_FOCUSER_NAME,
-		focuser_attach,
-		ascol_focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-	);
+
 	ascol_debug = 1;
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -2993,54 +3051,10 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		memcpy(panel, &panel_template, sizeof(indigo_device));
 		panel->private_data = private_data;
 		indigo_attach_device(panel);
-
-		mount = malloc(sizeof(indigo_device));
-		assert(mount != NULL);
-		memcpy(mount, &mount_template, sizeof(indigo_device));
-		mount->private_data = private_data;
-		indigo_attach_device(mount);
-
-		mount_guider = malloc(sizeof(indigo_device));
-		assert(mount_guider != NULL);
-		memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
-		mount_guider->private_data = private_data;
-		indigo_attach_device(mount_guider);
-
-		dome = malloc(sizeof(indigo_device));
-		assert(dome != NULL);
-		memcpy(dome, &dome_template, sizeof(indigo_device));
-		dome->private_data = private_data;
-		indigo_attach_device(dome);
-
-		focuser = malloc(sizeof(indigo_device));
-		assert(focuser != NULL);
-		memcpy(focuser, &focuser_template, sizeof(indigo_device));
-		focuser->private_data = private_data;
-		indigo_attach_device(focuser);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
-		if (mount != NULL) {
-			indigo_detach_device(mount);
-			free(mount);
-			mount = NULL;
-		}
-		if (mount_guider != NULL) {
-			indigo_detach_device(mount_guider);
-			free(mount_guider);
-			mount_guider = NULL;
-		}
-		if (dome != NULL) {
-			indigo_detach_device(dome);
-			free(dome);
-			dome = NULL;
-		}
-		if (focuser != NULL) {
-			indigo_detach_device(focuser);
-			free(focuser);
-			dome = NULL;
-		}
 		if (panel != NULL) {
 			indigo_detach_device(panel);
 			free(panel);
