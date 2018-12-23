@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 
 #include <stdio.h>
@@ -73,6 +73,12 @@ do {							\
 #define GPHOTO2_NAME_APERTURE	         	 "Aperture"
 #define GPHOTO2_NAME_WHITEBALANCE		 "Whitebalance"
 #define GPHOTO2_NAME_EXPOSURE_COMPENSATION       "Exposure compensation"
+#define GPHOTO2_NAME_EXPOSURE_METERING           "Exposure metering"
+#define GPHOTO2_NAME_FOCUS_METERING              "Focus metering"
+#define GPHOTO2_NAME_EXPOSURE_PROGRAM            "Exposure program"
+#define GPHOTO2_NAME_BATTERY_LEVEL               "Battery level"
+#define GPHOTO2_NAME_BATTERY_LEVEL_NAME	         "Percent"
+#define GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME	 "BATTERY_LEVEL"
 #define GPHOTO2_NAME_ZOOM_PREVIEW                "Liveview zoom"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM        "5"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM       "1"
@@ -116,6 +122,10 @@ do {							\
 #define NIKON_BULB_MODE_LABEL                   "Bulb Mode"
 #define NIKON_APERTURE  			"f-number"
 #define NIKON_EXPOSURE_COMPENSATION 		"exposurecompensation"
+#define NIKON_EXPOSURE_METERING                 "exposuremetermode"
+#define NIKON_FOCUS_METERING                    "focusmetermode"
+#define NIKON_EXPOSURE_PROGRAM                  "expprogram"
+#define NIKON_BATTERY_LEVEL                     "batterylevel"
 
 #define EOS_ISO					NIKON_ISO
 #define EOS_COMPRESSION				"imageformat"
@@ -137,12 +147,21 @@ do {							\
 #define EOS_BULB_MODE_LABEL                     NIKON_BULB_MODE_LABEL
 #define EOS_APERTURE  			        "aperture"
 #define EOS_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
+#define EOS_EXPOSURE_METERING                   "meteringmode"
+#define EOS_FOCUS_METERING                      "NA"
+#define EOS_EXPOSURE_PROGRAM                    "autoexposuremode"
+#define EOS_BATTERY_LEVEL                       NIKON_BATTERY_LEVEL
 
 #define SONY_COMPRESSION			NIKON_COMPRESSION
 #define SONY_APERTURE  			        NIKON_APERTURE
 #define SONY_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
+#define SONY_EXPOSURE_METERING                  NIKON_EXPOSURE_METERING
+#define SONY_FOCUS_METERING                     "NA"
+#define SONY_EXPOSURE_PROGRAM                   NIKON_EXPOSURE_PROGRAM
+#define SONY_BATTERY_LEVEL                      NIKON_BATTERY_LEVEL
 
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
+#define TIMER_BATTERY_LEVEL_UPDATE_SEC          120
 
 #define UNUSED(x)				(void)(x)
 #define MAX_DEVICES				8
@@ -153,6 +172,11 @@ do {							\
 #define DSLR_APERTURE_PROPERTY		        (PRIVATE_DATA->dslr_aperture_property)
 #define DSLR_WHITEBALANCE_PROPERTY		(PRIVATE_DATA->dslr_whitebalance_property)
 #define DSLR_EXPOSURE_COMPENSATION_PROPERTY     (PRIVATE_DATA->dslr_exposure_compensation_property)
+#define DSLR_EXPOSURE_METERING_PROPERTY         (PRIVATE_DATA->dslr_exposure_metering_property)
+#define DSLR_FOCUS_METERING_PROPERTY            (PRIVATE_DATA->dslr_focus_metering_property)
+#define DSLR_EXPOSURE_PROGRAM_PROPERTY          (PRIVATE_DATA->dslr_exposure_program_property)
+#define DSLR_BATTERY_LEVEL_PROPERTY             (PRIVATE_DATA->dslr_battery_level_property)
+#define DSLR_BATTERY_LEVEL_ITEM		        (PRIVATE_DATA->dslr_battery_level_property->items)
 #define DSLR_MIRROR_LOCKUP_PROPERTY		(PRIVATE_DATA->dslr_mirror_lockup_property)
 #define DSLR_MIRROR_LOCKUP_ITEM			(PRIVATE_DATA->dslr_mirror_lockup_property->items)
 #define DSLR_DELETE_IMAGE_PROPERTY		(PRIVATE_DATA->dslr_delete_image_property)
@@ -167,11 +191,14 @@ do {							\
 #define DSLR_DEBAYER_ALGORITHM_DHT_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 5)
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
-#define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
-#define APERTURE                                (PRIVATE_DATA->gphoto2_aperture_id)
 #define DSLR_ZOOM_PREVIEW_PROPERTY              (PRIVATE_DATA->dslr_zoom_preview_property)
 #define DSLR_ZOOM_PREVIEW_ON_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
 #define DSLR_ZOOM_PREVIEW_OFF_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
+#define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
+#define APERTURE                                (PRIVATE_DATA->gphoto2_aperture_id)
+#define EXPOSURE_METERING                       (PRIVATE_DATA->gphoto2_exposure_metering_id)
+#define FOCUS_METERING                          (PRIVATE_DATA->gphoto2_focus_metering_id)
+#define EXPOSURE_PROGRAM                        (PRIVATE_DATA->gphoto2_exposure_program_id)
 #define is_connected				gp_bits
 
 enum vendor {
@@ -202,6 +229,9 @@ typedef struct {
 	enum vendor vendor;
 	char *gphoto2_compression_id;
 	char *gphoto2_aperture_id;
+	char *gphoto2_exposure_metering_id;
+	char *gphoto2_focus_metering_id;
+	char *gphoto2_exposure_program_id;
 	char *name_best_jpeg_format;
 	char *name_pure_raw_format;
 	float mirror_lockup_secs;
@@ -210,6 +240,7 @@ typedef struct {
 	bool has_eos_remote_release;
 	bool has_capture_target;
 	int debayer_algorithm;
+	char battery_level[16];
 	double exposure_min;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
@@ -217,12 +248,18 @@ typedef struct {
 	indigo_property *dslr_aperture_property;
 	indigo_property *dslr_whitebalance_property;
 	indigo_property *dslr_exposure_compensation_property;
+	indigo_property *dslr_exposure_metering_property;
+	indigo_property *dslr_focus_metering_property;
+	indigo_property *dslr_exposure_program_property;
+	indigo_property *dslr_battery_level_property;
 	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_debayer_algorithm_property;
 	indigo_property *dslr_libgphoto2_version_property;
-	indigo_timer *exposure_timer, *counter_timer;
+	indigo_timer *exposure_timer;
+	indigo_timer *counter_timer;
+	indigo_timer *battery_level_timer;
 	pthread_mutex_t driver_mutex;
 } gphoto2_private_data;
 
@@ -444,32 +481,35 @@ cleanup:
 	return rc;
 }
 
-static void vendor_identify_widget(indigo_device *device,
-				   const char *property_name)
+static void vendor_generic_widget(indigo_device *device)
 {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 
-	if (!strcmp(DSLR_COMPRESSION_PROPERTY_NAME, property_name)) {
-		if (PRIVATE_DATA->vendor == CANON)
-			COMPRESSION = strdup(EOS_COMPRESSION);
-		else if (PRIVATE_DATA->vendor == NIKON)
-			COMPRESSION = strdup(NIKON_COMPRESSION);
-		else if (PRIVATE_DATA->vendor == SONY)
-			COMPRESSION = strdup(SONY_COMPRESSION);
-		else /* Nikon fallback. */
-			COMPRESSION = strdup(NIKON_COMPRESSION);
+	switch (PRIVATE_DATA->vendor) {
+	case CANON: {
+		COMPRESSION	  = EOS_COMPRESSION;
+		APERTURE	  = EOS_APERTURE;
+		EXPOSURE_METERING = EOS_EXPOSURE_METERING;
+		FOCUS_METERING    = EOS_FOCUS_METERING;
+		EXPOSURE_PROGRAM  = EOS_EXPOSURE_PROGRAM;
+		break;
 	}
-
-	if (!strcmp(DSLR_APERTURE_PROPERTY_NAME, property_name)) {
-		if (PRIVATE_DATA->vendor == CANON)
-			APERTURE = strdup(EOS_APERTURE);
-		else if (PRIVATE_DATA->vendor == NIKON)
-			APERTURE = strdup(NIKON_APERTURE);
-		else if (PRIVATE_DATA->vendor == SONY)
-			APERTURE = strdup(SONY_APERTURE);
-		else /* Nikon fallback. */
-			APERTURE = strdup(NIKON_APERTURE);
+	case SONY: {
+		COMPRESSION	  = SONY_COMPRESSION;
+		APERTURE	  = SONY_APERTURE;
+		EXPOSURE_METERING = SONY_EXPOSURE_METERING;
+		FOCUS_METERING    = SONY_FOCUS_METERING;
+		EXPOSURE_PROGRAM  = SONY_EXPOSURE_PROGRAM;
+		break;
+	}
+	default: /* Nikon fallback, seems to be most compatible with remaining vendors. */
+		COMPRESSION	  = NIKON_COMPRESSION;
+		APERTURE	  = NIKON_APERTURE;
+		EXPOSURE_METERING = NIKON_EXPOSURE_METERING;
+		FOCUS_METERING    = NIKON_FOCUS_METERING;
+		EXPOSURE_PROGRAM  = NIKON_EXPOSURE_PROGRAM;
+		break;
 	}
 }
 
@@ -832,6 +872,52 @@ static bool can_preview(indigo_device *device)
 	return (rc == GP_OK);
 }
 
+static indigo_result update_battery_level(indigo_device *device)
+{
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+
+	int rc;
+	char *battery_level = NULL;
+
+	rc = gphoto2_get_key_val(EOS_BATTERY_LEVEL, &battery_level, device);
+	if (rc) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] "
+				    "gphoto2_get_key_val '%s'",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context,
+				    EOS_BATTERY_LEVEL);
+
+		return INDIGO_FAILED;
+	}
+
+	strncpy(PRIVATE_DATA->battery_level, battery_level,
+		sizeof(PRIVATE_DATA->battery_level));
+	if (battery_level)
+		free(battery_level);
+
+	return INDIGO_OK;
+}
+
+static void battery_level_timer_callback(indigo_device *device)
+{
+	int rc;
+
+	if (!(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ||
+	      CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		rc = update_battery_level(device);
+		DSLR_BATTERY_LEVEL_PROPERTY->state = rc ?
+			INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		indigo_update_property(device, DSLR_BATTERY_LEVEL_PROPERTY,
+				       NULL);
+	}
+	indigo_reschedule_timer(device,
+				TIMER_BATTERY_LEVEL_UPDATE_SEC,
+				&PRIVATE_DATA->battery_level_timer);
+}
+
 static void counter_timer_callback(indigo_device *device)
 {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
@@ -1076,24 +1162,6 @@ static void *thread_capture(void *user_data)
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_setcancelstate");
 		rc = -EINVAL;
 		goto cleanup;
-	}
-
-	/* Sony Alpha-A7R III e.g. has no capture to memory card, just to RAM. */
-	if (PRIVATE_DATA->has_capture_target) {
-		/* Store images on memory card. */
-		rc = gphoto2_set_key_val_char(EOS_CAPTURE_TARGET,
-					      EOS_MEMORY_CARD, device);
-		if (rc < GP_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val_char '%s' '%s'",
-					    rc,
-					    PRIVATE_DATA->camera,
-					    context,
-					    EOS_CAPTURE_TARGET,
-					    EOS_MEMORY_CARD);
-			goto cleanup;
-		}
 	}
 
 	/* This sets also camera_file->accesstype = GP_FILE_ACCESSTYPE_MEMORY. */
@@ -1379,6 +1447,9 @@ static indigo_result ccd_attach(indigo_device *device)
 		PRIVATE_DATA->name_best_jpeg_format = NULL;
 		PRIVATE_DATA->name_pure_raw_format = NULL;
 		PRIVATE_DATA->mirror_lockup_secs = 0;
+		memset(PRIVATE_DATA->battery_level, 0,
+		       sizeof(PRIVATE_DATA->battery_level));
+		strncpy(PRIVATE_DATA->battery_level, "NA", 2);
 
 		/*--------------------- CCD_INFO --------------------*/
 		char *name = PRIVATE_DATA->gphoto2_id.name;
@@ -1403,9 +1474,8 @@ static indigo_result ccd_attach(indigo_device *device)
 				PRIVATE_DATA->vendor = OTHER;
 		}
 
-		/*----------------------- IDENTIFY-VENDOR --------------------*/
-		vendor_identify_widget(device, DSLR_COMPRESSION_PROPERTY_NAME);
-		vendor_identify_widget(device, DSLR_APERTURE_PROPERTY_NAME);
+		/*--------------- IDENTIFY-VENDOR-SPECIFIC-WIDGETS -----------*/
+		vendor_generic_widget(device);
 
 		/*-------------------- HAS-SINGLE-BULB-MODE ------------------*/
 		PRIVATE_DATA->has_single_bulb_mode =
@@ -1433,6 +1503,23 @@ static indigo_result ccd_attach(indigo_device *device)
 				  EOS_CAPTURE_TARGET_LABEL,
 				  PRIVATE_DATA->has_capture_target ? "is" : "is not",
 				  PRIVATE_DATA->gphoto2_id.name);
+		/* Set SD memory card as capture target. The other choice is internal RAM, however
+		   this choice seems not to work reliably. */
+		if (PRIVATE_DATA->has_capture_target) {
+
+			int rc;
+			rc = gphoto2_set_key_val_char(EOS_CAPTURE_TARGET,
+						      EOS_MEMORY_CARD, device);
+			if (rc < GP_OK)
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,
+						    "[rc:%d,camera:%p,context:%p] "
+						    "gphoto2_set_key_val_char '%s' '%s'",
+						    rc,
+						    PRIVATE_DATA->camera,
+						    context,
+						    EOS_CAPTURE_TARGET,
+						    EOS_MEMORY_CARD);
+		}
 
 		/*------------------------- SHUTTER-TIME ---------------------*/
 		int count = enumerate_widget(EOS_SHUTTERSPEED, device, NULL);
@@ -1444,8 +1531,11 @@ static indigo_result ccd_attach(indigo_device *device)
 								    INDIGO_OK_STATE,
 								    INDIGO_RW_PERM,
 								    INDIGO_ONE_OF_MANY_RULE,
-								    count);
-		enumerate_widget(EOS_SHUTTERSPEED, device, DSLR_SHUTTER_PROPERTY);
+								    count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(EOS_SHUTTERSPEED, device, DSLR_SHUTTER_PROPERTY);
+		else
+			DSLR_SHUTTER_PROPERTY->hidden = true;
 
 		/*---------------------------- ISO ---------------------------*/
 		count = enumerate_widget(EOS_ISO, device, NULL);
@@ -1457,8 +1547,11 @@ static indigo_result ccd_attach(indigo_device *device)
 								INDIGO_OK_STATE,
 								INDIGO_RW_PERM,
 								INDIGO_ONE_OF_MANY_RULE,
-								count);
-		enumerate_widget(EOS_ISO, device, DSLR_ISO_PROPERTY);
+								count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(EOS_ISO, device, DSLR_ISO_PROPERTY);
+		else
+			DSLR_ISO_PROPERTY->hidden = true;
 
 		/*------------------------ COMPRESSION -----------------------*/
 		count = enumerate_widget(COMPRESSION, device, NULL);
@@ -1470,8 +1563,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									INDIGO_OK_STATE,
 									INDIGO_RW_PERM,
 									INDIGO_ONE_OF_MANY_RULE,
-									count);
-		enumerate_widget(COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
+									count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
+		else
+			DSLR_COMPRESSION_PROPERTY->hidden = true;
 
 		/*------------------------- APERTURE  ------------------------*/
 		count = enumerate_widget(APERTURE, device, NULL);
@@ -1483,8 +1579,11 @@ static indigo_result ccd_attach(indigo_device *device)
 								     INDIGO_OK_STATE,
 								     INDIGO_RW_PERM,
 								     INDIGO_ONE_OF_MANY_RULE,
-								     count);
-		enumerate_widget(APERTURE, device, DSLR_APERTURE_PROPERTY);
+								     count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(APERTURE, device, DSLR_APERTURE_PROPERTY);
+		else
+			DSLR_APERTURE_PROPERTY->hidden = true;
 
 		/*------------------------ WHITEBALANCE ----------------------*/
 		count = enumerate_widget(EOS_WHITEBALANCE, device, NULL);
@@ -1496,8 +1595,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									 INDIGO_OK_STATE,
 									 INDIGO_RW_PERM,
 									 INDIGO_ONE_OF_MANY_RULE,
-									 count);
-		enumerate_widget(EOS_WHITEBALANCE, device, DSLR_WHITEBALANCE_PROPERTY);
+									 count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(EOS_WHITEBALANCE, device, DSLR_WHITEBALANCE_PROPERTY);
+		else
+			DSLR_WHITEBALANCE_PROPERTY->hidden = true;
 
 		/*------------------- EXPOSURE-COMPENSATION ------------------*/
 		count = enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, NULL);
@@ -1509,8 +1611,83 @@ static indigo_result ccd_attach(indigo_device *device)
 										  INDIGO_OK_STATE,
 										  INDIGO_RW_PERM,
 										  INDIGO_ONE_OF_MANY_RULE,
-										  count);
-		enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, DSLR_EXPOSURE_COMPENSATION_PROPERTY);
+										  count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, DSLR_EXPOSURE_COMPENSATION_PROPERTY);
+		else
+			DSLR_EXPOSURE_COMPENSATION_PROPERTY->hidden = true;
+
+		/*--------------------- EXPOSURE-METERING --------------------*/
+		count = enumerate_widget(EXPOSURE_METERING, device, NULL);
+		DSLR_EXPOSURE_METERING_PROPERTY = indigo_init_switch_property(NULL,
+									      device->name,
+									      DSLR_EXPOSURE_METERING_PROPERTY_NAME,
+									      GPHOTO2_NAME_DSLR,
+									      GPHOTO2_NAME_EXPOSURE_METERING,
+									      INDIGO_OK_STATE,
+									      INDIGO_RW_PERM,
+									      INDIGO_ONE_OF_MANY_RULE,
+									      count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(EXPOSURE_METERING, device, DSLR_EXPOSURE_METERING_PROPERTY);
+		else
+			DSLR_EXPOSURE_METERING_PROPERTY->hidden = true;
+
+		/*---------------------- FOCUS-METERING ----------------------*/
+		count = enumerate_widget(FOCUS_METERING, device, NULL);
+		DSLR_FOCUS_METERING_PROPERTY = indigo_init_switch_property(NULL,
+									   device->name,
+									   DSLR_FOCUS_METERING_PROPERTY_NAME,
+									   GPHOTO2_NAME_DSLR,
+									   GPHOTO2_NAME_FOCUS_METERING,
+									   INDIGO_OK_STATE,
+									   INDIGO_RW_PERM,
+									   INDIGO_ONE_OF_MANY_RULE,
+									   count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(FOCUS_METERING, device, DSLR_FOCUS_METERING_PROPERTY);
+		else
+			DSLR_FOCUS_METERING_PROPERTY->hidden = true;
+
+		/*--------------------- EXPOSURE-PROGRAM ---------------------*/
+		count = enumerate_widget(EXPOSURE_PROGRAM, device, NULL);
+		DSLR_EXPOSURE_PROGRAM_PROPERTY = indigo_init_switch_property(NULL,
+									     device->name,
+									     DSLR_PROGRAM_PROPERTY_NAME,
+									     GPHOTO2_NAME_DSLR,
+									     GPHOTO2_NAME_EXPOSURE_PROGRAM,
+									     INDIGO_OK_STATE,
+									     INDIGO_RO_PERM,
+									     INDIGO_ONE_OF_MANY_RULE,
+									     count < 0 ? 0 : count);
+		if (count > 0)
+			enumerate_widget(EXPOSURE_PROGRAM, device, DSLR_EXPOSURE_PROGRAM_PROPERTY);
+		else
+			DSLR_EXPOSURE_PROGRAM_PROPERTY->hidden = true;
+
+		/*---------------------- BATTERY-LEVEL -----------------------*/
+		DSLR_BATTERY_LEVEL_PROPERTY = indigo_init_text_property(NULL,
+									device->name,
+									DSLR_BATTERY_LEVEL_PROPERTY_NAME,
+									GPHOTO2_NAME_DSLR,
+									GPHOTO2_NAME_BATTERY_LEVEL,
+									INDIGO_OK_STATE,
+									INDIGO_RO_PERM,
+									1);
+		update_battery_level(device);
+		indigo_init_text_item(DSLR_BATTERY_LEVEL_ITEM,
+				      GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME,
+				      GPHOTO2_NAME_BATTERY_LEVEL_NAME,
+				      "%s",
+				      PRIVATE_DATA->battery_level);
+
+		if (exists_widget_label(EOS_BATTERY_LEVEL, device) != GP_OK)
+			DSLR_BATTERY_LEVEL_PROPERTY->hidden = true;
+		else {
+			PRIVATE_DATA->battery_level_timer =
+				indigo_set_timer(device, TIMER_BATTERY_LEVEL_UPDATE_SEC,
+						 battery_level_timer_callback);
+		}
 
 		/*----------------------- ZOOM-PREVIEW -----------------------*/
 		DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL,
@@ -1718,17 +1895,15 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_APERTURE_PROPERTY);
 	indigo_release_property(DSLR_WHITEBALANCE_PROPERTY);
 	indigo_release_property(DSLR_EXPOSURE_COMPENSATION_PROPERTY);
+	indigo_release_property(DSLR_EXPOSURE_METERING_PROPERTY);
+	indigo_release_property(DSLR_FOCUS_METERING_PROPERTY);
+	indigo_release_property(DSLR_EXPOSURE_PROGRAM_PROPERTY);
+	indigo_release_property(DSLR_BATTERY_LEVEL_PROPERTY);
 	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
 	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
 	indigo_release_property(DSLR_DEBAYER_ALGORITHM_PROPERTY);
 	indigo_release_property(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY);
-
-	if (COMPRESSION)
-		free(COMPRESSION);
-
-	if (APERTURE)
-		free(APERTURE);
 
 	if (PRIVATE_DATA->buffer) {
 		free(PRIVATE_DATA->buffer);
@@ -1750,7 +1925,59 @@ static indigo_result ccd_enumerate_properties(indigo_device *device,
 					      indigo_client *client,
 					      indigo_property *property)
 {
-	return indigo_ccd_enumerate_properties(device, client, property);
+	indigo_result result = INDIGO_OK;
+	if ((result = indigo_ccd_enumerate_properties(device, client, property))
+	    == INDIGO_OK) {
+		if (IS_CONNECTED) {
+
+			if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property))
+				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_ISO_PROPERTY, property))
+				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property))
+				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_APERTURE_PROPERTY, property))
+				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_WHITEBALANCE_PROPERTY, property))
+				indigo_define_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property))
+				indigo_define_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_EXPOSURE_METERING_PROPERTY, property))
+				indigo_define_property(device, DSLR_EXPOSURE_METERING_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_FOCUS_METERING_PROPERTY, property))
+				indigo_define_property(device, DSLR_FOCUS_METERING_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_EXPOSURE_PROGRAM_PROPERTY, property))
+				indigo_define_property(device, DSLR_EXPOSURE_PROGRAM_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_BATTERY_LEVEL_PROPERTY, property))
+				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
+				indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property))
+				indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
+				indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+
+			if (indigo_property_match(DSLR_DEBAYER_ALGORITHM_PROPERTY, property))
+				indigo_define_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
+
+			if (indigo_property_match(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, property))
+				indigo_define_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
+		}
+	}
+
+	return result;
 }
 
 static indigo_result ccd_change_property(indigo_device *device,
@@ -1775,6 +2002,10 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_EXPOSURE_METERING_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_FOCUS_METERING_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_EXPOSURE_PROGRAM_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
@@ -1788,6 +2019,10 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_WHITEBALANCE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_EXPOSURE_METERING_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_FOCUS_METERING_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_EXPOSURE_PROGRAM_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
@@ -1834,6 +2069,30 @@ static indigo_result ccd_change_property(indigo_device *device,
 	else if (indigo_property_match(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property)) {
 		indigo_property_copy_values(DSLR_EXPOSURE_COMPENSATION_PROPERTY, property, false);
 		update_property(device, DSLR_EXPOSURE_COMPENSATION_PROPERTY, EOS_EXPOSURE_COMPENSATION);
+		return INDIGO_OK;
+	}
+	/*------------------------- EXPOSURE-METERING ------------------------*/
+	else if (indigo_property_match(DSLR_EXPOSURE_METERING_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_EXPOSURE_METERING_PROPERTY, property, false);
+		update_property(device, DSLR_EXPOSURE_METERING_PROPERTY, EXPOSURE_METERING);
+		return INDIGO_OK;
+	}
+	/*-------------------------- FOCUS-METERING --------------------------*/
+	else if (indigo_property_match(DSLR_FOCUS_METERING_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_FOCUS_METERING_PROPERTY, property, false);
+		update_property(device, DSLR_FOCUS_METERING_PROPERTY, FOCUS_METERING);
+		return INDIGO_OK;
+	}
+	/*-------------------------- EXPOSURE-PROGRAM ------------------------*/
+	else if (indigo_property_match(DSLR_EXPOSURE_PROGRAM_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_EXPOSURE_PROGRAM_PROPERTY, property, false);
+		update_property(device, DSLR_EXPOSURE_PROGRAM_PROPERTY, EXPOSURE_PROGRAM);
+		return INDIGO_OK;
+	}
+	/*--------------------------- BATTERY-LEVEL --------------------------*/
+	else if (indigo_property_match(DSLR_BATTERY_LEVEL_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_BATTERY_LEVEL_PROPERTY, property, false);
+		update_property(device, DSLR_BATTERY_LEVEL_PROPERTY, EOS_BATTERY_LEVEL);
 		return INDIGO_OK;
 	}
 	/*--------------------------- ZOOM-PREVIEW ---------------------------*/
@@ -2031,6 +2290,12 @@ static indigo_result ccd_change_property(indigo_device *device,
 					     DSLR_WHITEBALANCE_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_EXPOSURE_COMPENSATION_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_EXPOSURE_METERING_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_FOCUS_METERING_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_EXPOSURE_PROGRAM_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_MIRROR_LOCKUP_PROPERTY);
 			indigo_save_property(device, NULL,

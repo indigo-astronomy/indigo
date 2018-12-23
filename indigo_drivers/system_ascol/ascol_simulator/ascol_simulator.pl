@@ -128,6 +128,8 @@ my $da_state = HA_STOP;
 # FOCUS states
 use constant FO_OFF	=> 0;
 use constant FO_STOP	=> 1;
+use constant FO_PLUS	=> 2;
+use constant FO_MINUS	=> 3;
 use constant FO_SLEW	=> 4;
 
 use constant FO_REL_MOVING_TIME => 5;
@@ -216,6 +218,8 @@ my $new_abs_rd = 0;
 my $new_abs_hd = 0;
 #my $new_rel_hd = 0;
 
+my $req_abs_fo_pos = 0;
+my $req_rel_fo_pos = 0;
 my $fo_pos = 0;
 my $fo_state = FO_OFF;
 my $fo_rel_moving_time = 0;
@@ -518,6 +522,9 @@ sub update_state {
 		$elapsed_time = time() - $fo_rel_moving_time;
 		if ($elapsed_time > FO_REL_MOVING_TIME) {
 			$fo_state = FO_STOP;
+			$fo_pos += $req_rel_fo_pos;
+			$fo_pos = 100 if ($fo_pos > 100);
+			$fo_pos = 0 if ($fo_pos < 0);
 			$fo_rel_moving_time = 0;
 		}
 	}
@@ -526,6 +533,7 @@ sub update_state {
 		$elapsed_time = time() - $fo_abs_moving_time;
 		if ($elapsed_time > FO_ABS_MOVING_TIME) {
 			$fo_state = FO_STOP;
+			$fo_pos = $req_abs_fo_pos;
 			$fo_abs_moving_time = 0;
 		}
 	}
@@ -1314,6 +1322,8 @@ sub main() {
 				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
 				if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 				$fo_state = FO_STOP;
+				$fo_rel_moving_time = 0;
+				$fo_abs_moving_time = 0;
 				print_client($client, "1\n");
 				next;
 			}
@@ -1323,7 +1333,7 @@ sub main() {
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -49, 49, 2)) {
 					if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
-					$fo_pos = $cmd[1];
+					$req_rel_fo_pos = $cmd[1];
 					print_client($client, "1\n");
 					next;
 				}
@@ -1334,7 +1344,7 @@ sub main() {
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], 0, 49, 2)) {
 					if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
-					$fo_pos = $cmd[1];
+					$req_abs_fo_pos = $cmd[1];
 					print_client($client, "1\n");
 					next;
 				}
