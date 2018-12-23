@@ -44,10 +44,9 @@
 #define h2d(h) (h * 15.0)
 #define d2h(d) (d / 15.0)
 
-#define REFRESH_SECONDS (2)
+#define REFRESH_SECONDS (1)
 
 #define PRIVATE_DATA                    ((ascol_private_data *)device->private_data)
-
 
 #define COMMAND_GUIDE_RATE_PROPERTY     (PRIVATE_DATA->command_guide_rate_property)
 #define GUIDE_50_ITEM                   (COMMAND_GUIDE_RATE_PROPERTY->items+0)
@@ -64,11 +63,18 @@
 #define OIL_GROUP                          "Oil"
 #define CORRECTIONS_GROUP                  "Corrections"
 
+// Panel
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
 #define ALARM_ITEMS(index)                 (ALARM_PROPERTY->items+index)
 #define ALARM_PROPERTY_NAME                "ASCOL_ALARMS"
 #define ALARM_ITEM_NAME_BASE               "ALARM"
 
+#define GLME_PROPERTY                      (PRIVATE_DATA->glme_property)
+#define GLME_ITEMS(index)                  (GLME_PROPERTY->items+index)
+#define GLME_PROPERTY_NAME                 "ASCOL_GLME"
+#define GLME_ITEM_NAME_BASE                "VALUE"
+
+// Telescope
 #define OIL_STATE_PROPERTY                 (PRIVATE_DATA->oil_state_property)
 #define OIL_STATE_ITEM                     (OIL_STATE_PROPERTY->items+0)
 #define OIL_STATE_PROPERTY_NAME            "ASCOL_OIL_STATE"
@@ -108,11 +114,6 @@
 #define FLAP_COUDE_PROPERTY_NAME           "ASCOL_COUDE_TUBE"
 #define FLAP_COUDE_OPEN_ITEM_NAME          "OPEN"
 #define FLAP_COUDE_CLOSE_ITEM_NAME         "CLOSE"
-
-#define GLME_PROPERTY                      (PRIVATE_DATA->glme_property)
-#define GLME_ITEMS(index)                  (GLME_PROPERTY->items+index)
-#define GLME_PROPERTY_NAME                 "ASCOL_GLME"
-#define GLME_ITEM_NAME_BASE                "VALUE"
 
 #define OIL_POWER_PROPERTY                 (PRIVATE_DATA->oil_power_property)
 #define OIL_ON_ITEM                        (OIL_POWER_PROPERTY->items+0)
@@ -207,14 +208,14 @@
 #define DOME_SHUTTER_STATE_PROPERTY_NAME    "ASCOL_DOME_SHUTTER_STATE"
 #define DOME_SHUTTER_STATE_ITEM_NAME        "STATE"
 
+// Focuser
+#define FOCUSER_STATE_PROPERTY               (PRIVATE_DATA->focus_state_property)
+#define FOCUSER_STATE_ITEM                   (FOCUSER_STATE_PROPERTY->items+0)
+#define FOCUSER_STATE_PROPERTY_NAME          "ASCOL_FOCUSER_STATE"
+#define FOCUSER_STATE_ITEM_NAME              "STATE"
 
-#define FOCUSER_STATE_PROPERTY                 (PRIVATE_DATA->focus_state_property)
-#define FOCUSER_STATE_ITEM                     (FOCUSER_STATE_PROPERTY->items+0)
-#define FOCUSER_STATE_PROPERTY_NAME            "ASCOL_FOCUSER_STATE"
-#define FOCUSER_STATE_ITEM_NAME                "STATE"
-
-#define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
-#define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
+#define WARN_PARKED_MSG                      "Mount is parked, please unpark!"
+#define WARN_PARKING_PROGRESS_MSG            "Mount parking is in progress, please wait until complete!"
 
 // gp_bits is used as boolean
 #define is_connected                   gp_bits
@@ -828,26 +829,6 @@ static void mount_handle_utc(indigo_device *device) {
 }
 
 
-static bool mount_set_utc_from_host(indigo_device *device) {
-	time_t utc_time = indigo_utc(NULL);
-	if (utc_time == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get host UT");
-		return false;
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	/* set mount time to UTC */
-	int res = 0; // tc_set_time(PRIVATE_DATA->dev_id, utc_time, 0, 0);
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
-		return false;
-	}
-	return true;
-}
-
-
 static bool mount_cancel_slew(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 
@@ -1262,7 +1243,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		//MOUNT_PARK_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
 		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
-		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
 
@@ -1587,20 +1568,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME_PROPERTY
-		indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
-		if(MOUNT_SET_HOST_TIME_ITEM->sw.value) {
-			if(mount_set_utc_from_host(device)) {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		}
-		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
-		MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(OIL_POWER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- OIL_POWER_PROPERTY
