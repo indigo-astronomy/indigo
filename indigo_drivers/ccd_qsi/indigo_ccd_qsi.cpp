@@ -24,7 +24,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME		"indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -189,7 +189,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			long width, height;
 			cam.get_NumX(&width);
 			cam.get_NumY(&height);
-			cam.get_ImageArray(PRIVATE_DATA->buffer + FITS_HEADER_SIZE);
+			cam.get_ImageArray(PRIVATE_DATA->buffer + FITS_HEADER_SIZE / 2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image %ld x %ld", width, height);
 			indigo_process_image(device, PRIVATE_DATA->buffer, (int)width, (int)height, 16, true, true, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
