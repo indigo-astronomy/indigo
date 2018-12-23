@@ -228,14 +228,24 @@ typedef struct {
 	int slew_rate;
 	int st4_ra_rate, st4_dec_rate;
 	int vendor_id;
-	pthread_mutex_t net_mutex;
+
 	ascol_glst_t glst;
 	ascol_oimv_t oimv;
 	ascol_glme_t glme;
-	indigo_timer *mount_state_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
+
+	pthread_mutex_t net_mutex;
+
+	// Panel
+	indigo_timer *panel_timer;
+	indigo_property *alarm_property;
+
+	// Mount
+	indigo_timer *mount_state_timer,
+	             *guider_timer_ra,
+	             *guider_timer_dec,
+	             *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
-	indigo_property *alarm_property;
 	indigo_property *oil_state_property;
 	indigo_property *oimv_property;
 	indigo_property *mount_state_property;
@@ -262,7 +272,7 @@ typedef struct {
 	indigo_property *dome_state_property;
 	indigo_property *dome_shutter_state_property;
 
-	// Focuse
+	// Focuser
 	int focus_target_position, focus_current_position;
 	indigo_timer *focus_state_timer;
 	indigo_property *focus_state_property;
@@ -274,8 +284,6 @@ typedef struct {
 
 static indigo_result ascol_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(ALARM_PROPERTY, property))
-			indigo_define_property(device, ALARM_PROPERTY, NULL);
 		if (indigo_property_match(OIL_STATE_PROPERTY, property))
 			indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
 		if (indigo_property_match(OIMV_PROPERTY, property))
@@ -316,7 +324,7 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
-static bool mount_open(indigo_device *device) {
+static bool ascol_device_open(indigo_device *device) {
 	if (device->is_connected) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
@@ -918,8 +926,6 @@ static void mount_state_timer_callback(indigo_device *device) {
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
-		ALARM_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status");
 		OIL_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, OIL_STATE_PROPERTY, "Could not read Global Status");
 		MOUNT_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -933,25 +939,6 @@ static void mount_state_timer_callback(indigo_device *device) {
 
 	char *descr, *descrs;
 	int index;
-	if (update_all || memcmp(prev_glst.alarm_bits, PRIVATE_DATA->glst.alarm_bits, 10)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating ALARM_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
-		ALARM_PROPERTY->state = INDIGO_OK_STATE;
-		index = 0;
-		for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
-			int alarm_state;
-			ascol_check_alarm(PRIVATE_DATA->glst, alarm, &descr, &alarm_state);
-			if (descr[0] != '\0') {
-				if (alarm_state) {
-					ALARM_ITEMS(index)->light.value = INDIGO_ALERT_STATE;
-					ALARM_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					ALARM_ITEMS(index)->light.value = INDIGO_OK_STATE;
-				}
-				index++;
-			}
-		}
-		indigo_update_property(device, ALARM_PROPERTY, NULL);
-	}
 
 	if (update_all || (prev_glst.state_bits != PRIVATE_DATA->glst.state_bits)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating AXIS_CALIBRATED_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
@@ -1263,6 +1250,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 
 
 static indigo_result mount_attach(indigo_device *device) {
+	int index = 0;
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
@@ -1272,11 +1260,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-		AUTHENTICATION_PROPERTY->hidden = false;
-		AUTHENTICATION_PROPERTY->count = 1;
+		AUTHENTICATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		DEVICE_PORT_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
@@ -1300,23 +1286,6 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
 		MOUNT_SNOOP_DEVICES_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------- ALARM
-		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
-		if (ALARM_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		int index = 0;
-		for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
-			char alarm_name[INDIGO_NAME_SIZE];
-			char *alarm_descr;
-			ascol_check_alarm(PRIVATE_DATA->glst, alarm, &alarm_descr, NULL);
-			if (alarm_descr[0] != '\0') {
-				snprintf(alarm_name, INDIGO_NAME_SIZE, "ALARM_%d_BIT_%d", alarm/16, alarm%16);
-				indigo_init_light_item(ALARM_ITEMS(index), alarm_name, alarm_descr, INDIGO_IDLE_STATE);
-				index++;
-			}
-		}
-		ALARM_PROPERTY->count = index;
 		// --------------------------------------------------------------------------- OIL STATE
 		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, OIL_GROUP, "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
 		if (OIL_STATE_PROPERTY == NULL)
@@ -1474,7 +1443,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				if (mount_open(device)) {
+				if (ascol_device_open(device)) {
 					int dev_id = PRIVATE_DATA->dev_id;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
@@ -1542,7 +1511,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 					}
-					indigo_define_property(device, ALARM_PROPERTY, NULL);
 					indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
 					indigo_define_property(device, OIMV_PROPERTY, NULL);
 					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
@@ -1574,7 +1542,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->mount_state_timer);
 				mount_close(device);
-				indigo_delete_property(device, ALARM_PROPERTY, NULL);
 				indigo_delete_property(device, OIL_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, OIMV_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
@@ -1827,7 +1794,6 @@ static indigo_result mount_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_cancel_timer(device, &PRIVATE_DATA->mount_state_timer);
 
-	indigo_release_property(ALARM_PROPERTY);
 	indigo_release_property(OIL_STATE_PROPERTY);
 	indigo_release_property(OIMV_PROPERTY);
 	indigo_release_property(MOUNT_STATE_PROPERTY);
@@ -1944,7 +1910,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				if (mount_open(device)) {
+				if (ascol_device_open(device)) {
 					device->is_connected = true;
 					indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
 					PRIVATE_DATA->guider_timer_ra = NULL;
@@ -2385,11 +2351,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- AUTHENTICATION_PROPERTY
-		AUTHENTICATION_PROPERTY->hidden = false;
-		AUTHENTICATION_PROPERTY->count = 1;
+		AUTHENTICATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		DEVICE_PORT_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
@@ -2440,7 +2404,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				if (mount_open(device)) {
+				if (ascol_device_open(device)) {
 					int dev_id = PRIVATE_DATA->dev_id;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
@@ -2714,11 +2678,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
-		AUTHENTICATION_PROPERTY->hidden = false;
-		AUTHENTICATION_PROPERTY->count = 1;
+		AUTHENTICATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		DEVICE_PORT_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
@@ -2761,7 +2723,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				if (mount_open(device)) {
+				if (ascol_device_open(device)) {
 					int dev_id = PRIVATE_DATA->dev_id;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_define_property(device, FOCUSER_STATE_PROPERTY, NULL);
@@ -2822,16 +2784,160 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 
+// ---------------------------------------------------------------------------------- PANEL
+static void panel_timer_callback(indigo_device *device) {
+	static ascol_glst_t prev_glst = {0};
+	static ascol_glme_t prev_glme = {0};
+	static bool update_all = true;
+
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
+		ALARM_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status");
+		goto RESCHEDULE_TIMER;
+	}
+
+	char *descr, *descrs;
+	int index;
+	if (update_all || memcmp(prev_glst.alarm_bits, PRIVATE_DATA->glst.alarm_bits, 10)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating ALARM_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		ALARM_PROPERTY->state = INDIGO_OK_STATE;
+		index = 0;
+		for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
+			int alarm_state;
+			ascol_check_alarm(PRIVATE_DATA->glst, alarm, &descr, &alarm_state);
+			if (descr[0] != '\0') {
+				if (alarm_state) {
+					ALARM_ITEMS(index)->light.value = INDIGO_ALERT_STATE;
+					ALARM_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					ALARM_ITEMS(index)->light.value = INDIGO_OK_STATE;
+				}
+				index++;
+			}
+		}
+		indigo_update_property(device, ALARM_PROPERTY, NULL);
+	}
+	/* should be copied every time as there are several properties
+	   relaying on this and we have no track which one changed */
+	prev_glst = PRIVATE_DATA->glst;
+
+	RESCHEDULE_TIMER:
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	update_all = false;
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->panel_timer);
+}
+
+static indigo_result panel_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_aux_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
+		DEVICE_PORTS_PROPERTY->hidden = true;
+		AUTHENTICATION_PROPERTY->hidden = false;
+		AUTHENTICATION_PROPERTY->count = 1;
+		// -------------------------------------------------------------------------------- DEVICE_PORT
+		DEVICE_PORT_PROPERTY->hidden = false;
+		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		// -------------------------------------------------------------------------------- ALARM
+		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
+		if (ALARM_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		int index = 0;
+		for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
+			char alarm_name[INDIGO_NAME_SIZE];
+			char *alarm_descr;
+			ascol_check_alarm(PRIVATE_DATA->glst, alarm, &alarm_descr, NULL);
+			if (alarm_descr[0] != '\0') {
+				snprintf(alarm_name, INDIGO_NAME_SIZE, "ALARM_%d_BIT_%d", alarm/16, alarm%16);
+				indigo_init_light_item(ALARM_ITEMS(index), alarm_name, alarm_descr, INDIGO_IDLE_STATE);
+				index++;
+			}
+		}
+		ALARM_PROPERTY->count = index;
+		// --------------------------------------------------------------------------------
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_aux_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result panel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(ALARM_PROPERTY, property))
+			indigo_define_property(device, ALARM_PROPERTY, NULL);
+	}
+	return indigo_aux_enumerate_properties(device, NULL, NULL);
+}
+
+static indigo_result panel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (!device->is_connected) {
+				if (ascol_device_open(device)) {
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_define_property(device, ALARM_PROPERTY, NULL);
+					device->is_connected = true;
+					/* start updates */
+					PRIVATE_DATA->panel_timer = indigo_set_timer(device, 0, panel_timer_callback);
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
+			}
+		} else {
+			if (device->is_connected) {
+				indigo_cancel_timer(device, &PRIVATE_DATA->panel_timer);
+				mount_close(device);
+				indigo_delete_property(device, ALARM_PROPERTY, NULL);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+	}
+	return indigo_aux_change_property(device, client, property);
+}
+
+static indigo_result panel_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_device_disconnect(NULL, device->name);
+		indigo_cancel_timer(device, &PRIVATE_DATA->panel_timer);
+	}
+	indigo_release_property(ALARM_PROPERTY);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_aux_detach(device);
+}
+
+
 // --------------------------------------------------------------------------------
 
 static ascol_private_data *private_data = NULL;
 
+static indigo_device *panel = NULL;
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 static indigo_device *focuser = NULL;
 static indigo_device *dome = NULL;
 
 indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_info *info) {
+
+	static indigo_device panel_template = INDIGO_DEVICE_INITIALIZER(
+		SYSTEM_ASCOL_PANEL_NAME,
+		panel_attach,
+		panel_enumerate_properties,
+		panel_change_property,
+		NULL,
+		panel_detach
+	);
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
 		SYSTEM_ASCOL_NAME,
 		mount_attach,
@@ -2881,21 +2987,31 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		memset(private_data, 0, sizeof(ascol_private_data));
 		private_data->dev_id = -1;
 		private_data->count_open = 0;
+
+		panel = malloc(sizeof(indigo_device));
+		assert(panel != NULL);
+		memcpy(panel, &panel_template, sizeof(indigo_device));
+		panel->private_data = private_data;
+		indigo_attach_device(panel);
+
 		mount = malloc(sizeof(indigo_device));
 		assert(mount != NULL);
 		memcpy(mount, &mount_template, sizeof(indigo_device));
 		mount->private_data = private_data;
 		indigo_attach_device(mount);
+
 		mount_guider = malloc(sizeof(indigo_device));
 		assert(mount_guider != NULL);
 		memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
 		mount_guider->private_data = private_data;
 		indigo_attach_device(mount_guider);
+
 		dome = malloc(sizeof(indigo_device));
 		assert(dome != NULL);
 		memcpy(dome, &dome_template, sizeof(indigo_device));
 		dome->private_data = private_data;
 		indigo_attach_device(dome);
+
 		focuser = malloc(sizeof(indigo_device));
 		assert(focuser != NULL);
 		memcpy(focuser, &focuser_template, sizeof(indigo_device));
@@ -2924,6 +3040,11 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 			indigo_detach_device(focuser);
 			free(focuser);
 			dome = NULL;
+		}
+		if (panel != NULL) {
+			indigo_detach_device(panel);
+			free(panel);
+			panel = NULL;
 		}
 		if (private_data != NULL) {
 			free(private_data);
