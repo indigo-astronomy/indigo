@@ -48,6 +48,8 @@ In case of successful handshake for version 2.0 the following extensions can be 
 
 3. Number property items has 'target' attribute to distinguish between current and target item value for properties like CCD_EXPOSURE.
 
+4. Every property and every item may have optional attribute 'hints' containing presentation hints in CSS declaration syntax (see below for the list of defined properties and values).
+
 If protocol version 2.0 is used, INDIGO property and item names are used (more gramatically and semantically consistent),
 while if version 1.7 is used, names of  commonly used names are maped to their INDI counter parts.  Also "Idle" property state is mapped
 to "Ok" state ("Idle" state is not used as a property state in INDIGO, just as a light item value).
@@ -88,7 +90,7 @@ XML message
 ```
 is mapped to JSON message
 ```
-← { "defSwitchVector": { "version": 512, "device": "Server", "name": "RESTART", "group": "Main", "label": "Restart", "perm": "rw", "state": "Idle", "rule": "AnyOfMany", "items": [  { "name": "RESTART", "label": "Restart server", "value": false } ] } }
+← { "defSwitchVector": { "version": 512, "device": "Server", "name": "RESTART", "group": "Main", "label": "Restart", "perm": "rw", "state": "Idle", "rule": "AnyOfMany", "hints": "order: 10; widget: button", "items": [  { "name": "RESTART", "label": "Restart server", "value": false } ] } }
 ```
 XML message
 ```
@@ -98,7 +100,7 @@ XML message
 ```
 is mapped to JSON message
 ```
-← { "defNumberVector": { "version": 512, "device": "CCD Imager Simulator", "name": "CCD_EXPOSURE", "group": "Camera", "label": "Start exposure", "perm": "rw", "state": "Idle", "items": [  { "name": "EXPOSURE", "label": "Start exposure", "min": 0, "max": 10000, "step": 1, "format": "%g", "target": 0, "value": 0 } ] } }
+← { "defNumberVector": { "version": 512, "device": "CCD Imager Simulator", "name": "CCD_EXPOSURE", "group": "Camera", "label": "Start exposure", "perm": "rw", "state": "Idle", "hints": "order: 10; target: show", "items": [  { "name": "EXPOSURE", "label": "Start exposure", "min": 0, "max": 10000, "step": 1, "format": "%g", "target": 0, "value": 0 } ] } }
 ```
 XML message
 ```
@@ -139,6 +141,29 @@ is mapped to JSON message
 ```
 ← { "deleteProperty": { "device": "Mount IEQ (guider)" } }
 ```
+
+## Defined presentation hints
+
+The following properties and values can be used separated by semi-colons. The default value for hints for items are hints of their parent properties.
+
+```
+order: value;
+```
+
+order in which properties or items should be presented on client side, value is integer number
+
+```
+target: value;
+```
+
+show or hide target value on client side, value is show or hide; makes a sense only for numeric items
+
+```
+widget: list;
+```
+
+GUI widget(s) to use for the items on client side, the list can consist of values edit-box, combo-box, push, radio-button, check-box, slider or stepper
+
 ## References
 
 XML parser is implemented in [indigo_xml.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_xml.c).
