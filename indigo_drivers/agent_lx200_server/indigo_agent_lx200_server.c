@@ -149,6 +149,11 @@ static void start_worker_thread(handler_data *data) {
 	char buffer_out[128];
 	long result = 1;
 
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 500000;
+	setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+	
 	INDIGO_DRIVER_TRACE(LX200_SERVER_AGENT_NAME, "%d: CONNECTED", client_socket);
 
 	while (true) {
