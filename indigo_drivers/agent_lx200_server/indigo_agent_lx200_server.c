@@ -386,6 +386,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(DEVICE_PRIVATE_DATA != NULL);
 	if (indigo_agent_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		CONFIG_PROPERTY->hidden = false;
+		PROFILE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- local device properties
 		LX200_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, LX200_DEVICES_PROPERTY_NAME, MAIN_GROUP, "Devices", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (LX200_DEVICES_PROPERTY == NULL)
@@ -493,6 +495,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, LX200_SERVER_PROPERTY, NULL);
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, LX200_DEVICES_PROPERTY);
+			indigo_save_property(device, NULL, LX200_CONFIGURATION_PROPERTY);
+		}
 	}
 	return indigo_agent_change_property(device, client, property);
 }
