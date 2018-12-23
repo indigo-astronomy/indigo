@@ -44,7 +44,7 @@
 #define h2d(h) (h * 15.0)
 #define d2h(d) (d / 15.0)
 
-#define REFRESH_SECONDS (1)
+#define REFRESH_SECONDS (1.5)
 
 #define PRIVATE_DATA                    ((ascol_private_data *)device->private_data)
 
@@ -242,8 +242,7 @@ typedef struct {
 	indigo_property *glme_property;
 
 	// Mount
-	indigo_timer *mount_state_timer,
-	             *guider_timer_ra,
+	indigo_timer *guider_timer_ra,
 	             *guider_timer_dec,
 	             *park_timer;
 	int guide_rate;
@@ -268,14 +267,12 @@ typedef struct {
 
 	// Dome
 	int dome_target_position, dome_current_position;
-	indigo_timer *dome_state_timer; // *position_timer;
 	indigo_property *dome_power_property;
 	indigo_property *dome_state_property;
 	indigo_property *dome_shutter_state_property;
 
 	// Focuser
 	int focus_target_position, focus_current_position;
-	indigo_timer *focus_state_timer;
 	indigo_property *focus_state_property;
 
 } ascol_private_data;
@@ -903,26 +900,14 @@ static void park_timer_callback(indigo_device *device) {
 }
 
 
-static void mount_state_timer_callback(indigo_device *device) {
+static void mount_update_state() {
+	indigo_device *device = mount;
+	if ((device == NULL) || (!IS_CONNECTED)) return;
+
 	static ascol_glst_t prev_glst = {0};
 	static ascol_oimv_t prev_oimv = {0};
 	static ascol_glme_t prev_glme = {0};
 	static bool update_all = true;
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
-	if (res != ASCOL_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
-		OIL_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, OIL_STATE_PROPERTY, "Could not read Global Status");
-		MOUNT_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_STATE_PROPERTY, "Could not read Global Status");
-		FLAP_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FLAP_STATE_PROPERTY, "Could not read Global Status");
-		AXIS_CALIBRATED_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AXIS_CALIBRATED_PROPERTY, "Could not read Global Status");
-		goto OIL_MEASURE;
-	}
 
 	char *descr, *descrs;
 	int index;
@@ -1161,10 +1146,8 @@ static void mount_state_timer_callback(indigo_device *device) {
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
 
-	OIL_MEASURE:
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	res = ascol_OIMV(PRIVATE_DATA->dev_id, &PRIVATE_DATA->oimv);
+	int res = ascol_OIMV(PRIVATE_DATA->dev_id, &PRIVATE_DATA->oimv);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_OIMV(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -1194,7 +1177,7 @@ static void mount_state_timer_callback(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		goto RESCHEDULE_TIMER;
+		goto END;
 	}
 
 	if ((MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) &&
@@ -1209,9 +1192,8 @@ static void mount_state_timer_callback(indigo_device *device) {
 	indigo_update_coordinates(device, NULL);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
-	RESCHEDULE_TIMER:
+	END:
 	update_all = false;
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->mount_state_timer);
 }
 
 
@@ -1482,8 +1464,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
 
 					device->is_connected = true;
-					/* start updates */
-					PRIVATE_DATA->mount_state_timer = indigo_set_timer(device, 0, mount_state_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1491,7 +1471,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->mount_state_timer);
 				mount_close(device);
 				indigo_delete_property(device, OIL_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, OIMV_PROPERTY, NULL);
@@ -1728,7 +1707,6 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	indigo_cancel_timer(device, &PRIVATE_DATA->mount_state_timer);
 
 	indigo_release_property(OIL_STATE_PROPERTY);
 	indigo_release_property(OIMV_PROPERTY);
@@ -1949,7 +1927,10 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- DOME
 
-static void dome_state_timer_callback(indigo_device *device) {
+static void dome_update_state() {
+	indigo_device *device = dome;
+	if ((device == NULL) || (!IS_CONNECTED)) return;
+
 	static ascol_glst_t prev_glst = {0};
 	static bool update_all = true;
 	static bool update_horizontal = false;
@@ -1961,17 +1942,6 @@ static void dome_state_timer_callback(indigo_device *device) {
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
-	if (res != ASCOL_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
-		DOME_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_STATE_PROPERTY, "Could not read Global Status");
-		DOME_SHUTTER_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_SHUTTER_STATE_PROPERTY, "Could not read Global Status");
-		goto DOPO;
 	}
 
 	if (update_all || (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state) ||
@@ -2053,10 +2023,8 @@ static void dome_state_timer_callback(indigo_device *device) {
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
 
-	DOPO:
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	res = ascol_DOPO(PRIVATE_DATA->dev_id, &DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
+	int res = ascol_DOPO(PRIVATE_DATA->dev_id, &DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOPO(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -2064,7 +2032,7 @@ static void dome_state_timer_callback(indigo_device *device) {
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Could not read Dome Position");
 		indigo_update_property(device, DOME_STEPS_PROPERTY, "Could not read Dome Position");
-		goto RESCHEDULE_TIMER;
+		goto END;
 	}
 	if (update_all || update_horizontal ||
 	   (prev_dome_az != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) ||
@@ -2075,10 +2043,9 @@ static void dome_state_timer_callback(indigo_device *device) {
 		update_horizontal = false;
 	}
 
-	RESCHEDULE_TIMER:
+	END:
 	update_all = false;
 	prev_dome_az = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value;
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->dome_state_timer);
 }
 
 
@@ -2297,8 +2264,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
 					indigo_define_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
 					device->is_connected = true;
-					/* start updates */
-					PRIVATE_DATA->dome_state_timer = indigo_set_timer(device, 0, dome_state_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -2306,7 +2271,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->dome_state_timer);
 				mount_close(device);
 				indigo_delete_property(device, DOME_POWER_PROPERTY, NULL);
 				indigo_delete_property(device, DOME_STATE_PROPERTY, NULL);
@@ -2395,7 +2359,6 @@ static indigo_result dome_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	indigo_cancel_timer(device, &PRIVATE_DATA->dome_state_timer);
 	indigo_release_property(DOME_POWER_PROPERTY);
 	indigo_release_property(DOME_STATE_PROPERTY);
 	indigo_release_property(DOME_SHUTTER_STATE_PROPERTY);
@@ -2407,7 +2370,10 @@ static indigo_result dome_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- FOCUSER
 
-static void focus_state_timer_callback(indigo_device *device) {
+static void focus_update_state() {
+	indigo_device *device = focuser;
+	if ((device == NULL) || (!IS_CONNECTED)) return;
+
 	static ascol_glst_t prev_glst = {0};
 	static bool update_all = true;
 	static bool update_focus = true;
@@ -2419,15 +2385,6 @@ static void focus_state_timer_callback(indigo_device *device) {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
-	if (res != ASCOL_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
-		FOCUSER_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_STATE_PROPERTY, "Could not read Global Status");
-		goto FOPO;
 	}
 
 	if (update_all || (prev_glst.focus_state != PRIVATE_DATA->glst.focus_state) ||
@@ -2454,10 +2411,8 @@ static void focus_state_timer_callback(indigo_device *device) {
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
 
-	FOPO:
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	res = ascol_FOPO(PRIVATE_DATA->dev_id, &FOCUSER_POSITION_ITEM->number.value);
+	int res = ascol_FOPO(PRIVATE_DATA->dev_id, &FOCUSER_POSITION_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FOPO(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -2465,7 +2420,7 @@ static void focus_state_timer_callback(indigo_device *device) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Could not read Fosus Position");
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Could not read Fosus Position");
-		goto RESCHEDULE_TIMER;
+		goto END;
 	}
 	if (update_all || update_focus ||
 	   (prev_focus_pos != FOCUSER_POSITION_ITEM->number.value) ||
@@ -2476,10 +2431,9 @@ static void focus_state_timer_callback(indigo_device *device) {
 		update_focus = false;
 	}
 
-	RESCHEDULE_TIMER:
+	END:
 	update_all = false;
 	prev_focus_pos = FOCUSER_POSITION_ITEM->number.value;
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->focus_state_timer);
 }
 
 
@@ -2613,8 +2567,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_define_property(device, FOCUSER_STATE_PROPERTY, NULL);
 					device->is_connected = true;
-					/* start updates */
-					PRIVATE_DATA->focus_state_timer = indigo_set_timer(device, 0, focus_state_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -2622,7 +2574,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->focus_state_timer);
 				mount_close(device);
 				indigo_delete_property(device, FOCUSER_STATE_PROPERTY, NULL);
 				device->is_connected = false;
@@ -2661,7 +2612,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	indigo_cancel_timer(device, &PRIVATE_DATA->focus_state_timer);
 	indigo_release_property(FOCUSER_STATE_PROPERTY);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -2805,7 +2755,7 @@ static void panel_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLME(%d) = %d", PRIVATE_DATA->dev_id, res);
 		GLME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GLME_PROPERTY, "Could not read Meteo sensrs");
-		goto RESCHEDULE_TIMER;
+		goto END;
 	}
 
 	if (update_all || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
@@ -2818,7 +2768,13 @@ static void panel_timer_callback(indigo_device *device) {
 		prev_glme = PRIVATE_DATA->glme;
 	}
 
-	RESCHEDULE_TIMER:
+	END:
+	// Update other devices
+	mount_update_state();
+	dome_update_state();
+	focus_update_state();
+
+	// Reschedule execution
 	update_all = false;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->panel_timer);
 }
