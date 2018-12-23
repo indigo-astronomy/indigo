@@ -1,5 +1,5 @@
 //
-//  make_list.c
+//  indigo_drivers.c
 //  IndigoApps
 //
 //  Created by Peter Polakovic on 09/02/2017.
@@ -11,46 +11,27 @@
 
 #include "indigo_client.h"
 
-void group(int argc, char **argv, char *group, char *prefix) {
+int main(int argc, char **argv) {
+	char state[32] = "stable";
 	indigo_driver_info info;
-	printf(" <devGroup group=\"%s\">\n", group);
+	printf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+	printf("<drivers>\n");
+	int entry = 0;
 	for (int i = 1; i < argc; i++) {
-		if (strstr(argv[i], prefix)) {
+		if (!strcmp(argv[i], "-s")) {
+			strcpy(state, "stable");
+		} else if (!strcmp(argv[i], "-u")) {
+			strcpy(state, "untested");
+		} else if (!strcmp(argv[i], "-d")) {
+			strcpy(state, "under development");
+		} else {
 			indigo_driver_entry *driver;
-			indigo_load_driver(argv[i], false, &driver);
-			indigo_available_drivers[0].driver(INDIGO_DRIVER_INFO, &info);
-			printf("  <device label=\"%s\">\n", info.description);
-			printf("   <driver name=\"%s\"%s>%s</driver>\n", info.description, info.multi_device_support ? " mdpd=\"true\"" : "",  info.name);
-			printf("   <version>%d.%d</version>\n", INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version));
-			printf("  </device>\n");
-			indigo_remove_driver(driver);
+			if (indigo_load_driver(argv[i], false, &driver) == INDIGO_OK) {
+				indigo_available_drivers[entry++].driver(INDIGO_DRIVER_INFO, &info);
+				printf(" <driver name=\"%s\" version=\"%d.%d.%d.%d\" state=\"%s\">%s</driver>\n", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version), state, info.description);
+				//indigo_remove_driver(driver); // atik driver will fail here :(
+			}
 		}
 	}
-	printf(" </devGroup>\n");
-}
-
-void version(char *name) {
-	indigo_driver_info info;
-	indigo_driver_entry *driver;
-	indigo_load_driver(name, false, &driver);
-	indigo_available_drivers[0].driver(INDIGO_DRIVER_INFO, &info);
-	printf("%d.%d", INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version));
-	indigo_remove_driver(driver);
-}
-
-
-int main(int argc, char **argv) {
-	if (argc == 3 && !strcmp(argv[1], "-v")) {
-		version(argv[2]);
-	} else {
-		printf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-		printf("<driversList>\n");
-		group(argc, argv, "Telescopes", "indigo_mount_");
-		group(argc, argv, "CCDs", "indigo_ccd_");
-		group(argc, argv, "Focusers", "indigo_focuser_");
-		group(argc, argv, "Filter Wheels", "indigo_wheel_");
-		group(argc, argv, "Domes", "indigo_dome_");
-		group(argc, argv, "Auxiliary", "indigo_aux_");
-		printf("</driversList>\n");
-	}
+	printf("</drivers>\n");
 }
