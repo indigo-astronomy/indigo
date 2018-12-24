@@ -827,14 +827,26 @@ static void mount_handle_utc(indigo_device *device) {
 }
 
 
-static bool mount_cancel_slew(indigo_device *device) {
+static bool mount_handle_abort_motion(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-
-	int res = 0; // tc_goto_cancel(PRIVATE_DATA->dev_id);
+	int res = ascol_TGRA(PRIVATE_DATA->dev_id, ASCOL_OFF);
 	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_cancel(%d) = %d", PRIVATE_DATA->dev_id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGRA(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	res = ascol_TGHA(PRIVATE_DATA->dev_id, ASCOL_OFF);
+	if (res != RC_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGHA(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	res = ascol_TGRR(PRIVATE_DATA->dev_id, ASCOL_OFF);
+	if (res != RC_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGRR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	res = ascol_TGHR(PRIVATE_DATA->dev_id, ASCOL_OFF);
+	if (res != RC_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGHR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 
+	/*
 	MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 	MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -847,10 +859,11 @@ static bool mount_cancel_slew(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_coordinates(device, NULL);
+	*/
+
 	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted.");
-
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	return true;
 }
@@ -1695,8 +1708,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		mount_cancel_slew(device);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
+			mount_handle_abort_motion(device);
+		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
