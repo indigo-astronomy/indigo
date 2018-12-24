@@ -1,0 +1,3 @@
+# ZWO FOCUSER
+ACTION=="add", ATTRS{idVendor}=="03c3", ATTRS{idProduct}=="1f10", GROUP="users", MODE="0666"
+
