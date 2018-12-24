@@ -931,7 +931,10 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !can_slew() or !$te_tracking) {
+					print_client($client, "1\n");
+					next;
+				}
 				if ($cmd[1] == 1) {
 					if($new_abs_rd) {
 						$te_state = TE_ST_CLU1;
@@ -953,7 +956,10 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !$te_tracking) {
+					print_client($client, "1\n");
+					next;
+				}
 				if ($cmd[1] == 1) {
 					#if($new_rel_rd) {
 						$te_state = TE_ST_CLU1;
@@ -1002,7 +1008,10 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !can_slew() or $te_tracking) {
+					print_client($client, "1\n");
+					next;
+				}
 				if ($cmd[1] == 1) {
 					if($new_abs_hd) {
 						$te_state = TE_SS_CLU1;
@@ -1024,7 +1033,10 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or $te_tracking) {
+					print_client($client, "1\n");
+					next;
+				}
 				if ($cmd[1] == 1) {
 					#if($new_rel_hd) {
 						$te_state = TE_SS_CLU1;
