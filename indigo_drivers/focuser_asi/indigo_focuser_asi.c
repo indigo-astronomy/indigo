@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -64,13 +64,14 @@ static int find_index_by_device_id(int id);
 
 
 static void focuser_timer_callback(indigo_device *device) {
+	bool moving;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
+	res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	PRIVATE_DATA->current_position++;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-	if (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position) {
+	if ((!moving) || (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->focuser_timer));
@@ -126,7 +127,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-						PRIVATE_DATA->target_position++;
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
