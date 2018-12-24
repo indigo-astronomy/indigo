@@ -165,7 +165,7 @@ static bool usbv3_open(indigo_device *device) {
 	//			FOCUSER_COMPENSATION_ITEM->number.value = compensation;
 	//		}
 	//	}
-	pthread_create(&PRIVATE_DATA->thread, NULL, (void * (*)(void*))usbv3_reader, device);
+	indigo_async((void * (*)(void*))usbv3_reader, device);
 	return true;
 }
 

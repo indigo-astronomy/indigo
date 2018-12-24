@@ -518,8 +518,7 @@ static void server_main() {
 	indigo_server_start(server_callback);
 #endif
 #ifdef INDIGO_MACOS
-	pthread_t server_thread;
-	if (pthread_create(&server_thread, NULL, (void * (*)(void *))indigo_server_start, server_callback)) {
+	if (!indigo_async((void * (*)(void *))indigo_server_start, server_callback)) {
 		INDIGO_ERROR(indigo_error("Error creating thread for server"));
 	}
 	runLoop = true;

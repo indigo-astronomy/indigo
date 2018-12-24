@@ -505,6 +505,11 @@ extern indigo_result indigo_device_disconnect(indigo_client *client, char *devic
  */
 extern void indigo_trim_local_service(char *device_name);
 
+/** Asynchronous execution in thread.
+ */
+extern bool indigo_async(void *fun(void *data), void *data);
+	
+
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
 extern indigo_property INDIGO_ALL_PROPERTIES;

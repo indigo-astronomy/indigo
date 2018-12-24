@@ -60,6 +60,7 @@ pthread_mutex_t free_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t cancel_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *timer_func(indigo_timer *timer) {
+	pthread_detach(pthread_self());
 	while (true) {
 		while (timer->scheduled) {
 			INDIGO_TRACE(indigo_trace("timer #%d (of %d) used for %gs", timer->timer_id, timer_count, timer->delay));

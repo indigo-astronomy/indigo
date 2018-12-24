@@ -778,7 +778,7 @@ static void shutdown() {
 }
 
 static bool open_joystick(indigo_device *device) {
-	pthread_create(&(PRIVATE_DATA->thread), NULL, (void *(*)(void *))poll, device);
+	indigo_async((void *(*)(void *))poll, device);
 	return true;
 }
 

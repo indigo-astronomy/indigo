@@ -299,10 +299,6 @@ extern indigo_result indigo_remove_properties(indigo_device *device);
  */
 extern void indigo_start_usb_event_handler(void);
 
-/** Asynchronous execution in thread.
- */
-extern void indigo_async(void *fun(void *data), void *data);
-
 /** Convert sexagesimal string to double.
  */
 extern double indigo_stod(char *string);

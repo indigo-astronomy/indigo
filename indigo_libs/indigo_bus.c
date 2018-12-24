@@ -1007,3 +1007,12 @@ void indigo_trim_local_service(char *device_name) {
 		device_name++;
 	}
 }
+
+bool indigo_async(void *fun(void *data), void *data) {
+	pthread_t async_thread;
+	if (pthread_create(&async_thread, NULL, fun, data) == 0) {
+		pthread_detach(async_thread);
+		return true;
+	}
+	return false;
+}
