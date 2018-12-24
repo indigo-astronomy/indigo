@@ -27,7 +27,7 @@
 #define focuser_asi_h
 
 #include "indigo_driver.h"
-#include "indigo_wheel_driver.h"
+#include "indigo_focuser_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
