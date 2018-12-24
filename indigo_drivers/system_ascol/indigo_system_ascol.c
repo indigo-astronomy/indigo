@@ -289,6 +289,8 @@ static indigo_device *dome = NULL;
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 static indigo_result ascol_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
+		if (indigo_property_match(OIL_POWER_PROPERTY, property))
+			indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 		if (indigo_property_match(OIL_STATE_PROPERTY, property))
 			indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
 		if (indigo_property_match(OIMV_PROPERTY, property))
@@ -301,8 +303,6 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
 		if (indigo_property_match(FLAP_COUDE_PROPERTY, property))
 			indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
-		if (indigo_property_match(OIL_POWER_PROPERTY, property))
-			indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 		if (indigo_property_match(TELESCOPE_POWER_PROPERTY, property))
 			indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 		if (indigo_property_match(AXIS_CALIBRATED_PROPERTY, property))
@@ -336,7 +336,7 @@ static bool ascol_device_open(indigo_device *device) {
 		char host[255];
 		int port;
 		ascol_parse_devname(DEVICE_PORT_ITEM->text.value, host, &port);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "host = %s, port = %d", host, port);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trying to connect to '%s:%d'...", host, port);
 		int dev_id = ascol_open(host, port);
 		if (dev_id == -1) {
 			PRIVATE_DATA->count_open--;
@@ -351,6 +351,7 @@ static bool ascol_device_open(indigo_device *device) {
 			return false;
 		} else {
 			PRIVATE_DATA->dev_id = dev_id;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected");
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -1445,13 +1446,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 					}
+					indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 					indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
 					indigo_define_property(device, OIMV_PROPERTY, NULL);
 					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
-					indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 					indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 					indigo_define_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
 					indigo_define_property(device, RA_CALIBRATION_PROPERTY, NULL);

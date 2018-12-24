@@ -37,7 +37,7 @@
 extern "C" {
 #endif
 
-#define SYSTEM_ASCOL_PANEL_NAME        "ASCOL Control Panel"
+#define SYSTEM_ASCOL_PANEL_NAME        "ASCOL Panel"
 #define SYSTEM_ASCOL_NAME              "ASCOL Telescope"
 #define SYSTEM_ASCOL_GUIDER_NAME       "ASCOL Guider"
 #define SYSTEM_ASCOL_FOCUSER_NAME      "ASCOL Focuser"
