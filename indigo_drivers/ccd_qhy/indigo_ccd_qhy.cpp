@@ -1681,13 +1681,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			#ifdef __APPLE__
-				pthread_t plug_thread;
 				/* This is ugly hack but otherwise QHY5IIL does not work!!!
 				   The camera does not respond in the hotpliug callback on MacOS,
 				   so the thread waits the callback to complete and initializes
 				   the camera.
 				 */
-				if (pthread_create(&plug_thread, NULL, plug_thread_func, NULL)) {
+				if (!indigo_async(plug_thread_func, NULL)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
 				}
 			#else
@@ -1697,11 +1696,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			#ifdef __APPLE__
-				pthread_t unplug_thread;
 				/* This is ugly hack but otherwise QHY5IIL does not work!!!
 				   See the note in LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED case.
 				*/
-				if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
+				if (!indigo_async(unplug_thread_func, NULL)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
 				}
 			#else

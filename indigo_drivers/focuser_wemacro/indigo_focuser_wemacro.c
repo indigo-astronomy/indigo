@@ -61,7 +61,6 @@
 typedef struct {
 	int handle;
 	int device_count;
-	pthread_t reader;
 	pthread_mutex_t port_mutex;
 	indigo_property *shutter_property;
 	indigo_property *config_property;
@@ -245,7 +244,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
-				pthread_create(&PRIVATE_DATA->reader, NULL, (void * (*)(void*))wemacro_reader, device);
+				indigo_async((void * (*)(void*))wemacro_reader, device);
 				indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 				indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
 				indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);

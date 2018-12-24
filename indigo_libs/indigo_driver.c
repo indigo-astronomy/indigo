@@ -554,15 +554,9 @@ void indigo_start_usb_event_handler() {
 	static bool thread_started = false;
 	if (!thread_started) {
 		libusb_init(NULL);
-		pthread_t hotplug_thread_handle;
-		pthread_create(&hotplug_thread_handle, NULL, hotplug_thread, NULL);
+		indigo_async(hotplug_thread, NULL);
 		thread_started = true;
 	}
-}
-
-void indigo_async(void *fun(void *data), void *data) {
-	pthread_t async_thread;
-	pthread_create(&async_thread, NULL, fun, data);
 }
 
 double indigo_stod(char *string) {

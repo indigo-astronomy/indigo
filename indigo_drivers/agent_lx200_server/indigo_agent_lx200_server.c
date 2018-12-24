@@ -104,7 +104,6 @@ typedef struct {
 	bool unparked;
 	double ra, dec;
 	int server_socket;
-	pthread_t listener;
 } agent_private_data;
 
 typedef struct {
@@ -296,11 +295,10 @@ static void start_listener_thread(indigo_device *device) {
 	while (DEVICE_PRIVATE_DATA->server_socket) {
 		int client_socket = accept(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&client_name, &name_len);
 		if (client_socket != -1) {
-			pthread_t thread;
 			handler_data *data = malloc(sizeof(handler_data));
 			data->client_socket = client_socket;
 			data->device = device;
-			if (pthread_create(&thread , NULL, (void *(*)(void *))&start_worker_thread, data) != 0)
+			if (!indigo_async((void *(*)(void *))start_worker_thread, data))
 				INDIGO_DRIVER_ERROR(LX200_SERVER_AGENT_NAME, "Can't create worker thread for connection (%s)", strerror(errno));
 		}
 	}
@@ -351,7 +349,7 @@ static bool start_server(indigo_device *device) {
 		indigo_update_property(device, LX200_CONFIGURATION_PROPERTY, NULL);
 	}
   DEVICE_PRIVATE_DATA->server_socket = server_socket;
-	if (pthread_create(&(DEVICE_PRIVATE_DATA->listener) , NULL, (void *(*)(void *))&start_listener_thread, device) != 0) {
+	if (!indigo_async((void *(*)(void *))start_listener_thread, device)) {
 		close(server_socket);
 		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
     indigo_update_property(device, LX200_SERVER_PROPERTY, "%s: Can't create listener thread (%s)", LX200_SERVER_AGENT_NAME, strerror(errno));
@@ -368,8 +366,6 @@ static void shutdown_server(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->server_socket = 0;
 		shutdown(server_socket, SHUT_RDWR);
 		close(server_socket);
-		pthread_join(DEVICE_PRIVATE_DATA->listener, NULL);
-		DEVICE_PRIVATE_DATA->listener = 0;
 		LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, LX200_SERVER_PROPERTY, NULL);

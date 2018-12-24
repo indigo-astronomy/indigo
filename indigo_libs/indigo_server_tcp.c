@@ -44,6 +44,7 @@
 #include <netinet/tcp.h>
 #endif
 
+#include "indigo_bus.h"
 #include "indigo_server_tcp.h"
 #include "indigo_driver_xml.h"
 #include "indigo_driver_json.h"
@@ -306,10 +307,9 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 				break;
 			indigo_error("Can't accept connection (%s)", strerror(errno));
 		} else {
-			pthread_t thread;
 			int *pointer = malloc(sizeof(int));
 			*pointer = client_socket;
-			if (pthread_create(&thread , NULL, (void *(*)(void *))&start_worker_thread, pointer) != 0)
+			if (!indigo_async((void *(*)(void *))&start_worker_thread, pointer))
 				indigo_error("Can't create worker thread for connection (%s)", strerror(errno));
 		}
 	}
