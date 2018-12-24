@@ -54,33 +54,33 @@
 
 typedef struct {
 	int dev_id;
-	int current_slot, target_slot;
+	int current_position, target_position;
 	int count;
-	indigo_timer *wheel_timer;
+	indigo_timer *focuser_timer;
 	pthread_mutex_t usb_mutex;
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
-// -------------------------------------------------------------------------------- INDIGO Wheel device implementation
+// -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
 
-static void wheel_timer_callback(indigo_device *device) {
+static void focuser_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_slot, res);
+	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	PRIVATE_DATA->current_slot++;
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+	PRIVATE_DATA->current_position++;
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_position;
+	if (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->wheel_timer));
+		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->focuser_timer));
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 
-static indigo_result wheel_attach(indigo_device *device) {
+static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
@@ -91,7 +91,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 
-static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
@@ -124,13 +124,13 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						EAFGetProperty(PRIVATE_DATA->dev_id, &info);
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.MaxStep;
-						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot, res);
+						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-						PRIVATE_DATA->target_slot++;
+						PRIVATE_DATA->target_position++;
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
-						PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", index, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -157,17 +157,17 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
+		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_position) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			PRIVATE_DATA->target_position = WHEEL_SLOT_ITEM->number.value;
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_position;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1, res);
+			int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position-1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position-1, res);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -177,7 +177,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 }
 
 
-static indigo_result wheel_detach(indigo_device *device) {
+static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
 	indigo_global_unlock(device);
@@ -273,13 +273,13 @@ static int find_unplugged_device_id() {
 
 static void process_plug_event(indigo_device *unused) {
 	EAF_INFO info;
-	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		"",
-		wheel_attach,
+		focuser_attach,
 		indigo_wheel_enumerate_properties,
-		wheel_change_property,
+		focuser_change_property,
 		NULL,
-		wheel_detach
+		focuser_detach
 		);
 	pthread_mutex_lock(&device_mutex);
 	int slot = find_available_device_slot();
@@ -318,7 +318,7 @@ static void process_plug_event(indigo_device *unused) {
 	}
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
-	memcpy(device, &wheel_template, sizeof(indigo_device));
+	memcpy(device, &focuser_template, sizeof(indigo_device));
 	sprintf(device->name, "%s #%d", info.Name, id);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	asi_private_data *private_data = malloc(sizeof(asi_private_data));
@@ -398,7 +398,7 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "ZWO ASI Filter Wheel", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	SET_DRIVER_INFO(info, "ZWO ASI Focuser", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
