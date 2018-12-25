@@ -197,6 +197,20 @@
 #define HADEC_COORDINATES_HA_ITEM_NAME     "HA"
 #define HADEC_COORDINATES_DEC_ITEM_NAME    "DEC"
 
+#define HADEC_RELATIVE_MOVE_PROPERTY       (PRIVATE_DATA->hadec_relative_move_property)
+#define HADEC_RELATIVE_MOVE_HA_ITEM        (HADEC_RELATIVE_MOVE_PROPERTY->items+0)
+#define HADEC_RELATIVE_MOVE_DEC_ITEM       (HADEC_RELATIVE_MOVE_PROPERTY->items+1)
+#define HADEC_RELATIVE_MOVE_PROPERTY_NAME  "ASCOL_HADEC_RELATIVE_MOVE"
+#define HADEC_RELATIVE_MOVE_HA_ITEM_NAME   "RHA"
+#define HADEC_RELATIVE_MOVE_DEC_ITEM_NAME  "RDEC"
+
+#define RADEC_RELATIVE_MOVE_PROPERTY       (PRIVATE_DATA->radec_relative_move_property)
+#define RADEC_RELATIVE_MOVE_RA_ITEM        (RADEC_RELATIVE_MOVE_PROPERTY->items+0)
+#define RADEC_RELATIVE_MOVE_DEC_ITEM       (RADEC_RELATIVE_MOVE_PROPERTY->items+1)
+#define RADEC_RELATIVE_MOVE_PROPERTY_NAME  "ASCOL_RADEC_RELATIVE_MOVE"
+#define RADEC_RELATIVE_MOVE_RA_ITEM_NAME   "RRA"
+#define RADEC_RELATIVE_MOVE_DEC_ITEM_NAME  "RDEC"
+
 // DOME
 #define DOME_POWER_PROPERTY                (PRIVATE_DATA->dome_power_property)
 #define DOME_ON_ITEM                       (DOME_POWER_PROPERTY->items+0)
@@ -272,6 +286,8 @@ typedef struct {
 	indigo_property *correction_model_property;
 	indigo_property *guide_mode_property;
 	indigo_property *hadec_coordinates_property;
+	indigo_property *hadec_relative_move_property;
+	indigo_property *radec_relative_move_property;
 
 	// Dome
 	int dome_target_position, dome_current_position;
@@ -333,6 +349,10 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
 		if (indigo_property_match(HADEC_COORDINATES_PROPERTY, property))
 			indigo_define_property(device, HADEC_COORDINATES_PROPERTY, NULL);
+		if (indigo_property_match(HADEC_RELATIVE_MOVE_PROPERTY, property))
+			indigo_define_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
+		if (indigo_property_match(RADEC_RELATIVE_MOVE_PROPERTY, property))
+			indigo_define_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -412,6 +432,57 @@ static void mount_handle_hadec_coordinates(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
+	indigo_update_coordinates(device, NULL);
+}
+
+static void mount_handle_hadec_relative_move(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+	/* Relative GOTO requested */
+	res = ascol_TSHR(PRIVATE_DATA->dev_id, HADEC_RELATIVE_MOVE_HA_ITEM->number.target, HADEC_RELATIVE_MOVE_DEC_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSHR(%d) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TGHR(PRIVATE_DATA->dev_id, ASCOL_ON);
+		if (res != INDIGO_OK) {
+			HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGHR(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
+	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
+	indigo_update_coordinates(device, NULL);
+}
+
+
+static void mount_handle_radec_relative_move(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+	/* Relative GOTO requested */
+	res = ascol_TSRR(PRIVATE_DATA->dev_id, RADEC_RELATIVE_MOVE_RA_ITEM->number.target, RADEC_RELATIVE_MOVE_DEC_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSRR(%d) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TGRR(PRIVATE_DATA->dev_id, ASCOL_ON);
+		if (res != INDIGO_OK) {
+			RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGRR(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
 	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
 }
@@ -1264,9 +1335,26 @@ static void mount_update_state() {
 	HADEC_COORDINATES_HA_ITEM->number.value = ha;
 	HADEC_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_coordinates(device, NULL);
-	indigo_update_property(device,  HADEC_COORDINATES_PROPERTY, NULL);
+	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 
 	END:
+
+	if ((HADEC_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) &&
+		((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
+		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
+	}
+
+	if ((RADEC_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) &&
+		((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
+		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
+	}
+
 	update_all = false;
 }
 
@@ -1439,6 +1527,18 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(HADEC_COORDINATES_HA_ITEM, HADEC_COORDINATES_HA_ITEM_NAME, "Hour Angle (0° to 360°)", -180, 330, 0.0001, 0);
 		indigo_init_number_item(HADEC_COORDINATES_DEC_ITEM, HADEC_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to 90°)", -90, 270, 0.0001, 0);
+		// -------------------------------------------------------------------------- HADEC_RELATIVE_MOVE
+		HADEC_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, HADEC_RELATIVE_MOVE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "HA DEC Relative Move", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (HADEC_RELATIVE_MOVE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(HADEC_RELATIVE_MOVE_HA_ITEM, HADEC_RELATIVE_MOVE_HA_ITEM_NAME, "Hour Angle (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
+		indigo_init_number_item(HADEC_RELATIVE_MOVE_DEC_ITEM, HADEC_RELATIVE_MOVE_DEC_ITEM_NAME, "Declination (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
+		// -------------------------------------------------------------------------- RADEC_RELATIVE_MOVE
+		RADEC_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, RADEC_RELATIVE_MOVE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Relative Move", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (RADEC_RELATIVE_MOVE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(RADEC_RELATIVE_MOVE_RA_ITEM, RADEC_RELATIVE_MOVE_RA_ITEM_NAME, "Right Ascension(-36000\" to 36000\")", -36000, 36000, 0.01, 0);
+		indigo_init_number_item(RADEC_RELATIVE_MOVE_DEC_ITEM, RADEC_RELATIVE_MOVE_DEC_ITEM_NAME, "Declination (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1543,6 +1643,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 					indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
 					indigo_define_property(device, HADEC_COORDINATES_PROPERTY, NULL);
+					indigo_define_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
+					indigo_define_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
 
 					device->is_connected = true;
 				} else {
@@ -1571,6 +1673,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 				indigo_delete_property(device, GUIDE_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, HADEC_COORDINATES_PROPERTY, NULL);
+				indigo_delete_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
+				indigo_delete_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1741,6 +1845,24 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		HADEC_COORDINATES_DEC_ITEM->number.value = dec;
 		mount_handle_hadec_coordinates(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(HADEC_RELATIVE_MOVE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- HADEC_RELATIVE_MOVE
+		if(PRIVATE_DATA->parked) {
+			indigo_update_coordinates(device, WARN_PARKED_MSG);
+			return INDIGO_OK;
+		}
+		indigo_property_copy_values(HADEC_RELATIVE_MOVE_PROPERTY, property, false);
+		mount_handle_hadec_relative_move(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(RADEC_RELATIVE_MOVE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- RADEC_RELATIVE_MOVE
+		if(PRIVATE_DATA->parked) {
+			indigo_update_coordinates(device, WARN_PARKED_MSG);
+			return INDIGO_OK;
+		}
+		indigo_property_copy_values(RADEC_RELATIVE_MOVE_PROPERTY, property, false);
+		mount_handle_radec_relative_move(device);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_UTC_TIME_PROPERTY
 		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
@@ -1823,6 +1945,8 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(CORRECTION_MODEL_PROPERTY);
 	indigo_release_property(GUIDE_MODE_PROPERTY);
 	indigo_release_property(HADEC_COORDINATES_PROPERTY);
+	indigo_release_property(HADEC_RELATIVE_MOVE_PROPERTY);
+	indigo_release_property(RADEC_RELATIVE_MOVE_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
