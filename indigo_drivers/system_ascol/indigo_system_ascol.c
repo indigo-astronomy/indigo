@@ -190,6 +190,13 @@
 #define GUIDE_MODE_ON_ITEM_NAME            "ON"
 #define GUIDE_MODE_OFF_ITEM_NAME           "OFF"
 
+#define HADEC_COORDINATES_PROPERTY         (PRIVATE_DATA->hadec_coordinates_property)
+#define HADEC_COORDINATES_HA_ITEM          (HADEC_COORDINATES_PROPERTY->items+0)
+#define HADEC_COORDINATES_DEC_ITEM         (HADEC_COORDINATES_PROPERTY->items+1)
+#define HADEC_COORDINATES_PROPERTY_NAME    "ASCOL_HADEC_COORDINATES"
+#define HADEC_COORDINATES_HA_ITEM_NAME     "HA"
+#define HADEC_COORDINATES_DEC_ITEM_NAME    "DEC"
+
 // DOME
 #define DOME_POWER_PROPERTY                (PRIVATE_DATA->dome_power_property)
 #define DOME_ON_ITEM                       (DOME_POWER_PROPERTY->items+0)
@@ -264,6 +271,7 @@ typedef struct {
 	indigo_property *error_correction_property;
 	indigo_property *correction_model_property;
 	indigo_property *guide_mode_property;
+	indigo_property *hadec_coordinates_property;
 
 	// Dome
 	int dome_target_position, dome_current_position;
@@ -323,6 +331,8 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 		if (indigo_property_match(GUIDE_MODE_PROPERTY, property))
 			indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
+		if (indigo_property_match(HADEC_COORDINATES_PROPERTY, property))
+			indigo_define_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -359,11 +369,12 @@ static bool ascol_device_open(indigo_device *device) {
 }
 
 
-static void mount_handle_coordinates(indigo_device *device) {
+static void mount_handle_eq_coordinates(indigo_device *device) {
 	int res = INDIGO_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
 	res = ascol_TSRA(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target,0);
 	if (res != INDIGO_OK) {
@@ -377,6 +388,31 @@ static void mount_handle_coordinates(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
+	indigo_update_coordinates(device, NULL);
+}
+
+
+static void mount_handle_hadec_coordinates(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+
+	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	/* GOTO requested */
+	res = ascol_TSHA(PRIVATE_DATA->dev_id, HADEC_COORDINATES_HA_ITEM->number.target, HADEC_COORDINATES_DEC_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		HADEC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSHA(%d) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TGHA(PRIVATE_DATA->dev_id, ASCOL_ON);
+		if (res != INDIGO_OK) {
+			HADEC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGHA(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
 }
 
@@ -1181,7 +1217,7 @@ static void mount_update_state() {
 	}
 
 	char east;
-	double ra, dec;
+	double ra, ha, dec;
 	UPDATE_RA_DE:
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	res = ascol_TRRD(PRIVATE_DATA->dev_id, &ra, &dec, &east);
@@ -1191,7 +1227,7 @@ static void mount_update_state() {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		goto END;
+		goto UPDATE_HA_DE;
 	}
 
 	if ((MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) &&
@@ -1205,6 +1241,30 @@ static void mount_update_state() {
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_coordinates(device, NULL);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+
+	UPDATE_HA_DE:
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_TRHD(PRIVATE_DATA->dev_id, &ha, &dec);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRHD(%d) = %d", PRIVATE_DATA->dev_id, res);
+		HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_coordinates(device, NULL);
+		indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
+		goto END;
+	}
+
+	if ((HADEC_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) &&
+		((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
+		HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	}
+
+	HADEC_COORDINATES_HA_ITEM->number.value = ha;
+	HADEC_COORDINATES_DEC_ITEM->number.value = dec;
+	indigo_update_coordinates(device, NULL);
+	indigo_update_property(device,  HADEC_COORDINATES_PROPERTY, NULL);
 
 	END:
 	update_all = false;
@@ -1373,6 +1433,12 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(GUIDE_MODE_ON_ITEM, GUIDE_MODE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(GUIDE_MODE_OFF_ITEM, GUIDE_MODE_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- HADEC_COORDINATES
+		HADEC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, HADEC_COORDINATES_PROPERTY_NAME, MOUNT_MAIN_GROUP, "HA DEC Coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (HADEC_COORDINATES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(HADEC_COORDINATES_HA_ITEM, HADEC_COORDINATES_HA_ITEM_NAME, "Hour Angle (0° to 360°)", -180, 330, 0.0001, 0);
+		indigo_init_number_item(HADEC_COORDINATES_DEC_ITEM, HADEC_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to 90°)", -90, 270, 0.0001, 0);
 		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1476,6 +1542,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 					indigo_define_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 					indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
+					indigo_define_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 
 					device->is_connected = true;
 				} else {
@@ -1503,6 +1570,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 				indigo_delete_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 				indigo_delete_property(device, GUIDE_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1658,7 +1726,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-		mount_handle_coordinates(device);
+		mount_handle_eq_coordinates(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(HADEC_COORDINATES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- HADEC_COORDINATES
+		if(PRIVATE_DATA->parked) {
+			indigo_update_coordinates(device, WARN_PARKED_MSG);
+			return INDIGO_OK;
+		}
+		double ha = HADEC_COORDINATES_HA_ITEM->number.value;
+		double dec = HADEC_COORDINATES_DEC_ITEM->number.value;
+		indigo_property_copy_values(HADEC_COORDINATES_PROPERTY, property, false);
+		HADEC_COORDINATES_HA_ITEM->number.value = ha;
+		HADEC_COORDINATES_DEC_ITEM->number.value = dec;
+		mount_handle_hadec_coordinates(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_UTC_TIME_PROPERTY
@@ -1741,6 +1822,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ERROR_CORRECTION_PROPERTY);
 	indigo_release_property(CORRECTION_MODEL_PROPERTY);
 	indigo_release_property(GUIDE_MODE_PROPERTY);
+	indigo_release_property(HADEC_COORDINATES_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
