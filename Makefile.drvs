@@ -52,9 +52,21 @@ clean-all: OP = clean-all
 clean-all: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 $(FOLDERS_WITH_MAKEFILE):
+ifeq ($(OP),all)
+	cd $@;sh ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
+endif
+ifeq ($(OP),install)
+	cd $@;sh ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
+endif
 	@$(MAKE) -C $@ $(OP)
 
 $(FOLDERS_WITHOUT_MAKEFILE):
+ifeq ($(OP),all)
+	cd $@;sh ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
+endif
+ifeq ($(OP),install)
+	cd $@;sh ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
+endif
 	@$(MAKE) -C $@ -f ../../Makefile.drv $(OP)
 
 folders:
@@ -63,4 +75,12 @@ folders:
 	@printf "Folders without Makefile: $(FOLDERS_WITHOUT_MAKEFILE)\n"
 	@printf "Folders excluded: $(EXCLUDED)\n"
 	@printf "Folders excluded from install: $(filter $(addsuffix /, $(DEVELOPED_DRIVERS)), $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE))\n"
-
+ifeq ($(OP),all)
+	rm -f $(BUILD_SHARE)/indigo/$(GROUP)
+endif
+ifeq ($(OP),install)
+	rm -f $(INSTALL_SHARE)/indigo/$(GROUP)
+endif
+ifeq ($(OP),uninstall)
+	rm -f $(INSTALL_SHARE)/indigo/$(GROUP)
+endif
