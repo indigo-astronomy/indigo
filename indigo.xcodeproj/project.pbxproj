@@ -897,6 +897,7 @@
 		595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidKeyboardBarcodeScanner.m; sourceTree = "<group>"; };
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
+		5963BBCD21D2A88100F1EC5A /* metainfo.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = metainfo.sh; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
 		598C57E321A75B1A001CA8C0 /* libnexstar.man */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.man; sourceTree = "<group>"; };
 		598C57E521A75B1A001CA8C0 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
@@ -5290,6 +5291,7 @@
 			children = (
 				9D7D59191DF6B21B003D2B59 /* rjsmin.py */,
 				599A240D1DBEC5BA0020BF8F /* cltools.sh */,
+				5963BBCD21D2A88100F1EC5A /* metainfo.sh */,
 			);
 			path = tools;
 			sourceTree = "<group>";

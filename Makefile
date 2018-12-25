@@ -248,7 +248,7 @@ init: Makefile.inc
 	install -d -m 0755 $(BUILD_DRIVERS)
 	install -d -m 0755 $(BUILD_LIB)
 	install -d -m 0755 $(BUILD_INCLUDE)
-	install -d -m 0755 $(BUILD_SHARE)
+	install -d -m 0755 $(BUILD_SHARE)/indigo
 
 Makefile.inc: Makefile
 	rm -f Makefile.inc
