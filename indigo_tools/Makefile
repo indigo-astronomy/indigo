@@ -28,10 +28,10 @@ DRIVER_LIBS=$(wildcard $(BUILD_DRIVERS)/indigo_*.a)
 all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_drivers
 
 install: all
-	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_drivers $(INSTALL_BIN)
+	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
 
 uninstall:
-	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_drivers
+	rm -f $(INSTALL_BIN)/indigo_prop_tool
 
 status:
 	@printf "\nindigo_tools -------------------------\n\n"
