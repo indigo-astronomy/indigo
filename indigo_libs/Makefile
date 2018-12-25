@@ -84,9 +84,9 @@ $(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c)))
 #
 #---------------------------------------------------------------------
 
-version: config.h
+version: indigo_config.h
 
-config.h:	../Makefile.inc
+indigo_config.h:	../Makefile.inc
 	cp indigo_config.h indigo_config.h.orig
 	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo_config.h.orig >indigo_config.h
 

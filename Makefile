@@ -105,7 +105,7 @@ endif
 
 .PHONY: init all clean clean-all
 
-all:	init
+all:	init $(BUILD_LIB)/libindigo.$(SOEXT)
 	@$(MAKE)	-C indigo_libs all
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs all
 ifeq ($(OS_DETECTED),Darwin)
@@ -116,6 +116,10 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 	@$(MAKE)	-C indigo_server all
 	@$(MAKE)	-C indigo_tools all
+
+$(BUILD_LIB)/libindigo.$(SOEXT): $(filter-out $(INDIGO_ROOT)/indigo_libs/indigo_config.h, $(wildcard $(INDIGO_ROOT)/indigo_libs/*.h))
+	@echo --------------------------------------------------------------------- Forced clean - framework headers are changed
+	@$(MAKE) clean
 
 status:
 	@$(MAKE)	-C indigo_libs status
@@ -246,7 +250,7 @@ init: Makefile.inc
 	install -d -m 0755 $(BUILD_INCLUDE)
 	install -d -m 0755 $(BUILD_SHARE)
 
-Makefile.inc: $(MAKEFILE_LIST)
+Makefile.inc: Makefile
 	rm -f Makefile.inc
 	@printf "# File is created automatically by top level Makefile, don't edit\n\n" > Makefile.inc
 	@printf "INDIGO_VERSION = $(INDIGO_VERSION)\n" >> Makefile.inc

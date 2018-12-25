@@ -37,7 +37,7 @@ status:
 	@printf "\nindigo_server -------------------------\n\n"
 
 clean:
-	rm -f $(BUILD_BIN)/indigo_server
+	rm -f *.o $(BUILD_BIN)/indigo_server
 
 clean-all: clean
 	rm -f *.data resource/*.data

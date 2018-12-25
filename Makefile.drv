@@ -153,10 +153,14 @@ ifneq ($(SDK_LIB_SO),)
 endif
 
 clean-all: clean
-ifneq ($(wildcard $(SDK_DIR)/configure),)
+ifneq ($(wildcard $(SDK_CONFIGURE)),)
 ifneq ($(wildcard $(SDK_DIR)/Makefile),)
 	make -C $(SDK_DIR) maintainer-clean
 	rm -rf $(SDK_DIR)/build
+	rm -rf $(SDK_DIR)/Makefile
+endif
+ifneq ($(wildcard $(SDK_CONFIGURE)),)
+	rm -rf $(SDK_CONFIGURE)
 endif
 endif
 
