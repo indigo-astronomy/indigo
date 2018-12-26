@@ -67,7 +67,7 @@ static double synscan_tracking_rate(indigo_device* device) {
 }
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
+	if (PRIVATE_DATA->handle > 0) {
 		//  Longitude needed for LST
 		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 		
@@ -89,8 +89,9 @@ static void position_timer_callback(indigo_device *device) {
 		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
 		
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g", lst * 12.0 / M_PI, ha, lst-ha);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst * 12.0 / M_PI, ha, lst-ha, dec);
 		
+		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		indigo_update_coordinates(device, NULL);
 	}
@@ -189,6 +190,7 @@ void synscan_mount_connect(indigo_device* device) {
 		//  DISCONNECT from mount
 		if (PRIVATE_DATA->device_count > 0) {
 			PRIVATE_DATA->device_count--;
+			printf("DEVICE COUNT %d\n", PRIVATE_DATA->device_count);
 			if (PRIVATE_DATA->device_count == 0) {
 				synscan_close(device);
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
