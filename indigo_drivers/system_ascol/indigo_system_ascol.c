@@ -260,10 +260,7 @@ typedef struct {
 	indigo_property *glme_property;
 
 	// Mount
-	indigo_timer *guider_timer_ra,
-	             *guider_timer_dec,
-	             *park_timer;
-	int guide_rate;
+	indigo_timer *park_timer;
 	indigo_property *oil_state_property;
 	indigo_property *oimv_property;
 	indigo_property *mount_state_property;
@@ -284,6 +281,13 @@ typedef struct {
 	indigo_property *hadec_coordinates_property;
 	indigo_property *hadec_relative_move_property;
 	indigo_property *radec_relative_move_property;
+
+	// Guider
+	double guide_rate;
+	indigo_timer *guider_timer_ra,
+	             *guider_timer_dec,
+	             *guide_correction_timer;
+	indigo_property *guide_correction_property;
 
 	// Dome
 	int dome_target_position, dome_current_position;
@@ -1793,6 +1797,8 @@ static indigo_result mount_detach(indigo_device *device) {
 
 static indigo_result ascol_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
+		if (indigo_property_match(GUIDE_CORRECTION_PROPERTY, property))
+			indigo_define_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
 	}
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }
@@ -1836,6 +1842,35 @@ static void guider_timer_callback_dec(indigo_device *device) {
 }
 
 
+static void guide_correction_timer_callback(indigo_device *device) {
+	double ra_corr, dec_corr;
+
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	int res = ascol_TRGV(PRIVATE_DATA->dev_id, &ra_corr, &dec_corr);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRGV(%d) = %d", PRIVATE_DATA->dev_id, res);
+		GUIDE_CORRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		return;
+	}
+
+	if ((GUIDE_CORRECTION_RA_ITEM->number.target == ra_corr) &&
+	    (GUIDE_CORRECTION_DEC_ITEM->number.target == dec_corr)) {
+		GUIDE_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		GUIDE_CORRECTION_RA_ITEM->number.value = GUIDE_CORRECTION_RA_ITEM->number.target;
+		GUIDE_CORRECTION_DEC_ITEM->number.value = GUIDE_CORRECTION_DEC_ITEM->number.target;
+		indigo_update_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
+	} else {
+		GUIDE_CORRECTION_RA_ITEM->number.value = ra_corr;
+		GUIDE_CORRECTION_DEC_ITEM->number.value = dec_corr;
+		indigo_update_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
+		indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->guide_correction_timer);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+}
+
+
 static void guider_handle_guide_rate(indigo_device *device) {
 }
 
@@ -1844,7 +1879,17 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
+		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+		GUIDER_RATE_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------- GUIDE_CORRECTION
+		GUIDE_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, GUIDE_CORRECTION_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide Corrections", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (GUIDE_CORRECTION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(GUIDE_CORRECTION_RA_ITEM, GUIDE_CORRECTION_RA_ITEM_NAME, "RA Correction (-3600\" to 3600\")", -3600, 3600, 0.1, 0);
+		indigo_init_number_item(GUIDE_CORRECTION_DEC_ITEM, GUIDE_CORRECTION_DEC_ITEM_NAME, "Dec Correction (-3600\" to 3600\")", -3600, 3600, 0.1, 0);
+		// ---------------------------------------------------------------------------
+		PRIVATE_DATA->guide_rate = GUIDER_RATE_ITEM->number.value * 0.15; /* 15("/s) * guiderate(%) / 100.0 */
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -1866,9 +1911,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 					PRIVATE_DATA->guider_timer_ra = NULL;
 					PRIVATE_DATA->guider_timer_dec = NULL;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
-					GUIDER_GUIDE_RA_PROPERTY->hidden = false;
-					GUIDER_RATE_PROPERTY->hidden = false;
+					indigo_define_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1877,6 +1920,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		} else {
 			if (device->is_connected) {
 				ascol_device_close(device);
+				indigo_delete_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1941,11 +1985,25 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(GUIDE_CORRECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDE_CORRECTION
+		indigo_property_copy_values(GUIDE_CORRECTION_PROPERTY, property, false);
+		GUIDE_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+		int res = ascol_TSGV(PRIVATE_DATA->dev_id, GUIDE_CORRECTION_RA_ITEM->number.value, GUIDE_CORRECTION_DEC_ITEM->number.value);
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		if (res != ASCOL_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGV(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		GUIDE_CORRECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		PRIVATE_DATA->guide_correction_timer = indigo_set_timer(device, 0, guide_correction_timer_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_RATE
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
 		GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
+		PRIVATE_DATA->guide_rate = GUIDER_RATE_ITEM->number.value * 0.15; /* 15("/s) * guiderate(%) / 100.0 */
 		return INDIGO_OK;
 	}
 	// --------------------------------------------------------------------------------
@@ -1956,6 +2014,8 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	indigo_release_property(GUIDE_CORRECTION_PROPERTY);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
