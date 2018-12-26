@@ -89,7 +89,6 @@ static long hexResponseToLong(const char* b) {
 
 static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 	int nretries = 0;
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	while (nretries < 2) {
 		//  Sleep for a bit if we're having to retry
 		//if (nretries > 0)
@@ -109,13 +108,11 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 			if (result == 0)
 				break;
 			if (result < 0) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
 				return false;
 			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
 				return false;
 			}
@@ -174,12 +171,10 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 			strncpy(r, resp+1, len-2);
 			r[len-2] = 0;
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		return true;
 	}
 
 	//  Mount command failed
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return false;
 }
 
@@ -288,19 +283,27 @@ static bool synscan_command(indigo_device *device, char *command, char *response
 
 static bool synscan_command_with_long_result(indigo_device* device, char* cmd, long* val) {
 	char buffer[20];
-	if (!synscan_command(device, cmd, buffer))
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (!synscan_command(device, cmd, buffer)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		return false;
+	}
 	if (val)
 		*val = hexResponseToLong(buffer);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return true;
 }
 
 static bool synscan_command_with_code_result(indigo_device* device, char* cmd, long* val) {
 	char buffer[20];
-	if (!synscan_command(device, cmd, buffer))
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (!synscan_command(device, cmd, buffer)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		return false;
+	}
 	if (val)
 		*val = hexToLong(buffer);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return true;
 }
 
