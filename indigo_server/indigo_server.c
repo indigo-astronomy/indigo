@@ -29,6 +29,7 @@
 #include <dns_sd.h>
 #include <libgen.h>
 #include <pthread.h>
+#include <dirent.h>
 
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -119,78 +120,92 @@
 #define SERVER_NAME         "INDIGO Server"
 
 driver_entry_point static_drivers[] = {
-	indigo_ccd_simulator,
-	indigo_mount_simulator,
-	indigo_gps_simulator,
-	indigo_dome_simulator,
 #ifdef STATIC_DRIVERS
-	indigo_ccd_sx,
-	indigo_wheel_sx,
-	indigo_ccd_atik,
-	indigo_wheel_atik,
-	indigo_ccd_qhy,
-	indigo_ccd_ssag,
-	indigo_focuser_fcusb,
-	indigo_ccd_asi,
-	indigo_wheel_asi,
-	indigo_guider_asi,
-	indigo_ccd_iidc,
-	indigo_mount_lx200,
-	indigo_mount_nexstar,
-	indigo_mount_synscan,
-	indigo_mount_temma,
-	indigo_ccd_fli,
-	indigo_wheel_fli,
-	indigo_focuser_fli,
-	indigo_ccd_apogee,
-	indigo_focuser_usbv3,
-	indigo_focuser_wemacro,
-	indigo_ccd_mi,
-	indigo_aux_joystick,
-	indigo_mount_synscan,
-	indigo_mount_ioptron,
-	indigo_guider_cgusbst4,
-	indigo_wheel_quantum,
-	indigo_wheel_trutek,
-	indigo_wheel_xagyl,
-	indigo_wheel_optec,
-	indigo_focuser_dmfc,
-	indigo_focuser_nstep,
-	indigo_focuser_nfocus,
-	indigo_focuser_moonlite,
-	indigo_focuser_mjkzz,
-	indigo_ccd_touptek,
-	indigo_ccd_altair,
-	indigo_focuser_optec,
-	indigo_aux_upb,
-	indigo_aux_rts,
-	indigo_aux_dsusb,
-	indigo_guider_gpusb,
-	indigo_focuser_lakeside,
 	indigo_agent_imager,
-#ifndef __aarch64__
-	indigo_ccd_sbig,
-#endif
+	indigo_agent_lx200_server,
+	indigo_agent_snoop,
+	indigo_aux_dsusb,
+	indigo_aux_joystick,
+	indigo_aux_rts,
+	indigo_aux_upb,
+	indigo_ccd_altair,
+	indigo_ccd_apogee,
+	indigo_ccd_asi,
+	indigo_ccd_atik,
 	indigo_ccd_dsi,
-/* Removed temporary as it is not stable and hangs servers on shutdown */
-/*	indigo_ccd_qsi,  */
-	indigo_gps_nmea,
-#ifdef INDIGO_MACOS
-	indigo_ccd_ica,
-	indigo_guider_eqmac,
-	indigo_focuser_wemacro_bt,
-	indigo_focuser_mjkzz_bt,
-#endif
+	indigo_ccd_fli,
 #ifdef INDIGO_LINUX
 	indigo_ccd_gphoto2,
 #endif
-	indigo_agent_snoop,
-	indigo_agent_lx200_server,
+#ifdef INDIGO_MACOS
+	indigo_ccd_ica,
+#endif
+	indigo_ccd_iidc,
+	indigo_ccd_mi,
+	indigo_ccd_qhy,
+	indigo_ccd_qsi,
+#ifndef __aarch64__
+	indigo_ccd_sbig,
+#endif
+	indigo_ccd_simulator,
+	indigo_ccd_ssag,
+	indigo_ccd_sx,
+	indigo_ccd_touptek,
+	indigo_dome_simulator,
+	indigo_focuser_dmfc,
+	indigo_focuser_fcusb,
+	indigo_focuser_fli,
+	indigo_focuser_lakeside,
+	indigo_focuser_mjkzz,
+#ifdef INDIGO_MACOS
+	indigo_focuser_mjkzz_bt,
+#endif
+	indigo_focuser_moonlite,
+	indigo_focuser_nfocus,
+	indigo_focuser_nstep,
+	indigo_focuser_optec,
+	indigo_focuser_usbv3,
+	indigo_focuser_wemacro,
+#ifdef INDIGO_MACOS
+	indigo_focuser_wemacro_bt,
+#endif
+	indigo_gps_simulator,
+	indigo_guider_asi,
+	indigo_guider_cgusbst4,
+#ifdef INDIGO_MACOS
+	indigo_guider_eqmac,
+#endif
+	indigo_guider_gpusb,
+	indigo_mount_ioptron,
+	indigo_mount_lx200,
+	indigo_mount_nexstar,
+	indigo_mount_simulator,
+	indigo_mount_synscan,
+	indigo_mount_synscan,
+	indigo_mount_temma,
+	indigo_wheel_asi,
+	indigo_wheel_atik,
+	indigo_wheel_fli,
+	indigo_wheel_optec,
+	indigo_wheel_quantum,
+	indigo_wheel_sx,
+	indigo_wheel_trutek,
+	indigo_wheel_xagyl,
 #endif
 	NULL
 };
 
-static int first_driver = 4; /* This should be equial to number of simulator drivers */
+static struct {
+	char *name;
+	char *description;
+} dynamic_drivers[INDIGO_MAX_DRIVERS] = {
+	NULL
+};
+
+static int static_drivers_count = 0;
+static int dynamic_drivers_count = 0;
+static bool command_line_drivers = false;
+
 static indigo_property *drivers_property;
 static indigo_property *servers_property;
 static indigo_property *load_property;
@@ -282,12 +297,14 @@ static void server_callback(int count) {
 
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
-	drivers_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", MAIN_GROUP, "Active drivers", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
+	drivers_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", MAIN_GROUP, "Available drivers", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
 	drivers_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 		if (indigo_available_drivers[i].driver != NULL)
-			indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, true);
-	servers_property = indigo_init_light_property(NULL, server_device.name, "SERVERS", MAIN_GROUP, "Active servers", INDIGO_OK_STATE, 2 * INDIGO_MAX_SERVERS);
+			indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].name, indigo_available_drivers[i].description, indigo_available_drivers[i].initialized);
+	for (int i = 0; i < dynamic_drivers_count && drivers_property->count < INDIGO_MAX_DRIVERS; i++)
+		indigo_init_switch_item(&drivers_property->items[drivers_property->count++], dynamic_drivers[i].name, dynamic_drivers[i].description, false);
+	servers_property = indigo_init_light_property(NULL, server_device.name, "SERVERS", MAIN_GROUP, "Configured servers", INDIGO_OK_STATE, 2 * INDIGO_MAX_SERVERS);
 	servers_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_server_entry *entry = indigo_available_servers + i;
@@ -333,8 +350,8 @@ static indigo_result attach(indigo_device *device) {
 			LOG_LEVEL_TRACE_ITEM->sw.value = true;
 			break;
 	}
-	if (indigo_load_properties(device, false) == INDIGO_FAILED)
-		change_property(device, NULL, drivers_property);
+	if (!command_line_drivers)
+		indigo_load_properties(device, false);
 	INDIGO_LOG(indigo_log("%s attached", device->name));
 	return INDIGO_OK;
 }
@@ -356,68 +373,106 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	assert(property != NULL);
 	if (indigo_property_match(drivers_property, property)) {
 	// -------------------------------------------------------------------------------- DRIVERS
+		if (command_line_drivers && !strcmp(client->name, CONFIG_READER))
+			return INDIGO_OK;
 		indigo_property_copy_values(drivers_property, property, false);
-		for (int i = 0; i < drivers_property->count; i++)
-			if (drivers_property->items[i].sw.value) {
-				indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
-				if (!indigo_available_drivers[i].initialized)
-					drivers_property->items[i].sw.value = false;
-			} else if (indigo_available_drivers[i].initialized) {
-				indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
-				indigo_available_drivers[i].initialized = false;
+		for (int i = 0; i < drivers_property->count; i++) {
+			char *name = drivers_property->items[i].name;
+			indigo_driver_entry *driver = NULL;
+			for (int j = 0; j < INDIGO_MAX_DRIVERS; j++) {
+				if (!strcmp(indigo_available_drivers[j].name, name)) {
+					driver = &indigo_available_drivers[j];
+					break;
+				}
 			}
+			if (drivers_property->items[i].sw.value) {
+				if (driver) {
+					if (driver->dl_handle == NULL && !driver->initialized)
+						drivers_property->items[i].sw.value = indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
+				} else {
+					drivers_property->items[i].sw.value = indigo_available_drivers[i].initialized = indigo_load_driver(name, true, NULL) == INDIGO_OK;
+				}
+			} else if (driver) {
+				if (driver->dl_handle) {
+					indigo_remove_driver(driver);
+				} else if (driver->initialized) {
+					indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
+					indigo_available_drivers[i].initialized = false;
+				}
+			}
+		}
 		drivers_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, drivers_property, NULL);
 		int handle = 0;
-		indigo_save_property(device, &handle, drivers_property);
+		if (!command_line_drivers)
+			indigo_save_property(device, &handle, drivers_property);
 		close(handle);
+		return INDIGO_OK;
 	} else if (indigo_property_match(load_property, property)) {
 		// -------------------------------------------------------------------------------- LOAD
 		indigo_property_copy_values(load_property, property, false);
 		if (*load_property->items[0].text.value) {
-			if (indigo_load_driver(load_property->items[0].text.value, true, NULL) == INDIGO_OK) {
-				indigo_delete_property(device, drivers_property, NULL);
-				drivers_property->count = 0;
-				for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
-					if (indigo_available_drivers[i].driver != NULL)
-						indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, indigo_available_drivers[i].initialized);
-				indigo_define_property(device, drivers_property, NULL);
-				load_property->state = INDIGO_OK_STATE;
-				char *name = basename(load_property->items[0].text.value);
-				for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
-					if (indigo_available_drivers[i].driver != NULL && !strcmp(name, indigo_available_drivers[i].name)) {
-						indigo_update_property(device, load_property, "Driver %s (%s) loaded", name, indigo_available_drivers[i].description);
+			char *name = basename(load_property->items[0].text.value);
+			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
+				if (!strcmp(name, indigo_available_drivers[i].name)) {
+					load_property->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, load_property, "Driver %s (%s) is already loaded", name, indigo_available_drivers[i].description);
+					return INDIGO_OK;
+				}
+			indigo_driver_entry *driver;
+			if (indigo_load_driver(load_property->items[0].text.value, true, &driver) == INDIGO_OK) {
+				bool found = false;
+				for (int i = 0; i < drivers_property->count; i++) {
+					if (!strcmp(drivers_property->items[i].name, name)) {
+						drivers_property->items[i].sw.value = true;
+						drivers_property->state = INDIGO_OK_STATE;
+						indigo_update_property(device, drivers_property, NULL);
+						found = true;
+						break;
 					}
+				}
+				if (!found) {
+					indigo_delete_property(device, drivers_property, NULL);
+					indigo_init_switch_item(&drivers_property->items[drivers_property->count++], driver->name, driver->description, driver->initialized);
+					drivers_property->state = INDIGO_OK_STATE;
+					indigo_define_property(device, drivers_property, NULL);
+				}
+				load_property->state = INDIGO_OK_STATE;
+				indigo_update_property(device, load_property, "Driver %s (%s) loaded", name, driver->description);
 			} else {
 				load_property->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, load_property, indigo_last_message);
 			}
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(unload_property, property)) {
 		// -------------------------------------------------------------------------------- UNLOAD
 		indigo_property_copy_values(unload_property, property, false);
 		if (*unload_property->items[0].text.value) {
-			indigo_driver_entry *driver = NULL;
-			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
-				if (!strcmp(indigo_available_drivers[i].name, unload_property->items[0].text.value)) {
-					driver = &indigo_available_drivers[i];
-					break;
+			char *name = basename(unload_property->items[0].text.value);
+			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
+				if (!strcmp(name, indigo_available_drivers[i].name)) {
+					if (indigo_available_drivers[i].dl_handle) {
+						indigo_remove_driver(&indigo_available_drivers[i]);
+					} else {
+						indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
+					}
+					for (int j = 0; j < drivers_property->count; j++) {
+						if (!strcmp(drivers_property->items[j].name, name)) {
+							drivers_property->items[j].sw.value = false;
+							drivers_property->state = INDIGO_OK_STATE;
+							indigo_update_property(device, drivers_property, NULL);
+							break;
+						}
+					}
+					unload_property->state = INDIGO_OK_STATE;
+					indigo_update_property(device, unload_property, NULL);
+					return INDIGO_OK;
 				}
-			}
-			if (driver != NULL && indigo_remove_driver(driver) == INDIGO_OK) {
-				indigo_delete_property(device, drivers_property, NULL);
-				drivers_property->count = 0;
-				for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
-					if (indigo_available_drivers[i].driver != NULL)
-						indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, indigo_available_drivers[i].initialized);
-				indigo_define_property(device, drivers_property, NULL);
-				load_property->state = INDIGO_OK_STATE;
-				indigo_update_property(device, unload_property, "Driver %s unloaded", unload_property->items[0].text.value);
-			} else {
-				load_property->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, unload_property, indigo_last_message);
-			}
+			unload_property->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, unload_property, "Driver %s is not loaded", name);
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(restart_property, property)) {
 	// -------------------------------------------------------------------------------- RESTART
 		indigo_property_copy_values(restart_property, property, false);
@@ -425,6 +480,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 			INDIGO_LOG(indigo_log("Restarting..."));
 			indigo_server_shutdown();
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(log_level_property, property)) {
 		// -------------------------------------------------------------------------------- LOG_LEVEL
 		indigo_property_copy_values(log_level_property, property, false);
@@ -439,6 +495,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		}
 		log_level_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, log_level_property, NULL);
+		return INDIGO_OK;
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -456,16 +513,78 @@ static indigo_result detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
+static void add_drivers(const char *folder) {
+	char folder_path[PATH_MAX];
+	realpath(folder, folder_path);
+	DIR *dir = opendir(folder_path);
+	if (dir) {
+		struct dirent *ent;
+		char *line = NULL;
+		size_t len = 0;
+		while ((ent = readdir (dir)) != NULL) {
+			if (!strncmp(ent->d_name, "indigo_", 7)) {
+				char path[PATH_MAX];
+				sprintf(path, "%s/%s", folder_path, ent->d_name);
+				indigo_log("Loading driver list from %s", path);
+				FILE *list = fopen(path, "r");
+				if (list) {
+					while (getline(&line, &len, list) > 0 && dynamic_drivers_count < INDIGO_MAX_DRIVERS) {
+						char *token = strtok(line, ",");
+						if (token && (token = strchr(token, '"'))) {
+							char *end = strchr(++token, '"');
+							if (end) {
+								*end = 0;
+								for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
+									if (!strcmp(indigo_available_drivers[i].name, token)) {
+										token = NULL;
+										break;
+									}
+								}
+								if (token) {
+									for (int i = 0; i < dynamic_drivers_count; i++) {
+										if (!strcmp(dynamic_drivers[i].name, token)) {
+											token = NULL;
+											break;
+										}
+									}
+								}
+								if (token) {
+									dynamic_drivers[dynamic_drivers_count].name = strdup(token);
+								} else {
+									continue;
+								}
+							}
+						}
+						token = strtok(NULL, ",");
+						if (token && (token = strchr(token, '"'))) {
+							char *end = strchr(token + 1, '"');
+							if (end) {
+								*end = 0;
+								dynamic_drivers[dynamic_drivers_count].description = strdup(token + 1);
+							}
+						}
+						dynamic_drivers_count++;
+					}
+					fclose(list);
+				}
+			}
+		}
+		closedir(dir);
+		if (line)
+			free(line);
+	}
+	
+}
+
 static void server_main() {
 	indigo_start_usb_event_handler();
 	indigo_start();
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
+
 	for (int i = 1; i < server_argc; i++) {
 		if ((!strcmp(server_argv[i], "-p") || !strcmp(server_argv[i], "--port")) && i < server_argc - 1) {
 			indigo_server_tcp_port = atoi(server_argv[i + 1]);
 			i++;
-		} else if (!strcmp(server_argv[i], "-s") || !strcmp(server_argv[i], "--enable-simulators")) {
-			first_driver = 0;
 		} else if ((!strcmp(server_argv[i], "-r") || !strcmp(server_argv[i], "--remote-server")) && i < server_argc - 1) {
 			char host[INDIGO_NAME_SIZE];
 			strncpy(host, server_argv[i + 1], INDIGO_NAME_SIZE);
@@ -494,7 +613,8 @@ static void server_main() {
 		} else if (!strcmp(server_argv[i], "-u-") || !strcmp(server_argv[i], "--disable-blob-urls")) {
 			indigo_use_blob_urls = false;
 		} else if(server_argv[i][0] != '-') {
-			indigo_load_driver(server_argv[i], false, NULL);
+			indigo_load_driver(server_argv[i], true, NULL);
+			command_line_drivers = true;
 		}
 	}
 
@@ -508,10 +628,22 @@ static void server_main() {
 		indigo_server_add_resource("/resource/logo.png", logo_png, sizeof(logo_png), "image/png");
 	}
 
-	for (int i = first_driver; static_drivers[i]; i++) {
-		indigo_add_driver(static_drivers[i], false, NULL);
+	if (!command_line_drivers) {
+		for (static_drivers_count = 0; static_drivers[static_drivers_count]; static_drivers_count++) {
+			indigo_add_driver(static_drivers[static_drivers_count], false, NULL);
+		}
+		char *last = strrchr(server_argv[0], '/');
+		if (last) {
+			char path[PATH_MAX];
+			long len = last - server_argv[0];
+			strncpy(path, server_argv[0], len);
+			path[len] = 0;
+			strcat(path, "/../share/indigo");
+			add_drivers(path);
+		}
+		add_drivers("/usr/share/indigo");
+		add_drivers("/usr/local/share/indigo");
 	}
-
 	indigo_attach_device(&server_device);
 
 #ifdef INDIGO_LINUX
@@ -587,7 +719,7 @@ int main(int argc, const char * argv[]) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-info] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-info] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];
@@ -614,12 +746,15 @@ int main(int argc, const char * argv[]) {
 				strncpy(indigo_log_name, name, 255);
 
 				/* Change process name for user convinience */
-				static char process_name[]="indigo_worker";
-				int len = strlen(server_argv[0]);
-				strncpy((char*)server_argv[0], process_name, len);
-				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
-				/* Linux requires additional step to change process name */
-				prctl(PR_SET_NAME, process_name, 0, 0, 0);
+				char *server_string = strstr(server_argv[0], "indigo_server");
+				if (server_string) {
+					static char process_name[] = "indigo_worker";
+					int len = strlen(server_argv[0]);
+					strcpy(server_string, process_name);
+					prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
+					/* Linux requires additional step to change process name */
+					prctl(PR_SET_NAME, process_name, 0, 0, 0);
+				}
 #endif
 				server_main();
 				return EXIT_SUCCESS;
