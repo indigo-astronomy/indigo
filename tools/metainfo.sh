@@ -1,3 +1,4 @@
+#!/bin/bash
 shopt -s nullglob
 
 name=`pwd`
