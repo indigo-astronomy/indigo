@@ -304,74 +304,76 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 //			}
 //		}
 	}
-#if 0
-	else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
-		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-				if (res != RC_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-				}
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-			}
-		}
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
+		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
-		} else {
+//			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+//			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+//			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+//			if (res != RC_OK) {
+//				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
+//			}
+//			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+//			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+		}
+		else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-				if (res != RC_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-				}
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+//				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+//				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+//				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+//				if (res != RC_OK) {
+//					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
+//				}
+//				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+//				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			}
 		}
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(COMMAND_GUIDE_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
-		indigo_property_copy_values(COMMAND_GUIDE_RATE_PROPERTY, property, false);
-		guider_handle_guide_rate(device);
+	}
+	else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
+		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
+		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		if (duration > 0) {
+//			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+//			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+//			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+//			if (res != RC_OK) {
+//				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
+//			}
+//			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+//			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+		} else {
+			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			if (duration > 0) {
+//				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+//				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+//				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+//				if (res != RC_OK) {
+//					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
+//				}
+//				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+//				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+			}
+		}
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
-#endif
+	else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
+		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
+		//guider_handle_guide_rate(device);
+		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
+	}
 	// --------------------------------------------------------------------------------
 	return indigo_guider_change_property(device, client, property);
 }
@@ -380,8 +382,6 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-
-//	indigo_release_property(COMMAND_GUIDE_RATE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }

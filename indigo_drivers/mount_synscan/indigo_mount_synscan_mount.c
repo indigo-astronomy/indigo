@@ -66,34 +66,80 @@ static double synscan_tracking_rate(indigo_device* device) {
 		return 0.0;
 }
 
+static void
+sla_de2h(double ha, double dec, double phi, double* az, double* el) {
+	const double D2PI = 6.283185307179586476925286766559;
+	
+	//*  Useful trig functions
+	double sh = sin(ha);
+	double ch = cos(ha);
+	double sd = sin(dec);
+	double cd = cos(dec);
+	double sp = sin(phi);
+	double cp = cos(phi);
+	
+	//*  Az,El as x,y,z
+	double x = -ch*cd*sp + sd*cp;
+	double y = -sh*cd;
+	double z = ch*cd*cp + sd*sp;
+	
+	//*  To spherical
+	double r = hypot(x, y);
+	double a;
+	if (r == 0.0)
+		a = 0.0;
+	else
+		a = atan2(y, x);
+	if (fabs(a) < 0.00001 /*DBL_EPSILON*/)
+		a = 0.0;
+	if (a < 0.0) a += D2PI;
+	*az = a;
+	*el = atan2(z, r);
+}
+
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		//  Longitude needed for LST
 		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-		
+		double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * M_PI / 180.0;
+
 		//  Get the raw coords
 		synscan_get_coords(device);
 		
 		//  Get the LST as quickly as we can after the HA
-		double lst = indigo_lst(lng) * M_PI / 12.0;
-		
+		//double ut1 = indigo_ut1_now();
+		//double lst = indigo_lst_ut1(ut1, lng);// * M_PI / 12.0;
+		double lst = indigo_lst(lng);// * M_PI / 12.0;
+
 		//  Convert Encoder position to EQ
 		double ha, dec;
 		coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &ha, &dec);
-		
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RAW ENCODER:    HA %g, DEC: %g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
+
 		//  Add in LST to get RA
-		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - ha) * 12.0 / M_PI;
+		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - (ha * 12.0 / M_PI));// * 12.0 / M_PI;
 		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = dec * 180.0 / M_PI;
 		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
 		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
 		
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst * 12.0 / M_PI, ha, lst-ha, dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst, ha, (lst-ha), dec);
 		
 		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-		indigo_update_coordinates(device, NULL);
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+
+		if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+			double az, alt;
+			sla_de2h(ha, dec, lat, &az, &alt);
+
+			printf("AZ %g   ALT %g\n", az * 180.0 / M_PI, alt * 180.0 / M_PI);
+			MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
+			MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
+			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		}
 	}
 	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
 }
@@ -232,7 +278,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	
 	//  Select best encoder point based on limits
 	int idx = synscan_select_best_encoder_point(device, haPos, decPos);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "1ST SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
 
 	//  Start the first slew
 	synscan_slew_axis_to_position(device, kAxisRA, haPos[idx]);
@@ -264,7 +310,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
 	//  We use the same index as the preliminary slew to avoid issues with target crossing meridian during first slew
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g", haPos[idx], decPos[idx]);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "2ND SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
 
 	//  Start new HA slew
 	synscan_slew_axis_to_position(device, kAxisRA, haPos[idx]);
