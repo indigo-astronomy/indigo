@@ -53,19 +53,19 @@ clean-all: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 $(FOLDERS_WITH_MAKEFILE):
 ifeq ($(MAKECMDGOALS),all)
-	cd $@;sh ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
+	cd $@;bash ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
 endif
 ifeq ($(MAKECMDGOALS),install)
-	cd $@;sh ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
+	cd $@;bash ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
 endif
 	@$(MAKE) -C $@ $(OP)
 
 $(FOLDERS_WITHOUT_MAKEFILE):
 ifeq ($(MAKECMDGOALS),all)
-	cd $@;sh ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
+	cd $@;bash ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
 endif
 ifeq ($(MAKECMDGOALS),install)
-	cd $@;sh ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
+	cd $@;bash ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
 endif
 	@$(MAKE) -C $@ -f ../../Makefile.drv $(OP)
 
