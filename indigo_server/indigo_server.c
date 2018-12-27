@@ -479,6 +479,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		if (restart_property->items[0].sw.value) {
 			INDIGO_LOG(indigo_log("Restarting..."));
 			indigo_server_shutdown();
+			exit(0);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(log_level_property, property)) {
