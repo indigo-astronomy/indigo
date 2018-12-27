@@ -97,7 +97,8 @@ LD_LIBRARY_PATH="${INDIGO_PATH}/indigo_drivers/ccd_iidc/externals/libdc1394/buil
 #---------------- INDIGO functions -----------------#
 __start_indigo_server() {
     [[ `ps aux | grep "[i]ndigo_server"` ]] && { __log_error "indigo server is already running" ; exit 1; }
-
+# reset configuration, because all drivers are marked for load after load driver test
+		rm ~/.indigo/Server.config
     eval "${INDIGO_SERVER}" &>/dev/null &disown;
     INDIGO_SERVER_PID=`ps aux | grep "[i]ndigo_server" | awk '{print $2}'`
     __log_info "indigo_server with PID: ${INDIGO_SERVER_PID} started"
@@ -163,7 +164,7 @@ __test_load_drivers() {
     do
 	DRIVER=`basename ${n}`
 	${INDIGO_PROP_TOOL} -t 1 "Server.LOAD.DRIVER=${DRIVER}" > /dev/null
-	if [[ ! `${INDIGO_PROP_TOOL} list -t 1 "Server.DRIVERS" | wc -l` -eq ${N} ]]; then
+	if [[ ! `${INDIGO_PROP_TOOL} list -t 1 "Server.DRIVERS" | grep "${DRIVER} = ON" | wc -l` -eq 1 ]]; then
 	    __log_error "failed to load driver '${DRIVER}'"
 	    exit 1
 	fi

@@ -93,6 +93,11 @@
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
+		59A3217621D52C4700EC0F4A /* indigo_focuser_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */; };
+		59A3217721D52C4700EC0F4A /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A3217221D52C4600EC0F4A /* Makefile.inc */; };
+		59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A3217C21D52C6100EC0F4A /* EAF_focuser.h */; };
+		59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
+		59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9682A21A2FE580069A64C /* libEFWFilter.a */; };
 		59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D3F21A330FB000B6F27 /* sbigudrv.h */; };
 		59A52D6521A33617000B6F27 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D5721A3360B000B6F27 /* gxccd.h */; };
 		59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
@@ -110,7 +115,6 @@
 		59A5302521A35264000B6F27 /* libqhy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5300721A34310000B6F27 /* libqhy.a */; };
 		59AAF37821A743BA00EFBB61 /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9682A21A2FE580069A64C /* libEFWFilter.a */; };
 		59AAF37921A743DF00EFBB61 /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9681321A2FE380069A64C /* libUSB2ST4Conv.a */; };
-		59AAF37A21A743F900EFBB61 /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
 		59AAF37C21A7449800EFBB61 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59AAF37B21A7449700EFBB61 /* libqsiapi.a */; };
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
@@ -978,6 +982,19 @@
 		599E6A73214D8EEB00E45C9E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
+		59A3217021D52C4600EC0F4A /* indigo_focuser_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_asi.c; sourceTree = "<group>"; };
+		59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_asi.h; sourceTree = "<group>"; };
+		59A3217221D52C4600EC0F4A /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		59A3217321D52C4700EC0F4A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59A3217421D52C4700EC0F4A /* indigo_focuser_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_asi_main.c; sourceTree = "<group>"; };
+		59A3217C21D52C6100EC0F4A /* EAF_focuser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EAF_focuser.h; sourceTree = "<group>"; };
+		59A3217D21D52C6100EC0F4A /* VERSION */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = VERSION; sourceTree = "<group>"; };
+		59A3218021D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
+		59A3218121D52C6100EC0F4A /* 99-eaf.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "99-eaf.rules"; sourceTree = "<group>"; };
+		59A3218421D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
+		59A3218621D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
+		59A3218821D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
+		59A3218A21D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
 		59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indi_go_upb.xml; sourceTree = "<group>"; };
 		59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "51-sbig-debian.rules"; sourceTree = "<group>"; };
 		59A52D2F21A330FB000B6F27 /* sbigucam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigucam.hex; sourceTree = "<group>"; };
@@ -4140,6 +4157,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */,
+				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
 				5917AD1121A3628F00AC018A /* libqsiapi.a in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
@@ -4174,7 +4193,6 @@
 			files = (
 				59CECB0221B4009100F0BC43 /* libusb-1.0.0.dylib in Frameworks */,
 				59DEC8D121ADE05C00BF7958 /* libnexstar.a in Frameworks */,
-				59AAF37A21A743F900EFBB61 /* libASICamera2.a in Frameworks */,
 				591B017521A49F55006A1CD8 /* libaltaircam.dylib in Frameworks */,
 				591B017321A49F4A006A1CD8 /* libtoupcam.dylib in Frameworks */,
 				59AAF37921A743DF00EFBB61 /* libUSB2ST4Conv.a in Frameworks */,
@@ -5341,6 +5359,106 @@
 				599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */,
 			);
 			path = nstep_simulator;
+			sourceTree = "<group>";
+		};
+		59A3216721D52C1900EC0F4A /* focuser_asi */ = {
+			isa = PBXGroup;
+			children = (
+				59A3217321D52C4700EC0F4A /* README.md */,
+				59A3217221D52C4600EC0F4A /* Makefile.inc */,
+				59A3217421D52C4700EC0F4A /* indigo_focuser_asi_main.c */,
+				59A3217021D52C4600EC0F4A /* indigo_focuser_asi.c */,
+				59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */,
+				59A3217921D52C6100EC0F4A /* bin_externals */,
+			);
+			path = focuser_asi;
+			sourceTree = "<group>";
+		};
+		59A3217921D52C6100EC0F4A /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				59A3217A21D52C6100EC0F4A /* libEAFFocuser */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		59A3217A21D52C6100EC0F4A /* libEAFFocuser */ = {
+			isa = PBXGroup;
+			children = (
+				59A3217B21D52C6100EC0F4A /* include */,
+				59A3217D21D52C6100EC0F4A /* VERSION */,
+				59A3217E21D52C6100EC0F4A /* lib */,
+			);
+			path = libEAFFocuser;
+			sourceTree = "<group>";
+		};
+		59A3217B21D52C6100EC0F4A /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59A3217C21D52C6100EC0F4A /* EAF_focuser.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59A3217E21D52C6100EC0F4A /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59A3218121D52C6100EC0F4A /* 99-eaf.rules */,
+				59A3217F21D52C6100EC0F4A /* macOS */,
+				59A3218221D52C6100EC0F4A /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59A3217F21D52C6100EC0F4A /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59A3218021D52C6100EC0F4A /* libEAFFocuser.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59A3218221D52C6100EC0F4A /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A3218321D52C6100EC0F4A /* x64 */,
+				59A3218521D52C6100EC0F4A /* x86 */,
+				59A3218721D52C6100EC0F4A /* arm */,
+				59A3218921D52C6100EC0F4A /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59A3218321D52C6100EC0F4A /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A3218421D52C6100EC0F4A /* libEAFFocuser.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59A3218521D52C6100EC0F4A /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59A3218621D52C6100EC0F4A /* libEAFFocuser.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59A3218721D52C6100EC0F4A /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59A3218821D52C6100EC0F4A /* libEAFFocuser.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59A3218921D52C6100EC0F4A /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A3218A21D52C6100EC0F4A /* libEAFFocuser.a */,
+			);
+			path = arm64;
 			sourceTree = "<group>";
 		};
 		59A52D2A21A330FB000B6F27 /* bin_externals */ = {
@@ -7857,6 +7975,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
@@ -11634,6 +11753,7 @@
 				9D59D65A20D3F829009EA8FF /* CamHelpers.h in Headers */,
 				9DAD52502126E88B002FCC79 /* indigo_wheel_trutek.h in Headers */,
 				9D59D5E420D3F829009EA8FF /* AltaIo.h in Headers */,
+				59A3217621D52C4700EC0F4A /* indigo_focuser_asi.h in Headers */,
 				9D59D66420D3F82A009EA8FF /* helpers.h in Headers */,
 				9DAD522F21246EB5002FCC79 /* indigo_mount_ioptron.h in Headers */,
 				59DD69CA1FC1CF8D00AEF0DF /* indigo_gps_nmea.h in Headers */,
@@ -11676,6 +11796,7 @@
 				59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */,
 				9D59D5F320D3F829009EA8FF /* COMHelper.h in Headers */,
 				9D59D62B20D3F829009EA8FF /* AltaF.h in Headers */,
+				59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */,
 				595F2920211E211100380EF4 /* DDHidQueue.h in Headers */,
 				595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */,
 				59E38B531F1577A000187839 /* indigo_ica_ptp_canon.h in Headers */,
@@ -11969,6 +12090,7 @@
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,
 				9D59D65420D3F829009EA8FF /* ILog.cpp in Sources */,
 				590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */,
+				59A3217721D52C4700EC0F4A /* Makefile.inc in Sources */,
 				9D61B9DF216DE636000DE7E8 /* indigo_focuser_mjkzz_bt.m in Sources */,
 				593A3580219DBE5E00EDF481 /* indigo_filter.c in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
@@ -12266,6 +12388,13 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/externals";
@@ -12300,6 +12429,13 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_asi/bin_externals/libEAFFocuser/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/externals";
