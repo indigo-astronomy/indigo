@@ -365,6 +365,23 @@ static void mount_slew_timer_callback(indigo_device* device) {
 		return;
 	}
 
+	//**  Do precise DEC slew correction
+	//  Start new DEC slew
+	synscan_slew_axis_to_position(device, kAxisDEC, decPos[idx]);
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Performing accurate DEC slew...");
+
+	//**  Wait for DEC slew to complete
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_slew);
+	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
+	
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_slew) {
+		PRIVATE_DATA->abort_slew = false;
+		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
+		return;
+	}
+
 	//**  Finalise slew coordinates
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Slew complete.");
