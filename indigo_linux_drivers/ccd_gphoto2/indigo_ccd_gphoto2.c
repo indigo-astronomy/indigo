@@ -328,7 +328,9 @@ static int process_dslr_image_debayer(indigo_device *device,
         int rc;
         libraw_data_t *raw_data;
         libraw_processed_image_t *processed_image = NULL;
+	char bayer_pattern[5] = {0};
 
+	clock_t start = clock();
         raw_data = libraw_init(0);
 
 	/* Linear 16-bit output. */
@@ -457,21 +459,29 @@ static int process_dslr_image_debayer(indigo_device *device,
 	       data, processed_image->data_size);
 	PRIVATE_DATA->buffer_size = data_size;
 
+	bayer_pattern[0] = raw_data->idata.cdesc[0];
+	bayer_pattern[1] = raw_data->idata.cdesc[1];
+	bayer_pattern[2] = raw_data->idata.cdesc[3];
+	bayer_pattern[3] = raw_data->idata.cdesc[2];
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "debayer conversion in %gs, "
+			    "input size: "
+			    "%d bytes, unpacked + debayered output size: "
+			    "%d bytes, colors: %d, "
+			    "bits: %d, algorithm: %s, bayer pattern '%s'",
+			    (clock() - start) / (double)CLOCKS_PER_SEC,
+			    buffer_size,
+			    processed_image->data_size,
+			    processed_image->colors, processed_image->bits,
+			    debayer_algorithm_str_id(PRIVATE_DATA->debayer_algorithm),
+			    bayer_pattern);
+
 	indigo_process_image(device, PRIVATE_DATA->buffer,
                              processed_image->width, processed_image->height,
                              processed_image->bits * processed_image->colors,
                              true, /* little_endian */
 			     true, /* RBG order */
                              keywords);
-
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "input data: "
-			    "%d bytes -> unpacked and debayered output data: "
-			    "%d bytes, colors: %d, "
-			    "bits: %d, algorithm: %s", buffer_size,
-			    processed_image->data_size,
-			    processed_image->colors, processed_image->bits,
-			    debayer_algorithm_str_id(PRIVATE_DATA->debayer_algorithm));
-
 cleanup:
 	libraw_dcraw_clear_mem(processed_image);
 	libraw_free_image(raw_data);
