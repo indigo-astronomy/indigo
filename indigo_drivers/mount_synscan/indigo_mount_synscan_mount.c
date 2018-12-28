@@ -69,7 +69,7 @@ static double synscan_tracking_rate(indigo_device* device) {
 static void
 sla_de2h(double ha, double dec, double phi, double* az, double* el) {
 	const double D2PI = 6.283185307179586476925286766559;
-	
+
 	//*  Useful trig functions
 	double sh = sin(ha);
 	double ch = cos(ha);
@@ -77,12 +77,12 @@ sla_de2h(double ha, double dec, double phi, double* az, double* el) {
 	double cd = cos(dec);
 	double sp = sin(phi);
 	double cp = cos(phi);
-	
+
 	//*  Az,El as x,y,z
 	double x = -ch*cd*sp + sd*cp;
 	double y = -sh*cd;
 	double z = ch*cd*cp + sd*sp;
-	
+
 	//*  To spherical
 	double r = hypot(x, y);
 	double a;
@@ -107,34 +107,32 @@ static void position_timer_callback(indigo_device *device) {
 		synscan_get_coords(device);
 		
 		//  Get the LST as quickly as we can after the HA
-		//double ut1 = indigo_ut1_now();
-		//double lst = indigo_lst_ut1(ut1, lng);// * M_PI / 12.0;
-		double lst = indigo_lst(lng);// * M_PI / 12.0;
+		double lst = indigo_lst(lng);
 
 		//  Convert Encoder position to EQ
 		double ha, dec;
 		coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &ha, &dec);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RAW ENCODER:    HA %g, DEC: %g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
+		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RAW ENCODER:    HA %g, DEC: %g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
 
 		//  Add in LST to get RA
-		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - (ha * 12.0 / M_PI));// * 12.0 / M_PI;
+		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - (ha * 12.0 / M_PI));
 		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = dec * 180.0 / M_PI;
 		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
 		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
-		
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst, ha, (lst-ha), dec);
+		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst, ha, (lst-(ha*12.0 / M_PI)), dec);
 		
 		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
+		//  Note that this code normally belongs in indigo_update_coordinates(), but that routine causes numerical
+		//  instability in derived quantities due to not having a way to use a fixed LST value for derived values.
 		if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 			double az, alt;
 			sla_de2h(ha, dec, lat, &az, &alt);
 
-			printf("AZ %g   ALT %g\n", az * 180.0 / M_PI, alt * 180.0 / M_PI);
 			MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
 			MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
 			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
@@ -247,6 +245,8 @@ void synscan_mount_connect(indigo_device* device) {
 }
 
 static void mount_slew_timer_callback(indigo_device* device) {
+	char* message = "Slew aborted.";
+
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
 	
 	//**  Stop both axes
@@ -269,18 +269,15 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	double haPos[2], decPos[2];
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 	
-	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew) {
-		PRIVATE_DATA->abort_slew = false;
-		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
-		return;
-	}
-	
 	//  Select best encoder point based on limits
 	int idx = synscan_select_best_encoder_point(device, haPos, decPos);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "1ST SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
 
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_slew)
+		goto finish;
+	
 	//  Start the first slew
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "1ST SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
 	synscan_slew_axis_to_position(device, kAxisRA, haPos[idx]);
 	synscan_slew_axis_to_position(device, kAxisDEC, decPos[idx]);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Slewing...");
@@ -288,13 +285,6 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	//**  Wait for HA slew to complete
 	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_slew);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-
-	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew) {
-		PRIVATE_DATA->abort_slew = false;
-		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
-		return;
-	}
 
 	//**  Compute precise HA slew for LST + 5 seconds
 	indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &ra, &dec);
@@ -309,6 +299,10 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	ha = (target_lst * M_PI / 12.0) - ra;
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_slew)
+		goto finish;
+	
 	//  We use the same index as the preliminary slew to avoid issues with target crossing meridian during first slew
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "2ND SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
 
@@ -319,16 +313,13 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	//**  Wait for precise HA slew to complete
 	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_slew);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "HA slew complete.");
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew) {
-		PRIVATE_DATA->abort_slew = false;
-		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
-		return;
-	}
-	
+	if (PRIVATE_DATA->abort_slew)
+		goto finish;
+
 	//**  Wait for LST to match target LST
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "HA slew complete.");
 	while (!PRIVATE_DATA->abort_slew) {
 		//  Get current LST
 		lst = indigo_lst(lng);
@@ -359,11 +350,8 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew) {
-		PRIVATE_DATA->abort_slew = false;
-		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
-		return;
-	}
+	if (PRIVATE_DATA->abort_slew)
+		goto finish;
 
 	//**  Do precise DEC slew correction
 	//  Start new DEC slew
@@ -373,18 +361,19 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	//**  Wait for DEC slew to complete
 	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_slew);
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
-	
-	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew) {
-		PRIVATE_DATA->abort_slew = false;
-		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
-		return;
-	}
 
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_slew)
+		goto finish;
+
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
+	message = "Slew complete.";
+
+finish:
 	//**  Finalise slew coordinates
+	PRIVATE_DATA->abort_slew = false;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Slew complete.");
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
