@@ -237,7 +237,6 @@ __test_format() {
     elif [[ "${1}" == "indigo_ccd_gphoto2" ]]; then
 	TIME_WAIT_EXP=$(echo ${EXP_TIME} | awk '{print int($1+10)}')
 	TIME_WAIT_LIST=4
-	echo "HERE"
     fi
 
     # Load CCD driver.
