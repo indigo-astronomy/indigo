@@ -451,6 +451,7 @@ void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, 
 	if (*ha >= 0.5)
 		*ha -= 1.0;
 
+	//  Convert to radians
 	*ha *= 2.0 * M_PI;
 }
 
@@ -588,7 +589,7 @@ void synscan_get_coords(indigo_device *device) {
 		PRIVATE_DATA->decPosition = dec_steps_to_position(device, decPos);
 	if (synscan_axis_position(device, kAxisRA, &haPos))
 		PRIVATE_DATA->raPosition = ha_steps_to_position(device, haPos);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POS DEBUG:  HA %ld   DEC %ld (steps)\n", haPos, decPos);
+	//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POS DEBUG:  HA %ld   DEC %ld (steps)\n", haPos, decPos);
 }
 
 void synscan_stop_and_wait_for_axis(indigo_device* device, enum AxisID axis) {
@@ -659,7 +660,7 @@ bool synscan_slew_axis_to_position(indigo_device* device, enum AxisID axis, doub
 			slowdown = delta / 2;
 
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW DEBUG:  axis %s  current pos %ld  requested pos %ld   delta %ld   slowdown %ld\n", axis == kAxisRA ? "RA" : "DEC", currentPosition, steps, delta, slowdown);
-		
+
 		//  Invalidate axis config since we change to absolute slew mode
 		cachedConfig->valid = false;
 
