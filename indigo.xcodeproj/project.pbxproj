@@ -98,6 +98,8 @@
 		59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A3217C21D52C6100EC0F4A /* EAF_focuser.h */; };
 		59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
 		59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9682A21A2FE580069A64C /* libEFWFilter.a */; };
+		59A321A321D6291E00EC0F4A /* indigo_focuser_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A3217021D52C4600EC0F4A /* indigo_focuser_asi.c */; };
+		59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A3218021D52C6100EC0F4A /* libEAFFocuser.a */; };
 		59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D3F21A330FB000B6F27 /* sbigudrv.h */; };
 		59A52D6521A33617000B6F27 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D5721A3360B000B6F27 /* gxccd.h */; };
 		59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
@@ -995,6 +997,7 @@
 		59A3218621D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
 		59A3218821D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
 		59A3218A21D52C6100EC0F4A /* libEAFFocuser.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libEAFFocuser.a; sourceTree = "<group>"; };
+		59A321A521D62A3600EC0F4A /* license.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
 		59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indi_go_upb.xml; sourceTree = "<group>"; };
 		59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "51-sbig-debian.rules"; sourceTree = "<group>"; };
 		59A52D2F21A330FB000B6F27 /* sbigucam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigucam.hex; sourceTree = "<group>"; };
@@ -4157,6 +4160,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
 				5917AD1121A3628F00AC018A /* libqsiapi.a in Frameworks */,
@@ -5385,8 +5389,9 @@
 		59A3217A21D52C6100EC0F4A /* libEAFFocuser */ = {
 			isa = PBXGroup;
 			children = (
-				59A3217B21D52C6100EC0F4A /* include */,
+				59A321A521D62A3600EC0F4A /* license.txt */,
 				59A3217D21D52C6100EC0F4A /* VERSION */,
+				59A3217B21D52C6100EC0F4A /* include */,
 				59A3217E21D52C6100EC0F4A /* lib */,
 			);
 			path = libEAFFocuser;
@@ -7975,7 +7980,6 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
-				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
@@ -7999,6 +8003,7 @@
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
+				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
 				59FE347D2188699F004FB5D4 /* focuser_lakeside */,
 				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
@@ -12046,6 +12051,7 @@
 				9D59D5ED20D3F829009EA8FF /* CamGen2ModeFsm.cpp in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
+				59A321A321D6291E00EC0F4A /* indigo_focuser_asi.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
 				59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */,
 				59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */,

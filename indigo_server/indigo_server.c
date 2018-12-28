@@ -96,6 +96,7 @@
 #include "guider_gpusb/indigo_guider_gpusb.h"
 #include "focuser_lakeside/indigo_focuser_lakeside.h"
 #include "agent_imager/indigo_agent_imager.h"
+#include "focuser_asi/indigo_focuser_asi.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -152,6 +153,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_dome_simulator,
+	indigo_focuser_asi,
 	indigo_focuser_dmfc,
 	indigo_focuser_fcusb,
 	indigo_focuser_fli,
