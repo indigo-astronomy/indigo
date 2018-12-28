@@ -430,8 +430,11 @@ int ascol_read(int devfd, char *reply, int len) {
 		if (res == 1) {
 			reply[count] = c;
 			count++;
-			if ((c == '\n') || (c == '\r')) {
+			if (c == '\n') {
 				reply[count-1] = '\0';
+				/* if reply ends with \r\n remove \r also */
+				if (reply[count-2] == '\r')
+					reply[count-2] = '\0';
 				return count;
 			}
 		} else {
