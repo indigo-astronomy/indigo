@@ -396,7 +396,7 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
-	res = ascol_TSRA(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target,0);
+	res = ascol_TSRA(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target,1);
 	if (res != INDIGO_OK) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSRA(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -2072,7 +2072,8 @@ static void dome_update_state() {
 		}
 		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 
-		if (update_all || (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		if (update_all || (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
+		   (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state)) {
 			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
 		}
