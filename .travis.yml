@@ -53,4 +53,4 @@ before_install:
 script:
   - make
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make package && sudo dpkg --install indigo*.deb && sudo ldconfig ; fi
-  - indigo_test/test_suite.sh --driver-test
+  - indigo_test/test_suite.sh --driver-test --format-test indigo_ccd_simulator --capture-test indigo_ccd_simulator
