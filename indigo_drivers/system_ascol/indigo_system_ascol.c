@@ -1328,14 +1328,14 @@ static indigo_result mount_attach(indigo_device *device) {
 		char item_name[INDIGO_NAME_SIZE];
 		char item_label[INDIGO_NAME_SIZE];
 		// -------------------------------------------------------------------------- FLAP_TUBE
-		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Tube Falp", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Tube Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLAP_TUBE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_switch_item(FLAP_TUBE_OPEN_ITEM, FLAP_TUBE_OPEN_ITEM_NAME, "Open", false);
 		indigo_init_switch_item(FLAP_TUBE_CLOSE_ITEM, FLAP_TUBE_CLOSE_ITEM_NAME, "Close", true);
 		// -------------------------------------------------------------------------- FLAP_COUDE
-		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Coude Falp", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Coude Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLAP_COUDE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
