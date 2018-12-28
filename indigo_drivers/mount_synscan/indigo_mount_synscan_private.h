@@ -23,7 +23,6 @@
 //  Global modes of the mount (only one can be active at any time)
 enum GlobalMode {
 	kGlobalModeError,
-	kGlobalModeParked,
 	kGlobalModeIdle,
 	kGlobalModeSlewing,
 	kGlobalModeParking
@@ -37,22 +36,6 @@ enum AxisMode {
 	kAxisModeManualSlewing,
 	kAxisModeSlewing,
 	kAxisModeSlewIdle
-};
-
-enum SlewState {
-	SLEW_NONE,
-	SLEW_PHASE0,
-	SLEW_PHASE1,
-	SLEW_PHASE2,
-	SLEW_PHASE3,
-	SLEW_PHASE4
-};
-
-enum ParkState {
-	PARK_NONE,
-	PARK_PHASE0,
-	PARK_PHASE1,
-	PARK_PHASE2
 };
 
 typedef struct {
@@ -71,6 +54,9 @@ typedef struct {
 
 	int device_count;
 	pthread_mutex_t port_mutex;
+	pthread_mutex_t driver_mutex;
+	pthread_mutex_t ha_mutex;
+	pthread_mutex_t dec_mutex;
 	//char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	//double lastRA, lastDec;
 	//char lastUTC[INDIGO_VALUE_SIZE];
@@ -105,31 +91,17 @@ typedef struct {
 	struct AxisConfig raAxisConfig;
 	struct AxisConfig decAxisConfig;
 
-	//  Tracking mode
-	//enum TrackingMode trackingMode;
-
-	//  Axis slew rates
-	//int raSlewRate;
-	//int decSlewRate;
-
 	//  Global mode of mount
 	enum GlobalMode globalMode;
 
 	//  Axis state
 	enum AxisMode raAxisMode;
 	enum AxisMode decAxisMode;
-	enum AxisMode raDesiredAxisMode;
-	enum AxisMode decDesiredAxisMode;
-	double raDesiredRate;
-	double decDesiredRate;
 
-	//  Slewing data
-	enum SlewState slew_state;
-	double target_lst;
-
-	//  Parking state
-	enum ParkState park_state;
-
+	//  Abort flags
+	bool abort_park;
+	bool abort_slew;
+	
 } synscan_private_data;
 
 //-----------------------------------------------
