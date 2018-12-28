@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 
 #include <stdio.h>
@@ -240,7 +240,7 @@ typedef struct {
 	bool has_eos_remote_release;
 	bool has_capture_target;
 	int debayer_algorithm;
-	char battery_level[16];
+	double battery_level;
 	double exposure_min;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
@@ -328,7 +328,9 @@ static int process_dslr_image_debayer(indigo_device *device,
         int rc;
         libraw_data_t *raw_data;
         libraw_processed_image_t *processed_image = NULL;
+	char bayer_pattern[5] = {0};
 
+	clock_t start = clock();
         raw_data = libraw_init(0);
 
 	/* Linear 16-bit output. */
@@ -457,21 +459,29 @@ static int process_dslr_image_debayer(indigo_device *device,
 	       data, processed_image->data_size);
 	PRIVATE_DATA->buffer_size = data_size;
 
+	bayer_pattern[0] = raw_data->idata.cdesc[0];
+	bayer_pattern[1] = raw_data->idata.cdesc[1];
+	bayer_pattern[2] = raw_data->idata.cdesc[3];
+	bayer_pattern[3] = raw_data->idata.cdesc[2];
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "debayer conversion in %gs, "
+			    "input size: "
+			    "%d bytes, unpacked + debayered output size: "
+			    "%d bytes, colors: %d, "
+			    "bits: %d, algorithm: %s, bayer pattern '%s'",
+			    (clock() - start) / (double)CLOCKS_PER_SEC,
+			    buffer_size,
+			    processed_image->data_size,
+			    processed_image->colors, processed_image->bits,
+			    debayer_algorithm_str_id(PRIVATE_DATA->debayer_algorithm),
+			    bayer_pattern);
+
 	indigo_process_image(device, PRIVATE_DATA->buffer,
                              processed_image->width, processed_image->height,
                              processed_image->bits * processed_image->colors,
                              true, /* little_endian */
 			     true, /* RBG order */
                              keywords);
-
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "input data: "
-			    "%d bytes -> unpacked and debayered output data: "
-			    "%d bytes, colors: %d, "
-			    "bits: %d, algorithm: %s", buffer_size,
-			    processed_image->data_size,
-			    processed_image->colors, processed_image->bits,
-			    debayer_algorithm_str_id(PRIVATE_DATA->debayer_algorithm));
-
 cleanup:
 	libraw_dcraw_clear_mem(processed_image);
 	libraw_free_image(raw_data);
@@ -878,7 +888,10 @@ static indigo_result update_battery_level(indigo_device *device)
 	assert(PRIVATE_DATA != NULL);
 
 	int rc;
+	char *percent_symb;
 	char *battery_level = NULL;
+	char *end = NULL;
+	double val;
 
 	rc = gphoto2_get_key_val(EOS_BATTERY_LEVEL, &battery_level, device);
 	if (rc) {
@@ -893,12 +906,30 @@ static indigo_result update_battery_level(indigo_device *device)
 		return INDIGO_FAILED;
 	}
 
-	strncpy(PRIVATE_DATA->battery_level, battery_level,
-		sizeof(PRIVATE_DATA->battery_level));
+	/* Remove percent character '%' at end if exists. */
+	percent_symb = strchr(battery_level, '%');
+	if (percent_symb)
+		battery_level[percent_symb - battery_level] = '\0';
+
+	val = strtod(battery_level, &end);
+	if (*end != '\0') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] "
+				    "cannot convert battery level '%s' to floating-point number",
+				    PRIVATE_DATA->camera,
+				    context,
+				    battery_level);
+		PRIVATE_DATA->battery_level = 0;
+		rc = INDIGO_FAILED;
+	} else {
+		PRIVATE_DATA->battery_level = val;
+		rc = INDIGO_OK;
+	}
+
 	if (battery_level)
 		free(battery_level);
 
-	return INDIGO_OK;
+	return rc;
 }
 
 static void battery_level_timer_callback(indigo_device *device)
@@ -1447,9 +1478,7 @@ static indigo_result ccd_attach(indigo_device *device)
 		PRIVATE_DATA->name_best_jpeg_format = NULL;
 		PRIVATE_DATA->name_pure_raw_format = NULL;
 		PRIVATE_DATA->mirror_lockup_secs = 0;
-		memset(PRIVATE_DATA->battery_level, 0,
-		       sizeof(PRIVATE_DATA->battery_level));
-		strncpy(PRIVATE_DATA->battery_level, "NA", 2);
+		PRIVATE_DATA->battery_level = 0;
 
 		/*--------------------- CCD_INFO --------------------*/
 		char *name = PRIVATE_DATA->gphoto2_id.name;
@@ -1666,20 +1695,22 @@ static indigo_result ccd_attach(indigo_device *device)
 			DSLR_EXPOSURE_PROGRAM_PROPERTY->hidden = true;
 
 		/*---------------------- BATTERY-LEVEL -----------------------*/
-		DSLR_BATTERY_LEVEL_PROPERTY = indigo_init_text_property(NULL,
-									device->name,
-									DSLR_BATTERY_LEVEL_PROPERTY_NAME,
-									GPHOTO2_NAME_DSLR,
-									GPHOTO2_NAME_BATTERY_LEVEL,
-									INDIGO_OK_STATE,
-									INDIGO_RO_PERM,
-									1);
+		DSLR_BATTERY_LEVEL_PROPERTY = indigo_init_number_property(NULL,
+									  device->name,
+									  DSLR_BATTERY_LEVEL_PROPERTY_NAME,
+									  GPHOTO2_NAME_DSLR,
+									  GPHOTO2_NAME_BATTERY_LEVEL,
+									  INDIGO_OK_STATE,
+									  INDIGO_RO_PERM,
+									  1);
 		update_battery_level(device);
-		indigo_init_text_item(DSLR_BATTERY_LEVEL_ITEM,
-				      GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME,
-				      GPHOTO2_NAME_BATTERY_LEVEL_NAME,
-				      "%s",
-				      PRIVATE_DATA->battery_level);
+		indigo_init_number_item(DSLR_BATTERY_LEVEL_ITEM,
+					GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME,
+					GPHOTO2_NAME_BATTERY_LEVEL_NAME,
+					0,   /* min */
+					100, /* max */
+					1.0, /* step */
+					PRIVATE_DATA->battery_level);
 
 		if (exists_widget_label(EOS_BATTERY_LEVEL, device) != GP_OK)
 			DSLR_BATTERY_LEVEL_PROPERTY->hidden = true;

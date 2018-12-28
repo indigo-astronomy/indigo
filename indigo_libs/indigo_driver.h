@@ -163,6 +163,10 @@ extern "C" {
  */
 #define AUTHENTICATION_USER_ITEM					(AUTHENTICATION_PROPERTY->items+1)
 
+/** Client name for saved configuration reader.
+ */
+	
+#define CONFIG_READER								"CONFIG_READER"
 
 /** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
  */

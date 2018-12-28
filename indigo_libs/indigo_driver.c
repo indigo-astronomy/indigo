@@ -461,6 +461,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	if (handle > 0) {
 		indigo_client *client = malloc(sizeof(indigo_client));
 		memset(client, 0, sizeof(indigo_client));
+		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = malloc(sizeof(indigo_adapter_context));
 		context->input = handle;
 		client->client_context = context;
