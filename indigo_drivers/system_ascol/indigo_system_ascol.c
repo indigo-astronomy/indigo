@@ -1112,9 +1112,6 @@ static void mount_update_state() {
 	if (update_all || (prev_glst.selected_model_index != PRIVATE_DATA->glst.selected_model_index) ||
 	   (CORRECTION_MODEL_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		CORRECTION_MODEL_PROPERTY->state = INDIGO_OK_STATE;
-		if (!update_all && ((int)CORRECTION_MODEL_INDEX_ITEM->number.value != PRIVATE_DATA->glst.selected_model_index)) {
-			CORRECTION_MODEL_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
 		CORRECTION_MODEL_INDEX_ITEM->number.value = (double)PRIVATE_DATA->glst.selected_model_index;
 		indigo_update_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 	}
@@ -2886,7 +2883,7 @@ static indigo_result panel_attach(indigo_device *device) {
 		AUTHENTICATION_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://192.168.2.230:2002", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- ALARM
 		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
 		if (ALARM_PROPERTY == NULL)
