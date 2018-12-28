@@ -234,7 +234,6 @@ void synscan_mount_connect(indigo_device* device) {
 		//  DISCONNECT from mount
 		if (PRIVATE_DATA->device_count > 0) {
 			PRIVATE_DATA->device_count--;
-			printf("DEVICE COUNT %d\n", PRIVATE_DATA->device_count);
 			if (PRIVATE_DATA->device_count == 0) {
 				synscan_close(device);
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
@@ -381,7 +380,12 @@ void mount_handle_coordinates(indigo_device *device) {
 //	if (PRIVATE_DATA->globalMode != kGlobalModeIdle) {
 //		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 //	} else {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+
+	//  FIXME - if we have been asked to do another slew while a slew is already happening,
+	//  we ought to cancel that slew and start a new one. However, we would need to wait for
+	//  the slew to stop somehow.
+	
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		
 		//  GOTO requested
 		if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {

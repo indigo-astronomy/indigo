@@ -77,11 +77,11 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
-		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
 		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, true);
-//		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
-//		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
-//		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
+		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
+		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		MOUNT_POLARSCOPE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_POLARSCOPE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Polarscope", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (MOUNT_POLARSCOPE_PROPERTY == NULL)
@@ -160,11 +160,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-//		if(PRIVATE_DATA->parked) {
-//			indigo_update_coordinates(device, WARN_PARKED_MSG);
-//			return INDIGO_OK;
-//		}
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+			//  Pass sync requests through to indigo common code
 			return indigo_mount_change_property(device, client, property);
 		} else {
 			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
@@ -182,10 +179,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING (on/off)
-//		if(PRIVATE_DATA->parked) {
-//			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, WARN_PARKED_MSG);
-//			return INDIGO_OK;
-//		}
 		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
 		mount_handle_tracking(device);
 		return INDIGO_OK;
@@ -193,26 +186,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
 		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
 		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		
-		//  FIXME - if we are manual slewing we should adjust the rate
-		//  We don't really need to do this - the use case for it probably can't even happen
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
-//		if (PRIVATE_DATA->parked) {
-//			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-//			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, WARN_PARKED_MSG);
-//			return INDIGO_OK;
-//		}
 		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 		mount_handle_motion_ra(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
-//		if(PRIVATE_DATA->parked) {
-//			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-//			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, WARN_PARKED_MSG);
-//			return INDIGO_OK;
-//		}
 		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 		mount_handle_motion_dec(device);
 		return INDIGO_OK;
