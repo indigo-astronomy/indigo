@@ -88,8 +88,8 @@ static long hexResponseToLong(const char* b) {
 //  GENERIC SYNSCAN COMMAND
 
 static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
-	int nretries = 0;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	int nretries = 0;
 	while (nretries < 2) {
 		//  Sleep for a bit if we're having to retry
 		//if (nretries > 0)
@@ -109,14 +109,14 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 			if (result == 0)
 				break;
 			if (result < 0) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
 		}
@@ -183,113 +183,11 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 	return false;
 }
 
-#if 0
-static bool synscan_command(indigo_device *device, char *command, char *response, int max, int sleep) {
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	unsigned char c;
-	struct timeval tv;
-	// flush
-//	while (true) {
-//		fd_set readout;
-//		FD_ZERO(&readout);
-//		FD_SET(PRIVATE_DATA->handle, &readout);
-//		tv.tv_sec = 0;
-//		tv.tv_usec = 100000;
-//		long result = select(1, &readout, NULL, NULL, &tv);
-//		if (result == 0)
-//			break;
-//		if (result < 0) {
-//			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
-//			return false;
-//		}
-//		result = read(PRIVATE_DATA->handle, &c, 1);
-//		if (result < 1) {
-//			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
-//			return false;
-//		}
-//	}
-	if (tcflush(PRIVATE_DATA->handle, TCIOFLUSH) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLUSH ERR");
-	}
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-//	if (write(PRIVATE_DATA->handle, ":e1\r", 4) != 4) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
-//	}
-//	if (write(PRIVATE_DATA->handle, ":", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
-//	}
-//	usleep(100000);
-//	if (write(PRIVATE_DATA->handle, "e", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
-//	}
-//	usleep(100000);
-//	if (write(PRIVATE_DATA->handle, "1", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
-//	}
-//	usleep(100000);
-//	if (write(PRIVATE_DATA->handle, "\r", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
-//	}
-//	usleep(100000);
-//	if (write(PRIVATE_DATA->handle, "", 1) != 1) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WRITE FAILED");
-//	}
-//	usleep(100000);
-
-	indigo_write(PRIVATE_DATA->handle, "\r", 1);
-	if (sleep > 0)
-		usleep(sleep);
-	// read response
-	if (response != NULL) {
-		int index = 0;
-		int remains = max;
-		int timeout = 3;
-		while (remains > 0) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = 3;//timeout;
-			tv.tv_usec = 0;//1000000;
-			timeout = 0;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 2   %ld", result);
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 2");
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			//if (c < 0)
-			//	c = ':';
-			if (index == 0 && c == '=')
-				continue;
-			if (c == '\r')
-				break;
-			response[index++] = c;
-		}
-//		int foo = indigo_read_line2(PRIVATE_DATA->handle, response, 19);
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "foo %d", foo);
-
-		response[index] = 0;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
-}
-#endif
-
 static bool synscan_command_with_long_result(indigo_device* device, char* cmd, long* val) {
 	char buffer[20];
-	if (!synscan_command(device, cmd, buffer))
+	if (!synscan_command(device, cmd, buffer)) {
 		return false;
+	}
 	if (val)
 		*val = hexResponseToLong(buffer);
 	return true;
@@ -297,8 +195,9 @@ static bool synscan_command_with_long_result(indigo_device* device, char* cmd, l
 
 static bool synscan_command_with_code_result(indigo_device* device, char* cmd, long* val) {
 	char buffer[20];
-	if (!synscan_command(device, cmd, buffer))
+	if (!synscan_command(device, cmd, buffer)) {
 		return false;
+	}
 	if (val)
 		*val = hexToLong(buffer);
 	return true;
