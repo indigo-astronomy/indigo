@@ -670,11 +670,11 @@ int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int preci
 }
 
 
-int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int east) {
+int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int west) {
 	char cmd[ASCOL_MSG_LEN] = {0};
 	char resp[ASCOL_MSG_LEN] = {0};
 
-	snprintf(cmd, ASCOL_MSG_LEN, "%s %.*f %.*f %d\n", cmd_name, precision1, param1, precision2, param2, east);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s %.*f %.*f %d\n", cmd_name, precision1, param1, precision2, param2, west);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
@@ -739,12 +739,12 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 }
 
 
-int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *east) {
+int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *west) {
 	char cmd[ASCOL_MSG_LEN] = {0};
 	char resp[ASCOL_MSG_LEN] = {0};
 	char ra_s[ASCOL_MSG_LEN];
 	char de_s[ASCOL_MSG_LEN];
-	int east_c;
+	int west_c;
 
 	snprintf(cmd, ASCOL_MSG_LEN, "%s\n", cmd_name);
 	int res = ascol_write(devfd, cmd);
@@ -755,7 +755,7 @@ int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
-	res = sscanf(resp, "%s %s %d", ra_s, de_s, &east_c);
+	res = sscanf(resp, "%s %s %d", ra_s, de_s, &west_c);
 	if (res != 3) return ASCOL_RESPONCE_ERROR;
 
 	res = 0;
@@ -765,9 +765,9 @@ int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de
 	if (de) res = ascol_dms2dd(de, de_s);
 	if (res) return ASCOL_RESPONCE_ERROR;
 
-	if (east) *east = east_c;
+	if (west) *west = west_c;
 
-	ASCOL_DEBUG("%s()=%2d <=> %lf %lf %d\n", __FUNCTION__, ASCOL_OK, *ra, *de, *east);
+	ASCOL_DEBUG("%s()=%2d <=> %lf %lf %d\n", __FUNCTION__, ASCOL_OK, *ra, *de, *west);
 	return ASCOL_OK;
 }
 
