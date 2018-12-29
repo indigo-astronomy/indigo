@@ -1469,7 +1469,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_number_item(RADEC_RELATIVE_MOVE_RA_ITEM, RADEC_RELATIVE_MOVE_RA_ITEM_NAME, "Right Ascension(-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		indigo_init_number_item(RADEC_RELATIVE_MOVE_DEC_ITEM, RADEC_RELATIVE_MOVE_DEC_ITEM_NAME, "Declination (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		// -------------------------------------------------------------------------- SLEW_ORIENTATION
-		SLEW_ORIENTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SLEW_ORIENTATION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Slew Orientation", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		SLEW_ORIENTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SLEW_ORIENTATION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Slew Orientation", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SLEW_ORIENTATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -1775,7 +1775,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 		mount_handle_motion_ne(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match(RADEC_RELATIVE_MOVE_PROPERTY, property)) {
+	} else if (indigo_property_match(SLEW_ORIENTATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SLEW_ORIENTATION
 		indigo_property_copy_values(SLEW_ORIENTATION_PROPERTY, property, false);
 		SLEW_ORIENTATION_PROPERTY->state = INDIGO_OK_STATE;
