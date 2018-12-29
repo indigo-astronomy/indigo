@@ -1,6 +1,9 @@
 // Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
+// Lakeside focuser command set is extracted from INDI driver written
+// by Phil Shepherd with help of Peter Chance.
+//
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 //
