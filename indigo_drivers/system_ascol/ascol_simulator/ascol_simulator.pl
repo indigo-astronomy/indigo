@@ -963,7 +963,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					if($new_abs_rd) {
-						# It takes some time to get mving so state is not changed here!
+						# It takes some time to get moving so state is not changed here!
 						$new_abs_rd = 0;
 						#$new_rel_rd = 1;
 						$te_rd_abs_move_time = time();
@@ -988,7 +988,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					#if($new_rel_rd) {
-						# It takes some time to get mving so state is not changed here!
+						# It takes some time to get moving so state is not changed here!
 						#$new_rel_rd = 0;
 						$new_abs_rd = 1;
 						$te_rd_rel_move_time = time();
@@ -1040,7 +1040,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					if($new_abs_hd) {
-						# It takes some time to get mving so state is not changed here!
+						# It takes some time to get moving so state is not changed here!
 						$new_abs_hd = 0;
 						#$new_rel_hd = 1;
 						$te_hd_abs_move_time = time();
@@ -1065,7 +1065,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					#if($new_rel_hd) {
-						# It takes some time to get mving so state is not changed here!
+						# It takes some time to get moving so state is not changed here!
 						#$new_rel_hd = 0;
 						$new_abs_hd = 1;
 						$te_hd_rel_move_time = time();
