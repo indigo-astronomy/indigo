@@ -129,15 +129,16 @@ static void position_timer_callback(indigo_device *device) {
 
 		//  Note that this code normally belongs in indigo_update_coordinates(), but that routine causes numerical
 		//  instability in derived quantities due to not having a way to use a fixed LST value for derived values.
-		if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-			double az, alt;
-			sla_de2h(ha, dec, lat, &az, &alt);
-
-			MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
-			MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
-			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
-			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		}
+		indigo_update_coordinates(device, NULL);
+//		if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+//			double az, alt;
+//			sla_de2h(ha, dec, lat, &az, &alt);
+//
+//			MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
+//			MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
+//			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+//			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+//		}
 	}
 	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
 }
