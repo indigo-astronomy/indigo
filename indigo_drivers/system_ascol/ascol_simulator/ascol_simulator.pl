@@ -521,6 +521,8 @@ sub update_state {
 			$ha_state = HA_CA_FASTBR;
 		} elsif ($elapsed_time > CA_CLU1_TIME) {
 			$ha_state = HA_CA_FAST;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = HA_CA_CLU1;
 		}
 	}
 
@@ -540,6 +542,8 @@ sub update_state {
 			$da_state = DA_CA_FASTBR;
 		} elsif ($elapsed_time > CA_CLU1_TIME) {
 			$da_state = DA_CA_FAST;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = DA_CA_CLU1;
 		}
 	}
 
@@ -1087,7 +1091,7 @@ sub main() {
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
 				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					$ha_state = HA_CA_CLU1;
+					# It takes some time to get moving so state is not changed here!
 					$ha_move_time = time();
 				} else {
 					# simplyfy stop -> shuld go to state transition
@@ -1105,7 +1109,7 @@ sub main() {
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
 				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					$da_state = DA_CA_CLU1;
+					# It takes some time to get moving so state is not changed here!
 					$da_move_time = time();
 				} else {
 					# simplyfy stop -> shuld go to state transition
