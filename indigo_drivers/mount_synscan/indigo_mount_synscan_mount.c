@@ -122,8 +122,14 @@ static void position_timer_callback(indigo_device *device) {
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
 		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
+		if (raw_sop == MOUNT_SIDE_EAST)
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+		else
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+
 		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst, ha, (lst-(ha*12.0 / M_PI)), dec);
 		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 
 		indigo_raw_to_translated_with_lst(device, lst, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, raw_sop, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 
