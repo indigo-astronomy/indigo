@@ -349,14 +349,19 @@ extern "C" {
  */
 #define MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM				(MOUNT_ALIGNMENT_MODE_PROPERTY->items+0)
 
+/** MOUNT_ALIGNMENT_MODE.NEAREST_POINT property item pointer.
+ */
+#define MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM				(MOUNT_ALIGNMENT_MODE_PROPERTY->items+1)
+
 /** MOUNT_ALIGNMENT_MODE.MULTI_POINT property item pointer.
  */
-#define MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+1)
+#define MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+2)
 
 /** MOUNT_ALIGNMENT_MODE.CONTROLLER property item pointer.
  */
-#define MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+2)
-	
+#define MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+3)
+
+
 //-----------------------------------------------
 /** MOUNT_MAPED_COORDINATES property pointer, property is mandatory, read-only and should be fully controlled by device driver.
  */
