@@ -203,6 +203,14 @@
 #define RADEC_RELATIVE_MOVE_RA_ITEM_NAME   "RRA"
 #define RADEC_RELATIVE_MOVE_DEC_ITEM_NAME  "RDEC"
 
+#define SLEW_ORIENTATION_PROPERTY          (PRIVATE_DATA->slew_orientation_property)
+#define SLEW_ORIENTATION_EAST_ITEM         (SLEW_ORIENTATION_PROPERTY->items+0)
+#define SLEW_ORIENTATION_WEST_ITEM         (SLEW_ORIENTATION_PROPERTY->items+1)
+#define SLEW_ORIENTATION_PROPERTY_NAME     "ASCOL_SLEW_ORIENTATION"
+#define SLEW_ORIENTATION_EAST_ITEM_NAME    "EAST"
+#define SLEW_ORIENTATION_WEST_ITEM_NAME    "WEST"
+
+
 // Guider
 #define GUIDE_CORRECTION_PROPERTY          (PRIVATE_DATA->guide_correction_property)
 #define GUIDE_CORRECTION_RA_ITEM           (GUIDE_CORRECTION_PROPERTY->items+0)
@@ -281,6 +289,7 @@ typedef struct {
 	indigo_property *hadec_coordinates_property;
 	indigo_property *hadec_relative_move_property;
 	indigo_property *radec_relative_move_property;
+	indigo_property *slew_orientation_property;
 
 	// Guider
 	double guide_rate;
@@ -353,6 +362,8 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
 		if (indigo_property_match(RADEC_RELATIVE_MOVE_PROPERTY, property))
 			indigo_define_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
+		if (indigo_property_match(SLEW_ORIENTATION_PROPERTY, property))
+			indigo_define_property(device, SLEW_ORIENTATION_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -396,7 +407,12 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
-	res = ascol_TSRA(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target,0);
+	res = ascol_TSRA(
+		PRIVATE_DATA->dev_id,
+		h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target),
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target,
+		SLEW_ORIENTATION_WEST_ITEM->sw.value
+	);
 	if (res != INDIGO_OK) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSRA(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -420,7 +436,10 @@ static void mount_handle_hadec_coordinates(indigo_device *device) {
 	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
-	res = ascol_TSHA(PRIVATE_DATA->dev_id, HADEC_COORDINATES_HA_ITEM->number.target, HADEC_COORDINATES_DEC_ITEM->number.target);
+	res = ascol_TSHA(
+		PRIVATE_DATA->dev_id, HADEC_COORDINATES_HA_ITEM->number.target,
+		HADEC_COORDINATES_DEC_ITEM->number.target
+	);
 	if (res != INDIGO_OK) {
 		HADEC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSHA(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -1112,9 +1131,6 @@ static void mount_update_state() {
 	if (update_all || (prev_glst.selected_model_index != PRIVATE_DATA->glst.selected_model_index) ||
 	   (CORRECTION_MODEL_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		CORRECTION_MODEL_PROPERTY->state = INDIGO_OK_STATE;
-		if (!update_all && ((int)CORRECTION_MODEL_INDEX_ITEM->number.value != PRIVATE_DATA->glst.selected_model_index)) {
-			CORRECTION_MODEL_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
 		CORRECTION_MODEL_INDEX_ITEM->number.value = (double)PRIVATE_DATA->glst.selected_model_index;
 		indigo_update_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 	}
@@ -1199,11 +1215,11 @@ static void mount_update_state() {
 		prev_oimv = PRIVATE_DATA->oimv;
 	}
 
-	char east;
+	char west;
 	double ra, ha, dec;
 	UPDATE_RA_DE:
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	res = ascol_TRRD(PRIVATE_DATA->dev_id, &ra, &dec, &east);
+	res = ascol_TRRD(PRIVATE_DATA->dev_id, &ra, &dec, &west);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRRD(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -1331,14 +1347,14 @@ static indigo_result mount_attach(indigo_device *device) {
 		char item_name[INDIGO_NAME_SIZE];
 		char item_label[INDIGO_NAME_SIZE];
 		// -------------------------------------------------------------------------- FLAP_TUBE
-		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Tube Falp", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Tube Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLAP_TUBE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_switch_item(FLAP_TUBE_OPEN_ITEM, FLAP_TUBE_OPEN_ITEM_NAME, "Open", false);
 		indigo_init_switch_item(FLAP_TUBE_CLOSE_ITEM, FLAP_TUBE_CLOSE_ITEM_NAME, "Close", true);
 		// -------------------------------------------------------------------------- FLAP_COUDE
-		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Coude Falp", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Coude Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLAP_COUDE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -1452,6 +1468,13 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(RADEC_RELATIVE_MOVE_RA_ITEM, RADEC_RELATIVE_MOVE_RA_ITEM_NAME, "Right Ascension(-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		indigo_init_number_item(RADEC_RELATIVE_MOVE_DEC_ITEM, RADEC_RELATIVE_MOVE_DEC_ITEM_NAME, "Declination (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
+		// -------------------------------------------------------------------------- SLEW_ORIENTATION
+		SLEW_ORIENTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SLEW_ORIENTATION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Slew Orientation", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (SLEW_ORIENTATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(SLEW_ORIENTATION_EAST_ITEM, SLEW_ORIENTATION_EAST_ITEM_NAME, "East", false);
+		indigo_init_switch_item(SLEW_ORIENTATION_WEST_ITEM, SLEW_ORIENTATION_WEST_ITEM_NAME, "West", true);
 		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1490,9 +1513,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 					indigo_define_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 					indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
+					indigo_define_property(device, SLEW_ORIENTATION_PROPERTY, NULL);
 					indigo_define_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 					indigo_define_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
 					indigo_define_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
+
 					device->is_connected = true;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1519,6 +1544,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 				indigo_delete_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 				indigo_delete_property(device, GUIDE_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, SLEW_ORIENTATION_PROPERTY, NULL);
 				indigo_delete_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 				indigo_delete_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
 				indigo_delete_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
@@ -1749,6 +1775,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 		mount_handle_motion_ne(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(SLEW_ORIENTATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- SLEW_ORIENTATION
+		indigo_property_copy_values(SLEW_ORIENTATION_PROPERTY, property, false);
+		SLEW_ORIENTATION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, SLEW_ORIENTATION_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		if (IS_CONNECTED) {
@@ -1784,6 +1816,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ERROR_CORRECTION_PROPERTY);
 	indigo_release_property(CORRECTION_MODEL_PROPERTY);
 	indigo_release_property(GUIDE_MODE_PROPERTY);
+	indigo_release_property(SLEW_ORIENTATION_PROPERTY);
 	indigo_release_property(HADEC_COORDINATES_PROPERTY);
 	indigo_release_property(HADEC_RELATIVE_MOVE_PROPERTY);
 	indigo_release_property(RADEC_RELATIVE_MOVE_PROPERTY);
@@ -2075,7 +2108,8 @@ static void dome_update_state() {
 		}
 		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 
-		if (update_all || (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		if (update_all || (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
+		   (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state)) {
 			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
 		}
@@ -2886,7 +2920,7 @@ static indigo_result panel_attach(indigo_device *device) {
 		AUTHENTICATION_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://192.168.2.230:2002", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- ALARM
 		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
 		if (ALARM_PROPERTY == NULL)
