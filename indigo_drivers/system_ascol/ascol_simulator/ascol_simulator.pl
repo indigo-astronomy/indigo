@@ -76,6 +76,7 @@ use constant TE_ST_CLU3 => 16;
 
 use constant TE_OFF_WAIT_TIME => 5;
 
+use constant TE_START_MOVE_TIME => 1;
 use constant TE_CLU1_TIME => 2;
 use constant TE_SLEW_TIME => 18;
 use constant TE_DECC2_TIME => 20;
@@ -433,6 +434,8 @@ sub update_state {
 			$te_state = TE_ST_DECC2;
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_ST_SLEW;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = TE_ST_CLU1;
 		}
 	}
 
@@ -453,6 +456,8 @@ sub update_state {
 			$te_state = TE_ST_DECC2;
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_ST_SLEW;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = TE_ST_CLU1;
 		}
 	}
 
@@ -473,6 +478,8 @@ sub update_state {
 			$te_state = TE_SS_DECC2;
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_SS_SLEW;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = TE_SS_CLU1;
 		}
 	}
 
@@ -493,6 +500,8 @@ sub update_state {
 			$te_state = TE_SS_DECC2;
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_SS_SLEW;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = TE_SS_CLU1;
 		}
 	}
 
@@ -512,6 +521,8 @@ sub update_state {
 			$ha_state = HA_CA_FASTBR;
 		} elsif ($elapsed_time > CA_CLU1_TIME) {
 			$ha_state = HA_CA_FAST;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = HA_CA_CLU1;
 		}
 	}
 
@@ -531,6 +542,8 @@ sub update_state {
 			$da_state = DA_CA_FASTBR;
 		} elsif ($elapsed_time > CA_CLU1_TIME) {
 			$da_state = DA_CA_FAST;
+		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
+			$te_state = DA_CA_CLU1;
 		}
 	}
 
@@ -954,7 +967,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					if($new_abs_rd) {
-						$te_state = TE_ST_CLU1;
+						# It takes some time to get moving so state is not changed here!
 						$new_abs_rd = 0;
 						#$new_rel_rd = 1;
 						$te_rd_abs_move_time = time();
@@ -979,7 +992,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					#if($new_rel_rd) {
-						$te_state = TE_ST_CLU1;
+						# It takes some time to get moving so state is not changed here!
 						#$new_rel_rd = 0;
 						$new_abs_rd = 1;
 						$te_rd_rel_move_time = time();
@@ -1031,7 +1044,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					if($new_abs_hd) {
-						$te_state = TE_SS_CLU1;
+						# It takes some time to get moving so state is not changed here!
 						$new_abs_hd = 0;
 						#$new_rel_hd = 1;
 						$te_hd_abs_move_time = time();
@@ -1056,7 +1069,7 @@ sub main() {
 				}
 				if ($cmd[1] == 1) {
 					#if($new_rel_hd) {
-						$te_state = TE_SS_CLU1;
+						# It takes some time to get moving so state is not changed here!
 						#$new_rel_hd = 0;
 						$new_abs_hd = 1;
 						$te_hd_rel_move_time = time();
@@ -1078,7 +1091,7 @@ sub main() {
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
 				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					$ha_state = HA_CA_CLU1;
+					# It takes some time to get moving so state is not changed here!
 					$ha_move_time = time();
 				} else {
 					# simplyfy stop -> shuld go to state transition
@@ -1096,7 +1109,7 @@ sub main() {
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
 				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
-					$da_state = DA_CA_CLU1;
+					# It takes some time to get moving so state is not changed here!
 					$da_move_time = time();
 				} else {
 					# simplyfy stop -> shuld go to state transition

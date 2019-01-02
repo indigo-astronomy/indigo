@@ -254,10 +254,10 @@ int ascol_0_param_cmd(int devfd, char *cmd_name);
 int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param);
 int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precision);
 int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2);
-int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int east);
+int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int west);
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
-int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *east);
+int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *west);
 
 
 /* Global Commands */
@@ -290,10 +290,10 @@ int ascol_GLUT(int devfd, double *ut);
 #define ascol_TEDC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEDC", on))
 
 /* Telescope Set new Right ascension and declination Absolute */
-#define ascol_TSRA(devfd, ra, de, east) (ascol_2_double_1_int_param_cmd(devfd, "TSRA", ra, 5, de, 5, east))
+#define ascol_TSRA(devfd, ra, de, west) (ascol_2_double_1_int_param_cmd(devfd, "TSRA", ra, 5, de, 5, west))
 
 /* Telescope Read new Right ascension and declination Absolute */
-#define ascol_TRRA(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRA", ra, de, east))
+#define ascol_TRRA(devfd, ra, de, west) (ascol_3_ra_de_e_return_cmd(devfd, "TRRA", ra, de, west))
 
 /* Telescope Go to new Right ascension and declination Absolute */
 #define ascol_TGRA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRA", on))
@@ -377,7 +377,7 @@ int ascol_GLUT(int devfd, double *ut);
 #define ascol_TRS3(devfd, speed) (ascol_1_double_return_cmd(devfd, "TRS3", speed))
 
 /* Telescope Read Right ascension and Declination */
-#define ascol_TRRD(devfd, ra, de, east) (ascol_3_ra_de_e_return_cmd(devfd, "TRRD", ra, de, east))
+#define ascol_TRRD(devfd, ra, de, west) (ascol_3_ra_de_e_return_cmd(devfd, "TRRD", ra, de, west))
 
 /* Telescope Read Hour and Declination Axis */
 #define ascol_TRHD(devfd, ha, de) (ascol_2_double_return_cmd(devfd, "TRHD", ha, de))

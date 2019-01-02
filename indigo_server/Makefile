@@ -37,10 +37,10 @@ status:
 	@printf "\nindigo_server -------------------------\n\n"
 
 clean:
-	rm -f *.o $(BUILD_BIN)/indigo_server
+	rm -f *.o $(BUILD_BIN)/indigo_server *.data resource/*.data
 
 clean-all: clean
-	rm -f *.data resource/*.data
+
 
 $(BUILD_BIN)/indigo_server: ctrlpanel indigo_server.o $(SIMULATOR_LIBS)
 ifeq ($(OS_DETECTED),Darwin)
