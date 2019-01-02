@@ -231,13 +231,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		//PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
-		//		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		//		if (COMMAND_GUIDE_RATE_PROPERTY == NULL)
-		//			return INDIGO_FAILED;
-		//		indigo_init_switch_item(GUIDE_50_ITEM, GUIDE_50_ITEM_NAME, "50% sidereal", true);
-		//		indigo_init_switch_item(GUIDE_100_ITEM, GUIDE_100_ITEM_NAME, "100% sidereal", false);
-		
+		GUIDER_RATE_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -246,8 +240,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-//		if (indigo_property_match(COMMAND_GUIDE_RATE_PROPERTY, property))
-//			indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+		//  Placeholder in case we need custom properties
 	}
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }
@@ -291,25 +284,17 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
-//			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, guider_timer_callback_ra);
 //			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-//			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-//			if (res != RC_OK) {
-//				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-//			}
-//			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 //			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 		}
 		else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
-//				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, guider_timer_callback_ra);
 //				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-//				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-//				if (res != RC_OK) {
-//					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-//				}
-//				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 //				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			}
 		}
@@ -323,24 +308,16 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
-//			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, guider_timer_callback_dec);
 //			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-//			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-//			if (res != RC_OK) {
-//				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-//			}
-//			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 //			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
-//				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, guider_timer_callback_dec);
 //				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-//				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-//				if (res != RC_OK) {
-//					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-//				}
-//				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 //				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 			}
 		}
@@ -350,8 +327,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
-		//guider_handle_guide_rate(device);
-		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
+		indigo_update_property(device, GUIDER_RATE_PROPERTY, "Guide rate updated.");
 		return INDIGO_OK;
 	}
 	// --------------------------------------------------------------------------------

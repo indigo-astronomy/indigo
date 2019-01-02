@@ -47,6 +47,8 @@ bool synscan_configure(indigo_device* device) {
 		return false;
 	}
 	snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(version), GET_REVISION(version), GET_PATCH(version));
+	snprintf(MOUNT_INFO_VENDOR_ITEM->text.value, INDIGO_VALUE_SIZE, "Sky-Watcher");
+	snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "SynScan");
 
 	//  Query motor status
 	long raMotorStatus = 0;
@@ -345,7 +347,7 @@ static AxisPosition dec_position_to_steps(indigo_device* device, double position
 	return lrint(PRIVATE_DATA->decZeroPos + (position * PRIVATE_DATA->decTotalSteps));
 }
 
-void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, double* ha, double* dec) {
+void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, double* ha, double* dec, int* sop) {
 	//  Get hemisphere
 	bool south = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 
@@ -388,8 +390,7 @@ void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, 
 		*dec = -*dec;
 	}
 	*dec *= 2.0 * M_PI;
-	//eq->west = west;
-
+	*sop = west ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
 
 	//  NORTHERN HEMISPHERE
 	//  Convert to HA
@@ -539,7 +540,7 @@ void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double 
 		ha -= M_PI + M_PI;
 	if (ha < -M_PI)
 		ha += M_PI + M_PI;
-	assert(ha >= -M_PI && ha <= M_PI);
+	assert(ha >= -M_PI && ha <= M_PI);	///  assertion if ha < -M_PI or ha > M_PI
 
 	//  Compute HA positions to match each DEC position
 	double haw;
