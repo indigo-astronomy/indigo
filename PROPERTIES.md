@@ -172,6 +172,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 <tr><td></td><td></td><td></td><td></td><td>DEC</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_ALIGNMENT_MODE</td><td>switch</td><td>no</td><td>yes</td><td>CONTROLLER</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>SINGLE_POINT</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>NEAREST_POINT</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>MULTI_POINT</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_ALIGNMENT_SELECT_POINTS</td><td>switch</td><td>no</td><td>yes</td><td>point id</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY</td><td>switch</td><td>no</td><td>yes</td><td>point id</td><td>yes</td><td></td></tr>

@@ -203,6 +203,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = true;
 			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM_NAME, "Single point", false);
+			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME, "Nearest point", false);
 			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM, MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM_NAME, "Multi point", false);
 			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME, "Mount controller", true); // check MOUNT_ALIGNMENT_SELECT_POINTS and MOUNT_ALIGNMENT_DELETE_POINTS if default is changed
 			// -------------------------------------------------------------------------------- MOUNT_RAW_COORDINATES
@@ -230,7 +231,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			MOUNT_EPOCH_PROPERTY->hidden = true;
 			// TBD current year :)
-			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Current epoch (1950 to 2050)", 1950, 2050, 0, 2019);
+			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Current epoch (0, 1950 to 2050)", 0, 2050, 0, 0);
 			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
 			MOUNT_SIDE_OF_PIER_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Side of pier", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_SIDE_OF_PIER_PROPERTY == NULL)
@@ -562,22 +563,30 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 				point->raw_ra = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
 				point->raw_dec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
 
-				double ha = indigo_range24(point->lst - point->ra);
-				if (ha > 12.0)
-					ha -= 24.0;
-				point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+				if (MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
+					double ha = indigo_range24(point->lst - point->ra);
+					if (ha > 12.0)
+						ha -= 24.0;
+					point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+				}
+				else {
+					point->side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
+				}
 
 				char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 				snprintf(name, INDIGO_NAME_SIZE, "%d", index);
 				snprintf(label, INDIGO_VALUE_SIZE, "RA %.2f / Dec %.2f", point->ra, point->dec);
 				indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + index, name, label, true);
 				point->used = true;
+
+				//  Deselect other points if using single point mode
 				if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
 					for (int i = 0; i < MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count; i++) {
 						MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[i].sw.value = false;
 						MOUNT_CONTEXT->alignment_points[i].used = false;
 					}
 				}
+
 				save_alignment_points(device);
 				MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count;
 				MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
@@ -603,6 +612,11 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
 			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
 			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
+		} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value) {
+			MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
+			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
+			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 		} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 			MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
@@ -872,13 +886,18 @@ indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double 
 		*raw_ra = ra;
 		*raw_dec = dec;
 		return INDIGO_OK;
-	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+	} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value) {
 		double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = indigo_range24(lst - ra);
 		if (ha > 12.0)
 			ha -= 24.0;
 		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
 		return indigo_translated_to_raw_with_lst(device, lst, ra, dec, side_of_pier, raw_ra, raw_dec);
+	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+		
+		// TBD Rumen
+		
+		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 		
 		// TBD Rumen
@@ -893,7 +912,7 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 		*raw_ra = ra;
 		*raw_dec = dec;
 		return INDIGO_OK;
-	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+	} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value) {
 		indigo_alignment_point* point = indigo_nearest_alignment_point(device, lst, ra, dec, side_of_pier, 0);
 		if (point) {
 			//  Transform coordinates
@@ -926,6 +945,11 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 			*raw_dec = dec;
 		}
 		return INDIGO_OK;
+	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+		
+		// TBD Rumen
+		
+		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 
 		// TBD Rumen
@@ -941,13 +965,18 @@ indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, dou
 		*ra = raw_ra;
 		*dec = raw_dec;
 		return INDIGO_OK;
-	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+	} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value) {
 		double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = indigo_range24(lst - raw_ra);
 		if (ha > 12.0)
 			ha -= 24.0;
 		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
 		return indigo_raw_to_translated_with_lst(device, lst, raw_ra, raw_dec, side_of_pier, ra, dec);
+	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+		
+		// TBD Rumen
+		
+		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 
 		// TBD Rumen
@@ -963,7 +992,7 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 		*ra = raw_ra;
 		*dec = raw_dec;
 		return INDIGO_OK;
-	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+	} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value) {
 		indigo_alignment_point* point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, side_of_pier, 1);
 		if (point) {
 			//  Transform coordinates
@@ -995,6 +1024,11 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 			*ra = raw_ra;
 			*dec = raw_dec;
 		}
+		return INDIGO_OK;
+	} else if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+		
+		// TBD Rumen
+		
 		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 		
