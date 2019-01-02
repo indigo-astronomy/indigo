@@ -78,6 +78,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
 		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
+		MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
 		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
