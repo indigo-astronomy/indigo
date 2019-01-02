@@ -380,6 +380,29 @@ extern "C" {
  */
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY				(MOUNT_CONTEXT->mount_alignment_delete_points_property)
 
+//------------------------------------------------
+/** MOUNT_EPOCH property pointer, property is optional
+ */
+#define MOUNT_EPOCH_PROPERTY													(MOUNT_CONTEXT->mount_epoch_property)
+
+/** MOUNT_EPOCH.EPOCH property item pointer.
+ */
+#define MOUNT_EPOCH_ITEM															(MOUNT_EPOCH_PROPERTY->items+0)
+
+//------------------------------------------------
+/** MOUNT_SIDE_OF_PIER property pointer, property is optional
+ */
+#define MOUNT_SIDE_OF_PIER_PROPERTY										(MOUNT_CONTEXT->mount_side_of_pier_property)
+
+/** MOUNT_SIDE_OF_PIER.EAST property item pointer.
+ */
+#define MOUNT_SIDE_OF_PIER_EAST_ITEM									(MOUNT_SIDE_OF_PIER_PROPERTY->items+0)
+
+/** MOUNT_SIDE_OF_PIER.WEST property item pointer.
+ */
+#define MOUNT_SIDE_OF_PIER_WEST_ITEM									(MOUNT_SIDE_OF_PIER_PROPERTY->items+1)
+
+//------------------------------------------------
 /** MOUNT_SNOOP_DEVICES property pointer, property is optional.
 */
 #define MOUNT_SNOOP_DEVICES_PROPERTY									(MOUNT_CONTEXT->mount_snoop_devices_property)
@@ -449,6 +472,8 @@ typedef struct {
 	indigo_property *mount_raw_coordinates_property;				///< MOUNT_RAW_COORDINATES property pointer
 	indigo_property *mount_alignment_select_points_property;///< MOUNT_ALIGNMENT_SELECT_POINTS property pointer
 	indigo_property *mount_alignment_delete_points_property;///< MOUNT_ALIGNMENT_DELETE_POINTS property pointer
+	indigo_property *mount_epoch_property;									///< MOUNT_EPOCH property pointer
+	indigo_property *mount_side_of_pier_property;						///< MOUNT_SIDE_OF_PIER property pointer
 	indigo_property *mount_snoop_devices_property;					///< MOUNT_SNOOP_DEVICES property pointer
 } indigo_mount_context;
 

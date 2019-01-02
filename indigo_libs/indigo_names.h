@@ -1345,6 +1345,33 @@
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
 
 //----------------------------------------------------------------------
+/** MOUNT_EPOCH property name.
+ */
+#define MOUNT_EPOCH_PROPERTY_NAME							"MOUNT_EPOCH"
+
+/** MOUNT_EPOCH.EPOCH property item name.
+ */
+#define MOUNT_EPOCH_ITEM_NAME             		"EPOCH"
+
+//----------------------------------------------------------------------
+/** MOUNT_SIDE_OF_PIER property name.
+ */
+#define MOUNT_SIDE_OF_PIER_PROPERTY_NAME							"MOUNT_SIDE_OF_PIER"
+
+/** MOUNT_SIDE_OF_PIER.EAST property item name.
+ */
+#define MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME             		"EAST"
+
+/** MOUNT_SIDE_OF_PIER.WEST property item name.
+ */
+#define MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME             		"WEST"
+
+//----------------------------------------------------------------------
+/** MOUNT_ALIGNMENT_DELETE_POINTS property name.
+ */
+#define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
+
+//----------------------------------------------------------------------
 /** GPS_STATUS property name.
  */
 #define GPS_STATUS_PROPERTY_NAME                "GPS_STATUS"
