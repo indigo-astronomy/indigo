@@ -399,13 +399,22 @@ extern "C" {
 	
 #define MOUNT_MAX_ALIGNMENT_POINTS										10
 
+//------------------------------------------------
+/** Definition of side of pier
+ */
+
+#define MOUNT_SIDE_EAST																0
+#define MOUNT_SIDE_WEST																1
+
 /** Aligment point structure.
  */
 
 typedef struct {
 	bool used;
-	double ra, dec;
-	double raw_ra, raw_dec;
+	double lst;
+	double ra, dec;						//  Where user says it is really pointing
+	double raw_ra, raw_dec;		//  Where mount says it is pointing
+	int side_of_pier;					//  East or West DEC slew?
 } indigo_alignment_point;
 
 //------------------------------------------------
@@ -460,11 +469,13 @@ extern indigo_result indigo_mount_detach(indigo_device *device);
  */
 
 extern indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double dec, double *raw_ra, double *raw_dec);
+extern indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double lst, double ra, double dec, int side_of_pier, double *raw_ra, double *raw_dec);
 
 /** Translate coordinates from native.
  */
 
 extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
+extern indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double lst, double raw_ra, double raw_dec, int side_of_pier, double *ra, double *dec);
 
 /** Translate coordinates from native.
  */
