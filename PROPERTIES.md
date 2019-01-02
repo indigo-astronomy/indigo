@@ -175,6 +175,9 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 <tr><td></td><td></td><td></td><td></td><td>MULTI_POINT</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_ALIGNMENT_SELECT_POINTS</td><td>switch</td><td>no</td><td>yes</td><td>point id</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY</td><td>switch</td><td>no</td><td>yes</td><td>point id</td><td>yes</td><td></td></tr>
+<tr><td>MOUNT_EPOCH</td><td>number</td><td>no</td><td>yes</td><td>EPOCH</td><td>yes</td><td></td></tr>
+<tr><td>MOUNT_SIDE_OF_PIER</td><td>switch</td><td>no</td><td>yes</td><td>EAST</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>WEST</td><td>yes</td><td></td></tr>
 </table>
 
 
