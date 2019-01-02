@@ -223,6 +223,20 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = 0;
+			// -------------------------------------------------------------------------------- MOUNT_EPOCH
+			MOUNT_EPOCH_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Current epoch", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			if (MOUNT_EPOCH_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			MOUNT_EPOCH_PROPERTY->hidden = true;
+			// TBD current year :)
+			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Current epoch (1950 to 2050)", 1950, 2050, 0, 2019);
+			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
+			MOUNT_SIDE_OF_PIER_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Side of pier", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (MOUNT_SIDE_OF_PIER_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			MOUNT_EPOCH_PROPERTY->hidden = true;
+			indigo_init_switch_item(MOUNT_SIDE_OF_PIER_EAST_ITEM, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, "East", true);
+			indigo_init_switch_item(MOUNT_SIDE_OF_PIER_WEST_ITEM, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, "West", false);
 			// -------------------------------------------------------------------------------- SNOOP_DEVICES
 			MOUNT_SNOOP_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_DEVICES_PROPERTY_NAME, MAIN_GROUP, "Snoop devices", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_SNOOP_DEVICES_PROPERTY == NULL)
@@ -290,6 +304,10 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, property))
 			indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_EPOCH_PROPERTY, property))
+			indigo_define_property(device, MOUNT_EPOCH_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_SIDE_OF_PIER_PROPERTY, property))
+			indigo_define_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_SNOOP_DEVICES_PROPERTY, property))
 			indigo_define_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
 	}
@@ -329,6 +347,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_EPOCH_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
 			indigo_add_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);
 			indigo_add_snoop_rule(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_SLEW_RATE_PROPERTY_NAME);
@@ -372,6 +392,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_EPOCH_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
@@ -476,6 +498,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, MOUNT_GUIDE_RATE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_ALIGNMENT_MODE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_PARK_POSITION_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_EPOCH_PROPERTY);
 			int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".alignment");
 			if (handle > 0) {
 				int count = MOUNT_CONTEXT->alignment_point_count;
@@ -640,6 +663,18 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_EPOCH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_EPOCH
+		indigo_property_copy_values(MOUNT_EPOCH_PROPERTY, property, false);
+		MOUNT_EPOCH_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_EPOCH_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER_PROPERTY
+		indigo_property_copy_values(MOUNT_SIDE_OF_PIER_PROPERTY, property, false);
+		MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- SNOOP_DEVICES
 	} else if (indigo_property_match(MOUNT_SNOOP_DEVICES_PROPERTY, property)) {

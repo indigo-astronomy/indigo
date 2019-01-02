@@ -82,6 +82,10 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_EPOCH
+		MOUNT_EPOCH_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		MOUNT_POLARSCOPE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_POLARSCOPE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Polarscope", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (MOUNT_POLARSCOPE_PROPERTY == NULL)
