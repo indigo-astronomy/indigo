@@ -349,14 +349,19 @@ extern "C" {
  */
 #define MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM				(MOUNT_ALIGNMENT_MODE_PROPERTY->items+0)
 
+/** MOUNT_ALIGNMENT_MODE.NEAREST_POINT property item pointer.
+ */
+#define MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM				(MOUNT_ALIGNMENT_MODE_PROPERTY->items+1)
+
 /** MOUNT_ALIGNMENT_MODE.MULTI_POINT property item pointer.
  */
-#define MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+1)
+#define MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+2)
 
 /** MOUNT_ALIGNMENT_MODE.CONTROLLER property item pointer.
  */
-#define MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+2)
-	
+#define MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+3)
+
+
 //-----------------------------------------------
 /** MOUNT_MAPED_COORDINATES property pointer, property is mandatory, read-only and should be fully controlled by device driver.
  */
@@ -380,6 +385,29 @@ extern "C" {
  */
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY				(MOUNT_CONTEXT->mount_alignment_delete_points_property)
 
+//------------------------------------------------
+/** MOUNT_EPOCH property pointer, property is optional
+ */
+#define MOUNT_EPOCH_PROPERTY													(MOUNT_CONTEXT->mount_epoch_property)
+
+/** MOUNT_EPOCH.EPOCH property item pointer.
+ */
+#define MOUNT_EPOCH_ITEM															(MOUNT_EPOCH_PROPERTY->items+0)
+
+//------------------------------------------------
+/** MOUNT_SIDE_OF_PIER property pointer, property is optional
+ */
+#define MOUNT_SIDE_OF_PIER_PROPERTY										(MOUNT_CONTEXT->mount_side_of_pier_property)
+
+/** MOUNT_SIDE_OF_PIER.EAST property item pointer.
+ */
+#define MOUNT_SIDE_OF_PIER_EAST_ITEM									(MOUNT_SIDE_OF_PIER_PROPERTY->items+0)
+
+/** MOUNT_SIDE_OF_PIER.WEST property item pointer.
+ */
+#define MOUNT_SIDE_OF_PIER_WEST_ITEM									(MOUNT_SIDE_OF_PIER_PROPERTY->items+1)
+
+//------------------------------------------------
 /** MOUNT_SNOOP_DEVICES property pointer, property is optional.
 */
 #define MOUNT_SNOOP_DEVICES_PROPERTY									(MOUNT_CONTEXT->mount_snoop_devices_property)
@@ -399,13 +427,22 @@ extern "C" {
 	
 #define MOUNT_MAX_ALIGNMENT_POINTS										10
 
+//------------------------------------------------
+/** Definition of side of pier
+ */
+
+#define MOUNT_SIDE_EAST																0
+#define MOUNT_SIDE_WEST																1
+
 /** Aligment point structure.
  */
 
 typedef struct {
 	bool used;
-	double ra, dec;
-	double raw_ra, raw_dec;
+	double lst;
+	double ra, dec;						//  Where user says it is really pointing
+	double raw_ra, raw_dec;		//  Where mount says it is pointing
+	int side_of_pier;					//  East or West DEC slew?
 } indigo_alignment_point;
 
 //------------------------------------------------
@@ -440,6 +477,8 @@ typedef struct {
 	indigo_property *mount_raw_coordinates_property;				///< MOUNT_RAW_COORDINATES property pointer
 	indigo_property *mount_alignment_select_points_property;///< MOUNT_ALIGNMENT_SELECT_POINTS property pointer
 	indigo_property *mount_alignment_delete_points_property;///< MOUNT_ALIGNMENT_DELETE_POINTS property pointer
+	indigo_property *mount_epoch_property;									///< MOUNT_EPOCH property pointer
+	indigo_property *mount_side_of_pier_property;						///< MOUNT_SIDE_OF_PIER property pointer
 	indigo_property *mount_snoop_devices_property;					///< MOUNT_SNOOP_DEVICES property pointer
 } indigo_mount_context;
 
@@ -460,11 +499,13 @@ extern indigo_result indigo_mount_detach(indigo_device *device);
  */
 
 extern indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double dec, double *raw_ra, double *raw_dec);
+extern indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double lst, double ra, double dec, int side_of_pier, double *raw_ra, double *raw_dec);
 
 /** Translate coordinates from native.
  */
 
 extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
+extern indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double lst, double raw_ra, double raw_dec, int side_of_pier, double *ra, double *dec);
 
 /** Translate coordinates from native.
  */
