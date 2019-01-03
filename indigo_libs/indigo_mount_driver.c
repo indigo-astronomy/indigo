@@ -220,7 +220,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = 0;
 			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_DELETE_POINTS
-			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Delete alignment points", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MOUNT_MAX_ALIGNMENT_POINTS);
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Delete alignment point", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MOUNT_MAX_ALIGNMENT_POINTS);
 			if (MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
@@ -672,6 +672,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 						strncpy(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items[j - 1].name, name, INDIGO_NAME_SIZE);
 					}
 					MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = --MOUNT_CONTEXT->alignment_point_count;
+					break;
 				}
 			}
 		}
