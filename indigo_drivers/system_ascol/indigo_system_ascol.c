@@ -1185,10 +1185,7 @@ static void mount_update_state() {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_OIMV(%d) = %d", PRIVATE_DATA->dev_id, res);
 		OIMV_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, OIMV_PROPERTY, "Could not read oil sensrs");
-		goto UPDATE_RA_DE;
-	}
-
-	if (update_all || memcmp(&prev_oimv, &PRIVATE_DATA->oimv, sizeof(prev_oimv))) {
+	} else if (update_all || memcmp(&prev_oimv, &PRIVATE_DATA->oimv, sizeof(prev_oimv))) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIMV_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		OIMV_PROPERTY->state = INDIGO_OK_STATE;
 		for (int index = 0; index < ASCOL_OIMV_N; index++) {
@@ -1200,8 +1197,6 @@ static void mount_update_state() {
 
 	char west;
 	double ra, ha, dec;
-	UPDATE_RA_DE:
-
 	if ((PRIVATE_DATA->glst.telescope_state >= TE_STATE_INIT) &&
 	    (PRIVATE_DATA->glst.telescope_state <= TE_STATE_OFF_REQ)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -1225,15 +1220,13 @@ static void mount_update_state() {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		goto UPDATE_HA_DE;
+	} else {
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+		indigo_update_coordinates(device, NULL);
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	}
 
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
-	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-	indigo_update_coordinates(device, NULL);
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-
-	UPDATE_HA_DE:
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	res = ascol_TRHD(PRIVATE_DATA->dev_id, &ha, &dec);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -1242,15 +1235,13 @@ static void mount_update_state() {
 		HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
-		goto END;
+	} else {
+		HADEC_COORDINATES_HA_ITEM->number.value = ha;
+		HADEC_COORDINATES_DEC_ITEM->number.value = dec;
+		indigo_update_coordinates(device, NULL);
+		indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	}
 
-	HADEC_COORDINATES_HA_ITEM->number.value = ha;
-	HADEC_COORDINATES_DEC_ITEM->number.value = dec;
-	indigo_update_coordinates(device, NULL);
-	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
-
-	END:
 	/* should be copied every time as there are several properties
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
