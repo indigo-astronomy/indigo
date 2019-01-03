@@ -172,7 +172,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
 		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
-		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, true);
+		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		MOUNT_TRACK_RATE_PROPERTY->count = 5;
 		// -------------------------------------------------------------------------------- AUTHENTICATION
