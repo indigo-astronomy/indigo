@@ -522,7 +522,7 @@ sub update_state {
 		} elsif ($elapsed_time > CA_CLU1_TIME) {
 			$ha_state = HA_CA_FAST;
 		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
-			$te_state = HA_CA_CLU1;
+			$ha_state = HA_CA_CLU1;
 		}
 	}
 
@@ -543,7 +543,7 @@ sub update_state {
 		} elsif ($elapsed_time > CA_CLU1_TIME) {
 			$da_state = DA_CA_FAST;
 		} elsif ($elapsed_time > TE_START_MOVE_TIME) {
-			$te_state = DA_CA_CLU1;
+			$da_state = DA_CA_CLU1;
 		}
 	}
 
