@@ -320,16 +320,19 @@ static void *server_thread(indigo_server_entry *server) {
       free(server->protocol_adapter->device_context);
       free(server->protocol_adapter);
 			server->protocol_adapter = NULL;
-      close(server->socket);
-			server->socket = 0;
+			if (server->socket > 0) {
+				close(server->socket);
+				server->socket = 0;
+      }
       INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
-    }
+    } else if (server->socket == 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-    sleep(5); 
+      sleep(5);
 #endif
 #if defined(INDIGO_WINDOWS)
-    Sleep(5);
+      Sleep(5);
 #endif
+    }
   }
   server->thread_started = false;
   INDIGO_LOG(indigo_log("Server %s:%d thread stopped", server->host, server->port));
