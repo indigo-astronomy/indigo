@@ -404,8 +404,7 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 	int res = INDIGO_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	/* GOTO requested */
 	res = ascol_TSRA(
 		PRIVATE_DATA->dev_id,
@@ -424,7 +423,6 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
 }
 
@@ -432,9 +430,7 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 static void mount_handle_hadec_coordinates(indigo_device *device) {
 	int res = INDIGO_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-
-	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	/* GOTO requested */
 	res = ascol_TSHA(
 		PRIVATE_DATA->dev_id, HADEC_COORDINATES_HA_ITEM->number.target,
@@ -458,10 +454,7 @@ static void mount_handle_hadec_coordinates(indigo_device *device) {
 static void mount_handle_hadec_relative_move(indigo_device *device) {
 	int res = INDIGO_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+	HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 	/* Relative GOTO requested */
 	res = ascol_TSHR(PRIVATE_DATA->dev_id, HADEC_RELATIVE_MOVE_HA_ITEM->number.target, HADEC_RELATIVE_MOVE_DEC_ITEM->number.target);
 	if (res != INDIGO_OK) {
@@ -476,7 +469,6 @@ static void mount_handle_hadec_relative_move(indigo_device *device) {
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	indigo_update_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
-	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
 }
 
@@ -485,9 +477,7 @@ static void mount_handle_radec_relative_move(indigo_device *device) {
 	int res = INDIGO_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+	RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 	/* Relative GOTO requested */
 	res = ascol_TSRR(PRIVATE_DATA->dev_id, RADEC_RELATIVE_MOVE_RA_ITEM->number.target, RADEC_RELATIVE_MOVE_DEC_ITEM->number.target);
 	if (res != INDIGO_OK) {
@@ -502,7 +492,6 @@ static void mount_handle_radec_relative_move(indigo_device *device) {
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	indigo_update_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
-	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
 }
 
@@ -986,7 +975,9 @@ static void mount_update_state() {
 	   (OIL_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		OIL_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 		ascol_get_oil_state(PRIVATE_DATA->glst, &descr, &descrs);
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		snprintf(OIL_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, OIL_STATE_PROPERTY, NULL);
 
@@ -1015,43 +1006,37 @@ static void mount_update_state() {
 	   (DEC_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d) %d %s %s", PRIVATE_DATA->dev_id,PRIVATE_DATA->glst.telescope_state, descrs, descr);
 		snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		ascol_get_ra_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(RA_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		ascol_get_de_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 
+		TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
 		if ((PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF) ||
 		    (PRIVATE_DATA->glst.telescope_state == TE_STATE_INIT)) {
 			TELESCOPE_ON_ITEM->sw.value = false;
 			TELESCOPE_OFF_ITEM->sw.value = true;
-			TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
-		} else if((PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
-		          (PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK)) {
-			TELESCOPE_ON_ITEM->sw.value = true;
-			TELESCOPE_OFF_ITEM->sw.value = false;
-			TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			TELESCOPE_ON_ITEM->sw.value = true;
 			TELESCOPE_OFF_ITEM->sw.value = false;
-			TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
 		indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 
-		if ((PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF) ||
-		    (PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
-		    (PRIVATE_DATA->glst.telescope_state == TE_STATE_INIT)) {
-			MOUNT_TRACKING_ON_ITEM->sw.value = false;
-			MOUNT_TRACKING_OFF_ITEM->sw.value = true;
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-		} else if(PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) {
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		if ((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
+		    ((PRIVATE_DATA->glst.telescope_state >= TE_STATE_ST_DECC1) &&
+		    (PRIVATE_DATA->glst.telescope_state <= TE_STATE_ST_CLU3))) {
 			MOUNT_TRACKING_ON_ITEM->sw.value = true;
 			MOUNT_TRACKING_OFF_ITEM->sw.value = false;
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
+			MOUNT_TRACKING_ON_ITEM->sw.value = false;
+			MOUNT_TRACKING_OFF_ITEM->sw.value = true;
 		}
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 
@@ -1062,6 +1047,7 @@ static void mount_update_state() {
 			RA_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			RA_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+			RA_CALIBRATION_START_ITEM->sw.value = true;
 		}
 		indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
 
@@ -1072,6 +1058,7 @@ static void mount_update_state() {
 			DEC_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			DEC_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+			DEC_CALIBRATION_START_ITEM->sw.value = true;
 		}
 		indigo_update_property(device, DEC_CALIBRATION_PROPERTY, NULL);
 	}
@@ -1191,10 +1178,6 @@ static void mount_update_state() {
 		indigo_update_property(device, FLAP_COUDE_PROPERTY, NULL);
 	}
 
-	/* should be copied every time as there are several properties
-	   relaying on this and we have no track which one changed */
-	prev_glst = PRIVATE_DATA->glst;
-
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_OIMV(PRIVATE_DATA->dev_id, &PRIVATE_DATA->oimv);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -1218,6 +1201,22 @@ static void mount_update_state() {
 	char west;
 	double ra, ha, dec;
 	UPDATE_RA_DE:
+
+	if ((PRIVATE_DATA->glst.telescope_state >= TE_STATE_INIT) &&
+	    (PRIVATE_DATA->glst.telescope_state <= TE_STATE_OFF_REQ)) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+	}
+	indigo_update_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
+	indigo_update_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
+
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	res = ascol_TRRD(PRIVATE_DATA->dev_id, &ra, &dec, &west);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -1227,13 +1226,6 @@ static void mount_update_state() {
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		goto UPDATE_HA_DE;
-	}
-
-	if ((MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) &&
-	    ((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	}
 
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
@@ -1253,36 +1245,15 @@ static void mount_update_state() {
 		goto END;
 	}
 
-	if ((HADEC_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) &&
-		((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
-		HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	}
-
 	HADEC_COORDINATES_HA_ITEM->number.value = ha;
 	HADEC_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_coordinates(device, NULL);
 	indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 
 	END:
-
-	if ((HADEC_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) &&
-		((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
-		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
-	}
-
-	if ((RADEC_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) &&
-		((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
-		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
-		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
-	}
-
+	/* should be copied every time as there are several properties
+	   relaying on this and we have no track which one changed */
+	prev_glst = PRIVATE_DATA->glst;
 	update_all = false;
 }
 
