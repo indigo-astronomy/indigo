@@ -43,24 +43,13 @@ typedef struct {
 	bool parked;
 	bool park_in_progress;
 	char tty_name[INDIGO_VALUE_SIZE];
-	//int count_open;
-	//int slew_rate;
-	//int st4_ra_rate, st4_dec_rate;
-	//int vendor_id;
-	//pthread_mutex_t serial_mutex;
 	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer, *slew_timer, *ha_axis_timer, *dec_axis_timer;
-	//int guide_rate;
-	//indigo_property *command_guide_rate_property;
 
 	int device_count;
 	pthread_mutex_t port_mutex;
 	pthread_mutex_t driver_mutex;
 	pthread_mutex_t ha_mutex;
 	pthread_mutex_t dec_mutex;
-	//char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
-	//double lastRA, lastDec;
-	//char lastUTC[INDIGO_VALUE_SIZE];
-	//char product[64];
 	indigo_property *operating_mode_property;
 	indigo_property *mount_polarscope_property;
 

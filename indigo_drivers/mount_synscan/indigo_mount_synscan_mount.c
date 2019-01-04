@@ -295,7 +295,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "1ST SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
 	synscan_slew_axis_to_position(device, kAxisRA, haPos[idx]);
 	synscan_slew_axis_to_position(device, kAxisDEC, decPos[idx]);
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Slewing...");
+	//indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Slewing...");
 
 	//**  Wait for HA slew to complete
 	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_slew);
@@ -389,27 +389,27 @@ finish:
 	PRIVATE_DATA->abort_slew = false;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
+	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
 void mount_handle_coordinates(indigo_device *device) {
-//	if (PRIVATE_DATA->globalMode != kGlobalModeIdle) {
-//		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-//	} else {
-
-	//  FIXME - if we have been asked to do another slew while a slew is already happening,
-	//  we ought to cancel that slew and start a new one. However, we would need to wait for
-	//  the slew to stop somehow.
-	
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	char* message = NULL;
+	if (PRIVATE_DATA->globalMode != kGlobalModeIdle) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		message = "Slew not started - mount is busy.";
+	} else {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		
 		//  GOTO requested
 		if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 			//  Start slew timer thread
+			PRIVATE_DATA->globalMode = kGlobalModeSlewing;
 			indigo_set_timer(device, 0, mount_slew_timer_callback);
+			message = "Slewing...";
 		}
-//	}
-	indigo_update_coordinates(device, NULL);
+	}
+	indigo_update_coordinates(device, message);
 }
 
 static void mount_update_tracking_rate_timer_callback(indigo_device* device) {
@@ -469,12 +469,7 @@ static void mount_tracking_timer_callback(indigo_device* device) {
 }
 
 void mount_handle_tracking(indigo_device *device) {
-//	if (PRIVATE_DATA->globalMode != kGlobalModeIdle) {
-//		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-//	} else {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
-
-//	}
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	indigo_set_timer(device, 0, mount_tracking_timer_callback);
 }
@@ -620,31 +615,26 @@ static void mount_park_timer_callback(indigo_device* device) {
 	}
 
 	//  Update state
-//	PRIVATE_DATA->park_state = PARK_NONE;
-//	PRIVATE_DATA->globalMode = kGlobalModeParked;
-//	PRIVATE_DATA->parked = true;
 	MOUNT_PARK_PARKED_ITEM->sw.value = true;
 	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
+	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
 void mount_handle_park(indigo_device* device) {
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
-		//if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
 
+			PRIVATE_DATA->globalMode = kGlobalModeParking;
 			indigo_set_timer(device, 0, mount_park_timer_callback);
-		
-			//PRIVATE_DATA->globalMode = kGlobalModeParking;
-			//PRIVATE_DATA->park_state = PARK_PHASE0;
-			//PRIVATE_DATA->park_timer = indigo_set_timer(device, 0, park_timer_callback);
-//		} else {
-//			//  Can't park while mount is doing something else
-//			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-//			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount busy!");
-//		}
+		} else {
+			//  Can't park while mount is doing something else
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking not started - mount is busy.");
+		}
 	}
 	else {
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
