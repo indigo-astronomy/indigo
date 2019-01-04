@@ -62,7 +62,7 @@ typedef struct {
   bool thread_started;                    ///< client thread started/stopped
   int pid;																///< process pid
   indigo_device *protocol_adapter;        ///< server protocol adapter
-	const char *last_error;									///< last error reported within client thread
+	char last_error[256];										///< last error reported within client thread
 } indigo_subprocess_entry;
 
 /** Array of all available drivers (statically & dynamically linked).
@@ -105,7 +105,7 @@ typedef struct {
 	bool thread_started;                    ///< client thread started/stopped
 	int socket;                             ///< stream socket
 	indigo_device *protocol_adapter;        ///< server protocol adapter
-	const char *last_error;									///< last error reported within client thread
+	char last_error[256];										///< last error reported within client thread
 } indigo_server_entry;
 
 
