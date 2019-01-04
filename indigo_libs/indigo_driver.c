@@ -588,15 +588,26 @@ double indigo_stod(char *string) {
 	return value;
 }
 
-char* indigo_dtos(double value, char *format) {
+char* indigo_dtos(double value, char *format) { // circular use of 4 static buffers!
 	double d = fabs(value);
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
 	if (value < 0)
 		d = -d;
-	static char string[128];
+	static char string_1[128], string_2[128], string_3[128], string_4[128];
+	static char *string = string_4;
+	if (string == string_1)
+		string = string_2;
+	else if (string == string_2)
+		string = string_3;
+	else if (string == string_3)
+		string = string_4;
+	else if (string == string_4)
+		string = string_1;
 	if (format == NULL)
 		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, s);
+	else if (format[strlen(format) - 1] == 'd')
+		snprintf(string, 128, format, (int)d, (int)m, (int)s);
 	else
 		snprintf(string, 128, format, (int)d, (int)m, s);
 	return string;

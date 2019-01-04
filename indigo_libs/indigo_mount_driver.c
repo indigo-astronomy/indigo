@@ -532,7 +532,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 						point->used = false;
 						sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", (int *)&point->used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
 						snprintf(name, INDIGO_NAME_SIZE, "%d", i);
-						snprintf(label, INDIGO_VALUE_SIZE, "RA %.2f / Dec %.2f", point->ra, point->dec);
+						snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 						indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
 						indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i, name, label, false);
 					}
@@ -575,7 +575,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 
 				char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 				snprintf(name, INDIGO_NAME_SIZE, "%d", index);
-				snprintf(label, INDIGO_VALUE_SIZE, "RA %.2f / Dec %.2f", point->ra, point->dec);
+				snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 				indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + index, name, label, true);
 				point->used = true;
 
