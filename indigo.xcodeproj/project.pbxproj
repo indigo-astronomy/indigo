@@ -3488,6 +3488,7 @@
 		59FE348021886A17004FB5D4 /* indigo_focuser_lakeside.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_lakeside.h; sourceTree = "<group>"; };
 		59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside_main.c; sourceTree = "<group>"; };
 		59FE348321886A17004FB5D4 /* lakeside_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = lakeside_simulator.ino; sourceTree = "<group>"; };
+		9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher_motor_controller_command_set.pdf; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D3BBBA521147EB500800FB0 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -11482,6 +11483,7 @@
 				59A321B321D691D600EC0F4A /* indigo_mount_synscan_mount.c */,
 				59A321B221D691D600EC0F4A /* indigo_mount_synscan_guider.h */,
 				59A321B421D691D600EC0F4A /* indigo_mount_synscan_guider.c */,
+				9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */,
 			);
 			path = mount_synscan;
 			sourceTree = "<group>";
