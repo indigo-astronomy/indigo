@@ -31,9 +31,9 @@ static const AxisPosition RA_HOME_POSITION = 0x800000;
 static const AxisPosition DEC_HOME_POSITION = 0x800000;
 
 
-#define GET_RELEASE(v)				(int)(((v) >> 16) & 0xFF)
+#define GET_RELEASE(v)          (int)((v) & 0xFF)
 #define GET_REVISION(v)				(int)(((v) >> 8) & 0xFF)
-#define GET_PATCH(v)          (int)((v) & 0xFF)
+#define GET_MODEL(v)				(int)(((v) >> 16) & 0xFF)
 
 
 bool synscan_configure(indigo_device* device) {
@@ -46,9 +46,34 @@ bool synscan_configure(indigo_device* device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ERROR GETTING FIRMWARE");
 		return false;
 	}
-	snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(version), GET_REVISION(version), GET_PATCH(version));
-	snprintf(MOUNT_INFO_VENDOR_ITEM->text.value, INDIGO_VALUE_SIZE, "Sky-Watcher");
-	snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "SynScan");
+	snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", GET_RELEASE(version), GET_REVISION(version));
+	snprintf(MOUNT_INFO_VENDOR_ITEM->text.value, INDIGO_VALUE_SIZE, "Sky-Watcher SynScan");
+	switch (GET_MODEL(version)) {
+	case 0x00:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ6"); break;
+	case 0x01:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "HEQ5"); break;
+	case 0x02:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ5"); break;
+	case 0x03:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ3"); break;
+	case 0x04:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ8"); break;
+	case 0x05:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZEQ6"); break;
+	case 0x06:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZEQ5"); break;
+	case 0x80:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "GT"); break;
+	case 0x81:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "MF"); break;
+	case 0x82:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "114GT"); break;
+	case 0x90:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "DOB"); break;
+	default:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CUSTOM"); break;
+	}
 
 	//  Query motor status
 	long raMotorStatus = 0;
