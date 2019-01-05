@@ -49,11 +49,10 @@
 #define PRIVATE_DATA                    ((ascol_private_data *)device->private_data)
 
 #define ALARM_GROUP                        "Alarms"
-#define TELESCOPE_STATE_GROUP              "Telescope Status"
 #define METEO_DATA_GROUP                   "Meteo Data"
-#define SWITCHES_GROUP                     "System Switches"
+#define FLAPS_GROUP                        "Flaps"
 #define OIL_GROUP                          "Oil"
-#define CORRECTIONS_GROUP                  "Corrections"
+#define CORRECTIONS_GROUP                  "Callibrations"
 
 // Panel
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
@@ -1272,9 +1271,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
-		MOUNT_PARK_PARKED_ITEM->sw.value = false;
-		MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
-		//MOUNT_PARK_PROPERTY->hidden = true;
+		MOUNT_PARK_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
 		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 		MOUNT_INFO_PROPERTY->hidden = true;
@@ -1283,7 +1280,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
 
-		strncpy(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP, INDIGO_NAME_SIZE);
+		//strncpy(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP, INDIGO_NAME_SIZE);
 
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
 		MOUNT_SNOOP_DEVICES_PROPERTY->hidden = true;
@@ -1292,15 +1289,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		if (OIL_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(OIL_STATE_ITEM, OIL_STATE_ITEM_NAME, "State", "");
-		// --------------------------------------------------------------------------- MOUNT STATE
-		MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_STATE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
-		if (MOUNT_STATE_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_text_item(MOUNT_STATE_ITEM, MOUNT_STATE_ITEM_NAME, "Mount", "");
-		indigo_init_text_item(RA_STATE_ITEM, RA_STATE_ITEM_NAME, "RA Axis", "");
-		indigo_init_text_item(DEC_STATE_ITEM, DEC_STATE_ITEM_NAME, "DEC Axis", "");
 		// --------------------------------------------------------------------------- FLAP STATE
-		FLAP_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FLAP_STATE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Flaps State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
+		FLAP_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FLAP_STATE_PROPERTY_NAME, FLAPS_GROUP, "Flaps State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 		if (FLAP_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(TUBE_FLAP_STATE_ITEM, TUBE_FLAP_STATE_ITEM_NAME, "Tube Flap", "");
@@ -1309,14 +1299,14 @@ static indigo_result mount_attach(indigo_device *device) {
 		char item_name[INDIGO_NAME_SIZE];
 		char item_label[INDIGO_NAME_SIZE];
 		// -------------------------------------------------------------------------- FLAP_TUBE
-		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Tube Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, FLAPS_GROUP, "Tube Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLAP_TUBE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_switch_item(FLAP_TUBE_OPEN_ITEM, FLAP_TUBE_OPEN_ITEM_NAME, "Open", false);
 		indigo_init_switch_item(FLAP_TUBE_CLOSE_ITEM, FLAP_TUBE_CLOSE_ITEM_NAME, "Close", true);
 		// -------------------------------------------------------------------------- FLAP_COUDE
-		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Coude Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, FLAPS_GROUP, "Coude Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLAP_COUDE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -1343,29 +1333,22 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(OIL_ON_ITEM, OIL_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(OIL_OFF_ITEM, OIL_OFF_ITEM_NAME, "Off", true);
-		// -------------------------------------------------------------------------- TELESCOPE_POWER
-		TELESCOPE_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, TELESCOPE_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Telescope Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (TELESCOPE_POWER_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		indigo_init_switch_item(TELESCOPE_ON_ITEM, TELESCOPE_ON_ITEM_NAME, "On", false);
-		indigo_init_switch_item(TELESCOPE_OFF_ITEM, TELESCOPE_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- AXIS_CALIBRATED
-		AXIS_CALIBRATED_PROPERTY = indigo_init_light_property(NULL, device->name, AXIS_CALIBRATED_PROPERTY_NAME, SWITCHES_GROUP, "Axis Calibrated", INDIGO_IDLE_STATE, 2);
+		AXIS_CALIBRATED_PROPERTY = indigo_init_light_property(NULL, device->name, AXIS_CALIBRATED_PROPERTY_NAME, CORRECTIONS_GROUP, "Axis Calibrated", INDIGO_IDLE_STATE, 2);
 		if (AXIS_CALIBRATED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_light_item(RA_CALIBRATED_ITEM, RA_CALIBRATED_ITEM_NAME, "RA Axis", INDIGO_IDLE_STATE);
 		indigo_init_light_item(DEC_CALIBRATED_ITEM, DEC_CALIBRATED_ITEM_NAME, "DEC Axis", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------- RA_CALIBRATION
-		RA_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, RA_CALIBRATION_PROPERTY_NAME, SWITCHES_GROUP, "RA Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		RA_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, RA_CALIBRATION_PROPERTY_NAME, CORRECTIONS_GROUP, "RA Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 		if (RA_CALIBRATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_switch_item(RA_CALIBRATION_START_ITEM, RA_CALIBRATION_START_ITEM_NAME, "Start", false);
 		indigo_init_switch_item(RA_CALIBRATION_STOP_ITEM, RA_CALIBRATION_STOP_ITEM_NAME, "Stop", false);
 		// -------------------------------------------------------------------------- DEC_CALIBRATION
-		DEC_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, DEC_CALIBRATION_PROPERTY_NAME, SWITCHES_GROUP, "DEC Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		DEC_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, DEC_CALIBRATION_PROPERTY_NAME, CORRECTIONS_GROUP, "DEC Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 		if (DEC_CALIBRATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -1412,6 +1395,20 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(GUIDE_MODE_ON_ITEM, GUIDE_MODE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(GUIDE_MODE_OFF_ITEM, GUIDE_MODE_OFF_ITEM_NAME, "Off", true);
+		// --------------------------------------------------------------------------- MOUNT STATE
+		MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_STATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
+		if (MOUNT_STATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(MOUNT_STATE_ITEM, MOUNT_STATE_ITEM_NAME, "Mount", "");
+		indigo_init_text_item(RA_STATE_ITEM, RA_STATE_ITEM_NAME, "RA Axis", "");
+		indigo_init_text_item(DEC_STATE_ITEM, DEC_STATE_ITEM_NAME, "DEC Axis", "");
+		// -------------------------------------------------------------------------- TELESCOPE_POWER
+		TELESCOPE_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, TELESCOPE_POWER_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Telescope Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (TELESCOPE_POWER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(TELESCOPE_ON_ITEM, TELESCOPE_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(TELESCOPE_OFF_ITEM, TELESCOPE_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- HADEC_COORDINATES
 		HADEC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, HADEC_COORDINATES_PROPERTY_NAME, MOUNT_MAIN_GROUP, "HA DEC Coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (HADEC_COORDINATES_PROPERTY == NULL)
@@ -1514,47 +1511,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
-	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_PARK
-		if(PRIVATE_DATA->park_in_progress) {
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, WARN_PARKING_PROGRESS_MSG);
-			return INDIGO_OK;
-		}
-		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
-		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
-			PRIVATE_DATA->parked = true;  /* a but premature but need to cancel other movements from now on until unparked */
-			PRIVATE_DATA->park_in_progress = true;
-
-			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-			int res = 0; //tc_goto_azalt_p(PRIVATE_DATA->dev_id, 0, 90);
-			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-
-			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
-			PRIVATE_DATA->park_timer = indigo_set_timer(device, 2, park_timer_callback);
-		} else {
-			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparking...");
-
-			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-			int res = 0; //tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
-			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
-			} else {
-				MOUNT_TRACKING_OFF_ITEM->sw.value = false;
-				MOUNT_TRACKING_ON_ITEM->sw.value = true;
-				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-			}
-
-			PRIVATE_DATA->parked = false;
-			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount unparked.");
-		}
-		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPTHIC_COORDINATES
 		if (IS_CONNECTED) {
