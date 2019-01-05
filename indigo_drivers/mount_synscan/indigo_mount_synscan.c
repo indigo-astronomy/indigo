@@ -70,6 +70,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		MOUNT_TRACKING_ON_ITEM->sw.value = false;
 		MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
+		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- MOUNT_RAW_COORDINATES
 		MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -100,8 +102,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", true);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		OPERATING_MODE_PROPERTY->hidden = true;
-
-		//  Do we need to support ST4 port and pulse guiding?
 
 		//  FURTHER INITIALISATION
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);

@@ -642,9 +642,53 @@ void mount_handle_park(indigo_device* device) {
 	}
 }
 
-void mount_handle_st4_guiding_rate(indigo_device *device) {
-	//  FIXME - Send synscan command to alter ST4 rate
+static enum GuideRate mount_guide_rate(int rate) {
+	if (rate < 19)
+		return kGuideRate_x0_125;
+	else if (rate < 38)
+		return kGuideRate_x0_25;
+	else if (rate < 63)
+		return kGuideRate_x0_50;
+	else if (rate < 88)
+		return kGuideRate_x0_75;
+	else
+		return kGuideRate_x1_00;
+}
 
+static int mount_guide_rate_percent(enum GuideRate rate) {
+	switch (rate) {
+		case kGuideRate_x0_125:
+			return 12;
+		case kGuideRate_x0_25:
+			return 25;
+		case kGuideRate_x0_50:
+			return 50;
+		case kGuideRate_x0_75:
+			return 75;
+		case kGuideRate_x1_00:
+			return 100;
+	}
+}
+
+void mount_handle_st4_guiding_rate(indigo_device *device) {
+	//  Convert RA/DEC rate to supportable rate
+	int ra_rate = mount_guide_rate(MOUNT_GUIDE_RATE_RA_ITEM->number.value);
+	int dec_rate = mount_guide_rate(MOUNT_GUIDE_RATE_DEC_ITEM->number.value);
+
+	//  Check what changed
+	if (ra_rate != PRIVATE_DATA->st4_guide_rate) {
+		PRIVATE_DATA->st4_guide_rate = ra_rate;
+		dec_rate = ra_rate;
+		synscan_set_st4_guide_rate(device, PRIVATE_DATA->st4_guide_rate);
+	}
+	else if (dec_rate != PRIVATE_DATA->st4_guide_rate) {
+		PRIVATE_DATA->st4_guide_rate = dec_rate;
+		ra_rate = dec_rate;
+		synscan_set_st4_guide_rate(device, PRIVATE_DATA->st4_guide_rate);
+	}
+
+	//  Update rate properties to reflect what happened
+	MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.value = mount_guide_rate_percent(PRIVATE_DATA->st4_guide_rate);
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, "Updated ST4 guide rate.");
 }

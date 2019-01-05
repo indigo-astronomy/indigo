@@ -207,6 +207,13 @@ bool synscan_configure(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR OK %06X", decMotorStatus);
 	}
 
+	//  Configure ST4 guide rate
+	PRIVATE_DATA->st4_guide_rate = kGuideRate_x0_50;
+	MOUNT_GUIDE_RATE_RA_ITEM->number.value = 50;
+	MOUNT_GUIDE_RATE_DEC_ITEM->number.value = 50;
+	if (!synscan_set_st4_guide_rate(device, PRIVATE_DATA->st4_guide_rate))
+		return false;
+
 	//  Configure the mount modes
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;

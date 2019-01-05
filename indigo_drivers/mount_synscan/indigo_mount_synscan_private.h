@@ -52,7 +52,8 @@ typedef struct {
 	pthread_mutex_t dec_mutex;
 	indigo_property *operating_mode_property;
 	indigo_property *mount_polarscope_property;
-
+	int st4_guide_rate;
+	
 	bool mountConfigured;
 
 	//  Mount parameters
