@@ -88,9 +88,8 @@ typedef struct {
 	enum AxisMode raAxisMode;
 	enum AxisMode decAxisMode;
 
-	//  Abort flags
-	bool abort_park;
-	bool abort_slew;
+	//  Abort flag
+	bool abort_motion;
 	
 } synscan_private_data;
 
