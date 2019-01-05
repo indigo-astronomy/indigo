@@ -41,6 +41,14 @@ enum MotorStatus {
 	//=      0x1 == slewing, 0x0 == slewingTo, 0x2==slewing back, 0x4==turbo       0 == stopped, 1 == moving           0==not init, 1==init ok
 };
 
+enum GuideRate {
+	kGuideRate_x1_00 = 0,
+	kGuideRate_x0_75 = 1,
+	kGuideRate_x0_50 = 2,
+	kGuideRate_x0_25 = 3,
+	kGuideRate_x0_125 = 4
+};
+
 bool synscan_firmware_version(indigo_device* device, long* v);
 bool synscan_total_axis_steps(indigo_device* device, enum AxisID axis, long* v);
 bool synscan_worm_rotation_steps(indigo_device* device, enum AxisID axis, long* v);
@@ -58,5 +66,6 @@ bool synscan_set_axis_slew_rate(indigo_device* device, enum AxisID axis, long r)
 bool synscan_slew_axis(indigo_device* device, enum AxisID axis);
 bool synscan_set_axis_slowdown(indigo_device* device, enum AxisID axis, long s);
 bool synscan_set_polarscope_brightness(indigo_device* device, unsigned char brightness);
+bool synscan_set_st4_guide_rate(indigo_device* device, enum GuideRate rate);
 
 #endif /* indigo_mount_synscan_protocol_h */
