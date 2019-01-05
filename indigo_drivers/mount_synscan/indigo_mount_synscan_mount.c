@@ -267,9 +267,9 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	//**  Stop both axes
 	synscan_stop_axis(device, kAxisRA);
 	synscan_stop_axis(device, kAxisDEC);
-	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_slew);
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_slew);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
 	//**  Perform preliminary slew on both axes
@@ -288,7 +288,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	int idx = synscan_select_best_encoder_point(device, haPos, decPos);
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew)
+	if (PRIVATE_DATA->abort_motion)
 		goto finish;
 	
 	//  Start the first slew
@@ -298,7 +298,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	//indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Slewing...");
 
 	//**  Wait for HA slew to complete
-	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_slew);
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 
 	//**  Compute precise HA slew for LST + 5 seconds
@@ -315,7 +315,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew)
+	if (PRIVATE_DATA->abort_motion)
 		goto finish;
 	
 	//  We use the same index as the preliminary slew to avoid issues with target crossing meridian during first slew
@@ -326,16 +326,16 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Performing accurate HA slew...");
 
 	//**  Wait for precise HA slew to complete
-	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_slew);
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew)
+	if (PRIVATE_DATA->abort_motion)
 		goto finish;
 
 	//**  Wait for LST to match target LST
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "HA slew complete.");
-	while (!PRIVATE_DATA->abort_slew) {
+	while (!PRIVATE_DATA->abort_motion) {
 		//  Get current LST
 		lst = indigo_lst(lng);
 
@@ -360,12 +360,12 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	}
 
 	//**  Wait for DEC slew to complete
-	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_slew);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew)
+	if (PRIVATE_DATA->abort_motion)
 		goto finish;
 
 	//**  Do precise DEC slew correction
@@ -374,11 +374,11 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Performing accurate DEC slew...");
 
 	//**  Wait for DEC slew to complete
-	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_slew);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_slew)
+	if (PRIVATE_DATA->abort_motion)
 		goto finish;
 
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
@@ -386,7 +386,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 
 finish:
 	//**  Finalise slew coordinates
-	PRIVATE_DATA->abort_slew = false;
+	PRIVATE_DATA->abort_motion = false;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 	PRIVATE_DATA->globalMode = kGlobalModeIdle;
@@ -394,22 +394,14 @@ finish:
 }
 
 void mount_handle_coordinates(indigo_device *device) {
-	char* message = NULL;
-	if (PRIVATE_DATA->globalMode != kGlobalModeIdle) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		message = "Slew not started - mount is busy.";
-	} else {
+	if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		
-		//  GOTO requested
-		if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-			//  Start slew timer thread
-			PRIVATE_DATA->globalMode = kGlobalModeSlewing;
-			indigo_set_timer(device, 0, mount_slew_timer_callback);
-			message = "Slewing...";
-		}
+		indigo_update_coordinates(device, "Slewing...");
+
+		//  Start slew timer thread
+		PRIVATE_DATA->globalMode = kGlobalModeSlewing;
+		indigo_set_timer(device, 0, mount_slew_timer_callback);
 	}
-	indigo_update_coordinates(device, message);
 }
 
 static void mount_update_tracking_rate_timer_callback(indigo_device* device) {
@@ -571,9 +563,9 @@ static void mount_park_timer_callback(indigo_device* device) {
 	//  Stop both axes
 	synscan_stop_axis(device, kAxisRA);
 	synscan_stop_axis(device, kAxisDEC);
-	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_park);
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_park);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 
 	//  Stop tracking if enabled
@@ -589,8 +581,8 @@ static void mount_park_timer_callback(indigo_device* device) {
 	int idx = synscan_select_best_encoder_point(device, haPos, decPos);
 
 	//  Abort parking if requested
-	if (PRIVATE_DATA->abort_park) {
-		PRIVATE_DATA->abort_park = false;
+	if (PRIVATE_DATA->abort_motion) {
+		PRIVATE_DATA->abort_motion = false;
 		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 		return;
 	}
@@ -600,16 +592,16 @@ static void mount_park_timer_callback(indigo_device* device) {
 	synscan_slew_axis_to_position(device, kAxisDEC, decPos[idx]);
 	
 	//  Check for HA parked
-	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_park);
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 
 	//  Check for DEC parked
-	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_park);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
 	//  Abort parking if requested
-	if (PRIVATE_DATA->abort_park) {
-		PRIVATE_DATA->abort_park = false;
+	if (PRIVATE_DATA->abort_motion) {
+		PRIVATE_DATA->abort_motion = false;
 		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 		return;
 	}
@@ -696,8 +688,7 @@ void mount_handle_st4_guiding_rate(indigo_device *device) {
 void mount_handle_abort(indigo_device *device) {
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		//  Cancel any park or slew in progress
-		PRIVATE_DATA->abort_slew = true;
-		PRIVATE_DATA->abort_park = true;
+		PRIVATE_DATA->abort_motion = true;
 
 		//  Unconditionally stop motors in case mount is out of control for any reason
 		synscan_stop_axis(device, kAxisRA);
