@@ -336,6 +336,12 @@ bool synscan_set_axis_slowdown(indigo_device* device, enum AxisID axis, long s) 
 
 bool synscan_set_polarscope_brightness(indigo_device* device, unsigned char brightness) {
 	char buffer[7];
-	sprintf(buffer, ":V1%02X", brightness);
+	sprintf(buffer, ":V1%01X", brightness);
+	return synscan_command(device, buffer, NULL);
+}
+
+bool synscan_set_st4_guide_rate(indigo_device* device, enum GuideRate rate) {
+	char buffer[7];
+	sprintf(buffer, ":P1%d", rate);
 	return synscan_command(device, buffer, NULL);
 }
