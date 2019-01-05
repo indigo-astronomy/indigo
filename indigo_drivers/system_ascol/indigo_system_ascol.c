@@ -2112,10 +2112,6 @@ static void dome_update_state() {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	}
 
-	/* should be copied every time as there are several properties
-	   relaying on this and we have no track which one changed */
-	prev_glst = PRIVATE_DATA->glst;
-
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_DOPO(PRIVATE_DATA->dev_id, &DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -2125,18 +2121,19 @@ static void dome_update_state() {
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Could not read Dome Position");
 		indigo_update_property(device, DOME_STEPS_PROPERTY, "Could not read Dome Position");
-		goto END;
-	}
-	if (update_all || update_horizontal ||
-	   (prev_dome_az != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) ||
-	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) ||
-	   (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
+	} else if (update_all || update_horizontal ||
+	          (prev_dome_az != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) ||
+	          (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	          (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		update_horizontal = false;
 	}
 
-	END:
+	/* should be copied every time as there are several properties
+	   relaying on this and we have no track which one changed */
+	prev_glst = PRIVATE_DATA->glst;
+
 	update_all = false;
 	prev_dome_az = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value;
 }
@@ -2500,10 +2497,6 @@ static void focus_update_state() {
 		}
 	}
 
-	/* should be copied every time as there are several properties
-	   relaying on this and we have no track which one changed */
-	prev_glst = PRIVATE_DATA->glst;
-
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_FOPO(PRIVATE_DATA->dev_id, &FOCUSER_POSITION_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -2513,18 +2506,19 @@ static void focus_update_state() {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Could not read Fosus Position");
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Could not read Fosus Position");
-		goto END;
-	}
-	if (update_all || update_focus ||
-	   (prev_focus_pos != FOCUSER_POSITION_ITEM->number.value) ||
-	   (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) ||
-	   (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
+	} else if (update_all || update_focus ||
+	          (prev_focus_pos != FOCUSER_POSITION_ITEM->number.value) ||
+	          (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	          (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		update_focus = false;
 	}
 
-	END:
+	/* should be copied every time as there are several properties
+	   relaying on this and we have no track which one changed */
+	prev_glst = PRIVATE_DATA->glst;
+
 	update_all = false;
 	prev_focus_pos = FOCUSER_POSITION_ITEM->number.value;
 }
@@ -2804,6 +2798,8 @@ static void panel_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static ascol_glme_t prev_glme = {0};
 	static bool update_all = true;
+	char *descr, *descrs;
+	int index;
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
@@ -2811,12 +2807,7 @@ static void panel_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
 		ALARM_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status");
-		goto METEO_MEASURE;
-	}
-
-	char *descr, *descrs;
-	int index;
-	if (update_all || memcmp(prev_glst.alarm_bits, PRIVATE_DATA->glst.alarm_bits, 10)) {
+	} else if (update_all || memcmp(prev_glst.alarm_bits, PRIVATE_DATA->glst.alarm_bits, 10)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating ALARM_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		ALARM_PROPERTY->state = INDIGO_OK_STATE;
 		index = 0;
@@ -2835,11 +2826,7 @@ static void panel_timer_callback(indigo_device *device) {
 		}
 		indigo_update_property(device, ALARM_PROPERTY, NULL);
 	}
-	/* should be copied every time as there are several properties
-	   relaying on this and we have no track which one changed */
-	prev_glst = PRIVATE_DATA->glst;
 
-	METEO_MEASURE:
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	res = ascol_GLME(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glme);
@@ -2848,10 +2835,7 @@ static void panel_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLME(%d) = %d", PRIVATE_DATA->dev_id, res);
 		GLME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GLME_PROPERTY, "Could not read Meteo sensrs");
-		goto END;
-	}
-
-	if (update_all || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
+	} else if (update_all || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating GLME_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		GLME_PROPERTY->state = INDIGO_OK_STATE;
 		for (int index = 0; index < ASCOL_GLME_N; index++) {
@@ -2861,7 +2845,10 @@ static void panel_timer_callback(indigo_device *device) {
 		prev_glme = PRIVATE_DATA->glme;
 	}
 
-	END:
+	/* should be copied every time as there are several properties
+	   relaying on this and we have no track which one changed */
+	prev_glst = PRIVATE_DATA->glst;
+
 	// Update other devices
 	mount_update_state();
 	dome_update_state();
