@@ -154,27 +154,34 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		//  Falls through to base code to complete connection
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
-#if 0
-		if(PRIVATE_DATA->park_in_progress) {
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, WARN_PARKING_PROGRESS_MSG);
-			return INDIGO_OK;
-		}
-#endif
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		mount_handle_park(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-			//  Pass sync requests through to indigo common code
-			return indigo_mount_change_property(device, client, property);
+			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+				//  Pass sync requests through to indigo common code
+				return indigo_mount_change_property(device, client, property);
+			}
+			else {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, "Sync not performed - mount is busy.");
+				return INDIGO_OK;
+			}
 		} else {
-			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-			double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-			mount_handle_coordinates(device);
+			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+				indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+				mount_handle_coordinates(device);
+			}
+			else {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, "Slew not started - mount is busy.");
+			}
 			return INDIGO_OK;
 		}
 	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
