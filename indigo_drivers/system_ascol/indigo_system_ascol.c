@@ -1662,32 +1662,32 @@ static void guider_timer_callback_dec(indigo_device *device) {
 }
 
 
-static void guide_correction_timer_callback(indigo_device *device) {
+static void guider_update_state() {
+	indigo_device *device = mount_guider;
+	if ((device == NULL) || (!IS_CONNECTED)) return;
+
 	double ra_corr, dec_corr;
+	static double prev_ra_corr, prev_dec_corr;
+	static bool update_all = true;
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_TRGV(PRIVATE_DATA->dev_id, &ra_corr, &dec_corr);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRGV(%d) = %d", PRIVATE_DATA->dev_id, res);
 		GUIDE_CORRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		return;
-	}
-
-	if ((GUIDE_CORRECTION_RA_ITEM->number.target == ra_corr) &&
-	    (GUIDE_CORRECTION_DEC_ITEM->number.target == dec_corr)) {
+	} else if (update_all || (prev_ra_corr != ra_corr) || (prev_dec_corr != dec_corr) ||
+	    GUIDE_CORRECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		GUIDE_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		GUIDE_CORRECTION_RA_ITEM->number.value = GUIDE_CORRECTION_RA_ITEM->number.target;
-		GUIDE_CORRECTION_DEC_ITEM->number.value = GUIDE_CORRECTION_DEC_ITEM->number.target;
-		indigo_update_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
-	} else {
 		GUIDE_CORRECTION_RA_ITEM->number.value = ra_corr;
 		GUIDE_CORRECTION_DEC_ITEM->number.value = dec_corr;
 		indigo_update_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
-		indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->guide_correction_timer);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	prev_ra_corr = ra_corr;
+	prev_dec_corr = dec_corr;
+	update_all = false;
 }
 
 
@@ -1830,7 +1830,6 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGV(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 		GUIDE_CORRECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		PRIVATE_DATA->guide_correction_timer = indigo_set_timer(device, 0, guide_correction_timer_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_RATE
@@ -2692,6 +2691,7 @@ static void panel_timer_callback(indigo_device *device) {
 	mount_update_state();
 	dome_update_state();
 	focus_update_state();
+	guider_update_state();
 
 	// Reschedule execution
 	update_all = false;
