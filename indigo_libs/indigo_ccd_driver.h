@@ -101,6 +101,14 @@ extern "C" {
  */
 #define CCD_UPLOAD_MODE_BOTH_ITEM         (CCD_UPLOAD_MODE_PROPERTY->items+2)
 
+/** CCD_UPLOAD_MODE.PREVIEW property item pointer.
+ */
+#define CCD_UPLOAD_MODE_PREVIEW_ITEM 			(CCD_UPLOAD_MODE_PROPERTY->items+3)
+
+/** CCD_UPLOAD_MODE.PREVIEW_LOCAL property item pointer.
+ */
+#define CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM	(CCD_UPLOAD_MODE_PROPERTY->items+4)
+
 /** CCD_LOCAL_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_LOCAL_MODE_PROPERTY           (CCD_CONTEXT->ccd_local_mode_property)
@@ -313,6 +321,30 @@ extern "C" {
  */
 #define FITS_HEADER_SIZE  2880
 
+/** CCD_JPEG_SETTINGS property pointer, property is mandatory, read-write property, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_JPEG_SETTINGS_PROPERTY         (CCD_CONTEXT->ccd_jpeg_settings)
+
+/** CCD_JPEG_SETTINGS.QUALITY property item pointer.
+ */
+#define CCD_JPEG_SETTINGS_QUALITY_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+0)
+
+/** CCD_JPEG_SETTINGS.BLACK property item pointer.
+ */
+#define CCD_JPEG_SETTINGS_BLACK_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+1)
+	
+/** CCD_JPEG_SETTINGS.WHITE property item pointer.
+ */
+#define CCD_JPEG_SETTINGS_WHITE_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+2)
+	
+/** CCD_JPEG_SETTINGS.BLACK_TRESHOLD property item pointer.
+ */
+#define CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+3)
+	
+/** CCD_JPEG_SETTINGS.WHITE_TRESHOLD property item pointer.
+ */
+#define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+4)
+	
 /** RAW header.
  */
 
@@ -355,6 +387,7 @@ typedef struct {
 	indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
 	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
 	indigo_property *ccd_fits_headers;						///< CCD_FITS_HEADERS property pointer
+	indigo_property *ccd_jpeg_settings;						///< CCD_JPEG_SETTINGS property pointer
 } indigo_ccd_context;
 
 /** Suspend countdown.
