@@ -633,6 +633,11 @@
 						for (var i = 0; i < vector.items.length; i++) {
 							var item = addItem(property, vector.items[i].name);
 							item.label = vector.items[i].label;
+							item.jpeg = false;
+							if (vector.items[i].value != undefined && vector.state == 'Ok') {
+								item.value = vector.items[i].value + '?' + new Date().getTime();
+								item.jpeg = vector.items[i].value.substr(-5) === ".jpeg";
+							}
 						}
 					} else if ((vector = message.setBLOBVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
@@ -662,6 +667,7 @@
 			$scope.onError = function(event) {
 				console.log("ERROR "+event.data);
 				alert(event.data);
+				setTimeout($scope.init, 3000);
 			}
 
 			$scope.setSwitch = function(device, property, item, value) {
