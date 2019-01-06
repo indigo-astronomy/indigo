@@ -369,7 +369,7 @@ static bool ascol_device_open(indigo_device *device) {
 	if (device->is_connected) return false;
 
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device,  CONNECTION_PROPERTY, NULL);
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
