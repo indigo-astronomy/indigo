@@ -1272,6 +1272,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_PARK_PROPERTY->hidden = true;
+		MOUNT_MOTION_DEC_PROPERTY->hidden = true;
+		MOUNT_MOTION_RA_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
 		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 		MOUNT_INFO_PROPERTY->hidden = true;
@@ -1757,16 +1759,6 @@ static indigo_result ascol_guider_enumerate_properties(indigo_device *device, in
 
 static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
-	int dev_id = PRIVATE_DATA->dev_id;
-	int res;
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	//res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
-	}
-
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -1776,16 +1768,6 @@ static void guider_timer_callback_ra(indigo_device *device) {
 
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
-	int dev_id = PRIVATE_DATA->dev_id;
-	int res;
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	//res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
-	}
-
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -1822,17 +1804,16 @@ static void guide_correction_timer_callback(indigo_device *device) {
 }
 
 
-static void guider_handle_guide_rate(indigo_device *device) {
-}
-
-
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------- GUIDER_RATE
 		GUIDER_RATE_PROPERTY->hidden = false;
+		GUIDER_RATE_ITEM->number.min = 10;
+		GUIDER_RATE_ITEM->number.max = 80;
 		// -------------------------------------------------------------------------- GUIDE_CORRECTION
 		GUIDE_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, GUIDE_CORRECTION_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide Corrections", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (GUIDE_CORRECTION_PROPERTY == NULL)
@@ -1881,60 +1862,75 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+
+		double ra_gv, dec_gv, new_dec_gv;
+		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+		int res = ascol_TRGV(PRIVATE_DATA->dev_id, &ra_gv, &dec_gv);
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		if (res != ASCOL_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRGV(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		/* convert pulse duration to arcseconds as ASCOL works with arcsec */
+		double duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
 		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-			int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+			new_dec_gv = dec_gv + roundf(10.0 * duration * PRIVATE_DATA->guide_rate) / 10.0;
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			duration = GUIDER_GUIDE_SOUTH_ITEM->number.value / 1000.0;
 			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-				int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-				pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-				if (res != RC_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-				}
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+				new_dec_gv = dec_gv - roundf(10.0 * duration * PRIVATE_DATA->guide_rate) /10.0;
 			}
 		}
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		if (duration > 0) {
+			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+			res = ascol_TSGV(PRIVATE_DATA->dev_id, ra_gv, new_dec_gv);
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+			if (res != ASCOL_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGV(%d, %f, %f) = %d", PRIVATE_DATA->dev_id, ra_gv, new_dec_gv, res);
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Guide r_ra = %.1f\", r_DEC = %.1f\", pulse = %.3f sec", ra_gv, new_dec_gv, duration);
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration, guider_timer_callback_dec);
+		} else {
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		double ra_gv, dec_gv, new_ra_gv;
+		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+		int res = ascol_TRGV(PRIVATE_DATA->dev_id, &ra_gv, &dec_gv);
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		if (res != ASCOL_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRGV(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		/* convert pulse duration to arcseconds as ASCOL works with arcsec */
+		double duration = GUIDER_GUIDE_EAST_ITEM->number.value / 1000.0;
 		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-			int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+			new_ra_gv = ra_gv + roundf(10.0 * duration * PRIVATE_DATA->guide_rate) / 10.0;
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			duration = GUIDER_GUIDE_WEST_ITEM->number.value / 1000.0;
 			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-				int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-				pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-				if (res != RC_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
-				}
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+				new_ra_gv = ra_gv - roundf(10.0 * duration * PRIVATE_DATA->guide_rate) / 10.0;
 			}
 		}
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		if (duration > 0) {
+			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+			res = ascol_TSGV(PRIVATE_DATA->dev_id, new_ra_gv, dec_gv);
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+			if (res != ASCOL_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGV(%d, %f, %f) = %d", PRIVATE_DATA->dev_id, new_ra_gv, dec_gv, res);
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Guide r_RA = %.1f\", r_dec = %.1f\", pulse = %.3f sec", new_ra_gv, dec_gv, duration);
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration, guider_timer_callback_ra);
+		} else {
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDE_CORRECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDE_CORRECTION
@@ -2945,7 +2941,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "2M RCC Telescope", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "ASCOL Telescope System", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
