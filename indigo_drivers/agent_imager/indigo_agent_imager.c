@@ -45,14 +45,6 @@
 #define AGENT_IMAGER_BATCH_EXPOSURE_ITEM  		(AGENT_IMAGER_BATCH_PROPERTY->items+1)
 #define AGENT_IMAGER_BATCH_DELAY_ITEM     		(AGENT_IMAGER_BATCH_PROPERTY->items+2)
 
-#define AGENT_IMAGER_PREVIEW_PROPERTY					(DEVICE_PRIVATE_DATA->agent_ccd_preview_property)
-#define AGENT_IMAGER_PREVIEW_IMAGE_ITEM				(AGENT_IMAGER_PREVIEW_PROPERTY->items+0)
-#define AGENT_IMAGER_PREVIEW_HISTO_ITEM				(AGENT_IMAGER_PREVIEW_PROPERTY->items+1)
-
-#define AGENT_IMAGER_PREVIEW_SETUP_PROPERTY		(DEVICE_PRIVATE_DATA->agent_ccd_preview_setup_property)
-#define AGENT_IMAGER_PREVIEW_BLACK_POINT_ITEM	(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY->items+0)
-#define AGENT_IMAGER_PREVIEW_WHITE_POINT_ITEM	(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY->items+1)
-
 #define AGENT_START_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_start_process_property)
 #define AGENT_IMAGER_START_EXPOSURE_ITEM  		(AGENT_START_PROCESS_PROPERTY->items+0)
 #define AGENT_IMAGER_START_STREAMING_ITEM 		(AGENT_START_PROCESS_PROPERTY->items+1)
@@ -66,8 +58,6 @@
 
 typedef struct {
 	indigo_property *agent_ccd_batch_property;
-	indigo_property *agent_ccd_preview_property;
-	indigo_property *agent_ccd_preview_setup_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_wheel_filter_property;
@@ -295,17 +285,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort batch", false);
-		// -------------------------------------------------------------------------------- Preview properties
-		AGENT_IMAGER_PREVIEW_SETUP_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY_NAME, "Preview", "Preview settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (AGENT_IMAGER_BATCH_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_IMAGER_PREVIEW_BLACK_POINT_ITEM, AGENT_IMAGER_PREVIEW_BLACK_POINT_ITEM_NAME, "Black point", -1, 0xFFFF, 0, -1);
-		indigo_init_number_item(AGENT_IMAGER_PREVIEW_WHITE_POINT_ITEM, AGENT_IMAGER_PREVIEW_WHITE_POINT_ITEM_NAME, "White point", -1, 0xFFFF, 0, -1);
-		AGENT_IMAGER_PREVIEW_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_IMAGER_PREVIEW_PROPERTY_NAME, "Preview", "Preview image data", INDIGO_OK_STATE, 2);
-		if (AGENT_IMAGER_PREVIEW_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_blob_item(AGENT_IMAGER_PREVIEW_IMAGE_ITEM, AGENT_IMAGER_PREVIEW_IMAGE_ITEM_NAME, "Image preview");
-		indigo_init_blob_item(AGENT_IMAGER_PREVIEW_HISTO_ITEM, AGENT_IMAGER_PREVIEW_HISTO_ITEM_NAME, "Image histogram");
 		// -------------------------------------------------------------------------------- Wheel helpers
 		AGENT_WHEEL_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Filter Wheel", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, FILTER_SLOT_COUNT);
 		if (AGENT_WHEEL_FILTER_PROPERTY == NULL)
@@ -333,10 +312,6 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
 		if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property))
 			indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-		if (indigo_property_match(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, property))
-			indigo_define_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
-		if (indigo_property_match(AGENT_IMAGER_PREVIEW_PROPERTY, property))
-			indigo_define_property(device, AGENT_IMAGER_PREVIEW_PROPERTY, NULL);
 		if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
 			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
@@ -355,11 +330,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_IMAGER_BATCH_PROPERTY, property, false);
 		AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-	} else 	if (indigo_property_match(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, property)) {
-		indigo_property_copy_values(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, property, false);
-		AGENT_IMAGER_PREVIEW_SETUP_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
-	} else 	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -416,8 +387,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(AGENT_IMAGER_BATCH_PROPERTY);
-	indigo_release_property(AGENT_IMAGER_PREVIEW_SETUP_PROPERTY);
-	indigo_release_property(AGENT_IMAGER_PREVIEW_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	return indigo_filter_device_detach(device);
@@ -470,23 +439,16 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	if (!strcmp(property->device, IMAGER_AGENT_NAME) && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
 		if (property->items->sw.value) {
 			indigo_delete_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_IMAGER_PREVIEW_PROPERTY, NULL);
 			indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			indigo_delete_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		} else {
 			indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_IMAGER_PREVIEW_SETUP_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_IMAGER_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TBD: make histo & preview");
-		} else {
-			CLIENT_PRIVATE_DATA->agent_ccd_preview_property->state = property->state;
-			indigo_update_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_ccd_preview_property, NULL);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TBD: plate solve etc...");
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
