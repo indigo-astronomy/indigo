@@ -24,7 +24,7 @@
  \file indigo_system_ascol.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_system_ascol"
 
 #include <stdlib.h>
@@ -1780,7 +1780,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (res != ASCOL_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGV(%d, %f, %f) = %d", PRIVATE_DATA->dev_id, ra_gv, new_dec_gv, res);
 			}
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Guide r_ra = %.1f\", r_DEC = %.1f\", pulse = %.3f sec", ra_gv, new_dec_gv, duration);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide r_ra = %.1f\", r_DEC = %.1f\", pulse = %.3f sec", ra_gv, new_dec_gv, duration);
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration, guider_timer_callback_dec);
@@ -1817,7 +1817,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (res != ASCOL_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGV(%d, %f, %f) = %d", PRIVATE_DATA->dev_id, new_ra_gv, dec_gv, res);
 			}
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Guide r_RA = %.1f\", r_dec = %.1f\", pulse = %.3f sec", new_ra_gv, dec_gv, duration);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide r_RA = %.1f\", r_dec = %.1f\", pulse = %.3f sec", new_ra_gv, dec_gv, duration);
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration, guider_timer_callback_ra);
@@ -2830,7 +2830,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		panel_detach
 	);
 
-	ascol_debug = 1;
+	//ascol_debug = 1;
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
