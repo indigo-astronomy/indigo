@@ -22,7 +22,8 @@ indigo_server indigo_system_ascol
 
 Driver is developed and tested with:
 * ascol_simulator.pl
+* Zeiss 2m RCC Telescope at NAO Rozhen
 
 ## Comments
 
-Use URL in form tcp://host:port, ascol://host:port or simply host:port to connect to the system over the network (default port is 2001).
+Use URL in form tcp://host:port, ascol://host:port or simply host:port to connect to the system over the network (default port is 2002).
