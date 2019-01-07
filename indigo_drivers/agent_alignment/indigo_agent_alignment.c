@@ -35,18 +35,24 @@
 
 #include "indigo_driver_xml.h"
 #include "indigo_filter.h"
+#include "indigo_mount_driver.h"
 #include "indigo_agent_alignment.h"
 
-#define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
-#define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
+#define DEVICE_PRIVATE_DATA												((agent_private_data *)device->private_data)
+#define CLIENT_PRIVATE_DATA												((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
+
+#define AGENT_ALIGNMENT_POINT_RA_ITEM(property)   		(property->items+0)
+#define AGENT_ALIGNMENT_POINT_DEC_ITEM(property)   		(property->items+1)
+#define AGENT_ALIGNMENT_POINT_RAW_RA_ITEM(property)  	(property->items+2)
+#define AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM(property)  (property->items+3)
+#define AGENT_ALIGNMENT_POINT_LST_ITEM(property)  		(property->items+4)
+#define AGENT_ALIGNMENT_POINT_SOP_ITEM(property)  		(property->items+5)
 
 typedef struct {
-	// TBD
+	int alignment_point_count;
+	indigo_property **alignment_point_properties;
+	indigo_device *mount;
 } agent_private_data;
-
-// -------------------------------------------------------------------------------- INDIGO agent common code
-
-// TBD
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
@@ -58,12 +64,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	if (indigo_filter_device_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_MOUNT_LIST_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- Related decvices properties
-
-		// TBD
-		
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
+		CONFIG_PROPERTY->hidden = true;
+		PROFILE_PROPERTY->hidden = true;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -73,9 +77,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-
-	// TBD
-	
+	int alignment_point_count = DEVICE_PRIVATE_DATA->alignment_point_count;
+	indigo_property **alignment_properties = DEVICE_PRIVATE_DATA->alignment_point_properties;
+	if (alignment_properties) {
+		for (int i = 0; i < alignment_point_count; i++)
+			indigo_define_property(device, alignment_properties[i], NULL);
+	}
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -86,7 +93,28 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
 	
-	// TBD
+	
+	int alignment_point_count = DEVICE_PRIVATE_DATA->alignment_point_count;
+	indigo_property **alignment_properties = DEVICE_PRIVATE_DATA->alignment_point_properties;
+	indigo_device *mount = DEVICE_PRIVATE_DATA->mount;
+	if (mount && alignment_properties) {
+		indigo_alignment_point *alignment_points = ((indigo_mount_context *)(mount->device_context))->alignment_points;
+		for (int i = 0; i < alignment_point_count; i++) {
+			indigo_property *alignment_property = alignment_properties[i];
+			if (indigo_property_match(alignment_property, property)) {
+				indigo_property_copy_values(alignment_property, property, false);
+				alignment_points->ra = AGENT_ALIGNMENT_POINT_RA_ITEM(alignment_property)->number.value;
+				alignment_points->dec = AGENT_ALIGNMENT_POINT_DEC_ITEM(alignment_property)->number.value;
+				alignment_points->raw_ra = AGENT_ALIGNMENT_POINT_RAW_RA_ITEM(alignment_property)->number.value;
+				alignment_points->raw_dec = AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM(alignment_property)->number.value;
+				alignment_points->lst = AGENT_ALIGNMENT_POINT_LST_ITEM(alignment_property)->number.value;
+				alignment_points->side_of_pier = AGENT_ALIGNMENT_POINT_SOP_ITEM(alignment_property)->number.value;
+				indigo_mount_update_alignment_points(DEVICE_PRIVATE_DATA->mount);
+				indigo_update_property(device, alignment_property, NULL);
+			}
+		}
+	}
+
 	
 	return indigo_filter_change_property(device, client, property);
 }
@@ -102,9 +130,63 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-
-	// TBD
-	
+	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])) {
+		bool delete = false;
+		bool define = false;
+		indigo_device *agent_device = FILTER_CLIENT_CONTEXT->device;
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (item->sw.value && !strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME) && property->state == INDIGO_OK_STATE) {
+					define = true;
+				} else if (item->sw.value && !strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME)) {
+					delete = true;
+				}
+			}
+		} else if (!strcmp(property->name, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME)) {
+			delete = true;
+			define = true;
+		}
+		if (delete) {
+			int alignment_point_count = CLIENT_PRIVATE_DATA->alignment_point_count;
+			indigo_property **alignment_properties = CLIENT_PRIVATE_DATA->alignment_point_properties;
+			if (alignment_properties) {
+				for (int j = 0; j < alignment_point_count; j++) {
+					indigo_property *alignment_property = alignment_properties[j];
+					indigo_delete_property(agent_device, alignment_property, NULL);
+					indigo_release_property(alignment_property);
+				}
+				free(alignment_properties);
+				CLIENT_PRIVATE_DATA->alignment_point_count = 0;
+				CLIENT_PRIVATE_DATA->alignment_point_properties = NULL;
+				CLIENT_PRIVATE_DATA->mount = NULL;
+			}
+		}
+		if (define) {
+			int alignment_point_count = MOUNT_CONTEXT->alignment_point_count;
+			indigo_property **alignment_properties = malloc(alignment_point_count * sizeof(indigo_property *));
+			if (alignment_properties) {
+				CLIENT_PRIVATE_DATA->mount = device;
+				indigo_alignment_point *points = MOUNT_CONTEXT->alignment_points;
+				for (int j = 0; j < alignment_point_count; j++) {
+					char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
+					sprintf(name, AGENT_ALIGNMENT_POINT_PROPERY_NAME, j);
+					sprintf(label, "Alignment point #%d", j);
+					indigo_property *alignment_property = indigo_init_number_property(NULL, agent_device->name, name, "Alignment points", label, INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
+					indigo_init_number_item(AGENT_ALIGNMENT_POINT_RA_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, points[j].ra);
+					indigo_init_number_item(AGENT_ALIGNMENT_POINT_DEC_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_DEC_ITEM_NAME, "Declination (-90 to 90°))", -90, 90, 0, points[j].dec);
+					indigo_init_number_item(AGENT_ALIGNMENT_POINT_RAW_RA_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RAW_RA_ITEM_NAME, "Raw right ascension (0 to 24 hrs)", 0, 24, 0, points[j].raw_ra);
+					indigo_init_number_item(AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM_NAME, "Raw declination (-90 to 90°))", -90, 90, 0, points[j].raw_dec);
+					indigo_init_number_item(AGENT_ALIGNMENT_POINT_LST_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_LST_ITEM_NAME, "LST Time", 0, 24, 0, points[j].lst);
+					indigo_init_number_item(AGENT_ALIGNMENT_POINT_SOP_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_SOP_ITEM_NAME, "Side of pier", 0, 1, 0, points[j].side_of_pier);
+					alignment_properties[j] = alignment_property;
+					indigo_define_property(agent_device, alignment_property, NULL);
+				}
+				CLIENT_PRIVATE_DATA->alignment_point_count = alignment_point_count;
+				CLIENT_PRIVATE_DATA->alignment_point_properties = alignment_properties;
+			}
+		}
+	}
 	return indigo_filter_define_property(client, device, property, message);
 }
 
