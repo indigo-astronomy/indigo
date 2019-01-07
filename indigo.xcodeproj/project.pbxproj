@@ -308,6 +308,8 @@
 		9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */; };
 		9D61B9DF216DE636000DE7E8 /* indigo_focuser_mjkzz_bt.m in Sources */ = {isa = PBXBuildFile; fileRef = 9D61B9DB216DE62B000DE7E8 /* indigo_focuser_mjkzz_bt.m */; };
 		9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D6940892180B9F600AB112C /* indigo_aux_upb.c */; };
+		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
+		9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
 		9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */; };
 		9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* indigo_server.c */; };
@@ -4054,6 +4056,9 @@
 		9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Ultimate_Powerbox_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D855DF4215119CB0049C4B0 /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnexstar.a; path = build/lib/libnexstar.a; sourceTree = "<group>"; };
+		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
+		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_alignment.c; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_iidc.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
@@ -7989,6 +7994,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D85FAE021E38E3900ECDF82 /* agent_alignment */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
@@ -11421,6 +11427,16 @@
 			path = upb_simulator;
 			sourceTree = "<group>";
 		};
+		9D85FAE021E38E3900ECDF82 /* agent_alignment */ = {
+			isa = PBXGroup;
+			children = (
+				9D85FAE221E38E3900ECDF82 /* README.md */,
+				9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */,
+				9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */,
+			);
+			path = agent_alignment;
+			sourceTree = "<group>";
+		};
 		9D976FD21DD0C46E00782B32 /* ccd_iidc */ = {
 			isa = PBXGroup;
 			children = (
@@ -11814,6 +11830,7 @@
 				9D59D64E20D3F829009EA8FF /* ApgTimer.h in Headers */,
 				59A321B521D691D600EC0F4A /* indigo_mount_synscan_mount.h in Headers */,
 				59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */,
+				9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */,
 				9D59D5F320D3F829009EA8FF /* COMHelper.h in Headers */,
 				9D59D62B20D3F829009EA8FF /* AltaF.h in Headers */,
 				59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */,
@@ -12035,6 +12052,7 @@
 				9D59D66B20D3F82A009EA8FF /* ImgFix.cpp in Sources */,
 				9D59D65820D3F829009EA8FF /* AltaData.cpp in Sources */,
 				9D59D5F420D3F829009EA8FF /* CameraIo.cpp in Sources */,
+				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				9D59D62D20D3F829009EA8FF /* CamHelpers.cpp in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,

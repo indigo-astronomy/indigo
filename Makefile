@@ -41,7 +41,7 @@ INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 
 STABLE_DRIVERS = agent_lx200_server agent_snoop aux_joystick aux_upb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_ica ccd_iidc ccd_mi ccd_qhy ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_dmfc focuser_fcusb focuser_fli focuser_mjkzz focuser_mjkzz_bt focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro focuser_wemacro_bt gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_eqmac mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx
 UNTESTED_DRIVERS = aux_dsusb aux_rts focuser_lakeside focuser_optec guider_gpusb wheel_optec wheel_quantum wheel_trutek wheel_xagyl focuser_asi
-DEVELOPED_DRIVERS = agent_imager mount_synscan system_ascol
+DEVELOPED_DRIVERS = agent_imager agent_alignment mount_synscan system_ascol
 OPTIONAL_DRIVERS = ccd_andor
 
 #---------------------------------------------------------------------
