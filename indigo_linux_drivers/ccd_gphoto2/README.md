@@ -90,7 +90,7 @@ For debayering one can choose between algorithms:
 * DCB,
 * DHT.
 
-The default algorithm is 'None', that is, the is data ordered in raw format, e.g. RGGBRGGB... according to a bayer pattern inferred by LibRaw.
+The default algorithm is 'None', that is, the data ordered in raw format, e.g. RGGBRGGB... according to a bayer pattern inferred by LibRaw.
 It is thus the client side which has to debayer the data. The bayer pattern is embedded as a FIT keyword of the form
 ```
 BAYERPAT= 'RGGB' / Bayer color pattern
