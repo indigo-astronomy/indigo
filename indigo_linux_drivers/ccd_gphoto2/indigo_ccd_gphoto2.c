@@ -67,146 +67,146 @@ do {							\
 	}						\
 } while (0)
 
-#define GPHOTO2_NAME_DSLR			               "GPhoto2"
-#define GPHOTO2_NAME_SHUTTER			               "Shutter time"
-#define GPHOTO2_NAME_ISO			               "ISO"
-#define GPHOTO2_NAME_COMPRESSION		               "Compression"
-#define GPHOTO2_NAME_APERTURE	         	               "Aperture"
-#define GPHOTO2_NAME_WHITEBALANCE		               "Whitebalance"
-#define GPHOTO2_NAME_EXPOSURE_COMPENSATION                     "Exposure compensation"
-#define GPHOTO2_NAME_EXPOSURE_METERING                         "Exposure metering"
-#define GPHOTO2_NAME_FOCUS_METERING                            "Focus metering"
-#define GPHOTO2_NAME_EXPOSURE_PROGRAM                          "Exposure program"
-#define GPHOTO2_NAME_BATTERY_LEVEL                             "Battery level"
-#define GPHOTO2_NAME_BATTERY_LEVEL_NAME	                       "Percent"
-#define GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME	               "BATTERY_LEVEL"
-#define GPHOTO2_NAME_ZOOM_PREVIEW                              "Liveview zoom"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM                      "5"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM                     "1"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_ON                           "On"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF                          "Off"
-#define GPHOTO2_NAME_MIRROR_LOCKUP		               "Use mirror lockup"
-#define GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME	               "MIRROR_LOCKUP"
-#define GPHOTO2_NAME_LIBGPHOTO2			               "Gphoto2 library"
-#define GPHOTO2_NAME_LIBGPHOTO2_VERSION		               "Version"
-#define GPHOTO2_NAME_DELETE_IMAGE                              "Delete downloaded image"
-#define GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM                      "ON"
-#define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM                     "OFF"
-#define GPHOTO2_NAME_DELETE_IMAGE_ON                           "On"
-#define GPHOTO2_NAME_DELETE_IMAGE_OFF                          "Off"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM                         "Debayer algorithm"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME                "DEBAYER_LINEAR"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME                "DEBAYER_VNG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME                "DEBAYER_PPG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME                "DEBAYER_AHD"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME                "DEBAYER_DCB"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME                "DEBAYER_DHT"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME          "BAYER_RAW"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME     "BAYER_RAW_BIN2"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_LABEL               "Linear"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_LABEL               "VNG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_LABEL               "PPG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_LABEL               "AHD"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_LABEL               "DCB"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_LABEL               "DHT"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_LABEL         "None"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_LABEL    "None (2x2 binning mono)"
+#define GPHOTO2_NAME_DSLR					"GPhoto2"
+#define GPHOTO2_NAME_SHUTTER					"Shutter time"
+#define GPHOTO2_NAME_ISO					"ISO"
+#define GPHOTO2_NAME_COMPRESSION				"Compression"
+#define GPHOTO2_NAME_APERTURE					"Aperture"
+#define GPHOTO2_NAME_WHITEBALANCE				"Whitebalance"
+#define GPHOTO2_NAME_EXPOSURE_COMPENSATION			"Exposure compensation"
+#define GPHOTO2_NAME_EXPOSURE_METERING				"Exposure metering"
+#define GPHOTO2_NAME_FOCUS_METERING				"Focus metering"
+#define GPHOTO2_NAME_EXPOSURE_PROGRAM				"Exposure program"
+#define GPHOTO2_NAME_BATTERY_LEVEL				"Battery level"
+#define GPHOTO2_NAME_BATTERY_LEVEL_NAME				"Percent"
+#define GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME			"BATTERY_LEVEL"
+#define GPHOTO2_NAME_ZOOM_PREVIEW				"Liveview zoom"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM			"5"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM			"1"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON				"On"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF				"Off"
+#define GPHOTO2_NAME_MIRROR_LOCKUP				"Use mirror lockup"
+#define GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME			"MIRROR_LOCKUP"
+#define GPHOTO2_NAME_LIBGPHOTO2					"Gphoto2 library"
+#define GPHOTO2_NAME_LIBGPHOTO2_VERSION				"Version"
+#define GPHOTO2_NAME_DELETE_IMAGE				"Delete downloaded image"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM			"ON"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM			"OFF"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON				"On"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF				"Off"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM				"Debayer algorithm"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME			"DEBAYER_LINEAR"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME			"DEBAYER_VNG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME			"DEBAYER_PPG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME			"DEBAYER_AHD"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME			"DEBAYER_DCB"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME			"DEBAYER_DHT"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME		"BAYER_RAW"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME	"BAYER_RAW_BIN2"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_LABEL		"Linear"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_LABEL		"VNG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_LABEL		"PPG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_LABEL		"AHD"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_LABEL		"DCB"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_LABEL		"DHT"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_LABEL		"None"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_LABEL	"None (2x2 binning mono)"
 
-#define GPHOTO2_DEBAYER_ALGORITHM_PROPERTY_NAME	               "GPHOTO2_DEBAYER_ALGORITHM"
-#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME               "GPHOTO2_LIBGPHOTO2_VERSION"
-#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME                   "LIBGPHOTO2_VERSION"
+#define GPHOTO2_DEBAYER_ALGORITHM_PROPERTY_NAME		"GPHOTO2_DEBAYER_ALGORITHM"
+#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME	"GPHOTO2_LIBGPHOTO2_VERSION"
+#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME		"LIBGPHOTO2_VERSION"
 
-#define NIKON_ISO				        "iso"
-#define NIKON_COMPRESSION			        "imagequality"
-#define NIKON_SHUTTERSPEED			        "shutterspeed"
-#define NIKON_WHITEBALANCE			        "whitebalance"
-#define NIKON_CAPTURE_TARGET			        "capturetarget"
-#define NIKON_CAPTURE_TARGET_LABEL                      "Capture Target"
-#define NIKON_MEMORY_CARD			        "Memory card"
-#define NIKON_BULB_MODE                                 "bulb"
-#define NIKON_BULB_MODE_LABEL                           "Bulb Mode"
-#define NIKON_APERTURE  			        "f-number"
-#define NIKON_EXPOSURE_COMPENSATION 		        "exposurecompensation"
-#define NIKON_EXPOSURE_METERING                         "exposuremetermode"
-#define NIKON_FOCUS_METERING                            "focusmetermode"
-#define NIKON_EXPOSURE_PROGRAM                          "expprogram"
-#define NIKON_BATTERY_LEVEL                             "batterylevel"
+#define NIKON_ISO			"iso"
+#define NIKON_COMPRESSION		"imagequality"
+#define NIKON_SHUTTERSPEED		"shutterspeed"
+#define NIKON_WHITEBALANCE		"whitebalance"
+#define NIKON_CAPTURE_TARGET		"capturetarget"
+#define NIKON_CAPTURE_TARGET_LABEL	"Capture Target"
+#define NIKON_MEMORY_CARD		"Memory card"
+#define NIKON_BULB_MODE			"bulb"
+#define NIKON_BULB_MODE_LABEL		"Bulb Mode"
+#define NIKON_APERTURE			"f-number"
+#define NIKON_EXPOSURE_COMPENSATION	"exposurecompensation"
+#define NIKON_EXPOSURE_METERING		"exposuremetermode"
+#define NIKON_FOCUS_METERING		"focusmetermode"
+#define NIKON_EXPOSURE_PROGRAM		"expprogram"
+#define NIKON_BATTERY_LEVEL		"batterylevel"
 
-#define EOS_ISO					        NIKON_ISO
-#define EOS_COMPRESSION				        "imageformat"
-#define EOS_SHUTTERSPEED			        NIKON_SHUTTERSPEED
-#define EOS_WHITEBALANCE			        NIKON_WHITEBALANCE
-#define EOS_CAPTURE_TARGET			        NIKON_CAPTURE_TARGET
-#define EOS_CAPTURE_TARGET_LABEL                        NIKON_CAPTURE_TARGET_LABEL
-#define EOS_MEMORY_CARD				        NIKON_MEMORY_CARD
-#define EOS_ZOOM_PREVIEW                                "eoszoom"
-#define EOS_REMOTE_RELEASE		                "eosremoterelease"
-#define EOS_PRESS_FULL			                "Press Full"
-#define EOS_RELEASE_FULL		                "Release Full"
-#define EOS_CUSTOMFUNCEX			        "customfuncex"
-#define EOS_MIRROR_LOCKUP_ENABLE		        "20,1,3,14,1,60f,1,1"
-#define EOS_MIRROR_LOCKUP_DISABLE		        "20,1,3,14,1,60f,1,0"
-#define EOS_VIEWFINDER                                  "viewfinder"
-#define EOS_REMOTE_RELEASE_LABEL                        "Canon EOS Remote Release"
-#define EOS_BULB_MODE                                   NIKON_BULB_MODE
-#define EOS_BULB_MODE_LABEL                             NIKON_BULB_MODE_LABEL
-#define EOS_APERTURE  			                "aperture"
-#define EOS_EXPOSURE_COMPENSATION 		        NIKON_EXPOSURE_COMPENSATION
-#define EOS_EXPOSURE_METERING                           "meteringmode"
-#define EOS_FOCUS_METERING                              "NA"
-#define EOS_EXPOSURE_PROGRAM                            "autoexposuremode"
-#define EOS_BATTERY_LEVEL                               NIKON_BATTERY_LEVEL
+#define EOS_ISO				NIKON_ISO
+#define EOS_COMPRESSION			"imageformat"
+#define EOS_SHUTTERSPEED		NIKON_SHUTTERSPEED
+#define EOS_WHITEBALANCE		NIKON_WHITEBALANCE
+#define EOS_CAPTURE_TARGET		NIKON_CAPTURE_TARGET
+#define EOS_CAPTURE_TARGET_LABEL	NIKON_CAPTURE_TARGET_LABEL
+#define EOS_MEMORY_CARD			NIKON_MEMORY_CARD
+#define EOS_ZOOM_PREVIEW		"eoszoom"
+#define EOS_REMOTE_RELEASE		"eosremoterelease"
+#define EOS_PRESS_FULL			"Press Full"
+#define EOS_RELEASE_FULL		"Release Full"
+#define EOS_CUSTOMFUNCEX		"customfuncex"
+#define EOS_MIRROR_LOCKUP_ENABLE	"20,1,3,14,1,60f,1,1"
+#define EOS_MIRROR_LOCKUP_DISABLE	"20,1,3,14,1,60f,1,0"
+#define EOS_VIEWFINDER			"viewfinder"
+#define EOS_REMOTE_RELEASE_LABEL	"Canon EOS Remote Release"
+#define EOS_BULB_MODE			NIKON_BULB_MODE
+#define EOS_BULB_MODE_LABEL		NIKON_BULB_MODE_LABEL
+#define EOS_APERTURE			"aperture"
+#define EOS_EXPOSURE_COMPENSATION	NIKON_EXPOSURE_COMPENSATION
+#define EOS_EXPOSURE_METERING		"meteringmode"
+#define EOS_FOCUS_METERING		"NA"
+#define EOS_EXPOSURE_PROGRAM		"autoexposuremode"
+#define EOS_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
 
-#define SONY_COMPRESSION			        NIKON_COMPRESSION
-#define SONY_APERTURE  			                NIKON_APERTURE
-#define SONY_EXPOSURE_COMPENSATION 		        NIKON_EXPOSURE_COMPENSATION
-#define SONY_EXPOSURE_METERING                          NIKON_EXPOSURE_METERING
-#define SONY_FOCUS_METERING                             "NA"
-#define SONY_EXPOSURE_PROGRAM                           NIKON_EXPOSURE_PROGRAM
-#define SONY_BATTERY_LEVEL                              NIKON_BATTERY_LEVEL
+#define SONY_COMPRESSION		NIKON_COMPRESSION
+#define SONY_APERTURE			NIKON_APERTURE
+#define SONY_EXPOSURE_COMPENSATION	NIKON_EXPOSURE_COMPENSATION
+#define SONY_EXPOSURE_METERING		NIKON_EXPOSURE_METERING
+#define SONY_FOCUS_METERING		"NA"
+#define SONY_EXPOSURE_PROGRAM		NIKON_EXPOSURE_PROGRAM
+#define SONY_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
 
-#define TIMER_COUNTER_STEP_SEC                          0.1   /* 100 ms. */
-#define TIMER_BATTERY_LEVEL_UPDATE_SEC                  120
+#define TIMER_COUNTER_STEP_SEC		0.1	/* 100 ms. */
+#define TIMER_BATTERY_LEVEL_UPDATE_SEC	120
 
-#define UNUSED(x)				        (void)(x)
-#define MAX_DEVICES				        8
-#define PRIVATE_DATA				        ((gphoto2_private_data *)device->private_data)
-#define DSLR_ISO_PROPERTY			        (PRIVATE_DATA->dslr_iso_property)
-#define DSLR_SHUTTER_PROPERTY			        (PRIVATE_DATA->dslr_shutter_property)
-#define DSLR_COMPRESSION_PROPERTY		        (PRIVATE_DATA->dslr_compression_property)
-#define DSLR_APERTURE_PROPERTY		                (PRIVATE_DATA->dslr_aperture_property)
-#define DSLR_WHITEBALANCE_PROPERTY		        (PRIVATE_DATA->dslr_whitebalance_property)
-#define DSLR_EXPOSURE_COMPENSATION_PROPERTY             (PRIVATE_DATA->dslr_exposure_compensation_property)
-#define DSLR_EXPOSURE_METERING_PROPERTY                 (PRIVATE_DATA->dslr_exposure_metering_property)
-#define DSLR_FOCUS_METERING_PROPERTY                    (PRIVATE_DATA->dslr_focus_metering_property)
-#define DSLR_EXPOSURE_PROGRAM_PROPERTY                  (PRIVATE_DATA->dslr_exposure_program_property)
-#define DSLR_BATTERY_LEVEL_PROPERTY                     (PRIVATE_DATA->dslr_battery_level_property)
-#define DSLR_BATTERY_LEVEL_ITEM		                (PRIVATE_DATA->dslr_battery_level_property->items)
-#define DSLR_MIRROR_LOCKUP_PROPERTY		        (PRIVATE_DATA->dslr_mirror_lockup_property)
-#define DSLR_MIRROR_LOCKUP_ITEM			        (PRIVATE_DATA->dslr_mirror_lockup_property->items)
-#define DSLR_DELETE_IMAGE_PROPERTY		        (PRIVATE_DATA->dslr_delete_image_property)
-#define DSLR_DELETE_IMAGE_ON_ITEM		        (PRIVATE_DATA->dslr_delete_image_property->items + 0)
-#define DSLR_DELETE_IMAGE_OFF_ITEM		        (PRIVATE_DATA->dslr_delete_image_property->items + 1)
-#define DSLR_DEBAYER_ALGORITHM_PROPERTY		        (PRIVATE_DATA->dslr_debayer_algorithm_property)
-#define DSLR_DEBAYER_ALGORITHM_BAYER_RAW_ITEM	        (PRIVATE_DATA->dslr_debayer_algorithm_property->items + 0)
+#define UNUSED(x)					(void)(x)
+#define MAX_DEVICES					8
+#define PRIVATE_DATA					((gphoto2_private_data *)device->private_data)
+#define DSLR_ISO_PROPERTY				(PRIVATE_DATA->dslr_iso_property)
+#define DSLR_SHUTTER_PROPERTY				(PRIVATE_DATA->dslr_shutter_property)
+#define DSLR_COMPRESSION_PROPERTY			(PRIVATE_DATA->dslr_compression_property)
+#define DSLR_APERTURE_PROPERTY				(PRIVATE_DATA->dslr_aperture_property)
+#define DSLR_WHITEBALANCE_PROPERTY			(PRIVATE_DATA->dslr_whitebalance_property)
+#define DSLR_EXPOSURE_COMPENSATION_PROPERTY		(PRIVATE_DATA->dslr_exposure_compensation_property)
+#define DSLR_EXPOSURE_METERING_PROPERTY			(PRIVATE_DATA->dslr_exposure_metering_property)
+#define DSLR_FOCUS_METERING_PROPERTY			(PRIVATE_DATA->dslr_focus_metering_property)
+#define DSLR_EXPOSURE_PROGRAM_PROPERTY			(PRIVATE_DATA->dslr_exposure_program_property)
+#define DSLR_BATTERY_LEVEL_PROPERTY			(PRIVATE_DATA->dslr_battery_level_property)
+#define DSLR_BATTERY_LEVEL_ITEM				(PRIVATE_DATA->dslr_battery_level_property->items)
+#define DSLR_MIRROR_LOCKUP_PROPERTY			(PRIVATE_DATA->dslr_mirror_lockup_property)
+#define DSLR_MIRROR_LOCKUP_ITEM				(PRIVATE_DATA->dslr_mirror_lockup_property->items)
+#define DSLR_DELETE_IMAGE_PROPERTY			(PRIVATE_DATA->dslr_delete_image_property)
+#define DSLR_DELETE_IMAGE_ON_ITEM			(PRIVATE_DATA->dslr_delete_image_property->items + 0)
+#define DSLR_DELETE_IMAGE_OFF_ITEM			(PRIVATE_DATA->dslr_delete_image_property->items + 1)
+#define DSLR_DEBAYER_ALGORITHM_PROPERTY			(PRIVATE_DATA->dslr_debayer_algorithm_property)
+#define DSLR_DEBAYER_ALGORITHM_BAYER_RAW_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 0)
 #define DSLR_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_ITEM	(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 1)
-#define DSLR_DEBAYER_ALGORITHM_LIN_ITEM		        (PRIVATE_DATA->dslr_debayer_algorithm_property->items + 2)
-#define DSLR_DEBAYER_ALGORITHM_VNG_ITEM		        (PRIVATE_DATA->dslr_debayer_algorithm_property->items + 3)
-#define DSLR_DEBAYER_ALGORITHM_PPG_ITEM		        (PRIVATE_DATA->dslr_debayer_algorithm_property->items + 4)
-#define DSLR_DEBAYER_ALGORITHM_AHD_ITEM		        (PRIVATE_DATA->dslr_debayer_algorithm_property->items + 5)
-#define DSLR_DEBAYER_ALGORITHM_DCB_ITEM		        (PRIVATE_DATA->dslr_debayer_algorithm_property->items + 6)
-#define DSLR_DEBAYER_ALGORITHM_DHT_ITEM		        (PRIVATE_DATA->dslr_debayer_algorithm_property->items + 7)
-#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	        (PRIVATE_DATA->dslr_libgphoto2_version_property)
-#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		        (PRIVATE_DATA->dslr_libgphoto2_version_property->items)
-#define DSLR_ZOOM_PREVIEW_PROPERTY                      (PRIVATE_DATA->dslr_zoom_preview_property)
-#define DSLR_ZOOM_PREVIEW_ON_ITEM		        (PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
-#define DSLR_ZOOM_PREVIEW_OFF_ITEM		        (PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
-#define COMPRESSION                                     (PRIVATE_DATA->gphoto2_compression_id)
-#define APERTURE                                        (PRIVATE_DATA->gphoto2_aperture_id)
-#define EXPOSURE_METERING                               (PRIVATE_DATA->gphoto2_exposure_metering_id)
-#define FOCUS_METERING                                  (PRIVATE_DATA->gphoto2_focus_metering_id)
-#define EXPOSURE_PROGRAM                                (PRIVATE_DATA->gphoto2_exposure_program_id)
-#define is_connected				        gp_bits
+#define DSLR_DEBAYER_ALGORITHM_LIN_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 2)
+#define DSLR_DEBAYER_ALGORITHM_VNG_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 3)
+#define DSLR_DEBAYER_ALGORITHM_PPG_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 4)
+#define DSLR_DEBAYER_ALGORITHM_AHD_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 5)
+#define DSLR_DEBAYER_ALGORITHM_DCB_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 6)
+#define DSLR_DEBAYER_ALGORITHM_DHT_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 7)
+#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY		(PRIVATE_DATA->dslr_libgphoto2_version_property)
+#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM			(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
+#define DSLR_ZOOM_PREVIEW_PROPERTY			(PRIVATE_DATA->dslr_zoom_preview_property)
+#define DSLR_ZOOM_PREVIEW_ON_ITEM			(PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
+#define DSLR_ZOOM_PREVIEW_OFF_ITEM			(PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
+#define COMPRESSION					(PRIVATE_DATA->gphoto2_compression_id)
+#define APERTURE					(PRIVATE_DATA->gphoto2_aperture_id)
+#define EXPOSURE_METERING				(PRIVATE_DATA->gphoto2_exposure_metering_id)
+#define FOCUS_METERING					(PRIVATE_DATA->gphoto2_focus_metering_id)
+#define EXPOSURE_PROGRAM				(PRIVATE_DATA->gphoto2_exposure_program_id)
+#define is_connected					gp_bits
 
 enum vendor {
 	CANON = 0,
