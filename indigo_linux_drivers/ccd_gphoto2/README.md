@@ -90,16 +90,18 @@ For debayering one can choose between algorithms:
 * DCB,
 * DHT.
 
-The default algorithm is 'None', that is, the data ordered in raw format, e.g. RGGBRGGB... according to a bayer pattern inferred by LibRaw.
-It is thus the client side which has to debayer the data. The bayer pattern is embedded as a FIT keyword of the form
+The default algorithm is 'None', that is, the data is delivered in raw format, e.g. RGGBRGGB...RGGB according to a
+bayer pattern inferred by LibRaw.
+It is thus the client side which has to debayer the data. To help the client side inferring the appropriate bayer pattern,
+it is embedded as a FIT keyword of the form, e.g.
 ```
 BAYERPAT= 'RGGB' / Bayer color pattern
 ```
-to enable the client inferring the appropriate bayer pattern.
 The choice 'None (2x2 binning mono)' creates a FIT file of dimension width/2 x height/2 where each pixel is a superpixel of the form (R + G + G + B)/4.
-The data is thus 2x2 binned and monocolor. This choice is useful for focusing, aligment and other routines where FIT data has to be efficiently transported
-to a client. Note that 2x2 binning reduces the data size by a factor of 4 and at the same time doubles the SNR.
-On the other hand, the data can also be debayered by the driver, where the prefered debayering algorithm is VNG which quite computationally
+The data is thus 2x2 binned and monocolor. This choice is useful for focusing, aligment and other
+routines where FIT data has to be efficiently transported to a client in short intervals.
+Note that 2x2 binning reduces the data size by a factor of 4 and at the same time doubles the SNR.
+On course the data can also be debayered by the driver, where the prefered debayering algorithm is VNG which computationally
 intensive however very good. Linear interpolation is a very basic interpolation but it is faster compared to VNG.
 This debayered FIT output is currently 3 colors (RGB) each 16-bit and has the following FIT keyword embedded
 ```
@@ -141,3 +143,6 @@ Driver is developed and tested with:
 * Canon EOS 600D (USB)
 * Canon EOS 700D (USB)
 * Canon EOS 1100D (USB)
+
+## Issues:
+Bulb exposures currently work only with EOS cameras.
