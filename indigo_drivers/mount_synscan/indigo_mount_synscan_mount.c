@@ -730,3 +730,11 @@ void mount_handle_abort(indigo_device *device) {
 		PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	}
 }
+
+void mount_handle_polarscope(indigo_device *device) {
+	unsigned char brightness = MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value;
+	synscan_set_polarscope_brightness(device, brightness);
+
+	MOUNT_POLARSCOPE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_POLARSCOPE_PROPERTY, "Changed polarscope LED brightness.");
+}
