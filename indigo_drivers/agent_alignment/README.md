@@ -1,6 +1,6 @@
-# Imager agent
+# Alignment model calibration agent
 
-Backend implementation of image capture process
+Backend implementation of mount alignment model calibration process
 
 ## Supported devices
 
@@ -16,6 +16,6 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-indigo_server indigo_agent_imager indigo_ccd_...
+indigo_server indigo_agent_alignment indigo_mount_...
 
 ## Status: Under development

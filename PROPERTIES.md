@@ -50,6 +50,8 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 <tr><td>CCD_UPLOAD_MODE</td><td>switch</td><td>no</td><td>yes</td><td>CLIENT</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>LOCAL</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>BOTH</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PREVIEW</td><td>yes</td><td>Send JPEG preview to client</td></tr>
+<tr><td></td><td></td><td></td><td></td><td>PREVIEW_LOCAL</td><td>yes</td><td>Send JPEG preview to client and save original format locally</td></tr>
 <tr><td>CCD_LOCAL_MODE</td><td>text</td><td>no</td><td>yes</td><td>DIR</td><td>yes</td><td>XXX is replaced by sequence.</td></tr>
 <tr><td></td><td></td><td></td><td></td><td>PREFIX</td><td>yes</td><td></td></tr>
 <tr><td>CCD_EXPOSURE</td><td>number</td><td>no</td><td>yes</td><td>EXPOSURE</td><td>yes</td><td></td></tr>
@@ -78,6 +80,7 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 <tr><td></td><td></td><td></td><td></td><td>XISF</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>JPEG</td><td>yes</td><td></td></tr>
 <tr><td>CCD_IMAGE_FILE</td><td>text</td><td>no</td><td>yes</td><td>FILE</td><td>yes</td><td></td></tr>
+<tr><td>CCD_IMAGE</td><td>blob</td><td>no</td><td>yes</td><td>IMAGE</td><td>yes</td><td></td></tr>
 <tr><td>CCD_TEMPERATURE</td><td>number</td><td></td><td>no</td><td>TEMPERATURE</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
 <tr><td>CCD_COOLER</td><td>switch</td><td>no</td><td>no</td><td>ON</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>OFF</td><td>yes</td><td></td></tr>
