@@ -202,6 +202,22 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 
 Properties are implemented by guider driver base class in [indigo_guider_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_guider_driver.c).
 
+## AO specific properties
+
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
+<tr><td>AO_GUIDE_DEC</td><td>number</td><td>no</td><td>yes</td><td>NORTH</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>SOUTH</td><td>yes</td><td></td></tr>
+<tr><td>AO_GUIDE_RA</td><td>number</td><td>no</td><td>yes</td><td>EAST</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>WEST</td><td>yes</td><td></td></tr>
+<tr><td>AO_RESET</td><td>switch</td><td>yes</td><td>no</td><td>CENTER</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>UNJAM</td><td>no</td><td></td></tr>
+</table>
+
+
+Properties are implemented by AO driver base class in [indigo_ao_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_ao_driver.c).
+
 ## Auxiliary properties
 
 To be used by auxiliary devices like powerboxes, weather stations, etc.
