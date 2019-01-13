@@ -219,6 +219,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
 		mount_handle_st4_guiding_rate(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
+		indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
+		mount_handle_polarscope(device);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -398,12 +403,12 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			mount->private_data = private_data;
 			indigo_attach_device(mount);
 
-			mount_guider = malloc(sizeof(indigo_device));
-			assert(mount_guider != NULL);
-			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
-			mount_guider->master_device = mount;
-			mount_guider->private_data = private_data;
-			indigo_attach_device(mount_guider);
+//			mount_guider = malloc(sizeof(indigo_device));
+//			assert(mount_guider != NULL);
+//			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
+//			mount_guider->master_device = mount;
+//			mount_guider->private_data = private_data;
+//			indigo_attach_device(mount_guider);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
