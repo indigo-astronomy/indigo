@@ -97,6 +97,7 @@
 #define CCD_SHUTTER_CONTROL           32
 #define CCD_SHUTTER                   32
 #define CCD_READ_I2CPORT              33
+#define CCD_FLOOD_LED              		43
 
 #define CAPS_STAR2K                   0x01
 #define CAPS_COMPRESS                 0x02
@@ -153,6 +154,7 @@ typedef struct {
 	bool is_interlaced;
 	bool is_color;
 	bool is_icx453;
+	bool has_flood_led;
 	unsigned short ccd_width;
 	unsigned short ccd_height;
 	double pix_width;
@@ -237,6 +239,7 @@ static bool sx_open(indigo_device *device) {
 				if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19)
 					PRIVATE_DATA->is_interlaced =  false;
 				PRIVATE_DATA->is_icx453 = result == 0x59;
+				PRIVATE_DATA->has_flood_led = result == 0x21 || result == 0x25 || result == 0xA5 || result == 0x2A || result == 0xAA;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s %s model %d\n", PRIVATE_DATA->is_interlaced ? "INTERLACED" : "NON-INTERLACED", PRIVATE_DATA->is_color ? "COLOR" : "MONO", PRIVATE_DATA->model);
 			}
 		}
@@ -639,6 +642,22 @@ static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 	setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
 	setup_data[REQ ] = CCD_SET_STAR2K;
 	setup_data[REQ_VALUE_L ] = relay_mask;
+	setup_data[REQ_VALUE_H ] = 0;
+	setup_data[REQ_INDEX_L ] = 0;
+	setup_data[REQ_INDEX_H ] = 0;
+	setup_data[REQ_LENGTH_L] = 0;
+	setup_data[REQ_LENGTH_H] = 0;
+	int rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+	return rc >= 0;
+}
+
+static bool sx_flood_led(indigo_device *device, bool state) {
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+	int transferred;
+	setup_data[REQ_TYPE ] = REQ_VENDOR;
+	setup_data[REQ ] = CCD_FLOOD_LED;
+	setup_data[REQ_VALUE_L ] = state;
 	setup_data[REQ_VALUE_H ] = 0;
 	setup_data[REQ_INDEX_L ] = 0;
 	setup_data[REQ_INDEX_H ] = 0;
