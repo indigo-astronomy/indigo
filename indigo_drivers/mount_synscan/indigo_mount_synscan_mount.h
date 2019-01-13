@@ -30,4 +30,7 @@ void mount_handle_abort(indigo_device* device);
 //  ST4 Guiding
 void mount_handle_st4_guiding_rate(indigo_device *device);
 
+//  Polarscope
+void mount_handle_polarscope(indigo_device *device);
+
 #endif /* indigo_mount_synscan_mount_h */
