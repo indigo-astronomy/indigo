@@ -403,12 +403,12 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			mount->private_data = private_data;
 			indigo_attach_device(mount);
 
-			mount_guider = malloc(sizeof(indigo_device));
-			assert(mount_guider != NULL);
-			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
-			mount_guider->master_device = mount;
-			mount_guider->private_data = private_data;
-			indigo_attach_device(mount_guider);
+//			mount_guider = malloc(sizeof(indigo_device));
+//			assert(mount_guider != NULL);
+//			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
+//			mount_guider->master_device = mount;
+//			mount_guider->private_data = private_data;
+//			indigo_attach_device(mount_guider);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
