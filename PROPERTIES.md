@@ -211,7 +211,7 @@ Properties are implemented by guider driver base class in [indigo_guider_driver.
 <tr><td></td><td></td><td></td><td></td><td>SOUTH</td><td>yes</td><td></td></tr>
 <tr><td>AO_GUIDE_RA</td><td>number</td><td>no</td><td>yes</td><td>EAST</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>WEST</td><td>yes</td><td></td></tr>
-<tr><td>AO_RESET</td><td>switch</td><td>yes</td><td>no</td><td>CENTER</td><td>yes</td><td></td></tr>
+<tr><td>AO_RESET</td><td>switch</td><td>no</td><td>yes</td><td>CENTER</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>UNJAM</td><td>no</td><td></td></tr>
 </table>
 
