@@ -27,7 +27,7 @@ This is the list of requirements taken into the consideration:
 
 #### Drivers
 
-1. CCD (with wheel, guider and focuser) simulator
+1. CCD (with wheel, guider, AO and focuser) simulator
 2. Mount simulator
 3. Atik CCD (Titan, 3xx/4xx/One with built in wheel, VS/Infinity, 11000/4000) driver
 4. Atik EFW2 filterwheel driver
