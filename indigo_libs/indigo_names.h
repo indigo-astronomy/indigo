@@ -743,6 +743,45 @@
 #define GUIDER_RATE_ITEM_NAME           			"RATE"
 
 //----------------------------------------------------------------------
+/** AO_GUIDE_DEC property name
+ */
+#define AO_GUIDE_DEC_PROPERTY_NAME           "AO_GUIDE_DEC"
+
+/** AO_GUIDE_DEC.NORTH property item name.
+ */
+#define AO_GUIDE_NORTH_ITEM_NAME             "NORTH"
+
+/** AO_GUIDE_DEC.SOUTH property item name.
+ */
+#define AO_GUIDE_SOUTH_ITEM_NAME             "SOUTH"
+
+//----------------------------------------------------------------------
+/** AO_GUIDE_RA property name.
+ */
+#define AO_GUIDE_RA_PROPERTY_NAME            "AO_GUIDE_RA"
+
+/** AO_GUIDE_RA.EAST property item name.
+ */
+#define AO_GUIDE_EAST_ITEM_NAME              "EAST"
+
+/** AO_GUIDE_RA.WEST property item name.
+ */
+#define AO_GUIDE_WEST_ITEM_NAME              "WEST"
+
+//----------------------------------------------------------------------
+/** AO_RESET property pointer name.
+ */
+#define AO_RESET_PROPERTY_NAME         				"AO_RESET"
+
+/** AO_RESET.CENTER property item name.
+ */
+#define AO_CENTER_ITEM_NAME            "CENTER"
+
+/** AO_RESET.UNJAM property item name.
+ */
+#define AO_UNJAM_ITEM_NAME             "UNJAM"
+
+//----------------------------------------------------------------------
 /** WHEEL_SLOT property name.
  */
 #define WHEEL_SLOT_PROPERTY_NAME							"WHEEL_SLOT"

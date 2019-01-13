@@ -29,6 +29,7 @@
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
 #include "indigo_guider_driver.h"
+#include "indigo_ao_driver.h"
 #include "indigo_wheel_driver.h"
 #include "indigo_focuser_driver.h"
 
@@ -36,14 +37,15 @@
 extern "C" {
 #endif
 
-#define CCD_SIMULATOR_IMAGER_CAMERA_NAME		"CCD Imager Simulator"
-#define CCD_SIMULATOR_WHEEL_NAME				"CCD Imager Simulator (wheel)"
+#define CCD_SIMULATOR_IMAGER_CAMERA_NAME	"CCD Imager Simulator"
+#define CCD_SIMULATOR_WHEEL_NAME					"CCD Imager Simulator (wheel)"
 #define CCD_SIMULATOR_FOCUSER_NAME				"CCD Imager Simulator (focuser)"
 
-#define CCD_SIMULATOR_GUIDER_CAMERA_NAME		"CCD Guider Simulator"
-#define CCD_SIMULATOR_GUIDER_NAME				"CCD Guider Simulator (guider)"
+#define CCD_SIMULATOR_GUIDER_CAMERA_NAME	"CCD Guider Simulator"
+#define CCD_SIMULATOR_GUIDER_NAME					"CCD Guider Simulator (guider)"
+#define CCD_SIMULATOR_AO_NAME							"CCD Guider Simulator (AO)"
 
-#define CCD_SIMULATOR_DSLR_NAME		"DSLR Simulator"
+#define CCD_SIMULATOR_DSLR_NAME						"DSLR Simulator"
 
 
 /** Create CCD Simulator device instance
