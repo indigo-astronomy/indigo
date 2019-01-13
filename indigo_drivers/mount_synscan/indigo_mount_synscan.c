@@ -219,6 +219,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
 		mount_handle_st4_guiding_rate(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
+		indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
+		mount_handle_polarscope(device);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
