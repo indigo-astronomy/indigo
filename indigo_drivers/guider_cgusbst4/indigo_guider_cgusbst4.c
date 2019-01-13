@@ -223,7 +223,7 @@ static indigo_device *guider = NULL;
 
 indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_CGUSBST4_GUIDER_NAME,
+		"CG-USB-ST4 Adapter",
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -233,7 +233,7 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, MOUNT_CGUSBST4_GUIDER_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "CG-USB-ST4 Adapter", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

@@ -13,6 +13,8 @@
 		590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 590B59D61F79A68000086FD2 /* libnovas.a */; };
 		590BF1AB21EBBBEE00C24DBA /* indigo_ao_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 590BF1A121EBBBEE00C24DBA /* indigo_ao_driver.h */; };
 		590BF1AC21EBBBEE00C24DBA /* indigo_ao_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 590BF1AA21EBBBEE00C24DBA /* indigo_ao_driver.c */; };
+		590BF1B321EBCF7500C24DBA /* indigo_ao_sx.h in Headers */ = {isa = PBXBuildFile; fileRef = 590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */; };
+		590BF1B421EBCF7500C24DBA /* indigo_ao_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */; };
 		590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 590DD8772127590600F2B978 /* indigo_wheel_optec.c */; };
 		590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */ = {isa = PBXBuildFile; fileRef = 590DD87A2127590600F2B978 /* indigo_wheel_optec.h */; };
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
@@ -476,6 +478,10 @@
 		590BCDFC21BEF8A1004DE869 /* test_suite.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = test_suite.sh; sourceTree = "<group>"; };
 		590BF1A121EBBBEE00C24DBA /* indigo_ao_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ao_driver.h; sourceTree = "<group>"; };
 		590BF1AA21EBBBEE00C24DBA /* indigo_ao_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ao_driver.c; sourceTree = "<group>"; };
+		590BF1AE21EBCF7500C24DBA /* indigo_ao_sx_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ao_sx_main.c; sourceTree = "<group>"; };
+		590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ao_sx.h; sourceTree = "<group>"; };
+		590BF1B021EBCF7500C24DBA /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ao_sx.c; sourceTree = "<group>"; };
 		590DD780212013B500F2B978 /* Makefile.mingw */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.mingw; sourceTree = "<group>"; };
 		590DD781212013B500F2B978 /* LICENSE.LGPL */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE.LGPL; sourceTree = "<group>"; };
 		590DD782212013B500F2B978 /* README.cmake */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.cmake; sourceTree = "<group>"; };
@@ -4269,6 +4275,17 @@
 			path = mount_temma;
 			sourceTree = "<group>";
 		};
+		590BF1AD21EBCF7500C24DBA /* ao_sx */ = {
+			isa = PBXGroup;
+			children = (
+				590BF1B021EBCF7500C24DBA /* README.md */,
+				590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */,
+				590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */,
+				590BF1AE21EBCF7500C24DBA /* indigo_ao_sx_main.c */,
+			);
+			path = ao_sx;
+			sourceTree = "<group>";
+		};
 		590DD77E212013B500F2B978 /* externals */ = {
 			isa = PBXGroup;
 			children = (
@@ -8004,6 +8021,7 @@
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
+				590BF1AD21EBCF7500C24DBA /* ao_sx */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
 				59BBD189218246C8008199D6 /* aux_rts */,
@@ -11814,6 +11832,7 @@
 				9D59D63A20D3F829009EA8FF /* PlatformData.h in Headers */,
 				9D59D66A20D3F82A009EA8FF /* CameraStatusRegs.h in Headers */,
 				59A52FB821A34266000B6F27 /* toupcam.h in Headers */,
+				590BF1B321EBCF7500C24DBA /* indigo_ao_sx.h in Headers */,
 				9D59D64920D3F829009EA8FF /* parseCfgTabDelim.h in Headers */,
 				9D59D63020D3F829009EA8FF /* AltaUsbIo.h in Headers */,
 				9D59D5EE20D3F829009EA8FF /* ApgLogger.h in Headers */,
@@ -12102,6 +12121,7 @@
 				595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */,
 				9D59D61C20D3F829009EA8FF /* Quad.cpp in Sources */,
 				9D59D65F20D3F829009EA8FF /* CamRegMirror.cpp in Sources */,
+				590BF1B421EBCF7500C24DBA /* indigo_ao_sx.c in Sources */,
 				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
 				595F2923211E211200380EF4 /* NSXReturnThrowError.m in Sources */,
 				9D59D5F520D3F829009EA8FF /* AspenUsbIo.cpp in Sources */,

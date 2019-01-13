@@ -1144,6 +1144,11 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 				free(guider_guider);
 				guider_guider = NULL;
 			}
+			if (guider_ao != NULL) {
+				indigo_detach_device(guider_ao);
+				free(guider_ao);
+				guider_ao = NULL;
+			}
 			if (dslr != NULL) {
 				indigo_detach_device(dslr);
 				free(dslr);

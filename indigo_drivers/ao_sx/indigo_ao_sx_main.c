@@ -8,7 +8,7 @@
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
 // ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTnexstarIAL
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
 // GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
@@ -19,28 +19,25 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO cgusbst4 driver
- \file indigo_guider_cgusbst4.h
+/** INDIGO StarlighXpress AO driver main
+ \file indigo_ao_sx_main.c
  */
 
-#ifndef guider_cgusbst4_h
-#define guider_cgusbst4_h
+#include <stdio.h>
 
-#include "indigo_driver.h"
-#include "indigo_guider_driver.h"
+#include "indigo_driver_xml.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "indigo_ao_sx.h"
 
-/** Create mount CGUSBST4 device instance
- */
-
-extern indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_info *info);
-
-#ifdef __cplusplus
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	indigo_ao_sx(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_ao_sx(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
 }
-#endif
-
-#endif /* guider_cgusbst4_h */
-

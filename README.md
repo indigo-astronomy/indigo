@@ -80,6 +80,7 @@ This is the list of requirements taken into the consideration:
 51. DSUSB aux (shutter) driver (untested)
 52. GPUSB guider driver (untested)
 53. LakesideAstro focuser (untested)
+54. SX AO driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

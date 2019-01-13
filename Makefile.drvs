@@ -26,10 +26,10 @@ include ../Makefile.inc
 
 GROUP = $(notdir $(shell pwd))
 
-FOLDERS = $(addsuffix /, $(filter-out $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wildcard aux_*) $(wildcard ccd_*) $(wildcard dome_*) $(wildcard focuser_*) $(wildcard gps_*) $(wildcard guider_*) $(wildcard mount_*) $(wildcard wheel_*) $(wildcard system_*)))
-EXCLUDED = $(addsuffix /, $(filter $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wildcard aux_*) $(wildcard ccd_*) $(wildcard dome_*) $(wildcard focuser_*) $(wildcard gps_*) $(wildcard guider_*) $(wildcard mount_*) $(wildcard wheel_*) $(wildcard system_*)))
+FOLDERS = $(addsuffix /, $(filter-out $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wildcard ao_*) $(wildcard aux_*) $(wildcard ccd_*) $(wildcard dome_*) $(wildcard focuser_*) $(wildcard gps_*) $(wildcard guider_*) $(wildcard mount_*) $(wildcard wheel_*) $(wildcard system_*)))
+EXCLUDED = $(addsuffix /, $(filter $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wildcard ao_*) $(wildcard aux_*) $(wildcard ccd_*) $(wildcard dome_*) $(wildcard focuser_*) $(wildcard gps_*) $(wildcard guider_*) $(wildcard mount_*) $(wildcard wheel_*) $(wildcard system_*)))
 
-FOLDERS_WITH_MAKEFILE = $(dir $(wildcard agent_*/Makefile) $(wildcard aux_*/Makefile) $(wildcard ccd_*/Makefile) $(wildcard dome_*/Makefile) $(wildcard focuser_*/Makefile) $(wildcard gps_*/Makefile) $(wildcard guider_*/Makefile) $(wildcard mount_*/Makefile) $(wildcard wheel_*/Makefile) $(wildcard system_*/Makefile))
+FOLDERS_WITH_MAKEFILE = $(dir $(wildcard agent_*/Makefile) $(wildcard ao_*/Makefile) $(wildcard aux_*/Makefile) $(wildcard ccd_*/Makefile) $(wildcard dome_*/Makefile) $(wildcard focuser_*/Makefile) $(wildcard gps_*/Makefile) $(wildcard guider_*/Makefile) $(wildcard mount_*/Makefile) $(wildcard wheel_*/Makefile) $(wildcard system_*/Makefile))
 FOLDERS_WITHOUT_MAKEFILE = $(filter-out $(FOLDERS_WITH_MAKEFILE), $(FOLDERS))
 .PHONY: all clean clean-all $(FOLDERS)
 
