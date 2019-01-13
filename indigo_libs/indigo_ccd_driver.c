@@ -86,12 +86,14 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_BITS_PER_PIXEL_ITEM, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME, "Bits/pixel", 0, 0, 0, 0);
 			// -------------------------------------------------------------------------------- CCD_UPLOAD_MODE
-			CCD_UPLOAD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Image upload", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			CCD_UPLOAD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Image upload", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 			if (CCD_UPLOAD_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_UPLOAD_MODE_CLIENT_ITEM, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, "Upload to client", true);
 			indigo_init_switch_item(CCD_UPLOAD_MODE_LOCAL_ITEM, CCD_UPLOAD_MODE_LOCAL_ITEM_NAME, "Save locally", false);
 			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, "Upload and save locally", false);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_PREVIEW_ITEM, CCD_UPLOAD_MODE_PREVIEW_ITEM_NAME, "Upload preview to client", false);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM, CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM_NAME, "Upload preview to client and save locally", false);
 			// -------------------------------------------------------------------------------- CCD_LOCAL_MODE
 			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Local mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_LOCAL_MODE_PROPERTY == NULL)
@@ -220,6 +222,16 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 				sprintf(label, "Custom Header #%d", i + 1);
 				indigo_init_text_item(CCD_FITS_HEADERS_PROPERTY->items + i, name, label, "");
 			}
+			// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
+			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
+			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
+			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 5, 90);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_ITEM, CCD_JPEG_SETTINGS_BLACK_ITEM_NAME, "Black point", -1, 255, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_ITEM, CCD_JPEG_SETTINGS_WHITE_ITEM_NAME, "White point", -1, 255, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM_NAME, "Black point treshold", 0, 1, 0, 0.005);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME, "White point treshold", 0, 1, 0, 0.002);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -272,7 +284,9 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 		if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property))
 			indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		if (indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property))
-		indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
+			indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
+		if (indigo_property_match(CCD_JPEG_SETTINGS_PROPERTY, property))
+			indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -305,6 +319,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
+			indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
@@ -327,6 +342,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
@@ -342,16 +358,18 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, CCD_GAIN_PROPERTY);
 			indigo_save_property(device, NULL, CCD_FRAME_TYPE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_FITS_HEADERS_PROPERTY);
+			indigo_save_property(device, NULL, CCD_JPEG_SETTINGS_PROPERTY);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
 				if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE) {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 				}
-			} else {
+			}
+			if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
 				if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
 					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
@@ -486,6 +504,19 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
 		indigo_property_copy_values(CCD_IMAGE_FORMAT_PROPERTY, property, false);
+		if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
+			if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
+				CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
+				if (IS_CONNECTED)
+					indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+			}
+		} else {
+			if (!CCD_JPEG_SETTINGS_PROPERTY->hidden) {
+				if (IS_CONNECTED)
+					indigo_delete_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+				CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
+			}
+		}
 		CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
@@ -493,6 +524,19 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_UPLOAD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_UPLOAD_MODE
 		indigo_property_copy_values(CCD_UPLOAD_MODE_PROPERTY, property, false);
+		if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
+			if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
+				CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
+				if (IS_CONNECTED)
+					indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+			}
+		} else {
+			if (!CCD_JPEG_SETTINGS_PROPERTY->hidden) {
+				if (IS_CONNECTED)
+					indigo_delete_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+				CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
+			}
+		}
 		CCD_UPLOAD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
@@ -549,6 +593,13 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_JPEG_SETTINGS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
+		indigo_property_copy_values(CCD_JPEG_SETTINGS_PROPERTY, property, false);
+		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED)
+			indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_device_change_property(device, client, property);
@@ -577,7 +628,144 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_COOLER_PROPERTY);
 	indigo_release_property(CCD_COOLER_POWER_PROPERTY);
 	indigo_release_property(CCD_FITS_HEADERS_PROPERTY);
+	indigo_release_property(CCD_JPEG_SETTINGS_PROPERTY);
 	return indigo_device_detach(device);
+}
+
+static void set_black_white(indigo_device *device, long *histo, long count) {
+	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count;
+	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
+		long total = 0;
+		for (int i = 0; i < 256; i++) {
+			total += histo[i];
+			if (total > black) {
+				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i;
+				break;
+			}
+		}
+	} else {
+		CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = CCD_JPEG_SETTINGS_BLACK_ITEM->number.target;
+	}
+	long white = CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM->number.value * count;
+	if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.target == -1) {
+		long total = 0;
+		for (int i = 255; i >= 0; i--) {
+			total += histo[i];
+			if (total > white) {
+				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i;
+				break;
+			}
+		}
+	} else {
+		CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = CCD_JPEG_SETTINGS_WHITE_ITEM->number.target;
+	}
+	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value == CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) {
+		if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value < 254)
+			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 2;
+		else
+			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value -= 2;
+	}
+	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value != CCD_JPEG_SETTINGS_BLACK_ITEM->number.target || CCD_JPEG_SETTINGS_WHITE_ITEM->number.value != CCD_JPEG_SETTINGS_WHITE_ITEM->number.target) {
+		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+	}
+}
+
+static void raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out) {
+	INDIGO_DEBUG(clock_t start = clock());
+	int size_in = frame_width * frame_height;
+	void *copy = malloc(size_in * bpp / 8);
+	memcpy(copy, data_in + FITS_HEADER_SIZE, size_in * bpp / 8);
+	unsigned char *mem = NULL;
+	unsigned long mem_size = 0;
+	struct jpeg_compress_struct cinfo;
+	struct jpeg_error_mgr jerr;
+	cinfo.err = jpeg_std_error(&jerr);
+	jpeg_create_compress(&cinfo);
+	jpeg_mem_dest(&cinfo, &mem, &mem_size);
+	cinfo.image_width = frame_width;
+	cinfo.image_height = frame_height;
+	long histo[256] = { 0 };
+	if (bpp == 8 || bpp == 24) {
+		unsigned char *b8 = copy;
+		int count = size_in * (bpp == 8 ? 1 : 3);
+		for (int i = 0; i < count; i++) {
+			histo[*b8++]++;
+		}
+		set_black_white(device, histo, count);
+		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value) / 255;
+		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value;
+		b8 = copy;
+		for (int i = 0; i < count; i++) {
+			int value = (*b8 - offset) / scale;
+			if (value < 0)
+				value = 0;
+			else if (value > 255)
+				value = 255;
+			*b8++ = value;
+		}
+	}
+	if (bpp == 16 || bpp == 48) {
+		unsigned short *b16 = copy;
+		int count = size_in * (bpp == 16 ? 1 : 3);
+		if (little_endian) {
+			for (int i = 0; i < count; i++) {
+				histo[*b16++ >> 8]++;
+			}
+		} else {
+			for (int i = 0; i < count; i++) {
+				int value = *b16;
+				value = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+				*b16++ = value;
+				histo[value >> 8]++;
+			}
+		}
+		set_black_white(device, histo, count);
+		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value);
+		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value;
+		unsigned char *b8 = copy;
+		b16 = copy;
+		for (int i = 0; i < count; i++) {
+			int value = (*b16++ - offset) / scale;
+			if (value < 0)
+				value = 0;
+			else if (value > 255)
+				value = 255;
+			*b8++ = value;
+		}
+	}
+	if (bpp == 8 || bpp == 16) {
+		cinfo.input_components = 1;
+		cinfo.in_color_space = JCS_GRAYSCALE;
+	}
+	if (bpp == 24 || bpp == 48) {
+		if (!byte_order_rgb) {
+			unsigned char *b8 = copy;
+			for (int i = 0; i < size_in; i++) {
+				unsigned char b = *b8;
+				unsigned char r = *(b8 + 2);
+				*b8 = r;
+				*(b8 + 2) = b;
+				b8 += 3;
+			}
+		}
+		cinfo.input_components = 3;
+		cinfo.in_color_space = JCS_RGB;
+	}
+	jpeg_set_defaults(&cinfo);
+	jpeg_set_quality(&cinfo, CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target, true);
+	JSAMPROW row_pointer[1];
+	jpeg_start_compress( &cinfo, TRUE);
+	while( cinfo.next_scanline < cinfo.image_height ) {
+		row_pointer[0] = &copy[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
+		jpeg_write_scanlines(&cinfo, row_pointer, 1);
+	}
+	jpeg_finish_compress(&cinfo);
+	jpeg_destroy_compress(&cinfo);
+	*data_out = mem;
+	*size_out = mem_size;
+	free(copy);
+	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 }
 
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords) {
@@ -589,509 +777,431 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
 	int byte_per_pixel = bpp / 8;
 	int naxis = 2;
-	int size = frame_width * frame_height;
-	int blobsize = byte_per_pixel * size;
+	unsigned long size = frame_width * frame_height;
+	unsigned long blobsize = byte_per_pixel * size;
 	if (byte_per_pixel == 3) {
 		byte_per_pixel = 1;
 		naxis = 3;
-		blobsize = 3 * size;
 	} else if (byte_per_pixel == 6) {
 		byte_per_pixel = 2;
 		naxis = 3;
-		blobsize = 6 * size;
 	}
-	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-		INDIGO_DEBUG(clock_t start = clock());
-		time_t timer;
-		struct tm* tm_info;
-		char date_time_end[20];
-		time(&timer);
-		tm_info = gmtime(&timer);
-		strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
-		char *header = data;
-		memset(header, ' ', FITS_HEADER_SIZE);
-		int t = sprintf(header, "SIMPLE  =                    T / file conforms to FITS standard");
-		header[t] = ' ';
-		t = sprintf(header += 80, "BITPIX  = %20d / number of bits per data pixel", byte_per_pixel * 8);
-		header[t] = ' ';
-		t = sprintf(header += 80, "NAXIS   =                    %d / number of data axes", naxis);
-		header[t] = ' ';
-		t = sprintf(header += 80, "NAXIS1  = %20d / length of data axis 1 [pixels]", frame_width);
-		header[t] = ' ';
-		t = sprintf(header += 80, "NAXIS2  = %20d / length of data axis 2 [pixels]", frame_height);
-		header[t] = ' ';
-		if (naxis == 3) {
-			t = sprintf(header += 80, "NAXIS3  = %20d / length of data axis 3 [RGB]", 3);
+	
+	void *jpeg_data = NULL;
+	unsigned long jpeg_size = 0;
+	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
+		raw_to_jpeg(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &jpeg_data, &jpeg_size);
+	}
+	
+	if (!CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value) {
+		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
+			INDIGO_DEBUG(clock_t start = clock());
+			time_t timer;
+			struct tm* tm_info;
+			char date_time_end[20];
+			time(&timer);
+			tm_info = gmtime(&timer);
+			strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
+			char *header = data;
+			memset(header, ' ', FITS_HEADER_SIZE);
+			int t = sprintf(header, "SIMPLE  =                    T / file conforms to FITS standard");
 			header[t] = ' ';
-		}
-		t = sprintf(header += 80, "EXTEND  =                    T / FITS dataset may contain extensions");
-		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy");
-		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H");
-		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
-		header[t] = ' ';
-		if (byte_per_pixel == 2) {
-			t = sprintf(header += 80, "BZERO   =                32768 / offset data range to that of unsigned short");
+			t = sprintf(header += 80, "BITPIX  = %20d / number of bits per data pixel", byte_per_pixel * 8);
 			header[t] = ' ';
-			t = sprintf(header += 80, "BSCALE  =                    1 / default scaling factor");
+			t = sprintf(header += 80, "NAXIS   =                    %d / number of data axes", naxis);
 			header[t] = ' ';
-		} else {
-		//	t = sprintf(header += 80, "BZERO   =                    0 / offset data range to that of unsigned short");
-		//	header[t] = ' ';
-		//	t = sprintf(header += 80, "BSCALE  =                  256 / default scaling factor");
-		//	header[t] = ' ';
-		}
-		t = sprintf(header += 80, "XBINNING= %20d / horizontal binning [pixels]", horizontal_bin);
-		header[t] = ' ';
-		t = sprintf(header += 80, "YBINNING= %20d / vertical binning [pixels]", vertical_bin);
-		header[t] = ' ';
-		if (CCD_INFO_PIXEL_WIDTH_ITEM->number.value > 0 && CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) {
-			t = sprintf(header += 80, "XPIXSZ  = %20.2f / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin);
+			t = sprintf(header += 80, "NAXIS1  = %20d / length of data axis 1 [pixels]", frame_width);
 			header[t] = ' ';
-			t = sprintf(header += 80, "YPIXSZ  = %20.2f / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+			t = sprintf(header += 80, "NAXIS2  = %20d / length of data axis 2 [pixels]", frame_height);
 			header[t] = ' ';
-		}
-		t = sprintf(header += 80, "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
-		header[t] = ' ';
-		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
-			t = sprintf(header += 80, "CCD-TEMP= %20.2f / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
-			header[t] = ' ';
-		}
-		if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Light'               / frame type");
-		else if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Flat'                / frame type");
-		else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Bias'                / frame type");
-		else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Dark'                / frame type");
-		header[t] = ' ';
-		if (!CCD_GAIN_PROPERTY->hidden) {
-			t = sprintf(header += 80, "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
-			header[t] = ' ';
-		}
-		if (!CCD_OFFSET_PROPERTY->hidden) {
-			t = sprintf(header += 80, "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
-			header[t] = ' ';
-		}
-		if (!CCD_GAMMA_PROPERTY->hidden) {
-			t = sprintf(header += 80, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
-			header[t] = ' ';
-		}
-		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
-		header[t] = ' ';
-		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
-		header[t] = ' ';
-		if (keywords) {
-			while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
-				switch (keywords->type) {
-					case INDIGO_FITS_NUMBER:
-						t = sprintf(header += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
-						break;
-					case INDIGO_FITS_STRING:
-						t = sprintf(header += 80, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
-						break;
-					case INDIGO_FITS_LOGICAL:
-						t = sprintf(header += 80, "%7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
-						break;
-				}
-				header[t] = ' ';
-				keywords++;
-			}
-		}
-		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
-			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
-			if (*item->text.value && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
-				t = sprintf(header += 80, "%s", item->text.value);
+			if (naxis == 3) {
+				t = sprintf(header += 80, "NAXIS3  = %20d / length of data axis 3 [RGB]", 3);
 				header[t] = ' ';
 			}
-		}
-		t = sprintf(header += 80, "END");
-		header[t] = ' ';
-		if (byte_per_pixel == 2 && naxis == 2) {
-			short *raw = (short *)(data + FITS_HEADER_SIZE);
-			if (little_endian) {
-				for (int i = 0; i < size; i++) {
-					int value = *raw - 32768;
-					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
-			} else {
-				for (int i = 0; i < size; i++) {
-					int value = *raw;
-					value = ((value & 0xff) << 8 | (value & 0xff00) >> 8 ) - 32768;
-					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
-			}
-		} else if (byte_per_pixel == 1 && naxis == 3) {
-			unsigned char *raw = malloc(3 * size);
-			unsigned char *red = raw;
-			unsigned char *green = raw + size;
-			unsigned char *blue = raw + 2 * size;
-			unsigned char *tmp = data + FITS_HEADER_SIZE;
-			if (byte_order_rgb) {
-				for (int i = 0; i < size; i++) {
-					*red++ = *tmp++;
-					*green++ = *tmp++;
-					*blue++ = *tmp++;
-				}
-			} else {
-				for (int i = 0; i < size; i++) {
-					*blue++ = *tmp++;
-					*green++ = *tmp++;
-					*red++ = *tmp++;
-				}
-			}
-			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
-			free(raw);
-		} else if (byte_per_pixel == 2 && naxis == 3) {
-			unsigned short *raw = malloc(6 * size);
-			unsigned short *red = raw;
-			unsigned short *green = raw + size;
-			unsigned short *blue = raw + 2 * size;
-			unsigned short *tmp = (unsigned short *)(data + FITS_HEADER_SIZE);
-			if (little_endian) {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						int value = *tmp++ - 32768;
-						*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						int value = *tmp++ - 32768;
-						*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				}
-			} else {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						*red++ = *tmp++;
-						*green++ = *tmp++;
-						*blue++ = *tmp++;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						*blue++ = *tmp++;
-						*green++ = *tmp++;
-						*red++ = *tmp++;
-					}
-				}
-			}
-			memcpy(data + FITS_HEADER_SIZE, raw, 6 * size);
-			free(raw);
-		}
-		int mod2880 = blobsize % 2880;
-		if (mod2880) {
-			int padding = 2880 - mod2880;
-			if (padding) {
-				memset(data + FITS_HEADER_SIZE + blobsize, 0, padding);
-				blobsize += padding;
-			}
-		}
-		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
-	} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
-		INDIGO_DEBUG(clock_t start = clock());
-		time_t timer;
-		struct tm* tm_info;
-		char date_time_end[21], date_time_start[21];
-		time(&timer);
-		tm_info = gmtime(&timer);
-		strftime(date_time_end, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
-		timer -= CCD_EXPOSURE_ITEM->number.target;
-		tm_info = gmtime(&timer);
-		strftime(date_time_start, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
-		char *header = data;
-		strcpy(header, "XISF0100");
-		header += 16;
-		memset(header, 0, FITS_HEADER_SIZE);
-		sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
-		header += strlen(header);
-		char *frame_type = "Light";
-		if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
-			frame_type ="Flat";
-		else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
-			frame_type ="Bias";
-		else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
-			frame_type ="Dark";
-		if (naxis == 2 && byte_per_pixel == 1) {
-			sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
-		} else if (naxis == 2 && byte_per_pixel == 2) {
-			sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt16' colorSpace='Gray' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
-		} else if (naxis == 3 && byte_per_pixel == 1) {
-			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
-		} else if (naxis == 3 && byte_per_pixel == 2) {
-			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
-		}
-		header += strlen(header);
-		sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%.5f'/>", CCD_EXPOSURE_ITEM->number.target);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%.2f'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
-		header += strlen(header);
-		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%.2f'/>", CCD_TEMPERATURE_ITEM->number.value, CCD_TEMPERATURE_ITEM->number.target);
-		}
-		header += strlen(header);
-		if (!CCD_GAIN_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%g'/>", CCD_GAIN_ITEM->number.value);
-			header += strlen(header);
-		}
-		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
-			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
-			if (!strncmp(item->text.value, "FILTER=", 7)) {
-				sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value='%s'/>", item->text.value + 7);
-				header += strlen(header);
-			} else if (!strncmp(item->text.value, "FOCUS=", 6)) {
-				sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value + 6);
-				header += strlen(header);
-			}
-		}
-		if (keywords) {
-			while (keywords->type) {
-				if (!strcmp(keywords->name, "BAYERPAT")) {
-					sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2'/>", keywords->string);
-					header += strlen(header);
-				}
-				keywords++;
-			}
-		}
-		sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%d</Property>", date_time_end, INDIGO_BUILD);
-		header += strlen(header);
-#ifdef INDIGO_LINUX
-		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
-#endif
-#ifdef INDIGO_MACOS
-		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>macOS</Property>");
-#endif
-#ifdef INDIGO_WINDOWS
-		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Windows</Property>");
-#endif
-		header += strlen(header);
-		sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
-		header += strlen(header);
-		*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data) - 16;
-		if (naxis == 2 && byte_per_pixel == 2) {
-			if (!little_endian) {
-				short *b16 = (short *)(data + FITS_HEADER_SIZE);
-				for (int i = 0; i < size; i++) {
-					int value = *b16;
-					*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
-			}
-		} else if (naxis == 3 && byte_per_pixel == 1) {
-			if (!byte_order_rgb) {
-				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				for (int i = 0; i < size; i++) {
-					unsigned char b = *b8;
-					unsigned char r = *(b8 + 2);
-					*b8 = r;
-					*(b8 + 2) = b;
-					b8 += 3;
-				}
-			}
-		} else if (naxis == 3 && byte_per_pixel == 2) {
-			unsigned char *b16 = data + FITS_HEADER_SIZE;
-			if (little_endian) {
-				if (!byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						unsigned char b = *b16;
-						unsigned char r = *(b16 + 2);
-						*b16 = r;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			} else {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						unsigned b = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 1);
-						unsigned g = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 2);
-						unsigned r = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						*b16 = r;
-						*(b16 + 1) = g;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			}
-		}
-		INDIGO_DEBUG(indigo_debug("RAW to XISF conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
-	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
-		if (naxis == 2 && byte_per_pixel == 1)
-			header->signature = INDIGO_RAW_MONO8;
-		else if (naxis == 2 && byte_per_pixel == 2) {
-			header->signature = INDIGO_RAW_MONO16;
-			if (!little_endian) {
-				short *b16 = (short *)(data + FITS_HEADER_SIZE);
-				for (int i = 0; i < size; i++) {
-					int value = *b16;
-					*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
-			}
-		} else if (naxis == 3 && byte_per_pixel == 1) {
-			header->signature = INDIGO_RAW_RGB24;
-			if (!byte_order_rgb) {
-				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				for (int i = 0; i < size; i++) {
-					unsigned char b = *b8;
-					unsigned char r = *(b8 + 2);
-					*b8 = r;
-					*(b8 + 2) = b;
-					b8 += 3;
-				}
-			}
-		} else if (naxis == 3 && byte_per_pixel == 2) {
-			header->signature = INDIGO_RAW_RGB48;
-			unsigned char *b16 = data + FITS_HEADER_SIZE;
-			if (little_endian) {
-				if (!byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						unsigned char b = *b16;
-						unsigned char r = *(b16 + 2);
-						*b16 = r;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			} else {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						unsigned b = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 1);
-						unsigned g = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 2);
-						unsigned r = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						*b16 = r;
-						*(b16 + 1) = g;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			}
-		}
-		header->width = frame_width;
-		header->height = frame_height;
-	} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-		INDIGO_DEBUG(clock_t start = clock());
-		unsigned char *mem = NULL;
-		unsigned long mem_size = 0;
-		struct jpeg_compress_struct cinfo;
-		struct jpeg_error_mgr jerr;
-		cinfo.err = jpeg_std_error(&jerr);
-		jpeg_create_compress(&cinfo);
-		jpeg_mem_dest(&cinfo, &mem, &mem_size);
-		cinfo.image_width = frame_width;
-		cinfo.image_height = frame_height;
-		if (naxis == 2) {
+			t = sprintf(header += 80, "EXTEND  =                    T / FITS dataset may contain extensions");
+			header[t] = ' ';
+			t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy");
+			header[t] = ' ';
+			t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H");
+			header[t] = ' ';
+			t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
+			header[t] = ' ';
 			if (byte_per_pixel == 2) {
-				unsigned short *b16 = data + FITS_HEADER_SIZE;
-				unsigned short max = 0;
+				t = sprintf(header += 80, "BZERO   =                32768 / offset data range to that of unsigned short");
+				header[t] = ' ';
+				t = sprintf(header += 80, "BSCALE  =                    1 / default scaling factor");
+				header[t] = ' ';
+			} else {
+			//	t = sprintf(header += 80, "BZERO   =                    0 / offset data range to that of unsigned short");
+			//	header[t] = ' ';
+			//	t = sprintf(header += 80, "BSCALE  =                  256 / default scaling factor");
+			//	header[t] = ' ';
+			}
+			t = sprintf(header += 80, "XBINNING= %20d / horizontal binning [pixels]", horizontal_bin);
+			header[t] = ' ';
+			t = sprintf(header += 80, "YBINNING= %20d / vertical binning [pixels]", vertical_bin);
+			header[t] = ' ';
+			if (CCD_INFO_PIXEL_WIDTH_ITEM->number.value > 0 && CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) {
+				t = sprintf(header += 80, "XPIXSZ  = %20.2f / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin);
+				header[t] = ' ';
+				t = sprintf(header += 80, "YPIXSZ  = %20.2f / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+				header[t] = ' ';
+			}
+			t = sprintf(header += 80, "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
+			header[t] = ' ';
+			if (!CCD_TEMPERATURE_PROPERTY->hidden) {
+				t = sprintf(header += 80, "CCD-TEMP= %20.2f / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
+				header[t] = ' ';
+			}
+			if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
+				t = sprintf(header += 80, "IMAGETYP= 'Light'               / frame type");
+			else if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
+				t = sprintf(header += 80, "IMAGETYP= 'Flat'                / frame type");
+			else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
+				t = sprintf(header += 80, "IMAGETYP= 'Bias'                / frame type");
+			else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
+				t = sprintf(header += 80, "IMAGETYP= 'Dark'                / frame type");
+			header[t] = ' ';
+			if (!CCD_GAIN_PROPERTY->hidden) {
+				t = sprintf(header += 80, "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
+				header[t] = ' ';
+			}
+			if (!CCD_OFFSET_PROPERTY->hidden) {
+				t = sprintf(header += 80, "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
+				header[t] = ' ';
+			}
+			if (!CCD_GAMMA_PROPERTY->hidden) {
+				t = sprintf(header += 80, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
+				header[t] = ' ';
+			}
+			t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
+			header[t] = ' ';
+			t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
+			header[t] = ' ';
+			if (keywords) {
+				while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
+					switch (keywords->type) {
+						case INDIGO_FITS_NUMBER:
+							t = sprintf(header += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
+							break;
+						case INDIGO_FITS_STRING:
+							t = sprintf(header += 80, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+							break;
+						case INDIGO_FITS_LOGICAL:
+							t = sprintf(header += 80, "%7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
+							break;
+					}
+					header[t] = ' ';
+					keywords++;
+				}
+			}
+			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+				indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+				if (*item->text.value && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
+					t = sprintf(header += 80, "%s", item->text.value);
+					header[t] = ' ';
+				}
+			}
+			t = sprintf(header += 80, "END");
+			header[t] = ' ';
+			if (byte_per_pixel == 2 && naxis == 2) {
+				short *raw = (short *)(data + FITS_HEADER_SIZE);
 				if (little_endian) {
 					for (int i = 0; i < size; i++) {
-						int value = *b16++;
-						if (max < value)
-							max = value;
+						int value = *raw - 32768;
+						*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 					}
 				} else {
 					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						if (max < value)
-							max = value;
+						int value = *raw;
+						value = ((value & 0xff) << 8 | (value & 0xff00) >> 8 ) - 32768;
+						*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 					}
 				}
-				int shift = 0;
-				if (max > 0x8000)
-					shift = 8;
-				else if (max > 0x4000)
-					shift = 7;
-				else if (max > 0x2000)
-					shift = 6;
-				else if (max > 0x1000)
-					shift = 5;
-				else if (max > 0x800)
-					shift = 4;
-				else if (max > 0x400)
-					shift = 3;
-				else if (max > 0x200)
-					shift = 2;
-				else if (max > 0x100)
-					shift = 1;
-				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				b16 = data + FITS_HEADER_SIZE;
-				if (shift > 0) {
-					for (int i = 0; i < size; i++)
-						*b8++ = *b16++ >> shift;
+			} else if (byte_per_pixel == 1 && naxis == 3) {
+				unsigned char *raw = malloc(3 * size);
+				unsigned char *red = raw;
+				unsigned char *green = raw + size;
+				unsigned char *blue = raw + 2 * size;
+				unsigned char *tmp = data + FITS_HEADER_SIZE;
+				if (byte_order_rgb) {
+					for (int i = 0; i < size; i++) {
+						*red++ = *tmp++;
+						*green++ = *tmp++;
+						*blue++ = *tmp++;
+					}
 				} else {
-					for (int i = 0; i < size; i++)
-						*b8++ = *b16++;
+					for (int i = 0; i < size; i++) {
+						*blue++ = *tmp++;
+						*green++ = *tmp++;
+						*red++ = *tmp++;
+					}
+				}
+				memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
+				free(raw);
+			} else if (byte_per_pixel == 2 && naxis == 3) {
+				unsigned short *raw = malloc(6 * size);
+				unsigned short *red = raw;
+				unsigned short *green = raw + size;
+				unsigned short *blue = raw + 2 * size;
+				unsigned short *tmp = (unsigned short *)(data + FITS_HEADER_SIZE);
+				if (little_endian) {
+					if (byte_order_rgb) {
+						for (int i = 0; i < size; i++) {
+							int value = *tmp++ - 32768;
+							*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *tmp++ - 32768;
+							*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *tmp++ - 32768;
+							*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+						}
+					} else {
+						for (int i = 0; i < size; i++) {
+							int value = *tmp++ - 32768;
+							*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *tmp++ - 32768;
+							*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *tmp++ - 32768;
+							*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+						}
+					}
+				} else {
+					if (byte_order_rgb) {
+						for (int i = 0; i < size; i++) {
+							*red++ = *tmp++;
+							*green++ = *tmp++;
+							*blue++ = *tmp++;
+						}
+					} else {
+						for (int i = 0; i < size; i++) {
+							*blue++ = *tmp++;
+							*green++ = *tmp++;
+							*red++ = *tmp++;
+						}
+					}
+				}
+				memcpy(data + FITS_HEADER_SIZE, raw, 6 * size);
+				free(raw);
+			}
+			int mod2880 = blobsize % 2880;
+			if (mod2880) {
+				int padding = 2880 - mod2880;
+				if (padding) {
+					memset(data + FITS_HEADER_SIZE + blobsize, 0, padding);
+					blobsize += padding;
 				}
 			}
-			cinfo.input_components = 1;
-			cinfo.in_color_space = JCS_GRAYSCALE;
-		} else if (naxis == 3 && byte_per_pixel == 1) {
-			cinfo.input_components = 3;
-			cinfo.in_color_space = JCS_RGB;
-			if (!byte_order_rgb) {
-				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				for (int i = 0; i < size; i++) {
-					unsigned char b = *b8;
-					unsigned char r = *(b8 + 2);
-					*b8 = r;
-					*(b8 + 2) = b;
-					b8 += 3;
+			INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
+			INDIGO_DEBUG(clock_t start = clock());
+			time_t timer;
+			struct tm* tm_info;
+			char date_time_end[21], date_time_start[21];
+			time(&timer);
+			tm_info = gmtime(&timer);
+			strftime(date_time_end, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
+			timer -= CCD_EXPOSURE_ITEM->number.target;
+			tm_info = gmtime(&timer);
+			strftime(date_time_start, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
+			char *header = data;
+			strcpy(header, "XISF0100");
+			header += 16;
+			memset(header, 0, FITS_HEADER_SIZE);
+			sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
+			header += strlen(header);
+			char *frame_type = "Light";
+			if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
+				frame_type ="Flat";
+			else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
+				frame_type ="Bias";
+			else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
+				frame_type ="Dark";
+			if (naxis == 2 && byte_per_pixel == 1) {
+				sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			} else if (naxis == 2 && byte_per_pixel == 2) {
+				sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt16' colorSpace='Gray' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			} else if (naxis == 3 && byte_per_pixel == 1) {
+				sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			} else if (naxis == 3 && byte_per_pixel == 2) {
+				sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%d'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			}
+			header += strlen(header);
+			sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
+			header += strlen(header);
+			sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
+			header += strlen(header);
+			sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
+			header += strlen(header);
+			sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%.5f'/>", CCD_EXPOSURE_ITEM->number.target);
+			header += strlen(header);
+			sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%.2f'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+			header += strlen(header);
+			if (!CCD_TEMPERATURE_PROPERTY->hidden) {
+				sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%.2f'/>", CCD_TEMPERATURE_ITEM->number.value, CCD_TEMPERATURE_ITEM->number.target);
+			}
+			header += strlen(header);
+			if (!CCD_GAIN_PROPERTY->hidden) {
+				sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%g'/>", CCD_GAIN_ITEM->number.value);
+				header += strlen(header);
+			}
+			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+				indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+				if (!strncmp(item->text.value, "FILTER=", 7)) {
+					sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value='%s'/>", item->text.value + 7);
+					header += strlen(header);
+				} else if (!strncmp(item->text.value, "FOCUS=", 6)) {
+					sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value + 6);
+					header += strlen(header);
 				}
 			}
-		} else if (naxis == 3 && byte_per_pixel == 2) {
-			// TBD
+			if (keywords) {
+				while (keywords->type) {
+					if (!strcmp(keywords->name, "BAYERPAT")) {
+						sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2'/>", keywords->string);
+						header += strlen(header);
+					}
+					keywords++;
+				}
+			}
+			sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%d</Property>", date_time_end, INDIGO_BUILD);
+			header += strlen(header);
+	#ifdef INDIGO_LINUX
+			sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
+	#endif
+	#ifdef INDIGO_MACOS
+			sprintf(header, "<Property id='XISF:CreatorOS' type='String'>macOS</Property>");
+	#endif
+	#ifdef INDIGO_WINDOWS
+			sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Windows</Property>");
+	#endif
+			header += strlen(header);
+			sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
+			header += strlen(header);
+			*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data) - 16;
+			if (naxis == 2 && byte_per_pixel == 2) {
+				if (!little_endian) {
+					short *b16 = (short *)(data + FITS_HEADER_SIZE);
+					for (int i = 0; i < size; i++) {
+						int value = *b16;
+						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+					}
+				}
+			} else if (naxis == 3 && byte_per_pixel == 1) {
+				if (!byte_order_rgb) {
+					unsigned char *b8 = data + FITS_HEADER_SIZE;
+					for (int i = 0; i < size; i++) {
+						unsigned char b = *b8;
+						unsigned char r = *(b8 + 2);
+						*b8 = r;
+						*(b8 + 2) = b;
+						b8 += 3;
+					}
+				}
+			} else if (naxis == 3 && byte_per_pixel == 2) {
+				unsigned char *b16 = data + FITS_HEADER_SIZE;
+				if (little_endian) {
+					if (!byte_order_rgb) {
+						for (int i = 0; i < size; i++) {
+							unsigned char b = *b16;
+							unsigned char r = *(b16 + 2);
+							*b16 = r;
+							*(b16 + 2) = b;
+							b16 += 3;
+						}
+					}
+				} else {
+					if (byte_order_rgb) {
+						for (int i = 0; i < size; i++) {
+							int value = *b16;
+							*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+						}
+					} else {
+						for (int i = 0; i < size; i++) {
+							int value = *b16;
+							unsigned b = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *(b16 + 1);
+							unsigned g = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *(b16 + 2);
+							unsigned r = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							*b16 = r;
+							*(b16 + 1) = g;
+							*(b16 + 2) = b;
+							b16 += 3;
+						}
+					}
+				}
+			}
+			INDIGO_DEBUG(indigo_debug("RAW to XISF conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+			indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
+			if (naxis == 2 && byte_per_pixel == 1)
+				header->signature = INDIGO_RAW_MONO8;
+			else if (naxis == 2 && byte_per_pixel == 2) {
+				header->signature = INDIGO_RAW_MONO16;
+				if (!little_endian) {
+					short *b16 = (short *)(data + FITS_HEADER_SIZE);
+					for (int i = 0; i < size; i++) {
+						int value = *b16;
+						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+					}
+				}
+			} else if (naxis == 3 && byte_per_pixel == 1) {
+				header->signature = INDIGO_RAW_RGB24;
+				if (!byte_order_rgb) {
+					unsigned char *b8 = data + FITS_HEADER_SIZE;
+					for (int i = 0; i < size; i++) {
+						unsigned char b = *b8;
+						unsigned char r = *(b8 + 2);
+						*b8 = r;
+						*(b8 + 2) = b;
+						b8 += 3;
+					}
+				}
+			} else if (naxis == 3 && byte_per_pixel == 2) {
+				header->signature = INDIGO_RAW_RGB48;
+				unsigned char *b16 = data + FITS_HEADER_SIZE;
+				if (little_endian) {
+					if (!byte_order_rgb) {
+						for (int i = 0; i < size; i++) {
+							unsigned char b = *b16;
+							unsigned char r = *(b16 + 2);
+							*b16 = r;
+							*(b16 + 2) = b;
+							b16 += 3;
+						}
+					}
+				} else {
+					if (byte_order_rgb) {
+						for (int i = 0; i < size; i++) {
+							int value = *b16;
+							*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+						}
+					} else {
+						for (int i = 0; i < size; i++) {
+							int value = *b16;
+							unsigned b = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *(b16 + 1);
+							unsigned g = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							value = *(b16 + 2);
+							unsigned r = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+							*b16 = r;
+							*(b16 + 1) = g;
+							*(b16 + 2) = b;
+							b16 += 3;
+						}
+					}
+				}
+			}
+			header->width = frame_width;
+			header->height = frame_height;
+		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+			if (jpeg_data && jpeg_size < blobsize) {
+				memcpy(data, jpeg_data, jpeg_size);
+				blobsize = jpeg_size;
+			}
 		}
-		jpeg_set_defaults(&cinfo);
-		JSAMPROW row_pointer[1];
-		jpeg_start_compress( &cinfo, TRUE);
-		unsigned char *tmp = data + FITS_HEADER_SIZE;
-		while( cinfo.next_scanline < cinfo.image_height ) {
-			row_pointer[0] = &tmp[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
-			jpeg_write_scanlines(&cinfo, row_pointer, 1);
-		}
-		jpeg_finish_compress(&cinfo);
-		jpeg_destroy_compress(&cinfo);
-		if (mem_size < size) {
-			memcpy(data, mem, mem_size);
-		}
-		blobsize = (int)mem_size;
-		free(mem);
-		INDIGO_DEBUG(indigo_debug("RAW to JPEG conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
 		char *suffix;
@@ -1190,6 +1300,22 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
+	if (CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
+		if (!(CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value)) {
+			if (jpeg_data && jpeg_size < blobsize) {
+				memcpy(data, jpeg_data, jpeg_size);
+				blobsize = jpeg_size;
+			}
+			CCD_IMAGE_ITEM->blob.value = data;
+			CCD_IMAGE_ITEM->blob.size = jpeg_size;
+		}
+		strncpy(CCD_IMAGE_ITEM->blob.format, ".jpeg", INDIGO_NAME_SIZE);
+		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		INDIGO_DEBUG(indigo_debug("Client preview upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	}
+	if (jpeg_data)
+		free(jpeg_data);
 }
 
 void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix) {
@@ -1197,7 +1323,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
 
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
 		int handle = 0;
@@ -1254,5 +1380,11 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	}
+	if (CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
+		// TBD make preview
+		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		INDIGO_DEBUG(indigo_debug("Client preview upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
 }

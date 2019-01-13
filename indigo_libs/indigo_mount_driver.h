@@ -425,7 +425,7 @@ extern "C" {
 /** Max number of alignment points.
  */
 	
-#define MOUNT_MAX_ALIGNMENT_POINTS										10
+#define MOUNT_MAX_ALIGNMENT_POINTS										100
 
 //------------------------------------------------
 /** Definition of side of pier
@@ -511,6 +511,21 @@ extern indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, do
  */
 	
 extern void indigo_update_coordinates(indigo_device *device, const char *message);
+	
+/** Load alignment points.
+ */
+
+extern void indigo_mount_load_alignment_points(indigo_device *device);
+
+/** Save alignment points.
+ */
+	
+extern void indigo_mount_save_alignment_points(indigo_device *device);
+	
+/** Update alignment points.
+ */
+
+extern void indigo_mount_update_alignment_points(indigo_device *device);
 	
 #ifdef __cplusplus
 }

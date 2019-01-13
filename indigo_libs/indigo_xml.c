@@ -826,6 +826,8 @@ static void *def_number_handler(parser_state state, parser_context *context, cha
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
+		} else if (!strcmp(name, "target")) {
+			property->items[property->count-1].number.target = atof(value);
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "hints")) {

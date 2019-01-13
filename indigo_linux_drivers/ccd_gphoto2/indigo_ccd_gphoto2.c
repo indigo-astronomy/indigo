@@ -23,8 +23,9 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_ccd_gphoto2"
+#define FIT_FORMAT_AMATEUR_CCD
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,146 +67,162 @@ do {							\
 	}						\
 } while (0)
 
-#define GPHOTO2_NAME_DSLR			 "GPhoto2"
-#define GPHOTO2_NAME_SHUTTER			 "Shutter time"
-#define GPHOTO2_NAME_ISO			 "ISO"
-#define GPHOTO2_NAME_COMPRESSION		 "Compression"
-#define GPHOTO2_NAME_APERTURE	         	 "Aperture"
-#define GPHOTO2_NAME_WHITEBALANCE		 "Whitebalance"
-#define GPHOTO2_NAME_EXPOSURE_COMPENSATION       "Exposure compensation"
-#define GPHOTO2_NAME_EXPOSURE_METERING           "Exposure metering"
-#define GPHOTO2_NAME_FOCUS_METERING              "Focus metering"
-#define GPHOTO2_NAME_EXPOSURE_PROGRAM            "Exposure program"
-#define GPHOTO2_NAME_BATTERY_LEVEL               "Battery level"
-#define GPHOTO2_NAME_BATTERY_LEVEL_NAME	         "Percent"
-#define GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME	 "BATTERY_LEVEL"
-#define GPHOTO2_NAME_ZOOM_PREVIEW                "Liveview zoom"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM        "5"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM       "1"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_ON             "On"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF            "Off"
-#define GPHOTO2_NAME_MIRROR_LOCKUP		 "Use mirror lockup"
-#define GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME	 "MIRROR_LOCKUP"
-#define GPHOTO2_NAME_LIBGPHOTO2			 "Gphoto2 library"
-#define GPHOTO2_NAME_LIBGPHOTO2_VERSION		 "Version"
-#define GPHOTO2_NAME_DELETE_IMAGE                "Delete downloaded image"
-#define GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM        "ON"
-#define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM       "OFF"
-#define GPHOTO2_NAME_DELETE_IMAGE_ON             "On"
-#define GPHOTO2_NAME_DELETE_IMAGE_OFF            "Off"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM           "Debayer algorithm"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME  "DEBAYER_LINEAR"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME  "DEBAYER_VNG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME  "DEBAYER_PPG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME  "DEBAYER_AHD"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME  "DEBAYER_DCB"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME  "DEBAYER_DHT"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_LABEL "Linear"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_LABEL "VNG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_LABEL "PPG"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_LABEL "AHD"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_LABEL "DCB"
-#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_LABEL "DHT"
+#define GPHOTO2_NAME_DSLR					"GPhoto2"
+#define GPHOTO2_NAME_SHUTTER					"Shutter time"
+#define GPHOTO2_NAME_ISO					"ISO"
+#define GPHOTO2_NAME_COMPRESSION				"Compression"
+#define GPHOTO2_NAME_APERTURE					"Aperture"
+#define GPHOTO2_NAME_WHITEBALANCE				"Whitebalance"
+#define GPHOTO2_NAME_EXPOSURE_COMPENSATION			"Exposure compensation"
+#define GPHOTO2_NAME_EXPOSURE_METERING				"Exposure metering"
+#define GPHOTO2_NAME_FOCUS_METERING				"Focus metering"
+#define GPHOTO2_NAME_EXPOSURE_PROGRAM				"Exposure program"
+#define GPHOTO2_NAME_BATTERY_LEVEL				"Battery level"
+#define GPHOTO2_NAME_BATTERY_LEVEL_NAME				"Percent"
+#define GPHOTO2_NAME_BATTERY_LEVEL_ITEM_NAME			"BATTERY_LEVEL"
+#define GPHOTO2_NAME_ZOOM_PREVIEW				"Liveview zoom"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM			"5"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM			"1"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON				"On"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF				"Off"
+#define GPHOTO2_NAME_MIRROR_LOCKUP				"Use mirror lockup"
+#define GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME			"MIRROR_LOCKUP"
+#define GPHOTO2_NAME_LIBGPHOTO2					"Gphoto2 library"
+#define GPHOTO2_NAME_LIBGPHOTO2_VERSION				"Version"
+#define GPHOTO2_NAME_DELETE_IMAGE				"Delete downloaded image"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM			"ON"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM			"OFF"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON				"On"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF				"Off"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM				"Debayer algorithm"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME			"DEBAYER_LINEAR"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME			"DEBAYER_VNG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME			"DEBAYER_PPG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME			"DEBAYER_AHD"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME			"DEBAYER_DCB"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME			"DEBAYER_DHT"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME		"BAYER_RAW"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME	"BAYER_RAW_BIN2"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_LABEL		"Linear"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_LABEL		"VNG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_LABEL		"PPG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_LABEL		"AHD"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_LABEL		"DCB"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_LABEL		"DHT"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_LABEL		"None"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_LABEL	"None (2x2 binning mono)"
 
-#define GPHOTO2_DEBAYER_ALGORITHM_PROPERTY_NAME	 "GPHOTO2_DEBAYER_ALGORITHM"
-#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME "GPHOTO2_LIBGPHOTO2_VERSION"
-#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME     "LIBGPHOTO2_VERSION"
+#define GPHOTO2_DEBAYER_ALGORITHM_PROPERTY_NAME		"GPHOTO2_DEBAYER_ALGORITHM"
+#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME	"GPHOTO2_LIBGPHOTO2_VERSION"
+#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME		"LIBGPHOTO2_VERSION"
 
-#define NIKON_ISO				"iso"
-#define NIKON_COMPRESSION			"imagequality"
-#define NIKON_SHUTTERSPEED			"shutterspeed"
-#define NIKON_WHITEBALANCE			"whitebalance"
-#define NIKON_CAPTURE_TARGET			"capturetarget"
-#define NIKON_CAPTURE_TARGET_LABEL              "Capture Target"
-#define NIKON_MEMORY_CARD			"Memory card"
-#define NIKON_BULB_MODE                         "bulb"
-#define NIKON_BULB_MODE_LABEL                   "Bulb Mode"
-#define NIKON_APERTURE  			"f-number"
-#define NIKON_EXPOSURE_COMPENSATION 		"exposurecompensation"
-#define NIKON_EXPOSURE_METERING                 "exposuremetermode"
-#define NIKON_FOCUS_METERING                    "focusmetermode"
-#define NIKON_EXPOSURE_PROGRAM                  "expprogram"
-#define NIKON_BATTERY_LEVEL                     "batterylevel"
+#define NIKON_ISO			"iso"
+#define NIKON_COMPRESSION		"imagequality"
+#define NIKON_SHUTTERSPEED		"shutterspeed"
+#define NIKON_WHITEBALANCE		"whitebalance"
+#define NIKON_CAPTURE_TARGET		"capturetarget"
+#define NIKON_CAPTURE_TARGET_LABEL	"Capture Target"
+#define NIKON_MEMORY_CARD		"Memory card"
+#define NIKON_BULB_MODE			"bulb"
+#define NIKON_BULB_MODE_LABEL		"Bulb Mode"
+#define NIKON_APERTURE			"f-number"
+#define NIKON_EXPOSURE_COMPENSATION	"exposurecompensation"
+#define NIKON_EXPOSURE_METERING		"exposuremetermode"
+#define NIKON_FOCUS_METERING		"focusmetermode"
+#define NIKON_EXPOSURE_PROGRAM		"expprogram"
+#define NIKON_BATTERY_LEVEL		"batterylevel"
 
-#define EOS_ISO					NIKON_ISO
-#define EOS_COMPRESSION				"imageformat"
-#define EOS_SHUTTERSPEED			NIKON_SHUTTERSPEED
-#define EOS_WHITEBALANCE			NIKON_WHITEBALANCE
-#define EOS_CAPTURE_TARGET			NIKON_CAPTURE_TARGET
-#define EOS_CAPTURE_TARGET_LABEL                NIKON_CAPTURE_TARGET_LABEL
-#define EOS_MEMORY_CARD				NIKON_MEMORY_CARD
-#define EOS_ZOOM_PREVIEW                        "eoszoom"
-#define EOS_REMOTE_RELEASE		        "eosremoterelease"
-#define EOS_PRESS_FULL			        "Press Full"
-#define EOS_RELEASE_FULL		        "Release Full"
-#define EOS_CUSTOMFUNCEX			"customfuncex"
-#define EOS_MIRROR_LOCKUP_ENABLE		"20,1,3,14,1,60f,1,1"
-#define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
-#define EOS_VIEWFINDER                          "viewfinder"
-#define EOS_REMOTE_RELEASE_LABEL                "Canon EOS Remote Release"
-#define EOS_BULB_MODE                           NIKON_BULB_MODE
-#define EOS_BULB_MODE_LABEL                     NIKON_BULB_MODE_LABEL
-#define EOS_APERTURE  			        "aperture"
-#define EOS_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
-#define EOS_EXPOSURE_METERING                   "meteringmode"
-#define EOS_FOCUS_METERING                      "NA"
-#define EOS_EXPOSURE_PROGRAM                    "autoexposuremode"
-#define EOS_BATTERY_LEVEL                       NIKON_BATTERY_LEVEL
+#define EOS_ISO				NIKON_ISO
+#define EOS_COMPRESSION			"imageformat"
+#define EOS_SHUTTERSPEED		NIKON_SHUTTERSPEED
+#define EOS_WHITEBALANCE		NIKON_WHITEBALANCE
+#define EOS_CAPTURE_TARGET		NIKON_CAPTURE_TARGET
+#define EOS_CAPTURE_TARGET_LABEL	NIKON_CAPTURE_TARGET_LABEL
+#define EOS_MEMORY_CARD			NIKON_MEMORY_CARD
+#define EOS_ZOOM_PREVIEW		"eoszoom"
+#define EOS_REMOTE_RELEASE		"eosremoterelease"
+#define EOS_PRESS_FULL			"Press Full"
+#define EOS_RELEASE_FULL		"Release Full"
+#define EOS_CUSTOMFUNCEX		"customfuncex"
+#define EOS_MIRROR_LOCKUP_ENABLE	"20,1,3,14,1,60f,1,1"
+#define EOS_MIRROR_LOCKUP_DISABLE	"20,1,3,14,1,60f,1,0"
+#define EOS_VIEWFINDER			"viewfinder"
+#define EOS_REMOTE_RELEASE_LABEL	"Canon EOS Remote Release"
+#define EOS_BULB_MODE			NIKON_BULB_MODE
+#define EOS_BULB_MODE_LABEL		NIKON_BULB_MODE_LABEL
+#define EOS_APERTURE			"aperture"
+#define EOS_EXPOSURE_COMPENSATION	NIKON_EXPOSURE_COMPENSATION
+#define EOS_EXPOSURE_METERING		"meteringmode"
+#define EOS_FOCUS_METERING		"NA"
+#define EOS_EXPOSURE_PROGRAM		"autoexposuremode"
+#define EOS_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
 
-#define SONY_COMPRESSION			NIKON_COMPRESSION
-#define SONY_APERTURE  			        NIKON_APERTURE
-#define SONY_EXPOSURE_COMPENSATION 		NIKON_EXPOSURE_COMPENSATION
-#define SONY_EXPOSURE_METERING                  NIKON_EXPOSURE_METERING
-#define SONY_FOCUS_METERING                     "NA"
-#define SONY_EXPOSURE_PROGRAM                   NIKON_EXPOSURE_PROGRAM
-#define SONY_BATTERY_LEVEL                      NIKON_BATTERY_LEVEL
+#define SONY_COMPRESSION		NIKON_COMPRESSION
+#define SONY_APERTURE			NIKON_APERTURE
+#define SONY_EXPOSURE_COMPENSATION	NIKON_EXPOSURE_COMPENSATION
+#define SONY_EXPOSURE_METERING		NIKON_EXPOSURE_METERING
+#define SONY_FOCUS_METERING		"NA"
+#define SONY_EXPOSURE_PROGRAM		NIKON_EXPOSURE_PROGRAM
+#define SONY_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
 
-#define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
-#define TIMER_BATTERY_LEVEL_UPDATE_SEC          120
+#define TIMER_COUNTER_STEP_SEC		0.1	/* 100 ms. */
+#define TIMER_BATTERY_LEVEL_UPDATE_SEC	120
 
-#define UNUSED(x)				(void)(x)
-#define MAX_DEVICES				8
-#define PRIVATE_DATA				((gphoto2_private_data *)device->private_data)
-#define DSLR_ISO_PROPERTY			(PRIVATE_DATA->dslr_iso_property)
-#define DSLR_SHUTTER_PROPERTY			(PRIVATE_DATA->dslr_shutter_property)
-#define DSLR_COMPRESSION_PROPERTY		(PRIVATE_DATA->dslr_compression_property)
-#define DSLR_APERTURE_PROPERTY		        (PRIVATE_DATA->dslr_aperture_property)
-#define DSLR_WHITEBALANCE_PROPERTY		(PRIVATE_DATA->dslr_whitebalance_property)
-#define DSLR_EXPOSURE_COMPENSATION_PROPERTY     (PRIVATE_DATA->dslr_exposure_compensation_property)
-#define DSLR_EXPOSURE_METERING_PROPERTY         (PRIVATE_DATA->dslr_exposure_metering_property)
-#define DSLR_FOCUS_METERING_PROPERTY            (PRIVATE_DATA->dslr_focus_metering_property)
-#define DSLR_EXPOSURE_PROGRAM_PROPERTY          (PRIVATE_DATA->dslr_exposure_program_property)
-#define DSLR_BATTERY_LEVEL_PROPERTY             (PRIVATE_DATA->dslr_battery_level_property)
-#define DSLR_BATTERY_LEVEL_ITEM		        (PRIVATE_DATA->dslr_battery_level_property->items)
-#define DSLR_MIRROR_LOCKUP_PROPERTY		(PRIVATE_DATA->dslr_mirror_lockup_property)
-#define DSLR_MIRROR_LOCKUP_ITEM			(PRIVATE_DATA->dslr_mirror_lockup_property->items)
-#define DSLR_DELETE_IMAGE_PROPERTY		(PRIVATE_DATA->dslr_delete_image_property)
-#define DSLR_DELETE_IMAGE_ON_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 0)
-#define DSLR_DELETE_IMAGE_OFF_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 1)
-#define DSLR_DEBAYER_ALGORITHM_PROPERTY		(PRIVATE_DATA->dslr_debayer_algorithm_property)
-#define DSLR_DEBAYER_ALGORITHM_LIN_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 0)
-#define DSLR_DEBAYER_ALGORITHM_VNG_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 1)
-#define DSLR_DEBAYER_ALGORITHM_PPG_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 2)
-#define DSLR_DEBAYER_ALGORITHM_AHD_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 3)
-#define DSLR_DEBAYER_ALGORITHM_DCB_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 4)
-#define DSLR_DEBAYER_ALGORITHM_DHT_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 5)
-#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
-#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
-#define DSLR_ZOOM_PREVIEW_PROPERTY              (PRIVATE_DATA->dslr_zoom_preview_property)
-#define DSLR_ZOOM_PREVIEW_ON_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
-#define DSLR_ZOOM_PREVIEW_OFF_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
-#define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
-#define APERTURE                                (PRIVATE_DATA->gphoto2_aperture_id)
-#define EXPOSURE_METERING                       (PRIVATE_DATA->gphoto2_exposure_metering_id)
-#define FOCUS_METERING                          (PRIVATE_DATA->gphoto2_focus_metering_id)
-#define EXPOSURE_PROGRAM                        (PRIVATE_DATA->gphoto2_exposure_program_id)
-#define is_connected				gp_bits
+#define UNUSED(x)					(void)(x)
+#define MAX_DEVICES					8
+#define PRIVATE_DATA					((gphoto2_private_data *)device->private_data)
+#define DSLR_ISO_PROPERTY				(PRIVATE_DATA->dslr_iso_property)
+#define DSLR_SHUTTER_PROPERTY				(PRIVATE_DATA->dslr_shutter_property)
+#define DSLR_COMPRESSION_PROPERTY			(PRIVATE_DATA->dslr_compression_property)
+#define DSLR_APERTURE_PROPERTY				(PRIVATE_DATA->dslr_aperture_property)
+#define DSLR_WHITEBALANCE_PROPERTY			(PRIVATE_DATA->dslr_whitebalance_property)
+#define DSLR_EXPOSURE_COMPENSATION_PROPERTY		(PRIVATE_DATA->dslr_exposure_compensation_property)
+#define DSLR_EXPOSURE_METERING_PROPERTY			(PRIVATE_DATA->dslr_exposure_metering_property)
+#define DSLR_FOCUS_METERING_PROPERTY			(PRIVATE_DATA->dslr_focus_metering_property)
+#define DSLR_EXPOSURE_PROGRAM_PROPERTY			(PRIVATE_DATA->dslr_exposure_program_property)
+#define DSLR_BATTERY_LEVEL_PROPERTY			(PRIVATE_DATA->dslr_battery_level_property)
+#define DSLR_BATTERY_LEVEL_ITEM				(PRIVATE_DATA->dslr_battery_level_property->items)
+#define DSLR_MIRROR_LOCKUP_PROPERTY			(PRIVATE_DATA->dslr_mirror_lockup_property)
+#define DSLR_MIRROR_LOCKUP_ITEM				(PRIVATE_DATA->dslr_mirror_lockup_property->items)
+#define DSLR_DELETE_IMAGE_PROPERTY			(PRIVATE_DATA->dslr_delete_image_property)
+#define DSLR_DELETE_IMAGE_ON_ITEM			(PRIVATE_DATA->dslr_delete_image_property->items + 0)
+#define DSLR_DELETE_IMAGE_OFF_ITEM			(PRIVATE_DATA->dslr_delete_image_property->items + 1)
+#define DSLR_DEBAYER_ALGORITHM_PROPERTY			(PRIVATE_DATA->dslr_debayer_algorithm_property)
+#define DSLR_DEBAYER_ALGORITHM_BAYER_RAW_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 0)
+#define DSLR_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_ITEM	(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 1)
+#define DSLR_DEBAYER_ALGORITHM_LIN_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 2)
+#define DSLR_DEBAYER_ALGORITHM_VNG_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 3)
+#define DSLR_DEBAYER_ALGORITHM_PPG_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 4)
+#define DSLR_DEBAYER_ALGORITHM_AHD_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 5)
+#define DSLR_DEBAYER_ALGORITHM_DCB_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 6)
+#define DSLR_DEBAYER_ALGORITHM_DHT_ITEM			(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 7)
+#define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY		(PRIVATE_DATA->dslr_libgphoto2_version_property)
+#define GPHOTO2_LIBGPHOTO2_VERSION_ITEM			(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
+#define DSLR_ZOOM_PREVIEW_PROPERTY			(PRIVATE_DATA->dslr_zoom_preview_property)
+#define DSLR_ZOOM_PREVIEW_ON_ITEM			(PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
+#define DSLR_ZOOM_PREVIEW_OFF_ITEM			(PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
+#define COMPRESSION					(PRIVATE_DATA->gphoto2_compression_id)
+#define APERTURE					(PRIVATE_DATA->gphoto2_aperture_id)
+#define EXPOSURE_METERING				(PRIVATE_DATA->gphoto2_exposure_metering_id)
+#define FOCUS_METERING					(PRIVATE_DATA->gphoto2_focus_metering_id)
+#define EXPOSURE_PROGRAM				(PRIVATE_DATA->gphoto2_exposure_program_id)
+#define is_connected					gp_bits
 
 enum vendor {
 	CANON = 0,
 	NIKON,
 	SONY,
 	OTHER
+};
+
+struct libraw_image_s {
+	uint16_t width;
+	uint16_t height;
+	size_t size;
+	void *data;
+	uint8_t bits;
+	uint8_t colors;
+	char bayer_pattern[5];
 };
 
 struct gphoto2_id_s {
@@ -288,6 +305,10 @@ static char *debayer_algorithm_str_id(const int algorithm)
 		return GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME;
 	case 11:
 		return GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME;
+	case 254:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME;
+	case 255:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME;
 	default:
 		return "unknown";
 	}
@@ -307,6 +328,10 @@ static int debayer_algorithm_value_id(const char *algorithm)
 		return 4;
 	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME))
 		return 11;
+	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME))
+		return 254;
+	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME))
+		return 255;
 	else
 		return -1;	/* Unknown. */
 }
@@ -322,53 +347,66 @@ static int progress_cb(void *callback_data,
 	return 0;
 }
 
-static int process_dslr_image_debayer(indigo_device *device,
-				       void *buffer, size_t buffer_size)
+static int image_bayered_data(libraw_data_t *raw_data,
+			      struct libraw_image_s *libraw_image,
+			      const bool binning)
 {
-        int rc;
-        libraw_data_t *raw_data;
-        libraw_processed_image_t *processed_image = NULL;
-	char bayer_pattern[5] = {0};
+	uint16_t *data;
+	uint16_t width, height, raw_width;
+	uint32_t npixels;
+	uint32_t offset;
+	size_t size;
+	uint32_t i = 0;
 
-	clock_t start = clock();
-        raw_data = libraw_init(0);
+	if (binning) {
+		width = raw_data->sizes.iwidth % 2 == 0 ? raw_data->sizes.iwidth : raw_data->sizes.iwidth - 1;
+		height = raw_data->sizes.iheight % 2 == 0 ? raw_data->sizes.iheight : raw_data->sizes.iheight - 1;
+	} else {
+		width = raw_data->sizes.iwidth;
+		height = raw_data->sizes.iheight;
+	}
+	raw_width = raw_data->sizes.raw_width;
+	npixels = width * height;
+	offset = raw_width * raw_data->rawdata.sizes.top_margin +
+		raw_data->rawdata.sizes.left_margin;
+	size = binning ? npixels / 4 * sizeof(uint16_t) : npixels * sizeof(uint16_t);
 
-	/* Linear 16-bit output. */
-	raw_data->params.output_bps = 16;
-	/* Debayer algorithm. */
-	raw_data->params.user_qual = PRIVATE_DATA->debayer_algorithm;
-	/* Disable four color space. */
-	raw_data->params.four_color_rgb = 0;
-	/* Disable LibRaw's default histogram transformation. */
-	raw_data->params.no_auto_bright = 1;
-	/* Disable LibRaw's default gamma curve transformation, */
-	raw_data->params.gamm[0] = raw_data->params.gamm[1] = 1.0;
-	/* Do not apply an embedded color profile, enabled by LibRaw by default. */
-	raw_data->params.use_camera_matrix = 0;
-	/* Disable automatic white balance obtained after averaging over the entire image. */
-	raw_data->params.use_auto_wb = 0;
-	/* Disable white balance from the camera (if possible). */
-	raw_data->params.use_camera_wb = 0;
+	data = (uint16_t *)calloc(1, size);
+	if (!data) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
+		return -errno;
+	}
+	libraw_image->width = binning ? width / 2 : width;
+	libraw_image->height = binning ? height / 2 : height;
+	libraw_image->size = size;
 
-	libraw_set_progress_handler(raw_data, &progress_cb, NULL);
-
-	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
-	if (rc != LIBRAW_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-				    "[rc:%d] libraw_open_buffer "
-				    "failed: '%s'",
-				    rc, libraw_strerror(rc));
-		goto cleanup;
+	int c = binning ? 2 : 1;
+#ifdef FIT_FORMAT_AMATEUR_CCD
+	for (int row = 0; row < height; row += c) {
+#else
+	for (int row = height - 1; row >= 0; row -= c) {
+#endif
+		for (int col = 0; col < width; col += c) {
+			if (binning) {
+				data[i++] = (raw_data->rawdata.raw_image[offset + col + (raw_width * row)] +         /* R */
+					     raw_data->rawdata.raw_image[offset + col + 1 + (raw_width * row)] +     /* G */
+					     raw_data->rawdata.raw_image[offset + col + 2 + (raw_width * row)] +     /* G */
+					     raw_data->rawdata.raw_image[offset + col + 3 + (raw_width * row)]) / 4; /* B */
+			} else
+				data[i++] = raw_data->rawdata.raw_image[offset + col + (raw_width * row)];
+		}
 	}
 
-	rc = libraw_unpack(raw_data);
-	if (rc != LIBRAW_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-				    "[rc:%d] libraw_unpack "
-				    "failed: '%s'",
-				    rc, libraw_strerror(rc));
-		goto cleanup;
-	}
+	libraw_image->data = data;
+	libraw_image->colors = 1;
+
+	return 0;
+}
+
+static int image_debayered_data(libraw_data_t *raw_data, struct libraw_image_s *libraw_image)
+{
+	int rc;
+	libraw_processed_image_t *processed_image = NULL;
 
 	rc = libraw_raw2image(raw_data);
 	if (rc != LIBRAW_SUCCESS) {
@@ -412,12 +450,105 @@ static int process_dslr_image_debayer(indigo_device *device,
 		goto cleanup;
 	}
 
-	if (!(processed_image->bits == 16 || processed_image->bits == 8)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-				    "8 or 16 bit is supported only");
+	if (processed_image->bits != 16) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "16 bit is supported only");
 		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
+
+	libraw_image->width = processed_image->width;
+	libraw_image->height = processed_image->height;
+	libraw_image->size = processed_image->data_size;
+	libraw_image->colors = processed_image->colors;
+
+	if (libraw_image->data)
+		free(libraw_image->data);
+
+	libraw_image->data = malloc(libraw_image->size);
+	if (!libraw_image->data) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
+		rc = errno;
+		goto cleanup;
+	}
+
+	memcpy(libraw_image->data, processed_image->data, libraw_image->size);
+
+cleanup:
+	libraw_dcraw_clear_mem(processed_image);
+
+	return rc;
+}
+
+static int process_dslr_image_debayer(indigo_device *device,
+				      void *buffer, size_t buffer_size)
+{
+        int rc;
+        libraw_data_t *raw_data;
+	struct libraw_image_s libraw_image = {
+		.width = 0,
+		.height = 0,
+		.bits = 16,
+		.colors = 0,
+		.bayer_pattern = {0},
+		.size = 0,
+		.data = NULL,
+	};
+
+	clock_t start = clock();
+
+        raw_data = libraw_init(0);
+
+	/* Linear 16-bit output. */
+	raw_data->params.output_bps = 16;
+	/* Debayer algorithm. */
+	raw_data->params.user_qual = PRIVATE_DATA->debayer_algorithm;
+	/* Disable four color space. */
+	raw_data->params.four_color_rgb = 0;
+	/* Disable LibRaw's default histogram transformation. */
+	raw_data->params.no_auto_bright = 1;
+	/* Disable LibRaw's default gamma curve transformation, */
+	raw_data->params.gamm[0] = raw_data->params.gamm[1] = 1.0;
+	/* Do not apply an embedded color profile, enabled by LibRaw by default. */
+	raw_data->params.use_camera_matrix = 0;
+	/* Disable automatic white balance obtained after averaging over the entire image. */
+	raw_data->params.use_auto_wb = 0;
+	/* Disable white balance from the camera (if possible). */
+	raw_data->params.use_camera_wb = 0;
+
+	libraw_set_progress_handler(raw_data, &progress_cb, NULL);
+
+	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
+	if (rc != LIBRAW_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d] libraw_open_buffer "
+				    "failed: '%s'",
+				    rc, libraw_strerror(rc));
+		goto cleanup;
+	}
+
+	rc = libraw_unpack(raw_data);
+	if (rc != LIBRAW_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d] libraw_unpack "
+				    "failed: '%s'",
+				    rc, libraw_strerror(rc));
+		goto cleanup;
+	}
+
+	libraw_image.bayer_pattern[0] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 0, 0)];
+	libraw_image.bayer_pattern[1] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 0, 1)];
+	libraw_image.bayer_pattern[2] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 1, 0)];
+	libraw_image.bayer_pattern[3] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 1, 1)];
+
+	/* Change CCD_BIN_HORIZONTAL_ITEM->number.value; */
+	if (PRIVATE_DATA->debayer_algorithm == 254 ||
+	    PRIVATE_DATA->debayer_algorithm == 255)
+		rc = image_bayered_data(raw_data, &libraw_image,
+					PRIVATE_DATA->debayer_algorithm == 255);
+	else
+		rc = image_debayered_data(raw_data, &libraw_image);
+	if (rc)
+		goto cleanup;
 
 	float cam_sensor_temperature = -273.15f;
 	if (raw_data->other.SensorTemperature > -273.15f)
@@ -426,23 +557,37 @@ static int process_dslr_image_debayer(indigo_device *device,
 		cam_sensor_temperature = raw_data->other.CameraTemperature;
 
 	indigo_fits_keyword keywords[] = {
-		{ INDIGO_FITS_STRING, "CTYPE3  ",
-		  .string = "rgb",
-		  "coordinate axis red=1, green=2, blue=3" },
 		{ INDIGO_FITS_NUMBER, "ISOSPEED",
 		  .number = raw_data->other.iso_speed,
 		  "ISO camera setting" },
-		{ INDIGO_FITS_NUMBER, "CCD-TEMP",
-		  .number = cam_sensor_temperature,
-		  "CCD temperature [celcius]" },
 		{ 0 },
+		{ 0 },
+		{ 0 }
 	};
-	/* I guess nobody cools down a CCD to absolute zero. */
-	if (cam_sensor_temperature == -273.15f)
-		memcpy(&keywords[2], &keywords[3], sizeof(indigo_fits_keyword));
+	if (PRIVATE_DATA->debayer_algorithm == 254)
+		keywords[1] = (indigo_fits_keyword)
+			{ INDIGO_FITS_STRING, "BAYERPAT",
+			  .string = libraw_image.bayer_pattern,
+			  "bayer color pattern"
+			};
+	else if (PRIVATE_DATA->debayer_algorithm < 254)
+		keywords[1] = (indigo_fits_keyword)
+			{ INDIGO_FITS_STRING, "CTYPE3  ",
+			  .string = "rgb",
+			  "coordinate axis red=1, green=2, blue=3"
+			};
 
-	void *data = (unsigned char *)processed_image->data;
-        unsigned long int data_size = processed_image->data_size +
+	if (cam_sensor_temperature > -273.15f) {
+		const uint8_t i = PRIVATE_DATA->debayer_algorithm == 255 ? 1 : 2;
+		keywords[i] = (indigo_fits_keyword)
+			{ INDIGO_FITS_NUMBER, "CCD-TEMP",
+			  .number = cam_sensor_temperature,
+			  "CCD temperature [celcius]"
+			};
+	}
+
+	void *data = (unsigned char *)libraw_image.data;
+        unsigned long int data_size = libraw_image.size +
 		FITS_HEADER_SIZE;
 	int padding = 0;
         int mod2880 = data_size % 2880;
@@ -456,37 +601,36 @@ static int process_dslr_image_debayer(indigo_device *device,
 					       data_size);
 	}
 	memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-	       data, processed_image->data_size);
+	       data, libraw_image.size);
 	PRIVATE_DATA->buffer_size = data_size;
 
-	bayer_pattern[0] = raw_data->idata.cdesc[0];
-	bayer_pattern[1] = raw_data->idata.cdesc[1];
-	bayer_pattern[2] = raw_data->idata.cdesc[3];
-	bayer_pattern[3] = raw_data->idata.cdesc[2];
-
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "debayer conversion in %gs, "
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libraw conversion in %gs, "
 			    "input size: "
-			    "%d bytes, unpacked + debayered output size: "
-			    "%d bytes, colors: %d, "
-			    "bits: %d, algorithm: %s, bayer pattern '%s'",
+			    "%d bytes, unpacked + (de)bayered output size: "
+			    "%d bytes, algorithm: %s, bayer pattern '%s', "
+			    "dimension: %d x %d, "
+			    "bits: %d, colors: %d",
 			    (clock() - start) / (double)CLOCKS_PER_SEC,
 			    buffer_size,
-			    processed_image->data_size,
-			    processed_image->colors, processed_image->bits,
+			    libraw_image.size,
 			    debayer_algorithm_str_id(PRIVATE_DATA->debayer_algorithm),
-			    bayer_pattern);
+			    libraw_image.bayer_pattern,
+			    libraw_image.width, libraw_image.height,
+			    libraw_image.bits, libraw_image.colors);
 
 	indigo_process_image(device, PRIVATE_DATA->buffer,
-                             processed_image->width, processed_image->height,
-                             processed_image->bits * processed_image->colors,
+                             libraw_image.width, libraw_image.height,
+                             libraw_image.bits * libraw_image.colors,
                              true, /* little_endian */
 			     true, /* RBG order */
                              keywords);
 cleanup:
-	libraw_dcraw_clear_mem(processed_image);
 	libraw_free_image(raw_data);
 	libraw_recycle(raw_data);
         libraw_close(raw_data);
+
+	if (libraw_image.data)
+		free(libraw_image.data);
 
 	return rc;
 }
@@ -1791,7 +1935,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									      INDIGO_OK_STATE,
 									      INDIGO_RW_PERM,
 									      INDIGO_ONE_OF_MANY_RULE,
-									      6);
+									      8);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_BAYER_RAW_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_LABEL,
+					true);
 		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_LIN_ITEM,
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME,
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_LABEL,
@@ -1799,7 +1947,7 @@ static indigo_result ccd_attach(indigo_device *device)
 		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_VNG_ITEM,
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME,
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_LABEL,
-					true);
+					false);
 		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_PPG_ITEM,
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME,
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_LABEL,
@@ -1816,8 +1964,12 @@ static indigo_result ccd_attach(indigo_device *device)
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME,
 					GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_LABEL,
 					false);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_LABEL,
+					false);
 		PRIVATE_DATA->debayer_algorithm =
-			debayer_algorithm_value_id(GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME);
+			debayer_algorithm_value_id(GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME);
 
 
 		/*--------------------- LIBGPHOTO2-VERSION --------------------*/
@@ -2169,6 +2321,14 @@ static indigo_result ccd_change_property(indigo_device *device,
 					debayer_algorithm_value_id(DSLR_DEBAYER_ALGORITHM_PROPERTY->items[i].name);
 				if (PRIVATE_DATA->debayer_algorithm >= 0)
 					DSLR_DEBAYER_ALGORITHM_PROPERTY->state = INDIGO_OK_STATE;
+				if (PRIVATE_DATA->debayer_algorithm == 255)
+					CCD_BIN_HORIZONTAL_ITEM->number.value =
+						CCD_BIN_VERTICAL_ITEM->number.value = 2;
+				else
+					CCD_BIN_HORIZONTAL_ITEM->number.value =
+						CCD_BIN_VERTICAL_ITEM->number.value = 1;
+				indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+
 			}
 		}
 		indigo_update_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
