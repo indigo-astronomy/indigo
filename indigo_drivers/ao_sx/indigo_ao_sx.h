@@ -19,28 +19,29 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO cgusbst4 driver
- \file indigo_guider_cgusbst4.h
+/** INDIGO StarlighXpress AO driver
+ \file indigo_ao_sx.h
  */
 
-#ifndef guider_cgusbst4_h
-#define guider_cgusbst4_h
+#ifndef ao_sx_h
+#define ao_sx_h
 
 #include "indigo_driver.h"
+#include "indigo_ao_driver.h"
 #include "indigo_guider_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Create mount CGUSBST4 device instance
+/** Create mount SX AO device instance
  */
 
-extern indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* guider_cgusbst4_h */
+#endif /* ao_sx_h */
 
