@@ -173,6 +173,24 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{	"AO_NS", AO_GUIDE_DEC_PROPERTY_NAME, {
+			{ "AO_N", AO_GUIDE_NORTH_ITEM_NAME },
+			{ "AO_S", AO_GUIDE_SOUTH_ITEM_NAME },
+			NULL
+		}
+	},
+	{	"AO_WE", AO_GUIDE_RA_PROPERTY_NAME, {
+			{ "AO_W", AO_GUIDE_WEST_ITEM_NAME },
+			{ "AO_E", AO_GUIDE_EAST_ITEM_NAME },
+			NULL
+		}
+	},
+	{	"AO_CENTER", AO_RESET_PROPERTY_NAME, {
+			{ "CENTER", AO_CENTER_ITEM_NAME },
+			{ "UNJAM", AO_UNJAM_ITEM_NAME },
+			NULL
+		}
+	},
 	{	"FILTER_SLOT", WHEEL_SLOT_PROPERTY_NAME, {
 			{ "FILTER_SLOT_VALUE", WHEEL_SLOT_ITEM_NAME },
 			NULL

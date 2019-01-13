@@ -42,8 +42,10 @@
 #define TEMP_UPDATE         5.0
 #define STARS               100
 #define ECLIPSE							360
-#define SIN									0.8414709848078965
-#define COS									0.5403023058681398
+#define GUIDER_SIN					0.8414709848078965
+#define GUIDER_COS					0.5403023058681398
+#define AO_SIN							0.529919264233205
+#define AO_COS							0.848048096156426
 
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
@@ -83,7 +85,8 @@ typedef struct {
 	int current_slot;
 	int target_position, current_position;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
-	double ra_offset, dec_offset;
+	double guider_ra_offset, guider_dec_offset;
+	double ao_ra_offset, ao_dec_offset;
 	int eclipse;
 	double guide_rate;
 } simulator_private_data;
@@ -211,8 +214,8 @@ static void exposure_timer_callback(indigo_device *device) {
 			}
 
 			if (device == PRIVATE_DATA->guider && light_frame) {
-				double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
-				double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
+				double x_offset = PRIVATE_DATA->guider_ra_offset * GUIDER_COS - PRIVATE_DATA->guider_dec_offset * GUIDER_SIN + PRIVATE_DATA->ao_ra_offset * AO_COS - PRIVATE_DATA->ao_dec_offset * AO_SIN + rand() / (double)RAND_MAX/10 - 0.1;
+				double y_offset = PRIVATE_DATA->guider_ra_offset * GUIDER_SIN + PRIVATE_DATA->guider_dec_offset * GUIDER_COS + PRIVATE_DATA->ao_ra_offset * AO_SIN + PRIVATE_DATA->ao_dec_offset * AO_COS + rand() / (double)RAND_MAX/10 - 0.1;
 				if (GUIDER_MODE_STARS_ITEM->sw.value) {
 					for (int i = 0; i < STARS; i++) {
 						double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
@@ -627,14 +630,14 @@ static indigo_result ccd_detach(indigo_device *device) {
 static void guider_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->guider_timer = NULL;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-		PRIVATE_DATA->dec_offset += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 200;
+		PRIVATE_DATA->guider_dec_offset += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 200;
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-		PRIVATE_DATA->ra_offset += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
+		PRIVATE_DATA->guider_ra_offset += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -718,6 +721,89 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
+// -------------------------------------------------------------------------------- INDIGO AO device implementation
+
+static indigo_result ao_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_ao_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		AO_RESET_PROPERTY->count = 1;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_ao_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result ao_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(AO_GUIDE_DEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AO_GUIDE_DEC
+		indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
+		AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		if (AO_GUIDE_NORTH_ITEM->number.value || AO_GUIDE_SOUTH_ITEM->number.value) {
+			PRIVATE_DATA->ao_dec_offset += (AO_GUIDE_NORTH_ITEM->number.value - AO_GUIDE_SOUTH_ITEM->number.value) / 30.0;
+			AO_GUIDE_NORTH_ITEM->number.value = 0;
+			AO_GUIDE_SOUTH_ITEM->number.value = 0;
+			if (PRIVATE_DATA->ao_dec_offset > 100) {
+				PRIVATE_DATA->ao_dec_offset = 100;
+				AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else if (PRIVATE_DATA->ao_dec_offset < -100) {
+				PRIVATE_DATA->ao_dec_offset = -100;
+				AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AO_GUIDE_RA_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AO_GUIDE_RA
+		indigo_property_copy_values(AO_GUIDE_RA_PROPERTY, property, false);
+		AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		if (AO_GUIDE_EAST_ITEM->number.value || AO_GUIDE_WEST_ITEM->number.value) {
+			PRIVATE_DATA->ao_ra_offset += (AO_GUIDE_EAST_ITEM->number.value - AO_GUIDE_WEST_ITEM->number.value) / 30.0;
+			AO_GUIDE_EAST_ITEM->number.value = 0;
+			if (PRIVATE_DATA->ao_ra_offset > 100) {
+				PRIVATE_DATA->ao_ra_offset = 100;
+				AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else if (PRIVATE_DATA->ao_ra_offset < -100) {
+				PRIVATE_DATA->ao_ra_offset = -100;
+				AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AO_RESET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AO_RESET
+		indigo_property_copy_values(AO_RESET_PROPERTY, property, false);
+		if (AO_CENTER_ITEM->sw.value) {
+			PRIVATE_DATA->ao_ra_offset = 0;
+			PRIVATE_DATA->ao_dec_offset = 0;
+			AO_CENTER_ITEM->sw.value = false;
+			AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
+			AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+			AO_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, AO_RESET_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_ao_change_property(device, client, property);
+}
+
+static indigo_result ao_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_ao_detach(device);
+}
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
 
 #define FILTER_COUNT	5
@@ -914,6 +1000,7 @@ static indigo_device *imager_focuser = NULL;
 
 static indigo_device *guider_ccd = NULL;
 static indigo_device *guider_guider = NULL;
+static indigo_device *guider_ao = NULL;
 
 static indigo_device *dslr = NULL;
 
@@ -957,6 +1044,14 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		guider_change_property,
 		NULL,
 		guider_detach
+	);
+	static indigo_device ao_template = INDIGO_DEVICE_INITIALIZER(
+		CCD_SIMULATOR_AO_NAME,
+		ao_attach,
+		indigo_ao_enumerate_properties,
+		ao_change_property,
+		NULL,
+		ao_detach
 	);
 	static indigo_device dslr_template = INDIGO_DEVICE_INITIALIZER(
 		CCD_SIMULATOR_DSLR_NAME,
@@ -1008,7 +1103,12 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			memcpy(guider_guider, &guider_template, sizeof(indigo_device));
 			guider_guider->private_data = private_data;
 			indigo_attach_device(guider_guider);
-
+			guider_ao = malloc(sizeof(indigo_device));
+			assert(guider_ao != NULL);
+			memcpy(guider_ao, &ao_template, sizeof(indigo_device));
+			guider_ao->private_data = private_data;
+			indigo_attach_device(guider_ao);
+			
 			dslr = malloc(sizeof(indigo_device));
 			assert(dslr != NULL);
 			memcpy(dslr, &dslr_template, sizeof(indigo_device));
