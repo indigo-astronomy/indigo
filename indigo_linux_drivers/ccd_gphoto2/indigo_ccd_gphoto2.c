@@ -2410,12 +2410,6 @@ static indigo_result ccd_change_property(indigo_device *device,
 			return INDIGO_FAILED;
 		}
 
-		CCD_ABORT_EXPOSURE_PROPERTY->state =
-			INDIGO_OK_STATE;
-		indigo_update_property(device,
-				       CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-
-
 		return INDIGO_OK;
 	}
 	/*------------------------ CCD-ABORT-EXPOSURE ------------------------*/
