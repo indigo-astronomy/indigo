@@ -520,6 +520,29 @@
  */
 #define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME			"WHITE_TRESHOLD"
 
+/** CCD_RBI_FLUSH_ENABLE property name.
+ */
+#define CCD_RBI_FLUSH_PROPERTY_NAME          "CCD_RBI_FLUSH_ENABLE"
+
+/** CCD_RBI_FLUSH.EXPOSURE property item pointer.
+ */
+#define CCD_RBI_FLUSH_EXPOSURE_ITEM_NAME     "EXPOSURE"
+/** CCD_RBI_FLUSH.COUNT property item name.
+ */
+#define CCD_RBI_FLUSH_COUNT_ITEM_NAME        "COUNT"
+
+/** CCD_RBI_FLUSH_ENABLE property name.
+ */
+#define CCD_RBI_FLUSH_ENABLE_PROPERTY_NAME   "CCD_RBI_FLUSH_ENABLE"
+
+/** CCD_RBI_FLUSH_ENABLE.ENABLE property item name.
+ */
+#define CCD_RBI_FLUSH_ENABLED_ITEM_NAME      "ENABLE"
+
+/** CCD_RBI_FLUSH_ENABLE.DISABLE property item name.
+ */
+#define CCD_RBI_FLUSH_DISABLED_ITEM_NAME     "DISABLE"
+
 //----------------------------------------------------------------------
 /** DSLR_PROGRAM property name.
  */

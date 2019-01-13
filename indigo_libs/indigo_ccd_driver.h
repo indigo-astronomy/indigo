@@ -345,6 +345,29 @@ extern "C" {
  */
 #define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+4)
 	
+/** CCD_RBI_FLUSH property pointer.
+ */
+#define CCD_RBI_FLUSH_PROPERTY          (CCD_CONTEXT->ccd_rbi_flush_property)
+
+/** CCD_RBI_FLUSH.EXPOSURE property item pointer.
+ */
+#define CCD_RBI_FLUSH_EXPOSURE_ITEM     (CCD_RBI_FLUSH_PROPERTY->items + 0)
+/** CCD_RBI_FLUSH.COUNT property item pointer.
+ */
+#define CCD_RBI_FLUSH_COUNT_ITEM        (CCD_RBI_FLUSH_PROPERTY->items + 1)
+	
+/** CCD_RBI_FLUSH_ENABLE property pointer.
+ */
+#define CCD_RBI_FLUSH_ENABLE_PROPERTY   (CCD_CONTEXT->ccd_rbi_flush_enable_property)
+
+/** CCD_RBI_FLUSH_ENABLE.ENABLE property item pointer.
+*/
+#define CCD_RBI_FLUSH_ENABLED_ITEM      (CCD_RBI_FLUSH_ENABLE_PROPERTY->items + 0)
+
+/** CCD_RBI_FLUSH_ENABLE.DISABLE property item pointer.
+ */
+#define CCD_RBI_FLUSH_DISABLED_ITEM     (CCD_RBI_FLUSH_ENABLE_PROPERTY->items + 1)
+	
 /** RAW header.
  */
 
@@ -388,6 +411,8 @@ typedef struct {
 	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
 	indigo_property *ccd_fits_headers;						///< CCD_FITS_HEADERS property pointer
 	indigo_property *ccd_jpeg_settings;						///< CCD_JPEG_SETTINGS property pointer
+	indigo_property *ccd_rbi_flush_enable_property; ///< CCD_RBI_FLUSH_ENABLE property pointer
+	indigo_property *ccd_rbi_flush_property;			///< CCD_RBI_FLUSH property pointer
 } indigo_ccd_context;
 
 /** Suspend countdown.
