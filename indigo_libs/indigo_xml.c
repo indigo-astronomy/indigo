@@ -1223,20 +1223,20 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 
 	parser_state state = IDLE;
 
-	parser_context context;
-	context.client = client;
-	context.device = device;
+	parser_context *context = malloc(sizeof(parser_context));
+	context->client = client;
+	context->device = device;
 	if (device != NULL) {
-		context.count = 32;
-		context.properties = malloc(context.count * sizeof(indigo_property *));
-		memset(context.properties, 0, context.count * sizeof(indigo_property *));
+		context->count = 32;
+		context->properties = malloc(context->count * sizeof(indigo_property *));
+		memset(context->properties, 0, context->count * sizeof(indigo_property *));
 	} else {
-		context.count = 0;
-		context.properties = NULL;
+		context->count = 0;
+		context->properties = NULL;
 	}
 
-	indigo_property *property = (indigo_property *)&context.property_buffer;
-	memset(context.property_buffer, 0, PROPERTY_SIZE);
+	indigo_property *property = (indigo_property *)&context->property_buffer;
+	memset(context->property_buffer, 0, PROPERTY_SIZE);
 
 	int handle = 0;
 	if (device != NULL) {
@@ -1338,7 +1338,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 				} else {
 					*name_pointer = 0;
 					depth++;
-					handler = handler(BEGIN_TAG, &context, name_buffer, NULL, message);
+					handler = handler(BEGIN_TAG, context, name_buffer, NULL, message);
 					if (isspace(c)) {
 						state = ATTRIBUTE_NAME1;
 						INDIGO_TRACE_PARSER(indigo_trace("XML Parser: '%c' BEGIN_TAG -> ATTRIBUTE_NAME1", c));
@@ -1358,7 +1358,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			case END_TAG1:
 				if (c == '>') {
 					INDIGO_TRACE_PARSER(indigo_trace("XML Parser: '%c' END_TAG1 -> IDLE", c));
-					handler = handler(END_TAG, &context, NULL, NULL, message);
+					handler = handler(END_TAG, context, NULL, NULL, message);
 					depth--;
 					state = IDLE;
 				} else {
@@ -1379,7 +1379,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 				if (isalpha(c)) {
 					INDIGO_TRACE_PARSER(indigo_trace("XML Parser: '%c' END_TAG", c));
 				} else if (c == '>') {
-					handler = handler(END_TAG, &context, NULL, NULL, message);
+					handler = handler(END_TAG, context, NULL, NULL, message);
 					depth--;
 					state = IDLE;
 					INDIGO_TRACE_PARSER(indigo_trace("XML Parser: '%c' END_TAG -> IDLE", c));
@@ -1397,7 +1397,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						value_pointer = value_buffer;
 						while (*value_pointer && isspace(*value_pointer))
 							value_pointer++;
-						handler = handler(TEXT, &context, NULL, value_pointer, message);
+						handler = handler(TEXT, context, NULL, value_pointer, message);
 					}
 					state = TEXT1;
 					INDIGO_TRACE_PARSER(indigo_trace("XML Parser: '%c' %d TEXT -> TEXT1", c, depth));
@@ -1465,7 +1465,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						blob_len -= len;
 					}
 
-					handler = handler(BLOB, &context, NULL, (char *)blob_buffer, message);
+					handler = handler(BLOB, context, NULL, (char *)blob_buffer, message);
 					pointer = buffer;
 					*pointer = 0;
 					state = BLOB_END;
@@ -1476,7 +1476,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						if (depth == 2) {
 							*value_pointer = 0;
 							blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
-							handler = handler(BLOB, &context, NULL, (char *)blob_buffer, message);
+							handler = handler(BLOB, context, NULL, (char *)blob_buffer, message);
 						}
 						state = TEXT1;
 						INDIGO_TRACE_PARSER(indigo_trace("XML Parser: '%c' %d BLOB -> TEXT1", c, depth));
@@ -1560,7 +1560,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 				if (c == q && !is_escaped) {
 					*value_pointer = 0;
 					state = ATTRIBUTE_NAME1;
-					handler = handler(ATTRIBUTE_VALUE, &context, name_buffer, value_buffer, message);
+					handler = handler(ATTRIBUTE_VALUE, context, name_buffer, value_buffer, message);
 					INDIGO_TRACE_PARSER(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE -> ATTRIBUTE_NAME1", c));
 				} else {
 					*value_pointer++ = c;
@@ -1575,8 +1575,8 @@ exit_loop:
 	while (true) {
 		indigo_property *property = NULL;
 		int index;
-		for (index = 0; index < context.count; index++) {
-			property = context.properties[index];
+		for (index = 0; index < context->count; index++) {
+			property = context->properties[index];
 			if (property != NULL)
 				break;
 		}
@@ -1588,8 +1588,8 @@ exit_loop:
 		indigo_property *all_properties = indigo_init_text_property(NULL, remote_device.name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
 		indigo_delete_property(&remote_device, all_properties, NULL);
 		indigo_release_property(all_properties);
-		for (; index < context.count; index++) {
-			indigo_property *property = context.properties[index];
+		for (; index < context->count; index++) {
+			indigo_property *property = context->properties[index];
 			if (property != NULL && !strncmp(remote_device.name, property->device, INDIGO_NAME_SIZE)) {
 				if (property->type == INDIGO_BLOB_VECTOR) {
 					for (int i = 0; i < property->count; i++) {
@@ -1599,12 +1599,13 @@ exit_loop:
 					}
 				}
 				indigo_release_property(property);
-				context.properties[index] = NULL;
+				context->properties[index] = NULL;
 			}
 		}
 	}
 	if (blob_buffer != NULL)
 		free(blob_buffer);
+	free(context);
 	free(buffer);
 	free(value_buffer);
 	close(handle);
