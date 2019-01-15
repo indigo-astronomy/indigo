@@ -243,7 +243,6 @@ void indigo_server_shutdown() {
 }
 
 void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
-	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
 	struct resource *resource = malloc(sizeof(struct resource));
 	resource->path = (char *)path;
 	resource->data = data;
@@ -251,6 +250,25 @@ void indigo_server_add_resource(const char *path, unsigned char *data, unsigned 
 	resource->content_type = (char *)content_type;
 	resource->next = resources;
 	resources = resource;
+	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
+}
+
+void indigo_server_remove_resource(const char *path) {
+	struct resource *resource = resources;
+	struct resource *prev = NULL;
+	while (resource) {
+		if (!strcmp(resource->path, path)) {
+				if (prev != NULL)
+					resources = resource->next;
+				else
+					prev->next = resource->next;
+			free(resource);
+			INDIGO_LOG(indigo_log("Resource %s removed", path));
+			return;
+		}
+		prev = resource;
+		resource = resource->next;
+	}
 }
 
 indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
