@@ -809,7 +809,7 @@ static void raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	JSAMPROW row_pointer[1];
 	jpeg_start_compress( &cinfo, TRUE);
 	while( cinfo.next_scanline < cinfo.image_height ) {
-		row_pointer[0] = &copy[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
+		row_pointer[0] = &((JSAMPROW)copy)[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
 		jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
 	jpeg_finish_compress(&cinfo);
@@ -838,13 +838,13 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		byte_per_pixel = 2;
 		naxis = 3;
 	}
-	
+
 	void *jpeg_data = NULL;
 	unsigned long jpeg_size = 0;
 	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value || CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM->sw.value) {
 		raw_to_jpeg(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &jpeg_data, &jpeg_size);
 	}
-	
+
 	if (!CCD_UPLOAD_MODE_PREVIEW_ITEM->sw.value) {
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			INDIGO_DEBUG(clock_t start = clock());
