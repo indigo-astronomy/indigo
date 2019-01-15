@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -73,9 +73,11 @@ static void focuser_timer_callback(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	if ((!moving) || (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->focuser_timer));
 	}
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
@@ -85,6 +87,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+		FOCUSER_SPEED_PROPERTY->hidden = true;
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -163,12 +166,43 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.value;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position-1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position-1, res);
+			int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+			}
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_STEPS
+		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		if (FOCUSER_STEPS_ITEM->number.value < 1 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (FOCUSER_STEPS_ITEM->number.value == PRIVATE_DATA->current_position) {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+			}
+			if(FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+			} else {
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+			}
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+			}
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+		}
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
