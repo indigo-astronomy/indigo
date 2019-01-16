@@ -157,13 +157,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		if (FOCUSER_POSITION_ITEM->number.value < 1 || FOCUSER_POSITION_ITEM->number.value > FOCUSER_POSITION_ITEM->number.max) {
+		if (FOCUSER_POSITION_ITEM->number.target < 1 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (FOCUSER_POSITION_ITEM->number.value == PRIVATE_DATA->current_position) {
+		} else if (FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.value;
+			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
@@ -180,8 +180,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_STEPS_ITEM->number.value < 1 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (FOCUSER_STEPS_ITEM->number.value == PRIVATE_DATA->current_position) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
