@@ -343,14 +343,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		res = 0;
 		long value = 0;
-		if ((FOCUSER_POSITION_ITEM->number.value >= 0) &&
-		    (FOCUSER_POSITION_ITEM->number.value <= FOCUSER_POSITION_ITEM->number.max)) {
+		if ((FOCUSER_POSITION_ITEM->number.target >= 0) &&
+		    (FOCUSER_POSITION_ITEM->number.target <= FOCUSER_POSITION_ITEM->number.max)) {
 			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &value);
 			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			value -= PRIVATE_DATA->zero_position;
-			value = FOCUSER_POSITION_ITEM->number.value - value;
+			value = FOCUSER_POSITION_ITEM->number.target - value;
 
 			PRIVATE_DATA->steps_to_go = 0;
 			/* focusers with max < 10000 can only go 4095 steps at once */
@@ -523,7 +523,7 @@ static void process_plug_event(indigo_device *unused) {
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	
+
 	char file_name[MAX_PATH];
 	int idx = find_plugged_device(file_name);
 	if (idx < 0) {
@@ -575,9 +575,9 @@ static void process_unplug_event(indigo_device *unused) {
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	
+
 	struct libusb_device_descriptor descriptor;
-	
+
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
