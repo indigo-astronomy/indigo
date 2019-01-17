@@ -57,26 +57,7 @@ endif
 #	Control panel
 #
 #---------------------------------------------------------------------
-ctrlpanel: ctrl.data resource/angular.min.js.data resource/bootstrap.min.js.data resource/bootstrap.css.data resource/jquery.min.js.data resource/glyphicons-halflings-regular.ttf.data resource/logo.png.data
+ctrlpanel: resource/ctrl.html.data resource/imager.html.data resource/indigo.js.data resource/components.js.data resource/telescope.png.data resource/ctrl.png.data resource/imager.png.data resource/guider.png.data resource/indigo.css.data resource/bootstrap.min.css.data resource/glyphicons.css.data resource/jquery.min.js.data resource/bootstrap.min.js.data resource/popper.min.js.data resource/vue.min.js.data resource/glyphicons-regular.ttf.data
 
-ctrl.data:	ctrl.html
-#	python tools/rjsmin.py <ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >ctrl.data
-	cat ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >ctrl.data
-
-resource/angular.min.js.data:	resource/angular.min.js
-	cat resource/angular.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > resource/angular.min.js.data
-
-resource/bootstrap.min.js.data:	resource/bootstrap.min.js
-	cat resource/bootstrap.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > resource/bootstrap.min.js.data
-
-resource/bootstrap.css.data:	resource/bootstrap.css
-	cat resource/bootstrap.css | gzip | hexdump -v -e '1/1 "0x%02x, "' > resource/bootstrap.css.data
-
-resource/jquery.min.js.data:	resource/jquery.min.js
-	cat resource/jquery.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > resource/jquery.min.js.data
-
-resource/glyphicons-halflings-regular.ttf.data:	resource/glyphicons-halflings-regular.ttf
-	cat resource/glyphicons-halflings-regular.ttf | gzip | hexdump -v -e '1/1 "0x%02x, "' > resource/glyphicons-halflings-regular.ttf.data
-
-resource/logo.png.data:	resource/logo.png
-	cat resource/logo.png | gzip | hexdump -v -e '1/1 "0x%02x, "' > resource/logo.png.data
+%.data: %
+	cat $< | gzip | hexdump -v -e '1/1 "0x%02x, "' >$@

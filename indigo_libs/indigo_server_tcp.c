@@ -145,10 +145,10 @@ static void start_worker_thread(int *client_socket) {
 						} else {
 							indigo_printf(socket, "HTTP/1.1 301 OK\r\n");
 							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							indigo_printf(socket, "Location: /ctrl\r\n");
+							indigo_printf(socket, "Location: /ctrl.html\r\n");
 							indigo_printf(socket, "Content-type: text/html\r\n");
 							indigo_printf(socket, "\r\n");
-							indigo_printf(socket, "<a href='/ctrl'>INDIGO Control Panel</a>");
+							indigo_printf(socket, "<a href='/ctrl.html'>INDIGO Control Panel</a>");
 							break;
 						}
 					} else {

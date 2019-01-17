@@ -254,32 +254,68 @@ static indigo_device server_device = INDIGO_DEVICE_INITIALIZER(
 	detach
 );
 
-static unsigned char ctrl[] = {
-#include "ctrl.data"
+static unsigned char ctrl_html[] = {
+#include "resource/ctrl.html.data"
 };
 
-static unsigned char angular_js[] = {
-#include "resource/angular.min.js.data"
+static unsigned char imager_html[] = {
+#include "resource/imager.html.data"
 };
 
-static unsigned char bootstrap_js[] = {
-#include"resource/bootstrap.min.js.data"
+static unsigned char indigo_js[] = {
+#include "resource/indigo.js.data"
+};
+
+static unsigned char components_js[] = {
+#include "resource/components.js.data"
+};
+
+static unsigned char telescope_png[] = {
+#include "resource/telescope.png.data"
+};
+
+static unsigned char ctrl_png[] = {
+#include "resource/ctrl.png.data"
+};
+
+static unsigned char imager_png[] = {
+#include "resource/imager.png.data"
+};
+
+static unsigned char guider_png[] = {
+#include "resource/guider.png.data"
+};
+
+static unsigned char indigo_css[] = {
+#include "resource/indigo.css.data"
 };
 
 static unsigned char bootstrap_css[] = {
-#include "resource/bootstrap.css.data"
+#include "resource/bootstrap.min.css.data"
+};
+
+static unsigned char glyphicons_css[] = {
+#include "resource/glyphicons.css.data"
 };
 
 static unsigned char jquery_js[] = {
 #include "resource/jquery.min.js.data"
 };
 
-static unsigned char font_ttf[] = {
-#include "resource/glyphicons-halflings-regular.ttf.data"
+static unsigned char bootstrap_js[] = {
+#include "resource/bootstrap.min.js.data"
 };
 
-static unsigned char logo_png[] = {
-#include "resource/logo.png.data"
+static unsigned char popper_js[] = {
+#include "resource/popper.min.js.data"
+};
+
+static unsigned char vue_js[] = {
+#include "resource/vue.min.js.data"
+};
+
+static unsigned char glyphicons_ttf[] = {
+#include "resource/glyphicons-regular.ttf.data"
 };
 
 static void server_callback(int count) {
@@ -626,13 +662,23 @@ static void server_main() {
 	}
 
 	if (use_control_panel) {
-		indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
-		indigo_server_add_resource("/resource/angular.min.js", angular_js, sizeof(angular_js), "text/javascript");
-		indigo_server_add_resource("/resource/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
-		indigo_server_add_resource("/resource/bootstrap.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
-		indigo_server_add_resource("/resource/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
-		indigo_server_add_resource("/fonts/glyphicons-halflings-regular.ttf", font_ttf, sizeof(font_ttf), "application/x-font-ttf");
-		indigo_server_add_resource("/resource/logo.png", logo_png, sizeof(logo_png), "image/png");
+		indigo_server_add_resource("/ctrl.html", ctrl_html, sizeof(ctrl_html), "text/html");
+		indigo_server_add_resource("/imager.html", imager_html, sizeof(imager_html), "text/html");
+		indigo_server_add_resource("/indigo.js", indigo_js, sizeof(indigo_js), "text/javascript");
+		indigo_server_add_resource("/components.js", components_js, sizeof(components_js), "text/javascript");
+		indigo_server_add_resource("/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
+		indigo_server_add_resource("/popper.min.js", popper_js, sizeof(popper_js), "text/javascript");
+		indigo_server_add_resource("/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
+		indigo_server_add_resource("/vue.min.js", vue_js, sizeof(vue_js), "text/javascript");
+		indigo_server_add_resource("/bootstrap.min.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
+		indigo_server_add_resource("/indigo.css", indigo_css, sizeof(indigo_css), "text/css");
+		indigo_server_add_resource("/glyphicons.css", glyphicons_css, sizeof(glyphicons_css), "text/css");
+		indigo_server_add_resource("/ctrl.png", ctrl_png, sizeof(ctrl_png), "image/png");
+		indigo_server_add_resource("/imager.png", imager_png, sizeof(imager_png), "image/png");
+		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
+		indigo_server_add_resource("/telescope.png", telescope_png, sizeof(telescope_png), "image/png");
+		indigo_server_add_resource("/telescope.png", telescope_png, sizeof(telescope_png), "image/png");
+		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "application/x-font-ttf");
 	}
 
 	if (!command_line_drivers) {

@@ -1,0 +1,128 @@
+/*
+ Copyright (c) 2017 GUIMakers, s. r. o. All rights reserved.
+ You can use this software under the terms of 'INDIGO Astronomy open-source license' (see LICENSE.md).
+ */
+
+.title {
+	display: inline;
+	vertical-align: middle;
+}
+
+input {
+	text-overflow: ellipsis;
+}
+
+.dirty {
+	background-color: #FFBFBF!important;
+}
+
+.container-fluid {
+	padding: 0.25rem;
+}
+
+.input-right {
+	text-align: right;
+}
+
+.input-dropdown::after {
+	margin-left: 0;
+}
+
+.idle-state {
+	color: black!important;
+	background-color: #acaeaf!important;
+	border-color: #acaeaf!important;
+}
+
+.idle-state:hover {
+	color: black!important;
+	background-color: #8c8e8f!important;
+	border-color: #8c8e8f!important;
+}
+
+.ok-state {
+	color: white!important;
+	background-color: #5cb85c!important;
+	border-color: #5cb85c!important;
+}
+
+.busy-state {
+	color: white!important;
+	background-color: #f0ad4e!important;
+	border-color: #f0ad4e!important;
+}
+
+.alert-state {
+	color: white!important;
+	background-color: #d9534f!important;
+	border-color: #d9534f!important;
+}
+
+.idle-state-outline {
+	color: #eceeef;
+	background-color: white;
+	border-color: #eceeef;
+}
+
+.ok-state-outline {
+	color: #5cb85c;
+	background-color: white;
+	border-color: #5cb85c;
+}
+
+.busy-state-outline {
+	color: #f0ad4e;
+	background-color: white;
+	border-color: #f0ad4e;
+}
+
+.alert-state-outline {
+	color: #d9534f;
+	background-color: white;
+	border-color: #d9534f;
+}
+
+.btn-right {
+	margin-left: 0.2rem;
+	margin-right: 0;
+	margin-left: auto;
+}
+
+.btn-outline-secondary {
+	border-color: rgb(206, 212, 218);
+}
+
+.img-fluid {
+	max-height: 554px;
+}
+
+.w-30 {
+	width: 30%!important;
+}
+
+.w-40 {
+	width: 40%!important;
+}
+
+.w-60 {
+	width: 60%!important;
+}
+
+.w-70 {
+	width: 70%!important;
+}
+
+.checked::before {
+	position: absolute;
+	left: .4rem;
+	content: '✓';
+	font-weight: 600;
+}
+
+.accordion .card .card-header .icon-indicator:before {
+	content: "▼ ";
+}
+
+.accordion .card .card-header.collapsed .icon-indicator:before {
+	content: "▶ ";
+}

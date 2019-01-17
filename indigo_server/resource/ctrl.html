@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+		<link rel="stylesheet" href="bootstrap.min.css"/>
+		<link rel="stylesheet" href="indigo.css"/>
+	</head>
+	<title>INDIGO Control Panel</title>
+	<body class="bg-secondary">
+		<div id="ROOT">
+			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
+				<a class="navbar-brand text-white" href="#">
+					<img src="ctrl.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
+					<h4 class="title">INDIGO Control Panel</h4>
+				</a>
+				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
+					<a class="nav-link pr-0 ml-auto" href="imager.html">
+						<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+					</a>
+					<a class="nav-link pr-0">
+						<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+					</a>
+					<a class="nav-link pr-0">
+						<img src="telescope.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+					</a>
+				</div>
+			</nav>
+			<div class="container-fluid">
+				<div v-if="devices['Server'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
+					Waiting for server...
+				</div>
+				<template v-else>
+					<div class="row">
+						<div class="col-md-12">
+							<div class="card p-1 m-1 bg-light">
+								<div class="card-block d-flex flex-wrap">
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Camera drivers'" :prefix="'indigo_ccd'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Wheel drivers'" :prefix="'indigo_wheel'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Focuser drivers'" :prefix="'indigo_focuser'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Guider drivers'" :prefix="'indigo_guider'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AO drivers'" :prefix="'indigo_ao'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Mount drivers'" :prefix="'indigo_mount'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AUX drivers'" :prefix="'indigo_aux'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Dome drivers'" :prefix="'indigo_dome'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'System drivers'" :prefix="'indigo_system'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Agents'" :prefix="'indigo_agent'"></indigo-select-multi-item>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-12">
+							<div class="card p-1 m-1 bg-light">
+								<indigo-ctrl :devices="devices"></indigo-ctrl>
+							</div>
+						</div>
+					</div>
+				</template>
+				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
+					{{ state }}
+				</div>
+				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
+					{{ state }}
+				</div>
+			</div>
+		</div>
+	</body>
+	<script src="jquery.min.js"></script>
+	<script src="popper.min.js"></script>
+	<script src="bootstrap.min.js"></script>
+	<script src="vue.min.js"></script>
+	<script src="indigo.js"></script>
+	<script src="components.js"></script>
+	<script language="javascript" type="text/javascript">
+		
+		URL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+
+		window.addEventListener("load", init, false);
+		
+		function checkState() {
+			if (INDIGO.devices["Server"] == null) {
+				console.log("No 'Server' device.");
+			}
+		}
+	
+		function onDefineProperty(property) {
+		}
+	
+		function onUpdateProperty(property) {
+		}
+	
+		function onDeleteProperty(property) {
+		}
+	
+	</script>
+</html>
