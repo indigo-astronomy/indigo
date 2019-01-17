@@ -1,10 +1,10 @@
-# ZWO ASI EAF focuser driver
+# ZWO EAF focuser driver
 
 https://astronomy-imaging-camera.com
 
 ## Supported devices
 
-All ASI focusers wheels.
+All ZWO EAF focusers.
 
 This driver supports hot-plug (multiple devices).
 
