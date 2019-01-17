@@ -307,26 +307,32 @@ Vue.component('indigo-ctrl', {
 			var values = {};
 			for (i in property.items) {
 				var item = property.items[i];
-				if (item.newValue != null) {
-					values[item.name] = item.newValue;
-					item.newValue = null;
-				}
+				values[item.name] = item.value;
+				item.newValue = null;
 			}
 			changeProperty(property.device, property.name, values);
-		}
+		},
+		openAll: function(element) {
+			var header = $(element).parent();
+			var body = header.next();
+			header.removeClass("collapsed");
+			body.addClass("show");
+			$(body).find("button.collapsed").removeClass("collapsed");
+			$(body).find("div.collapse").addClass("show");
+		},
 	},
 	template: `
 		<div class="accordion p-1 w-100">
 		<div class="card" v-for="(device,deviceName) in devices">
-			<button class="btn card-header p-2 collapsed" :class="state(device)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{deviceName}}</button>
+			<button class="btn card-header p-2 collapsed" :class="state(device)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{deviceName}}<span class="float-right" @click.stop="openAll($event.target)">▶▶</span></button>
 			<div :id="deviceName.hashCode()" class="accordion collapse p-2">
 
 				<div class="card" v-for="(group,groupName) in groups(device)">
-					<button class="btn card-header p-2 collapsed" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{groupName}}</button>
+					<button class="btn card-header p-2 collapsed" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{groupName}}<span class="float-right" @click.stop="openAll($event.target)">▶▶</span></button>
 					<div :id="deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
 
 						<div class="card" v-for="(property,name) in group">
-							<button class="btn card-header p-2 collapsed" :class="state(property)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
+							<button class="btn card-header p-2 collapsed" :class="state(property)" @dblclick="foldAll($event.target)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
 							<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-block p-2 bg-light">
 								<form class="m-0">
 									<template v-if="property.type == 'text'">
