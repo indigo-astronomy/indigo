@@ -263,15 +263,25 @@ Vue.component('indigo-ctrl', {
 			return result;
 		},
 		state: function(object) {
-			if (object.state != null) return object.state.toLowerCase() + "-state";
-			if (object.value != null) return object.value.toLowerCase() + "-state";
-			var result = "ok-state";
+			if (object.state != null)
+				return object.state.toLowerCase() + "-state";
+			if (object.value != null)
+				return object.value.toLowerCase() + "-state";
 			for (p in object) {
 				var property = object[p];
-				if (property.state == "Alert") return "alert-state";
-				if (property.state == "Busy") result = "busy-state";
+				if (property.name == "CONNECTION") {
+					if (property.state == "Ok") {
+						for (i in property.items) {
+							var item = property.items[i];
+							if (item.name == "CONNECTED" && item.value) {
+								return "ok-state";
+							}
+						}
+					}
+					break;
+				}
 			}
-			return result;
+			return "idle-state";
 		},
 		setSwitch: function(property, itemName, value) {
 			var values = {};
@@ -312,7 +322,7 @@ Vue.component('indigo-ctrl', {
 			<div :id="deviceName.hashCode()" class="accordion collapse p-2">
 
 				<div class="card" v-for="(group,groupName) in groups(device)">
-					<button class="btn card-header p-2 collapsed" :class="state(group)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{groupName}}</button>
+					<button class="btn card-header p-2 collapsed" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{groupName}}</button>
 					<div :id="deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
 
 						<div class="card" v-for="(property,name) in group">
