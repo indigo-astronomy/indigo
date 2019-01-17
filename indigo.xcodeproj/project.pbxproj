@@ -814,10 +814,6 @@
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_focuser_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fli.h; sourceTree = "<group>"; };
-		5925E3461E982BE800FF373F /* angular.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = angular.min.js; sourceTree = "<group>"; };
-		5925E3471E982BE800FF373F /* bootstrap.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = bootstrap.css; sourceTree = "<group>"; };
-		5925E3481E982BE800FF373F /* bootstrap.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = bootstrap.min.js; sourceTree = "<group>"; };
-		5925E3491E982BE800FF373F /* jquery.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = jquery.min.js; sourceTree = "<group>"; };
 		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		59292E5620D4224F0042E939 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		592E79122168DD7A00E856F3 /* indigo_focuser_mjkzz.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_mjkzz.h; sourceTree = "<group>"; };
@@ -980,7 +976,6 @@
 		599A63AD1DEA070E00ABC827 /* websocket_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = websocket_test.html; sourceTree = "<group>"; };
 		599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_driver_json.c; sourceTree = "<group>"; };
 		599A63AF1DEA2F4700ABC827 /* indigo_driver_json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_driver_json.h; sourceTree = "<group>"; };
-		599A63B21DEB7BF500ABC827 /* ctrl.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = ctrl.html; sourceTree = "<group>"; };
 		599A63D41DF3670100ABC827 /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjpeg.a; path = build/lib/libjpeg.a; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A481DA022C0008BBCC1 /* libindigo.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libindigo.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3493,6 +3488,22 @@
 		9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher_motor_controller_command_set.pdf; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
+		9D38D13821F09CDE00549B67 /* indigo.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = indigo.css; sourceTree = "<group>"; };
+		9D38D13921F09CDE00549B67 /* guider.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = guider.png; sourceTree = "<group>"; };
+		9D38D13A21F09CDE00549B67 /* imager.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = imager.png; sourceTree = "<group>"; };
+		9D38D13B21F09CDF00549B67 /* telescope.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = telescope.png; sourceTree = "<group>"; };
+		9D38D13C21F09CDF00549B67 /* vue.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = vue.min.js; sourceTree = "<group>"; };
+		9D38D13D21F09CDF00549B67 /* indigo.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = indigo.js; sourceTree = "<group>"; };
+		9D38D13E21F09CDF00549B67 /* bootstrap.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = bootstrap.min.js; sourceTree = "<group>"; };
+		9D38D13F21F09CDF00549B67 /* imager.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = imager.html; sourceTree = "<group>"; };
+		9D38D14021F09CDF00549B67 /* jquery.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = jquery.min.js; sourceTree = "<group>"; };
+		9D38D14121F09CDF00549B67 /* bootstrap.min.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = bootstrap.min.css; sourceTree = "<group>"; };
+		9D38D14221F09CE000549B67 /* ctrl.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ctrl.png; sourceTree = "<group>"; };
+		9D38D14321F09CE000549B67 /* ctrl.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = ctrl.html; sourceTree = "<group>"; };
+		9D38D14421F09CE000549B67 /* glyphicons.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = glyphicons.css; sourceTree = "<group>"; };
+		9D38D14521F09CE000549B67 /* glyphicons-regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "glyphicons-regular.ttf"; sourceTree = "<group>"; };
+		9D38D14621F09CE000549B67 /* components.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = components.js; sourceTree = "<group>"; };
+		9D38D14721F09CE000549B67 /* popper.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = popper.min.js; sourceTree = "<group>"; };
 		9D3BBBA521147EB500800FB0 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_lx200_server.c; sourceTree = "<group>"; wrapsLines = 0; };
 		9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_lx200_server.h; sourceTree = "<group>"; };
@@ -4929,10 +4940,22 @@
 		5925E3451E982BBC00FF373F /* resource */ = {
 			isa = PBXGroup;
 			children = (
-				5925E3461E982BE800FF373F /* angular.min.js */,
-				5925E3471E982BE800FF373F /* bootstrap.css */,
-				5925E3481E982BE800FF373F /* bootstrap.min.js */,
-				5925E3491E982BE800FF373F /* jquery.min.js */,
+				9D38D14321F09CE000549B67 /* ctrl.html */,
+				9D38D13F21F09CDF00549B67 /* imager.html */,
+				9D38D14621F09CE000549B67 /* components.js */,
+				9D38D13D21F09CDF00549B67 /* indigo.js */,
+				9D38D14121F09CDF00549B67 /* bootstrap.min.css */,
+				9D38D13E21F09CDF00549B67 /* bootstrap.min.js */,
+				9D38D14221F09CE000549B67 /* ctrl.png */,
+				9D38D14521F09CE000549B67 /* glyphicons-regular.ttf */,
+				9D38D14421F09CE000549B67 /* glyphicons.css */,
+				9D38D13921F09CDE00549B67 /* guider.png */,
+				9D38D13A21F09CDE00549B67 /* imager.png */,
+				9D38D13821F09CDE00549B67 /* indigo.css */,
+				9D38D14021F09CDF00549B67 /* jquery.min.js */,
+				9D38D14721F09CE000549B67 /* popper.min.js */,
+				9D38D13B21F09CDF00549B67 /* telescope.png */,
+				9D38D13C21F09CDF00549B67 /* vue.min.js */,
 			);
 			path = resource;
 			sourceTree = "<group>";
@@ -5361,7 +5384,6 @@
 			children = (
 				9DC7830621A7072B009859FD /* Makefile */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
-				599A63B21DEB7BF500ABC827 /* ctrl.html */,
 				5925E3451E982BBC00FF373F /* resource */,
 			);
 			path = indigo_server;

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+		<link rel="stylesheet" href="bootstrap.min.css"/>
+		<link rel="stylesheet" href="glyphicons.css"/>
+		<link rel="stylesheet" href="indigo.css"/>
+	</head>
+	<title>INDIGO Imager</title>
+	<body class="bg-secondary">
+		<div id="ROOT">
+			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
+				<a class="navbar-brand text-white " href="#">
+					<img src="imager.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
+					<h4 class="title">INDIGO Imager</h4>
+				</a>
+				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
+					<a class="nav-link pr-0 ml-auto">
+						<img src="guider.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+					</a>
+					<a class="nav-link pr-0">
+						<img src="telescope.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+					</a>
+					<a class="nav-link pr-0" href="ctrl.html">
+						<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+					</a>
+				</div>
+			</nav>
+			<div class="container-fluid">
+				<div v-if="devices['Imager Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
+					Waiting for Imager agent...
+				</div>
+				<template v-else>
+					<div class="row no-gutters">
+						<div class="col-md-4" style="min-width:350px">
+							<template v-if="findProperty('Imager Agent', 'FILTER_CCD_LIST') != null">
+								<div class="card p-1 m-1 bg-light">
+									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_CCD_LIST')"></indigo-select-item>
+										<indigo-select-item :property="findProperty('Imager Agent', 'CCD_FRAME_TYPE')"></indigo-select-item>
+										<indigo-select-item :property="findProperty('Imager Agent', 'CCD_MODE')"></indigo-select-item>
+										<indigo-edit-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature-low'" :values="['Off', 0, -10, -15, -20, -30]" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-edit-number>
+										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]"></indigo-edit-number>
+										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]"></indigo-edit-number>
+										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-history'" :values="[0, 5, 10, 15, 20, 30]"></indigo-edit-number>
+										<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'"></indigo-edit-text>
+										<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'"></indigo-edit-text>
+										<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-history'"></indigo-show-number>
+										<div v-if="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH') != null" class="btn-toolbar p-1 w-100">
+											<button id="preview1_button" class="btn idle-state mr-2" onclick="preview1()">
+												<span class="glyphicons glyphicons-camera"></span>
+											</button>
+											<button id="preview_button" class="btn idle-state mr-2" onclick="preview()">
+												<span class="glyphicons glyphicons-facetime-video"></span>
+											</button>
+											<button id="capture_button" class="btn idle-state mr-2" onclick="capture_batch()">
+												<span class="glyphicons glyphicons-record text-danger"></span>
+											</button>
+											<button class="btn idle-state btn-right" onclick="stop()">
+												<span class="glyphicons glyphicons-stop"></span>
+											</button>
+										</div>
+									</div>
+								</div>
+							</template>
+							<template v-if="findProperty('Imager Agent', 'FILTER_WHEEL_LIST') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_WHEEL_LIST')"></indigo-select-item>
+										<indigo-select-item :property="findProperty('Imager Agent', 'AGENT_WHEEL_FILTER')" :no_value="'Moving...'"></indigo-select-item>
+									</div>
+								</div>
+							</template>
+							<template v-if="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST')"></indigo-select-item>
+										<indigo-edit-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'glyphicons-ruler'"></indigo-edit-number>
+										<indigo-stepper :property="findProperty('Imager Agent', 'FOCUSER_STEPS')" :name="'STEPS'" :direction="findProperty('Imager Agent', 'FOCUSER_DIRECTION')" :direction_left="'MOVE_INWARD'" :direction_right="'MOVE_OUTWARD'"></indigo-stepper>
+									</div>
+								</div>
+							</template>
+						</div>
+						<div class="col-md-8">
+							<div id="image_container" class="card p-1 m-1 bg-light d-none">
+								<div class="card-block">
+									<div class="card p-0">
+										<div class="card-body p-0" style="min-height: 50px;">
+											<img id="image" width="100%"/>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</template>
+				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
+					{{ state }}
+				</div>
+				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
+					{{ state }}
+				</div>
+			</div>
+		</div>
+	</body>
+	<script src="jquery.min.js"></script>
+	<script src="popper.min.js"></script>
+	<script src="bootstrap.min.js"></script>
+	<script src="vue.min.js"></script>
+	<script src="indigo.js"></script>
+	<script src="components.js"></script>
+	<script language="javascript" type="text/javascript">
+		
+		URL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+
+		window.addEventListener("load", init, false);
+		
+		function checkState() {
+			var server = INDIGO.devices["Server"];
+			if (server == null) {
+				console.log("No 'Server' device.");
+			} else {
+				if (INDIGO.devices["Imager Agent"] == null) {
+					console.log("No 'Imager Agent' device.");
+					if (server["DRIVERS"].item("indigo_agent_imager") == null) {
+						console.log("Trying to load 'indigo_agent_imager' driver.");
+						changeProperty("Server", "LOAD", { "DRIVER": "indigo_agent_imager" });
+					} else if (!server["DRIVERS"].item("indigo_agent_imager").value) {
+						console.log("Trying to enable 'indigo_agent_imager' driver.");
+						changeProperty("Server", "DRIVERS", { "indigo_agent_imager": true });
+					}
+				}
+			}
+		}
+	
+		var targetExposureTime = 0;
+		var repeatExposure = false
+		
+		function onDefineProperty(property) {
+			if (property.device == "Imager Agent") {
+				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
+					targetExposureTime = property.item("EXPOSURE").value;
+				} else if (property.name == "CCD_IMAGE") {
+					if (property.state == "Ok") {
+						var value = property.item("IMAGE").value;
+						if (value != null) {
+							$("#image").attr("src", "http://" + INDIGO.host + property.item("IMAGE").value + '?' + new Date().getTime());
+							$("#image_container").removeClass("d-none");
+						}
+					}
+				}
+			}
+		}
+	
+		function onUpdateProperty(property) {
+			if (property.device == "Imager Agent") {
+				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
+					targetExposureTime = property.item("EXPOSURE").value;
+				} else if (property.name == "CCD_IMAGE") {
+					if (property.state == "Ok") {
+						$("#preview1_button").removeClass("busy-state");
+						$("#preview1_button").addClass("idle-state");
+						$("#preview_button").removeClass("busy-state");
+						$("#preview_button").addClass("idle-state");
+						$("#capture_button").removeClass("busy-state");
+						$("#capture_button").addClass("idle-state");
+						var value = property.item("IMAGE").value;
+						if (value != null) {
+							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime());
+							$("#image_container").removeClass("d-none");
+						}
+						if (repeatExposure) {
+							$("#preview_button").removeClass("idle-state");
+							$("#preview_button").addClass("busy-state");
+							changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+						}
+					} else if (property.state == "Alert") {
+						$("#preview1_button").removeClass("busy-state");
+						$("#preview1_button").addClass("idle-state");
+						$("#preview_button").removeClass("busy-state");
+						$("#preview_button").addClass("idle-state");
+						$("#capture_button").removeClass("busy-state");
+						$("#capture_button").addClass("idle-state");
+					}
+				}
+			}
+		}
+	
+		function onDeleteProperty(property) {
+		}
+	
+		function preview1() {
+			repeatExposure = false;
+			$("#preview1_button").removeClass("idle-state");
+			$("#preview1_button").addClass("busy-state");
+			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "PREVIEW" : true });
+			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+		}
+	
+		function preview() {
+			repeatExposure = true;
+			$("#preview_button").removeClass("idle-state");
+			$("#preview_button").addClass("busy-state");
+			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "PREVIEW" : true });
+			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+		}
+	
+		function capture_batch() {
+			repeatExposure = false;
+			$("#capture_button").removeClass("idle-state");
+			$("#capture_button").addClass("busy-state");
+			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "PREVIEW_LOCAL" : true });
+			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
+		}
+	
+		function stop() {
+			repeatExposure = false;
+			changeProperty("Imager Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
+		}
+	
+	</script>
+</html>
