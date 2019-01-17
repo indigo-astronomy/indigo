@@ -11958,6 +11958,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9D97F8141D9A8A1900582EAF /* Build configuration list for PBXNativeTarget "indigo_server" */;
 			buildPhases = (
+				59AF31EC21F0EE7F0008CC52 /* ShellScript */,
 				9D97F80A1D9A8A1900582EAF /* Sources */,
 				9D97F8121D9A8A1900582EAF /* Frameworks */,
 			);
@@ -12071,6 +12072,27 @@
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		59AF31EC21F0EE7F0008CC52 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C indigo_server ctrlpanel\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		599C9A441DA022C0008BBCC1 /* Sources */ = {
