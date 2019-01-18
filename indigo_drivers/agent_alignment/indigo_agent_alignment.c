@@ -117,7 +117,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+static void process_connection_change(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])) {
 		bool delete = false;
 		bool define = false;
@@ -175,7 +175,16 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			}
 		}
 	}
+}
+
+static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	process_connection_change(client, device, property, message);
 	return indigo_filter_define_property(client, device, property, message);
+}
+
+static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	process_connection_change(client, device, property, message);
+	return indigo_filter_update_property(client, device, property, message);
 }
 
 // -------------------------------------------------------------------------------- Initialization
@@ -187,7 +196,7 @@ static indigo_client *agent_client = NULL;
 
 indigo_result indigo_agent_alignment(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(
-		IMAGER_AGENT_NAME,
+		ALIGNMENT_AGENT_NAME,
 		agent_device_attach,
 		agent_enumerate_properties,
 		agent_change_property,
@@ -196,10 +205,10 @@ indigo_result indigo_agent_alignment(indigo_driver_action action, indigo_driver_
 	);
 
 	static indigo_client agent_client_template = {
-		IMAGER_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+		ALIGNMENT_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		indigo_filter_client_attach,
 		agent_define_property,
-		indigo_filter_update_property,
+		agent_update_property,
 		indigo_filter_delete_property,
 		NULL,
 		indigo_filter_client_detach
@@ -207,7 +216,7 @@ indigo_result indigo_agent_alignment(indigo_driver_action action, indigo_driver_
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, IMAGER_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, ALIGNMENT_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
