@@ -399,6 +399,7 @@ Vue.component('indigo-ctrl', {
 		},
 		closeAll: function(id) {
 			var body = $("#B_" + id);
+			body.addClass("show");
 			$(body).find("button.collapsed").addClass("collapsed");
 			$(body).find("div.collapse").removeClass("show");
 		},
