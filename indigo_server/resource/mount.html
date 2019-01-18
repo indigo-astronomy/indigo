@@ -41,12 +41,12 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_MOUNT_LIST')"></indigo-select-item>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'glyphicons-resize-vertical'"></indigo-edit-number-60>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'glyphicons-resize-horizontal'"></indigo-edit-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'glyphicons-resize-vertical'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'glyphicons-resize-horizontal'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'glyphicons-resize-vertical'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'glyphicons-resize-horizontal'"></indigo-show-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-edit-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'Ε'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'"></indigo-show-number-60>
 										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="btn-toolbar p-1 w-100">
 											<button id="goto_button" class="btn idle-state mr-2" onclick="goto()">
 												<span class="glyphicons glyphicons-riflescope"></span>
@@ -72,13 +72,8 @@
 							</template>
 						</div>
 						<div class="col-md-8">
-							<div id="image_container" class="card p-1 m-1 bg-light d-none">
-								<div class="card-block">
-									<div class="card p-0">
-										<div class="card-body p-0" style="min-height: 50px;">
-											<img id="image" width="100%"/>
-										</div>
-									</div>
+							<div class="card p-1 m-1 bg-light d-none w-100">
+								<div id="map" class="w-100">
 								</div>
 							</div>
 						</div>
@@ -99,11 +94,13 @@
 	<script src="vue.min.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
-	<script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
 	<script language="javascript" type="text/javascript">
 		
 		URL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+		//URL = new URL("ws://localhost:7624");
 
+		
+		
 		window.addEventListener("load", init, false);
 		
 		function checkState() {

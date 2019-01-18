@@ -165,7 +165,7 @@ Vue.component('indigo-edit-number-60', {
 	template: `
 		<div v-if="property != null" class="input-group p-1 w-50">
 		<a class="input-group-prepend">
-			<span class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+			<span class="input-group-text" :class="state()">{{icon}}</span>
 		</a>
 		<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
 		<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
@@ -231,8 +231,8 @@ Vue.component('indigo-show-number-60', {
 	template: `
 		<div v-if="property != null" class="p-1 w-25">
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small class="glyphicons" :class="icon"/>
-				<small class="mr-2">{{value()}}</small>
+				<small class="ml-2 p-1">{{icon}}</small>
+				<small class="mr-2 p-1">{{value()}}</small>
 			</div>
 		</div>`
 });
@@ -397,28 +397,39 @@ Vue.component('indigo-ctrl', {
 			$(body).find("button.collapsed").removeClass("collapsed");
 			$(body).find("div.collapse").addClass("show");
 		},
+		closeAll: function(id) {
+			var body = $("#B_" + id);
+			$(body).find("button.collapsed").addClass("collapsed");
+			$(body).find("div.collapse").removeClass("show");
+		},
 	},
 	template: `
 		<div class="accordion p-1 w-100">
 		<div class="card" v-for="(device,deviceName) in devices">
-			<div class="input-group d-flex">
+			<div class="input-group d-flex card-header p-0" :class="state(device)">
 				<div class="input-group-prepend flex-grow-1">
-					<button :id="'H_' + deviceName.hashCode()" class="btn card-header p-2 collapsed w-100" :class="state(device)" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{deviceName}}</button>
+							<button :id="'H_' + deviceName.hashCode()" class="btn p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left;border:none;background:transparent;"><span class="icon-indicator"></span>{{deviceName}}</button>
 				</div>
 				<div class="input-group-append">
-					<button class="btn idle-state" @click.stop="openAll(deviceName.hashCode())">▶▶</button>
+					<button class="btn" @click.stop="closeAll(deviceName.hashCode())" style="border:none;background:transparent;">△</button>
+				</div>
+				<div class="input-group-append">
+					<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;">▽</button>
 				</div>
 			</div>
 			<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2">
 
 				<div class="card" v-for="(group,groupName) in groups(device)">
 							
-					<div class="input-group d-flex">
+					<div class="input-group d-flex card-header p-0">
 						<div class="input-group-prepend flex-grow-1">
-							<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn card-header p-2 collapsed w-100" :class="state(device)" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{groupName}}</button>
+							<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn btn-outline-secondary p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
 						</div>
 						<div class="input-group-append">
-							<button class="btn idle-state" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())">▶▶</button>
+							<button class="btn" @click.stop="closeAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;">△</button>
+						</div>
+						<div class="input-group-append">
+							<button class="btn btn-outline-secondary" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;color:black">▽</button>
 						</div>
 					</div>
 
@@ -427,7 +438,7 @@ Vue.component('indigo-ctrl', {
 					<div :id="'B_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
 
 						<div class="card" v-for="(property,name) in group">
-							<button class="btn card-header p-2 collapsed" :class="state(property)" @dblclick="foldAll($event.target)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
+							<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
 							<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-block p-2 bg-light">
 								<form class="m-0">
 									<template v-if="property.type == 'text'">
