@@ -415,7 +415,7 @@ Vue.component('indigo-ctrl', {
 							
 					<div class="input-group d-flex">
 						<div class="input-group-prepend flex-grow-1">
-							<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn card-header p-2 collapsed w-100" :class="state(device)" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{deviceName}}</button>
+							<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn card-header p-2 collapsed w-100" :class="state(device)" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{groupName}}</button>
 						</div>
 						<div class="input-group-append">
 							<button class="btn idle-state" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())">▶▶</button>
