@@ -93,11 +93,11 @@ input {
 	font-weight: 600;
 }
 
-.accordion .card .card-header .icon-indicator:before {
+.collapse-button .icon-indicator:before {
 	content: "▼ ";
 }
 
-.accordion .card .card-header.collapsed .icon-indicator:before {
+.collapse-button.collapsed .icon-indicator:before {
 	content: "▶ ";
 }
 
