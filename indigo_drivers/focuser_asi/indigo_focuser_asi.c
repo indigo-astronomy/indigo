@@ -55,7 +55,7 @@
 typedef struct {
 	int dev_id;
 	int current_position, target_position;
-	indigo_timer *focuser_timer;
+	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 } asi_private_data;
 
@@ -82,6 +82,25 @@ static void focuser_timer_callback(indigo_device *device) {
 }
 
 
+static void temperature_timer_callback(indigo_device *device) {
+	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = EAFGetTemp(PRIVATE_DATA->dev_id, &(FOCUSER_TEMPERATURE_ITEM->number.value));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d): Temoerature sensor is not connected", PRIVATE_DATA->dev_id);
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
+}
+
+
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -89,6 +108,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
+		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -134,6 +154,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0.1, temperature_timer_callback);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", index, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -144,6 +165,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (device->is_connected) {
+				indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = EAFClose(PRIVATE_DATA->dev_id);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -167,6 +190,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
@@ -183,7 +207,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
