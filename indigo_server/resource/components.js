@@ -389,9 +389,9 @@ Vue.component('indigo-ctrl', {
 			}
 			changeProperty(property.device, property.name, values);
 		},
-		openAll: function(element) {
-			var header = $(element).parent();
-			var body = header.next();
+		openAll: function(id) {
+			var header = $("#H_" + id);
+			var body = $("#B_" + id);
 			header.removeClass("collapsed");
 			body.addClass("show");
 			$(body).find("button.collapsed").removeClass("collapsed");
@@ -401,12 +401,30 @@ Vue.component('indigo-ctrl', {
 	template: `
 		<div class="accordion p-1 w-100">
 		<div class="card" v-for="(device,deviceName) in devices">
-			<button class="btn card-header p-2 collapsed" :class="state(device)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{deviceName}}<span class="float-right" @click.stop="openAll($event.target)">▶▶</span></button>
-			<div :id="deviceName.hashCode()" class="accordion collapse p-2">
+			<div class="input-group d-flex">
+				<div class="input-group-prepend flex-grow-1">
+					<button :id="'H_' + deviceName.hashCode()" class="btn card-header p-2 collapsed w-100" :class="state(device)" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{deviceName}}</button>
+				</div>
+				<div class="input-group-append">
+					<button class="btn idle-state" @click.stop="openAll(deviceName.hashCode())">▶▶</button>
+				</div>
+			</div>
+			<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2">
 
 				<div class="card" v-for="(group,groupName) in groups(device)">
-					<button class="btn card-header p-2 collapsed" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{groupName}}<span class="float-right" @click.stop="openAll($event.target)">▶▶</span></button>
-					<div :id="deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+							
+					<div class="input-group d-flex">
+						<div class="input-group-prepend flex-grow-1">
+							<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn card-header p-2 collapsed w-100" :class="state(device)" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{deviceName}}</button>
+						</div>
+						<div class="input-group-append">
+							<button class="btn idle-state" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())">▶▶</button>
+						</div>
+					</div>
+
+							
+							
+					<div :id="'B_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
 
 						<div class="card" v-for="(property,name) in group">
 							<button class="btn card-header p-2 collapsed" :class="state(property)" @dblclick="foldAll($event.target)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
