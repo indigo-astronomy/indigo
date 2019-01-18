@@ -3493,7 +3493,7 @@
 		9D38D13821F09CDE00549B67 /* indigo.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = indigo.css; sourceTree = "<group>"; };
 		9D38D13921F09CDE00549B67 /* guider.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = guider.png; sourceTree = "<group>"; };
 		9D38D13A21F09CDE00549B67 /* imager.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = imager.png; sourceTree = "<group>"; };
-		9D38D13B21F09CDF00549B67 /* telescope.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = telescope.png; sourceTree = "<group>"; };
+		9D38D13B21F09CDF00549B67 /* mount.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mount.png; sourceTree = "<group>"; };
 		9D38D13C21F09CDF00549B67 /* vue.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = vue.min.js; sourceTree = "<group>"; };
 		9D38D13D21F09CDF00549B67 /* indigo.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = indigo.js; sourceTree = "<group>"; };
 		9D38D13E21F09CDF00549B67 /* bootstrap.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = bootstrap.min.js; sourceTree = "<group>"; };
@@ -3502,7 +3502,7 @@
 		9D38D14121F09CDF00549B67 /* bootstrap.min.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = bootstrap.min.css; sourceTree = "<group>"; };
 		9D38D14221F09CE000549B67 /* ctrl.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ctrl.png; sourceTree = "<group>"; };
 		9D38D14321F09CE000549B67 /* ctrl.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = ctrl.html; sourceTree = "<group>"; };
-		9D38D14421F09CE000549B67 /* glyphicons.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = glyphicons.css; sourceTree = "<group>"; };
+		9D38D14421F09CE000549B67 /* glyphicons.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = glyphicons.css; sourceTree = "<group>"; wrapsLines = 1; };
 		9D38D14521F09CE000549B67 /* glyphicons-regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "glyphicons-regular.ttf"; sourceTree = "<group>"; };
 		9D38D14621F09CE000549B67 /* components.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = components.js; sourceTree = "<group>"; };
 		9D38D14721F09CE000549B67 /* popper.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = popper.min.js; sourceTree = "<group>"; };
@@ -4070,6 +4070,7 @@
 		9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_mount.c; sourceTree = "<group>"; };
 		9D7244EA21F1CFEB0028FDF4 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_mount.h; sourceTree = "<group>"; };
+		9D7244F621F1D6A50028FDF4 /* mount.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mount.html; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4947,6 +4948,7 @@
 			children = (
 				9D38D14321F09CE000549B67 /* ctrl.html */,
 				9D38D13F21F09CDF00549B67 /* imager.html */,
+				9D7244F621F1D6A50028FDF4 /* mount.html */,
 				9D38D14621F09CE000549B67 /* components.js */,
 				9D38D13D21F09CDF00549B67 /* indigo.js */,
 				9D38D14121F09CDF00549B67 /* bootstrap.min.css */,
@@ -4959,7 +4961,7 @@
 				9D38D13821F09CDE00549B67 /* indigo.css */,
 				9D38D14021F09CDF00549B67 /* jquery.min.js */,
 				9D38D14721F09CE000549B67 /* popper.min.js */,
-				9D38D13B21F09CDF00549B67 /* telescope.png */,
+				9D38D13B21F09CDF00549B67 /* mount.png */,
 				9D38D13C21F09CDF00549B67 /* vue.min.js */,
 			);
 			path = resource;

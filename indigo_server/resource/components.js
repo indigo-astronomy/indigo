@@ -25,7 +25,7 @@ Vue.component('indigo-select-item', {
 		}
 	},
 	template: `
-		<select v-if="property != null" class="custom-select m-1 w-100" :class="state()" @change="onChange">
+		<select v-if="property != null" class="custom-select m-1 w-100" style="cursor: pointer" :class="state()" @change="onChange">
 		<template v-if="none_selected()">
 			<option disabled>{{ no_value }}</option>
 		</template>
@@ -123,6 +123,55 @@ Vue.component('indigo-edit-number', {
 		</div>`
 });
 
+Vue.component('indigo-edit-number-60', {
+	props: {
+		property: Object,
+		name: String,
+		icon: String,
+	},
+	methods: {
+		change: function(value) {
+			if (this.property == null)
+				return null;
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.name == this.name) {
+					item.newValue = stod(value);
+							console.log(item.newValue);
+					return;
+				}
+			}
+		},
+		onChange: function(e) {
+			this.change(e.target.value);
+		},
+		state: function() {
+			return this.property.state.toLowerCase() + "-state";
+		},
+		value: function() {
+			if (this.property == null)
+				return null;
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.name == this.name) {
+					if (this.property.perm == "ro")
+						return dtos(item.value)
+					return dtos(item.target)
+				}
+			}
+			return null;
+		}
+	},
+	template: `
+		<div v-if="property != null" class="input-group p-1 w-50">
+		<a class="input-group-prepend">
+			<span class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+		</a>
+		<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
+		<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+		</div>`
+});
+
 Vue.component('indigo-show-number', {
 	props: {
 		property: Object,
@@ -150,13 +199,41 @@ Vue.component('indigo-show-number', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="btn-group btn-group-sm p-1 w-25">
-		<button type="button" class="btn p-0 w-40" :class="state()">
-			<span class="glyphicons" :class="icon + ' ' + state()" />
-		</button>
-		<button type="button" class="btn w-60 text-right" :class="state()">
-			{{value()}}
-		</button>
+		<div v-if="property != null" class="p-1 w-25">
+			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
+				<small class="glyphicons" :class="icon"/>
+				<small class="mr-2">{{value()}}</small>
+			</div>
+		</div>`
+});
+
+Vue.component('indigo-show-number-60', {
+	props: {
+		property: Object,
+		name: String,
+		icon: String
+	},
+	methods: {
+		state: function() {
+			return this.property.state.toLowerCase() + "-state";
+		},
+		value: function() {
+			if (this.property == null)
+				return null;
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.name == this.name)
+					return dtos(item.value);
+			}
+			return null;
+		}
+	},
+	template: `
+		<div v-if="property != null" class="p-1 w-25">
+			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
+				<small class="glyphicons" :class="icon"/>
+				<small class="mr-2">{{value()}}</small>
+			</div>
 		</div>`
 });
 
@@ -307,7 +384,7 @@ Vue.component('indigo-ctrl', {
 			var values = {};
 			for (i in property.items) {
 				var item = property.items[i];
-				values[item.name] = item.value;
+				values[item.name] = item.newValue != null ? item.newValue : item.value;
 				item.newValue = null;
 			}
 			changeProperty(property.device, property.name, values);

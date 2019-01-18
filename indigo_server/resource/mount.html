@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+		<link rel="stylesheet" href="bootstrap.min.css"/>
+		<link rel="stylesheet" href="glyphicons.css"/>
+		<link rel="stylesheet" href="indigo.css"/>
+	</head>
+	<title>INDIGO Mount</title>
+	<body class="bg-secondary">
+		<div id="ROOT">
+			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
+				<a class="navbar-brand text-white " href="#">
+					<img src="mount.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
+					<h4 class="title">INDIGO Mount</h4>
+				</a>
+				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
+					<a class="nav-link pr-0 ml-auto" href="imager.html">
+						<img src="imager.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+					</a>
+					<a class="nav-link pr-0" href="ctrl.html">
+						<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+					</a>
+					<a class="nav-link pr-0">
+						<img src="guider.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+					</a>
+				</div>
+			</nav>
+			<div class="container-fluid">
+				<div v-if="devices['Mount Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
+					Waiting for Mount Agent...
+				</div>
+				<template v-else>
+					<div class="row no-gutters">
+						<div class="col-md-4" style="min-width:350px">
+							<template v-if="findProperty('Mount Agent', 'FILTER_MOUNT_LIST') != null">
+								<div class="card p-1 m-1 bg-light">
+									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_MOUNT_LIST')"></indigo-select-item>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'glyphicons-resize-vertical'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'glyphicons-resize-horizontal'"></indigo-edit-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'glyphicons-resize-vertical'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'glyphicons-resize-horizontal'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'glyphicons-resize-vertical'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'glyphicons-resize-horizontal'"></indigo-show-number-60>
+										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="btn-toolbar p-1 w-100">
+											<button id="goto_button" class="btn idle-state mr-2" onclick="goto()">
+												<span class="glyphicons glyphicons-riflescope"></span>
+											</button>
+											<button id="sync_button" class="btn idle-state mr-2" onclick="sync()">
+												<span class="glyphicons glyphicons-anchor"></span>
+											</button>
+											<button class="btn idle-state btn-right mr-2" onclick="stop()">
+												<span class="glyphicons glyphicons-stop-sign"></span>
+											</button>
+											<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value"  id="park_button" class="btn ok-state" onclick="park()">
+												<span class="glyphicons glyphicons-power"></span>
+											</button>
+											<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value"  id="park_button" class="btn busy-state" onclick="park()">
+												<span class="glyphicons glyphicons-power"></span>
+											</button>
+											<button v-else id="park_button" class="btn idle-state" onclick="park()">
+												<span class="glyphicons glyphicons-power"></span>
+											</button>
+										</div>
+									</div>
+								</div>
+							</template>
+						</div>
+						<div class="col-md-8">
+							<div id="image_container" class="card p-1 m-1 bg-light d-none">
+								<div class="card-block">
+									<div class="card p-0">
+										<div class="card-body p-0" style="min-height: 50px;">
+											<img id="image" width="100%"/>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</template>
+				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
+					{{ state }}
+				</div>
+				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
+					{{ state }}
+				</div>
+			</div>
+		</div>
+	</body>
+	<script src="jquery.min.js"></script>
+	<script src="popper.min.js"></script>
+	<script src="bootstrap.min.js"></script>
+	<script src="vue.min.js"></script>
+	<script src="indigo.js"></script>
+	<script src="components.js"></script>
+	<script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
+	<script language="javascript" type="text/javascript">
+		
+		URL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+
+		window.addEventListener("load", init, false);
+		
+		function checkState() {
+			var server = INDIGO.devices["Server"];
+			if (server == null) {
+				console.log("No 'Server' device.");
+			} else {
+				if (INDIGO.devices["Mount Agent"] == null) {
+					console.log("No 'Mount Agent' device.");
+					if (server["DRIVERS"].item("indigo_agent_mount") == null) {
+						console.log("Trying to load 'indigo_agent_mount' driver.");
+						changeProperty("Server", "LOAD", { "DRIVER": "indigo_agent_mount" });
+					} else if (!server["DRIVERS"].item("indigo_agent_mount").value) {
+						console.log("Trying to enable 'indigo_agent_mount' driver.");
+						changeProperty("Server", "DRIVERS", { "indigo_agent_mount": true });
+					}
+				}
+			}
+		}
+	
+		var targetExposureTime = 0;
+		var repeatExposure = false
+		
+		function onDefineProperty(property) {
+			onUpdateProperty(property);
+		}
+	
+		function onUpdateProperty(property) {
+		}
+	
+		function onDeleteProperty(property) {
+		}
+	
+		function setCoordinates() {
+			var property = INDIGO.findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES');
+			var item = property.item('RA');
+			var ra = item.newValue != null ? item.newValue : item.target
+			item = property.item('DEC');
+			var dec = item.newValue != null ? item.newValue : item.target
+			changeProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES', { 'RA': ra, 'DEC': dec });
+		}
+	
+		function goto() {
+			changeProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET', { 'TRACK': true });
+			setCoordinates();
+		}
+	
+		function sync() {
+			changeProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET', { 'SYNC': true });
+			setCoordinates();
+		}
+	
+		function stop() {
+			changeProperty('Mount Agent', 'MOUNT_ABORT_MOTION', { 'ABORT_MOTION': true });
+		}
+	
+		function park() {
+			var property = INDIGO.findProperty('Mount Agent', 'MOUNT_PARK');
+			if (property != null) {
+				var item = property.item('PARKED');
+				if (item.value) {
+					changeProperty('Mount Agent', 'MOUNT_PARK', { 'UNPARKED': true });
+				} else {
+					changeProperty('Mount Agent', 'MOUNT_PARK', { 'PARKED': true });
+				}
+			}
+		}
+	
+	</script>
+</html>

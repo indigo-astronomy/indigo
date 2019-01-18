@@ -57,7 +57,7 @@ endif
 #	Control panel
 #
 #---------------------------------------------------------------------
-ctrlpanel: resource/ctrl.html.data resource/imager.html.data resource/indigo.js.data resource/components.js.data resource/telescope.png.data resource/ctrl.png.data resource/imager.png.data resource/guider.png.data resource/indigo.css.data resource/bootstrap.min.css.data resource/glyphicons.css.data resource/jquery.min.js.data resource/bootstrap.min.js.data resource/popper.min.js.data resource/vue.min.js.data resource/glyphicons-regular.ttf.data
+ctrlpanel: resource/ctrl.html.data resource/imager.html.data resource/mount.html.data resource/indigo.js.data resource/components.js.data resource/mount.png.data resource/ctrl.png.data resource/imager.png.data resource/guider.png.data resource/indigo.css.data resource/bootstrap.min.css.data resource/glyphicons.css.data resource/jquery.min.js.data resource/bootstrap.min.js.data resource/popper.min.js.data resource/vue.min.js.data resource/glyphicons-regular.ttf.data
 
 %.data: %
 	cat $< | gzip | hexdump -v -e '1/1 "0x%02x, "' >$@
