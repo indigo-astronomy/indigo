@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#define MOUNT_AGENT_NAME	"Mount agent"
+#define MOUNT_AGENT_NAME	"Mount Agent"
 	
 /** Create Mount control agent instance
  */

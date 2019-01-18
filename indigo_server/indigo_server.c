@@ -264,6 +264,10 @@ static unsigned char imager_html[] = {
 #include "resource/imager.html.data"
 };
 
+static unsigned char mount_html[] = {
+#include "resource/mount.html.data"
+};
+
 static unsigned char indigo_js[] = {
 #include "resource/indigo.js.data"
 };
@@ -272,8 +276,8 @@ static unsigned char components_js[] = {
 #include "resource/components.js.data"
 };
 
-static unsigned char telescope_png[] = {
-#include "resource/telescope.png.data"
+static unsigned char mount_png[] = {
+#include "resource/mount.png.data"
 };
 
 static unsigned char ctrl_png[] = {
@@ -666,6 +670,7 @@ static void server_main() {
 	if (use_control_panel) {
 		indigo_server_add_resource("/ctrl.html", ctrl_html, sizeof(ctrl_html), "text/html");
 		indigo_server_add_resource("/imager.html", imager_html, sizeof(imager_html), "text/html");
+		indigo_server_add_resource("/mount.html", mount_html, sizeof(mount_html), "text/html");
 		indigo_server_add_resource("/indigo.js", indigo_js, sizeof(indigo_js), "text/javascript");
 		indigo_server_add_resource("/components.js", components_js, sizeof(components_js), "text/javascript");
 		indigo_server_add_resource("/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
@@ -678,8 +683,7 @@ static void server_main() {
 		indigo_server_add_resource("/ctrl.png", ctrl_png, sizeof(ctrl_png), "image/png");
 		indigo_server_add_resource("/imager.png", imager_png, sizeof(imager_png), "image/png");
 		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
-		indigo_server_add_resource("/telescope.png", telescope_png, sizeof(telescope_png), "image/png");
-		indigo_server_add_resource("/telescope.png", telescope_png, sizeof(telescope_png), "image/png");
+		indigo_server_add_resource("/mount.png", mount_png, sizeof(mount_png), "image/png");
 		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "application/x-font-ttf");
 	}
 

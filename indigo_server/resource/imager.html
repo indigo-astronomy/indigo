@@ -19,16 +19,16 @@
 					<span class="navbar-toggler-icon"></span>
 				</button>
 				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<a class="nav-link pr-0 ml-auto">
-						<img src="guider.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0">
-						<img src="telescope.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+					<a class="nav-link pr-0 ml-auto" href="mount.html">
+						<img src="mount.png" width="40" height="40" class="align-middle mr-0" alt=""/>
 					</a>
 					<a class="nav-link pr-0" href="ctrl.html">
 						<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
 					</a>
 				</div>
+				<a class="nav-link pr-0">
+					<img src="guider.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+				</a>
 			</nav>
 			<div class="container-fluid">
 				<div v-if="devices['Imager Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
@@ -144,19 +144,7 @@
 		var repeatExposure = false
 		
 		function onDefineProperty(property) {
-			if (property.device == "Imager Agent") {
-				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
-					targetExposureTime = property.item("EXPOSURE").value;
-				} else if (property.name == "CCD_IMAGE") {
-					if (property.state == "Ok") {
-						var value = property.item("IMAGE").value;
-						if (value != null) {
-							$("#image").attr("src", "http://" + INDIGO.host + property.item("IMAGE").value + '?' + new Date().getTime());
-							$("#image_container").removeClass("d-none");
-						}
-					}
-				}
-			}
+			onUpdateProperty(property);
 		}
 	
 		function onUpdateProperty(property) {

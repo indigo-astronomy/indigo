@@ -192,3 +192,34 @@ function processDeleteProperty(property) {
 		Vue.delete(properties, name);
 	}
 }
+
+function dtos(value) {
+	var d = Math.abs(value);
+	var m = 60.0 * (d - Math.floor(d));
+	var s = 60.0 * (m - Math.floor(m));
+	if (value < 0)
+		d = -d;
+	d = d | 0;
+	m = m | 0;
+	s = s | 0;
+	return d.toString() + ':' + (m < 10 ? 0 + m.toString() : m.toString()) + ':' + (s < 10 ? 0 + s.toString() : s.toString())
+}
+
+function stod(str) {
+	var strs = str.split(':');
+	var d = 0;
+	var m = 0;
+	var s = 0;
+	if (strs.length > 0) {
+		d = parseInt(strs[0]);
+	}
+	if (strs.length > 1) {
+		m = parseInt(strs[1]);
+	}
+	if (strs.length > 2) {
+		s = parseInt(strs[2]);
+	}
+	if (d < 0)
+		return d - m / 60.0 - s / 3600.0;
+	return d + m / 60.0 + s / 3600.0;
+}

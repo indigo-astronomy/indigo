@@ -46,10 +46,22 @@ input {
 	border-color: #5cb85c!important;
 }
 
+.ok-state:hover {
+	color: white!important;
+	background-color: #3c982c!important;
+	border-color: #3c982c!important;
+}
+
 .busy-state {
 	color: white!important;
 	background-color: #f0ad4e!important;
 	border-color: #f0ad4e!important;
+}
+
+.busy-state:hover {
+	color: white!important;
+	background-color: #d08d2e!important;
+	border-color: #d08d2e!important;
 }
 
 .alert-state {
@@ -58,28 +70,10 @@ input {
 	border-color: #d9534f!important;
 }
 
-.idle-state-outline {
-	color: #eceeef;
-	background-color: white;
-	border-color: #eceeef;
-}
-
-.ok-state-outline {
-	color: #5cb85c;
-	background-color: white;
-	border-color: #5cb85c;
-}
-
-.busy-state-outline {
-	color: #f0ad4e;
-	background-color: white;
-	border-color: #f0ad4e;
-}
-
-.alert-state-outline {
-	color: #d9534f;
-	background-color: white;
-	border-color: #d9534f;
+.alert-state:hover {
+	color: white!important;
+	background-color: #b9332f!important;
+	border-color: #b9332f!important;
 }
 
 .btn-right {
@@ -90,26 +84,6 @@ input {
 
 .btn-outline-secondary {
 	border-color: rgb(206, 212, 218);
-}
-
-.img-fluid {
-	max-height: 554px;
-}
-
-.w-30 {
-	width: 30%!important;
-}
-
-.w-40 {
-	width: 40%!important;
-}
-
-.w-60 {
-	width: 60%!important;
-}
-
-.w-70 {
-	width: 70%!important;
 }
 
 .checked::before {
@@ -125,4 +99,9 @@ input {
 
 .accordion .card .card-header.collapsed .icon-indicator:before {
 	content: "▶ ";
+}
+
+*:focus {
+	box-shadow: none !important;
+	border: solid 1px red( any color ) !important;
 }
