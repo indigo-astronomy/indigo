@@ -19,12 +19,12 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Alignment model calibration agent
- \file indigo_agent_alignment.h
+/** INDIGO Mount control agent
+ \file indigo_agent_mount.h
  */
 
-#ifndef agent_alignment_h
-#define agent_alignment_h
+#ifndef agent_mount_h
+#define agent_mount_h
 
 #include "indigo_agent.h"
 
@@ -32,16 +32,16 @@
 extern "C" {
 #endif
 
-#define ALIGNMENT_AGENT_NAME	"Alignment model calibration agent"
+#define MOUNT_AGENT_NAME	"Mount agent"
 	
-/** Create Alignment model calibration agent instance
+/** Create Mount control agent instance
  */
 
-extern indigo_result indigo_agent_alignment(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_agent_mount(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* agent_alignment_h */
+#endif /* agent_mount_h */
 

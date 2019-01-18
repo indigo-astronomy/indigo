@@ -98,6 +98,7 @@
 #include "agent_imager/indigo_agent_imager.h"
 #include "focuser_asi/indigo_focuser_asi.h"
 #include "agent_alignment/indigo_agent_alignment.h"
+#include "agent_mount/indigo_agent_mount.h"
 #include "ao_sx/indigo_ao_sx.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
@@ -127,6 +128,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_alignment,
 	indigo_agent_imager,
 	indigo_agent_lx200_server,
+	indigo_agent_mount,
 	indigo_agent_snoop,
 	indigo_ao_sx,
 	indigo_aux_dsusb,

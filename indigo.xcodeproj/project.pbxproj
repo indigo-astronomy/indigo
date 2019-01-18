@@ -294,6 +294,8 @@
 		9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */; };
 		9D61B9DF216DE636000DE7E8 /* indigo_focuser_mjkzz_bt.m in Sources */ = {isa = PBXBuildFile; fileRef = 9D61B9DB216DE62B000DE7E8 /* indigo_focuser_mjkzz_bt.m */; };
 		9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D6940892180B9F600AB112C /* indigo_aux_upb.c */; };
+		9D7244F421F1CFEC0028FDF4 /* indigo_agent_mount.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */; };
+		9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */; };
 		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
 		9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
@@ -4065,6 +4067,9 @@
 		9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_upb_main.c; sourceTree = "<group>"; };
 		9D69408D2180BA1800AB112C /* upb_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = upb_simulator.ino; sourceTree = "<group>"; };
 		9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Ultimate_Powerbox_Serial_Command_Table.pdf; sourceTree = "<group>"; };
+		9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_mount.c; sourceTree = "<group>"; };
+		9D7244EA21F1CFEB0028FDF4 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_mount.h; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -8029,6 +8034,7 @@
 				9D85FAE021E38E3900ECDF82 /* agent_alignment */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
+				9D7244E821F1CFEB0028FDF4 /* agent_mount */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				590BF1AD21EBCF7500C24DBA /* ao_sx */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
@@ -11460,6 +11466,16 @@
 			path = upb_simulator;
 			sourceTree = "<group>";
 		};
+		9D7244E821F1CFEB0028FDF4 /* agent_mount */ = {
+			isa = PBXGroup;
+			children = (
+				9D7244EA21F1CFEB0028FDF4 /* README.md */,
+				9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */,
+				9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */,
+			);
+			path = agent_mount;
+			sourceTree = "<group>";
+		};
 		9D85FAE021E38E3900ECDF82 /* agent_alignment */ = {
 			isa = PBXGroup;
 			children = (
@@ -11816,6 +11832,7 @@
 				9D59D61120D3F829009EA8FF /* UdpSocketBase.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
 				9D59D65A20D3F829009EA8FF /* CamHelpers.h in Headers */,
+				9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */,
 				9DAD52502126E88B002FCC79 /* indigo_wheel_trutek.h in Headers */,
 				9D59D5E420D3F829009EA8FF /* AltaIo.h in Headers */,
 				59A3217621D52C4700EC0F4A /* indigo_focuser_asi.h in Headers */,
@@ -12209,6 +12226,7 @@
 				9D59D61A20D3F829009EA8FF /* AltaModeFsm.cpp in Sources */,
 				9D59D66520D3F82A009EA8FF /* AspenEthernetIo.cpp in Sources */,
 				595F2926211E211200380EF4 /* DDHidMouse.m in Sources */,
+				9D7244F421F1CFEC0028FDF4 /* indigo_agent_mount.c in Sources */,
 				9D59D65C20D3F829009EA8FF /* FindDeviceUsb.cpp in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				9D59D61520D3F829009EA8FF /* AscentBasedUsbIo.cpp in Sources */,
