@@ -85,7 +85,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static void temperature_timer_callback(indigo_device *device) {
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int res = EAFGetTemp(PRIVATE_DATA->dev_id, &(FOCUSER_TEMPERATURE_ITEM->number.value));
+	int res = EAFGetTemp(PRIVATE_DATA->dev_id, (float *)&(FOCUSER_TEMPERATURE_ITEM->number.value));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res != EAF_SUCCESS) {
