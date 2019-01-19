@@ -10,7 +10,7 @@
 	<title>INDIGO Imager</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
+			<nav class="navbar navbar-expand-sm navbar-light bg-secondary">
 				<a class="navbar-brand text-white " href="#">
 					<img src="imager.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">INDIGO Imager</h4>
@@ -42,7 +42,7 @@
 				</div>
 				<template v-else>
 					<div class="row no-gutters">
-						<div class="col-md-4" style="min-width:350px">
+						<div class="col-sm-4" style="min-width:360px">
 							<template v-if="findProperty('Imager Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
@@ -59,17 +59,17 @@
 										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-history'"></indigo-show-number>
-										<div v-if="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH') != null" class="btn-toolbar p-1 w-100">
+										<div v-if="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH') != null" class="d-flex p-1 w-100">
 											<button id="preview1_button" class="btn idle-state mr-2" onclick="preview1()">
 												<span class="glyphicons glyphicons-camera"></span>
 											</button>
 											<button id="preview_button" class="btn idle-state mr-2" onclick="preview()">
 												<span class="glyphicons glyphicons-facetime-video"></span>
 											</button>
-											<button id="capture_button" class="btn idle-state mr-2" onclick="capture_batch()">
+											<button id="capture_button" class="btn idle-state mr-auto" onclick="capture_batch()">
 												<span class="glyphicons glyphicons-record text-danger"></span>
 											</button>
-											<button class="btn idle-state btn-right" onclick="stop()">
+											<button class="btn idle-state" onclick="stop()">
 												<span class="glyphicons glyphicons-stop"></span>
 											</button>
 										</div>
@@ -94,7 +94,7 @@
 								</div>
 							</template>
 						</div>
-						<div class="col-md-8">
+						<div class="col-sm-8">
 							<div id="image_container" class="card p-1 m-1 bg-light d-none">
 								<div class="card-block">
 									<div class="card p-0">
