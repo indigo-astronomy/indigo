@@ -19,11 +19,13 @@ void mount_handle_motion_ra(indigo_device *device);
 void mount_handle_motion_dec(indigo_device *device);
 
 //  Tracking
+double synscan_tracking_rate(indigo_device* device);
 void mount_handle_tracking_rate(indigo_device* device);
 void mount_handle_tracking(indigo_device *device);
 
 //  Slewing
 void mount_handle_coordinates(indigo_device *device);
+void mount_handle_aa_coordinates(indigo_device *device);
 void mount_handle_park(indigo_device* device);
 void mount_handle_abort(indigo_device* device);
 
