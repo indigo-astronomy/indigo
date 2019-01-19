@@ -174,6 +174,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		MOUNT_TRACK_RATE_PROPERTY->count = 5;
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 		// -------------------------------------------------------------------------------- AUTHENTICATION
 		AUTHENTICATION_PROPERTY->hidden = false;
 		AUTHENTICATION_PROPERTY->count = 1;

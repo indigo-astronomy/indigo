@@ -10,7 +10,7 @@
 	<title>INDIGO Mount</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
+			<nav class="navbar navbar-expand-sm navbar-light bg-secondary">
 				<a class="navbar-brand text-white " href="#">
 					<img src="mount.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">INDIGO Mount</h4>
@@ -42,7 +42,7 @@
 				</div>
 				<template v-else>
 					<div class="row no-gutters">
-						<div class="col-md-4" style="min-width:350px">
+						<div class="col-sm-4" style="min-width:360px">
 							<template v-if="findProperty('Mount Agent', 'FILTER_MOUNT_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
@@ -53,31 +53,56 @@
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-show-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'Ε'"></indigo-show-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'"></indigo-show-number-60>
-										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="btn-toolbar p-1 w-100">
+										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="d-flex p-1 w-100">
 											<button id="goto_button" class="btn idle-state mr-2" onclick="goto()">
 												<span class="glyphicons glyphicons-riflescope"></span>
 											</button>
 											<button id="sync_button" class="btn idle-state mr-2" onclick="sync()">
 												<span class="glyphicons glyphicons-anchor"></span>
 											</button>
-											<button class="btn idle-state btn-right mr-2" onclick="stop()">
+											<button class="btn idle-state mr-auto" onclick="stop()">
 												<span class="glyphicons glyphicons-stop-sign"></span>
 											</button>
-											<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value"  id="park_button" class="btn ok-state" onclick="park()">
+											<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn ok-state" onclick="park()">
 												<span class="glyphicons glyphicons-power"></span>
 											</button>
-											<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value"  id="park_button" class="btn busy-state" onclick="park()">
+											<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn busy-state" onclick="park()">
 												<span class="glyphicons glyphicons-power"></span>
 											</button>
-											<button v-else id="park_button" class="btn idle-state" onclick="park()">
+											<button v-else class="btn idle-state" onclick="park()">
 												<span class="glyphicons glyphicons-power"></span>
+											</button>
+										</div>
+										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_SLEW_RATE')" :cls="'w-50'"></indigo-select-item>
+										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_TRACK_RATE')" :cls="'w-50'"></indigo-select-item>
+										<div v-if="findProperty('Mount Agent', 'MOUNT_MOTION_DEC') != null" class="d-flex p-1 w-100">
+											<button class="btn idle-state mr-2" @mousedown.stop="moveWest($event)" @mouseup.stop="stopWest($event)">
+												<span class="glyphicons glyphicons-arrow-left"></span>
+											</button>
+											<button class="btn idle-state mr-2" @mousedown="moveEast($event)" @mouseup="stopEast($event)">
+												<span class="glyphicons glyphicons-arrow-right"></span>
+											</button>
+											<button class="btn idle-state mr-2" @mousedown="moveNorth($event)" @mouseup="stopNorth($event)">
+												<span class="glyphicons glyphicons-arrow-up"></span>
+											</button>
+											<button class="btn idle-state mr-auto" @mousedown="moveSouth($event)" @mouseup="stopSouth($event)">
+												<span class="glyphicons glyphicons-arrow-down"></span>
+											</button>
+											<button v-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('ON').value" class="btn ok-state" onclick="trackingOff()">
+												<span class="glyphicons glyphicons-history"></span>
+											</button>
+											<button v-else-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('OFF').value" class="btn idle-state" onclick="trackingOn()">
+												<span class="glyphicons glyphicons-history"></span>
+											</button>
+											<button v-else class="btn alert-state">
+												<span class="glyphicons glyphicons-history"></span>
 											</button>
 										</div>
 									</div>
 								</div>
 							</template>
 						</div>
-						<div class="col-md-8">
+						<div class="col-sm-8">
 							<div class="card p-1 m-1 bg-light d-none w-100">
 								<div id="map" class="w-100">
 								</div>
@@ -175,5 +200,61 @@
 			}
 		}
 	
+		function moveEvent(event) {
+			var target = $(event.target);
+			if (target.is("span"))
+				target = target.parent();
+			target.removeClass("idle-state")
+			target.addClass("busy-state")
+		}
+
+		function stopEvent(event) {
+			var target = $(event.target);
+			if (target.is("span"))
+				target = target.parent();
+			target.removeClass("busy-state")
+			target.addClass("idle-state")
+		}
+
+		function moveWest(event) {
+			moveEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_RA', { 'WEST': true });
+		}
+	
+		function stopWest(event) {
+			stopEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_RA', { 'WEST': false });
+		}
+
+		function moveEast(event) {
+			moveEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_RA', { 'EAST': true });
+		}
+	
+		function stopEast(event) {
+			stopEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_RA', { 'EAST': false });
+		}
+
+		function moveNorth(event) {
+			moveEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_DEC', { 'NORTH': true });
+		}
+	
+		function stopNorth(event) {
+			stopEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_DEC', { 'NORTH': false });
+		}
+
+		function moveSouth(event) {
+			moveEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_DEC', { 'SOUTH': true });
+		}
+	
+		function stopSouth(event) {
+			stopEvent(event);
+			changeProperty('Mount Agent', 'MOUNT_MOTION_DEC', { 'SOUTH': false });
+		}
+
 	</script>
 </html>

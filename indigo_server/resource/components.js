@@ -6,7 +6,8 @@
 Vue.component('indigo-select-item', {
 	props: {
 		property: Object,
-		no_value: String
+		no_value: String,
+		cls: String
 	},
 	methods: {
 		onChange: function(e) {
@@ -25,16 +26,18 @@ Vue.component('indigo-select-item', {
 		}
 	},
 	template: `
-		<select v-if="property != null" class="custom-select m-1 w-100" style="cursor: pointer" :class="state()" @change="onChange">
-		<template v-if="none_selected()">
-			<option disabled>{{ no_value }}</option>
-		</template>
-		<template v-else>
-			<option v-for="item in property.items" :selected="item.value" :value="item.name">
-				{{ item.label }}
-			</option>
-		</template>
-		</select>`
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-100')">
+			<select class="custom-select" style="cursor: pointer" :class="state()" @change="onChange">
+				<template v-if="none_selected()">
+					<option disabled>{{ no_value }}</option>
+				</template>
+				<template v-else>
+					<option v-for="item in property.items" :selected="item.value" :value="item.name">
+						{{ item.label }}
+					</option>
+				</template>
+			</select>
+		</div>`
 });
 
 Vue.component('indigo-edit-number', {
@@ -43,7 +46,8 @@ Vue.component('indigo-edit-number', {
 		enabler: Object,
 		name: String,
 		icon: String,
-		values: Array
+		values: Array,
+		cls: String
 	},
 	methods: {
 		change: function(value) {
@@ -108,18 +112,19 @@ Vue.component('indigo-edit-number', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1 w-50">
-		<a class="input-group-prepend">
-			<span class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
-		</a>
-		<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
-		<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
-		<div v-if="values != null" class="input-group-append">
-			<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-toggle="dropdown"></button>
-			<div class="dropdown-menu">
-				<a class="dropdown-item" href="#" v-for="value in values" @click="change(value)">{{value}}</a>
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')">
+			<a class="input-group-prepend">
+				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+				<span v-else class="input-group-text" :class="state()">{{icon}}</span>
+			</a>
+			<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
+			<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+			<div v-if="values != null" class="input-group-append">
+				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-toggle="dropdown"></button>
+				<div class="dropdown-menu">
+					<a class="dropdown-item" href="#" v-for="value in values" @click="change(value)">{{value}}</a>
+				</div>
 			</div>
-		</div>
 		</div>`
 });
 
@@ -128,6 +133,7 @@ Vue.component('indigo-edit-number-60', {
 		property: Object,
 		name: String,
 		icon: String,
+		cls: String
 	},
 	methods: {
 		change: function(value) {
@@ -163,12 +169,13 @@ Vue.component('indigo-edit-number-60', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1 w-50">
-		<a class="input-group-prepend">
-			<span class="input-group-text" :class="state()">{{icon}}</span>
-		</a>
-		<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
-		<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')">
+			<a class="input-group-prepend">
+				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+				<div v-else class="input-group-text input-label" :class="state()">{{icon}}</div>
+			</a>
+			<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
+			<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
 		</div>`
 });
 
@@ -177,7 +184,8 @@ Vue.component('indigo-show-number', {
 		property: Object,
 		enabler: Object,
 		name: String,
-		icon: String
+		icon: String,
+		cls: String
 	},
 	methods: {
 		state: function() {
@@ -199,9 +207,10 @@ Vue.component('indigo-show-number', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1 w-25">
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')">
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small class="glyphicons" :class="icon"/>
+				<small v-if="icon.startsWith('glyphicons-')" class="glyphicons" :class="icon"/>
+				<small v-else class="ml-1 p-1">{{icon}}</small>
 				<small class="mr-2">{{value()}}</small>
 			</div>
 		</div>`
@@ -211,7 +220,8 @@ Vue.component('indigo-show-number-60', {
 	props: {
 		property: Object,
 		name: String,
-		icon: String
+		icon: String,
+		cls: String
 	},
 	methods: {
 		state: function() {
@@ -229,9 +239,10 @@ Vue.component('indigo-show-number-60', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1 w-25">
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')">
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small class="ml-2 p-1">{{icon}}</small>
+				<small v-if="icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
+				<small v-else class="ml-1 p-1">{{icon}}</small>
 				<small class="mr-2 p-1">{{value()}}</small>
 			</div>
 		</div>`
@@ -242,6 +253,7 @@ Vue.component('indigo-edit-text', {
 		property: Object,
 		name: String,
 		icon: String,
+		cls: String
 	},
 	methods: {
 		onChange: function(e) {
@@ -262,9 +274,10 @@ Vue.component('indigo-edit-text', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1 w-100">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-100')">
 		<div class="input-group-prepend">
-			<span class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+			<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+			<span v-else class="input-group-text" :class="state()">{{icon}}</span>
 		</div>
 		<input type="text" class="form-control" :value="item().value" @change="onChange">
 		</div>`
@@ -276,7 +289,8 @@ Vue.component('indigo-stepper', {
 		name: String,
 		direction: Object,
 		direction_left: String,
-		direction_right: String
+		direction_right: String,
+		cls: String
 	},
 	methods: {
 		left: function(value) {
@@ -310,7 +324,7 @@ Vue.component('indigo-stepper', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1 w-50">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')">
 			<div class="input-group-prepend">
 				<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="left($($event.target).parent().next().val())" type="button"></button>
 			</div>
@@ -406,102 +420,93 @@ Vue.component('indigo-ctrl', {
 	},
 	template: `
 		<div class="accordion p-1 w-100">
-		<div class="card" v-for="(device,deviceName) in devices">
-			<div class="input-group d-flex card-header p-0" :class="state(device)">
-				<div class="input-group-prepend flex-grow-1">
-							<button :id="'H_' + deviceName.hashCode()" class="btn p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left;border:none;background:transparent;"><span class="icon-indicator"></span>{{deviceName}}</button>
-				</div>
-				<div class="input-group-append">
-					<button class="btn" @click.stop="closeAll(deviceName.hashCode())" style="border:none;background:transparent;">△</button>
-				</div>
-				<div class="input-group-append">
-					<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;">▽</button>
-				</div>
-			</div>
-			<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2">
-
-				<div class="card" v-for="(group,groupName) in groups(device)">
-							
-					<div class="input-group d-flex card-header p-0">
-						<div class="input-group-prepend flex-grow-1">
-							<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn btn-outline-secondary p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
-						</div>
-						<div class="input-group-append">
-							<button class="btn" @click.stop="closeAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;">△</button>
-						</div>
-						<div class="input-group-append">
-							<button class="btn" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent">▽</button>
-						</div>
+			<div class="card" v-for="(device,deviceName) in devices">
+				<div class="input-group d-flex card-header p-0" :class="state(device)">
+					<div class="input-group-prepend flex-grow-1">
+								<button :id="'H_' + deviceName.hashCode()" class="btn p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left;border:none;background:transparent;"><span class="icon-indicator"></span>{{deviceName}}</button>
 					</div>
-
-							
-							
-					<div :id="'B_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
-
-						<div class="card" v-for="(property,name) in group">
-							<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
-							<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-block p-2 bg-light">
-								<form class="m-0">
-									<template v-if="property.type == 'text'">
-										<div v-for="item in property.items" class="form-group row m-1">
-											<label class="col-sm-4 col-form-label pl-0 mt-1">{{item.label}}</label>
-											<input type="text" v-if="property.perm == 'ro'" readonly class="col-sm-8 form-control mt-1" :value="item.value">
-											<input type="text" v-else class="col-sm-8 form-control mt-1" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, $event.target.value)">
-										</div>
-										<template v-if="property.perm != 'ro'">
-											<div class="float-right mt-1 mr-1">
-												<button type="submit" class="btn btn-sm btn-primary ml-1" @click.prevent="set(property)">Submit</button>
-												<button class="btn btn-sm btn-default ml-1" @click.prevent="reset(property)">Reset</button>
-											</div>
-										</template>
-									</template>
-									<template v-else-if="property.type == 'number'">
-										<div v-for="item in property.items" class="form-group row m-1">
-											<template v-if="property.perm == 'ro'">
-												<label class="col-sm-9 col-form-label pl-0 mt-1">{{item.label}}</label>
-												<input type="text" readonly class="col-sm-3 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, parseFloat($event.target.value))">
-											</template>
-											<template v-else>
-												<label class="col-sm-5 col-form-label pl-0 mt-1">{{item.label}}</label>
-												<input type="text" readonly class="col-sm-3 form-control mt-1" :value="item.target" style="min-width: 5rem">
-												<input type="text" class="col-sm-3 offset-sm-1 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, parseFloat($event.target.value))">
-											</template>
-										</div>
-										<template v-if="property.perm != 'ro'">
-											<div class="float-right mt-1 mr-1">
-												<button type="submit" class="btn btn-sm btn-primary ml-1" @click.prevent="set(property)">Submit</button>
-												<button class="btn btn-sm btn-default ml-1" @click.prevent="reset(property)">Reset</button>
-											</div>
-										</template>
-									</template>
-									<template v-else-if="property.type == 'switch'">
-										<div class="form-group row m-0">
-											<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pr-2" style="min-width: 15rem">
-												<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
-												<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-default'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
-											</div>
-										</div>
-									</template>
-									<template v-else-if="property.type == 'light'">
-										<div class="form-group row m-0">
-											<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pr-2" style="min-width: 15rem">
-												<button disabled class="btn btn-sm w-100 m-1" :class="state(item)">{{item.label}}</button>
-											</div>
-										</div>
-									</template>
-									<template v-else>
-										<small>{{property}}</small>
-									</template>
-								</form>
+					<div class="input-group-append">
+						<button class="btn" @click.stop="closeAll(deviceName.hashCode())" style="border:none;background:transparent;">△</button>
+					</div>
+					<div class="input-group-append">
+						<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;">▽</button>
+					</div>
+				</div>
+				<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2">
+					<div class="card" v-for="(group,groupName) in groups(device)">
+						<div class="input-group d-flex card-header p-0">
+							<div class="input-group-prepend flex-grow-1">
+								<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn btn-outline-secondary p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
 							</div>
-
+							<div class="input-group-append">
+								<button class="btn" @click.stop="closeAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;">△</button>
+							</div>
+							<div class="input-group-append">
+								<button class="btn" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent">▽</button>
+							</div>
 						</div>
-
+						<div :id="'B_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+							<div class="card" v-for="(property,name) in group">
+								<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
+								<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-block p-2 bg-light">
+									<form class="m-0">
+										<template v-if="property.type == 'text'">
+											<div v-for="item in property.items" class="form-group row m-1">
+												<label class="col-sm-4 col-form-label pl-0 mt-1">{{item.label}}</label>
+												<input type="text" v-if="property.perm == 'ro'" readonly class="col-sm-8 form-control mt-1" :value="item.value">
+												<input type="text" v-else class="col-sm-8 form-control mt-1" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, $event.target.value)">
+											</div>
+											<template v-if="property.perm != 'ro'">
+												<div class="float-right mt-1 mr-1">
+													<button type="submit" class="btn btn-sm btn-primary ml-1" @click.prevent="set(property)">Submit</button>
+													<button class="btn btn-sm btn-default ml-1" @click.prevent="reset(property)">Reset</button>
+												</div>
+											</template>
+										</template>
+										<template v-else-if="property.type == 'number'">
+											<div v-for="item in property.items" class="form-group row m-1">
+												<template v-if="property.perm == 'ro'">
+													<label class="col-sm-9 col-form-label pl-0 mt-1">{{item.label}}</label>
+													<input type="text" readonly class="col-sm-3 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, parseFloat($event.target.value))">
+												</template>
+												<template v-else>
+													<label class="col-sm-5 col-form-label pl-0 mt-1">{{item.label}}</label>
+													<input type="text" readonly class="col-sm-3 form-control mt-1" :value="item.target" style="min-width: 5rem">
+													<input type="text" class="col-sm-3 offset-sm-1 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, parseFloat($event.target.value))">
+												</template>
+											</div>
+											<template v-if="property.perm != 'ro'">
+												<div class="float-right mt-1 mr-1">
+													<button type="submit" class="btn btn-sm btn-primary ml-1" @click.prevent="set(property)">Submit</button>
+													<button class="btn btn-sm btn-default ml-1" @click.prevent="reset(property)">Reset</button>
+												</div>
+											</template>
+										</template>
+										<template v-else-if="property.type == 'switch'">
+											<div class="form-group row m-0">
+												<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pr-2" style="min-width: 15rem">
+													<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
+													<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-default'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
+												</div>
+											</div>
+										</template>
+										<template v-else-if="property.type == 'light'">
+											<div class="form-group row m-0">
+												<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pr-2" style="min-width: 15rem">
+													<button disabled class="btn btn-sm w-100 m-1" :class="state(item)">{{item.label}}</button>
+												</div>
+											</div>
+										</template>
+										<template v-else>
+											<small>{{property}}</small>
+										</template>
+									</form>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
-
 			</div>
-		</div>
 		</div>`
 });
 
@@ -539,15 +544,15 @@ Vue.component('indigo-select-multi-item', {
 	},
 	template: `
 		<div class="input-group p-1">
-		<div class="input-group-prepend">
-			<span class="input-group-text" id="inputGroup-sizing-default" style="width: 10em;" :class="state()">{{label}}</span>
-		</div>
-		<input readonly type="text" class="form-control" :value="value()">
-		<div class="input-group-append">
-			<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-toggle="dropdown"></button>
-			<div class="dropdown-menu">
-				<a class="dropdown-item" :class="item.value ? 'checked' : ''" href="#" v-for="item in items()" @click="change(item)">{{item.label}}</a>
+			<div class="input-group-prepend">
+				<span class="input-group-text" id="inputGroup-sizing-default" style="width: 10em;" :class="state()">{{label}}</span>
 			</div>
-		</div>
+			<input readonly type="text" class="form-control" :value="value()">
+			<div class="input-group-append">
+				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-toggle="dropdown"></button>
+				<div class="dropdown-menu">
+					<a class="dropdown-item" :class="item.value ? 'checked' : ''" href="#" v-for="item in items()" @click="change(item)">{{item.label}}</a>
+				</div>
+			</div>
 		</div>`
 });
