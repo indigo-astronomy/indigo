@@ -256,6 +256,10 @@ static indigo_device server_device = INDIGO_DEVICE_INITIALIZER(
 	detach
 );
 
+static unsigned char mng_html[] = {
+#include "resource/mng.html.data"
+};
+
 static unsigned char ctrl_html[] = {
 #include "resource/ctrl.html.data"
 };
@@ -276,12 +280,16 @@ static unsigned char components_js[] = {
 #include "resource/components.js.data"
 };
 
-static unsigned char mount_png[] = {
-#include "resource/mount.png.data"
+static unsigned char mng_png[] = {
+#include "resource/mng.png.data"
 };
 
 static unsigned char ctrl_png[] = {
 #include "resource/ctrl.png.data"
+};
+
+static unsigned char mount_png[] = {
+#include "resource/mount.png.data"
 };
 
 static unsigned char imager_png[] = {
@@ -668,6 +676,7 @@ static void server_main() {
 	}
 
 	if (use_control_panel) {
+		indigo_server_add_resource("/mng.html", mng_html, sizeof(mng_html), "text/html");
 		indigo_server_add_resource("/ctrl.html", ctrl_html, sizeof(ctrl_html), "text/html");
 		indigo_server_add_resource("/imager.html", imager_html, sizeof(imager_html), "text/html");
 		indigo_server_add_resource("/mount.html", mount_html, sizeof(mount_html), "text/html");
@@ -680,6 +689,7 @@ static void server_main() {
 		indigo_server_add_resource("/bootstrap.min.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
 		indigo_server_add_resource("/indigo.css", indigo_css, sizeof(indigo_css), "text/css");
 		indigo_server_add_resource("/glyphicons.css", glyphicons_css, sizeof(glyphicons_css), "text/css");
+		indigo_server_add_resource("/mng.png", mng_png, sizeof(mng_png), "image/png");
 		indigo_server_add_resource("/ctrl.png", ctrl_png, sizeof(ctrl_png), "image/png");
 		indigo_server_add_resource("/imager.png", imager_png, sizeof(imager_png), "image/png");
 		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");

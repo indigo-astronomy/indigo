@@ -12,7 +12,7 @@
 			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
 				<a class="navbar-brand text-white" href="#">
 					<img src="ctrl.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">INDIGO Control Panel</h4>
+					<h4 class="title">INDIGO Driver Manager</h4>
 				</a>
 				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
 					<span class="navbar-toggler-icon"></span>
@@ -43,7 +43,19 @@
 					<div class="row">
 						<div class="col-md-12">
 							<div class="card p-1 m-1 bg-light">
-								<indigo-ctrl :devices="devices"></indigo-ctrl>
+								<div class="card-block d-flex flex-wrap">
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Camera drivers'" :prefix="'indigo_ccd'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Wheel drivers'" :prefix="'indigo_wheel'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Focuser drivers'" :prefix="'indigo_focuser'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Guider drivers'" :prefix="'indigo_guider'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AO drivers'" :prefix="'indigo_ao'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Mount drivers'" :prefix="'indigo_mount'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'GPS drivers'" :prefix="'indigo_gps'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AUX drivers'" :prefix="'indigo_aux'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Dome drivers'" :prefix="'indigo_dome'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'System drivers'" :prefix="'indigo_system'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Agents'" :prefix="'indigo_agent'"></indigo-select-multi-item>
+								</div>
 							</div>
 						</div>
 					</div>

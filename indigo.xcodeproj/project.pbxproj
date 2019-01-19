@@ -1624,6 +1624,30 @@
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AAF37B21A7449700EFBB61 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqsiapi.a; path = .libs/libqsiapi.a; sourceTree = "<group>"; };
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
+		59AF31F621F25E7A0008CC52 /* d3.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.min.js; sourceTree = "<group>"; };
+		59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.geo.projection.min.js; sourceTree = "<group>"; };
+		59AF320021F25F4B0008CC52 /* d3.config.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.config.js; sourceTree = "<group>"; };
+		59AF320421F262280008CC52 /* dsos.6.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.6.json; sourceTree = "<group>"; };
+		59AF320521F262280008CC52 /* dsos.14.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.14.json; sourceTree = "<group>"; };
+		59AF320621F262280008CC52 /* constellations.lines.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.lines.json; sourceTree = "<group>"; };
+		59AF320721F262280008CC52 /* constellations.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.json; sourceTree = "<group>"; };
+		59AF320821F262280008CC52 /* lg.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lg.json; sourceTree = "<group>"; };
+		59AF320921F262280008CC52 /* messier.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = messier.json; sourceTree = "<group>"; };
+		59AF320A21F262280008CC52 /* stars.6.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stars.6.json; sourceTree = "<group>"; };
+		59AF320B21F262280008CC52 /* asterisms.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = asterisms.json; sourceTree = "<group>"; };
+		59AF320C21F262280008CC52 /* dsos.bright.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.bright.json; sourceTree = "<group>"; };
+		59AF320D21F262280008CC52 /* readme.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = readme.md; sourceTree = "<group>"; };
+		59AF320E21F262280008CC52 /* stars.8.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stars.8.json; sourceTree = "<group>"; };
+		59AF320F21F262280008CC52 /* planets.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = planets.json; sourceTree = "<group>"; };
+		59AF321021F262280008CC52 /* constellations.bounds.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.bounds.json; sourceTree = "<group>"; };
+		59AF321121F262280008CC52 /* mw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mw.json; sourceTree = "<group>"; };
+		59AF321221F262280008CC52 /* stars.14.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stars.14.json; sourceTree = "<group>"; };
+		59AF321321F262280008CC52 /* dsos.20.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.20.json; sourceTree = "<group>"; };
+		59AF321421F264D40008CC52 /* celestial.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = celestial.min.js; sourceTree = "<group>"; };
+		59AF321521F264D40008CC52 /* celestial.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = celestial.css; sourceTree = "<group>"; };
+		59AF321621F2773B0008CC52 /* test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test.html; sourceTree = "<group>"; };
+		59AF321721F3078D0008CC52 /* mng.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mng.png; sourceTree = "<group>"; };
+		59AF321821F308870008CC52 /* mng.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mng.html; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
 		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
 		59BBD17021823693008199D6 /* indigo_ccd_altair.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_altair.h; sourceTree = "<group>"; };
@@ -4946,6 +4970,7 @@
 		5925E3451E982BBC00FF373F /* resource */ = {
 			isa = PBXGroup;
 			children = (
+				59AF321821F308870008CC52 /* mng.html */,
 				9D38D14321F09CE000549B67 /* ctrl.html */,
 				9D38D13F21F09CDF00549B67 /* imager.html */,
 				9D7244F621F1D6A50028FDF4 /* mount.html */,
@@ -4953,6 +4978,7 @@
 				9D38D13D21F09CDF00549B67 /* indigo.js */,
 				9D38D14121F09CDF00549B67 /* bootstrap.min.css */,
 				9D38D13E21F09CDF00549B67 /* bootstrap.min.js */,
+				59AF321721F3078D0008CC52 /* mng.png */,
 				9D38D14221F09CE000549B67 /* ctrl.png */,
 				9D38D14521F09CE000549B67 /* glyphicons-regular.ttf */,
 				9D38D14421F09CE000549B67 /* glyphicons.css */,
@@ -4963,6 +4989,13 @@
 				9D38D14721F09CE000549B67 /* popper.min.js */,
 				9D38D13B21F09CDF00549B67 /* mount.png */,
 				9D38D13C21F09CDF00549B67 /* vue.min.js */,
+				59AF31F621F25E7A0008CC52 /* d3.min.js */,
+				59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */,
+				59AF320021F25F4B0008CC52 /* d3.config.js */,
+				59AF321521F264D40008CC52 /* celestial.css */,
+				59AF321421F264D40008CC52 /* celestial.min.js */,
+				59AF320321F262280008CC52 /* data */,
+				59AF321621F2773B0008CC52 /* test.html */,
 			);
 			path = resource;
 			sourceTree = "<group>";
@@ -7103,6 +7136,29 @@
 				59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */,
 			);
 			path = ioptron_2.0_simulator;
+			sourceTree = "<group>";
+		};
+		59AF320321F262280008CC52 /* data */ = {
+			isa = PBXGroup;
+			children = (
+				59AF320421F262280008CC52 /* dsos.6.json */,
+				59AF320521F262280008CC52 /* dsos.14.json */,
+				59AF320621F262280008CC52 /* constellations.lines.json */,
+				59AF320721F262280008CC52 /* constellations.json */,
+				59AF320821F262280008CC52 /* lg.json */,
+				59AF320921F262280008CC52 /* messier.json */,
+				59AF320A21F262280008CC52 /* stars.6.json */,
+				59AF320B21F262280008CC52 /* asterisms.json */,
+				59AF320C21F262280008CC52 /* dsos.bright.json */,
+				59AF320D21F262280008CC52 /* readme.md */,
+				59AF320E21F262280008CC52 /* stars.8.json */,
+				59AF320F21F262280008CC52 /* planets.json */,
+				59AF321021F262280008CC52 /* constellations.bounds.json */,
+				59AF321121F262280008CC52 /* mw.json */,
+				59AF321221F262280008CC52 /* stars.14.json */,
+				59AF321321F262280008CC52 /* dsos.20.json */,
+			);
+			path = data;
 			sourceTree = "<group>";
 		};
 		59BBD16F21823693008199D6 /* ccd_altair */ = {
