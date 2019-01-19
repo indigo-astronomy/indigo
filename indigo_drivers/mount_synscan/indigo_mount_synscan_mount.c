@@ -55,7 +55,7 @@ static int mount_manual_slew_rate(indigo_device* device) {
 		return 1;
 }
 
-static double synscan_tracking_rate(indigo_device* device) {
+double synscan_tracking_rate(indigo_device* device) {
 	if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value)
 		return SIDEREAL_RATE;
 	else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value)
@@ -213,7 +213,9 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 
 		//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
 		indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
-		
+		indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+		indigo_define_property(device, OPERATING_MODE_PROPERTY, NULL);
+
 		//  Start position timer
 		PRIVATE_DATA->position_timer = indigo_set_timer(device->master_device, 0, position_timer_callback);
 	}
@@ -221,10 +223,12 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_update_property(device, CONNECTION_PROPERTY, "Failed to connect to mount");
+		indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+		indigo_delete_property(device, OPERATING_MODE_PROPERTY, NULL);
 	}
 	
 	//  Need to define and delete the 2 custom properties on connect/disconnect
-	
+
 	//  Unlock the driver
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
@@ -253,6 +257,8 @@ void synscan_mount_connect(indigo_device* device) {
 			if (PRIVATE_DATA->device_count == 0) {
 				synscan_close(device);
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+				indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+				indigo_delete_property(device, OPERATING_MODE_PROPERTY, NULL);
 			}
 		}
 	}
@@ -393,6 +399,141 @@ finish:
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
+#if 0
+static void mount_slew_aa_timer_callback(indigo_device* device) {
+	char* message = "Slew aborted.";
+	
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	
+	//**  Stop both axes
+	synscan_stop_axis(device, kAxisRA);
+	synscan_stop_axis(device, kAxisDEC);
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
+	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
+	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
+	
+	//**  Perform preliminary slew on both axes
+	//  Compute initial target positions
+	double az, alt;
+	//indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &ra, &dec);
+	az = az * M_PI / 12.0;
+	alt = alt * M_PI / 180.0;
+	//double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+	//double lst = indigo_lst(lng) * M_PI / 12.0;
+	//double ha = lst - ra;
+	double azPos[2], altPos[2];
+	coords_aa_to_encoder2(device, az, alt, azPos, altPos);
+	
+	//  Select best encoder point based on limits
+	int idx = synscan_select_best_encoder_point_aa(device, azPos, altPos);
+	
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_motion)
+		goto finish;
+	
+	//  Start the first slew
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "1ST SLEW TO:  %g / %g     (AZ %g / ALT %g)", azPos[idx], altPos[idx], az, alt);
+	synscan_slew_axis_to_position(device, kAxisRA, azPos[idx]);
+	synscan_slew_axis_to_position(device, kAxisDEC, altPos[idx]);
+	
+	//**  Wait for HA slew to complete
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
+	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
+	
+	//**  Compute precise HA slew for LST + 5 seconds
+//	indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &ra, &dec);
+//	ra = ra * M_PI / 12.0;
+//	dec = dec * M_PI / 180.0;
+//	double target_lst = indigo_lst(lng) + (5 / 3600.0);
+//	bool lst_wrap = false;
+//	if (target_lst >= 24.0) {
+//		target_lst -= 24.0;
+//		lst_wrap = true;
+//	}
+//	ha = (target_lst * M_PI / 12.0) - ra;
+//	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
+	
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_motion)
+		goto finish;
+	
+	//  We use the same index as the preliminary slew to avoid issues with target crossing meridian during first slew
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "2ND SLEW TO:  %g / %g     (HA %g / DEC %g)", azPos[idx], altPos[idx], az, alt);
+	
+	//  Start new HA slew
+	synscan_slew_axis_to_position(device, kAxisRA, azPos[idx]);
+	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "Performing accurate AZ slew...");
+	
+	//**  Wait for precise HA slew to complete
+	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
+	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
+	
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_motion)
+		goto finish;
+	
+	//**  Wait for LST to match target LST
+	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "AZ slew complete.");
+//	while (!PRIVATE_DATA->abort_motion) {
+//		//  Get current LST
+//		lst = indigo_lst(lng);
+//
+//		//  Wait for LST to reach target LST
+//		//  Ensure difference is not too large to account for LST wrap
+//		if (lst >= target_lst && (lst - target_lst <= 5/3600.0)) {
+//			//    Start tracking if we need to
+//			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+//				synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate(device));
+//				PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+//
+//				//  Update the tracking property to be ON if not already so it is reflected in UI
+//				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+//				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+//				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking started.");
+//			}
+//			break;
+//		}
+//
+//		//  Brief delay
+//		usleep(100000);
+//	}
+	
+	//**  Wait for DEC slew to complete
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
+	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
+	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "ALT slew complete.");
+	
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_motion)
+		goto finish;
+	
+	//**  Do precise DEC slew correction
+	//  Start new DEC slew
+	synscan_slew_axis_to_position(device, kAxisDEC, altPos[idx]);
+	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "Performing accurate ALT slew...");
+	
+	//**  Wait for DEC slew to complete
+	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
+	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
+	
+	//  Abort slew if requested
+	if (PRIVATE_DATA->abort_motion)
+		goto finish;
+	
+	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "ALT slew complete.");
+	message = "Slew complete.";
+	
+finish:
+	//**  Finalise slew coordinates
+	PRIVATE_DATA->abort_motion = false;
+	MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, message);
+	PRIVATE_DATA->globalMode = kGlobalModeIdle;
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
+}
+#endif
+
 void mount_handle_coordinates(indigo_device *device) {
 	if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -402,6 +543,17 @@ void mount_handle_coordinates(indigo_device *device) {
 		PRIVATE_DATA->globalMode = kGlobalModeSlewing;
 		indigo_set_timer(device, 0, mount_slew_timer_callback);
 	}
+}
+
+void mount_handle_aa_coordinates(indigo_device *device) {
+//	if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+//		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+//		indigo_update_coordinates(device, "Slewing...");
+//		
+//		//  Start slew timer thread
+//		PRIVATE_DATA->globalMode = kGlobalModeSlewing;
+//		indigo_set_timer(device, 0, mount_slew_aa_timer_callback);
+//	}
 }
 
 static void mount_update_tracking_rate_timer_callback(indigo_device* device) {

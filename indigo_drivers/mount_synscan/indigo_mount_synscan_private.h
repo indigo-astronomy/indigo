@@ -43,13 +43,11 @@ typedef struct {
 	bool parked;
 	bool park_in_progress;
 	char tty_name[INDIGO_VALUE_SIZE];
-	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer, *slew_timer, *ha_axis_timer, *dec_axis_timer;
+	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec;
 
 	int device_count;
 	pthread_mutex_t port_mutex;
 	pthread_mutex_t driver_mutex;
-	pthread_mutex_t ha_mutex;
-	pthread_mutex_t dec_mutex;
 	indigo_property *operating_mode_property;
 	indigo_property *mount_polarscope_property;
 	int st4_guide_rate;
@@ -90,6 +88,15 @@ typedef struct {
 
 	//  Abort flag
 	bool abort_motion;
+
+	//  Pulse guiding
+	pthread_mutex_t ha_mutex;
+	pthread_mutex_t dec_mutex;
+	pthread_cond_t ha_pulse_cond;
+	pthread_cond_t dec_pulse_cond;
+	bool guiding_thread_exit;
+	int ha_pulse_ms;
+	int dec_pulse_ms;
 	
 } synscan_private_data;
 
@@ -111,7 +118,7 @@ typedef struct {
 #define POLAR_MODE_ITEM                 (OPERATING_MODE_PROPERTY->items+0)
 #define ALTAZ_MODE_ITEM                 (OPERATING_MODE_PROPERTY->items+1)
 
-#define OPERATING_MODE_PROPERTY_NAME		"OPERATING_MODE"
+#define OPERATING_MODE_PROPERTY_NAME		"MOUNT_OPERATING_MODE"
 #define POLAR_MODE_ITEM_NAME            "POLAR"
 #define ALTAZ_MODE_ITEM_NAME            "ALTAZ"
 
