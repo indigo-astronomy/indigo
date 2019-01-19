@@ -506,6 +506,9 @@ Vue.component('indigo-ctrl', {
 										<template v-else>
 											<small>{{property}}</small>
 										</template>
+										<div v-if="property.message != null" class="alert alert-warning m-1" role="alert">
+											{{property.message}}
+										</div>
 									</form>
 								</div>
 							</div>

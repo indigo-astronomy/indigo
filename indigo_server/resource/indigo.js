@@ -163,6 +163,7 @@ function processUpdateProperty(property) {
 			return;
 		} else {
 			Vue.set(savedProperty, "state", property.state);
+			Vue.set(savedProperty, "message", property.message);
 			for (var i in property.items) {
 				var item = property.items[i];
 				for (var s in savedProperty.items) {
