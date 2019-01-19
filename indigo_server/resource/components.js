@@ -430,7 +430,7 @@ Vue.component('indigo-ctrl', {
 							<button class="btn" @click.stop="closeAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;">△</button>
 						</div>
 						<div class="input-group-append">
-							<button class="btn btn-outline-secondary" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;color:black">▽</button>
+							<button class="btn" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent">▽</button>
 						</div>
 					</div>
 
