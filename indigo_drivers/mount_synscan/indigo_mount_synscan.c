@@ -157,30 +157,32 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
-				//  Pass sync requests through to indigo common code
-				return indigo_mount_change_property(device, client, property);
-			}
-			else {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_coordinates(device, "Sync not performed - mount is busy.");
+		if (IS_CONNECTED) {
+			if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+				if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+					//  Pass sync requests through to indigo common code
+					return indigo_mount_change_property(device, client, property);
+				}
+				else {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_coordinates(device, "Sync not performed - mount is busy.");
+					return INDIGO_OK;
+				}
+			} else {
+				if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+					double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+					double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+					indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+					mount_handle_coordinates(device);
+				}
+				else {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_coordinates(device, "Slew not started - mount is busy.");
+				}
 				return INDIGO_OK;
 			}
-		} else {
-			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
-				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-				indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-				mount_handle_coordinates(device);
-			}
-			else {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_coordinates(device, "Slew not started - mount is busy.");
-			}
-			return INDIGO_OK;
 		}
 #if 0
 	} else if (indigo_property_match(MOUNT_HORIZONTAL_COORDINATES_PROPERTY, property)) {
@@ -214,18 +216,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 #endif
 	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
-		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
-		mount_handle_tracking_rate(device);
-		return INDIGO_OK;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
+			mount_handle_tracking_rate(device);
+			return INDIGO_OK;
+		}
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING (on/off)
-		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
-		mount_handle_tracking(device);
-		return INDIGO_OK;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
+			mount_handle_tracking(device);
+			return INDIGO_OK;
+		}
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
-		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
-		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		//  We dont even need to do thsi - just let common code handle it
+		//indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
+		//MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
 		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
@@ -244,18 +251,21 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	}
 	else if (indigo_property_match(MOUNT_GUIDE_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
-		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
-		mount_handle_st4_guiding_rate(device);
-		return INDIGO_OK;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
+			mount_handle_st4_guiding_rate(device);
+			return INDIGO_OK;
+		}
 	} else if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
-		indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
-		mount_handle_polarscope(device);
-		return INDIGO_OK;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
+			mount_handle_polarscope(device);
+			return INDIGO_OK;
+		}
 	} else if (indigo_property_match(OPERATING_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- OPERATING_MODE
 		indigo_property_copy_values(OPERATING_MODE_PROPERTY, property, false);
-		//mount_handle_polarscope(device);
 		OPERATING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, OPERATING_MODE_PROPERTY, "Switched mount operating mode");
 		return INDIGO_OK;
