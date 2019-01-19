@@ -106,8 +106,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		//  FURTHER INITIALISATION
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->driver_mutex, NULL);
-		pthread_mutex_init(&PRIVATE_DATA->ha_mutex, NULL);
-		pthread_mutex_init(&PRIVATE_DATA->dec_mutex, NULL);
 		PRIVATE_DATA->mountConfigured = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		
@@ -184,6 +182,36 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 			return INDIGO_OK;
 		}
+#if 0
+	} else if (indigo_property_match(MOUNT_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_HORIZONTAL_COORDINATES
+		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+//			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+//				//  Pass sync requests through to indigo common code
+//				return indigo_mount_change_property(device, client, property);
+//			}
+//			else {
+//				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+//				indigo_update_coordinates(device, "Sync not performed - mount is busy.");
+//				return INDIGO_OK;
+//			}
+		} else {
+			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+				double az = MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value;
+				double alt = MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value;
+				indigo_property_copy_values(MOUNT_HORIZONTAL_COORDINATES_PROPERTY, property, false);
+				MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az;
+				MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt;
+				mount_handle_aa_coordinates(device);
+			}
+			else {
+				MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				//  FIXME - is there an assumption about coordinates here?
+				//indigo_update_coordinates(device, "Slew not started - mount is busy.");
+			}
+			return INDIGO_OK;
+		}
+#endif
 	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
@@ -224,6 +252,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
 		mount_handle_polarscope(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(OPERATING_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- OPERATING_MODE
+		indigo_property_copy_values(OPERATING_MODE_PROPERTY, property, false);
+		//mount_handle_polarscope(device);
+		OPERATING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, OPERATING_MODE_PROPERTY, "Switched mount operating mode");
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -250,6 +285,19 @@ static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_RATE_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+
+		//  Init sync primitives
+		pthread_mutex_init(&PRIVATE_DATA->ha_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->dec_mutex, NULL);
+		pthread_cond_init(&PRIVATE_DATA->ha_pulse_cond, NULL);
+		pthread_cond_init(&PRIVATE_DATA->dec_pulse_cond, NULL);
+		PRIVATE_DATA->guiding_thread_exit = false;
+		PRIVATE_DATA->ha_pulse_ms = PRIVATE_DATA->dec_pulse_ms = 0;
+
+		//  Start RA/DEC timer threads
+		PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, &guider_timer_callback_ra);
+		PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, &guider_timer_callback_dec);
+
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -296,49 +344,71 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	}
 	else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-		if (duration > 0) {
+		int duration = 0;
+		if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, guider_timer_callback_ra);
-//			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-//			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+			duration = -GUIDER_GUIDE_EAST_ITEM->number.value;
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Guiding %dms EAST", -duration);
+		}
+		else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+			duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Guiding %dms WEST", duration);
 		}
 		else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-			if (duration > 0) {
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, guider_timer_callback_ra);
-//				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-//				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
-			}
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		}
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+
+		//  Check if tracking is enabled on master device
+		//  Scope hack to make the MOUNT_CONTEXT macro work
+		bool tracking_enabled = false;
+		{
+			indigo_device* d = device;
+			indigo_device* device = d->master_device;
+			tracking_enabled = MOUNT_TRACKING_ON_ITEM->sw.value;
+		}
+		
+		//  Start a pulse if the mount is tracking
+		if (duration != 0 && tracking_enabled) {
+			pthread_mutex_lock(&PRIVATE_DATA->ha_mutex);
+			PRIVATE_DATA->ha_pulse_ms = duration;
+			pthread_cond_signal(&PRIVATE_DATA->ha_pulse_cond);
+			pthread_mutex_unlock(&PRIVATE_DATA->ha_mutex);
+		}
+		else if (duration != 0 && !tracking_enabled) {
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Ignoring RA guide pulse - mount is not tracking.");
+		}
 		return INDIGO_OK;
 	}
 	else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-		if (duration > 0) {
+		int duration = 0;
+		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, guider_timer_callback_dec);
-//			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-//			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-			if (duration > 0) {
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, guider_timer_callback_dec);
-//				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-//				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-			}
+			duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "Guiding %dms NORTH", duration);
 		}
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+			duration = -GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "Guiding %dms SOUTH", -duration);
+		}
+		else {
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		}
+
+		//  Start a pulse
+		if (duration != 0) {
+			pthread_mutex_lock(&PRIVATE_DATA->dec_mutex);
+			PRIVATE_DATA->dec_pulse_ms = duration;
+			pthread_cond_signal(&PRIVATE_DATA->dec_pulse_cond);
+			pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
+		}
 		return INDIGO_OK;
 	}
 	else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
@@ -355,6 +425,12 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	//  Wake up the pulse timer threads to exit
+	PRIVATE_DATA->guiding_thread_exit = true;
+	pthread_cond_signal(&PRIVATE_DATA->ha_pulse_cond);
+	pthread_cond_signal(&PRIVATE_DATA->dec_pulse_cond);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -403,12 +479,12 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			mount->private_data = private_data;
 			indigo_attach_device(mount);
 
-//			mount_guider = malloc(sizeof(indigo_device));
-//			assert(mount_guider != NULL);
-//			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
-//			mount_guider->master_device = mount;
-//			mount_guider->private_data = private_data;
-//			indigo_attach_device(mount_guider);
+			mount_guider = malloc(sizeof(indigo_device));
+			assert(mount_guider != NULL);
+			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
+			mount_guider->master_device = mount;
+			mount_guider->private_data = private_data;
+			indigo_attach_device(mount_guider);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:

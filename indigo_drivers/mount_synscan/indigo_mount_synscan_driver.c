@@ -607,6 +607,47 @@ void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  EAST:  %g,   %g", haPos[1], decPos[1]);
 }
 
+void coords_aa_to_encoder2(indigo_device* device, double az, double alt, double azPos[], double altPos[]) {
+	//  Generate the two ALT positions (east and west of meridian)
+	double altw = M_PI - alt;
+	double alte = alt;
+	altw /= M_PI + M_PI;
+	alte /= M_PI + M_PI;
+
+	//  Rebase the angles to optimise the DEC slew relative to HOME
+//	if (degw > M_PI + M_PI_2)
+//		degw -= M_PI + M_PI;
+//	if (dege > M_PI + M_PI_2)
+//		dege -= M_PI + M_PI;
+//	degw /= M_PI + M_PI;
+//	dege /= M_PI + M_PI;
+	
+	//  Compute AZ positions to match each ALT position
+	double azw = az - M_PI;
+	double aze = (az <= M_PI) ? az : az - M_PI - M_PI;
+	azw /= M_PI + M_PI;
+	aze /= M_PI + M_PI;
+	
+	assert(azw < 0.5 || aze < 0.5);
+	
+	//  Decide whether EAST or WEST provides the "normal" / CW-Down slew and fill in the positions
+	//	if (haw < 0.5) {
+	azPos[0] = azw;
+	altPos[0] = altw;
+	azPos[1] = aze;
+	altPos[1] = alte;
+	//	} else {
+	//		haPos[0] = hae;
+	//		decPos[0] = dege;
+	//		haPos[1] = haw;
+	//		decPos[1] = degw;
+	//	}
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SOLUTIONS:");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  WEST:  %g,   %g", azPos[0], altPos[0]);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  EAST:  %g,   %g", azPos[1], altPos[1]);
+}
+
 
 void synscan_get_coords(indigo_device *device) {
 	long haPos, decPos;
@@ -766,6 +807,13 @@ int synscan_select_best_encoder_point(indigo_device* device, double haPos[], dou
 	//  Return the safe position
 	return &eps[0];
 #endif
+}
+
+int synscan_select_best_encoder_point_aa(indigo_device* device, double azPos[], double altPos[]) {
+	if (azPos[0] >= 0.0)
+		return 0;
+	else
+		return 1;
 }
 
 void synscan_wait_for_axis_stopped(indigo_device* device, enum AxisID axis, bool* abort) {

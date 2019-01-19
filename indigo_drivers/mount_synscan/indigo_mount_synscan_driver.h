@@ -43,7 +43,9 @@ void dec_axis_timer_callback(indigo_device* device);
 
 void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, double* ha, double* dec, int* sop);
 void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double haPos[], double decPos[]);
+void coords_aa_to_encoder2(indigo_device* device, double az, double alt, double azPos[], double altPos[]);
 int synscan_select_best_encoder_point(indigo_device* device, double haPos[], double decPos[]);
+int synscan_select_best_encoder_point_aa(indigo_device* device, double azPos[], double altPos[]);
 
 //  All rates are arcsecs/sec
 extern const double SIDEREAL_RATE;
