@@ -15,62 +15,92 @@
 
 
 void guider_timer_callback_ra(indigo_device *device) {
-#if 0
-	//  Determine the rate and duration
-	double guideRate = synscan_tracking_rate(device);
-	int duration = 0;
-	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-		guideRate -= GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
-		duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-	}
-	else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-		guideRate += GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
-		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-	}
+	while (true) {
+		//  Wait for pulse or exit
+		int pulse_length_ms;
+		pthread_mutex_lock(&PRIVATE_DATA->ha_mutex);
+		while (!PRIVATE_DATA->guiding_thread_exit && PRIVATE_DATA->ha_pulse_ms == 0)
+			pthread_cond_wait(&PRIVATE_DATA->ha_pulse_cond, &PRIVATE_DATA->ha_mutex);
+		pulse_length_ms = PRIVATE_DATA->ha_pulse_ms;
+		PRIVATE_DATA->ha_pulse_ms = 0;
+		pthread_mutex_unlock(&PRIVATE_DATA->ha_mutex);
 
-	//  Slew the axis at the specified rate (tracking rate +/- % of tracking rate)
-	synscan_slew_axis_at_rate(device, kAxisRA, guideRate);
+		//  Exit if requested
+		if (PRIVATE_DATA->guiding_thread_exit)
+			return;
 
-	//  Wait for the required duration
-	usleep(duration * 1000);
+		//  Determine the rate and duration
+		double guideRate = synscan_tracking_rate(device->master_device);
+		if (pulse_length_ms < 0) {
+			guideRate -= GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
+			pulse_length_ms = -pulse_length_ms;
+		}
+		else {
+			guideRate += GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
+		}
 
-	//  Resume tracking if tracking is currently on
-	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+		//  Slew the axis at the specified rate (tracking rate +/- % of tracking rate)
 		bool result;
-		double axisRate = synscan_tracking_rate(device);
-		synscan_update_axis_to_rate(device, kAxisRA, axisRate, &result);
+		synscan_update_axis_to_rate(device->master_device, kAxisRA, guideRate, &result);
+		PRIVATE_DATA->raAxisMode = kAxisModeGuiding;
+
+		//  Wait for the required duration
+		usleep(pulse_length_ms * 1000);
+
+		//  Resume tracking
+		double axisRate = synscan_tracking_rate(device->master_device);
+		synscan_update_axis_to_rate(device->master_device, kAxisRA, axisRate, &result);
 		PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+
+		//  Complete the guiding property updates
+		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	}
-	else {
-		//  Just stop the slew if not tracking - guiding cant really work like this
-		synscan_stop_axis(device, kAxisRA);
-		synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
-		PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-	}
-#endif
-	//  Complete the guiding property updates
-	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
 void guider_timer_callback_dec(indigo_device *device) {
-#if 0
-	PRIVATE_DATA->guider_timer_dec = NULL;
-	int dev_id = PRIVATE_DATA->dev_id;
-	int res;
-	
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
-	}
-#endif
+	while (true) {
+		//  Wait for pulse or exit
+		int pulse_length_ms;
+		pthread_mutex_lock(&PRIVATE_DATA->dec_mutex);
+		while (!PRIVATE_DATA->guiding_thread_exit && PRIVATE_DATA->dec_pulse_ms == 0)
+			pthread_cond_wait(&PRIVATE_DATA->dec_pulse_cond, &PRIVATE_DATA->dec_mutex);
+		pulse_length_ms = PRIVATE_DATA->dec_pulse_ms;
+		PRIVATE_DATA->dec_pulse_ms = 0;
+		pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
+		
+		//  Exit if requested
+		if (PRIVATE_DATA->guiding_thread_exit)
+			return;
+		
+		//  Determine the rate and duration
+		double guideRate = synscan_tracking_rate(device->master_device);
+		if (pulse_length_ms < 0) {
+			guideRate = -GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
+			pulse_length_ms = -pulse_length_ms;
+		}
+		else {
+			guideRate = GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
+		}
 
-	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		//  Slew the axis at the specified rate (+/- % of tracking rate)
+		synscan_slew_axis_at_rate(device->master_device, kAxisDEC, guideRate);
+		PRIVATE_DATA->decAxisMode = kAxisModeGuiding;
+
+		//  Wait for the required duration
+		usleep(pulse_length_ms * 1000);
+		
+		//  Stop the slew
+		synscan_stop_axis(device->master_device, kAxisDEC);
+		synscan_wait_for_axis_stopped(device->master_device, kAxisDEC, NULL);
+		PRIVATE_DATA->decAxisMode = kAxisModeIdle;
+		
+		//  Complete the guiding property updates
+		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	}
 }
