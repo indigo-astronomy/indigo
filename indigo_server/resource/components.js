@@ -497,6 +497,12 @@ Vue.component('indigo-ctrl', {
 												</div>
 											</div>
 										</template>
+										<template v-else-if="property.type == 'blob'">
+											<div v-for="item in property.items">
+												<a v-if="!item.value.endsWith('.jpeg')" :href="'http://' + window.location.hostname + ':' + window.location.port + item.value">{{"http://" + window.location.hostname + ":" + window.location.port + item.value}}</a>
+												<img v-else :src="'http://' + window.location.hostname + ':' + window.location.port + item.value" class="img-fluid"/>
+											</div>
+										</template>
 										<template v-else>
 											<small>{{property}}</small>
 										</template>
