@@ -5,6 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
 		<link rel="stylesheet" href="bootstrap.min.css"/>
 		<link rel="stylesheet" href="glyphicons.css"/>
+		<link rel="stylesheet" href="celestial.css"/>
 		<link rel="stylesheet" href="indigo.css"/>
 	</head>
 	<title>INDIGO Mount</title>
@@ -125,12 +126,14 @@
 	<script src="vue.min.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
+	<script src="d3.min.js"></script>
+	<script src="d3.geo.projection.min.js"></script>
+	<script src="celestial.min.js"></script>
+	<script src="d3.config.js"></script>
 	<script language="javascript" type="text/javascript">
 		
 		URL = new URL("ws://" + window.location.hostname+":"+window.location.port);
 		//URL = new URL("ws://localhost:7624");
-
-		
 		
 		window.addEventListener("load", init, false);
 		
@@ -156,7 +159,7 @@
 		var repeatExposure = false
 		
 		function onDefineProperty(property) {
-			onUpdateProperty(property);
+			
 		}
 	
 		function onUpdateProperty(property) {
@@ -256,5 +259,12 @@
 			changeProperty('Mount Agent', 'MOUNT_MOTION_DEC', { 'SOUTH': false });
 		}
 
+		function trackingOn(event) {
+			changeProperty('Mount Agent', 'MOUNT_TRACKING', { 'ON': true });
+		}
+
+		function trackingOff(event) {
+			changeProperty('Mount Agent', 'MOUNT_TRACKING', { 'OFF': true });
+		}
 	</script>
 </html>
