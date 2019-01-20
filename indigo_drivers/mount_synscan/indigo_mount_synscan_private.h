@@ -50,7 +50,6 @@ typedef struct {
 	pthread_mutex_t driver_mutex;
 	indigo_property *operating_mode_property;
 	indigo_property *mount_polarscope_property;
-	int st4_guide_rate;
 	
 	bool mountConfigured;
 
@@ -114,12 +113,12 @@ typedef struct {
 
 /** OPERATING_MODE property pointer, property is optional, read-write and should be fully controlled by device driver.
  */
-#define OPERATING_MODE_PROPERTY					(PRIVATE_DATA->operating_mode_property)
-#define POLAR_MODE_ITEM                 (OPERATING_MODE_PROPERTY->items+0)
-#define ALTAZ_MODE_ITEM                 (OPERATING_MODE_PROPERTY->items+1)
+#define MOUNT_OPERATING_MODE_PROPERTY							(PRIVATE_DATA->operating_mode_property)
+#define POLAR_MODE_ITEM                 					(MOUNT_OPERATING_MODE_PROPERTY->items+0)
+#define ALTAZ_MODE_ITEM                 					(MOUNT_OPERATING_MODE_PROPERTY->items+1)
 
-#define OPERATING_MODE_PROPERTY_NAME		"MOUNT_OPERATING_MODE"
-#define POLAR_MODE_ITEM_NAME            "POLAR"
-#define ALTAZ_MODE_ITEM_NAME            "ALTAZ"
+#define MOUNT_OPERATING_MODE_PROPERTY_NAME		    "MOUNT_OPERATING_MODE"
+#define POLAR_MODE_ITEM_NAME            					"POLAR"
+#define ALTAZ_MODE_ITEM_NAME            					"ALTAZ"
 
 #endif /* indigo_mount_synscan_private_h */
