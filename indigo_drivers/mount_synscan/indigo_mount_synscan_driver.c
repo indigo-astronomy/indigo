@@ -71,6 +71,8 @@ bool synscan_configure(indigo_device* device) {
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "114GT"); break;
 	case 0x90:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "DOB"); break;
+	case 0xA5:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZGTi"); break;
 	default:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CUSTOM"); break;
 	}
@@ -614,15 +616,15 @@ void coords_aa_to_encoder2(indigo_device* device, double az, double alt, double 
 //		dege -= M_PI + M_PI;
 //	degw /= M_PI + M_PI;
 //	dege /= M_PI + M_PI;
-	
+
 	//  Compute AZ positions to match each ALT position
 	double azw = az - M_PI;
 	double aze = (az <= M_PI) ? az : az - M_PI - M_PI;
 	azw /= M_PI + M_PI;
 	aze /= M_PI + M_PI;
-	
+
 	assert(azw < 0.5 || aze < 0.5);
-	
+
 	//  Decide whether EAST or WEST provides the "normal" / CW-Down slew and fill in the positions
 	//	if (haw < 0.5) {
 	azPos[0] = azw;
@@ -635,7 +637,7 @@ void coords_aa_to_encoder2(indigo_device* device, double az, double alt, double 
 	//		haPos[1] = haw;
 	//		decPos[1] = degw;
 	//	}
-	
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SOLUTIONS:");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  WEST:  %g,   %g", azPos[0], altPos[0]);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  EAST:  %g,   %g", azPos[1], altPos[1]);
@@ -657,7 +659,7 @@ void synscan_stop_and_wait_for_axis(indigo_device* device, enum AxisID axis) {
 	enum AxisMode* axisMode = (axis == kAxisRA) ? &PRIVATE_DATA->raAxisMode : &PRIVATE_DATA->decAxisMode;
 	if (*axisMode != kAxisModeIdle) {
 		synscan_stop_axis(device, axis);
-		
+
 		long axisStatus;
 		while (true) {
 			//  Get the axis status
@@ -665,13 +667,13 @@ void synscan_stop_and_wait_for_axis(indigo_device* device, enum AxisID axis) {
 				//  FIXME - this is a serial connection issue - perhaps we should disconnect driver
 				break;
 			}
-			
+
 			//  Mark axis as stopped if motor has come to rest
 			if ((axisStatus & kStatusActiveMask) == 0) {
 				*axisMode = kAxisModeIdle;
 				break;
 			}
-			
+
 			//  Delay a little
 			usleep(100000);
 		}
@@ -681,7 +683,7 @@ void synscan_stop_and_wait_for_axis(indigo_device* device, enum AxisID axis) {
 void synscan_slew_axis_at_rate(indigo_device* device, enum AxisID axis, double rate) {
 	//		Stop axis if need be
 	synscan_stop_and_wait_for_axis(device, axis);
-	
+
 	//    Start slewing at specified rate
 	if (!synscan_configure_axis_for_rate(device, axis, rate) || !synscan_slew_axis(device, axis)) {
 		//  FIXME - this is a serial connection issue - perhaps we should disconnect driver
