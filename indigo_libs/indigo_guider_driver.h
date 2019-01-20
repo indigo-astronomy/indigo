@@ -72,7 +72,11 @@ extern "C" {
 /** GUIDER_RATE.RATE property item pointer.
  */
 #define GUIDER_RATE_ITEM               				(GUIDER_RATE_PROPERTY->items+0)
-	
+
+/** GUIDER_RATE.DEC_RATE property item pointer.
+ */
+#define GUIDER_DEC_RATE_ITEM               		(GUIDER_RATE_PROPERTY->items+1)
+
 
 	
 /** Guider device context structure.
