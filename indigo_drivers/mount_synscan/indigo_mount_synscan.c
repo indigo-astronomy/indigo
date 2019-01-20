@@ -96,12 +96,12 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_POLARSCOPE_PROPERTY->hidden = true;
 		indigo_init_number_item(MOUNT_POLARSCOPE_BRIGHTNESS_ITEM, MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME, "Polarscope Brightness", 0, 255, 0, 0);
 		// -------------------------------------------------------------------------------- OPERATING_MODE
-		OPERATING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, OPERATING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Operating mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (OPERATING_MODE_PROPERTY == NULL)
+		MOUNT_OPERATING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_OPERATING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Operating mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (MOUNT_OPERATING_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", true);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
-		OPERATING_MODE_PROPERTY->hidden = true;
+		MOUNT_OPERATING_MODE_PROPERTY->hidden = true;
 
 		//  FURTHER INITIALISATION
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
@@ -110,7 +110,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		
 		indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_define_property(device, OPERATING_MODE_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -125,8 +125,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		if (IS_CONNECTED) {
 			if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property))
 				indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-			if (indigo_property_match(OPERATING_MODE_PROPERTY, property))
-				indigo_define_property(device, OPERATING_MODE_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property))
+				indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -263,12 +263,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			mount_handle_polarscope(device);
 			return INDIGO_OK;
 		}
-	} else if (indigo_property_match(OPERATING_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- OPERATING_MODE
-		indigo_property_copy_values(OPERATING_MODE_PROPERTY, property, false);
-		OPERATING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, OPERATING_MODE_PROPERTY, "Switched mount operating mode");
+	} else if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_OPERATING_MODE
+		indigo_property_copy_values(MOUNT_OPERATING_MODE_PROPERTY, property, false);
+		MOUNT_OPERATING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_OPERATING_MODE_PROPERTY, "Switched mount operating mode");
 		return INDIGO_OK;
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, MOUNT_POLARSCOPE_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_OPERATING_MODE_PROPERTY);
+		}
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -279,9 +285,9 @@ static indigo_result mount_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-	indigo_delete_property(device, OPERATING_MODE_PROPERTY, NULL);
+	indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 	indigo_release_property(MOUNT_POLARSCOPE_PROPERTY);
-	indigo_release_property(OPERATING_MODE_PROPERTY);
+	indigo_release_property(MOUNT_OPERATING_MODE_PROPERTY);
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
@@ -293,7 +299,12 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- GUIDER_RATE
 		GUIDER_RATE_PROPERTY->hidden = false;
+		GUIDER_RATE_PROPERTY->count = 2;
+		strncpy(GUIDER_RATE_PROPERTY->label,"Pulse-Guide Rate", INDIGO_VALUE_SIZE);
+		strncpy(GUIDER_RATE_ITEM->label, "RA Guiding rate (% of sidereal)", INDIGO_VALUE_SIZE);
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 
 		//  Init sync primitives
@@ -315,7 +326,6 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		//  Placeholder in case we need custom properties
 	}
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }
@@ -422,10 +432,15 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	}
 	else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
+		// -------------------------------------------------------------------------------- GUIDE_RATE
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
 		indigo_update_property(device, GUIDER_RATE_PROPERTY, "Guide rate updated.");
 		return INDIGO_OK;
+	}
+	else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property))
+			indigo_save_property(device, NULL, GUIDER_RATE_PROPERTY);
 	}
 	// --------------------------------------------------------------------------------
 	return indigo_guider_change_property(device, client, property);

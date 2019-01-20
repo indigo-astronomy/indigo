@@ -214,7 +214,7 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
 		indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 		indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_define_property(device, OPERATING_MODE_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 
 		//  Start position timer
 		PRIVATE_DATA->position_timer = indigo_set_timer(device->master_device, 0, position_timer_callback);
@@ -224,7 +224,7 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_update_property(device, CONNECTION_PROPERTY, "Failed to connect to mount");
 		indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_delete_property(device, OPERATING_MODE_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 	}
 	
 	//  Need to define and delete the 2 custom properties on connect/disconnect
@@ -258,7 +258,7 @@ void synscan_mount_connect(indigo_device* device) {
 				synscan_close(device);
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 				indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-				indigo_delete_property(device, OPERATING_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 			}
 		}
 	}
@@ -819,20 +819,13 @@ void mount_handle_st4_guiding_rate(indigo_device *device) {
 	int ra_rate = mount_guide_rate(MOUNT_GUIDE_RATE_RA_ITEM->number.value);
 	int dec_rate = mount_guide_rate(MOUNT_GUIDE_RATE_DEC_ITEM->number.value);
 
-	//  Check what changed
-	if (ra_rate != PRIVATE_DATA->st4_guide_rate) {
-		PRIVATE_DATA->st4_guide_rate = ra_rate;
-		dec_rate = ra_rate;
-		synscan_set_st4_guide_rate(device, PRIVATE_DATA->st4_guide_rate);
-	}
-	else if (dec_rate != PRIVATE_DATA->st4_guide_rate) {
-		PRIVATE_DATA->st4_guide_rate = dec_rate;
-		ra_rate = dec_rate;
-		synscan_set_st4_guide_rate(device, PRIVATE_DATA->st4_guide_rate);
-	}
+	//  Update the rates
+	synscan_set_st4_guide_rate(device, kAxisRA, ra_rate);
+	synscan_set_st4_guide_rate(device, kAxisDEC, dec_rate);
 
 	//  Update rate properties to reflect what happened
-	MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.value = mount_guide_rate_percent(PRIVATE_DATA->st4_guide_rate);
+	MOUNT_GUIDE_RATE_RA_ITEM->number.value = mount_guide_rate_percent(ra_rate);
+	MOUNT_GUIDE_RATE_DEC_ITEM->number.value = mount_guide_rate_percent(dec_rate);
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, "Updated ST4 guide rate.");
 }

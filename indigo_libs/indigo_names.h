@@ -764,6 +764,7 @@
 /** GUIDER_RATE.RATE property item name.
  */
 #define GUIDER_RATE_ITEM_NAME           			"RATE"
+#define GUIDER_DEC_RATE_ITEM_NAME           	"DEC_RATE"
 
 //----------------------------------------------------------------------
 /** AO_GUIDE_DEC property name
