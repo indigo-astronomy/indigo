@@ -56,8 +56,8 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			if (FOCUSER_REVERSE_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
-			indigo_init_switch_item(FOCUSER_REVERSE_MOTION_ENABLED_ITEM, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, "Enabled", true);
-			indigo_init_switch_item(FOCUSER_REVERSE_MOTION_DISABLED_ITEM, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, "Disabled", false);
+			indigo_init_switch_item(FOCUSER_REVERSE_MOTION_DISABLED_ITEM, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, "Disabled", true);
+			indigo_init_switch_item(FOCUSER_REVERSE_MOTION_ENABLED_ITEM, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, "Enabled", false);
 			// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
 			FOCUSER_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_DIRECTION_PROPERTY == NULL)
