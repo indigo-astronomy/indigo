@@ -10,7 +10,7 @@
 	<title>INDIGO Imager</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-sm navbar-light bg-secondary">
+			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
 				<a class="navbar-brand text-white " href="#">
 					<img src="imager.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">INDIGO Imager</h4>
@@ -42,7 +42,7 @@
 				</div>
 				<template v-else>
 					<div class="row no-gutters">
-						<div class="col-sm-4" style="min-width:360px">
+						<div class="col-md-4" style="min-width:360px">
 							<template v-if="findProperty('Imager Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
@@ -52,25 +52,33 @@
 										<indigo-edit-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature-low'" :values="['Off', 0, -10, -15, -20, -30]" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-history'" :values="[0, 5, 10, 15, 20, 30]"></indigo-edit-number>
+										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :values="[0, 5, 10, 15, 20, 30]"></indigo-edit-number>
 										<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'"></indigo-edit-text>
 										<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'"></indigo-edit-text>
 										<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-history'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'"></indigo-show-number>
 										<div v-if="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH') != null" class="d-flex p-1 w-100">
-											<button id="preview1_button" class="btn idle-state mr-2" onclick="preview1()">
-												<span class="glyphicons glyphicons-camera"></span>
+											<button id="preview1_button" class="btn btn-svg idle-state mr-2" onclick="preview1()">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M25,8H22.125L21.81,6.91992A2.83342,2.83342,0,0,0,19.25,5h-6.5a2.83342,2.83342,0,0,0-2.56,1.91992L9.875,8H7a3.00879,3.00879,0,0,0-3,3V23a3.00879,3.00879,0,0,0,3,3H25a3.00879,3.00879,0,0,0,3-3V11A3.00879,3.00879,0,0,0,25,8ZM16,23a6,6,0,1,1,6-6A6,6,0,0,1,16,23ZM26,11.5a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1a.5.5,0,0,1,.5.5ZM20,17a4,4,0,1,1-4-4A3.99992,3.99992,0,0,1,20,17Z"/>
+												</svg>
 											</button>
-											<button id="preview_button" class="btn idle-state mr-2" onclick="preview()">
-												<span class="glyphicons glyphicons-facetime-video"></span>
+											<button id="preview_button" class="btn btn-svg idle-state mr-2" onclick="preview()">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M31,11v9a1,1,0,0,1-1,1H29l-5-3.43748v-4.125L29,10h1A1,1,0,0,1,31,11ZM20,8H6a2.00591,2.00591,0,0,0-2,2V21a2.00591,2.00591,0,0,0,2,2H20a2.00591,2.00591,0,0,0,2-2V10A2.00591,2.00591,0,0,0,20,8Z"/>
+												</svg>
 											</button>
-											<button id="capture_button" class="btn idle-state mr-auto" onclick="capture_batch()">
-												<span class="glyphicons glyphicons-record text-danger"></span>
+											<button id="capture_button" class="btn btn-svg idle-state mr-auto" onclick="capture_batch()">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M16,5A11,11,0,1,0,27,16,11.01245,11.01245,0,0,0,16,5Zm0,19a8,8,0,1,1,8-8A8.00917,8.00917,0,0,1,16,24Zm5-8a5,5,0,1,1-5-5A5,5,0,0,1,21,16Z"/>
+												</svg>
 											</button>
-											<button class="btn idle-state" onclick="stop()">
-												<span class="glyphicons glyphicons-stop"></span>
+											<button class="btn btn-svg idle-state" onclick="stop()">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
+												</svg>
 											</button>
 										</div>
 									</div>
@@ -94,8 +102,8 @@
 								</div>
 							</template>
 						</div>
-						<div class="col-sm-8">
-							<div id="image_container" class="card p-1 m-1 bg-light d-none">
+						<div class="col-md-8">
+							<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
 								<div class="card-block">
 									<div class="card p-0">
 										<img id="image" class="img-fluid"/>
@@ -166,7 +174,6 @@
 						var value = property.item("IMAGE").value;
 						if (value != null) {
 							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime());
-							$("#image_container").removeClass("d-none");
 						}
 						if (repeatExposure) {
 							$("#preview_button").removeClass("idle-state");
