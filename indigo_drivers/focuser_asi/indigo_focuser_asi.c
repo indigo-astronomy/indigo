@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -109,6 +109,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -149,8 +150,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						EAFGetProperty(PRIVATE_DATA->dev_id, &info);
 						FOCUSER_POSITION_ITEM->number.max = info.MaxStep;
 						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+						}
+						FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position;
+
+						res = EAFGetReverse(PRIVATE_DATA->dev_id, &(FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value));
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
+						}
+						FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
@@ -178,6 +189,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
+	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		int res = EAFSetReverse(PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetReverse(%d, %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
+			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
