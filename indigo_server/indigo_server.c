@@ -332,6 +332,46 @@ static unsigned char glyphicons_ttf[] = {
 #include "resource/glyphicons-regular.ttf.data"
 };
 
+static unsigned char celestial_js[] = {
+#include "resource/celestial.min.js.data"
+};
+
+static unsigned char d3_js[] = {
+#include "resource/d3.min.js.data"
+};
+
+static unsigned char celestial_css[] = {
+#include "resource/celestial.css.data"
+};
+
+static unsigned char constellations_bounds_json[] = {
+#include "resource/data/constellations.bounds.json.data"
+};
+
+static unsigned char mv_json[] = {
+#include "resource/data/mw.json.data"
+};
+
+static unsigned char constellations_json[] = {
+#include "resource/data/constellations.json.data"
+};
+
+static unsigned char planets_json[] = {
+#include "resource/data/planets.json.data"
+};
+
+static unsigned char constellations_lines_json[] = {
+#include "resource/data/constellations.lines.json.data"
+};
+
+static unsigned char dsos_json[] = {
+#include "resource/data/dsos.6.json.data"
+};
+
+static unsigned char stars_json[] = {
+#include "resource/data/stars.6.json.data"
+};
+
 static void server_callback(int count) {
 	if (server_startup) {
 		if (use_bonjour) {
@@ -694,7 +734,17 @@ static void server_main() {
 		indigo_server_add_resource("/imager.png", imager_png, sizeof(imager_png), "image/png");
 		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
 		indigo_server_add_resource("/mount.png", mount_png, sizeof(mount_png), "image/png");
-		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "application/x-font-ttf");
+		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "text/javascript");
+		indigo_server_add_resource("/celestial.min.js", celestial_js, sizeof(celestial_js), "text/javascript");
+		indigo_server_add_resource("/d3.min.js", d3_js, sizeof(d3_js), "text/javascript");
+		indigo_server_add_resource("/celestial.css", celestial_css, sizeof(celestial_css), "text/css");
+		indigo_server_add_resource("/data/constellations.bounds.json", constellations_bounds_json, sizeof(constellations_bounds_json), "application/json");
+		indigo_server_add_resource("/data/mw.json", mv_json, sizeof(mv_json), "application/json");
+		indigo_server_add_resource("/data/constellations.json", constellations_json, sizeof(constellations_json), "application/json");
+		indigo_server_add_resource("/data/planets.json", planets_json, sizeof(planets_json), "application/json");
+		indigo_server_add_resource("/data/constellations.lines.json", constellations_lines_json, sizeof(constellations_lines_json), "application/json");
+		indigo_server_add_resource("/data/dsos.6.json", dsos_json, sizeof(dsos_json), "application/json");
+		indigo_server_add_resource("/data/stars.6.json", stars_json, sizeof(stars_json), "application/json");
 	}
 
 	if (!command_line_drivers) {
