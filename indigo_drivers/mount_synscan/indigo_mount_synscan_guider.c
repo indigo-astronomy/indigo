@@ -78,11 +78,11 @@ void guider_timer_callback_dec(indigo_device *device) {
 		//  Determine the rate and duration
 		double guideRate = synscan_tracking_rate(device->master_device);
 		if (pulse_length_ms < 0) {
-			guideRate = -GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
+			guideRate = -GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
 			pulse_length_ms = -pulse_length_ms;
 		}
 		else {
-			guideRate = GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
+			guideRate = GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
 		}
 
 		//  Slew the axis at the specified rate (+/- % of tracking rate)

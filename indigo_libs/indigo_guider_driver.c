@@ -59,11 +59,13 @@ indigo_result indigo_guider_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(GUIDER_GUIDE_EAST_ITEM, GUIDER_GUIDE_EAST_ITEM_NAME, "Guide east", 0, 10000, 0, 0);
 			indigo_init_number_item(GUIDER_GUIDE_WEST_ITEM, GUIDER_GUIDE_WEST_ITEM_NAME, "Guide west", 0, 10000, 0, 0);
 			// -------------------------------------------------------------------------------- GUIDER_RATE
-			GUIDER_RATE_PROPERTY = indigo_init_number_property(NULL, device->name, GUIDER_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guiding rate", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			GUIDER_RATE_PROPERTY = indigo_init_number_property(NULL, device->name, GUIDER_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guiding rate", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (GUIDER_RATE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			GUIDER_RATE_PROPERTY->hidden = true;
+			GUIDER_RATE_PROPERTY->count = 1;
 			indigo_init_number_item(GUIDER_RATE_ITEM, GUIDER_RATE_ITEM_NAME, "Guiding rate (% of sidereal)", 10, 90, 0, 50);
+			indigo_init_number_item(GUIDER_DEC_RATE_ITEM, GUIDER_DEC_RATE_ITEM_NAME, "DEC Guiding rate (% of sidereal)", 10, 90, 0, 50);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
