@@ -49,17 +49,17 @@ extern "C" {
  */
 #define FOCUSER_SPEED_ITEM										(FOCUSER_SPEED_PROPERTY->items+0)
 
-/** FOCUSER_ROTATION property pointer, property is optional, property change request should be fully handled by indigo_focuser_change_property.
+/** FOCUSER_REVERSE_MOTION property pointer, property is optional, property change request should be fully handled by indigo_focuser_change_property.
  */
-#define FOCUSER_ROTATION_PROPERTY							(FOCUSER_CONTEXT->focuser_rotation_property)
+#define FOCUSER_REVERSE_MOTION_PROPERTY							(FOCUSER_CONTEXT->focuser_reverse_motion_property)
 
-/** FOCUSER_ROTATION.CLOCKWISE property item pointer.
+/** FOCUSER_REVERSE_MOTION.ENABLED property item pointer.
  */
-#define FOCUSER_ROTATION_CLOCKWISE_ITEM				(FOCUSER_ROTATION_PROPERTY->items+0)
+#define FOCUSER_REVERSE_MOTION_ENABLED_ITEM				(FOCUSER_REVERSE_MOTION_PROPERTY->items+0)
 
-/** FOCUSER_ROTATION.COUNTERCLOCKWISE property item pointer.
+/** FOCUSER_REVERSE_MOTION.DISABLED property item pointer.
  */
-#define FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM	(FOCUSER_ROTATION_PROPERTY->items+1)
+#define FOCUSER_REVERSE_MOTION_DISABLED_ITEM	(FOCUSER_REVERSE_MOTION_PROPERTY->items+1)
 
 /** FOCUSER_DIRECTION property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property.
  */
@@ -152,7 +152,7 @@ extern "C" {
 typedef struct {
 	indigo_device_context device_context;							///< device context base
 	indigo_property *focuser_speed_property;					///< FOCUSER_SPEED property pointer
-	indigo_property *focuser_rotation_property;				///< FOCUSER_ROTATION property pointer
+	indigo_property *focuser_reverse_motion_property;				///< FOCUSER_REVERSE_MOTION property pointer
 	indigo_property *focuser_direction_property;			///< FOCUSER_DIRECTION property pointer
 	indigo_property *focuser_steps_property;					///< FOCUSER_STEPS property pointer
 	indigo_property *focuser_on_position_set_property;///< FOCUSER_ON_POSITION_SET property pointer
@@ -182,4 +182,3 @@ extern indigo_result indigo_focuser_detach(indigo_device *device);
 #endif
 
 #endif /* indigo_focuser_h */
-

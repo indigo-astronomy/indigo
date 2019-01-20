@@ -168,8 +168,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_LINUX
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usb_focuser");
 #endif
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
@@ -189,8 +189,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.max = 999999;
 		FOCUSER_POSITION_ITEM->number.step = 1;
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = true;
+
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

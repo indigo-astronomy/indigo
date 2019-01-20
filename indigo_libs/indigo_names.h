@@ -1035,17 +1035,17 @@
 
 //----------------------------------------------------------------------
 
-/** FOCUSER_ROTATION property name.
+/** FOCUSER_REVERSE_MOTION property name.
  */
-#define FOCUSER_ROTATION_PROPERTY_NAME							"FOCUSER_ROTATION"
+#define FOCUSER_REVERSE_MOTION_PROPERTY_NAME					"FOCUSER_REVERSE_MOTION"
 
-/** FOCUSER_ROTATION.CLOCKWISE property item name.
+/** FOCUSER_REVERSE_MOTION.ENABLED property item name.
  */
-#define FOCUSER_ROTATION_CLOCKWISE_ITEM_NAME				"CLOCKWISE"
+#define FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME				"ENABLED"
 
-/** FOCUSER_ROTATION.COUNTERCLOCKWISE property item name.
+/** FOCUSER_REVERSE_MOTION.DISABLED property item name.
  */
-#define FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM_NAME	"COUNTERCLOCKWISE"
+#define FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME				"DISABLED"
 
 //----------------------------------------------------------------------
 /** FOCUSER_DIRECTION property name.

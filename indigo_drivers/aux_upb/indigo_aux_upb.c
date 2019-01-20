@@ -751,7 +751,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
 				indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
 				indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
-				
+
 				libusb_context *ctx = NULL;
 				libusb_device **usb_devices;
 				struct libusb_device_descriptor descriptor;
@@ -1091,8 +1091,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_LINUX
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUPB");
 #endif
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
@@ -1154,7 +1154,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					}
 					if ((token = strtok(NULL, ":"))) { // Motor Invert
-						indigo_set_switch(FOCUSER_ROTATION_PROPERTY, *token == '1' ? FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM : FOCUSER_ROTATION_CLOCKWISE_ITEM, true);
+						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 					}
 					if ((token = strtok(NULL, ":"))) { // Backlash Steps
 						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
@@ -1267,17 +1267,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-	} else if (indigo_property_match(FOCUSER_ROTATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(FOCUSER_ROTATION_PROPERTY, property, false);
-			snprintf(command, sizeof(command), "SR:%d", (int)FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value? 0 : 1);
+			indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+			snprintf(command, sizeof(command), "SR:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1);
 			if (upb_command(device, command, response, sizeof(response))) {
-				FOCUSER_ROTATION_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				FOCUSER_ROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			indigo_update_property(device, FOCUSER_ROTATION_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
@@ -1317,7 +1317,7 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 		NULL,
 		aux_detach
 		);
-	
+
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		"Ultimate Powerbox (focuser)",
 		focuser_attach,

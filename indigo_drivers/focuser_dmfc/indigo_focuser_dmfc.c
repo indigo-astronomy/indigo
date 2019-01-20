@@ -156,8 +156,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 5;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
@@ -240,7 +240,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					token = strtok(NULL, ":"); // led status
 					token = strtok(NULL, ":");
 					if (token) { // reverse
-						indigo_set_switch(FOCUSER_ROTATION_PROPERTY, *token == '1' ? FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM : FOCUSER_ROTATION_CLOCKWISE_ITEM, true);
+						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 					}
 					token = strtok(NULL, ":");
 					if (token) { // encoder
@@ -355,17 +355,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-	} else if (indigo_property_match(FOCUSER_ROTATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(FOCUSER_ROTATION_PROPERTY, property, false);
-			snprintf(command, sizeof(command), "N:%d", (int)FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value? 0 : 1);
+			indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+			snprintf(command, sizeof(command), "N:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1);
 			if (dmfc_command(device, command, response, sizeof(response))) {
-				FOCUSER_ROTATION_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				FOCUSER_ROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			indigo_update_property(device, FOCUSER_ROTATION_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_FOCUSER_MOTOR_TYPE

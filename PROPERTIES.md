@@ -110,6 +110,8 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 <tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
 <tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>FOCUSER_SPEED</td><td>number</td><td>no</td><td>no</td><td>SPEED</td><td>yes</td><td></td></tr>
+<tr><td>FOCUSER_REVERSE_MOTION</td><td>switch</td><td>no</td><td>yes</td><td>ENABLED</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>DIABLED</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_DIRECTION</td><td>switch</td><td>no</td><td>yes</td><td>MOVE_INWARD</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>MOVE_OUTWARD</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_STEPS</td><td>number</td><td>no</td><td>yes</td><td>STEPS</td><td>yes</td><td></td></tr>
