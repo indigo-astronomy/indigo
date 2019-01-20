@@ -300,7 +300,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = true;
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = true;
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
@@ -316,8 +316,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.min = -32768;
 		FOCUSER_POSITION_ITEM->number.max = 32767;
 		FOCUSER_POSITION_ITEM->number.step = 1;
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
