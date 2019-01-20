@@ -53,13 +53,14 @@ extern "C" {
  */
 #define FOCUSER_REVERSE_MOTION_PROPERTY							(FOCUSER_CONTEXT->focuser_reverse_motion_property)
 
-/** FOCUSER_REVERSE_MOTION.ENABLED property item pointer.
- */
-#define FOCUSER_REVERSE_MOTION_ENABLED_ITEM				(FOCUSER_REVERSE_MOTION_PROPERTY->items+0)
-
 /** FOCUSER_REVERSE_MOTION.DISABLED property item pointer.
  */
-#define FOCUSER_REVERSE_MOTION_DISABLED_ITEM	(FOCUSER_REVERSE_MOTION_PROPERTY->items+1)
+#define FOCUSER_REVERSE_MOTION_DISABLED_ITEM	(FOCUSER_REVERSE_MOTION_PROPERTY->items+0)
+
+/** FOCUSER_REVERSE_MOTION.ENABLED property item pointer.
+*/
+#define FOCUSER_REVERSE_MOTION_ENABLED_ITEM				(FOCUSER_REVERSE_MOTION_PROPERTY->items+1)
+
 
 /** FOCUSER_DIRECTION property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property.
  */

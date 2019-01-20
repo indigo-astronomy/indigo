@@ -1040,13 +1040,13 @@
  */
 #define FOCUSER_REVERSE_MOTION_PROPERTY_NAME					"FOCUSER_REVERSE_MOTION"
 
-/** FOCUSER_REVERSE_MOTION.ENABLED property item name.
- */
-#define FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME				"ENABLED"
-
 /** FOCUSER_REVERSE_MOTION.DISABLED property item name.
  */
 #define FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME				"DISABLED"
+
+/** FOCUSER_REVERSE_MOTION.ENABLED property item name.
+ */
+#define FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME				"ENABLED"
 
 //----------------------------------------------------------------------
 /** FOCUSER_DIRECTION property name.
