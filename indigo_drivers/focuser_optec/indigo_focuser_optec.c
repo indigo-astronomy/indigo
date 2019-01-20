@@ -167,8 +167,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_STEPS_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_COMPENSATION_ITEM->number.min = -999;

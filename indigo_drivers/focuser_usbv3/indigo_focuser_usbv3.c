@@ -208,8 +208,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_LINUX
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usb_focuser");
 #endif
-		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-		FOCUSER_ROTATION_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
@@ -296,12 +296,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				if (FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value)
+				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)
 					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
 				else
 					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
 			} else {
-				if (FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value)
+				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)
 					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
 				else
 					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));

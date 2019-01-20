@@ -222,12 +222,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 				if (lakeside_command(device, "?D#", response, 1000000) && *response == 'D') {
 					if (atol(response + 1)) {
-						indigo_set_switch(FOCUSER_ROTATION_PROPERTY, FOCUSER_ROTATION_CLOCKWISE_ITEM, true);
+						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 					} else {
-						indigo_set_switch(FOCUSER_ROTATION_PROPERTY, FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM, true);
+						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_REVERSE_MOTION_ENABLED_ITEM, true);
 					}
 				} else {
-					FOCUSER_ROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				if (lakeside_command(device, "?T#", response, 1000000) && *response == 'T') {
 					FOCUSER_TEMPERATURE_ITEM->number.target = FOCUSER_TEMPERATURE_ITEM->number.value = atol(response + 1) / 2.0;
