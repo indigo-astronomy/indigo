@@ -567,3 +567,58 @@ Vue.component('indigo-select-multi-item', {
 			</div>
 		</div>`
 });
+
+Vue.component('indigo-query-db', {
+	props: {
+		container: Object,
+		result: Object
+	},
+	methods: {
+		onChange: function(e) {
+			var pattern = e.target.value;
+			var id = Number.parseInt(pattern);
+			this.result = [];
+			if (pattern != "") {
+				var stars = $(this.container).children(".star");
+				for (i in stars) {
+					var data = stars[i].__data__;
+					if (data == null) continue;
+					var properties = data.properties;
+					if (properties == null) continue;
+					if (data.id == id || (properties.name != null && properties.name.indexOf(pattern) >= 0)) {
+						var name = properties.name;
+						if (name != "")
+							name += ", ";
+						name += properties.desig + properties.con;
+						if (name != "")
+							name += ", ";
+						name += "HIP" + data.id;
+						this.result.push({ name: name });
+					}
+				}				
+				var dsos = $(this.container).children(".dso");
+				for (i in dsos) {
+					var data = dsos[i].__data__;
+					if (data == null) continue;
+					if (data.id.indexOf(pattern) >= 0) {
+						var properties = data.properties;
+						this.result.push({ name: data.id });
+					}
+				}				
+			}
+		}
+	},
+	template: `
+		<div class="w-100">
+			<div class="input-group p-1 w-100">
+				<div class="input-group-prepend">
+					<div class="input-group-text btn-svg">&#x1f50d;</div>
+				</div>
+				<input type="text" class="form-control" @change="onChange">			
+			</div>
+			<div class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
+				<a v-for="object in this.result" href="#" class="list-group-item list-group-item-action">{{object.name}}</a>
+			</div>
+		<div>
+		`
+});
