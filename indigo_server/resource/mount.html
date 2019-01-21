@@ -127,6 +127,13 @@
 									</div>
 								</div>
 							</template>
+							<template v-if="$(db).children().length > 0">
+								<div class="card p-1 m-1 bg-light">
+									<div class="card-block">
+										<indigo-query-db :container="db"></indigo-query-db>
+									</div>
+								</div>
+							</template>
 						</div>
 						<div class="col-sm-8">
 							<div class="card p-1 m-1 bg-light" style="min-height: 10rem">
@@ -336,6 +343,7 @@
 						Celestial.display(config);
 						map.scrollTop((zooms[zoom] - map.width()) / 2);
 						map.scrollLeft((zooms[zoom] - map.width()) / 2);
+						INDIGO.db = Celestial.container[0];
 					}
 				}
 			}
@@ -371,7 +379,7 @@
 			}
 		}
 	
-		Celestial.add({type:"line", callback: markerCallback, redraw: markerRedraw });
+		Celestial.add({type:"marker", callback: markerCallback, redraw: markerRedraw });
 
 		function onDefineProperty(property) {
 			if (property.device == "Mount Agent") {
