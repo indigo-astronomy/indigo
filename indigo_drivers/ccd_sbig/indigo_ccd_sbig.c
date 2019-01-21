@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -155,7 +155,7 @@ typedef struct {
 	int fw_count;
 	int fw_current_slot;
 	int fw_target_slot;
-	
+
 	/* AO Specific */
 	double ao_x_deflection;
 	double ao_y_deflection;
