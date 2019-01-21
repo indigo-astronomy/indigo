@@ -618,7 +618,9 @@ static void server_main() {
 		}
 	}
 
-	if (use_ctrl_panel || use_web_apps) {
+	use_ctrl_panel |= use_web_apps;
+	
+	if (use_ctrl_panel) {
 		// INDIGO Server Manager
 		static unsigned char mng_html[] = {
 			#include "resource/mng.html.data"
