@@ -387,7 +387,8 @@ Vue.component('indigo-ctrl', {
 			return item.newValue != null ? item.newValue : item.value;
 		},
 		newValue: function(item, value) {
-			Vue.set(item, 'newValue', value);
+			if (!Number.isNaN(value) && item.value != value)
+				Vue.set(item, 'newValue', value);
 		},
 		reset: function(property) {
 			for (i in property.items) {
