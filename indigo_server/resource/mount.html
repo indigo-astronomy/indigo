@@ -247,7 +247,6 @@
 		}
 	
 		function zoomIn() {
-			console.log('zoomnIn');
 			if (zoom < 5) {
 				config.width = zooms[++zoom];
 				switch (zoom) {
@@ -283,7 +282,6 @@
 		}
 
 		function zoomOut() {
-			console.log('zoomnOut');
 			if (zoom > 0) {
 				config.width = zooms[--zoom];
 				switch (zoom) {
@@ -343,12 +341,48 @@
 			}
 		}
 		
+		var currentCoordinates = [0, 90];
+		var targetCoordinates = [0, 90];
+
+		function h2deg(ra) {
+			return ra > 12 ? (ra - 24) * 15 : ra * 15;
+		}
+	
+		function markerCallback(error, json) {
+		}
+
+		function markerRedraw(error, json) {
+			if (celestialVisible) {
+				Celestial.setStyle({ stroke: "#f00", width: 1, fill: "rgba(255, 204, 255, 0.4)" });
+				var pt = Celestial.mapProjection(currentCoordinates);
+				Celestial.context.beginPath();
+				Celestial.context.arc(pt[0], pt[1], 10, 0, 2 * Math.PI);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+				pt = Celestial.mapProjection(targetCoordinates);
+				Celestial.context.beginPath();
+				Celestial.setStyle({ stroke: "#00f", width: 1, fill: "rgba(255, 204, 255, 0.4)" });
+				Celestial.context.moveTo(pt[0] - 15, pt[1]);
+				Celestial.context.lineTo(pt[0] + 15, pt[1]);
+				Celestial.context.moveTo(pt[0], pt[1] - 15);
+				Celestial.context.lineTo(pt[0], pt[1] + 15);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+			}
+		}
+	
+		Celestial.add({type:"line", callback: markerCallback, redraw: markerRedraw });
+
 		function onDefineProperty(property) {
 			if (property.device == "Mount Agent") {
 				if (property.name == "GEOGRAPHIC_COORDINATES" && property.state == "Ok") {
 					updateMap();
 				}
-				if (property.name == "MOUNT_EQUATORIAL_COORDINATES" && property.state == "Ok") {
+				if (property.name == "MOUNT_EQUATORIAL_COORDINATES") {
+					currentCoordinates[0] = h2deg(property.item("RA").value);
+					currentCoordinates[1] = property.item("DEC").value;
+					targetCoordinates[0] = h2deg(property.item("RA").target);
+					targetCoordinates[1] = property.item("DEC").target;
 					updateMap();
 				}
 			}
@@ -360,7 +394,11 @@
 					config.geopos = [ property.item("LATITUDE").value, property.item("LONGITUDE").value ];
 					updateMap();
 				}
-				if (property.name == "MOUNT_EQUATORIAL_COORDINATES" && property.state == "Ok") {
+				if (property.name == "MOUNT_EQUATORIAL_COORDINATES") {
+					currentCoordinates[0] = h2deg(property.item("RA").value);
+					currentCoordinates[1] = property.item("DEC").value;
+					targetCoordinates[0] = h2deg(property.item("RA").target);
+					targetCoordinates[1] = property.item("DEC").target;
 					updateMap();
 				}
 			}

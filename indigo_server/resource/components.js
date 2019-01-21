@@ -143,7 +143,6 @@ Vue.component('indigo-edit-number-60', {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
 					item.newValue = stod(value);
-							console.log(item.newValue);
 					return;
 				}
 			}
