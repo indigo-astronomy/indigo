@@ -266,6 +266,8 @@ static void position_timer_callback(indigo_device *device) {
 	}
 }
 
+static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -299,7 +301,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_mount_enumerate_properties(device, NULL, NULL);
+		return mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
