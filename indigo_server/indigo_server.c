@@ -513,7 +513,10 @@ static indigo_result detach(indigo_device *device) {
 
 static void add_drivers(const char *folder) {
 	char folder_path[PATH_MAX];
-	realpath(folder, folder_path);
+	if(NULL == realpath(folder, folder_path)) {
+		INDIGO_ERROR(indigo_error("realpath(%s, folder_path): failed", folder));
+		return;
+	}
 	DIR *dir = opendir(folder_path);
 	if (dir) {
 		struct dirent *ent;
@@ -571,7 +574,7 @@ static void add_drivers(const char *folder) {
 		if (line)
 			free(line);
 	}
-	
+
 }
 
 static void server_main() {
@@ -619,7 +622,7 @@ static void server_main() {
 	}
 
 	use_ctrl_panel |= use_web_apps;
-	
+
 	if (use_ctrl_panel) {
 		// INDIGO Server Manager
 		static unsigned char mng_html[] = {
