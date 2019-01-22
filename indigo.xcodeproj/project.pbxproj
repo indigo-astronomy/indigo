@@ -1640,7 +1640,6 @@
 		59AF321121F262280008CC52 /* mw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mw.json; sourceTree = "<group>"; };
 		59AF321421F264D40008CC52 /* celestial.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = celestial.min.js; sourceTree = "<group>"; };
 		59AF321521F264D40008CC52 /* celestial.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = celestial.css; sourceTree = "<group>"; };
-		59AF321621F2773B0008CC52 /* test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test.html; sourceTree = "<group>"; };
 		59AF321721F3078D0008CC52 /* mng.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mng.png; sourceTree = "<group>"; };
 		59AF321821F308870008CC52 /* mng.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mng.html; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
@@ -4989,7 +4988,6 @@
 				59AF321521F264D40008CC52 /* celestial.css */,
 				59AF321421F264D40008CC52 /* celestial.min.js */,
 				59AF320321F262280008CC52 /* data */,
-				59AF321621F2773B0008CC52 /* test.html */,
 			);
 			path = resource;
 			sourceTree = "<group>";

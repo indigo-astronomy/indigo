@@ -47,8 +47,8 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_MOUNT_LIST')"></indigo-select-item>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'"></indigo-edit-number-60>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :ident="'RA'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :ident="'DEC'"></indigo-edit-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'"></indigo-show-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-show-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'Ε'"></indigo-show-number-60>
@@ -349,33 +349,72 @@
 			}
 		}
 		
-		var currentCoordinates = [0, 90];
-		var targetCoordinates = [0, 90];
+		var currentCoordinates = null;
+		var targetCoordinates = null;
+		var objectCoordinates = null;
 
 		function h2deg(ra) {
 			return ra > 12 ? (ra - 24) * 15 : ra * 15;
 		}
 	
+		function deg2h(ra) {
+			return ra < 0 ? ra / 15 + 24 : ra / 15;
+		}
+	
 		function markerCallback(error, json) {
 		}
 
+		function selectObject(ra, dec) {
+			var eqCoordinates = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
+			if (eqCoordinates != null) {
+				$("#RA").val(dtos(eqCoordinates.item("RA").newValue = ra));
+				$("#DEC").val(dtos(eqCoordinates.item("DEC").newValue = dec));
+			}
+			objectCoordinates = [h2deg(ra), dec];
+			updateMap();
+		}
+	
 		function markerRedraw(error, json) {
 			if (celestialVisible) {
-				Celestial.setStyle({ stroke: "#f00", width: 1, fill: "rgba(255, 204, 255, 0.4)" });
-				var pt = Celestial.mapProjection(currentCoordinates);
-				Celestial.context.beginPath();
-				Celestial.context.arc(pt[0], pt[1], 10, 0, 2 * Math.PI);
-				Celestial.context.closePath();
-				Celestial.context.stroke();
-				pt = Celestial.mapProjection(targetCoordinates);
-				Celestial.context.beginPath();
-				Celestial.setStyle({ stroke: "#00f", width: 1, fill: "rgba(255, 204, 255, 0.4)" });
-				Celestial.context.moveTo(pt[0] - 15, pt[1]);
-				Celestial.context.lineTo(pt[0] + 15, pt[1]);
-				Celestial.context.moveTo(pt[0], pt[1] - 15);
-				Celestial.context.lineTo(pt[0], pt[1] + 15);
-				Celestial.context.closePath();
-				Celestial.context.stroke();
+				var pt;
+				if (currentCoordinates != null) {
+					Celestial.setStyle({ stroke: "#ff0000", width: 1});
+					pt = Celestial.mapProjection(currentCoordinates);
+					Celestial.context.beginPath();
+					Celestial.context.arc(pt[0], pt[1], 10, 0, 2 * Math.PI);
+					Celestial.context.closePath();
+					Celestial.context.stroke();
+				}
+				if (targetCoordinates != null) {
+					pt = Celestial.mapProjection(targetCoordinates);
+					Celestial.context.beginPath();
+					Celestial.setStyle({ stroke: "#0000ff", width: 1});
+					Celestial.context.moveTo(pt[0] - 15, pt[1]);
+					Celestial.context.lineTo(pt[0] - 5, pt[1]);
+					Celestial.context.moveTo(pt[0] + 5, pt[1]);
+					Celestial.context.lineTo(pt[0] + 15, pt[1]);
+					Celestial.context.moveTo(pt[0], pt[1] - 15);
+					Celestial.context.lineTo(pt[0], pt[1] - 5);
+					Celestial.context.moveTo(pt[0], pt[1] + 5);
+					Celestial.context.lineTo(pt[0], pt[1] + 15);
+					Celestial.context.closePath();
+					Celestial.context.stroke();
+				}
+				if (objectCoordinates != null) {
+					pt = Celestial.mapProjection(objectCoordinates);
+					Celestial.context.beginPath();
+					Celestial.setStyle({ stroke: "#00a000", width: 1});
+					Celestial.context.moveTo(pt[0] - 10, pt[1] - 10);
+					Celestial.context.lineTo(pt[0] - 3, pt[1] - 3);
+					Celestial.context.moveTo(pt[0] + 3, pt[1] + 3);
+					Celestial.context.lineTo(pt[0] + 10, pt[1] + 10);
+					Celestial.context.moveTo(pt[0] + 10, pt[1] - 10);
+					Celestial.context.lineTo(pt[0] + 3, pt[1] - 3);
+					Celestial.context.moveTo(pt[0] - 3, pt[1] + 3);
+					Celestial.context.lineTo(pt[0] - 10, pt[1] + 10);
+					Celestial.context.closePath();
+					Celestial.context.stroke();
+				}
 			}
 		}
 	
@@ -387,10 +426,8 @@
 					updateMap();
 				}
 				if (property.name == "MOUNT_EQUATORIAL_COORDINATES") {
-					currentCoordinates[0] = h2deg(property.item("RA").value);
-					currentCoordinates[1] = property.item("DEC").value;
-					targetCoordinates[0] = h2deg(property.item("RA").target);
-					targetCoordinates[1] = property.item("DEC").target;
+					currentCoordinates = [h2deg(property.item("RA").value), property.item("DEC").value];
+					targetCoordinates = [h2deg(property.item("RA").target), property.item("DEC").target];
 					updateMap();
 				}
 			}
@@ -403,10 +440,8 @@
 					updateMap();
 				}
 				if (property.name == "MOUNT_EQUATORIAL_COORDINATES") {
-					currentCoordinates[0] = h2deg(property.item("RA").value);
-					currentCoordinates[1] = property.item("DEC").value;
-					targetCoordinates[0] = h2deg(property.item("RA").target);
-					targetCoordinates[1] = property.item("DEC").target;
+					currentCoordinates = [h2deg(property.item("RA").value), property.item("DEC").value];
+					targetCoordinates = [h2deg(property.item("RA").target), property.item("DEC").target];
 					updateMap();
 				}
 			}
@@ -418,9 +453,9 @@
 		function setCoordinates() {
 			var property = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
 			var item = property.item("RA");
-			var ra = item.newValue != null ? item.newValue : item.target
+			var ra = item.newValue != null ? item.newValue : item.target;
 			item = property.item("DEC");
-			var dec = item.newValue != null ? item.newValue : item.target
+			var dec = item.newValue != null ? item.newValue : item.target;
 			changeProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES", { "RA": ra, "DEC": dec });
 		}
 	
