@@ -908,6 +908,10 @@
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
 		5963BBCD21D2A88100F1EC5A /* metainfo.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = metainfo.sh; sourceTree = "<group>"; };
+		5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-G.pdf"; sourceTree = "<group>"; };
+		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
+		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
+		5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Gemini-5-2.1.pdf"; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
 		598C57E321A75B1A001CA8C0 /* libnexstar.man */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.man; sourceTree = "<group>"; };
 		598C57E521A75B1A001CA8C0 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
@@ -1636,7 +1640,6 @@
 		59AF321121F262280008CC52 /* mw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mw.json; sourceTree = "<group>"; };
 		59AF321421F264D40008CC52 /* celestial.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = celestial.min.js; sourceTree = "<group>"; };
 		59AF321521F264D40008CC52 /* celestial.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = celestial.css; sourceTree = "<group>"; };
-		59AF321621F2773B0008CC52 /* test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test.html; sourceTree = "<group>"; };
 		59AF321721F3078D0008CC52 /* mng.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mng.png; sourceTree = "<group>"; };
 		59AF321821F308870008CC52 /* mng.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mng.html; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
@@ -4158,7 +4161,7 @@
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
-		9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TelescopeProtocol_2010-10.pdf"; sourceTree = "<group>"; };
+		9DB918051DF8647800678721 /* Meade-2010.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Meade-2010.10.pdf"; sourceTree = "<group>"; };
 		9DB918061DFEA42E00678721 /* indigo_io.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_io.c; sourceTree = "<group>"; };
 		9DB918071DFEA42E00678721 /* indigo_io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_io.h; sourceTree = "<group>"; };
 		9DBC34621DCB267700588DB9 /* indigo_wheel_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_asi_main.c; sourceTree = "<group>"; };
@@ -4985,7 +4988,6 @@
 				59AF321521F264D40008CC52 /* celestial.css */,
 				59AF321421F264D40008CC52 /* celestial.min.js */,
 				59AF320321F262280008CC52 /* data */,
-				59AF321621F2773B0008CC52 /* test.html */,
 			);
 			path = resource;
 			sourceTree = "<group>";
@@ -11691,7 +11693,11 @@
 				9DB918011DF8546800678721 /* indigo_mount_lx200.h */,
 				9DB918001DF8546800678721 /* indigo_mount_lx200.c */,
 				9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */,
-				9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */,
+				9DB918051DF8647800678721 /* Meade-2010.10.pdf */,
+				5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */,
+				5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */,
+				5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */,
+				5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */,
 				591E1142215AEC3900ABADA6 /* lx200_simulator */,
 			);
 			path = mount_lx200;
