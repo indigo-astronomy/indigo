@@ -114,22 +114,11 @@ typedef struct {
 
 
 static int get_unity_gain(indigo_device *device) {
-	double e_per_adu = PRIVATE_DATA->info.ElecPerADU * pow(10.0, CCD_GAIN_ITEM->number.value/200.0);
-
 	if (PRIVATE_DATA->is_asi120) {
-		if ((e_per_adu >= 1) && (e_per_adu < 2))
-			return (int)((e_per_adu - 1) * 16);
-		else if ((e_per_adu >= 2) && (e_per_adu < 4))
-			return (int)((e_per_adu - 2) / 2 * 16) + 16;
-		else if ((e_per_adu >= 4) && (e_per_adu < 8))
-			return (int)((e_per_adu - 4) / 4 * 16) + 32;
-		else if ((e_per_adu >= 8) && (e_per_adu < 16))
-			return (int)((e_per_adu - 8) / 8 * 16) + 48;
-		else if ((e_per_adu >= 16) && (e_per_adu < 32))
-			return (int)((e_per_adu - 16) / 16 * 16) + 64;
-		else if ((e_per_adu >= 32) && (e_per_adu < 64))
-			return (int)((e_per_adu - 32) / 32 * 20) + 80;
+		/* ASI 120 is a special case so we tahe the published unity gain */
+		return 29;
 	}
+	double e_per_adu = PRIVATE_DATA->info.ElecPerADU * pow(10.0, CCD_GAIN_ITEM->number.value/200.0);
 	if (e_per_adu != 0) return (int)(200 * log10(e_per_adu));
 	else return 0;
 }
