@@ -40,6 +40,7 @@ enum AxisMode {
 
 typedef struct {
 	int handle;
+	bool udp;
 	bool parked;
 	bool park_in_progress;
 	char tty_name[INDIGO_VALUE_SIZE];

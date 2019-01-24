@@ -163,19 +163,21 @@ static void position_timer_callback(indigo_device *device) {
 
 static bool synscan_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (strncmp(name, "synscan://", 10)) {
-		PRIVATE_DATA->handle = indigo_open_serial(name);
-	} else {
+	if (!strncmp(name, "synscan://", 10)) {
 		char *host = name + 10;
 		char *colon = strchr(host, ':');
 		if (colon == NULL) {
-			PRIVATE_DATA->handle = indigo_open_tcp(host, 4030);
+			PRIVATE_DATA->handle = indigo_open_udp(host, 11880);
 		} else {
 			char host_name[INDIGO_NAME_SIZE];
 			strncpy(host_name, host, colon - host);
 			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
+			PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
 		}
+		PRIVATE_DATA->udp = true;
+	} else {
+		PRIVATE_DATA->handle = indigo_open_serial(name);
+		PRIVATE_DATA->udp = false;
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
