@@ -17,6 +17,7 @@ indigo.xcodeproj/project.xcworkspace/
 indigo.xcodeproj/xcuserdata/
 indigo_server/ctrl.data
 indigo_server/resource/*.data
+indigo_server/resource/data/*.data
 /Makefile.inc
 /indigo_windows/indigo_client/Debug/indigo_client.tlog
 /indigo_windows/indigo_client/Debug
