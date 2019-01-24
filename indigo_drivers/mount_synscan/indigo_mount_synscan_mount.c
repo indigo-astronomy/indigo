@@ -28,6 +28,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "indigo_io.h"
 #include "indigo_novas.h"
 #include "indigo_mount_synscan_mount.h"
@@ -166,6 +171,30 @@ static bool synscan_open(indigo_device *device) {
 	if (!strncmp(name, "synscan://", 10)) {
 		char *host = name + 10;
 		char *colon = strchr(host, ':');
+		if (*host == 0) {
+			struct sockaddr_in addr;
+			memset(&addr, 0, sizeof(addr));
+			addr.sin_family = AF_INET;
+			addr.sin_port = htons(11880);
+			addr.sin_addr.s_addr = INADDR_BROADCAST;
+			socklen_t len = sizeof(addr);
+			int handle;
+			handle = socket(AF_INET, SOCK_DGRAM, 0);
+			if (handle > 0) {
+				int broadcast = 1;
+				setsockopt(handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof broadcast);
+				for (int i = 0; i < 3; i++) {
+					static char buffer[32];
+					sendto(handle, ":e1\r", 4, 0, (const struct sockaddr *) &addr, sizeof(addr));
+					usleep(100000);
+					if (recvfrom(handle, buffer, sizeof(buffer), MSG_WAITALL, (struct sockaddr *) &addr, &len) && *buffer == '=') {
+						strcpy(name + 10, inet_ntoa(addr.sin_addr));
+						indigo_update_property(device, DEVICE_PORT_PROPERTY, "mount detected at %s", name);
+						break;
+					}
+				}
+			}
+		}
 		if (colon == NULL) {
 			PRIVATE_DATA->handle = indigo_open_udp(host, 11880);
 		} else {
