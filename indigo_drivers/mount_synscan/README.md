@@ -22,12 +22,10 @@ indigo_server indigo_mount_synscan
 
 Driver is developed and tested with:
 * SkyWatcher NEQ6 Pro
+* SkyWatcher AZ-GTi
 
 ## Comments
 
-Use URL in form tcp://host:port to connect to the mount over network (default port is 9999).
-To export the mount over the network one can use Nexbridge https://sourceforge.net/projects/nexbridge
-
-This driver uses libnexstar library https://sourceforge.net/projects/libnexstar/
+Use URL in form synscan://host:port to connect to the mount over UDP (default port is 11880). Use just synscan:// for autodetection.
 
 A non-standard switch property "Guider rate" is provided by this driver.
