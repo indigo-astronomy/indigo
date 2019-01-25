@@ -123,7 +123,7 @@ static char * doubleToSexa(double value, char *format) {
 	if (value < 0) {
 		d = -d;
 	}
-	snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
+	snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, (int)s);
 	return buffer;
 }
 
@@ -182,9 +182,9 @@ static void start_worker_thread(handler_data *data) {
 			if (strcmp(buffer_in, "GVP") == 0) {
 				strcpy(buffer_out, "indigo#");
 			} else if (strcmp(buffer_in, "GR") == 0) {
-				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->ra, "%02d:%02d:%02.0f#"));
+				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->ra, "%02d:%02d:%02d#"));
 			} else if (strcmp(buffer_in, "GD") == 0) {
-				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->dec, "%02d*%02d'%02.0f#"));
+				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->dec, "%02d*%02d'%02d#"));
 			} else if (strncmp(buffer_in, "Sr", 2) == 0) {
 				int h = 0, m = 0;
 				double s = 0;
