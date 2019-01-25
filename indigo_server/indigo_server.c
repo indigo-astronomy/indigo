@@ -580,7 +580,7 @@ static void add_drivers(const char *folder) {
 static void server_main() {
 	indigo_start_usb_event_handler();
 	indigo_start();
-	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
+	indigo_log("INDIGO server %d.%d-%d built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 
 	for (int i = 1; i < server_argc; i++) {
 		if ((!strcmp(server_argv[i], "-p") || !strcmp(server_argv[i], "--port")) && i < server_argc - 1) {
