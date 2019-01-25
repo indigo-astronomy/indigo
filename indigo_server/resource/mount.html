@@ -323,6 +323,29 @@
 			}
 		}
 
+	function canvasClick(e) {
+		var coordinates = Celestial.mapProjection.invert([e.offsetX, e.offsetY]);
+		var bestX = 0;
+		var bestY = 0;
+		var dist = Math.pow(coordinates[0] - bestX, 2) + Math.pow(coordinates[1] - bestY, 2);
+		var paths = $("#map container path");
+		for (i in paths) {
+			var path = paths[i];
+			var data = path.__data__;
+			if (data == null) continue;
+			var geometry = data.geometry;
+			if (geometry == null) continue;
+			if (geometry.type != "Point") continue;
+			var d = Math.pow(coordinates[0] - geometry.coordinates[0], 2) + Math.pow(coordinates[1] - geometry.coordinates[1], 2);
+			if (d < dist) {
+				dist = d;
+				bestX = geometry.coordinates[0];
+				bestY = geometry.coordinates[1];
+			}
+		}
+		selectObject(bestX / 15, bestY);
+	}
+	
 		function updateMap() {
 			var map = $("#map");
 			if (map != null) {
@@ -344,6 +367,8 @@
 						map.scrollTop((zooms[zoom] - map.width()) / 2);
 						map.scrollLeft((zooms[zoom] - map.width()) / 2);
 						INDIGO.db = Celestial.container[0];
+						var canvas =  $(map).children("canvas")[0];
+						canvas.addEventListener("mousedown", canvasClick, false);
 					}
 				}
 			}
