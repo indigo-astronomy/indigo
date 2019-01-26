@@ -219,8 +219,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
 			mount_handle_tracking_rate(device);
-			return INDIGO_OK;
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING (on/off)
 		if (IS_CONNECTED) {
@@ -254,20 +254,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
 			mount_handle_st4_guiding_rate(device);
-			return INDIGO_OK;
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
 			mount_handle_polarscope(device);
-			return INDIGO_OK;
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_OPERATING_MODE
 		indigo_property_copy_values(MOUNT_OPERATING_MODE_PROPERTY, property, false);
 		MOUNT_OPERATING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_OPERATING_MODE_PROPERTY, "Switched mount operating mode");
+		if (IS_CONNECTED) {
+			indigo_update_property(device, MOUNT_OPERATING_MODE_PROPERTY, "Switched mount operating mode");
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
@@ -434,7 +436,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDE_RATE
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
-		indigo_update_property(device, GUIDER_RATE_PROPERTY, "Guide rate updated.");
+		if (IS_CONNECTED) {
+			indigo_update_property(device, GUIDER_RATE_PROPERTY, "Guide rate updated.");
+		}
 		return INDIGO_OK;
 	}
 	else if (indigo_property_match(CONFIG_PROPERTY, property)) {

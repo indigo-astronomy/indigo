@@ -704,15 +704,15 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
 			mount_handle_st4_guiding_rate(device);
-			return INDIGO_OK;
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
 			mount_handle_slew_rate(device);
-			return INDIGO_OK;
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		if(PRIVATE_DATA->parked) {

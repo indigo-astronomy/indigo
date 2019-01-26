@@ -456,48 +456,47 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_MODE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_MODE_PROPERTY, "Camera is busy");
-		} else {
-			indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
-			stop_camera(device);
-			for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
-				indigo_item *item = &CCD_MODE_PROPERTY->items[i];
-				if (item->sw.value) {
-					iidc_mode_data *mode_data = &PRIVATE_DATA->mode_data[PRIVATE_DATA->mode_data_ix = i];
-					dc1394video_mode_t mode = mode_data->mode;
-					dc1394error_t err;
-					if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN && mode <= DC1394_VIDEO_MODE_FORMAT7_MAX) {
-						err = dc1394_format7_set_color_coding(PRIVATE_DATA->camera, mode_data->mode, mode_data->color_coding);
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_format7_set_color_coding(%d, %d) -> %s", mode_data->mode, mode_data->color_coding, dc1394_error_get_string(err));
-						err = dc1394_format7_set_packet_size(PRIVATE_DATA->camera, mode_data->mode, DC1394_USE_MAX_AVAIL);
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_format7_set_packet_size() -> %s", dc1394_error_get_string(err));
+		if (IS_CONNECTED) {
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_MODE_PROPERTY, "Camera is busy");
+			} else {
+				indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
+				stop_camera(device);
+				for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+					indigo_item *item = &CCD_MODE_PROPERTY->items[i];
+					if (item->sw.value) {
+						iidc_mode_data *mode_data = &PRIVATE_DATA->mode_data[PRIVATE_DATA->mode_data_ix = i];
+						dc1394video_mode_t mode = mode_data->mode;
+						dc1394error_t err;
+						if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN && mode <= DC1394_VIDEO_MODE_FORMAT7_MAX) {
+							err = dc1394_format7_set_color_coding(PRIVATE_DATA->camera, mode_data->mode, mode_data->color_coding);
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_format7_set_color_coding(%d, %d) -> %s", mode_data->mode, mode_data->color_coding, dc1394_error_get_string(err));
+							err = dc1394_format7_set_packet_size(PRIVATE_DATA->camera, mode_data->mode, DC1394_USE_MAX_AVAIL);
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_format7_set_packet_size() -> %s", dc1394_error_get_string(err));
+						}
+						err = dc1394_video_set_mode(PRIVATE_DATA->camera, mode_data->mode);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_mode(%d) -> %s", mode_data->mode, dc1394_error_get_string(err));
+						CCD_FRAME_LEFT_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.value = 0;
+						CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = mode_data->width;
+						CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = mode_data->height;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = mode_data->bits_per_pixel;
+						setup_feature(device, CCD_EXPOSURE_ITEM, DC1394_FEATURE_SHUTTER);
+						CCD_STREAMING_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.min;
+						CCD_STREAMING_EXPOSURE_ITEM->number.max = CCD_EXPOSURE_ITEM->number.max;
+						CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.value;
+						CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
+						indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+						indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+						CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_delete_property(device, CCD_STREAMING_PROPERTY, NULL);
+						indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
+						break;
 					}
-					err = dc1394_video_set_mode(PRIVATE_DATA->camera, mode_data->mode);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_mode(%d) -> %s", mode_data->mode, dc1394_error_get_string(err));
-					CCD_FRAME_LEFT_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.value = 0;
-					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = mode_data->width;
-					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = mode_data->height;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = mode_data->bits_per_pixel;
-					setup_feature(device, CCD_EXPOSURE_ITEM, DC1394_FEATURE_SHUTTER);
-					CCD_STREAMING_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.min;
-					CCD_STREAMING_EXPOSURE_ITEM->number.max = CCD_EXPOSURE_ITEM->number.max;
-					CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.value;
-					CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
-					indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-					indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-					CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_delete_property(device, CCD_STREAMING_PROPERTY, NULL);
-					indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
-					break;
 				}
-			}
-			if (IS_CONNECTED) {
-				CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 			}
 		}
@@ -516,13 +515,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_FRAME_HEIGHT_ITEM->number.value = (((int)CCD_FRAME_HEIGHT_ITEM->number.value) / mode_data->height_unit) * mode_data->height_unit;
 			if (CCD_FRAME_HEIGHT_ITEM->number.value == 0)
 				CCD_FRAME_HEIGHT_ITEM->number.value = mode_data->height_unit;
+			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			if (IS_CONNECTED) {
-				CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 			}
 		} else {
 			CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_FRAME_PROPERTY, "Can't set frame size in legacy mode");
+			if (IS_CONNECTED) {
+				indigo_update_property(device, CCD_FRAME_PROPERTY, "Can't set frame size in legacy mode");
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {

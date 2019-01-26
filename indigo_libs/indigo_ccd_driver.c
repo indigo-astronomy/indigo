@@ -431,7 +431,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = ((int)CCD_FRAME_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		CCD_FRAME_HEIGHT_ITEM->number.value = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		if (IS_CONNECTED) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			if (CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value > CCD_INFO_WIDTH_ITEM->number.value) {
 				CCD_FRAME_WIDTH_ITEM->number.value = CCD_INFO_WIDTH_ITEM->number.value - CCD_FRAME_LEFT_ITEM->number.value;
@@ -441,6 +440,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value - CCD_FRAME_TOP_ITEM->number.value;
 				CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+		if (IS_CONNECTED) {
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
@@ -632,8 +632,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(CCD_RBI_FLUSH_ENABLE_PROPERTY, property, false);
+		CCD_RBI_FLUSH_ENABLE_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
-			CCD_RBI_FLUSH_ENABLE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
@@ -645,8 +645,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(CCD_RBI_FLUSH_PROPERTY, property, false);
+		CCD_RBI_FLUSH_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
-			CCD_RBI_FLUSH_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
 		}
 		return INDIGO_OK;

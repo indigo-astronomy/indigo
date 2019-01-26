@@ -1371,7 +1371,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FREEZE TEC
 	} else if ((PRIMARY_CCD) && (indigo_property_match(SBIG_FREEZE_TEC_PROPERTY, property))) {
@@ -1382,7 +1384,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			PRIVATE_DATA->freeze_tec = false;
 		}
-		indigo_update_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// --------------------------------------------------------------------------------- ABG
 	} else if ((PRIMARY_CCD) && (indigo_property_match(SBIG_ABG_PROPERTY, property))) {
@@ -1400,8 +1404,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			PRIVATE_DATA->imager_abg_state = ABG_LOW7;
 		}
-
-		indigo_update_property(device, SBIG_ABG_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, SBIG_ABG_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

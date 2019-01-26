@@ -443,6 +443,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// ------------------------------------------------------------------------------- GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 
@@ -451,11 +452,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED)
-			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_BIN
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		int prev_bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int prev_bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 
@@ -469,8 +470,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		/* let the base base class handle the rest with the manipulated property values */
 		return indigo_ccd_change_property(device, client, CCD_BIN_PROPERTY);
-	// ------------------------------------------------------------------------------- OFFSET
+	// ------------------------------------------------------------------------------- CCD_OFFSET
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 
@@ -479,13 +481,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED)
-			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-		}
 	}
 	// -----------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
