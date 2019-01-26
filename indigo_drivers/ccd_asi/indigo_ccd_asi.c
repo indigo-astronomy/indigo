@@ -1047,7 +1047,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
-		// ------------------------------------------------------------------------------- GAMMA
+		// ------------------------------------------------------------------------------- CCD_GAMMA
 	} else if (indigo_property_match(CCD_GAMMA_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
@@ -1064,7 +1064,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
 		return INDIGO_OK;
-		// ------------------------------------------------------------------------------- OFFSET
+		// ------------------------------------------------------------------------------- CCD_OFFSET
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
@@ -1086,7 +1086,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
-		// ------------------------------------------------------------------------------- GAIN
+		// ------------------------------------------------------------------------------- CCD_GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
@@ -1205,6 +1205,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADVANCED
 	} else if (indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			ASI_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ASI_ADVANCED_PROPERTY, "Exposure in progress, advanced settings can not be changed.");
@@ -1213,8 +1214,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		handle_advanced_property(device, property);
 		indigo_property_copy_values(ASI_ADVANCED_PROPERTY, property, false);
 		ASI_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED)
-			indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
+		indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_MODE
 	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {

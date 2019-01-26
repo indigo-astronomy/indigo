@@ -220,13 +220,17 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_SPEED_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_SPEED_PROPERTY, property, false);
 		DOME_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_SPEED_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, DOME_SPEED_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_DIRECTION
 	} else if (indigo_property_match(DOME_DIRECTION_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_DIRECTION_PROPERTY, property, false);
 		DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 	} else if (indigo_property_match(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
@@ -238,13 +242,17 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_AUTO_SYNC_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_AUTO_SYNC_PROPERTY, property, false);
 		DOME_AUTO_SYNC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
 	} else if (indigo_property_match(DOME_SYNC_PARAMETERS_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_SYNC_PARAMETERS_PROPERTY, property, false);
 		DOME_SYNC_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_SYNC_PARAMETERS_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, DOME_SYNC_PARAMETERS_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_DIMENSION
 	} else if (indigo_property_match(DOME_DIMENSION_PROPERTY, property)) {

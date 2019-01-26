@@ -173,7 +173,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(X_FOCUSER_FREQUENCY_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_FREQUENCY_PROPERTY, property, false);
 		X_FOCUSER_FREQUENCY_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
+		}
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_focuser_change_property(device, client, property);
