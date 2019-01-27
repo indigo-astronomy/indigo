@@ -149,10 +149,10 @@ static void position_timer_callback(indigo_device *device) {
 			double aligned_ha = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			double aligned_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * M_PI / 180.0;
 
-			if (aligned_ha < 0.0)
-				aligned_ha += 24.0;
-			if (aligned_ha >= 24.0)
-				aligned_ha -= 24.0;
+//			if (aligned_ha < 0.0)
+//				aligned_ha += 24.0;
+//			if (aligned_ha >= 24.0)
+//				aligned_ha -= 24.0;
 			aligned_ha = aligned_ha * M_PI / 12.0;
 
 			sla_de2h(aligned_ha, aligned_dec, lat, &az, &alt);
@@ -863,8 +863,10 @@ void mount_handle_st4_guiding_rate(indigo_device *device) {
 
 void mount_handle_abort(indigo_device *device) {
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-		//  Cancel any park or slew in progress
-		PRIVATE_DATA->abort_motion = true;
+		if (PRIVATE_DATA->globalMode != kGlobalModeIdle) {
+			//  Cancel any park or slew in progress
+			PRIVATE_DATA->abort_motion = true;
+		}
 
 		//  Unconditionally stop motors in case mount is out of control for any reason
 		synscan_stop_axis(device, kAxisRA);
