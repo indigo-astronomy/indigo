@@ -47,6 +47,8 @@
 #include "indigo_client.h"
 #include "indigo_xml.h"
 
+#include "star_data.h"
+
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
 #include "gps_simulator/indigo_gps_simulator.h"
@@ -733,18 +735,12 @@ static void server_main() {
 			#include "resource/data/planets.json.data"
 		};
 		indigo_server_add_resource("/data/planets.json", planets_json, sizeof(planets_json), "application/json");
-		static unsigned char constellations_lines_json[] = {
-			#include "resource/data/constellations.lines.json.data"
-		};
-		indigo_server_add_resource("/data/constellations.lines.json", constellations_lines_json, sizeof(constellations_lines_json), "application/json");
 		static unsigned char dsos_json[] = {
 			#include "resource/data/dsos.6.json.data"
 		};
 		indigo_server_add_resource("/data/dsos.6.json", dsos_json, sizeof(dsos_json), "application/json");
-		static unsigned char stars_json[] = {
-			#include "resource/data/stars.6.json.data"
-		};
-		indigo_server_add_resource("/data/stars.6.json", stars_json, sizeof(stars_json), "application/json");
+		indigo_add_star_json_resource(6);
+		indigo_add_constellations_lines_json_resource();
 		// INDIGO Guider
 		static unsigned char guider_png[] = {
 			#include "resource/guider.png.data"

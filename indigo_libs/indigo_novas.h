@@ -30,5 +30,7 @@
 
 extern double indigo_lst(double longitude);
 extern void indigo_eq2hor(double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az);
+extern void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec);
+extern void indigo_topo_star(double latitude, double longitude, double elevation, double promora, double promodec, double parallax, double rv, double *ra, double *dec);
 
 #endif /* indigo_novas_h */
