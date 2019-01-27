@@ -340,29 +340,6 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		synscan_mount_connect(device);
-//		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-//			if (!device->is_connected) {
-//				if (mount_open(device)) {
-//					device->is_connected = true;
-//					indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
-//					PRIVATE_DATA->guider_timer_ra = NULL;
-//					PRIVATE_DATA->guider_timer_dec = NULL;
-//					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-//					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
-//					GUIDER_GUIDE_RA_PROPERTY->hidden = false;
-//				} else {
-//					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-//					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-//				}
-//			}
-//		} else {
-//			if (device->is_connected) {
-//				mount_close(device);
-//				indigo_delete_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
-//				device->is_connected = false;
-//				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-//			}
-//		}
 	}
 	else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
