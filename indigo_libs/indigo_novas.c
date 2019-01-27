@@ -25,11 +25,22 @@
 
 #include <time.h>
 #include <novas.h>
+//#include <eph_manager.h>
 
 #include "indigo_novas.h"
 
 static double DELTA_T = 34+32.184+0.477677;
 static double DELTA_UTC_UT1 = -0.477677/86400.0;
+
+static void init() {
+//  TBD
+//	static int do_init = 1;
+//	if (do_init) {
+//		double jd_begin, jd_end, de_number;
+//		ephem_open("build/lib/JPLEPH.421", &jd_begin, &jd_end, &de_number);
+//		do_init = 0;
+//	}
+}
 
 double indigo_lst(double longitude) {
 	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
@@ -45,3 +56,21 @@ void indigo_eq2hor(double latitude, double longitude, double elevation, double r
 	*alt = 90-*alt;
 }
 
+void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec) {
+	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
+	double tt_now = ut1_now + DELTA_T / 86400.0;
+	cat_entry star;
+	init();
+	make_cat_entry("HIP 1", "HP2", 1, *ra, *dec, promora, promodec, parallax, rv, &star);
+	app_star(tt_now, &star, 1, ra, dec);
+}
+
+void indigo_topo_star(double latitude, double longitude, double elevation, double promora, double promodec, double parallax, double rv, double *ra, double *dec) {
+	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
+	double tt_now = ut1_now + DELTA_T / 86400.0;
+	cat_entry star;
+	init();
+	make_cat_entry("HIP1", "HP2", 1, *ra, *dec, promora, promodec, parallax, rv, &star);
+	on_surface position = { latitude, longitude, elevation, 0.0, 0.0 };
+	topo_star(tt_now, DELTA_T, &star, &position, 1, ra, dec);
+}
