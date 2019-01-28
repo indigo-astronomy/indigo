@@ -28,6 +28,6 @@
 #define star_data_h
 
 extern void indigo_add_star_json_resource(int max_mag);
-extern void indigo_add_constellations_lines_json_resource();
+extern void indigo_add_constellations_lines_json_resource(void);
 
 #endif /* star_data_h */
