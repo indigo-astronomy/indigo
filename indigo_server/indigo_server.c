@@ -102,6 +102,7 @@
 #include "agent_alignment/indigo_agent_alignment.h"
 #include "agent_mount/indigo_agent_mount.h"
 #include "ao_sx/indigo_ao_sx.h"
+#include "ccd_uvc/indigo_ccd_uvc.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -160,6 +161,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ssag,
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
+	indigo_ccd_uvc,
 	indigo_dome_simulator,
 	indigo_focuser_asi,
 	indigo_focuser_dmfc,
