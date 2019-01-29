@@ -722,23 +722,23 @@ static void server_main() {
 		static unsigned char constellations_json[] = {
 			#include "resource/data/constellations.json.data"
 		};
-		indigo_server_add_resource("/data/constellations.json", constellations_json, sizeof(constellations_json), "application/json");
+		indigo_server_add_resource("/data/constellations.json", constellations_json, sizeof(constellations_json), "application/json; charset=utf-8");
 		static unsigned char constellations_bounds_json[] = {
 			#include "resource/data/constellations.bounds.json.data"
 		};
-		indigo_server_add_resource("/data/constellations.bounds.json", constellations_bounds_json, sizeof(constellations_bounds_json), "application/json");
+		indigo_server_add_resource("/data/constellations.bounds.json", constellations_bounds_json, sizeof(constellations_bounds_json), "application/json; charset=utf-8");
 		static unsigned char mv_json[] = {
 			#include "resource/data/mw.json.data"
 		};
-		indigo_server_add_resource("/data/mw.json", mv_json, sizeof(mv_json), "application/json");
+		indigo_server_add_resource("/data/mw.json", mv_json, sizeof(mv_json), "application/json; charset=utf-8");
 		static unsigned char planets_json[] = {
 			#include "resource/data/planets.json.data"
 		};
-		indigo_server_add_resource("/data/planets.json", planets_json, sizeof(planets_json), "application/json");
+		indigo_server_add_resource("/data/planets.json", planets_json, sizeof(planets_json), "application/json; charset=utf-8");
 		static unsigned char dsos_json[] = {
 			#include "resource/data/dsos.6.json.data"
 		};
-		indigo_server_add_resource("/data/dsos.6.json", dsos_json, sizeof(dsos_json), "application/json");
+		indigo_server_add_resource("/data/dsos.6.json", dsos_json, sizeof(dsos_json), "application/json; charset=utf-8");
 		indigo_add_star_json_resource(6);
 		indigo_add_constellations_lines_json_resource();
 		// INDIGO Guider
