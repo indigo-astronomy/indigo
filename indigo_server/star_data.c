@@ -41156,7 +41156,7 @@ void indigo_add_star_json_resource(int max_mag) {
 	unsigned char *data = malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_compress("stars.json", buffer, size, &data, &data_size);
-	indigo_server_add_resource("/data/stars.json", data, (int)data_size, "application/json");
+	indigo_server_add_resource("/data/stars.json", data, (int)data_size, "application/json; charset=utf-8");
 }
 
 static int add_multiline(char *buffer, ...) {
@@ -41307,5 +41307,5 @@ void indigo_add_constellations_lines_json_resource() {
 	unsigned char *data = malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_compress("constellations.lines.json", buffer, size, &data, &data_size);
-	indigo_server_add_resource("/data/constellations.lines.json", data, (int)data_size, "application/json");
+	indigo_server_add_resource("/data/constellations.lines.json", data, (int)data_size, "application/json; charset=utf-8");
 }
