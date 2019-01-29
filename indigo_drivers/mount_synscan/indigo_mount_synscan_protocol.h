@@ -67,5 +67,6 @@ bool synscan_slew_axis(indigo_device* device, enum AxisID axis);
 bool synscan_set_axis_slowdown(indigo_device* device, enum AxisID axis, long s);
 bool synscan_set_polarscope_brightness(indigo_device* device, unsigned char brightness);
 bool synscan_set_st4_guide_rate(indigo_device* device, enum AxisID axis, enum GuideRate rate);
+bool synscan_guide_pulse(indigo_device* device, enum AxisID axis, long guide_rate, int duration_ms, long track_rate);
 
 #endif /* indigo_mount_synscan_protocol_h */

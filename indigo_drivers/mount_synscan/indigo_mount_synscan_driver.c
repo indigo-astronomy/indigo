@@ -340,6 +340,45 @@ bool synscan_update_axis_to_rate(indigo_device* device, enum AxisID axis, double
 	return true;
 }
 
+bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double rate, int duration, double resume_rate) {
+	//  Compute config required
+	struct AxisConfig pulseConfig;
+	struct AxisConfig resumeConfig;
+	synscan_axis_config_for_rate(device, axis, rate, &pulseConfig);
+	if (resume_rate != 0)
+		synscan_axis_config_for_rate(device, axis, resume_rate, &resumeConfig);
+	else
+		resumeConfig.rateCode = 0;
+
+#if 0
+	//  Determine if simple rate change is sufficient (or full reconfiguration)
+	bool reconfigure = synscan_should_reconfigure_axis(device, axis, &requiredConfig);
+	if (reconfigure) {
+		//*result = false;
+		return true;
+	} else {
+		//*result = true;
+	}
+	
+	//  Reference relevant axis config cache
+	struct AxisConfig* cachedConfig = (axis == kAxisRA) ? &PRIVATE_DATA->raAxisConfig : &PRIVATE_DATA->decAxisConfig;
+	
+	//  Invalidate gearing in case of error
+	cachedConfig->valid = false;
+#endif
+
+	//  Do the pulse
+	return synscan_guide_pulse(device, axis, pulseConfig.rateCode, duration, resumeConfig.rateCode);
+
+//	bool ok = synscan_set_axis_slew_rate(device, axis, requiredConfig.rateCode);
+//	if (!ok)
+//		return false;
+//
+//	//  Validate the axis config cache
+//	*cachedConfig = requiredConfig;
+	return true;
+}
+
 static double ha_steps_to_position(indigo_device* device, AxisPosition steps) {
 	double hapos = (double)(steps - PRIVATE_DATA->raZeroPos) / (double)PRIVATE_DATA->raTotalSteps;
 	if (hapos < 0)
