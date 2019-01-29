@@ -60,7 +60,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 
 clean: status
-	rm -f *.o *.orig $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+	rm -f *.o *.orig $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libusb-1.0.dylib $(LIBHIDAPI) $(BUILD_LIB)/libftd2xx.a
 
 clean-all: clean
 
