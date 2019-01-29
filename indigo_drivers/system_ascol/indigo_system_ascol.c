@@ -1156,7 +1156,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
-		MOUNT_ON_COORDINATES_SET_PROPERTY->hidden = true;
+		MOUNT_ON_COORDINATES_SET_PROPERTY->hidden = false;
+		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 1;
 		// --------------------------------------------------------------------------------
 		AUTHENTICATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -1172,8 +1173,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value=89.99999;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.min=-89.99999;
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
-		MOUNT_UTC_TIME_PROPERTY->hidden = true;
-		MOUNT_PARK_PROPERTY->hidden = true;
+		MOUNT_UTC_TIME_PROPERTY->hidden = false;
+		MOUNT_PARK_PROPERTY->hidden = false;
 		MOUNT_MOTION_DEC_PROPERTY->hidden = true;
 		MOUNT_MOTION_RA_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
@@ -1587,6 +1588,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 		mount_handle_motion_ne(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PARK
+		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SLEW_ORIENTATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SLEW_ORIENTATION
