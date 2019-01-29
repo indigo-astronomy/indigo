@@ -133,10 +133,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (PRIVATE_DATA->handle == 0) {
 				uvc_error_t res = uvc_open(PRIVATE_DATA->dev, &PRIVATE_DATA->handle);
 				if (res != UVC_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_init() -> %s", uvc_strerror(res));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(res));
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_init() -> %s", uvc_strerror(res));
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(res));
+					uvc_print_diag(PRIVATE_DATA->handle, stderr);
 					const uvc_format_desc_t *format = uvc_get_format_descs(PRIVATE_DATA->handle);
 					CCD_MODE_PROPERTY->count = 0;
 					CCD_INFO_WIDTH_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value = 0;
@@ -229,6 +230,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_open_ctrl() -> %s", uvc_strerror(res));
+				res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
+				if (res != UVC_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(res));
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(res));
+				}
+				res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_EXPOSURE_ITEM->number.value);
+				if (res != UVC_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_EXPOSURE_ITEM->number.value), uvc_strerror(res));
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_EXPOSURE_ITEM->number.value), uvc_strerror(res));
+				}
 				res = uvc_stream_start(PRIVATE_DATA->strmhp, NULL, NULL, 0);
 				if (res != UVC_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_stream_start() -> %s", uvc_strerror(res));
@@ -236,18 +249,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_start() -> %s", uvc_strerror(res));
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-//					res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
-//					if (res != UVC_SUCCESS) {
-//						INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_set_ae_mode() -> %s", uvc_strerror(res));
-//					} else {
-//						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode() -> %s", uvc_strerror(res));
-//					}
-//					uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_EXPOSURE_ITEM->number.value);
-//					if (res != UVC_SUCCESS) {
-//						INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_set_exposure_abs() -> %s", uvc_strerror(res));
-//					} else {
-//						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs() -> %s", uvc_strerror(res));
-//					}
 					indigo_set_timer(device, 0, exposure_timer_callback);
 				}
 			}
