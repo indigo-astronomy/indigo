@@ -439,6 +439,9 @@ extern void indigo_init_text_item(indigo_item *item, const char *name, const cha
 /** Initialize number item.
  */
 extern void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value);
+
+#define indigo_init_sexagesimal_number_item(item, name, label, min, max, step, value) { indigo_init_number_item(item, name, label, min, max, step, value); strcpy(item->number.format, "%m"); }
+
 /** Initialize switch item.
  */
 extern void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value);
