@@ -249,6 +249,7 @@
 typedef struct {
 	int dev_id;
 	bool parked;
+	bool park_update;
 
 	int count_open;
 
@@ -500,6 +501,7 @@ static void mount_handle_tracking(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_ON);
+		PRIVATE_DATA->park_update = true;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
 	} else {
 		res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_OFF);
@@ -790,6 +792,56 @@ static void mount_handle_motion_ne(indigo_device *device) {
 }
 
 
+static void mount_handle_park(indigo_device *device) {
+	int dev_id = PRIVATE_DATA->dev_id;
+	bool error_flag = false;
+
+	/* UNPARK */
+	if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
+		MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		PRIVATE_DATA->parked = false;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+		return;
+	}
+
+	/* PARK */
+	if ((PRIVATE_DATA->glst.telescope_state != TE_STATE_TRACK) &&
+	    (PRIVATE_DATA->glst.telescope_state != TE_STATE_STOP)) {
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Can not park - Telescope is moving.");
+		return;
+	}
+
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	int res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_OFF);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TETR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+		error_flag = true;
+	}
+	res = ascol_TSHA(PRIVATE_DATA->dev_id, 180, 89.99);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSHA(%d, 180, 89.99) = %d", PRIVATE_DATA->dev_id, res);
+		error_flag = true;
+	}
+	res = ascol_TGHA(PRIVATE_DATA->dev_id, ASCOL_ON);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGHA(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		error_flag = true;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+
+	if (error_flag) {
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+	}
+
+	PRIVATE_DATA->park_update = true;
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+}
+
+
 static bool mount_handle_abort_motion(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_TGRA(PRIVATE_DATA->dev_id, ASCOL_OFF);
@@ -813,6 +865,8 @@ static bool mount_handle_abort_motion(indigo_device *device) {
 	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted.");
+	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Aborted.");
 	return true;
 }
 
@@ -826,16 +880,6 @@ static void ascol_device_close(indigo_device *device) {
 		PRIVATE_DATA->dev_id = -1;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-}
-
-
-static void park_timer_callback(indigo_device *device) {
-	int res;
-	int dev_id = PRIVATE_DATA->dev_id;
-	/* TBD */
-	PRIVATE_DATA->park_timer = NULL;
-	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount Parked.");
 }
 
 
@@ -1140,6 +1184,24 @@ static void mount_update_state() {
 		indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	}
 
+	if (PRIVATE_DATA->park_update || (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		if ((round(HADEC_COORDINATES_HA_ITEM->number.value*100) == 18000) &&
+		   (round(HADEC_COORDINATES_DEC_ITEM->number.value*100) == 8999) &&
+		   (PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP)) {
+			MOUNT_PARK_PARKED_ITEM->sw.value = true;
+			MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			PRIVATE_DATA->parked = true;
+		} else {
+			MOUNT_PARK_PARKED_ITEM->sw.value = false;
+			MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			PRIVATE_DATA->parked = false;
+		}
+		PRIVATE_DATA->park_update = false;
+	}
+
 	/* should be copied every time as there are several properties
 	   relaying on this and we have no track which one changed */
 	prev_glst = PRIVATE_DATA->glst;
@@ -1174,7 +1236,10 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.min=-89.99999;
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
+
 		MOUNT_PARK_PROPERTY->hidden = false;
+		PRIVATE_DATA->park_update = true;
+
 		MOUNT_MOTION_DEC_PROPERTY->hidden = true;
 		MOUNT_MOTION_RA_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
@@ -1318,7 +1383,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		HADEC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, HADEC_COORDINATES_PROPERTY_NAME, MOUNT_MAIN_GROUP, "HA DEC Coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (HADEC_COORDINATES_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(HADEC_COORDINATES_HA_ITEM, HADEC_COORDINATES_HA_ITEM_NAME, "Hour Angle (0° to 360°)", -180, 330, 0.0001, 0);
+		indigo_init_number_item(HADEC_COORDINATES_HA_ITEM, HADEC_COORDINATES_HA_ITEM_NAME, "Hour Angle (-180° to 330°)", -180, 330, 0.0001, 0);
 		indigo_init_number_item(HADEC_COORDINATES_DEC_ITEM, HADEC_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to 90°)", -90, 270, 0.0001, 0);
 		// -------------------------------------------------------------------------- HADEC_RELATIVE_MOVE
 		HADEC_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, HADEC_RELATIVE_MOVE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "HA DEC Relative Move", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
@@ -1557,10 +1622,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
-		if(PRIVATE_DATA->parked) {
-			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, WARN_PARKED_MSG);
-			return INDIGO_OK;
-		}
+		//if(PRIVATE_DATA->parked) {
+		//	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, WARN_PARKED_MSG);
+		//	return INDIGO_OK;
+		//}
 		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
 		mount_handle_tracking(device);
 		return INDIGO_OK;
@@ -1592,6 +1657,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
+		mount_handle_park(device);
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SLEW_ORIENTATION_PROPERTY, property)) {
