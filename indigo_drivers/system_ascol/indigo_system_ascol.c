@@ -946,11 +946,10 @@ static void mount_update_state() {
 	   (MOUNT_TRACKING_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (RA_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DEC_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d) %d %s %s", PRIVATE_DATA->dev_id,PRIVATE_DATA->glst.telescope_state, descrs, descr);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d) %d %s %s", PRIVATE_DATA->dev_id,PRIVATE_DATA->glst.telescope_state, descrs, descr);
 		snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		ascol_get_ra_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(RA_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
