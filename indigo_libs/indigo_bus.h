@@ -440,7 +440,7 @@ extern void indigo_init_text_item(indigo_item *item, const char *name, const cha
  */
 extern void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value);
 
-#define indigo_init_sexagesimal_number_item(item, name, label, min, max, step, value) { indigo_init_number_item(item, name, label, min, max, step, value); strcpy(item->number.format, "%m"); }
+#define indigo_init_sexagesimal_number_item(item, name, label, min, max, step, value) { indigo_init_number_item(item, name, label, min, max, step, value); strcpy(item->number.format, "%12.9m"); }
 
 /** Initialize switch item.
  */
@@ -511,7 +511,7 @@ extern void indigo_trim_local_service(char *device_name);
 /** Asynchronous execution in thread.
  */
 extern bool indigo_async(void *fun(void *data), void *data);
-	
+
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
