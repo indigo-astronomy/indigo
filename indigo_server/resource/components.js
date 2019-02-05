@@ -619,11 +619,17 @@ Vue.component('indigo-query-db', {
 				for (i in dsos) {
 					var data = dsos[i].__data__;
 					if (data == null) continue;
+					var properties = data.properties;
+					if (properties == null) continue;
 					var geometry = data.geometry;
 					if (geometry == null) continue;
-					if (data.id.toUpperCase().indexOf(pattern) >= 0) {
+					if (data.id.toUpperCase().indexOf(pattern) >= 0 || (properties.desig != null && properties.desig.toUpperCase().indexOf(pattern) >= 0)) {
+						var name = properties.name;
+						if (name != "" && properties.desig != "")
+							name += ", ";
+						name += properties.desig;
 						var properties = data.properties;
-						this.result.push({ name: data.id, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
+						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
 					}
 				}				
 			}
