@@ -233,7 +233,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			// TBD current year :)
 			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Current epoch (0, 1950 to 2050)", 0, 2050, 0, 0);
 			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
-			MOUNT_SIDE_OF_PIER_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Side of pier", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			MOUNT_SIDE_OF_PIER_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Side of pier", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_SIDE_OF_PIER_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
@@ -807,7 +807,7 @@ indigo_result indigo_mount_detach(indigo_device *device) {
 static void indigo_eq_to_encoder(indigo_device* device, double ha, double dec, int side_of_pier, double* enc_ha, double* enc_dec) {
 	//  Get hemisphere
 	bool south = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
-	
+
 	//  Convert DEC to Degrees of encoder rotation relative to 0 position
 	//  [-90,90]
 	//
@@ -835,7 +835,7 @@ static void indigo_eq_to_encoder(indigo_device* device, double ha, double dec, i
 	//  DEC  45             Degrees = 225 E or 315 W
 	//  DEC  75             Degrees = 255 E or 285 W
 	//  DEC  90             Degrees = 270
-	
+
 	//  HA represents hours since the transit of the object
 	//  < 0 means object has yet to transit
 	//
@@ -933,7 +933,7 @@ static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* dev
 			min_d = d;
 		}
 	}
-	
+
 	//  Return nearest point
 	return nearest_point;
 }
@@ -952,9 +952,9 @@ indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double 
 		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
 		return indigo_translated_to_raw_with_lst(device, lst, ra, dec, side_of_pier, raw_ra, raw_dec);
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-		
+
 		// TBD Rumen
-		
+
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -1049,14 +1049,14 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 			//  Transform coordinates
 			*ra = raw_ra + (point->ra - point->raw_ra);
 			*dec = raw_dec + (point->dec - point->raw_dec);
-			
+
 			//**  Re-normalize coordinates to ensure they are in range
 			//  RA
 			if (*ra < 0.0)
 				*ra += 24.0;
 			if (*ra >= 24.0)
 				*ra -= 24.0;
-			
+
 			//  DEC
 			if (*dec > 90.0) {
 				*dec = 180.0 - *dec;
@@ -1077,9 +1077,9 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 		}
 		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-		
+
 		// TBD Rumen
-		
+
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;

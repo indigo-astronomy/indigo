@@ -518,7 +518,7 @@ static indigo_result detach(indigo_device *device) {
 static void add_drivers(const char *folder) {
 	char folder_path[PATH_MAX];
 	if(NULL == realpath(folder, folder_path)) {
-		INDIGO_ERROR(indigo_error("realpath(%s, folder_path): failed", folder));
+		INDIGO_DEBUG(indigo_debug("realpath(%s, folder_path): failed", folder));
 		return;
 	}
 	DIR *dir = opendir(folder_path);
