@@ -51,6 +51,7 @@
 #define FLAPS_GROUP                        "Flaps"
 #define OIL_GROUP                          "Oil"
 #define CORRECTIONS_GROUP                  "Callibrations"
+#define SPEEDS_GROUP                       "Speeds"
 
 // Panel
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
@@ -200,6 +201,33 @@
 #define RADEC_RELATIVE_MOVE_RA_ITEM_NAME   "RRA"
 #define RADEC_RELATIVE_MOVE_DEC_ITEM_NAME  "RDEC"
 
+#define USER_SPEED_PROPERTY                (PRIVATE_DATA->user_speed_property)
+#define USER_SPEED_RA_ITEM                 (USER_SPEED_PROPERTY->items+0)
+#define USER_SPEED_DEC_ITEM                (USER_SPEED_PROPERTY->items+1)
+#define USER_SPEED_PROPERTY_NAME           "ASCOL_USER_SPEED"
+#define USER_SPEED_RA_ITEM_NAME            "RA"
+#define USER_SPEED_DEC_ITEM_NAME           "DEC"
+
+#define T1_SPEED_PROPERTY                  (PRIVATE_DATA->t1_speed_property)
+#define T1_SPEED_RA_ITEM                   (T1_SPEED_PROPERTY->items+0)
+#define T1_SPEED_DEC_ITEM                  (T1_SPEED_PROPERTY->items+1)
+#define T1_SPEED_PROPERTY_NAME             "ASCOL_T1_SPEED"
+#define T1_SPEED_RA_ITEM_NAME              "RA"
+#define T1_SPEED_DEC_ITEM_NAME             "DEC"
+
+#define T2_SPEED_PROPERTY                  (PRIVATE_DATA->t2_speed_property)
+#define T2_SPEED_RA_ITEM                   (T2_SPEED_PROPERTY->items+0)
+#define T2_SPEED_DEC_ITEM                  (T2_SPEED_PROPERTY->items+1)
+#define T2_SPEED_PROPERTY_NAME             "ASCOL_T2_SPEED"
+#define T2_SPEED_RA_ITEM_NAME              "RA"
+#define T2_SPEED_DEC_ITEM_NAME             "DEC"
+
+#define T3_SPEED_PROPERTY                  (PRIVATE_DATA->t3_speed_property)
+#define T3_SPEED_RA_ITEM                   (T3_SPEED_PROPERTY->items+0)
+#define T3_SPEED_DEC_ITEM                  (T3_SPEED_PROPERTY->items+1)
+#define T3_SPEED_PROPERTY_NAME             "ASCOL_T3_SPEED"
+#define T3_SPEED_RA_ITEM_NAME              "RA"
+#define T3_SPEED_DEC_ITEM_NAME             "DEC"
 
 // Guider
 #define GUIDE_CORRECTION_PROPERTY          (PRIVATE_DATA->guide_correction_property)
@@ -279,6 +307,10 @@ typedef struct {
 	indigo_property *hadec_coordinates_property;
 	indigo_property *hadec_relative_move_property;
 	indigo_property *radec_relative_move_property;
+	indigo_property *user_speed_property;
+	indigo_property *t1_speed_property;
+	indigo_property *t2_speed_property;
+	indigo_property *t3_speed_property;
 
 	// Guider
 	double guide_rate;
@@ -351,6 +383,14 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
 		if (indigo_property_match(RADEC_RELATIVE_MOVE_PROPERTY, property))
 			indigo_define_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
+		if (indigo_property_match(USER_SPEED_PROPERTY, property))
+			indigo_define_property(device, USER_SPEED_PROPERTY, NULL);
+		if (indigo_property_match(T1_SPEED_PROPERTY, property))
+			indigo_define_property(device, T1_SPEED_PROPERTY, NULL);
+		if (indigo_property_match(T2_SPEED_PROPERTY, property))
+			indigo_define_property(device, T2_SPEED_PROPERTY, NULL);
+		if (indigo_property_match(T3_SPEED_PROPERTY, property))
+			indigo_define_property(device, T3_SPEED_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -1224,7 +1264,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value=89.99999;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.min=-89.99999;
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
-		MOUNT_UTC_TIME_PROPERTY->hidden = false;
+		MOUNT_UTC_TIME_PROPERTY->hidden = true;
 
 		MOUNT_PARK_PROPERTY->hidden = false;
 		PRIVATE_DATA->park_update = true;
@@ -1385,8 +1425,32 @@ static indigo_result mount_attach(indigo_device *device) {
 		RADEC_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, RADEC_RELATIVE_MOVE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Relative Move", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (RADEC_RELATIVE_MOVE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(RADEC_RELATIVE_MOVE_RA_ITEM, RADEC_RELATIVE_MOVE_RA_ITEM_NAME, "Right Ascension(-36000\" to 36000\")", -36000, 36000, 0.01, 0);
+		indigo_init_number_item(RADEC_RELATIVE_MOVE_RA_ITEM, RADEC_RELATIVE_MOVE_RA_ITEM_NAME, "Right Ascension (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		indigo_init_number_item(RADEC_RELATIVE_MOVE_DEC_ITEM, RADEC_RELATIVE_MOVE_DEC_ITEM_NAME, "Declination (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
+		// -------------------------------------------------------------------------- USER_SPEED
+		USER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, USER_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "User Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (USER_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(USER_SPEED_RA_ITEM, USER_SPEED_RA_ITEM_NAME, "Right Ascension (-10.0\"/s to 10.0\"/s)", -10, 10, 0.0001, 0);
+		indigo_init_number_item(USER_SPEED_DEC_ITEM, USER_SPEED_DEC_ITEM_NAME, "Declination (-10.0\"/s to 10.0\"/s)", -10, 10, 0.0001, 0);
+		// -------------------------------------------------------------------------- T1_SPEED
+		T1_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T1_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T1 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (T1_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(T1_SPEED_RA_ITEM, T1_SPEED_RA_ITEM_NAME, "Right Ascension (100.0\"/s to 5000.0\"/s)", 100, 5000, 0.01, 0);
+		indigo_init_number_item(T1_SPEED_DEC_ITEM, T1_SPEED_DEC_ITEM_NAME, "Declination (100.0\"/s to 5000.0\"/s)", 100, 5000, 0.01, 0);
+		// -------------------------------------------------------------------------- T2_SPEED
+		T2_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T2_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T2 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (T2_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(T2_SPEED_RA_ITEM, T2_SPEED_RA_ITEM_NAME, "Right Ascension (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
+		indigo_init_number_item(T2_SPEED_DEC_ITEM, T2_SPEED_DEC_ITEM_NAME, "Declination (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
+		// -------------------------------------------------------------------------- T3_SPEED
+		T3_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T3_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T3 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (T3_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(T3_SPEED_RA_ITEM, T3_SPEED_RA_ITEM_NAME, "Right Ascension (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
+		indigo_init_number_item(T3_SPEED_DEC_ITEM, T3_SPEED_DEC_ITEM_NAME, "Declination (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
 		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1428,6 +1492,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 					indigo_define_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
 					indigo_define_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
+					indigo_define_property(device, USER_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, T1_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, T2_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, T3_SPEED_PROPERTY, NULL);
 
 					device->is_connected = true;
 				} else {
@@ -1458,6 +1526,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 				indigo_delete_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
 				indigo_delete_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
+				indigo_delete_property(device, USER_SPEED_PROPERTY, NULL);
+				indigo_delete_property(device, T1_SPEED_PROPERTY, NULL);
+				indigo_delete_property(device, T2_SPEED_PROPERTY, NULL);
+				indigo_delete_property(device, T3_SPEED_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1679,6 +1751,10 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(HADEC_COORDINATES_PROPERTY);
 	indigo_release_property(HADEC_RELATIVE_MOVE_PROPERTY);
 	indigo_release_property(RADEC_RELATIVE_MOVE_PROPERTY);
+	indigo_release_property(USER_SPEED_PROPERTY);
+	indigo_release_property(T1_SPEED_PROPERTY);
+	indigo_release_property(T2_SPEED_PROPERTY);
+	indigo_release_property(T3_SPEED_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) ascol_device_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
