@@ -1247,6 +1247,56 @@ static void mount_update_state() {
 		indigo_update_property(device, HADEC_COORDINATES_PROPERTY, NULL);
 	}
 
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_TRUS(PRIVATE_DATA->dev_id, &ra, &dec);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRUS(%d) = %d", PRIVATE_DATA->dev_id, res);
+		USER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, USER_SPEED_PROPERTY, NULL);
+	} else if ((USER_SPEED_RA_ITEM->number.value != ra) || (USER_SPEED_DEC_ITEM->number.value != dec)){
+		USER_SPEED_RA_ITEM->number.value = ra;
+		USER_SPEED_DEC_ITEM->number.value = dec;
+		indigo_update_property(device, USER_SPEED_PROPERTY, NULL);
+	}
+
+	double speed;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_TRS1(PRIVATE_DATA->dev_id, &speed);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRS1(%d) = %d", PRIVATE_DATA->dev_id, res);
+		T1_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, T1_SPEED_PROPERTY, NULL);
+	} else if (T1_SPEED_ITEM->number.value != speed) {
+		T1_SPEED_ITEM->number.value = speed;
+		indigo_update_property(device, T1_SPEED_PROPERTY, NULL);
+	}
+
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_TRS2(PRIVATE_DATA->dev_id, &speed);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRS2(%d) = %d", PRIVATE_DATA->dev_id, res);
+		T2_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, T2_SPEED_PROPERTY, NULL);
+	} else if (T2_SPEED_ITEM->number.value != speed) {
+		T1_SPEED_ITEM->number.value = speed;
+		indigo_update_property(device, T2_SPEED_PROPERTY, NULL);
+	}
+
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_TRS3(PRIVATE_DATA->dev_id, &speed);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRS3(%d) = %d", PRIVATE_DATA->dev_id, res);
+		T3_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, T3_SPEED_PROPERTY, NULL);
+	} else if (T3_SPEED_ITEM->number.value != speed) {
+		T3_SPEED_ITEM->number.value = speed;
+		indigo_update_property(device, T3_SPEED_PROPERTY, NULL);
+	}
+
 	if (PRIVATE_DATA->park_update || (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		if ((round(HADEC_COORDINATES_HA_ITEM->number.value*100) == 18000) &&
 		   (round(HADEC_COORDINATES_DEC_ITEM->number.value*100) == 8999) &&
