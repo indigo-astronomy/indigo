@@ -13,7 +13,7 @@ input {
 }
 
 .dirty {
-	background-color: #FFBFBF!important;
+	background-color: #fff3cd!important;
 }
 
 .container-fluid {
@@ -111,4 +111,15 @@ input {
 	width: 58px;
 	text-align: center;
 	font-size: 19px;
+}
+
+.btn-svg {
+	width: 3.5rem;
+	height: 2.5rem;
+}
+
+.btn-svg svg {
+	vertical-align: middle;
+	width: 1.5rem;
+	height: 1.5rem;
 }

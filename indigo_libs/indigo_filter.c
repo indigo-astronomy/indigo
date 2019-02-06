@@ -228,6 +228,7 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result update_device_list(indigo_device *device, indigo_client *client, indigo_property *device_list, indigo_property *property, char *device_name) {
 	device_name = 0;
+
 	indigo_property *connection_property = indigo_init_switch_property(NULL, "", CONNECTION_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 	for (int i = 1; i < device_list->count; i++) {
 		if (device_list->items[i].sw.value) {
@@ -239,10 +240,14 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 		}
 	}
 	indigo_property_copy_values(device_list, property, false);
+	indigo_property *configuration_property = indigo_init_switch_property(NULL, "", CONFIG_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	for (int i = 1; i < device_list->count; i++) {
 		if (device_list->items[i].sw.value) {
 			device_list->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, device_list, NULL);
+			strcpy(configuration_property->device, device_list->items[i].name);
+			indigo_init_switch_item(configuration_property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
+			indigo_change_property(client, configuration_property);
 			strcpy(connection_property->device, device_list->items[i].name);
 			indigo_init_switch_item(connection_property->items, CONNECTION_CONNECTED_ITEM_NAME, NULL, true);
 			indigo_change_property(client, connection_property);
@@ -418,6 +423,10 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 							device_list->state = INDIGO_ALERT_STATE;
 							strcpy(FILTER_CLIENT_CONTEXT->device_name[i], "");
 						} else if (connected_device->sw.value && property->state == INDIGO_OK_STATE) {
+							indigo_property *configuration_property = indigo_init_switch_property(NULL, "", CONFIG_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+							strcpy(configuration_property->device,  property->device);
+							indigo_init_switch_item(configuration_property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
+							indigo_change_property(client, configuration_property);
 							strcpy(FILTER_CLIENT_CONTEXT->device_name[i], property->device);
 							indigo_property all_properties;
 							memset(&all_properties, 0, sizeof(all_properties));

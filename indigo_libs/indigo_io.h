@@ -42,10 +42,15 @@ extern int indigo_open_serial(const char *dev_file);
  */
 extern int indigo_open_serial_with_speed(const char *dev_file, int speed);
 	
-/** Open network connection.
+/** Open TCP network connection.
  */
 extern int indigo_open_tcp(const char *host, int port);
 
+	
+/** Open UDP network connection.
+ */
+extern int indigo_open_udp(const char *host, int port);
+	
 /** Read buffer.
  */
 extern int indigo_read(int handle, char *buffer, long length);

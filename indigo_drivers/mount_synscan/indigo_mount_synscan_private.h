@@ -15,7 +15,7 @@
 //#include "indigo_timer.h"
 #include "indigo_mount_synscan_driver.h"
 
-#define DRIVER_VERSION			0x0002
+#define DRIVER_VERSION			0x0003
 #define DRIVER_NAME					"indigo_mount_synscan"
 
 #define PRIVATE_DATA        ((synscan_private_data *)device->private_data)
@@ -40,6 +40,7 @@ enum AxisMode {
 
 typedef struct {
 	int handle;
+	bool udp;
 	bool parked;
 	bool park_in_progress;
 	char tty_name[INDIGO_VALUE_SIZE];

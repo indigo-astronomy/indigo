@@ -1210,7 +1210,7 @@ sub main() {
 
 			if ($cmd[0] eq "TRHD") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
-				my $resp = sprintf "%.4f %.4f\n", $set_ha - 180, $set_de;
+				my $resp = sprintf "%.4f %.4f\n", $set_ha, $set_de;
 				print_client($client, $resp);
 				next;
 			}

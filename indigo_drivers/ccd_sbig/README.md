@@ -1,10 +1,10 @@
-# SBIG CCD and Filter Wheel driver
+# SBIG CCD, Filter Wheel and Adaptive Optics driver
 
 http://diffractionlimited.com/
 
 ## Supported devices
 
-All SBIG CCD USB and Ethernet cameras along with connected to them filter wheels.
+All SBIG CCD USB and Ethernet cameras along with connected to them filter wheels and adaptive optics.
 
 This driver supports hot-plug (multiple devices).
 
@@ -24,6 +24,9 @@ indigo_server indigo_ccd_sbig
 
 Driver is developed and tested with:
 * SBIG ST-2000XCM
+* SBIG ST-7XE
+* SBIG CFW-8A
+* SBIG AO-7
 * SBIG Camera Simulator
 
 ## NOTES
@@ -35,6 +38,15 @@ them one should set environment variable SBIG_LEGACY_CFW to CFW8 or CFW6A like:
 export SBIG_LEGACY_CFW=CFW8
 
 This will expose the device even it is not really present.
+
+### AO-7
+
+AO-8 and later are auto detected, but AO-7 cannot be auto detected. In order to use it 
+one should set environment variable SBIG_LEGACY_AO to AO7 like:
+
+export SBIG_LEGACY_AO=AO7
+
+This will expose the device even if it is not really present.
 
 ### MacOS SDK distributed separately (MacOS only)
 

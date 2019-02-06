@@ -890,6 +890,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_USB_PORT_STATE_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_4_ITEM->text.value);
 		snprintf(AUX_USB_PORT_STATE_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_5_ITEM->text.value);
 		snprintf(AUX_USB_PORT_STATE_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
+		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -899,9 +900,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
+			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		}
-		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
@@ -1282,14 +1282,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		snprintf(command, sizeof(command), "SB:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
-		if (upb_command(device, command, response, sizeof(response))) {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+			snprintf(command, sizeof(command), "SB:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
+			if (upb_command(device, command, response, sizeof(response))) {
+				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		}
-		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);

@@ -795,26 +795,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// -------------------------------------------------------------------------------- FLI_NFLUSHES
 	} else if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FLI_NFLUSHES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FLI_NFLUSHES_PROPERTY, "Exposure in progress, number of flushes can not be changed.");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(FLI_NFLUSHES_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			handle_nflushes_property(device, property);
-		}
+		handle_nflushes_property(device, property);
 	// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 	} else if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FLI_CAMERA_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Exposure in progress, camera mode can not be changed.");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(FLI_CAMERA_MODE_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			handle_camera_mode_property(device, property);
-		}
+		handle_camera_mode_property(device, property);
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		//INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value);
@@ -854,7 +852,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

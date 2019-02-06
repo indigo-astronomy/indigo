@@ -122,4 +122,4 @@
 #### AO
 
 1. SX AO driver __DONE__
-2. SBIG AO driver (based on SBIG SDK)
+2. SBIG AO driver (based on SBIG SDK) __DONE__

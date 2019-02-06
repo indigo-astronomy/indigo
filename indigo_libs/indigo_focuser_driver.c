@@ -189,13 +189,17 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 	} else if (indigo_property_match(FOCUSER_ON_POSITION_SET_PROPERTY, property)) {
@@ -207,7 +211,9 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_DIRECTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_DIRECTION_PROPERTY, property, false);
 		FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {

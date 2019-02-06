@@ -739,7 +739,7 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 }
 
 
-int ascol_3_ra_de_e_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *west) {
+int ascol_3_ra_de_w_return_cmd(int devfd, char *cmd_name, double *ra, double *de, char *west) {
 	char cmd[ASCOL_MSG_LEN] = {0};
 	char resp[ASCOL_MSG_LEN] = {0};
 	char ra_s[ASCOL_MSG_LEN];

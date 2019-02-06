@@ -112,13 +112,17 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(WHEEL_SLOT_NAME_PROPERTY, property)) {
 		indigo_property_copy_values(WHEEL_SLOT_NAME_PROPERTY, property, false);
 		WHEEL_SLOT_NAME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- WHEEL_SLOT_OFFSET
 	} else if (indigo_property_match(WHEEL_SLOT_OFFSET_PROPERTY, property)) {
 		indigo_property_copy_values(WHEEL_SLOT_OFFSET_PROPERTY, property, false);
 		WHEEL_SLOT_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG

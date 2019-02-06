@@ -224,7 +224,10 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 				*subprocess = &indigo_available_subprocesses[dc];
 			pthread_mutex_unlock(&mutex);
 			return INDIGO_DUPLICATED;
-		} else if (!indigo_available_subprocesses[dc].thread_started) {
+		}
+	}
+	for (int dc = 0; dc < used_subprocess_slots;  dc++) {
+		if (!indigo_available_subprocesses[dc].thread_started) {
 			empty_slot = dc;
 			break;
 		}
@@ -343,16 +346,19 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
   int empty_slot = used_server_slots;
   pthread_mutex_lock(&mutex);
   for (int dc = 0; dc < used_server_slots; dc++) {
-    if (indigo_available_servers[dc].socket > 0 && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
+    if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
       INDIGO_LOG(indigo_log("Server %s:%d already connected", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
       if (server != NULL)
         *server = &indigo_available_servers[dc];
       pthread_mutex_unlock(&mutex);
       return INDIGO_DUPLICATED;
-    } else if (!indigo_available_servers[dc].thread_started) {
-      empty_slot = dc;
-    }
+		}
   }
+	for (int dc = 0; dc < used_server_slots; dc++) {
+		if (!indigo_available_servers[dc].thread_started) {
+			empty_slot = dc;
+		}
+	}
   if (empty_slot > INDIGO_MAX_SERVERS) {
     pthread_mutex_unlock(&mutex);
     return INDIGO_TOO_MANY_ELEMENTS;

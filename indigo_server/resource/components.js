@@ -47,7 +47,8 @@ Vue.component('indigo-edit-number', {
 		name: String,
 		icon: String,
 		values: Array,
-		cls: String
+		cls: String,
+		ident: String
 	},
 	methods: {
 		change: function(value) {
@@ -117,8 +118,14 @@ Vue.component('indigo-edit-number', {
 				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
 				<span v-else class="input-group-text" :class="state()">{{icon}}</span>
 			</a>
-			<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
-			<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+			<template v-if="ident != null">
+				<input v-if="property.perm == 'ro'" :id="ident" readonly type="text" class="form-control input-right" :value="value()">
+				<input v-else :id="ident" type="text" class="form-control input-right" :value="value()" @change="onChange">
+			</template>
+			<template v-else>
+				<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
+				<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+			</template>
 			<div v-if="values != null" class="input-group-append">
 				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-toggle="dropdown"></button>
 				<div class="dropdown-menu">
@@ -133,7 +140,8 @@ Vue.component('indigo-edit-number-60', {
 		property: Object,
 		name: String,
 		icon: String,
-		cls: String
+		cls: String,
+		ident: String
 	},
 	methods: {
 		change: function(value) {
@@ -143,7 +151,6 @@ Vue.component('indigo-edit-number-60', {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
 					item.newValue = stod(value);
-							console.log(item.newValue);
 					return;
 				}
 			}
@@ -162,7 +169,7 @@ Vue.component('indigo-edit-number-60', {
 				if (item.name == this.name) {
 					if (this.property.perm == "ro")
 						return dtos(item.value)
-					return dtos(item.target)
+					return dtos(item.newValue != null ? item.newValue : item.target)
 				}
 			}
 			return null;
@@ -174,8 +181,14 @@ Vue.component('indigo-edit-number-60', {
 				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
 				<div v-else class="input-group-text input-label" :class="state()">{{icon}}</div>
 			</a>
-			<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
-			<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+			<template v-if="ident != null">
+				<input v-if="property.perm == 'ro'" :id="ident" readonly type="text" class="form-control input-right" :value="value()">
+				<input v-else :id="ident" type="text" class="form-control input-right" :value="value()" @change="onChange">
+			</template>
+			<template v-else>
+				<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
+				<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+			</template>
 		</div>`
 });
 
@@ -387,7 +400,8 @@ Vue.component('indigo-ctrl', {
 			return item.newValue != null ? item.newValue : item.value;
 		},
 		newValue: function(item, value) {
-			Vue.set(item, 'newValue', value);
+			if (!Number.isNaN(value) && item.value != value)
+				Vue.set(item, 'newValue', value);
 		},
 		reset: function(property) {
 			for (i in property.items) {
@@ -499,8 +513,10 @@ Vue.component('indigo-ctrl', {
 										</template>
 										<template v-else-if="property.type == 'blob'">
 											<div v-for="item in property.items">
-												<a v-if="!item.value.endsWith('.jpeg')" :href="'http://' + window.location.hostname + ':' + window.location.port + item.value">{{"http://" + window.location.hostname + ":" + window.location.port + item.value}}</a>
-												<img v-else :src="'http://' + window.location.hostname + ':' + window.location.port + item.value" class="img-fluid"/>
+												<template v-if="item.value != null">
+													<a v-if="!item.value.endsWith('.jpeg')" :href="'http://' + window.location.hostname + ':' + window.location.port + item.value">{{"http://" + window.location.hostname + ":" + window.location.port + item.value}}</a>
+													<img v-else :src="'http://' + window.location.hostname + ':' + window.location.port + item.value" class="img-fluid"/>
+												</template>
 											</div>
 										</template>
 										<template v-else>
@@ -564,4 +580,72 @@ Vue.component('indigo-select-multi-item', {
 				</div>
 			</div>
 		</div>`
+});
+
+Vue.component('indigo-query-db', {
+	props: {
+		container: Object,
+		result: Object
+	},
+	methods: {
+		setTarget: function(object) {
+			selectObject(object.ra, object.dec);
+		},
+		onChange: function(e) {
+			var pattern = e.target.value.replace(" ", "").toUpperCase();
+			var id = Number.parseInt(pattern);
+			this.result = [];
+			if (pattern != "") {
+				var stars = $(this.container).children(".star");
+				for (i in stars) {
+					var data = stars[i].__data__;
+					if (data == null) continue;
+					var properties = data.properties;
+					if (properties == null) continue;
+					var geometry = data.geometry;
+					if (geometry == null) continue;
+					if (data.id == id || (properties.name != null && properties.name.toUpperCase().indexOf(pattern) >= 0)) {
+						var name = properties.name;
+						if (name != "")
+							name += ", ";
+						name += properties.desig + properties.con;
+						if (name != "")
+							name += ", ";
+						name += "HIP" + data.id;
+						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
+					}
+				}				
+				var dsos = $(this.container).children(".dso");
+				for (i in dsos) {
+					var data = dsos[i].__data__;
+					if (data == null) continue;
+					var properties = data.properties;
+					if (properties == null) continue;
+					var geometry = data.geometry;
+					if (geometry == null) continue;
+					if (data.id.toUpperCase().indexOf(pattern) >= 0 || (properties.desig != null && properties.desig.toUpperCase().indexOf(pattern) >= 0)) {
+						var name = properties.name;
+						if (name != "" && properties.desig != "")
+							name += ", ";
+						name += properties.desig;
+						var properties = data.properties;
+						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
+					}
+				}				
+			}
+		}
+	},
+	template: `
+		<div class="w-100">
+			<div class="input-group p-1 w-100">
+				<div class="input-group-prepend">
+					<div class="input-group-text btn-svg">&#x1f50d;</div>
+				</div>
+				<input type="text" class="form-control" @change="onChange">			
+			</div>
+			<div class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
+				<a v-for="object in this.result" href="#" class="list-group-item list-group-item-action" @click="setTarget(object)">{{object.name}}</a>
+			</div>
+		<div>
+		`
 });

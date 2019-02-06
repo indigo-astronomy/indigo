@@ -1106,6 +1106,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
 		// ------------------------------------------------------------------------------- CCD_FRAME
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		fix_bpp(device);
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
@@ -1155,6 +1156,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match(VSSPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- VSSPEED
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(VSSPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1180,6 +1182,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, VSSPEED_PROPERTY, NULL);
 	} else if (indigo_property_match(VSAMPLITUDE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- VSAMPLITUDE
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(VSAMPLITUDE_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1209,6 +1212,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
 	} else if (indigo_property_match(HREADOUT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HREADOUT
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(HREADOUT_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1250,6 +1254,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, HREADOUT_PROPERTY, NULL);
 	} else if (indigo_property_match(PREAMPGAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- PREAMPGAIN
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(PREAMPGAIN_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1275,6 +1280,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, PREAMPGAIN_PROPERTY, NULL);
 	} else if (indigo_property_match(HIGHCAPACITY_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HIGHCAPACITY
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(HIGHCAPACITY_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1300,6 +1306,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, HIGHCAPACITY_PROPERTY, NULL);
 	} else if (indigo_property_match(BASELINECLAMP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- BASELINECLAMP
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(BASELINECLAMP_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1325,6 +1332,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, BASELINECLAMP_PROPERTY, NULL);
 	} else if (indigo_property_match(BASELINEOFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- BASELINEOFFSET
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(BASELINEOFFSET_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1348,6 +1356,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, BASELINEOFFSET_PROPERTY, NULL);
 	} else if (indigo_property_match(FANCONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FANCONTROL
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FANCONTROL_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1373,6 +1382,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, FANCONTROL_PROPERTY, NULL);
 	} else if (indigo_property_match(COOLERMODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- COOLERMODE
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(COOLERMODE_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
