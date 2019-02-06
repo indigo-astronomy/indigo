@@ -497,7 +497,6 @@
 		590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ao_sx.h; sourceTree = "<group>"; };
 		590BF1B021EBCF7500C24DBA /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ao_sx.c; sourceTree = "<group>"; };
-		590D21D521FE684F0057DC31 /* dsos.6.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.6.json; sourceTree = "<group>"; };
 		590DD780212013B500F2B978 /* Makefile.mingw */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.mingw; sourceTree = "<group>"; };
 		590DD781212013B500F2B978 /* LICENSE.LGPL */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE.LGPL; sourceTree = "<group>"; };
 		590DD782212013B500F2B978 /* README.cmake */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.cmake; sourceTree = "<group>"; };
@@ -7175,7 +7174,6 @@
 			isa = PBXGroup;
 			children = (
 				59AF320D21F262280008CC52 /* readme.md */,
-				590D21D521FE684F0057DC31 /* dsos.6.json */,
 				59AF320721F262280008CC52 /* constellations.json */,
 				59AF320F21F262280008CC52 /* planets.json */,
 				59AF321021F262280008CC52 /* constellations.bounds.json */,
