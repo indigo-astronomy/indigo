@@ -993,6 +993,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- APG_ADC_SPEED
 	} else if (indigo_property_match(APG_ADC_SPEED_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(APG_ADC_SPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		for(int i = 0; i < APG_ADC_SPEED_PROPERTY->count; i++) {
@@ -1015,6 +1016,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, APG_ADC_SPEED_PROPERTY, NULL);
 	// -------------------------------------------------------------------------------- APG_FAN_SPEED
 	} else if (indigo_property_match(APG_FAN_SPEED_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(APG_FAN_SPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		for(int i = 0; i < APG_FAN_SPEED_PROPERTY->count; i++) {

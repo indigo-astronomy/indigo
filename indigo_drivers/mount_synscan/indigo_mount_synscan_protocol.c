@@ -12,6 +12,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include "indigo_driver.h"
 #include "indigo_io.h"
 #include "indigo_mount_synscan_private.h"

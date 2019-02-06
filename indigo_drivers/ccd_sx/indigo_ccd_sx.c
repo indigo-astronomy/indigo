@@ -838,7 +838,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (!(h == 1 || h == 2 || h == 4) || h != v) {
 			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.value = h;
 			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			}
 			return INDIGO_OK;
 		}
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {

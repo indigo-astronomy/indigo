@@ -810,7 +810,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 					CCD_MODE_PROPERTY->count = count;
 
-					// --------------------------------------------------------------------------------- GAIN
+					// --------------------------------------------------------------------------------- CCD_GAIN
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAIN) == QHYCCD_SUCCESS) {
 						CCD_GAIN_PROPERTY->hidden = false;
 						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_GAIN, &CCD_GAIN_ITEM->number.min, &CCD_GAIN_ITEM->number.max, &CCD_GAIN_ITEM->number.step);
@@ -819,7 +819,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_GAIN_PROPERTY->hidden = true;
 					}
 
-					// --------------------------------------------------------------------------------- OFFSET
+					// --------------------------------------------------------------------------------- CCD_OFFSET
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_OFFSET) == QHYCCD_SUCCESS) {
 						CCD_OFFSET_PROPERTY->hidden = false;
 						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_OFFSET, &CCD_OFFSET_ITEM->number.min, &CCD_OFFSET_ITEM->number.max, &CCD_OFFSET_ITEM->number.step);
@@ -828,7 +828,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_OFFSET_PROPERTY->hidden = true;
 					}
 
-					// --------------------------------------------------------------------------------- GAMMA
+					// --------------------------------------------------------------------------------- CCD_GAMMA
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAMMA) == QHYCCD_SUCCESS) {
 						CCD_GAMMA_PROPERTY->hidden = false;
 						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_GAMMA, &CCD_GAMMA_ITEM->number.min, &CCD_GAMMA_ITEM->number.max, &CCD_GAMMA_ITEM->number.step);
@@ -997,7 +997,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- GAMMA
+		// -------------------------------------------------------------------------------- CCD_GAMMA
 	} else if (indigo_property_match(CCD_GAMMA_PROPERTY, property)) {
 		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
@@ -1005,25 +1005,50 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		int res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA, CCD_GAMMA_ITEM->number.value);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, CONTROL_GAMMA) = %d", PRIVATE_DATA->dev_sid, res);
-
-		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
+		if (res != QHYCCD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, CONTROL_GAMMA) = %d", PRIVATE_DATA->dev_sid, res);
+			CCD_GAMMA_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- GAIN
+		// -------------------------------------------------------------------------------- CCD_GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		int res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAIN, CCD_GAIN_ITEM->number.value);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, CONTROL_GAIN) = %d", PRIVATE_DATA->dev_sid, res);
-
-		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED)
-			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		if (res != QHYCCD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, CONTROL_GAIN) = %d", PRIVATE_DATA->dev_sid, res);
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- CCD_OFFSET
+	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, "Exposure in progress, settings can not be changed.");
+			return INDIGO_OK;
+		}
+		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		int res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET, CCD_OFFSET_ITEM->number.value);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res != QHYCCD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, "OFFSET", res);
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
@@ -1069,28 +1094,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- OFFSET
-	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_OFFSET_PROPERTY, "Exposure in progress, settings can not be changed.");
-			return INDIGO_OK;
-		}
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		int res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET, CCD_OFFSET_ITEM->number.value);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res != QHYCCD_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, "OFFSET", res);
-			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
-		if (IS_CONNECTED)
-			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
-		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADVANCED
 	} else if (indigo_property_match(QHY_ADVANCED_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			QHY_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, QHY_ADVANCED_PROPERTY, "Exposure in progress, advanced settings can not be changed.");
@@ -1099,8 +1105,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		handle_advanced_property(device, property);
 		indigo_property_copy_values(QHY_ADVANCED_PROPERTY, property, false);
 		QHY_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED)
-			indigo_update_property(device, QHY_ADVANCED_PROPERTY, NULL);
+		indigo_update_property(device, QHY_ADVANCED_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_MODE
 	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {

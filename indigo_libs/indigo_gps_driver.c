@@ -58,8 +58,8 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GPS_SITE_GROUP, "Location", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
 			if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, "Latitude (-S / +N)", -90, 90, 0, 0);
-			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, "Longitude (-W / +E)", -180, 360, 0, 0);
+			indigo_init_sexagesimal_number_item(GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, "Latitude (-S / +N)", -90, 90, 0, 0);
+			indigo_init_sexagesimal_number_item(GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, "Longitude (-W / +E)", -180, 360, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, "Elevation (m)", 0, 9000, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM, GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME, "Position accuracy (+/-m)", 0, 200, 0, 0);
 			// -------------------------------------------------------------------------------- GPS_UTC_TIME
@@ -69,7 +69,7 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 			GPS_UTC_TIME_PROPERTY->hidden = true;
 			indigo_init_text_item(GPS_UTC_ITEM, UTC_TIME_ITEM_NAME, "UTC Time", "0000-00-00T00:00:00");
 			indigo_init_text_item(GPS_UTC_OFFEST_ITEM, UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */
-			// -------------------------------------------------------------------------------- GPS_ENABLE_ADVANCED_STATUS
+			// -------------------------------------------------------------------------------- GPS_ADVANCED
 			GPS_ADVANCED_PROPERTY = indigo_init_switch_property(NULL, device->name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_GROUP, "Advanced Status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (GPS_ADVANCED_PROPERTY == NULL)
 				return INDIGO_FAILED;
@@ -106,7 +106,7 @@ indigo_result indigo_gps_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, GPS_STATUS_PROPERTY, NULL);
 		if (indigo_property_match(GPS_ADVANCED_PROPERTY, property))
 			indigo_define_property(device, GPS_ADVANCED_PROPERTY, NULL);
-		if (indigo_property_match(GPS_ADVANCED_PROPERTY, property) && (GPS_ADVANCED_ENABLED_ITEM->sw.value))
+		if (indigo_property_match(GPS_ADVANCED_STATUS_PROPERTY, property) && (GPS_ADVANCED_ENABLED_ITEM->sw.value))
 			indigo_define_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
@@ -142,18 +142,22 @@ indigo_result indigo_gps_change_property(indigo_device *device, indigo_client *c
 		if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
 			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(GPS_ADVANCED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GPS_ADVANCED_COORDINATES
+		// -------------------------------------------------------------------------------- GPS_ADVANCED
 		indigo_property_copy_values(GPS_ADVANCED_PROPERTY, property, false);
-		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
-			indigo_define_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
-		} else {
-			indigo_delete_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
-		}
 		GPS_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GPS_ADVANCED_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+				indigo_define_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+			} else {
+				indigo_delete_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+			}
+			indigo_update_property(device, GPS_ADVANCED_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG

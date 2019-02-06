@@ -14,6 +14,7 @@
 		590BF1AC21EBBBEE00C24DBA /* indigo_ao_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 590BF1AA21EBBBEE00C24DBA /* indigo_ao_driver.c */; };
 		590BF1B321EBCF7500C24DBA /* indigo_ao_sx.h in Headers */ = {isa = PBXBuildFile; fileRef = 590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */; };
 		590BF1B421EBCF7500C24DBA /* indigo_ao_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */; };
+		590D21D621FE6A520057DC31 /* star_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A0772A21FE1C2F00244521 /* star_data.c */; };
 		590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 590DD8772127590600F2B978 /* indigo_wheel_optec.c */; };
 		590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */ = {isa = PBXBuildFile; fileRef = 590DD87A2127590600F2B978 /* indigo_wheel_optec.h */; };
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
@@ -114,6 +115,8 @@
 		59A5302221A35167000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A5301421A3514E000B6F27 /* libatik.h */; };
 		59A5302521A35264000B6F27 /* libqhy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5300721A34310000B6F27 /* libqhy.a */; };
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
+		59AC720021FE5726004406D4 /* solsys3.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8ADF321A9D79900C3594F /* solsys3.c */; };
+		59AC720921FE57EB004406D4 /* eph_manager.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8ADFA21A9D79900C3594F /* eph_manager.c */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
 		59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD17321823693008199D6 /* indigo_ccd_altair.c */; };
@@ -123,6 +126,10 @@
 		59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
 		59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */; };
 		59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */; };
+		59C6F75D21FE4C5A0043DC52 /* novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8ADF421A9D79900C3594F /* novas.c */; };
+		59C6F75F21FE4C7C0043DC52 /* novascon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8AE0121A9D79900C3594F /* novascon.c */; };
+		59C6F76221FE4C870043DC52 /* nutation.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8AE0721A9D79900C3594F /* nutation.c */; };
+		59C6F76321FE4CAD0043DC52 /* readeph0.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8AE0321A9D79900C3594F /* readeph0.c */; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
 		59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
@@ -296,6 +303,22 @@
 		9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D6940892180B9F600AB112C /* indigo_aux_upb.c */; };
 		9D7244F421F1CFEC0028FDF4 /* indigo_agent_mount.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */; };
 		9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */; };
+		9D73E60421FF36C4003CEC15 /* indigo_ccd_uvc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E5F821FF36C4003CEC15 /* indigo_ccd_uvc.c */; };
+		9D73E60521FF36C4003CEC15 /* indigo_ccd_uvc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E5FA21FF36C4003CEC15 /* indigo_ccd_uvc.h */; };
+		9D73E60621FF36C4003CEC15 /* indigo_ccd_uvc_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E5FB21FF36C4003CEC15 /* indigo_ccd_uvc_main.c */; };
+		9D73E60A21FF37DB003CEC15 /* libuvc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E60721FF37DA003CEC15 /* libuvc.h */; };
+		9D73E60B21FF37DB003CEC15 /* libuvc_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E60821FF37DA003CEC15 /* libuvc_internal.h */; };
+		9D73E60C21FF37DB003CEC15 /* libuvc_config.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E60921FF37DB003CEC15 /* libuvc_config.h */; };
+		9D73E61621FF37F9003CEC15 /* libuvc_ctrl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E60D21FF37F7003CEC15 /* libuvc_ctrl.c */; };
+		9D73E61721FF37F9003CEC15 /* libuvc_frame_mjpeg.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E60E21FF37F8003CEC15 /* libuvc_frame_mjpeg.c */; };
+		9D73E61821FF37F9003CEC15 /* libuvc_frame.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E60F21FF37F8003CEC15 /* libuvc_frame.c */; };
+		9D73E61921FF37F9003CEC15 /* libuvc_diag.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61021FF37F8003CEC15 /* libuvc_diag.c */; };
+		9D73E61A21FF37F9003CEC15 /* libuvc_ctrl_gen.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61121FF37F8003CEC15 /* libuvc_ctrl_gen.c */; };
+		9D73E61B21FF37F9003CEC15 /* libuvc_misc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61221FF37F8003CEC15 /* libuvc_misc.c */; };
+		9D73E61C21FF37F9003CEC15 /* libuvc_device.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61321FF37F8003CEC15 /* libuvc_device.c */; };
+		9D73E61D21FF37F9003CEC15 /* libuvc_init.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61421FF37F9003CEC15 /* libuvc_init.c */; };
+		9D73E61E21FF37F9003CEC15 /* libuvc_stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61521FF37F9003CEC15 /* libuvc_stream.c */; };
+		9D73E62121FF3996003CEC15 /* utlist.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E62021FF3996003CEC15 /* utlist.h */; };
 		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
 		9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
@@ -358,7 +381,6 @@
 		9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 59292E5620D4224F0042E939 /* libcurl.tbd */; };
 		9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0421EE35C000657C8F /* libc++.tbd */; };
 		9DDEFC0621EE360900657C8F /* libnexstar.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59DEC8CC21ADE04D00BF7958 /* libnexstar.a */; };
-		9DDEFC2621EE39B300657C8F /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC1D21EE39B300657C8F /* libnovas.a */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
 		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
 /* End PBXBuildFile section */
@@ -908,6 +930,10 @@
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
 		5963BBCD21D2A88100F1EC5A /* metainfo.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = metainfo.sh; sourceTree = "<group>"; };
+		5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-G.pdf"; sourceTree = "<group>"; };
+		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
+		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
+		5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Gemini-5-2.1.pdf"; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
 		598C57E321A75B1A001CA8C0 /* libnexstar.man */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.man; sourceTree = "<group>"; };
 		598C57E521A75B1A001CA8C0 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
@@ -987,6 +1013,7 @@
 		599E6A73214D8EEB00E45C9E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
+		59A0772A21FE1C2F00244521 /* star_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = star_data.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59A3217021D52C4600EC0F4A /* indigo_focuser_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_asi.c; sourceTree = "<group>"; };
 		59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_asi.h; sourceTree = "<group>"; };
 		59A3217221D52C4600EC0F4A /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -1626,26 +1653,13 @@
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59AF31F621F25E7A0008CC52 /* d3.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.min.js; sourceTree = "<group>"; };
 		59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.geo.projection.min.js; sourceTree = "<group>"; };
-		59AF320021F25F4B0008CC52 /* d3.config.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.config.js; sourceTree = "<group>"; };
-		59AF320421F262280008CC52 /* dsos.6.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.6.json; sourceTree = "<group>"; };
-		59AF320521F262280008CC52 /* dsos.14.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.14.json; sourceTree = "<group>"; };
-		59AF320621F262280008CC52 /* constellations.lines.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.lines.json; sourceTree = "<group>"; };
-		59AF320721F262280008CC52 /* constellations.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.json; sourceTree = "<group>"; };
-		59AF320821F262280008CC52 /* lg.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lg.json; sourceTree = "<group>"; };
-		59AF320921F262280008CC52 /* messier.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = messier.json; sourceTree = "<group>"; };
-		59AF320A21F262280008CC52 /* stars.6.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stars.6.json; sourceTree = "<group>"; };
-		59AF320B21F262280008CC52 /* asterisms.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = asterisms.json; sourceTree = "<group>"; };
-		59AF320C21F262280008CC52 /* dsos.bright.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.bright.json; sourceTree = "<group>"; };
+		59AF320721F262280008CC52 /* constellations.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.json; sourceTree = "<group>"; wrapsLines = 1; };
 		59AF320D21F262280008CC52 /* readme.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = readme.md; sourceTree = "<group>"; };
-		59AF320E21F262280008CC52 /* stars.8.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stars.8.json; sourceTree = "<group>"; };
-		59AF320F21F262280008CC52 /* planets.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = planets.json; sourceTree = "<group>"; };
+		59AF320F21F262280008CC52 /* planets.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = planets.json; sourceTree = "<group>"; wrapsLines = 1; };
 		59AF321021F262280008CC52 /* constellations.bounds.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.bounds.json; sourceTree = "<group>"; };
 		59AF321121F262280008CC52 /* mw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mw.json; sourceTree = "<group>"; };
-		59AF321221F262280008CC52 /* stars.14.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stars.14.json; sourceTree = "<group>"; };
-		59AF321321F262280008CC52 /* dsos.20.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dsos.20.json; sourceTree = "<group>"; };
 		59AF321421F264D40008CC52 /* celestial.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = celestial.min.js; sourceTree = "<group>"; };
 		59AF321521F264D40008CC52 /* celestial.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = celestial.css; sourceTree = "<group>"; };
-		59AF321621F2773B0008CC52 /* test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test.html; sourceTree = "<group>"; };
 		59AF321721F3078D0008CC52 /* mng.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mng.png; sourceTree = "<group>"; };
 		59AF321821F308870008CC52 /* mng.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mng.html; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
@@ -1675,6 +1689,7 @@
 		59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main.c; sourceTree = "<group>"; };
 		59C4C88220CEF107007EE330 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro.c; sourceTree = "<group>"; };
+		59C6F75321FE214D0043DC52 /* star_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = star_data.h; sourceTree = "<group>"; };
 		59C8AD3421A9ADDD00C3594F /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59C8AD3721A9D79900C3594F /* rdcolmap.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rdcolmap.c; sourceTree = "<group>"; };
 		59C8AD3821A9D79900C3594F /* coderules.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = coderules.txt; sourceTree = "<group>"; };
@@ -4095,6 +4110,24 @@
 		9D7244EA21F1CFEB0028FDF4 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_mount.h; sourceTree = "<group>"; };
 		9D7244F621F1D6A50028FDF4 /* mount.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mount.html; sourceTree = "<group>"; };
+		9D73E5F821FF36C4003CEC15 /* indigo_ccd_uvc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_uvc.c; sourceTree = "<group>"; };
+		9D73E5F921FF36C4003CEC15 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D73E5FA21FF36C4003CEC15 /* indigo_ccd_uvc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_uvc.h; sourceTree = "<group>"; };
+		9D73E5FB21FF36C4003CEC15 /* indigo_ccd_uvc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_uvc_main.c; sourceTree = "<group>"; };
+		9D73E60721FF37DA003CEC15 /* libuvc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libuvc.h; sourceTree = "<group>"; };
+		9D73E60821FF37DA003CEC15 /* libuvc_internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libuvc_internal.h; sourceTree = "<group>"; };
+		9D73E60921FF37DB003CEC15 /* libuvc_config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libuvc_config.h; sourceTree = "<group>"; };
+		9D73E60D21FF37F7003CEC15 /* libuvc_ctrl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_ctrl.c; sourceTree = "<group>"; };
+		9D73E60E21FF37F8003CEC15 /* libuvc_frame_mjpeg.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_frame_mjpeg.c; sourceTree = "<group>"; };
+		9D73E60F21FF37F8003CEC15 /* libuvc_frame.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_frame.c; sourceTree = "<group>"; };
+		9D73E61021FF37F8003CEC15 /* libuvc_diag.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_diag.c; sourceTree = "<group>"; };
+		9D73E61121FF37F8003CEC15 /* libuvc_ctrl_gen.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_ctrl_gen.c; sourceTree = "<group>"; };
+		9D73E61221FF37F8003CEC15 /* libuvc_misc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_misc.c; sourceTree = "<group>"; };
+		9D73E61321FF37F8003CEC15 /* libuvc_device.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_device.c; sourceTree = "<group>"; };
+		9D73E61421FF37F9003CEC15 /* libuvc_init.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_init.c; sourceTree = "<group>"; };
+		9D73E61521FF37F9003CEC15 /* libuvc_stream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_stream.c; sourceTree = "<group>"; };
+		9D73E62021FF3996003CEC15 /* utlist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = utlist.h; sourceTree = "<group>"; };
+		9D73E62221FF4D72003CEC15 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4167,7 +4200,7 @@
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
-		9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TelescopeProtocol_2010-10.pdf"; sourceTree = "<group>"; };
+		9DB918051DF8647800678721 /* Meade-2010.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Meade-2010.10.pdf"; sourceTree = "<group>"; };
 		9DB918061DFEA42E00678721 /* indigo_io.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_io.c; sourceTree = "<group>"; };
 		9DB918071DFEA42E00678721 /* indigo_io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_io.h; sourceTree = "<group>"; };
 		9DBC34621DCB267700588DB9 /* indigo_wheel_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_asi_main.c; sourceTree = "<group>"; };
@@ -4230,7 +4263,6 @@
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
-				9DDEFC2621EE39B300657C8F /* libnovas.a in Frameworks */,
 				9DDEFBFE21EE352F00657C8F /* libtoupcam.dylib in Frameworks */,
 				9DDEFBFD21EE352A00657C8F /* libdc1394.dylib in Frameworks */,
 				9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */,
@@ -4991,11 +5023,9 @@
 				9D38D13C21F09CDF00549B67 /* vue.min.js */,
 				59AF31F621F25E7A0008CC52 /* d3.min.js */,
 				59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */,
-				59AF320021F25F4B0008CC52 /* d3.config.js */,
 				59AF321521F264D40008CC52 /* celestial.css */,
 				59AF321421F264D40008CC52 /* celestial.min.js */,
 				59AF320321F262280008CC52 /* data */,
-				59AF321621F2773B0008CC52 /* test.html */,
 			);
 			path = resource;
 			sourceTree = "<group>";
@@ -5424,6 +5454,8 @@
 			children = (
 				9DC7830621A7072B009859FD /* Makefile */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
+				59C6F75321FE214D0043DC52 /* star_data.h */,
+				59A0772A21FE1C2F00244521 /* star_data.c */,
 				5925E3451E982BBC00FF373F /* resource */,
 			);
 			path = indigo_server;
@@ -7141,22 +7173,11 @@
 		59AF320321F262280008CC52 /* data */ = {
 			isa = PBXGroup;
 			children = (
-				59AF320421F262280008CC52 /* dsos.6.json */,
-				59AF320521F262280008CC52 /* dsos.14.json */,
-				59AF320621F262280008CC52 /* constellations.lines.json */,
-				59AF320721F262280008CC52 /* constellations.json */,
-				59AF320821F262280008CC52 /* lg.json */,
-				59AF320921F262280008CC52 /* messier.json */,
-				59AF320A21F262280008CC52 /* stars.6.json */,
-				59AF320B21F262280008CC52 /* asterisms.json */,
-				59AF320C21F262280008CC52 /* dsos.bright.json */,
 				59AF320D21F262280008CC52 /* readme.md */,
-				59AF320E21F262280008CC52 /* stars.8.json */,
+				59AF320721F262280008CC52 /* constellations.json */,
 				59AF320F21F262280008CC52 /* planets.json */,
 				59AF321021F262280008CC52 /* constellations.bounds.json */,
 				59AF321121F262280008CC52 /* mw.json */,
-				59AF321221F262280008CC52 /* stars.14.json */,
-				59AF321321F262280008CC52 /* dsos.20.json */,
 			);
 			path = data;
 			sourceTree = "<group>";
@@ -8114,6 +8135,7 @@
 				59519D421DB422E3008BAF29 /* ccd_ssag */,
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
+				9D73E5F721FF36C4003CEC15 /* ccd_uvc */,
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
 				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
@@ -11534,6 +11556,31 @@
 			path = agent_mount;
 			sourceTree = "<group>";
 		};
+		9D73E5F721FF36C4003CEC15 /* ccd_uvc */ = {
+			isa = PBXGroup;
+			children = (
+				9D73E5F921FF36C4003CEC15 /* README.md */,
+				9D73E5FA21FF36C4003CEC15 /* indigo_ccd_uvc.h */,
+				9D73E5F821FF36C4003CEC15 /* indigo_ccd_uvc.c */,
+				9D73E5FB21FF36C4003CEC15 /* indigo_ccd_uvc_main.c */,
+				9D73E62021FF3996003CEC15 /* utlist.h */,
+				9D73E60721FF37DA003CEC15 /* libuvc.h */,
+				9D73E60921FF37DB003CEC15 /* libuvc_config.h */,
+				9D73E60821FF37DA003CEC15 /* libuvc_internal.h */,
+				9D73E61121FF37F8003CEC15 /* libuvc_ctrl_gen.c */,
+				9D73E60D21FF37F7003CEC15 /* libuvc_ctrl.c */,
+				9D73E61321FF37F8003CEC15 /* libuvc_device.c */,
+				9D73E61021FF37F8003CEC15 /* libuvc_diag.c */,
+				9D73E60E21FF37F8003CEC15 /* libuvc_frame_mjpeg.c */,
+				9D73E60F21FF37F8003CEC15 /* libuvc_frame.c */,
+				9D73E61421FF37F9003CEC15 /* libuvc_init.c */,
+				9D73E61221FF37F8003CEC15 /* libuvc_misc.c */,
+				9D73E61521FF37F9003CEC15 /* libuvc_stream.c */,
+				9D73E62221FF4D72003CEC15 /* Makefile.inc */,
+			);
+			path = ccd_uvc;
+			sourceTree = "<group>";
+		};
 		9D85FAE021E38E3900ECDF82 /* agent_alignment */ = {
 			isa = PBXGroup;
 			children = (
@@ -11709,7 +11756,11 @@
 				9DB918011DF8546800678721 /* indigo_mount_lx200.h */,
 				9DB918001DF8546800678721 /* indigo_mount_lx200.c */,
 				9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */,
-				9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */,
+				9DB918051DF8647800678721 /* Meade-2010.10.pdf */,
+				5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */,
+				5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */,
+				5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */,
+				5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */,
 				591E1142215AEC3900ABADA6 /* lx200_simulator */,
 			);
 			path = mount_lx200;
@@ -11843,6 +11894,7 @@
 				9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */,
 				595F291B211E211100380EF4 /* DDHidKeyboard.h in Headers */,
 				595F2928211E211200380EF4 /* DDHidEvent.h in Headers */,
+				9D73E60521FF36C4003CEC15 /* indigo_ccd_uvc.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
 				9D59D5F920D3F829009EA8FF /* CamCfgMatrix.h in Headers */,
 				9D59D64D20D3F829009EA8FF /* FindDeviceEthernet.h in Headers */,
@@ -11852,6 +11904,7 @@
 				590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */,
 				59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */,
 				595F292A211E211200380EF4 /* DDHidJoystick.h in Headers */,
+				9D73E60C21FF37DB003CEC15 /* libuvc_config.h in Headers */,
 				9D59D61820D3F829009EA8FF /* Ascent.h in Headers */,
 				9D59D62F20D3F829009EA8FF /* ApnUsbSys.h in Headers */,
 				9D59D65320D3F829009EA8FF /* CamUsbIo.h in Headers */,
@@ -11938,6 +11991,7 @@
 				59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */,
 				9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */,
 				9D59D5F320D3F829009EA8FF /* COMHelper.h in Headers */,
+				9D73E60B21FF37DB003CEC15 /* libuvc_internal.h in Headers */,
 				9D59D62B20D3F829009EA8FF /* AltaF.h in Headers */,
 				59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */,
 				595F2920211E211100380EF4 /* DDHidQueue.h in Headers */,
@@ -11965,7 +12019,9 @@
 				59A52F2D21A341E0000B6F27 /* altaircam.h in Headers */,
 				9D59D63220D3F829009EA8FF /* DeviceStrHelpers.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
+				9D73E62121FF3996003CEC15 /* utlist.h in Headers */,
 				9D59D61E20D3F829009EA8FF /* AspenUsbIo.h in Headers */,
+				9D73E60A21FF37DB003CEC15 /* libuvc.h in Headers */,
 				59A321B621D691D600EC0F4A /* indigo_mount_synscan_guider.h in Headers */,
 				9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */,
 				595F2921211E211100380EF4 /* DDHidAppleMikey.h in Headers */,
@@ -12174,19 +12230,24 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D73E61B21FF37F9003CEC15 /* libuvc_misc.c in Sources */,
 				59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */,
 				59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */,
 				59FE34652187B2F8004FB5D4 /* indigo_aux_dsusb.c in Sources */,
 				9D59D65E20D3F829009EA8FF /* apgHelper.cpp in Sources */,
 				9D59D66B20D3F82A009EA8FF /* ImgFix.cpp in Sources */,
 				9D59D65820D3F829009EA8FF /* AltaData.cpp in Sources */,
+				59C6F75F21FE4C7C0043DC52 /* novascon.c in Sources */,
 				9D59D5F420D3F829009EA8FF /* CameraIo.cpp in Sources */,
 				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				9D59D62D20D3F829009EA8FF /* CamHelpers.cpp in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
+				59AC720021FE5726004406D4 /* solsys3.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
+				9D73E60621FF36C4003CEC15 /* indigo_ccd_uvc_main.c in Sources */,
+				9D73E61E21FF37F9003CEC15 /* libuvc_stream.c in Sources */,
 				9D59D63820D3F829009EA8FF /* CameraStatusRegs.cpp in Sources */,
 				9D59D63D20D3F829009EA8FF /* linuxHelpers.cpp in Sources */,
 				9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */,
@@ -12206,6 +12267,7 @@
 				9D59D5E920D3F829009EA8FF /* LoggerException.cpp in Sources */,
 				599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */,
 				59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */,
+				9D73E61921FF37F9003CEC15 /* libuvc_diag.c in Sources */,
 				595F292B211E211200380EF4 /* DDHidUsageTables.m in Sources */,
 				59FC2EBB210CA76200730343 /* indigo_ccd_mi.c in Sources */,
 				59DD69D71FC1DC4900AEF0DF /* indigo_dome_simulator.c in Sources */,
@@ -12217,12 +12279,16 @@
 				59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */,
 				59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */,
 				59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */,
+				59C6F76321FE4CAD0043DC52 /* readeph0.c in Sources */,
 				592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
 				595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */,
 				9D59D61C20D3F829009EA8FF /* Quad.cpp in Sources */,
+				9D73E61D21FF37F9003CEC15 /* libuvc_init.c in Sources */,
 				9D59D65F20D3F829009EA8FF /* CamRegMirror.cpp in Sources */,
+				9D73E60421FF36C4003CEC15 /* indigo_ccd_uvc.c in Sources */,
 				590BF1B421EBCF7500C24DBA /* indigo_ao_sx.c in Sources */,
+				59C6F75D21FE4C5A0043DC52 /* novas.c in Sources */,
 				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
 				595F2923211E211200380EF4 /* NSXReturnThrowError.m in Sources */,
 				9D59D5F520D3F829009EA8FF /* AspenUsbIo.cpp in Sources */,
@@ -12248,6 +12314,7 @@
 				9D59D64220D3F829009EA8FF /* LinuxTimer.cpp in Sources */,
 				9DADEE5A2151135E008C6FBE /* indigo_focuser_nfocus.c in Sources */,
 				9D59D64720D3F829009EA8FF /* AscentBasedIo.cpp in Sources */,
+				9D73E61621FF37F9003CEC15 /* libuvc_ctrl.c in Sources */,
 				9D59D66120D3F82A009EA8FF /* IAltaSerialPortIo.cpp in Sources */,
 				59CC779D1F27BD07003AD2DB /* indigo_ica_ptp_sony.m in Sources */,
 				9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */,
@@ -12286,6 +12353,8 @@
 				595F2926211E211200380EF4 /* DDHidMouse.m in Sources */,
 				9D7244F421F1CFEC0028FDF4 /* indigo_agent_mount.c in Sources */,
 				9D59D65C20D3F829009EA8FF /* FindDeviceUsb.cpp in Sources */,
+				59AC720921FE57EB004406D4 /* eph_manager.c in Sources */,
+				59C6F76221FE4C870043DC52 /* nutation.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				9D59D61520D3F829009EA8FF /* AscentBasedUsbIo.cpp in Sources */,
 				9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */,
@@ -12316,6 +12385,7 @@
 				9D59D63320D3F829009EA8FF /* AltaCcdAcqParams.cpp in Sources */,
 				59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */,
 				9D59D63120D3F829009EA8FF /* PlatformData.cpp in Sources */,
+				9D73E61721FF37F9003CEC15 /* libuvc_frame_mjpeg.c in Sources */,
 				9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */,
 				59E38B561F1577A000187839 /* indigo_ica_ptp_nikon.m in Sources */,
 				593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */,
@@ -12339,12 +12409,15 @@
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				9DAD522621246C18002FCC79 /* indigo_mount_synscan_driver.c in Sources */,
 				595F291D211E211100380EF4 /* DDHidAppleRemote.m in Sources */,
+				9D73E61C21FF37F9003CEC15 /* libuvc_device.c in Sources */,
 				9D59D62220D3F829009EA8FF /* AltaUsbIo.cpp in Sources */,
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
 				9D59D64120D3F829009EA8FF /* GenOneLinuxUSB.cpp in Sources */,
 				9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */,
 				59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */,
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
+				9D73E61821FF37F9003CEC15 /* libuvc_frame.c in Sources */,
+				9D73E61A21FF37F9003CEC15 /* libuvc_ctrl_gen.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -12372,6 +12445,7 @@
 				9DC7830721A7072C009859FD /* Makefile in Sources */,
 				59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */,
+				590D21D621FE6A520057DC31 /* star_data.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

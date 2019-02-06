@@ -390,17 +390,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-    if (IS_CONNECTED)
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 			[delegate cmd:0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0) a:FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0 b:0 c:0 d:0];
-		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_RAIL_CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_CONFIG
 		indigo_property_copy_values(X_RAIL_CONFIG_PROPERTY, property, false);
 		X_RAIL_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_RAIL_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_SHUTTER

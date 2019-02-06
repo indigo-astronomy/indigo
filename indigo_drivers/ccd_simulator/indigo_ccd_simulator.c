@@ -546,7 +546,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
 			CCD_BIN_VERTICAL_ITEM->number.value = v;
 			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			if (IS_CONNECTED) {
+				indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			}
 			return INDIGO_OK;
 		}
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
@@ -957,13 +959,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
-		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION

@@ -324,56 +324,61 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		sprintf(command, "CRB%d#", (int)FOCUSER_BACKLASH_ITEM->number.value);
-		if (lakeside_command(device, command, response, 100000) && !strcmp(response, "OK")) {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+			sprintf(command, "CRB%d#", (int)FOCUSER_BACKLASH_ITEM->number.value);
+			if (lakeside_command(device, command, response, 100000) && !strcmp(response, "OK")) {
+				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		}
-		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		bool result;
-		if (X_FOCUSER_ACTIVE_SLOPE_1_ITEM->sw.value) {
-			sprintf(command, "CR1%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
-			result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-			if (result) {
-				sprintf(command, "CRa%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+			bool result;
+			if (X_FOCUSER_ACTIVE_SLOPE_1_ITEM->sw.value) {
+				sprintf(command, "CR1%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
 				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				if (result) {
+					sprintf(command, "CRa%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
+					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				}
+				if (result) {
+					sprintf(command, "CRc%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
+					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				}
+				if (result) {
+					sprintf(command, "CRe%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
+					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				}
+			} else {
+				sprintf(command, "CR2%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
+				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				if (result) {
+					sprintf(command, "CRb%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
+					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				}
+				if (result) {
+					sprintf(command, "CRd%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
+					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				}
+				if (result) {
+					sprintf(command, "CRf%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
+					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				}
 			}
 			if (result) {
-				sprintf(command, "CRc%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
-				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			if (result) {
-				sprintf(command, "CRe%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
-				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-			}
-		} else {
-			sprintf(command, "CR2%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
-			result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-			if (result) {
-				sprintf(command, "CRb%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
-				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-			}
-			if (result) {
-				sprintf(command, "CRd%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
-				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-			}
-			if (result) {
-				sprintf(command, "CRf%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
-				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-			}
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+			return INDIGO_OK;
 		}
-		if (result) {
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		// -------------------------------------------------------------------------------- X_FOCUSER_ACTIVE_SLOPE
 	} else if (indigo_property_match(X_FOCUSER_ACTIVE_SLOPE_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_ACTIVE_SLOPE_PROPERTY, property, false);

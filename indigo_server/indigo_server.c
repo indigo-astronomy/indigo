@@ -47,6 +47,8 @@
 #include "indigo_client.h"
 #include "indigo_xml.h"
 
+#include "star_data.h"
+
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
 #include "gps_simulator/indigo_gps_simulator.h"
@@ -100,6 +102,7 @@
 #include "agent_alignment/indigo_agent_alignment.h"
 #include "agent_mount/indigo_agent_mount.h"
 #include "ao_sx/indigo_ao_sx.h"
+#include "ccd_uvc/indigo_ccd_uvc.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -158,6 +161,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ssag,
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
+	indigo_ccd_uvc,
 	indigo_dome_simulator,
 	indigo_focuser_asi,
 	indigo_focuser_dmfc,
@@ -220,6 +224,7 @@ static indigo_property *load_property;
 static indigo_property *unload_property;
 static indigo_property *restart_property;
 static indigo_property *log_level_property;
+static indigo_property *server_features_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 
@@ -227,17 +232,27 @@ static DNSServiceRef sd_indigo;
 static bool runLoop = true;
 #endif
 
+#define RESTART_ITEM								(restart_property->items + 0)
+
+#define LOAD_ITEM										(load_property->items + 0)
+#define UNLOAD_ITEM									(unload_property->items + 0)
+
 #define LOG_LEVEL_ERROR_ITEM        (log_level_property->items + 0)
 #define LOG_LEVEL_INFO_ITEM         (log_level_property->items + 1)
 #define LOG_LEVEL_DEBUG_ITEM        (log_level_property->items + 2)
 #define LOG_LEVEL_TRACE_ITEM        (log_level_property->items + 3)
+
+#define BONJOUR_ITEM								(server_features_property->items + 0)
+#define CTRL_PANEL_ITEM							(server_features_property->items + 1)
+#define WEB_APPS_ITEM								(server_features_property->items + 2)
 
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
 static bool use_sigkill = false;
 static bool server_startup = true;
 static bool use_bonjour = true;
-static bool use_control_panel = true;
+static bool use_ctrl_panel = true;
+static bool use_web_apps = true;
 
 static char const *server_argv[128];
 static int server_argc = 1;
@@ -255,82 +270,6 @@ static indigo_device server_device = INDIGO_DEVICE_INITIALIZER(
 	NULL,
 	detach
 );
-
-static unsigned char mng_html[] = {
-#include "resource/mng.html.data"
-};
-
-static unsigned char ctrl_html[] = {
-#include "resource/ctrl.html.data"
-};
-
-static unsigned char imager_html[] = {
-#include "resource/imager.html.data"
-};
-
-static unsigned char mount_html[] = {
-#include "resource/mount.html.data"
-};
-
-static unsigned char indigo_js[] = {
-#include "resource/indigo.js.data"
-};
-
-static unsigned char components_js[] = {
-#include "resource/components.js.data"
-};
-
-static unsigned char mng_png[] = {
-#include "resource/mng.png.data"
-};
-
-static unsigned char ctrl_png[] = {
-#include "resource/ctrl.png.data"
-};
-
-static unsigned char mount_png[] = {
-#include "resource/mount.png.data"
-};
-
-static unsigned char imager_png[] = {
-#include "resource/imager.png.data"
-};
-
-static unsigned char guider_png[] = {
-#include "resource/guider.png.data"
-};
-
-static unsigned char indigo_css[] = {
-#include "resource/indigo.css.data"
-};
-
-static unsigned char bootstrap_css[] = {
-#include "resource/bootstrap.min.css.data"
-};
-
-static unsigned char glyphicons_css[] = {
-#include "resource/glyphicons.css.data"
-};
-
-static unsigned char jquery_js[] = {
-#include "resource/jquery.min.js.data"
-};
-
-static unsigned char bootstrap_js[] = {
-#include "resource/bootstrap.min.js.data"
-};
-
-static unsigned char popper_js[] = {
-#include "resource/popper.min.js.data"
-};
-
-static unsigned char vue_js[] = {
-#include "resource/vue.min.js.data"
-};
-
-static unsigned char glyphicons_ttf[] = {
-#include "resource/glyphicons-regular.ttf.data"
-};
 
 static void server_callback(int count) {
 	if (server_startup) {
@@ -380,16 +319,20 @@ static indigo_result attach(indigo_device *device) {
 		}
 	}
 	load_property = indigo_init_text_property(NULL, server_device.name, "LOAD", MAIN_GROUP, "Load driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-	indigo_init_text_item(&load_property->items[0], "DRIVER", "Load driver", "");
+	indigo_init_text_item(LOAD_ITEM, "DRIVER", "Load driver", "");
 	unload_property = indigo_init_text_property(NULL, server_device.name, "UNLOAD", MAIN_GROUP, "Unload driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-	indigo_init_text_item(&unload_property->items[0], "DRIVER", "Unload driver", "");
+	indigo_init_text_item(UNLOAD_ITEM, "DRIVER", "Unload driver", "");
 	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", MAIN_GROUP, "Restart", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-	indigo_init_switch_item(restart_property->items, "RESTART", "Restart server", false);
+	indigo_init_switch_item(RESTART_ITEM, "RESTART", "Restart server", false);
 	log_level_property = indigo_init_switch_property(NULL, device->name, "LOG_LEVEL", MAIN_GROUP, "Log level", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-	indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", false);
-	indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", false);
-	indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", false);
-	indigo_init_switch_item(&log_level_property->items[3], "TRACE", "Trace", false);
+	indigo_init_switch_item(LOG_LEVEL_ERROR_ITEM, "ERROR", "Error", false);
+	indigo_init_switch_item(LOG_LEVEL_INFO_ITEM, "INFO", "Info", false);
+	indigo_init_switch_item(LOG_LEVEL_DEBUG_ITEM, "DEBUG", "Debug", false);
+	indigo_init_switch_item(LOG_LEVEL_TRACE_ITEM, "TRACE", "Trace", false);
+	server_features_property = indigo_init_switch_property(NULL, device->name, "FEATURES", MAIN_GROUP, "Features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	indigo_init_switch_item(BONJOUR_ITEM, "BONJOUR", "Bonjour", use_bonjour);
+	indigo_init_switch_item(CTRL_PANEL_ITEM, "CTRL_PANEL", "Control panel / Server manager", use_ctrl_panel);
+	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
 
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
@@ -421,6 +364,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, unload_property, NULL);
 	indigo_define_property(device, restart_property, NULL);
 	indigo_define_property(device, log_level_property, NULL);
+	indigo_define_property(device, server_features_property, NULL);
 	return INDIGO_OK;
 }
 
@@ -467,8 +411,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(load_property, property)) {
 		// -------------------------------------------------------------------------------- LOAD
 		indigo_property_copy_values(load_property, property, false);
-		if (*load_property->items[0].text.value) {
-			char *name = basename(load_property->items[0].text.value);
+		if (*LOAD_ITEM->text.value) {
+			char *name = basename(LOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
 					load_property->state = INDIGO_ALERT_STATE;
@@ -476,7 +420,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 					return INDIGO_OK;
 				}
 			indigo_driver_entry *driver;
-			if (indigo_load_driver(load_property->items[0].text.value, true, &driver) == INDIGO_OK) {
+			if (indigo_load_driver(LOAD_ITEM->text.value, true, &driver) == INDIGO_OK) {
 				bool found = false;
 				for (int i = 0; i < drivers_property->count; i++) {
 					if (!strcmp(drivers_property->items[i].name, name)) {
@@ -504,8 +448,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(unload_property, property)) {
 		// -------------------------------------------------------------------------------- UNLOAD
 		indigo_property_copy_values(unload_property, property, false);
-		if (*unload_property->items[0].text.value) {
-			char *name = basename(unload_property->items[0].text.value);
+		if (*UNLOAD_ITEM->text.value) {
+			char *name = basename(UNLOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
 					if (indigo_available_drivers[i].dl_handle) {
@@ -532,7 +476,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(restart_property, property)) {
 	// -------------------------------------------------------------------------------- RESTART
 		indigo_property_copy_values(restart_property, property, false);
-		if (restart_property->items[0].sw.value) {
+		if (RESTART_ITEM->sw.value) {
 			INDIGO_LOG(indigo_log("Restarting..."));
 			indigo_server_shutdown();
 			exit(0);
@@ -566,13 +510,17 @@ static indigo_result detach(indigo_device *device) {
 	indigo_delete_property(device, load_property, NULL);
 	indigo_delete_property(device, unload_property, NULL);
 	indigo_delete_property(device, log_level_property, NULL);
+	indigo_delete_property(device, server_features_property, NULL);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }
 
 static void add_drivers(const char *folder) {
 	char folder_path[PATH_MAX];
-	realpath(folder, folder_path);
+	if(NULL == realpath(folder, folder_path)) {
+		INDIGO_DEBUG(indigo_debug("realpath(%s, folder_path): failed", folder));
+		return;
+	}
 	DIR *dir = opendir(folder_path);
 	if (dir) {
 		struct dirent *ent;
@@ -630,13 +578,13 @@ static void add_drivers(const char *folder) {
 		if (line)
 			free(line);
 	}
-	
+
 }
 
 static void server_main() {
 	indigo_start_usb_event_handler();
 	indigo_start();
-	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
+	indigo_log("INDIGO server %d.%d-%d built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 
 	for (int i = 1; i < server_argc; i++) {
 		if ((!strcmp(server_argv[i], "-p") || !strcmp(server_argv[i], "--port")) && i < server_argc - 1) {
@@ -666,7 +614,9 @@ static void server_main() {
 			strncpy(indigo_local_service_name, server_argv[i + 1], INDIGO_NAME_SIZE);
 			i++;
 		} else if (!strcmp(server_argv[i], "-c-") || !strcmp(server_argv[i], "--disable-control-panel")) {
-			use_control_panel = false;
+			use_ctrl_panel = false;
+		} else if (!strcmp(server_argv[i], "-w-") || !strcmp(server_argv[i], "--disable-web-apps")) {
+			use_web_apps = false;
 		} else if (!strcmp(server_argv[i], "-u-") || !strcmp(server_argv[i], "--disable-blob-urls")) {
 			indigo_use_blob_urls = false;
 		} else if(server_argv[i][0] != '-') {
@@ -675,26 +625,126 @@ static void server_main() {
 		}
 	}
 
-	if (use_control_panel) {
+	use_ctrl_panel |= use_web_apps;
+
+	if (use_ctrl_panel) {
+		// INDIGO Server Manager
+		static unsigned char mng_html[] = {
+			#include "resource/mng.html.data"
+		};
 		indigo_server_add_resource("/mng.html", mng_html, sizeof(mng_html), "text/html");
-		indigo_server_add_resource("/ctrl.html", ctrl_html, sizeof(ctrl_html), "text/html");
-		indigo_server_add_resource("/imager.html", imager_html, sizeof(imager_html), "text/html");
-		indigo_server_add_resource("/mount.html", mount_html, sizeof(mount_html), "text/html");
-		indigo_server_add_resource("/indigo.js", indigo_js, sizeof(indigo_js), "text/javascript");
-		indigo_server_add_resource("/components.js", components_js, sizeof(components_js), "text/javascript");
-		indigo_server_add_resource("/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
-		indigo_server_add_resource("/popper.min.js", popper_js, sizeof(popper_js), "text/javascript");
-		indigo_server_add_resource("/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
-		indigo_server_add_resource("/vue.min.js", vue_js, sizeof(vue_js), "text/javascript");
-		indigo_server_add_resource("/bootstrap.min.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
-		indigo_server_add_resource("/indigo.css", indigo_css, sizeof(indigo_css), "text/css");
-		indigo_server_add_resource("/glyphicons.css", glyphicons_css, sizeof(glyphicons_css), "text/css");
+		static unsigned char mng_png[] = {
+			#include "resource/mng.png.data"
+		};
 		indigo_server_add_resource("/mng.png", mng_png, sizeof(mng_png), "image/png");
+		// INDIGO Control Panel
+		static unsigned char ctrl_html[] = {
+			#include "resource/ctrl.html.data"
+		};
+		indigo_server_add_resource("/ctrl.html", ctrl_html, sizeof(ctrl_html), "text/html");
+		static unsigned char ctrl_png[] = {
+			#include "resource/ctrl.png.data"
+		};
 		indigo_server_add_resource("/ctrl.png", ctrl_png, sizeof(ctrl_png), "image/png");
+		// INDIGO
+		static unsigned char indigo_js[] = {
+			#include "resource/indigo.js.data"
+		};
+		indigo_server_add_resource("/indigo.js", indigo_js, sizeof(indigo_js), "text/javascript");
+		static unsigned char components_js[] = {
+			#include "resource/components.js.data"
+		};
+		indigo_server_add_resource("/components.js", components_js, sizeof(components_js), "text/javascript");
+		static unsigned char indigo_css[] = {
+			#include "resource/indigo.css.data"
+		};
+		indigo_server_add_resource("/indigo.css", indigo_css, sizeof(indigo_css), "text/css");
+		// Bootstrap
+		static unsigned char bootstrap_css[] = {
+			#include "resource/bootstrap.min.css.data"
+		};
+		indigo_server_add_resource("/bootstrap.min.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
+		static unsigned char bootstrap_js[] = {
+			#include "resource/bootstrap.min.js.data"
+		};
+		indigo_server_add_resource("/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
+		static unsigned char popper_js[] = {
+			#include "resource/popper.min.js.data"
+		};
+		indigo_server_add_resource("/popper.min.js", popper_js, sizeof(popper_js), "text/javascript");
+		static unsigned char glyphicons_css[] = {
+			#include "resource/glyphicons.css.data"
+		};
+		indigo_server_add_resource("/glyphicons.css", glyphicons_css, sizeof(glyphicons_css), "text/css");
+		static unsigned char glyphicons_ttf[] = {
+			#include "resource/glyphicons-regular.ttf.data"
+		};
+		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "text/javascript");
+		// JQuery
+		static unsigned char jquery_js[] = {
+			#include "resource/jquery.min.js.data"
+		};
+		indigo_server_add_resource("/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
+		// VueJS
+		static unsigned char vue_js[] = {
+			#include "resource/vue.min.js.data"
+		};
+		indigo_server_add_resource("/vue.min.js", vue_js, sizeof(vue_js), "text/javascript");
+	}
+	if (use_web_apps) {
+		// INDIGO Imager
+		static unsigned char imager_html[] = {
+			#include "resource/imager.html.data"
+		};
+		indigo_server_add_resource("/imager.html", imager_html, sizeof(imager_html), "text/html");
+		static unsigned char imager_png[] = {
+			#include "resource/imager.png.data"
+		};
 		indigo_server_add_resource("/imager.png", imager_png, sizeof(imager_png), "image/png");
-		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
+		// INDIGO Mount
+		static unsigned char mount_html[] = {
+			#include "resource/mount.html.data"
+		};		indigo_server_add_resource("/mount.html", mount_html, sizeof(mount_html), "text/html");
+		static unsigned char mount_png[] = {
+			#include "resource/mount.png.data"
+		};
 		indigo_server_add_resource("/mount.png", mount_png, sizeof(mount_png), "image/png");
-		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "application/x-font-ttf");
+		static unsigned char celestial_js[] = {
+			#include "resource/celestial.min.js.data"
+		};
+		indigo_server_add_resource("/celestial.min.js", celestial_js, sizeof(celestial_js), "text/javascript");
+		static unsigned char d3_js[] = {
+			#include "resource/d3.min.js.data"
+		};
+		indigo_server_add_resource("/d3.min.js", d3_js, sizeof(d3_js), "text/javascript");
+		static unsigned char celestial_css[] = {
+			#include "resource/celestial.css.data"
+		};
+		indigo_server_add_resource("/celestial.css", celestial_css, sizeof(celestial_css), "text/css");
+		static unsigned char constellations_json[] = {
+			#include "resource/data/constellations.json.data"
+		};
+		indigo_server_add_resource("/data/constellations.json", constellations_json, sizeof(constellations_json), "application/json; charset=utf-8");
+		static unsigned char constellations_bounds_json[] = {
+			#include "resource/data/constellations.bounds.json.data"
+		};
+		indigo_server_add_resource("/data/constellations.bounds.json", constellations_bounds_json, sizeof(constellations_bounds_json), "application/json; charset=utf-8");
+		static unsigned char mv_json[] = {
+			#include "resource/data/mw.json.data"
+		};
+		indigo_server_add_resource("/data/mw.json", mv_json, sizeof(mv_json), "application/json; charset=utf-8");
+		static unsigned char planets_json[] = {
+			#include "resource/data/planets.json.data"
+		};
+		indigo_server_add_resource("/data/planets.json", planets_json, sizeof(planets_json), "application/json; charset=utf-8");
+		indigo_add_star_json_resource(6);
+		indigo_add_dso_json_resource(10);
+		indigo_add_constellations_lines_json_resource();
+		// INDIGO Guider
+		static unsigned char guider_png[] = {
+			#include "resource/guider.png.data"
+		};
+		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
 	}
 
 	if (!command_line_drivers) {
@@ -788,7 +838,7 @@ int main(int argc, const char * argv[]) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-info] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-w-|--disable-web-apps] [-c-|--disable-control-panel] [-v|--enable-info] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];

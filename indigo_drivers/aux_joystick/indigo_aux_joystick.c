@@ -311,12 +311,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- JOYSTICK_MAPPING
 		indigo_property_copy_values(JOYSTICK_MAPPING_PROPERTY, property, false);
 		JOYSTICK_MAPPING_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
+		}
 	} else if (indigo_property_match(JOYSTICK_OPTIONS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- JOYSTICK_OPTIONS
 		indigo_property_copy_values(JOYSTICK_OPTIONS_PROPERTY, property, false);
 		JOYSTICK_OPTIONS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
+		}
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

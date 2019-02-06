@@ -390,27 +390,32 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		if (FOCUSER_COMPENSATION_ITEM->number.value > 0)
-			sprintf(command, ":TT+010#:TS%03d#", (int)FOCUSER_COMPENSATION_ITEM->number.value);
-		else
-			sprintf(command, ":TT-010#:TS%03d#", (int)FOCUSER_COMPENSATION_ITEM->number.value);
-		if (nstep_command(device, command, NULL, 0)) {
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+			if (FOCUSER_COMPENSATION_ITEM->number.value > 0)
+				sprintf(command, ":TT+010#:TS%03d#", (int)FOCUSER_COMPENSATION_ITEM->number.value);
+			else
+				sprintf(command, ":TT-010#:TS%03d#", (int)FOCUSER_COMPENSATION_ITEM->number.value);
+			if (nstep_command(device, command, NULL, 0)) {
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		}
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		snprintf(command, sizeof(command), ":TB%03d#", (int)FOCUSER_BACKLASH_ITEM->number.value);
-		if (nstep_command(device, command, NULL, 0)) {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+			snprintf(command, sizeof(command), ":TB%03d#", (int)FOCUSER_BACKLASH_ITEM->number.value);
+			if (nstep_command(device, command, NULL, 0)) {
+				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		}
-		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);

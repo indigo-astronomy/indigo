@@ -8,7 +8,8 @@ var INDIGO = new Vue({
 	data: {
 		state: 'Connecting...',
 		host: '',
-		devices: { }
+		devices: { },
+		db: []
 		},
 	methods: {
 		findProperty: function(device, name) {

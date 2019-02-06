@@ -81,6 +81,7 @@ This is the list of requirements taken into the consideration:
 52. GPUSB guider driver (untested)
 53. LakesideAstro focuser (untested)
 54. SX AO driver
+55. SBIG AO driver (part of CCD driver)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

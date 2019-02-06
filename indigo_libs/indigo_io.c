@@ -119,6 +119,37 @@ int indigo_open_tcp(const char *host, int port) {
 	return sock;
 }
 
+int indigo_open_udp(const char *host, int port) {
+	struct sockaddr_in srv_info;
+	struct hostent *he;
+	int sock;
+	struct timeval timeout;
+	timeout.tv_sec = 5;
+	timeout.tv_usec = 0;
+	if ((he = gethostbyname(host))==NULL) {
+		return -1;
+	}
+	if ((sock = socket(AF_INET, SOCK_DGRAM, 0))== -1) {
+		return -1;
+	}
+	memset(&srv_info, 0, sizeof(srv_info));
+	srv_info.sin_family = AF_INET;
+	srv_info.sin_port = htons(port);
+	srv_info.sin_addr = *((struct in_addr *)he->h_addr);
+	if (connect(sock, (struct sockaddr *)&srv_info, sizeof(struct sockaddr))<0) {
+		return -1;
+	}
+	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+		close(sock);
+		return -1;
+	}
+	if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+		close(sock);
+		return -1;
+	}
+	return sock;
+}
+
 int indigo_read(int handle, char *buffer, long length) {
 	long remains = length;
 	long total_bytes = 0;

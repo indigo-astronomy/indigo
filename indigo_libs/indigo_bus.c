@@ -403,7 +403,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device != NULL && device->enumerate_properties != NULL) {
+		if (device != NULL && device->change_property != NULL) {
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
@@ -856,7 +856,7 @@ bool indigo_switch_match(indigo_item *item, indigo_property *other) {
 void indigo_set_switch(indigo_property *property, indigo_item *item, bool value) {
 	assert(property != NULL);
 	assert(property->type == INDIGO_SWITCH_VECTOR);
-	if (property->rule != INDIGO_ANY_OF_MANY_RULE) {
+	if (value && property->rule != INDIGO_ANY_OF_MANY_RULE) {
 		for (int i = 0; i < property->count; i++) {
 			property->items[i].sw.value = false;
 		}

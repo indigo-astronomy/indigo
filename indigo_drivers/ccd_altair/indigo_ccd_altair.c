@@ -590,7 +590,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 							indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 						}
 						return indigo_ccd_change_property(device, client, property);
-						return INDIGO_OK;
 					}
 				}
 			}
@@ -674,73 +673,73 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
-		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-		result = Altaircam_put_ExpoAGain(PRIVATE_DATA->handle, (int)CCD_GAIN_ITEM->number.value);
-		if (result < 0) {
-			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
-			indigo_send_message(device, "Analog gain setting is not supported");
-		} else {
-			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
-		}
 		if (IS_CONNECTED) {
+			indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+			result = Altaircam_put_ExpoAGain(PRIVATE_DATA->handle, (int)CCD_GAIN_ITEM->number.value);
+			if (result < 0) {
+				CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
+				indigo_send_message(device, "Analog gain setting is not supported");
+			} else {
+				CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
+			}
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		}
 	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match(X_CCD_ADVANCED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CCD_ADVANCED
-		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
-		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		result = Altaircam_put_Contrast(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
-			indigo_send_message(device, "Contrast setting is not supported");
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
-		}
-		result = Altaircam_put_Hue(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
-			indigo_send_message(device, "Hue setting is not supported");
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
-		}
-		result = Altaircam_put_Saturation(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
-			indigo_send_message(device, "Saturation setting is not supported");
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
-		}
-		result = Altaircam_put_Brightness(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
-			indigo_send_message(device, "Brightness setting is not supported");
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
-		}
-		result = Altaircam_put_Gamma(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
-			indigo_send_message(device, "Gamma setting is not supported");
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
-		}
-		int gain[3] = { (int)X_CCD_R_GAIN_ITEM->number.value, (int)X_CCD_G_GAIN_ITEM->number.value, (int)X_CCD_B_GAIN_ITEM->number.value };
-		result = Altaircam_put_WhiteBalanceGain(PRIVATE_DATA->handle, gain);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
-			indigo_send_message(device, "White ballance gain setting is not supported");
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
-		}
 		if (IS_CONNECTED) {
+			indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
+			result = Altaircam_put_Contrast(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+				indigo_send_message(device, "Contrast setting is not supported");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+			}
+			result = Altaircam_put_Hue(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+				indigo_send_message(device, "Hue setting is not supported");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+			}
+			result = Altaircam_put_Saturation(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+				indigo_send_message(device, "Saturation setting is not supported");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+			}
+			result = Altaircam_put_Brightness(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+				indigo_send_message(device, "Brightness setting is not supported");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+			}
+			result = Altaircam_put_Gamma(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+				indigo_send_message(device, "Gamma setting is not supported");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+			}
+			int gain[3] = { (int)X_CCD_R_GAIN_ITEM->number.value, (int)X_CCD_G_GAIN_ITEM->number.value, (int)X_CCD_B_GAIN_ITEM->number.value };
+			result = Altaircam_put_WhiteBalanceGain(PRIVATE_DATA->handle, gain);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+				indigo_send_message(device, "White ballance gain setting is not supported");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+			}
 			indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 		}
 		return INDIGO_OK;

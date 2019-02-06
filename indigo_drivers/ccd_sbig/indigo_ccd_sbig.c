@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -155,6 +155,10 @@ typedef struct {
 	int fw_count;
 	int fw_current_slot;
 	int fw_target_slot;
+
+	/* AO Specific */
+	double ao_x_deflection;
+	double ao_y_deflection;
 } sbig_private_data;
 
 static pthread_mutex_t driver_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -412,6 +416,34 @@ static ushort sbig_set_relays(short handle, ushort relays) {
 	relay_map |= relays;
 	return sbig_set_relaymap(handle, relay_map);
 }
+
+
+static int sbig_ao_tip_tilt(double x_deflection, double y_deflection) {
+	assert(fabs(x_deflection) <= 1.0);
+	assert(fabs(y_deflection) <= 1.0);
+
+	int res;
+	AOTipTiltParams aottp = {
+		.xDeflection = round(fmin(4095.0, (1.0 + x_deflection) * 2048.0)),
+		.yDeflection = round(fmin(4095.0, (1.0 + y_deflection) * 2048.0))
+	};
+	res = sbig_command(CC_AO_TIP_TILT, &aottp, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_AO_TIP_TILT error = %d (%s)", res, sbig_error_string(res));
+	}
+	return res;
+}
+
+
+static int sbig_ao_center() {
+	int res;
+	res = sbig_command(CC_AO_CENTER, NULL, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_AO_CENTER error = %d (%s)", res, sbig_error_string(res));
+	}
+	return res;
+}
+
 
 /* indigo CAMERA functions */
 
@@ -1339,7 +1371,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FREEZE TEC
 	} else if ((PRIMARY_CCD) && (indigo_property_match(SBIG_FREEZE_TEC_PROPERTY, property))) {
@@ -1350,7 +1384,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			PRIVATE_DATA->freeze_tec = false;
 		}
-		indigo_update_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// --------------------------------------------------------------------------------- ABG
 	} else if ((PRIMARY_CCD) && (indigo_property_match(SBIG_ABG_PROPERTY, property))) {
@@ -1368,8 +1404,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			PRIVATE_DATA->imager_abg_state = ABG_LOW7;
 		}
-
-		indigo_update_property(device, SBIG_ABG_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, SBIG_ABG_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
@@ -1923,6 +1960,129 @@ static indigo_result wheel_detach(indigo_device *device) {
 	return indigo_wheel_detach(device);
 }
 
+// -------------------------------------------------------------------------------- INDIGO AO device implementation
+
+static indigo_result ao_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_ao_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 100;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_ao_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result ao_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	int res = CE_NO_ERROR;
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (!DEVICE_CONNECTED) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				if (sbig_open(device)) {
+					pthread_mutex_lock(&driver_mutex);
+					res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+					if ( res != CE_NO_ERROR ) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
+						pthread_mutex_unlock(&driver_mutex);
+						return INDIGO_FAILED;
+					}
+
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					pthread_mutex_unlock(&driver_mutex);
+					set_connected_flag(device);
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
+			}
+		} else { /* disconnect */
+			if(DEVICE_CONNECTED) {
+				pthread_mutex_lock(&driver_mutex);
+				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+				if ( res != CE_NO_ERROR ) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
+					pthread_mutex_unlock(&driver_mutex);
+					return INDIGO_FAILED;
+				}
+				pthread_mutex_unlock(&driver_mutex);
+				sbig_close(device);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				clear_connected_flag(device);
+			}
+		}
+
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(AO_GUIDE_DEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AO_GUIDE_DEC
+		indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
+		if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
+			PRIVATE_DATA->ao_y_deflection = AO_GUIDE_NORTH_ITEM->number.value / 100.0;
+			res = sbig_ao_tip_tilt(PRIVATE_DATA->ao_x_deflection, PRIVATE_DATA->ao_y_deflection);
+		} else if (AO_GUIDE_SOUTH_ITEM->number.value > 0) {
+			PRIVATE_DATA->ao_y_deflection = AO_GUIDE_SOUTH_ITEM->number.value / -100.0;
+			res = sbig_ao_tip_tilt(PRIVATE_DATA->ao_x_deflection, PRIVATE_DATA->ao_y_deflection);
+		} else if (PRIVATE_DATA->ao_y_deflection != 0) {
+			PRIVATE_DATA->ao_y_deflection = 0;
+			res = sbig_ao_tip_tilt(PRIVATE_DATA->ao_x_deflection, PRIVATE_DATA->ao_y_deflection);
+		}
+		AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
+		AO_GUIDE_DEC_PROPERTY->state = res == CE_NO_ERROR ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AO_GUIDE_RA_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AO_GUIDE_RA
+		indigo_property_copy_values(AO_GUIDE_RA_PROPERTY, property, false);
+		if (AO_GUIDE_WEST_ITEM->number.value > 0) {
+			PRIVATE_DATA->ao_x_deflection = AO_GUIDE_WEST_ITEM->number.value / 100.0;
+			res = sbig_ao_tip_tilt(PRIVATE_DATA->ao_x_deflection, PRIVATE_DATA->ao_y_deflection);
+		} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
+			PRIVATE_DATA->ao_x_deflection = AO_GUIDE_EAST_ITEM->number.value / -100.0;
+			res = sbig_ao_tip_tilt(PRIVATE_DATA->ao_x_deflection, PRIVATE_DATA->ao_y_deflection);
+		} else if (PRIVATE_DATA->ao_x_deflection != 0) {
+			PRIVATE_DATA->ao_x_deflection = 0;
+			res = sbig_ao_tip_tilt(PRIVATE_DATA->ao_x_deflection, PRIVATE_DATA->ao_y_deflection);
+		}
+		AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
+		AO_GUIDE_RA_PROPERTY->state = res == CE_NO_ERROR ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AO_RESET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AO_RESET
+		indigo_property_copy_values(AO_RESET_PROPERTY, property, false);
+		if (AO_CENTER_ITEM->sw.value || AO_UNJAM_ITEM->sw.value) {
+			res = sbig_ao_center();
+			PRIVATE_DATA->ao_x_deflection = PRIVATE_DATA->ao_y_deflection = 0;
+			AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
+			AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+		}
+		AO_CENTER_ITEM->sw.value = AO_UNJAM_ITEM->sw.value = false;
+		AO_RESET_PROPERTY->state = res == CE_NO_ERROR ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, AO_RESET_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_ao_change_property(device, client, property);
+}
+
+static indigo_result ao_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_device_disconnect(NULL, device->name);
+	}
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_ao_detach(device);
+}
+
 // -------------------------------------------------------------------------------- hot-plug support
 short global_handle = INVALID_HANDLE_VALUE; /* This is global SBIG driver hangle used for attach and detatch cameras */
 pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1994,6 +2154,15 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		wheel_change_property,
 		NULL,
 		wheel_detach
+	);
+
+	static indigo_device ao_template = INDIGO_DEVICE_INITIALIZER(
+		"",
+		ao_attach,
+		indigo_ao_enumerate_properties,
+		ao_change_property,
+		NULL,
+		ao_detach
 	);
 
 	pthread_mutex_lock(&driver_mutex);
@@ -2183,6 +2352,33 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		}
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_OPEN_DEVICE error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
+	}
+
+	/* Check it there is an AO device present */
+	gcp.request = CCD_INFO_EXTENDED2_IMAGING; /* imaging CCD */
+	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &(PRIVATE_DATA->imager_ccd_extended_info4))) == CE_NO_ERROR) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info4.capabilitiesBits = 0x%x", PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits);
+		if ((PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits & 0x10) || getenv("SBIG_LEGACY_AO") != NULL) {
+			if((res = sbig_ao_center()) == CE_NO_ERROR) {
+				int slot = find_available_device_slot();
+				if (slot < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+					sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+					pthread_mutex_unlock(&driver_mutex);
+					return false;
+				}
+
+				device = malloc(sizeof(indigo_device));
+				assert(device != NULL);
+				memcpy(device, &ao_template, sizeof(indigo_device));
+				sprintf(device->name, "SBIG AO #%s", device_index_str);
+				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+				private_data->ao_x_deflection = private_data->ao_y_deflection = 0;
+				device->private_data = private_data;
+				indigo_async((void *)(void *)indigo_attach_device, device);
+				devices[slot] = device;
+			}
+		}
 	}
 
 

@@ -140,7 +140,7 @@ extern "C" {
 /** MOUNT_PARK_POSITION.DEC property item pointer.
 */
 #define MOUNT_PARK_POSITION_DEC_ITEM									(MOUNT_PARK_POSITION_PROPERTY->items+1)
-	
+
 //----------------------------------------------
 /** MOUNT_PARK property pointer, property is optional, property change request should be fully handled by device driver.
 */
@@ -153,7 +153,7 @@ extern "C" {
 /** MOUNT_PARK.UNPARKED property item pointer.
 */
 #define MOUNT_PARK_UNPARKED_ITEM											(MOUNT_PARK_PROPERTY->items+1)
-	
+
 //----------------------------------------------
 /** MOUNT_HOME_SET property pointer, property is optional, property change request should be fully handled by indigo_mount_change_property.
 */
@@ -188,8 +188,8 @@ extern "C" {
 /** MOUNT_HOME.HOME property item pointer.
 */
 #define MOUNT_HOME_ITEM												        (MOUNT_HOME_PROPERTY->items+0)
-	
-	
+
+
 //----------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
@@ -274,11 +274,11 @@ extern "C" {
 /** MOUNT_TRACK_RATE.KING property item pointer.
  */
 #define MOUNT_TRACK_RATE_KING_ITEM										(MOUNT_TRACK_RATE_PROPERTY->items+3)
-	
+
 /** MOUNT_TRACK_RATE.CUSTOM property item pointer.
  */
 #define MOUNT_TRACK_RATE_CUSTOM_ITEM									(MOUNT_TRACK_RATE_PROPERTY->items+4)
-	
+
 //-----------------------------------------------
 /** MOUNT_TRACKING property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
@@ -326,7 +326,7 @@ extern "C" {
 /** MOUNT_HORIZONTAL_COORDINATES.AZ property item pointer.
  */
 #define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+0)
-	
+
 /** MOUNT_HORIZONTAL_COORDINATES.ALT property item pointer.
  */
 #define MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+1)
@@ -419,12 +419,12 @@ extern "C" {
 /** MOUNT_SNOOP_DEVICES_PROPERTY.GPS property item pointer.
  */
 #define MOUNT_SNOOP_GPS_ITEM																(MOUNT_SNOOP_DEVICES_PROPERTY->items+1)
-	
+
 
 //------------------------------------------------
 /** Max number of alignment points.
  */
-	
+
 #define MOUNT_MAX_ALIGNMENT_POINTS										100
 
 //------------------------------------------------
@@ -509,9 +509,9 @@ extern indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, do
 
 /** Translate coordinates from native.
  */
-	
+
 extern void indigo_update_coordinates(indigo_device *device, const char *message);
-	
+
 /** Load alignment points.
  */
 
@@ -519,14 +519,14 @@ extern void indigo_mount_load_alignment_points(indigo_device *device);
 
 /** Save alignment points.
  */
-	
+
 extern void indigo_mount_save_alignment_points(indigo_device *device);
-	
+
 /** Update alignment points.
  */
 
 extern void indigo_mount_update_alignment_points(indigo_device *device);
-	
+
 #ifdef __cplusplus
 }
 #endif
