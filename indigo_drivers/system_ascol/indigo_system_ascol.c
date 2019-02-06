@@ -24,7 +24,7 @@
  \file indigo_system_ascol.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_system_ascol"
 
 #include <stdlib.h>
@@ -856,22 +856,6 @@ static void mount_handle_flap_coude(indigo_device *device) {
 }
 
 
-static void mount_handle_motion_ns(indigo_device *device) {
-	int dev_id = PRIVATE_DATA->dev_id;
-	/* TBD */
-	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-}
-
-
-static void mount_handle_motion_ne(indigo_device *device) {
-	int dev_id = PRIVATE_DATA->dev_id;
-	/* TBD */
-	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-}
-
-
 static void mount_handle_park(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	bool error_flag = false;
@@ -1299,14 +1283,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->hidden = false;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 1;
-		// --------------------------------------------------------------------------------
+		// -------------------------------------------------------------------------------- AUTHENTICATION
 		AUTHENTICATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		//MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 
@@ -1327,11 +1310,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_INFO_PROPERTY->hidden = true;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-
 		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
-
 		//strncpy(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP, INDIGO_NAME_SIZE);
-
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
 		MOUNT_SNOOP_DEVICES_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------- OIL STATE
@@ -1763,24 +1743,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
 			//mount_handle_slew_rate(device);
 		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
-		if(PRIVATE_DATA->parked) {
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, WARN_PARKED_MSG);
-			return INDIGO_OK;
-		}
-		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-		mount_handle_motion_ns(device);
-		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
-		if(PRIVATE_DATA->parked) {
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, WARN_PARKED_MSG);
-			return INDIGO_OK;
-		}
-		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
-		mount_handle_motion_ne(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
