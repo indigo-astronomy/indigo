@@ -209,25 +209,19 @@
 #define USER_SPEED_DEC_ITEM_NAME           "DEC"
 
 #define T1_SPEED_PROPERTY                  (PRIVATE_DATA->t1_speed_property)
-#define T1_SPEED_RA_ITEM                   (T1_SPEED_PROPERTY->items+0)
-#define T1_SPEED_DEC_ITEM                  (T1_SPEED_PROPERTY->items+1)
+#define T1_SPEED_ITEM                      (T1_SPEED_PROPERTY->items+0)
 #define T1_SPEED_PROPERTY_NAME             "ASCOL_T1_SPEED"
-#define T1_SPEED_RA_ITEM_NAME              "RA"
-#define T1_SPEED_DEC_ITEM_NAME             "DEC"
+#define T1_SPEED_ITEM_NAME                 "SPEED"
 
 #define T2_SPEED_PROPERTY                  (PRIVATE_DATA->t2_speed_property)
-#define T2_SPEED_RA_ITEM                   (T2_SPEED_PROPERTY->items+0)
-#define T2_SPEED_DEC_ITEM                  (T2_SPEED_PROPERTY->items+1)
+#define T2_SPEED_ITEM                      (T2_SPEED_PROPERTY->items+0)
 #define T2_SPEED_PROPERTY_NAME             "ASCOL_T2_SPEED"
-#define T2_SPEED_RA_ITEM_NAME              "RA"
-#define T2_SPEED_DEC_ITEM_NAME             "DEC"
+#define T2_SPEED_ITEM_NAME                 "SPEED"
 
 #define T3_SPEED_PROPERTY                  (PRIVATE_DATA->t3_speed_property)
-#define T3_SPEED_RA_ITEM                   (T3_SPEED_PROPERTY->items+0)
-#define T3_SPEED_DEC_ITEM                  (T3_SPEED_PROPERTY->items+1)
+#define T3_SPEED_ITEM                      (T3_SPEED_PROPERTY->items+0)
 #define T3_SPEED_PROPERTY_NAME             "ASCOL_T3_SPEED"
-#define T3_SPEED_RA_ITEM_NAME              "RA"
-#define T3_SPEED_DEC_ITEM_NAME             "DEC"
+#define T3_SPEED_ITEM_NAME                 "SPEED"
 
 // Guider
 #define GUIDE_CORRECTION_PROPERTY          (PRIVATE_DATA->guide_correction_property)
@@ -523,6 +517,62 @@ static void mount_handle_radec_relative_move(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	indigo_update_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
+}
+
+
+static void mount_handle_user_speed(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	USER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+	res = ascol_TSUS(PRIVATE_DATA->dev_id, USER_SPEED_RA_ITEM->number.target, USER_SPEED_DEC_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		USER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSUS(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, USER_SPEED_PROPERTY, NULL);
+}
+
+
+static void mount_handle_t1_speed(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	T1_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+	res = ascol_TSS1(PRIVATE_DATA->dev_id, T1_SPEED_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		T1_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSS1(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, T1_SPEED_PROPERTY, NULL);
+}
+
+
+static void mount_handle_t2_speed(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	T2_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+	res = ascol_TSS2(PRIVATE_DATA->dev_id, T2_SPEED_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		T2_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSS2(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, T2_SPEED_PROPERTY, NULL);
+}
+
+
+static void mount_handle_t3_speed(indigo_device *device) {
+	int res = INDIGO_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	T3_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+	res = ascol_TSS3(PRIVATE_DATA->dev_id, T3_SPEED_ITEM->number.target);
+	if (res != INDIGO_OK) {
+		T3_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSS3(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	indigo_update_property(device, T3_SPEED_PROPERTY, NULL);
 }
 
 
@@ -1434,23 +1484,20 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_number_item(USER_SPEED_RA_ITEM, USER_SPEED_RA_ITEM_NAME, "Right Ascension (-10.0\"/s to 10.0\"/s)", -10, 10, 0.0001, 0);
 		indigo_init_number_item(USER_SPEED_DEC_ITEM, USER_SPEED_DEC_ITEM_NAME, "Declination (-10.0\"/s to 10.0\"/s)", -10, 10, 0.0001, 0);
 		// -------------------------------------------------------------------------- T1_SPEED
-		T1_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T1_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T1 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		T1_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T1_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T1 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (T1_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(T1_SPEED_RA_ITEM, T1_SPEED_RA_ITEM_NAME, "Right Ascension (100.0\"/s to 5000.0\"/s)", 100, 5000, 0.01, 0);
-		indigo_init_number_item(T1_SPEED_DEC_ITEM, T1_SPEED_DEC_ITEM_NAME, "Declination (100.0\"/s to 5000.0\"/s)", 100, 5000, 0.01, 0);
+		indigo_init_number_item(T1_SPEED_ITEM, T1_SPEED_ITEM_NAME, "Rate (100.0\"/s to 5000.0\"/s)", 100, 5000, 0.01, 0);
 		// -------------------------------------------------------------------------- T2_SPEED
-		T2_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T2_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T2 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		T2_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T2_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T2 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (T2_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(T2_SPEED_RA_ITEM, T2_SPEED_RA_ITEM_NAME, "Right Ascension (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
-		indigo_init_number_item(T2_SPEED_DEC_ITEM, T2_SPEED_DEC_ITEM_NAME, "Declination (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
+		indigo_init_number_item(T2_SPEED_ITEM, T2_SPEED_ITEM_NAME, "Rate (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
 		// -------------------------------------------------------------------------- T3_SPEED
-		T3_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T3_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T3 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		T3_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T3_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T3 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (T3_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(T3_SPEED_RA_ITEM, T3_SPEED_RA_ITEM_NAME, "Right Ascension (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
-		indigo_init_number_item(T3_SPEED_DEC_ITEM, T3_SPEED_DEC_ITEM_NAME, "Declination (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
+		indigo_init_number_item(T3_SPEED_ITEM, T3_SPEED_ITEM_NAME, "Rate (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
 		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1672,6 +1719,34 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_property_copy_values(RADEC_RELATIVE_MOVE_PROPERTY, property, false);
 		mount_handle_radec_relative_move(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(USER_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- USER_SPEED
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(USER_SPEED_PROPERTY, property, false);
+			mount_handle_user_speed(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(T1_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- T1_SPEED
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(T1_SPEED_PROPERTY, property, false);
+			mount_handle_t1_speed(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(T2_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- T2_SPEED
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(T2_SPEED_PROPERTY, property, false);
+			mount_handle_t2_speed(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(T3_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- T3_SPEED
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(T3_SPEED_PROPERTY, property, false);
+			mount_handle_t3_speed(device);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
