@@ -58,7 +58,7 @@ endif
 #
 #---------------------------------------------------------------------
 
-ctrlpanel_data: resource/data/constellations.bounds.json.data resource/data/mw.json.data resource/data/constellations.json.data resource/data/planets.json.data resource/data/dsos.6.json.data
+ctrlpanel_data: resource/data/constellations.bounds.json.data resource/data/mw.json.data resource/data/constellations.json.data resource/data/planets.json.data
 
 ctrlpanel: ctrlpanel_data resource/celestial.min.js.data resource/d3.min.js.data resource/celestial.css.data resource/mng.html.data resource/ctrl.html.data resource/imager.html.data resource/mount.html.data resource/indigo.js.data resource/mng.png.data resource/components.js.data resource/mount.png.data resource/ctrl.png.data resource/imager.png.data resource/guider.png.data resource/indigo.css.data resource/bootstrap.min.css.data resource/glyphicons.css.data resource/jquery.min.js.data resource/bootstrap.min.js.data resource/popper.min.js.data resource/vue.min.js.data resource/glyphicons-regular.ttf.data
 
