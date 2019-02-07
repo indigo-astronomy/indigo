@@ -202,13 +202,13 @@ package: reconfigure init all
 	printf " INDIGO is a system of standards and frameworks for multiplatform and distributed astronomy software development designed to scale with your needs.\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	cat $(INSTALL_ROOT)/DEBIAN/control
 	printf "echo Remove pre-2.0-76 build if any\n" > $(INSTALL_ROOT)/DEBIAN/preinst
-	printf "sudo rm -f /usr/local/bin/indigo_*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
-	printf "sudo rm -f /usr/local/lib/indigo_*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
-	printf "sudo rm -f /usr/local/lib/libindigo*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
-	printf "sudo rm -f /usr/local/lib/pkgconfig/indigo.pc\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
-	printf "sudo rm -f /usr/local/lib/libtoupcam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
-	printf "sudo rm -f /usr/local/lib/libaltaircam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
-	printf "sudo rm -rf /usr/local/etc/apogee\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "rm -f /usr/local/bin/indigo_*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "rm -f /usr/local/lib/indigo_*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "rm -f /usr/local/lib/libindigo*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "rm -f /usr/local/lib/pkgconfig/indigo.pc\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "rm -f /usr/local/lib/libtoupcam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "rm -f /usr/local/lib/libaltaircam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "rm -rf /usr/local/etc/apogee\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
 	rm -f $(INSTALL_ROOT).deb
 	fakeroot dpkg --build $(INSTALL_ROOT)
