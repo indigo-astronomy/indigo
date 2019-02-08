@@ -679,7 +679,7 @@ static void server_main() {
 		static unsigned char glyphicons_ttf[] = {
 			#include "resource/glyphicons-regular.ttf.data"
 		};
-		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "text/javascript");
+		indigo_server_add_resource("/glyphicons-regular.ttf", glyphicons_ttf, sizeof(glyphicons_ttf), "font/ttf");
 		// JQuery
 		static unsigned char jquery_js[] = {
 			#include "resource/jquery.min.js.data"
