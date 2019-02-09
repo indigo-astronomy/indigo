@@ -383,8 +383,20 @@ static void synscan_delay_ms(int millis) {
 	}
 }
 
+static uint64_t
+current_time_millis() {
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	uint64_t tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+	return tnow;
+}
+
 bool
 synscan_guide_pulse(indigo_device* device, enum AxisID axis, long guide_rate, int duration_ms, long track_rate) {
+	static int pulse_count = 0;
+	static long total_overhead = 0;
+	static bool reported = false;
+
 	char buffer[11];
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 
@@ -392,22 +404,40 @@ synscan_guide_pulse(indigo_device* device, enum AxisID axis, long guide_rate, in
 	synscan_flush(device);
 	
 	//  Set rate for axis
+	char response[20];
 	sprintf(buffer, ":I%c%s", axis, longToHex(guide_rate));
 	bool ok = synscan_command_unlocked(device, buffer);
 
+	//  Read response and record time
+	uint64_t start_overhead = current_time_millis();
+	uint64_t tnow = start_overhead;
+	ok = ok && synscan_read_response(device, response);		//  Rate command
+
 	//  Record start time of pulse
-//	struct timeval now;
-//	gettimeofday(&now, NULL);
-//	uint64_t tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
 	
 	//  Start slewing the given axis if it wasn't already tracking (e.g. DEC)
 	if (track_rate == 0) {
 		sprintf(buffer, ":J%c", axis);
 		ok = ok && synscan_command_unlocked(device, buffer);
+		tnow = start_overhead = current_time_millis();
+		ok = ok && synscan_read_response(device, response);		//  Start moving command
 	}
 
-	//  Do the delay
-	synscan_delay_ms(duration_ms);
+	//  Compute duration of overhead
+	uint64_t overhead = current_time_millis() - start_overhead;
+
+	//  Adjust pulse length to account for overhead
+	duration_ms -= (int)overhead;
+
+	//  Average the overhead
+	if (!reported) {
+		total_overhead += (long)overhead;
+		pulse_count++;
+	}
+	
+	//  Do the delay (if any still required)
+	if (duration_ms > 0)
+		synscan_delay_ms(duration_ms);
 
 	//  Stop or resume tracking on the axis
 	if (track_rate == 0) {
@@ -418,18 +448,19 @@ synscan_guide_pulse(indigo_device* device, enum AxisID axis, long guide_rate, in
 		sprintf(buffer, ":I%c%s", axis, longToHex(track_rate));
 		ok = ok && synscan_command_unlocked(device, buffer);
 	}
-	
-	//  Determine how long the pulse took
-//	gettimeofday(&now, NULL);
-//	uint64_t tend = (now.tv_sec * 1000) + (now.tv_usec / 1000);
-//	printf("Pulse duration %lldms\n", tend - tnow);
 
-	//  Read all the motor controller responses
-	char response[20];
-	ok = ok && synscan_read_response(device, response);		//  Rate command
-	if (track_rate == 0)
-		ok = ok && synscan_read_response(device, response);		//  Start moving command
+	//  Determine how long the pulse took
+	uint64_t tend = current_time_millis();
+
+	//  Read response from last command
 	ok = ok && synscan_read_response(device, response);		//  Stop/Rate command
+
+	//  Trace out the pulse length (for debugging)
+	printf("Pulse duration %lldms with overhead of %lldms\n", tend - tnow, overhead);
+	if (!reported && pulse_count >= 5) {
+		reported = true;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE: minimum pulse length is %ldms\n", total_overhead / pulse_count);
+	}
 	
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return ok;
