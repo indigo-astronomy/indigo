@@ -119,7 +119,15 @@ static char * doubleToSexa(double value, char *format) {
 	static char buffer[128];
 	double d = fabs(value);
 	double m = 60.0 * (d - floor(d));
-	double s = 60.0 * (m - floor(m));
+	double s = round(60.0 * (m - floor(m)));
+	if (s == 60) {
+		s = 0;
+		++m;
+	}
+	if (m == 60) {
+		m = 0;
+		++d;
+	}
 	if (value < 0) {
 		d = -d;
 	}
@@ -184,7 +192,7 @@ static void start_worker_thread(handler_data *data) {
 			} else if (strcmp(buffer_in, "GR") == 0) {
 				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->ra, "%02d:%02d:%02d#"));
 			} else if (strcmp(buffer_in, "GD") == 0) {
-				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->dec, "%02d*%02d'%02d#"));
+				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->dec, "%+03d*%02d'%02d#"));
 			} else if (strncmp(buffer_in, "Sr", 2) == 0) {
 				int h = 0, m = 0;
 				double s = 0;
