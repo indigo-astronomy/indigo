@@ -19,3 +19,6 @@ INDIGO Astronomy open-source license.
 indigo_server indigo_agent_lx200_server
 
 ## Status: Under development
+
+Driver is developed and tested with:
+* LX200GPS
