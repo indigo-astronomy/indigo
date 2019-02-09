@@ -37,5 +37,6 @@ Use URL in form lx200://host:port to connect to the mount over network (default 
 
 Driver is developed and tested with:
 * Meade ETX-125
+* LX200GPS
 * EQMac
 * Simulators
