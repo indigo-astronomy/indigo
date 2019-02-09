@@ -392,39 +392,30 @@ current_time_millis() {
 }
 
 bool
-synscan_guide_pulse(indigo_device* device, enum AxisID axis, long guide_rate, int duration_ms, long track_rate) {
+synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, long track_rate) {
 	static int pulse_count = 0;
 	static long total_overhead = 0;
 	static bool reported = false;
 
 	char buffer[11];
+	char response[20];
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 
 	//  Flush the port ready
 	synscan_flush(device);
 	
 	//  Set rate for axis
-	char response[20];
-	sprintf(buffer, ":I%c%s", axis, longToHex(guide_rate));
+	sprintf(buffer, ":I%c%s", kAxisRA, longToHex(guide_rate));
 	bool ok = synscan_command_unlocked(device, buffer);
 
+	//------  GUIDE PULSE STARTS NOW  ----------------------
+
 	//  Read response and record time
-	uint64_t start_overhead = current_time_millis();
-	uint64_t tnow = start_overhead;
+	uint64_t tnow = current_time_millis();
 	ok = ok && synscan_read_response(device, response);		//  Rate command
 
-	//  Record start time of pulse
-	
-	//  Start slewing the given axis if it wasn't already tracking (e.g. DEC)
-	if (track_rate == 0) {
-		sprintf(buffer, ":J%c", axis);
-		ok = ok && synscan_command_unlocked(device, buffer);
-		tnow = start_overhead = current_time_millis();
-		ok = ok && synscan_read_response(device, response);		//  Start moving command
-	}
-
 	//  Compute duration of overhead
-	uint64_t overhead = current_time_millis() - start_overhead;
+	uint64_t overhead = current_time_millis() - tnow;
 
 	//  Adjust pulse length to account for overhead
 	duration_ms -= (int)overhead;
@@ -439,27 +430,96 @@ synscan_guide_pulse(indigo_device* device, enum AxisID axis, long guide_rate, in
 	if (duration_ms > 0)
 		synscan_delay_ms(duration_ms);
 
-	//  Stop or resume tracking on the axis
-	if (track_rate == 0) {
-		sprintf(buffer, ":L%c", axis);
-		ok = ok && synscan_command_unlocked(device, buffer);
-	}
-	else {
-		sprintf(buffer, ":I%c%s", axis, longToHex(track_rate));
-		ok = ok && synscan_command_unlocked(device, buffer);
-	}
+	//  Resume tracking on the axis
+	sprintf(buffer, ":I%c%s", kAxisRA, longToHex(track_rate));
+	ok = ok && synscan_command_unlocked(device, buffer);
+
+	//------  GUIDE PULSE STOPS NOW  -----------------------
 
 	//  Determine how long the pulse took
-	uint64_t tend = current_time_millis();
+	uint64_t pulse_length = current_time_millis() - tnow;
 
 	//  Read response from last command
 	ok = ok && synscan_read_response(device, response);		//  Stop/Rate command
 
 	//  Trace out the pulse length (for debugging)
-	printf("Pulse duration %lldms with overhead of %lldms\n", tend - tnow, overhead);
+	printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
 	if (!reported && pulse_count >= 5) {
 		reported = true;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE: minimum pulse length is %ldms\n", total_overhead / pulse_count);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-RA: minimum pulse length is %ldms\n", total_overhead / pulse_count);
+	}
+	
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	return ok;
+}
+
+bool
+synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, long guide_rate, int duration_ms) {
+	static int pulse_count = 0;
+	static long total_overhead = 0;
+	static bool reported = false;
+	
+	char buffer[11];
+	char response[20];
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	
+	//  Flush the port ready
+	synscan_flush(device);
+
+	//  Set axis gearing
+	static char codes[2] = {'0', '1'};
+	sprintf(buffer, ":G%c%c%c", kAxisDEC, kAxisSpeedLow, codes[direction]);
+	bool ok = synscan_command_unlocked(device, buffer);
+	ok = ok && synscan_read_response(device, response);		//  Gearing command
+
+	//  Set rate for axis
+	sprintf(buffer, ":I%c%s", kAxisDEC, longToHex(guide_rate));
+	ok = ok && synscan_command_unlocked(device, buffer);
+	ok = ok && synscan_read_response(device, response);		//  Rate command
+	
+	//  Set the axis moving
+	sprintf(buffer, ":J%c", kAxisDEC);
+	ok = ok && synscan_command_unlocked(device, buffer);
+
+	//------  GUIDE PULSE STARTS NOW  ----------------------
+
+	//  Read response and record time
+	uint64_t tnow = current_time_millis();
+	ok = ok && synscan_read_response(device, response);		//  Start moving command
+	
+	//  Compute duration of overhead
+	uint64_t overhead = current_time_millis() - tnow;
+	
+	//  Adjust pulse length to account for overhead
+	duration_ms -= (int)overhead;
+	
+	//  Average the overhead
+	if (!reported) {
+		total_overhead += (long)overhead;
+		pulse_count++;
+	}
+	
+	//  Do the delay (if any still required)
+	if (duration_ms > 0)
+		synscan_delay_ms(duration_ms);
+	
+	//  Stop the axis
+	sprintf(buffer, ":L%c", kAxisDEC);
+	ok = ok && synscan_command_unlocked(device, buffer);
+
+	//------  GUIDE PULSE STOPS NOW  -----------------------
+
+	//  Determine how long the pulse took
+	uint64_t pulse_length = current_time_millis() - tnow;
+
+	//  Read response from last command
+	ok = ok && synscan_read_response(device, response);		//  Stop command
+
+	//  Trace out the pulse length (for debugging)
+	printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
+	if (!reported && pulse_count >= 5) {
+		reported = true;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-DEC: minimum pulse length is %ldms\n", total_overhead / pulse_count);
 	}
 	
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
