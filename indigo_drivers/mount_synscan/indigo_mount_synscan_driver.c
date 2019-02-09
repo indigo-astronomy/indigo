@@ -349,8 +349,6 @@ bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double 
 	synscan_axis_config_for_rate(device, axis, rate, &pulseConfig);
 	if (resume_rate != 0)
 		synscan_axis_config_for_rate(device, axis, resume_rate, &resumeConfig);
-	else
-		resumeConfig.rateCode = 0;
 
 #if 0
 	//  Determine if simple rate change is sufficient (or full reconfiguration)
@@ -370,7 +368,10 @@ bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double 
 #endif
 
 	//  Do the pulse
-	return synscan_guide_pulse(device, axis, pulseConfig.rateCode, duration, resumeConfig.rateCode);
+	if (axis == kAxisRA)
+		return synscan_guide_pulse_ra(device, pulseConfig.rateCode, duration, resumeConfig.rateCode);
+	else
+		return synscan_guide_pulse_dec(device, pulseConfig.direction, pulseConfig.rateCode, duration);
 
 //	bool ok = synscan_set_axis_slew_rate(device, axis, requiredConfig.rateCode);
 //	if (!ok)
