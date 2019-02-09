@@ -565,7 +565,7 @@ double indigo_stod(char *string) {
 	strncpy(copy, string, 128);
 	string = copy;
 	double value = 0;
-	char *separator = strpbrk(string, ":*' ");
+	char *separator = strpbrk(string, ":*' \xdf");
 	if (separator == NULL) {
 		value = atof(string);
 	} else {
