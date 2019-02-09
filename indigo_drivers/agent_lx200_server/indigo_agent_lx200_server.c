@@ -215,7 +215,7 @@ static void start_worker_thread(handler_data *data) {
 					strcpy(buffer_out, "1");
 				} else if (sscanf(buffer_in + 2, "%d%c%d", &d, &c, &m) == 3) {
 					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = d > 0 ? d + m/60.0 : d - m/60.0;
-				strcpy(buffer_out, "1");
+					strcpy(buffer_out, "1");
 				} else {
 					strcpy(buffer_out, "0");
 				}
