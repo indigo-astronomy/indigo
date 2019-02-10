@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -57,6 +57,18 @@
 #define ATIK_GUIDE_SOUTH            0x02     /* DEC- */
 #define ATIK_GUIDE_WEST             0x08     /* RA- */
 
+#define ATIK_PRESETS_PROPERTY      	(PRIVATE_DATA->presets_property)
+#define ATIK_PRESETS_CUSTOM_ITEM    (ATIK_PRESETS_PROPERTY->items+0)
+#define ATIK_PRESETS_LOW_ITEM     	(ATIK_PRESETS_PROPERTY->items+1)
+#define ATIK_PRESETS_MED_ITEM     	(ATIK_PRESETS_PROPERTY->items+2)
+#define ATIK_PRESETS_HIGH_ITEM     	(ATIK_PRESETS_PROPERTY->items+3)
+
+#define ATIK_PRESETS_PROPERTY_NAME		"ATIK_PRESETS"
+#define ATIK_PRESETS_CUSTOM_ITEM_NAME "CUSTOM"
+#define ATIK_PRESETS_LOW_ITEM_NAME 		"LOW"
+#define ATIK_PRESETS_MED_ITEM_NAME 		"MED"
+#define ATIK_PRESETS_HIGH_ITEM_NAME 	"HIGH"
+
 typedef struct {
 	ArtemisHandle handle;
 	int index;
@@ -66,6 +78,7 @@ typedef struct {
 	unsigned short relay_mask;
 	unsigned char *buffer;
 	bool can_check_temperature;
+	indigo_property *presets_property;
 } atik_private_data;
 
 static bool do_log = true;
@@ -182,6 +195,39 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 				CCD_COOLER_POWER_ITEM->number.value = round(100.0 * (level - min_level) / (max_level - min_level));
 			}
+			if (ArtemisHasCameraSpecificOption(PRIVATE_DATA->handle, 1)) {
+				ATIK_PRESETS_PROPERTY->hidden = false;
+				short value = 0;
+				int actualLength;
+				ATIK_PRESETS_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 1, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				if (value == 0) {
+					short value;
+					int actualLength;
+					CCD_GAIN_PROPERTY->hidden = false;
+					CCD_OFFSET_PROPERTY->hidden = false;
+					value = CCD_GAIN_ITEM->number.value;
+					CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
+					value = CCD_OFFSET_ITEM->number.value;
+					CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
+					indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_CUSTOM_ITEM, true);
+				} else {
+					CCD_GAIN_PROPERTY->hidden = true;
+					CCD_OFFSET_PROPERTY->hidden = true;
+					switch (value) {
+						case 1:
+							indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_LOW_ITEM, true);
+							break;
+						case 2:
+							indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_MED_ITEM, true);
+							break;
+						case 3:
+							indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_HIGH_ITEM, true);
+							break;
+					}
+				}
+			}
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			ArtemisDisconnect(PRIVATE_DATA->handle);
@@ -197,10 +243,13 @@ static void ccd_connect_callback(indigo_device *device) {
 		PRIVATE_DATA->device_count--;
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	} else {
+		indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -214,10 +263,35 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		CCD_READ_MODE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
+		CCD_GAIN_ITEM->number.min = 0;
+		CCD_GAIN_ITEM->number.max = 60;
+		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = 30;
+		CCD_OFFSET_ITEM->number.min = 0;
+		CCD_OFFSET_ITEM->number.max = 511;
+		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = 0;
+		ATIK_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, ATIK_PRESETS_PROPERTY_NAME, CCD_MAIN_GROUP, "Gain/offset presets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (ATIK_PRESETS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		ATIK_PRESETS_PROPERTY->hidden = true;
+		indigo_init_switch_item(ATIK_PRESETS_CUSTOM_ITEM, ATIK_PRESETS_CUSTOM_ITEM_NAME, "Custom", false);
+		indigo_init_switch_item(ATIK_PRESETS_HIGH_ITEM, ATIK_PRESETS_HIGH_ITEM_NAME, "High", false);
+		indigo_init_switch_item(ATIK_PRESETS_MED_ITEM, ATIK_PRESETS_MED_ITEM_NAME, "Medium", false);
+		indigo_init_switch_item(ATIK_PRESETS_LOW_ITEM, ATIK_PRESETS_LOW_ITEM_NAME, "Low", false);
+		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
+}
+
+static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	if (IS_CONNECTED) {
+		if (indigo_property_match(ATIK_PRESETS_PROPERTY, property))
+		indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
+	}
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -237,6 +311,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				PRIVATE_DATA->buffer = NULL;
 			}
 			if (--PRIVATE_DATA->device_count == 0) {
+				indigo_delete_property(device, ATIK_PRESETS_PROPERTY, NULL);
 				ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
 				ArtemisDisconnect(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = NULL;
@@ -244,6 +319,62 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	} else if (indigo_property_match(ATIK_PRESETS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ATIK_PRESETS
+		short lastPreset = 0, preset = 0;
+		if (ATIK_PRESETS_LOW_ITEM->sw.value) {
+			lastPreset = 1;
+		} else if (ATIK_PRESETS_MED_ITEM->sw.value) {
+			lastPreset = 2;
+		} else if (ATIK_PRESETS_HIGH_ITEM->sw.value) {
+			lastPreset = 3;
+		}
+		indigo_property_copy_values(ATIK_PRESETS_PROPERTY, property, false);
+		if (ATIK_PRESETS_LOW_ITEM->sw.value) {
+			preset = 1;
+		} else if (ATIK_PRESETS_MED_ITEM->sw.value) {
+			preset = 2;
+		} else if (ATIK_PRESETS_HIGH_ITEM->sw.value) {
+			preset = 3;
+		}
+		if (lastPreset != preset) {
+			short value;
+			int actualLength;
+			if (preset == 0) {
+				value = CCD_GAIN_ITEM->number.value;
+				CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
+				value = CCD_OFFSET_ITEM->number.value;
+				CCD_GAIN_PROPERTY->hidden = false;
+				indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
+				CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
+				CCD_OFFSET_PROPERTY->hidden = false;
+				indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
+			} else {
+				indigo_delete_property(device, CCD_GAIN_PROPERTY, NULL);
+				CCD_GAIN_PROPERTY->hidden = true;
+				indigo_delete_property(device, CCD_OFFSET_PROPERTY, NULL);
+				CCD_OFFSET_PROPERTY->hidden = true;
+			}
+			ATIK_PRESETS_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 1, (unsigned char *)&preset, sizeof(preset)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			indigo_update_property(device, ATIK_PRESETS_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_GAIN
+		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+		short value = CCD_GAIN_ITEM->number.target;
+		CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 1, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_OFFSET
+		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
+		short value = CCD_OFFSET_ITEM->number.target;
+		CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 1, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -341,6 +472,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	indigo_release_property(ATIK_PRESETS_PROPERTY);
 	return indigo_ccd_detach(device);
 }
 
@@ -577,7 +709,7 @@ static void plug_handler(indigo_device *device) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
-		indigo_ccd_enumerate_properties,
+		ccd_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
@@ -674,7 +806,7 @@ static void unplug_handler(indigo_device *device) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device)
-			PRIVATE_DATA->index = -1;
+			device->gp_bits = 0;
 	}
 	int count = ArtemisDeviceCount();
 	for (int j = 0; j < count; j++) {
@@ -683,27 +815,33 @@ static void unplug_handler(indigo_device *device) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
 				if (device && PRIVATE_DATA->dev == dev) {
-					PRIVATE_DATA->index = j;
+					device->gp_bits = 1;
 					dev = NULL;
 					break;
 				}
 			}
 		}
 	}
-	atik_private_data *private_data = NULL;
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device && PRIVATE_DATA->index == -1) {
-			private_data = PRIVATE_DATA;
+		if (device && device->gp_bits == 0 && device->master_device != device) {
 			indigo_detach_device(device);
 			free(device);
 			devices[i] = NULL;
 		}
 	}
-	if (private_data) {
-		if (private_data->buffer)
-			free(private_data->buffer);
-		free(private_data);
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if (device && device->gp_bits == 0) {
+			indigo_detach_device(device);
+			if (PRIVATE_DATA) {
+				if (PRIVATE_DATA->buffer)
+					free(PRIVATE_DATA->buffer);
+				free(PRIVATE_DATA);
+			}
+			free(device);
+			devices[i] = NULL;
+		}
 	}
 }
 
@@ -752,10 +890,25 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 			libusb_hotplug_deregister_callback(NULL, callback_handle1);
 			libusb_hotplug_deregister_callback(NULL, callback_handle2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] != NULL) {
-					indigo_device *device = devices[j];
-					hotplug_callback(NULL, PRIVATE_DATA->dev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+			for (int i = 0; i < MAX_DEVICES; i++) {
+				indigo_device *device = devices[i];
+				if (device && device->master_device != device) {
+					indigo_detach_device(device);
+					free(device);
+					devices[i] = NULL;
+				}
+			}
+			for (int i = 0; i < MAX_DEVICES; i++) {
+				indigo_device *device = devices[i];
+				if (device) {
+					indigo_detach_device(device);
+					if (PRIVATE_DATA) {
+						if (PRIVATE_DATA->buffer)
+						free(PRIVATE_DATA->buffer);
+						free(PRIVATE_DATA);
+					}
+					free(device);
+					devices[i] = NULL;
 				}
 			}
 			ArtemisShutdown();
