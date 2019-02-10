@@ -110,7 +110,7 @@ $(BUILD_LIB)/libjpeg.a:
 libnovas: $(BUILD_LIB)/libnovas.a
 
 $(BUILD_LIB)/libnovas.a:
-	cd externals/novas; $(CC) -c $(CFLAGS) novas.c eph_manager.c novascon.c nutation.c readeph0.c solsys3.c; $(AR) $(ARFLAGS) $@ *.o; install *.h $(BUILD_INCLUDE); install JPLEPH.421 $(BUILD_LIB)
+	cd externals/novas; rm -f *.o; $(CC) -c $(CFLAGS) novas.c eph_manager.c novascon.c nutation.c readeph0.c solsys3.c; $(AR) $(ARFLAGS) $@ *.o; install *.h $(BUILD_INCLUDE); install JPLEPH.421 $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
