@@ -49,6 +49,7 @@
 #include "indigo_io.h"
 #include "indigo_version.h"
 #include "indigo_driver_xml.h"
+#include "indigo_names.h"
 
 #define BUFFER_SIZE 524288  /* BUFFER_SIZE % 4 == 0, inportant for base64 */
 
@@ -411,11 +412,13 @@ static void set_property(parser_context *context, indigo_property *other, char *
 									property_item->number.step = other_item->number.step;
 								if (property_item->number.value < property_item->number.min) {
 									//property_item->number.value = property_item->number.min;
-									indigo_debug("%s.%s value out of range", property->name, property_item->name);
+									if (strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME))
+										indigo_debug("%s.%s value out of range", property->name, property_item->name);
 								}
 								if (property_item->number.value > property_item->number.max) {
 									//property_item->number.value = property_item->number.max;
-									indigo_debug("%s.%s value out of range", property->name, property_item->name);
+									if (strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME))
+										indigo_debug("%s.%s value out of range", property->name, property_item->name);
 								}
 								property_item->number.target = other_item->number.target;
 								break;
