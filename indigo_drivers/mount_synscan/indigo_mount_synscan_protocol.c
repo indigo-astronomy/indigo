@@ -443,7 +443,7 @@ synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, 
 	ok = ok && synscan_read_response(device, response);		//  Stop/Rate command
 
 	//  Trace out the pulse length (for debugging)
-	printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
+	//printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
 	if (!reported && pulse_count >= 5) {
 		reported = true;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-RA: minimum pulse length is %ldms\n", total_overhead / pulse_count);
@@ -516,7 +516,7 @@ synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, l
 	ok = ok && synscan_read_response(device, response);		//  Stop command
 
 	//  Trace out the pulse length (for debugging)
-	printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
+	//printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
 	if (!reported && pulse_count >= 5) {
 		reported = true;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-DEC: minimum pulse length is %ldms\n", total_overhead / pulse_count);
