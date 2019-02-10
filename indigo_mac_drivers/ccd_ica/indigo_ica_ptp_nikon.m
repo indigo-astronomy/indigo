@@ -602,7 +602,7 @@ static struct info {
             [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-focusSteps];
           }
         } else {
-          ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
+          ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.07 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
         }
       } else {
         [ptpPreviewTimer invalidate];
@@ -848,6 +848,24 @@ static struct info {
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
+        if ([self.name containsString:@"D3100"] || [self.name containsString:@"D3200"] || [self.name containsString:@"D3300"] || [self.name containsString:@"D3400"] || [self.name containsString:@"D3500"]) {
+          NSMutableArray *operations = (NSMutableArray *)self.info.operationsSupported;
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCheckEvent]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCapture]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDrive]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonSetControlMode]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonDeviceReady]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfCaptureSDRAM]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonDelImageSDRAM]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetPreviewImg]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonStartLiveView]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonEndLiveView]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetLiveViewImg]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonMfDrive]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonChangeAfArea]];
+          [operations addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDriveCancel]];
+        }
         if ([self operationIsSupported:PTPRequestCodeNikonGetVendorPropCodes]) {
           [self sendPTPRequest:PTPRequestCodeNikonGetVendorPropCodes];
         } else {
@@ -1030,15 +1048,17 @@ static struct info {
       break;
     }
     case PTPRequestCodeNikonCheckEvent: {
-      unsigned char* buffer = (unsigned char*)[data bytes];
-      unsigned char* buf = buffer;
-      int count = ptpReadUnsignedShort(&buf);
-      for (int i = 0; i < count; i++) {
-        PTPEventCode code = ptpReadUnsignedShort(&buf);
-        unsigned int parameter1 = ptpReadUnsignedInt(&buf);
-        PTPEvent *event = [[self.eventClass alloc] initWithCode:code parameter1:parameter1];
-        [self.delegate debug:[NSString stringWithFormat:@"Translated to %@", [event description]]];
-        [self processEvent:event];
+      if (data) {
+        unsigned char* buffer = (unsigned char*)[data bytes];
+        unsigned char* buf = buffer;
+        int count = ptpReadUnsignedShort(&buf);
+        for (int i = 0; i < count; i++) {
+          PTPEventCode code = ptpReadUnsignedShort(&buf);
+          unsigned int parameter1 = ptpReadUnsignedInt(&buf);
+          PTPEvent *event = [[self.eventClass alloc] initWithCode:code parameter1:parameter1];
+          [self.delegate debug:[NSString stringWithFormat:@"Translated to %@", [event description]]];
+          [self processEvent:event];
+        }
       }
       break;
     }
@@ -1053,7 +1073,9 @@ static struct info {
 }
 
 -(void)setZoomPreview:(BOOL)zoomPreview {
-  [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:(liveViewZoom = zoomPreview ? @"5" : @"0")];
+  if ([self propertyIsSupported:PTPPropertyCodeNikonLiveViewImageZoomRatio]) {
+    [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:(liveViewZoom = zoomPreview ? @"5" : @"0")];
+  }
 }
 
 -(void)getPreviewImage {
@@ -1061,11 +1083,13 @@ static struct info {
 }
 
 -(void)lock {
-  [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:1];
+  if ([self operationIsSupported:PTPRequestCodeNikonSetControlMode])
+    [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:1];
 }
 
 -(void)unlock {
-  [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:0];
+  if ([self operationIsSupported:PTPRequestCodeNikonSetControlMode])
+    [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:0];
 }
 
 -(void)startPreview {
