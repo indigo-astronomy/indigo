@@ -309,6 +309,9 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
+	//  The coordinates that we have been given SHOULD be expressed in the epoch specified in MOUNT_EPOCH
+	//  If this is not JNOW, then we need to transform them to JNOW and then compute the observed place coordinates
+	
 	//**  Perform preliminary slew on both axes
 	//  Compute initial target positions
 	double ra, dec;
