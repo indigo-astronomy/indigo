@@ -88,113 +88,106 @@ static long hexResponseToLong(const char* b) {
 	return num;
 }
 
+static bool synscan_flush(indigo_device* device) {
+	unsigned char c;
+	struct timeval tv;
+	while (true) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		tv.tv_sec = 0;
+		tv.tv_usec = 100000;
+		long result = select(1, &readout, NULL, NULL, &tv);
+		if (result == 0)
+			break;
+		if (result < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
+			return false;
+		}
+		result = read(PRIVATE_DATA->handle, &c, 1);
+		if (result < 1) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool synscan_command_unlocked(indigo_device* device, const char* cmd) {
+	//  Send the command to the port
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "CMD: [%s]", cmd);
+	if (!indigo_write(PRIVATE_DATA->handle, cmd, strlen(cmd))) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command failed");
+		return false;
+	}
+	if (!indigo_write(PRIVATE_DATA->handle, "\r", 1)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command terminator failed");
+		return false;
+	}
+	return true;
+}
+
+static bool synscan_read_response(indigo_device* device, char* r) {
+	//  Read a response
+	char c;
+	char resp[20];
+	long total_bytes = 0;
+	while (total_bytes < sizeof(resp)) {
+		long bytes_read = read(PRIVATE_DATA->handle, &c, 1);
+		if (bytes_read == 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SYNSCAN_TIMEOUT");
+			break;
+		}
+		if (bytes_read > 0) {
+			resp[total_bytes++] = c;
+			if (c == '\r')
+				break;
+		}
+	}
+	resp[total_bytes] = 0;
+	if (total_bytes <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Reading response failed");
+		return false;
+	}
+	
+	//  Check response syntax =...<cr>, if invalid retry
+	size_t len = strlen(resp);
+	if (len < 2 || resp[0] != '=' || resp[len - 1] != '\r') {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s] - error", len - 1, resp);
+		return false;
+	} else {
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
+	}
+	
+	//  Extract response payload, return
+	if (r) {
+		strncpy(r, resp+1, len-2);
+		r[len-2] = 0;
+	}
+	return true;
+}
+
 //  GENERIC SYNSCAN COMMAND
 
 static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	int nretries = 0;
 	while (nretries < 2) {
-		//  Sleep for a bit if we're having to retry
-		//if (nretries > 0)
-		//    sleep(1);
 		nretries++;
 
 		//  Flush input
-		unsigned char c;
-		struct timeval tv;
-		while (true) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = 0;
-			tv.tv_usec = 100000;
-			long result = select(1, &readout, NULL, NULL, &tv);
-			if (result == 0)
-				break;
-			if (result < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			if (PRIVATE_DATA->udp) {
-				char buf[64];
-				result = recv(PRIVATE_DATA->handle, buf, sizeof(buf), 0);
-			} else {
-				result = read(PRIVATE_DATA->handle, &c, 1);
-			}
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-		}
+		if (!synscan_flush(device))
+			continue;
 
 		//  Send the command to the port
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CMD: [%s]", cmd);
-		if (PRIVATE_DATA->udp) {
-			char buf[64];
-			snprintf(buf, sizeof(buf), "%s\r", cmd);
-			send(PRIVATE_DATA->handle, buf, strlen(buf), 0);
-		} else {
-			if (!indigo_write(PRIVATE_DATA->handle, cmd, strlen(cmd))) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command failed");
-				break;
-			}
-			if (!indigo_write(PRIVATE_DATA->handle, "\r", 1)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command terminator failed");
-				break;
-			}
-		}
+		if (!synscan_command_unlocked(device, cmd))
+			continue;
 
 		//  Read a response
-		char resp[20];
-		if (PRIVATE_DATA->udp) {
-			long bytes_read = recv(PRIVATE_DATA->handle, resp, sizeof(resp), 0);
-			resp[bytes_read] = 0;
-		} else {
-			long total_bytes = 0;
-			while (total_bytes < sizeof(resp)) {
-				long bytes_read = read(PRIVATE_DATA->handle, &c, 1);
-				if (bytes_read == 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SYNSCAN_TIMEOUT");
-					break;
-				}
-				if (bytes_read > 0) {
-					resp[total_bytes++] = c;
-					if (c == '\r')
-						//			else
-						break;
-					//		} else {
-					//			errno = ECONNRESET;
-					//			return -1;
-				}
-			}
-			resp[total_bytes] = 0;
-			if (total_bytes <= 0) {
-			//NSData* resp = [self.transport readUpToChar:'\r' withTimeout:1000];
-			//if (!resp) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Reading response failed");
-				continue;
-			}
+		if (synscan_read_response(device, r)) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return true;
 		}
-
-		//  Check response syntax =...<cr>, if invalid retry
-		//const char* cresp = (const char*) [resp bytes];
-		size_t len = strlen(resp);
-		if (len < 2 || resp[0] != '=' || resp[len - 1] != '\r') {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s] - error", len - 1, resp);
-			continue;
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
-		}
-
-		//  Extract response payload, return
-		if (r) {
-			strncpy(r, resp+1, len-2);
-			r[len-2] = 0;
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		return true;
 	}
 
 	//  Mount command failed
@@ -363,4 +356,172 @@ bool synscan_set_st4_guide_rate(indigo_device* device, enum AxisID axis, enum Gu
 	char buffer[7];
 	sprintf(buffer, ":P%c%d", axis, rate);
 	return synscan_command(device, buffer, NULL);
+}
+
+static void synscan_delay_ms(int millis) {
+	//  Get current time
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	
+	//  Convert to milliseconds and compute stop time
+	uint64_t tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+	uint64_t tend = tnow + millis;
+	
+	//  Wait until current time reaches TEND
+	while (true) {
+		//  Get current time
+		gettimeofday(&now, NULL);
+		tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+		
+		//  This is not ideal as we are busy-waiting here and just consuming CPU cycles doing nothing,
+		//  but if we actually sleep, then the OS might not give control back for much longer than we
+		//  wanted to sleep for.
+		
+		//  Return if we've reached the end time
+		if (tnow >= tend)
+			return;
+	}
+}
+
+static uint64_t
+current_time_millis() {
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	uint64_t tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+	return tnow;
+}
+
+bool
+synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, long track_rate) {
+	static int pulse_count = 0;
+	static long total_overhead = 0;
+	static bool reported = false;
+
+	char buffer[11];
+	char response[20];
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+
+	//  Flush the port ready
+	synscan_flush(device);
+	
+	//  Set rate for axis
+	sprintf(buffer, ":I%c%s", kAxisRA, longToHex(guide_rate));
+	bool ok = synscan_command_unlocked(device, buffer);
+
+	//------  GUIDE PULSE STARTS NOW  ----------------------
+
+	//  Read response and record time
+	uint64_t tnow = current_time_millis();
+	ok = ok && synscan_read_response(device, response);		//  Rate command
+
+	//  Compute duration of overhead
+	uint64_t overhead = current_time_millis() - tnow;
+
+	//  Adjust pulse length to account for overhead
+	duration_ms -= (int)overhead;
+
+	//  Average the overhead
+	if (!reported) {
+		total_overhead += (long)overhead;
+		pulse_count++;
+	}
+	
+	//  Do the delay (if any still required)
+	if (duration_ms > 0)
+		synscan_delay_ms(duration_ms);
+
+	//  Resume tracking on the axis
+	sprintf(buffer, ":I%c%s", kAxisRA, longToHex(track_rate));
+	ok = ok && synscan_command_unlocked(device, buffer);
+
+	//------  GUIDE PULSE STOPS NOW  -----------------------
+
+	//  Determine how long the pulse took
+	uint64_t pulse_length = current_time_millis() - tnow;
+
+	//  Read response from last command
+	ok = ok && synscan_read_response(device, response);		//  Stop/Rate command
+
+	//  Trace out the pulse length (for debugging)
+	//printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
+	if (!reported && pulse_count >= 5) {
+		reported = true;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-RA: minimum pulse length is %ldms\n", total_overhead / pulse_count);
+	}
+	
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	return ok;
+}
+
+bool
+synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, long guide_rate, int duration_ms) {
+	static int pulse_count = 0;
+	static long total_overhead = 0;
+	static bool reported = false;
+	
+	char buffer[11];
+	char response[20];
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	
+	//  Flush the port ready
+	synscan_flush(device);
+
+	//  Set axis gearing
+	static char codes[2] = {'0', '1'};
+	sprintf(buffer, ":G%c%c%c", kAxisDEC, kAxisSpeedLow, codes[direction]);
+	bool ok = synscan_command_unlocked(device, buffer);
+	ok = ok && synscan_read_response(device, response);		//  Gearing command
+
+	//  Set rate for axis
+	sprintf(buffer, ":I%c%s", kAxisDEC, longToHex(guide_rate));
+	ok = ok && synscan_command_unlocked(device, buffer);
+	ok = ok && synscan_read_response(device, response);		//  Rate command
+	
+	//  Set the axis moving
+	sprintf(buffer, ":J%c", kAxisDEC);
+	ok = ok && synscan_command_unlocked(device, buffer);
+
+	//------  GUIDE PULSE STARTS NOW  ----------------------
+
+	//  Read response and record time
+	uint64_t tnow = current_time_millis();
+	ok = ok && synscan_read_response(device, response);		//  Start moving command
+	
+	//  Compute duration of overhead
+	uint64_t overhead = current_time_millis() - tnow;
+	
+	//  Adjust pulse length to account for overhead
+	duration_ms -= (int)overhead;
+	
+	//  Average the overhead
+	if (!reported) {
+		total_overhead += (long)overhead;
+		pulse_count++;
+	}
+	
+	//  Do the delay (if any still required)
+	if (duration_ms > 0)
+		synscan_delay_ms(duration_ms);
+	
+	//  Stop the axis
+	sprintf(buffer, ":L%c", kAxisDEC);
+	ok = ok && synscan_command_unlocked(device, buffer);
+
+	//------  GUIDE PULSE STOPS NOW  -----------------------
+
+	//  Determine how long the pulse took
+	uint64_t pulse_length = current_time_millis() - tnow;
+
+	//  Read response from last command
+	ok = ok && synscan_read_response(device, response);		//  Stop command
+
+	//  Trace out the pulse length (for debugging)
+	//printf("Pulse duration %lldms with overhead of %lldms\n", pulse_length, overhead);
+	if (!reported && pulse_count >= 5) {
+		reported = true;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-DEC: minimum pulse length is %ldms\n", total_overhead / pulse_count);
+	}
+	
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	return ok;
 }
