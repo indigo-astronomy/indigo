@@ -30,6 +30,7 @@
 #include <libgen.h>
 #include <pthread.h>
 #include <dirent.h>
+#include <errno.h>
 
 #include <arpa/inet.h>
 #include <sys/types.h>
