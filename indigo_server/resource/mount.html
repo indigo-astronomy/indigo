@@ -149,6 +149,11 @@
 											<path d="M26,14v4a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H25A1,1,0,0,1,26,14Z"/>
 										</svg>
 									</button>
+									<button class="btn btn-svg idle-state m-1" onclick="followMarker()">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M16,4a8.9999,8.9999,0,0,0-9,9c0,6,6.7583,13.07764,8.16156,14.63135a1.13778,1.13778,0,0,0,1.67688,0C18.2417,26.07764,25,19,25,13A8.9999,8.9999,0,0,0,16,4Zm0,14a5,5,0,1,1,5-5A5.00013,5.00013,0,0,1,16,18Z"/>
+										</svg>
+									</button>
 								</div>
 							</div>
 						</div>
@@ -175,7 +180,17 @@
 		
 		URL = new URL("ws://" + window.location.hostname+":"+window.location.port);
 		//URL = new URL("ws://localhost:7624");
+		var targetExposureTime = 0;
+		var repeatExposure = false
+		var celestialVisible = false;
+		var zooms = [ 500, 750, 1000, 1500, 2000, 2500 ];
+		var zoom = 4;
+		var follow = 0
+		var currentCoordinates = null;
+		var targetCoordinates = null;
+		var objectCoordinates = null;
 		
+
 		var config = {
 			width: 2048,
 			projection: "stereographic",
@@ -242,12 +257,6 @@
 			}
 		}
 	
-		var targetExposureTime = 0;
-		var repeatExposure = false
-		var celestialVisible = false;
-		var zooms = [ 500, 750, 1000, 1500, 2000, 2500 ];
-		var zoom = 4;
-		
 		window.onresize = function() {
 			var map = $("#map");
 			map.css('max-height', map.width() + 'px');
@@ -323,28 +332,44 @@
 			}
 		}
 
-	function canvasClick(e) {
-		var coordinates = Celestial.mapProjection.invert([e.offsetX, e.offsetY]);
-		var bestX = 0;
-		var bestY = 0;
-		var dist = Math.pow(coordinates[0] - bestX, 2) + Math.pow(coordinates[1] - bestY, 2);
-		var paths = $("#map container path");
-		for (i in paths) {
-			var path = paths[i];
-			var data = path.__data__;
-			if (data == null) continue;
-			var geometry = data.geometry;
-			if (geometry == null) continue;
-			if (geometry.type != "Point") continue;
-			var d = Math.pow(coordinates[0] - geometry.coordinates[0], 2) + Math.pow(coordinates[1] - geometry.coordinates[1], 2);
-			if (d < dist) {
-				dist = d;
-				bestX = geometry.coordinates[0];
-				bestY = geometry.coordinates[1];
+		function followMarker() {
+			var map = $("#map");
+			if (follow == 0) {
+				var current = Celestial.mapProjection(currentCoordinates);
+				map.scrollLeft(current[0] - map.width() / 2);
+				map.scrollTop(current[1] - map.width() / 2);
+				follow = 1;
+			} else if (follow == 1) {
+				var current = Celestial.mapProjection(objectCoordinates);
+				map.scrollLeft(current[0] - map.width() / 2);
+				map.scrollTop(current[1] - map.width() / 2);
+				follow = 0;
 			}
+			updateMap();
 		}
-		selectObject(deg2h(bestX), bestY);
-	}
+	
+		function canvasClick(e) {
+			var coordinates = Celestial.mapProjection.invert([e.offsetX, e.offsetY]);
+			var bestX = 0;
+			var bestY = 0;
+			var dist = Math.pow(coordinates[0] - bestX, 2) + Math.pow(coordinates[1] - bestY, 2);
+			var paths = $("#map container path");
+			for (i in paths) {
+				var path = paths[i];
+				var data = path.__data__;
+				if (data == null) continue;
+				var geometry = data.geometry;
+				if (geometry == null) continue;
+				if (geometry.type != "Point") continue;
+				var d = Math.pow(coordinates[0] - geometry.coordinates[0], 2) + Math.pow(coordinates[1] - geometry.coordinates[1], 2);
+				if (d < dist) {
+					dist = d;
+					bestX = geometry.coordinates[0];
+					bestY = geometry.coordinates[1];
+				}
+			}
+			selectObject(deg2h(bestX), bestY);
+		}
 	
 		function updateMap() {
 			var map = $("#map");
@@ -360,12 +385,18 @@
 					}
 					if (celestialVisible) {
 						Celestial.rotate({ center: config.center });
+						var eqCoordinates = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
+						if (eqCoordinates != null && eqCoordinates.state == "Busy") {
+							var current = Celestial.mapProjection(currentCoordinates);
+							map.scrollLeft(current[0] - map.width() / 2);
+							map.scrollTop(current[1] - map.width() / 2);
+						}
 					} else {
 						map.css('max-height', map.width() + 'px');
 						celestialVisible = true;
 						Celestial.display(config);
-						map.scrollTop((zooms[zoom] - map.width()) / 2);
 						map.scrollLeft((zooms[zoom] - map.width()) / 2);
+						map.scrollTop((zooms[zoom] - map.width()) / 2);
 						INDIGO.db = Celestial.container[0];
 						var canvas =  $(map).children("canvas")[0];
 						canvas.addEventListener("mousedown", canvasClick, false);
@@ -373,11 +404,7 @@
 				}
 			}
 		}
-		
-		var currentCoordinates = null;
-		var targetCoordinates = null;
-		var objectCoordinates = null;
-
+	
 		function h2deg(ra) {
 			return ra > 12 ? (ra - 24) * 15 : ra * 15;
 		}
