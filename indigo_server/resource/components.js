@@ -464,6 +464,9 @@ Vue.component('indigo-ctrl', {
 								<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
 								<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-block p-2 bg-light">
 									<form class="m-0">
+										<div v-if="property.message != null" class="alert alert-warning m-1" role="alert">
+											{{property.message}}
+										</div>
 										<template v-if="property.type == 'text'">
 											<div v-for="item in property.items" class="form-group row m-1">
 												<label class="col-sm-4 col-form-label pl-0 mt-1">{{item.label}}</label>
@@ -522,9 +525,6 @@ Vue.component('indigo-ctrl', {
 										<template v-else>
 											<small>{{property}}</small>
 										</template>
-										<div v-if="property.message != null" class="alert alert-warning m-1" role="alert">
-											{{property.message}}
-										</div>
 									</form>
 								</div>
 							</div>

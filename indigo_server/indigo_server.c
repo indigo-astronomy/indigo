@@ -225,6 +225,10 @@ static indigo_property *unload_property;
 static indigo_property *restart_property;
 static indigo_property *log_level_property;
 static indigo_property *server_features_property;
+
+static indigo_property *wifi_adhoc_property;
+static indigo_property *wifi_infrastructure_property;
+
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 
@@ -253,6 +257,7 @@ static bool server_startup = true;
 static bool use_bonjour = true;
 static bool use_ctrl_panel = true;
 static bool use_web_apps = true;
+static bool use_wifi_management = false;
 
 static char const *server_argv[128];
 static int server_argc = 1;
@@ -288,6 +293,37 @@ static void server_callback(int count) {
 	} else {
 		INDIGO_LOG(indigo_log("%d clients", count));
 	}
+}
+
+static indigo_result execute_command(indigo_device *device, indigo_property *property, char *command, ...) {
+	char buffer[1024];
+	va_list args;
+	va_start(args, command);
+	vsnprintf(buffer, sizeof(buffer), command, args);
+	va_end(args);
+	wifi_adhoc_property->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, property, NULL);
+	FILE *output = popen(buffer, "r");
+	if (output) {
+		char *line = NULL;
+		size_t size = 0;
+		if (getline(&line, &size, output) >= 0) {
+			char *nl = strchr(line, '\n');
+			if (nl)
+				*nl = 0;
+			wifi_adhoc_property->state = INDIGO_OK_STATE;
+			indigo_update_property(device, property, line);
+		} else {
+			wifi_adhoc_property->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, property, "No reply from indigo_wifi_adhoc");
+		}
+		if (line)
+			free(line);
+		return INDIGO_OK;
+	}
+	wifi_adhoc_property->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, property, strerror(errno));
+	return INDIGO_OK;
 }
 
 static indigo_result attach(indigo_device *device) {
@@ -333,7 +369,14 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(BONJOUR_ITEM, "BONJOUR", "Bonjour", use_bonjour);
 	indigo_init_switch_item(CTRL_PANEL_ITEM, "CTRL_PANEL", "Control panel / Server manager", use_ctrl_panel);
 	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
-
+	if (use_wifi_management) {
+		wifi_adhoc_property = indigo_init_text_property(NULL, server_device.name, "WIFI_ADHOC", MAIN_GROUP, "Configure ad-hoc WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		indigo_init_text_item(wifi_adhoc_property->items + 0, "PASSWORD", "Password", "");
+		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
+		indigo_init_text_item(wifi_infrastructure_property->items + 1, "LOGIN", "Login", "");
+		indigo_init_text_item(wifi_infrastructure_property->items + 2, "PASSWORD", "Password", "");
+	}
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
 		case INDIGO_LOG_ERROR:
@@ -365,6 +408,10 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, restart_property, NULL);
 	indigo_define_property(device, log_level_property, NULL);
 	indigo_define_property(device, server_features_property, NULL);
+	if (use_wifi_management) {
+		indigo_define_property(device, wifi_adhoc_property, NULL);
+		indigo_define_property(device, wifi_infrastructure_property, NULL);
+	}
 	return INDIGO_OK;
 }
 
@@ -497,6 +544,14 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		log_level_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, log_level_property, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(wifi_adhoc_property, property)) {
+			// -------------------------------------------------------------------------------- WIFI_ADHOC
+		indigo_property_copy_values(wifi_adhoc_property, property, false);
+		return execute_command(device, wifi_adhoc_property, "echo indigo_wifi_adhoc \"%s\"", wifi_adhoc_property->items[0].text.value); // TBD
+	} else if (indigo_property_match(wifi_infrastructure_property, property)) {
+			// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
+		indigo_property_copy_values(wifi_infrastructure_property, property, false);
+		return execute_command(device, wifi_infrastructure_property, "echo indigo_wifi_infrastructure \"%s\" \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value, wifi_infrastructure_property->items[2].text.value); // TBD
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -511,6 +566,10 @@ static indigo_result detach(indigo_device *device) {
 	indigo_delete_property(device, unload_property, NULL);
 	indigo_delete_property(device, log_level_property, NULL);
 	indigo_delete_property(device, server_features_property, NULL);
+	if (use_wifi_management) {
+		indigo_delete_property(device, wifi_adhoc_property, NULL);
+		indigo_delete_property(device, wifi_infrastructure_property, NULL);
+	}
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }
@@ -619,6 +678,8 @@ static void server_main() {
 			use_web_apps = false;
 		} else if (!strcmp(server_argv[i], "-u-") || !strcmp(server_argv[i], "--disable-blob-urls")) {
 			indigo_use_blob_urls = false;
+		} else if (!strcmp(server_argv[i], "-f") || !strcmp(server_argv[i], "--enable-wifi-management")) {
+			use_wifi_management = true;
 		} else if(server_argv[i][0] != '-') {
 			indigo_load_driver(server_argv[i], true, NULL);
 			command_line_drivers = true;
@@ -838,7 +899,7 @@ int main(int argc, const char * argv[]) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-w-|--disable-web-apps] [-c-|--disable-control-panel] [-v|--enable-info] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-w-|--disable-web-apps] [-c-|--disable-control-panel] [-f|--enable-wifi-management] [-v|--enable-info] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];
