@@ -70,6 +70,10 @@ else
 		INSTALL_ROOT = $(INDIGO_ROOT)/install
 	endif
 	ifeq ($(OS_DETECTED),Linux)
+		ifeq ($(ARCH_DETECTED),armv6l)
+			ARCH_DETECTED = arm
+			DEBIAN_ARCH = armhf
+		endif
 		ifeq ($(ARCH_DETECTED),armv7l)
 			ARCH_DETECTED = arm
 			DEBIAN_ARCH = armhf
