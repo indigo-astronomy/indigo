@@ -302,7 +302,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 	va_start(args, command);
 	vsnprintf(buffer, sizeof(buffer), command, args);
 	va_end(args);
-	wifi_adhoc_property->state = INDIGO_BUSY_STATE;
+	property->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, property, NULL);
 	FILE *output = popen(buffer, "r");
 	if (output) {
@@ -312,17 +312,21 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 			char *nl = strchr(line, '\n');
 			if (nl)
 				*nl = 0;
-			wifi_adhoc_property->state = INDIGO_OK_STATE;
+			if (!strncmp(line, "ALERT", 5)) {
+				property->state = INDIGO_ALERT_STATE;
+			} else {
+				property->state = INDIGO_OK_STATE;
+			}
 			indigo_update_property(device, property, line);
 		} else {
-			wifi_adhoc_property->state = INDIGO_ALERT_STATE;
+			property->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, property, "No reply from indigo_wifi_adhoc");
 		}
 		if (line)
 			free(line);
 		return INDIGO_OK;
 	}
-	wifi_adhoc_property->state = INDIGO_ALERT_STATE;
+	property->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, property, strerror(errno));
 	return INDIGO_OK;
 }
@@ -373,10 +377,9 @@ static indigo_result attach(indigo_device *device) {
 	if (use_wifi_management) {
 		wifi_adhoc_property = indigo_init_text_property(NULL, server_device.name, "WIFI_ADHOC", MAIN_GROUP, "Configure ad-hoc WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(wifi_adhoc_property->items + 0, "PASSWORD", "Password", "");
-		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
-		indigo_init_text_item(wifi_infrastructure_property->items + 1, "LOGIN", "Login", "");
-		indigo_init_text_item(wifi_infrastructure_property->items + 2, "PASSWORD", "Password", "");
+		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
 	}
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
@@ -548,11 +551,11 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(wifi_adhoc_property, property)) {
 			// -------------------------------------------------------------------------------- WIFI_ADHOC
 		indigo_property_copy_values(wifi_adhoc_property, property, false);
-		return execute_command(device, wifi_adhoc_property, "echo indigo_wifi_adhoc \"%s\"", wifi_adhoc_property->items[0].text.value); // TBD
+		return execute_command(device, wifi_adhoc_property, "indigo_rpi.sh --set-wifi-adhoc \"%s\"", wifi_adhoc_property->items[0].text.value);
 	} else if (indigo_property_match(wifi_infrastructure_property, property)) {
 			// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(wifi_infrastructure_property, property, false);
-		return execute_command(device, wifi_infrastructure_property, "echo indigo_wifi_infrastructure \"%s\" \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value, wifi_infrastructure_property->items[2].text.value); // TBD
+		return execute_command(device, wifi_infrastructure_property, "indigo_rpi.sh --set-wifi-infrastructure \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
