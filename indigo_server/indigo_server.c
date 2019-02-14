@@ -229,6 +229,7 @@ static indigo_property *server_features_property;
 
 static indigo_property *wifi_adhoc_property;
 static indigo_property *wifi_infrastructure_property;
+static indigo_property *shutdown_property;
 
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
@@ -258,7 +259,7 @@ static bool server_startup = true;
 static bool use_bonjour = true;
 static bool use_ctrl_panel = true;
 static bool use_web_apps = true;
-static bool use_wifi_management = false;
+static bool use_rpi_management = false;
 
 static char const *server_argv[128];
 static int server_argc = 1;
@@ -320,7 +321,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 			indigo_update_property(device, property, line);
 		} else {
 			property->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, property, "No reply from indigo_wifi_adhoc");
+			indigo_update_property(device, property, "No reply from %s", buffer);
 		}
 		if (line)
 			free(line);
@@ -374,12 +375,14 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(BONJOUR_ITEM, "BONJOUR", "Bonjour", use_bonjour);
 	indigo_init_switch_item(CTRL_PANEL_ITEM, "CTRL_PANEL", "Control panel / Server manager", use_ctrl_panel);
 	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
-	if (use_wifi_management) {
+	if (use_rpi_management) {
 		wifi_adhoc_property = indigo_init_text_property(NULL, server_device.name, "WIFI_ADHOC", MAIN_GROUP, "Configure ad-hoc WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(wifi_adhoc_property->items + 0, "PASSWORD", "Password", "");
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
+		shutdown_property = indigo_init_switch_property(NULL, server_device.name, "SHUTDOWN", MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
 	}
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
@@ -412,9 +415,10 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, restart_property, NULL);
 	indigo_define_property(device, log_level_property, NULL);
 	indigo_define_property(device, server_features_property, NULL);
-	if (use_wifi_management) {
+	if (use_rpi_management) {
 		indigo_define_property(device, wifi_adhoc_property, NULL);
 		indigo_define_property(device, wifi_infrastructure_property, NULL);
+		indigo_define_property(device, shutdown_property, NULL);
 	}
 	return INDIGO_OK;
 }
@@ -556,6 +560,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 			// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(wifi_infrastructure_property, property, false);
 		return execute_command(device, wifi_infrastructure_property, "indigo_rpi.sh --set-wifi-infrastructure \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
+	} else if (indigo_property_match(shutdown_property, property)) {
+			// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
+		indigo_property_copy_values(shutdown_property, property, false);
+		return execute_command(device, shutdown_property, "indigo_rpi.sh --poweroff");
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -570,9 +578,10 @@ static indigo_result detach(indigo_device *device) {
 	indigo_delete_property(device, unload_property, NULL);
 	indigo_delete_property(device, log_level_property, NULL);
 	indigo_delete_property(device, server_features_property, NULL);
-	if (use_wifi_management) {
+	if (use_rpi_management) {
 		indigo_delete_property(device, wifi_adhoc_property, NULL);
 		indigo_delete_property(device, wifi_infrastructure_property, NULL);
+		indigo_delete_property(device, shutdown_property, NULL);
 	}
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
@@ -682,8 +691,18 @@ static void server_main() {
 			use_web_apps = false;
 		} else if (!strcmp(server_argv[i], "-u-") || !strcmp(server_argv[i], "--disable-blob-urls")) {
 			indigo_use_blob_urls = false;
-		} else if (!strcmp(server_argv[i], "-f") || !strcmp(server_argv[i], "--enable-wifi-management")) {
-			use_wifi_management = true;
+		} else if (!strcmp(server_argv[i], "-f") || !strcmp(server_argv[i], "--enable-rpi-management")) {
+			FILE *output = popen("which indigo_rpi.sh", "r");
+			if (output) {
+				char *line = NULL;
+				size_t size = 0;
+				if (getline(&line, &size, output) >= 0) {
+					use_rpi_management = true;
+				}
+			}
+			if (!use_rpi_management) {
+				indigo_log("No indigo_rpi.sh found");
+			}
 		} else if(server_argv[i][0] != '-') {
 			indigo_load_driver(server_argv[i], true, NULL);
 			command_line_drivers = true;
