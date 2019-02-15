@@ -83,9 +83,13 @@ static void focuser_timer_callback(indigo_device *device) {
 
 
 static void temperature_timer_callback(indigo_device *device) {
+	float temp;
+	static bool has_sensor = true;
+
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int res = EAFGetTemp(PRIVATE_DATA->dev_id, (float *)&(FOCUSER_TEMPERATURE_ITEM->number.value));
+	int res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
+	FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res != EAF_SUCCESS) {
@@ -93,8 +97,13 @@ static void temperature_timer_callback(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d): Temperature sensor is not connected", PRIVATE_DATA->dev_id);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (has_sensor) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Temperature sensor is not connected.", PRIVATE_DATA->dev_id);
+			has_sensor = false;
+		}
+	} else {
+		has_sensor = true;
 	}
 	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
