@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -86,14 +86,14 @@ static void temperature_timer_callback(indigo_device *device) {
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res = EAFGetTemp(PRIVATE_DATA->dev_id, (float *)&(FOCUSER_TEMPERATURE_ITEM->number.value));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d): Temoerature sensor is not connected", PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d): Temperature sensor is not connected", PRIVATE_DATA->dev_id);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
@@ -268,7 +268,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
 			}
 
-			/* Fix limits */
+			/* Make sure we do not attempt to go beyond the limits */
 			if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
 				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
 			} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
