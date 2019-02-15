@@ -225,10 +225,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 			} else { /* RESET CURRENT POSITION */
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = EAFResetPostion(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFResetPostion(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
