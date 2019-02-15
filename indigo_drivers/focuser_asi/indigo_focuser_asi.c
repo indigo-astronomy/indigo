@@ -148,7 +148,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					if (!res) {
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						EAFGetProperty(PRIVATE_DATA->dev_id, &info);
+						FOCUSER_POSITION_ITEM->number.min = 0;
+						FOCUSER_POSITION_ITEM->number.step = 1;
 						FOCUSER_POSITION_ITEM->number.max = info.MaxStep;
+
+						FOCUSER_STEPS_ITEM->number.min = 0;
+						FOCUSER_STEPS_ITEM->number.step = 1;
+						FOCUSER_STEPS_ITEM->number.max = info.MaxStep;
+
 						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
 						if (res != EAF_SUCCESS) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
@@ -206,7 +213,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		if (FOCUSER_POSITION_ITEM->number.target < 1 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
+		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -246,7 +253,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_STEPS_ITEM->number.value < 1 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
+		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -255,11 +262,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (res != EAF_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
-			if(FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
 			} else {
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
 			}
+
+			/* Fix limits */
+			if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
+				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+			} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
+				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+			}
+
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 			if (res != EAF_SUCCESS) {
