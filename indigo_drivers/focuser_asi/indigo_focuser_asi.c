@@ -291,7 +291,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
