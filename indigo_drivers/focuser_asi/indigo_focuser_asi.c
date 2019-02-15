@@ -215,7 +215,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
