@@ -883,9 +883,9 @@ static void mount_handle_park(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TETR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 		error_flag = true;
 	}
-	res = ascol_TSHA(PRIVATE_DATA->dev_id, 180, 89.99);
+	res = ascol_TSHA(PRIVATE_DATA->dev_id, -90, 89.99);
 	if (res != ASCOL_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSHA(%d, 180, 89.99) = %d", PRIVATE_DATA->dev_id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSHA(%d, -90, 89.99) = %d", PRIVATE_DATA->dev_id, res);
 		error_flag = true;
 	}
 	res = ascol_TGHA(PRIVATE_DATA->dev_id, ASCOL_ON);
@@ -1298,7 +1298,7 @@ static void mount_update_state() {
 	}
 
 	if (PRIVATE_DATA->park_update || (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE)) {
-		if ((round(HADEC_COORDINATES_HA_ITEM->number.value*100) == 18000) &&
+		if ((round(HADEC_COORDINATES_HA_ITEM->number.value*100) == -9000) &&
 		   (round(HADEC_COORDINATES_DEC_ITEM->number.value*100) == 8999) &&
 		   (PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP)) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = true;
