@@ -124,6 +124,8 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 <tr><td>FOCUSER_COMPENSATION</td><td>number</td><td>no</td><td>no</td><td>COMPENSATION</td><td>yes</td><td>Temperature compensation (if FOCUSER_MODE.AUTOMATIC is set</td></tr>
 <tr><td>FOCUSER_MODE</td><td>switch</td><td>no</td><td>no</td><td>MANUAL</td><td>yes</td><td>Manual mode</td></tr>
 <tr><td></td><td></td><td></td><td></td><td>AUTOMATIC</td><td>yes</td><td>Temperature compensated mode</td></tr>
+<tr><td>FOCUSER_LIMITS</td><td>number</td><td>no</td><td>no</td><td>MIN_POSITION</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>MAX_POSITION</td><td>yes</td><td></td></tr>
 </table>
 
 
