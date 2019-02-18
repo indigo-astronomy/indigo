@@ -22,4 +22,5 @@ indigo_server indigo_focuser_asi
 
 ## Status: Under Development
 
-Driver is developed without access to the phisical hardware.
+Driver is developed and tested with:
+* ASI EAF
