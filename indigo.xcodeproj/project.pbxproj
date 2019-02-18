@@ -14,7 +14,7 @@
 		590BF1AC21EBBBEE00C24DBA /* indigo_ao_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 590BF1AA21EBBBEE00C24DBA /* indigo_ao_driver.c */; };
 		590BF1B321EBCF7500C24DBA /* indigo_ao_sx.h in Headers */ = {isa = PBXBuildFile; fileRef = 590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */; };
 		590BF1B421EBCF7500C24DBA /* indigo_ao_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */; };
-		590D21D621FE6A520057DC31 /* star_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A0772A21FE1C2F00244521 /* star_data.c */; };
+		590D21D621FE6A520057DC31 /* indigo_cat_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A0772A21FE1C2F00244521 /* indigo_cat_data.c */; };
 		590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 590DD8772127590600F2B978 /* indigo_wheel_optec.c */; };
 		590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */ = {isa = PBXBuildFile; fileRef = 590DD87A2127590600F2B978 /* indigo_wheel_optec.h */; };
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
@@ -1013,7 +1013,7 @@
 		599E6A73214D8EEB00E45C9E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
-		59A0772A21FE1C2F00244521 /* star_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = star_data.c; sourceTree = "<group>"; wrapsLines = 0; };
+		59A0772A21FE1C2F00244521 /* indigo_cat_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_cat_data.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59A3217021D52C4600EC0F4A /* indigo_focuser_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_asi.c; sourceTree = "<group>"; };
 		59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_asi.h; sourceTree = "<group>"; };
 		59A3217221D52C4600EC0F4A /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -1689,7 +1689,7 @@
 		59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main.c; sourceTree = "<group>"; };
 		59C4C88220CEF107007EE330 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro.c; sourceTree = "<group>"; };
-		59C6F75321FE214D0043DC52 /* star_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = star_data.h; sourceTree = "<group>"; };
+		59C6F75321FE214D0043DC52 /* indigo_cat_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_cat_data.h; sourceTree = "<group>"; };
 		59C8AD3421A9ADDD00C3594F /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59C8AD3721A9D79900C3594F /* rdcolmap.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rdcolmap.c; sourceTree = "<group>"; };
 		59C8AD3821A9D79900C3594F /* coderules.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = coderules.txt; sourceTree = "<group>"; };
@@ -5454,8 +5454,8 @@
 			children = (
 				9DC7830621A7072B009859FD /* Makefile */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
-				59C6F75321FE214D0043DC52 /* star_data.h */,
-				59A0772A21FE1C2F00244521 /* star_data.c */,
+				59C6F75321FE214D0043DC52 /* indigo_cat_data.h */,
+				59A0772A21FE1C2F00244521 /* indigo_cat_data.c */,
 				5925E3451E982BBC00FF373F /* resource */,
 			);
 			path = indigo_server;
@@ -12445,7 +12445,7 @@
 				9DC7830721A7072C009859FD /* Makefile in Sources */,
 				59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */,
-				590D21D621FE6A520057DC31 /* star_data.c in Sources */,
+				590D21D621FE6A520057DC31 /* indigo_cat_data.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

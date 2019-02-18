@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -704,6 +704,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 #define MAX_DEVICES                   10
 
 static indigo_device *devices[MAX_DEVICES];
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void plug_handler(indigo_device *device) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
@@ -730,6 +731,7 @@ static void plug_handler(indigo_device *device) {
 		NULL,
 		wheel_detach
 		);
+	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device)
@@ -800,9 +802,11 @@ static void plug_handler(indigo_device *device) {
 			}
 		}
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
 static void unplug_handler(indigo_device *device) {
+	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device)
@@ -843,6 +847,7 @@ static void unplug_handler(indigo_device *device) {
 			devices[i] = NULL;
 		}
 	}
+	pthread_mutex_lock(&mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {

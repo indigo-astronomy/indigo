@@ -20,7 +20,7 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO Mount control agent
- \file star_data.c
+ \file indigo_cat_data.c
  */
 
 #include <stdio.h>
@@ -31,19 +31,9 @@
 
 #include "indigo_server_tcp.h"
 #include "indigo_novas.h"
+#include "indigo_cat_data.h"
 
-struct {
-	int hip;
-	double ra;
-	double dec;
-	double promora;
-	double promodec;
-	double px;
-	double rv;
-	double mag;
-	char *name;
-	char *desig;
-} star_data[] = {
+indigo_star_entry indigo_star_data[] = {
 	{ 3, 0.0003, 38.8593, 5.2400, -2.9100, 2.81, 0.000003, 6.61, "", "" },
 	{ 11, 0.0025, 46.9400, 11.0900, -2.0200, 4.29, 0.000006, 7.34, "", "" },
 	{ 14, 0.0032, -0.3604, 61.7500, -11.6700, 5.11, 0.000155, 7.25, "", "" },
@@ -41104,17 +41094,7 @@ struct {
 	{ 0 }
 };
 
-struct {
-	char *id;
-	double ra;
-	double dec;
-	double mag;
-	double r1;
-	double r2;
-	double angle;
-	char *type;
-	char *name;
-} dso_data[] = {
+indigo_dso_entry indigo_dso_data[] = {
 	{ "NGC55", 0.2523, -39.2206, 8.30, 32.4, 5.6, 108.0, "g", "C72" },
 	{ "NGC104", 0.4014, -72.0808, 4.00, 50.0, 0.0, 0.0, "gc", "C106" },
 	{ "NGC103", 0.4215, 61.3219, 9.80, 5.0, 0.0, 0.0, "oc", "" },
@@ -41708,7 +41688,7 @@ struct {
 	{ "Col65", 5.4181, 15.6997, 3.00, 220.0, 0.0, 0.0, "oc", "" },
 	{ "Col69", 5.5913, 9.9411, 2.80, 70.0, 0.0, 0.0, "oc", "" },
 	{ "Col70", 5.5933, -1.0833, 0.60, 140.0, 0.0, 0.0, "oc", "" },
-	{ "Col80", 6.0833, 24.0000, 8.40, 6.0, 0.0, 0.0, "oc", "Tr4, IC2157" },
+	{ "IC2157", 6.0833, 24.0000, 8.40, 6.0, 0.0, 0.0, "oc", "Tr4, Col80" },
 	{ "Col89", 6.3000, 23.6333, 5.70, 60.0, 0.0, 0.0, "oc", "" },
 	{ "Col91", 6.3617, 2.3667, 6.40, 17.0, 0.0, 0.0, "oc", "" },
 	{ "Col92", 6.3817, 5.1167, 8.60, 11.0, 0.0, 0.0, "oc", "" },
@@ -41727,19 +41707,19 @@ struct {
 	{ "Col146", 7.4550, -24.0333, 7.90, 5.0, 0.0, 0.0, "oc", "Tr7" },
 	{ "Col147", 7.4397, -47.6667, 7.80, 10.0, 0.0, 0.0, "oc", "Mel66" },
 	{ "Col155", 7.6250, -12.0667, 7.10, 9.0, 0.0, 0.0, "oc", "Mel71" },
-	{ "Col167", 7.9178, -17.7097, 9.60, 7.0, 0.0, 0.0, "oc", "Tr8, NGC2479" },
+	{ "NGC2479", 7.9178, -17.7097, 9.60, 7.0, 0.0, 0.0, "oc", "Tr8, Col167" },
 	{ "Col168", 7.9217, -25.9333, 8.70, 5.0, 0.0, 0.0, "oc", "Tr9" },
 	{ "Col173", 8.0469, -46.3833, 0.60, 370.0, 0.0, 0.0, "oc", "" },
 	{ "Col185", 8.3750, -36.1667, 7.80, 8.0, 0.0, 0.0, "oc", "" },
 	{ "Col187", 8.4033, -29.1500, 9.60, 7.0, 0.0, 0.0, "oc", "" },
 	{ "Col197", 8.7475, -41.2333, 6.70, 40.0, 0.0, 0.0, "oc", "" },
-	{ "Col202", 8.7750, -52.9000, 6.10, 12.0, 0.0, 0.0, "oc", "Harvard3, NGC2669" },
+	{ "NGC2669", 8.7750, -52.9000, 6.10, 12.0, 0.0, 0.0, "oc", "Harvard3, Col202" },
 	{ "Col203", 8.7983, -42.4500, 5.00, 29.0, 0.0, 0.0, "oc", "Tr10" },
 	{ "Col205", 9.0089, -48.9850, 7.80, 5.0, 0.0, 0.0, "oc", "" },
 	{ "Col213", 9.9097, -50.9197, 9.20, 17.0, 0.0, 0.0, "oc", "" },
 	{ "Col216", 10.0829, -61.6150, 8.10, 5.0, 0.0, 0.0, "oc", "Tr11" },
 	{ "Col217", 10.1081, -60.3000, 8.80, 4.0, 0.0, 0.0, "oc", "Tr12" },
-	{ "Col220", 10.4311, -57.9264, 7.60, 6.0, 0.0, 0.0, "oc", "NGC3247" },
+	{ "NGC3247", 10.4311, -57.9264, 7.60, 6.0, 0.0, 0.0, "oc", "Col220" },
 	{ "Col227", 10.7033, -65.1000, 8.00, 16.0, 0.0, 0.0, "oc", "Mel10" },
 	{ "Col228", 10.7011, -59.9167, 4.40, 14.0, 0.0, 0.0, "oc", "" },
 	{ "Col230", 10.7322, -59.5500, 5.50, 5.0, 0.0, 0.0, "oc", "Tr14" },
@@ -41830,13 +41810,13 @@ void indigo_add_star_json_resource(int max_mag) {
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
 	unsigned size = (unsigned)strlen(buffer);
 	char *sep = "";
-	for (int i = 0; star_data[i].hip; i++) {
-		if (star_data[i].mag > max_mag)
+	for (int i = 0; indigo_star_data[i].hip; i++) {
+		if (indigo_star_data[i].mag > max_mag)
 			continue;
-		double ra = star_data[i].ra;
-		double dec = star_data[i].dec;
-		indigo_app_star(star_data[i].promora, star_data[i].promodec, star_data[i].px, star_data[i].rv, &ra, &dec);
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, star_data[i].hip, star_data[i].name, star_data[i].desig, star_data[i].mag, h2deg(star_data[i].ra = ra), star_data[i].dec = dec);
+		double ra = indigo_star_data[i].ra;
+		double dec = indigo_star_data[i].dec;
+		indigo_app_star(indigo_star_data[i].promora, indigo_star_data[i].promodec, indigo_star_data[i].px, indigo_star_data[i].rv, &ra, &dec);
+		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_star_data[i].hip, indigo_star_data[i].name, indigo_star_data[i].desig, indigo_star_data[i].mag, h2deg(indigo_star_data[i].ra = ra), indigo_star_data[i].dec = dec);
 		if (buffer_size - size < 1024) {
 			buffer = realloc(buffer, buffer_size *= 2);
 		}
@@ -41855,13 +41835,13 @@ void indigo_add_dso_json_resource(int max_mag) {
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
 	unsigned size = (unsigned)strlen(buffer);
 	char *sep = "";
-	for (int i = 0; dso_data[i].id; i++) {
-		if (dso_data[i].mag > max_mag)
+	for (int i = 0; indigo_dso_data[i].id; i++) {
+		if (indigo_dso_data[i].mag > max_mag)
 			continue;
-		double ra = dso_data[i].ra;
-		double dec = dso_data[i].dec;
+		double ra = indigo_dso_data[i].ra;
+		double dec = indigo_dso_data[i].dec;
 		indigo_app_star(0, 0, 0, 0, &ra, &dec);
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"%s\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, dso_data[i].id, dso_data[i].id, dso_data[i].name, dso_data[i].type, dso_data[i].mag, h2deg(dso_data[i].ra = ra), dso_data[i].dec = dec);
+		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"%s\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_dso_data[i].id, indigo_dso_data[i].id, indigo_dso_data[i].name, indigo_dso_data[i].type, indigo_dso_data[i].mag, h2deg(indigo_dso_data[i].ra = ra), indigo_dso_data[i].dec = dec);
 		if (buffer_size - size < 1024) {
 			buffer = realloc(buffer, buffer_size *= 2);
 		}
@@ -41883,9 +41863,9 @@ static int add_multiline(char *buffer, ...) {
 	size += sprintf(buffer, "%s[", sep2);
 	sep2 = ",";
 	for (int hip = va_arg(ap, int); hip; hip = va_arg(ap, int)) {
-		for (int i = 0; star_data[i].hip; i++) {
-			if (star_data[i].hip == hip) {
-				size += sprintf(buffer + size, "%s[%.4f,%.4f]", sep, h2deg(star_data[i].ra), star_data[i].dec);
+		for (int i = 0; indigo_star_data[i].hip; i++) {
+			if (indigo_star_data[i].hip == hip) {
+				size += sprintf(buffer + size, "%s[%.4f,%.4f]", sep, h2deg(indigo_star_data[i].ra), indigo_star_data[i].dec);
 				sep = ",";
 				break;
 			}

@@ -20,12 +20,26 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO Mount control agent
- \file star_data.h
+ \file indigo_cat_data.h
  */
 
 
 #ifndef star_data_h
 #define star_data_h
+
+typedef struct {
+	int hip;
+	double ra, dec;
+	float promora, promodec, px, rv, mag;
+	char *name, *desig;
+} indigo_star_entry;
+
+typedef struct {
+	char *id;
+	double ra, dec;
+	float mag, r1, r2, angle;
+	char *type, *name;
+} indigo_dso_entry;
 
 extern void indigo_add_star_json_resource(int max_mag);
 extern void indigo_add_dso_json_resource(int max_mag);
