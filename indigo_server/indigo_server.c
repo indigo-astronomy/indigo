@@ -48,7 +48,7 @@
 #include "indigo_client.h"
 #include "indigo_xml.h"
 
-#include "star_data.h"
+#include "indigo_cat_data.h"
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
