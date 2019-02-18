@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -54,7 +54,8 @@
 
 typedef struct {
 	int dev_id;
-	int current_position, target_position;
+	EAF_INFO info;
+	int current_position, target_position, max_position;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 } asi_private_data;
@@ -115,7 +116,35 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+		//info.MaxStep is initialized only if open
+		int res = EAFOpen(PRIVATE_DATA->dev_id);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		res = EAFGetProperty(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->info));
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetProperty(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		EAFClose(PRIVATE_DATA->dev_id);
+
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "\'%s\' MaxStep = %d",device->name ,PRIVATE_DATA->info.MaxStep);
+
 		FOCUSER_SPEED_PROPERTY->hidden = true;
+
+		FOCUSER_POSITION_ITEM->number.min = 0;
+		FOCUSER_POSITION_ITEM->number.step = 1;
+		FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+
+		FOCUSER_STEPS_ITEM->number.min = 0;
+		FOCUSER_STEPS_ITEM->number.step = 1;
+		FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
@@ -129,11 +158,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	EAF_INFO info;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-
 		int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
 		if (index < 0) {
 			return INDIGO_NOT_FOUND;
@@ -142,7 +169,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
@@ -156,14 +182,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (!res) {
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						EAFGetProperty(PRIVATE_DATA->dev_id, &info);
-						FOCUSER_POSITION_ITEM->number.min = 0;
-						FOCUSER_POSITION_ITEM->number.step = 1;
-						FOCUSER_POSITION_ITEM->number.max = info.MaxStep;
-
-						FOCUSER_STEPS_ITEM->number.min = 0;
-						FOCUSER_STEPS_ITEM->number.step = 1;
-						FOCUSER_STEPS_ITEM->number.max = info.MaxStep;
+						res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+						}
+						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 
 						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
 						if (res != EAF_SUCCESS) {
@@ -173,7 +196,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 						res = EAFGetReverse(PRIVATE_DATA->dev_id, &(FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value));
 						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
 						}
 						FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -258,6 +281,27 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		int res = EAFSetMaxStep(PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetMaxStep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position, res);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
