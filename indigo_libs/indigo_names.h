@@ -1142,6 +1142,20 @@
 #define FOCUSER_MODE_AUTOMATIC_ITEM_NAME			"AUTOMATIC"
 
 //----------------------------------------------------------------------
+/** FOCUSER_LIMITS property name.
+ */
+#define FOCUSER_LIMITS_PROPERTY_NAME						"FOCUSER_LIMITS"
+
+/** FOCUSER_LIMITS.MIN_POSITION property item name.
+ */
+#define FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME					"MIN_POSITION"
+
+/** FOCUSER_LIMITS.MIN_POSITION property item name.
+ */
+#define FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME		"MAX_POSITION"
+
+
+//----------------------------------------------------------------------
 
 /** MOUNT_INFO property name.
  */

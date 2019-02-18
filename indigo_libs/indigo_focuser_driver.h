@@ -148,6 +148,19 @@ extern "C" {
 #define FOCUSER_MODE_AUTOMATIC_ITEM						(FOCUSER_MODE_PROPERTY->items+1)
 
 
+/** FOCUSER_LIMITS property pointer, property is optional, property change request should be fully handled by focuser driver
+ */
+#define FOCUSER_LIMITS_PROPERTY								(FOCUSER_CONTEXT->focuser_limits_property)
+
+/** FOCUSER_LIMITS.MIN_POSITION property item pointer.
+ */
+#define FOCUSER_LIMITS_MIN_POSITION_ITEM							(FOCUSER_LIMITS_PROPERTY->items+0)
+
+/** FOCUSER_LIMITS.MAX_POSITION property item pointer.
+ */
+#define FOCUSER_LIMITS_MAX_POSITION_ITEM							(FOCUSER_LIMITS_PROPERTY->items+1)
+
+
 /** Focuser device context structure.
  */
 typedef struct {
@@ -162,7 +175,8 @@ typedef struct {
 	indigo_property *focuser_backlash_property;				///< FOCUSER_BACKLASH property pointer
 	indigo_property *focuser_temperature_property;		///< FOCUSER_TEMPERATURE property pointer
 	indigo_property *focuser_compensation_property;		///< FOCUSER_COMPENSATION property pointer
-	indigo_property *focuser_mode_property;						///< FOCUSER_MODE property pointer
+	indigo_property *focuser_mode_property;				///< FOCUSER_MODE property pointer
+	indigo_property *focuser_limits_property;			///< FOCUSER_LIMITS property pointer
 } indigo_focuser_context;
 
 /** Attach callback function.
