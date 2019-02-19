@@ -98,6 +98,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static void temperature_timer_callback(indigo_device *device) {
 	float temp;
 	static bool has_sensor = true;
+	static bool first_call = true;
 	bool has_handcontrol;
 	bool moving = false;
 
@@ -110,11 +111,18 @@ static void temperature_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFIsHandControl(%d, <- %d) = %d", PRIVATE_DATA->dev_id, has_handcontrol, res);
 	}
 
+	/* Update temerature at first call even if HC is connected.
+	   We want alert sate and T=-273 if the sensor is not connected. */
+	if (first_call) has_handcontrol = false;
+
 	if (has_handcontrol) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res != EAF_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 		} else if (FOCUSER_POSITION_ITEM->number.value != PRIVATE_DATA->current_position) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			EAFIsMoving(PRIVATE_DATA->dev_id, &moving);
 			if (moving) {
@@ -123,28 +131,33 @@ static void temperature_timer_callback(indigo_device *device) {
 			FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->target_position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
-	}
-
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
-	FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		if (has_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Temperature sensor is not connected.", PRIVATE_DATA->dev_id);
-			has_sensor = false;
+	} else { /* No Hand control, this does not guarantee that we have temperature sensor */
+		first_call = false;
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
+		FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 		}
-	} else {
-		has_sensor = true;
+		static int i = -273;
+		FOCUSER_TEMPERATURE_ITEM->number.value = i++;
+		if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (has_sensor) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Temperature sensor is not connected.");
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "Temperature sensor is not connected.");
+				has_sensor = false;
+			}
+		} else {
+			has_sensor = true;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+		}
 	}
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
 }
 
