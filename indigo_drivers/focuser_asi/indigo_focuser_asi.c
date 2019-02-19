@@ -144,13 +144,11 @@ static void temperature_timer_callback(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 		}
-		static int i = -273;
-		FOCUSER_TEMPERATURE_ITEM->number.value = i++;
 		if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			if (has_sensor) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Temperature sensor is not connected.");
-				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "Temperature sensor is not connected.");
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
 				has_sensor = false;
 			}
 		} else {
