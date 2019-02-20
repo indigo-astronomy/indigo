@@ -206,7 +206,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
 		// -------------------------------------------------------------------------- OIL_POWER
-		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (EAF_BEEP_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -264,6 +264,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
 						}
 						FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+
+						res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+						}
+						EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -442,9 +448,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(EAF_BEEP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- EAF_BEEP_PROPERTY
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
+		EAF_BEEP_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		int res = EAFSetBeep(PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBeep(%d, %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+			EAF_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
