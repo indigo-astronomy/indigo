@@ -111,6 +111,31 @@ static void focuser_timer_callback(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
+static void compensate_focus(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+
+	// Calculate compensation here !!!
+	//PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+
+	/* Make sure we do not attempt to go beyond the limits */
+	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+	}
+
+	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+}
 
 static void temperature_timer_callback(indigo_device *device) {
 	float temp;
@@ -205,7 +230,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
-		// -------------------------------------------------------------------------- OIL_POWER
+		// -------------------------------------------------------------------------- FOCUSER_COMPENSATION
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+		// -------------------------------------------------------------------------- FOCUSER_MODE
+		FOCUSER_MODE_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------- BEEP_PROPERTY
 		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (EAF_BEEP_PROPERTY == NULL)
 			return INDIGO_FAILED;
