@@ -47,7 +47,15 @@
 
 #define ASI_VENDOR_ID                   0x03c3
 
-#define PRIVATE_DATA        ((asi_private_data *)device->private_data)
+#define PRIVATE_DATA                    ((asi_private_data *)device->private_data)
+
+#define EAF_BEEP_PROPERTY               (PRIVATE_DATA->beep_property)
+#define EAF_BEEP_ON_ITEM                (EAF_BEEP_PROPERTY->items+0)
+#define EAF_BEEP_OFF_ITEM               (EAF_BEEP_PROPERTY->items+1)
+#define EAF_BEEP_PROPERTY_NAME          "EAF_BEEP_ON_MOVE"
+#define EAF_BEEP_ON_ITEM_NAME           "ON"
+#define EAF_BEEP_OFF_ITEM_NAME          "OFF"
+
 
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
@@ -58,10 +66,19 @@ typedef struct {
 	int current_position, target_position, max_position;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
+	indigo_property *beep_property;
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
+
+static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
+			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
+	}
+	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+}
 
 
 static void focuser_timer_callback(indigo_device *device) {
@@ -187,6 +204,15 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+
+		// -------------------------------------------------------------------------- OIL_POWER
+		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (EAF_BEEP_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(EAF_BEEP_ON_ITEM, EAF_BEEP_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(EAF_BEEP_OFF_ITEM, EAF_BEEP_OFF_ITEM_NAME, "Off", true);
+		// --------------------------------------------------------------------------
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -241,6 +267,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
+						indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
 						device->is_connected = true;
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0.1, temperature_timer_callback);
@@ -256,6 +284,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = EAFClose(PRIVATE_DATA->dev_id);
 				if (res != EAF_SUCCESS) {
@@ -411,6 +440,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(EAF_BEEP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- EAF_BEEP_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
+		}
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -420,6 +455,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
+	indigo_release_property(EAF_BEEP_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
@@ -516,7 +552,7 @@ static void process_plug_event(indigo_device *unused) {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		focuser_attach,
-		indigo_focuser_enumerate_properties,
+		eaf_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach
