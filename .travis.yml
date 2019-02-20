@@ -4,13 +4,16 @@ dist: xenial
 
 matrix:
   include:
+    - os: windows
+      env:
+        - MSBUILD_PATH="c:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin"
+
     - os: osx
       osx_image: xcode10
 
     - os: osx
       osx_image: xcode10.1
 
-    # works on Xenial
     - os: linux
       addons:
         apt:
@@ -22,7 +25,6 @@ matrix:
       env:
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
 
-    # works on Xenial
     - os: linux
       addons:
         apt:
@@ -34,7 +36,6 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
-    # works on Xenial
     - os: linux
       addons:
         apt:
@@ -51,6 +52,7 @@ before_install:
   - eval "${MATRIX_EVAL}"
 
 script:
-  - make
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]] || [[ "$TRAVIS_OS_NAME" == "osx" ]]; then make ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then export PATH=$MSBUILD_PATH:$PATH && cd indigo_windows && MSBuild.exe "./indigo_windows.sln" /property:Platform="x86" ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make package && sudo dpkg --install indigo*.deb && sudo ldconfig ; fi
-  - indigo_test/test_suite.sh --driver-test --format-test indigo_ccd_simulator --capture-test indigo_ccd_simulator
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]] || [[ "$TRAVIS_OS_NAME" == "osx" ]]; then indigo_test/test_suite.sh --driver-test --format-test indigo_ccd_simulator --capture-test indigo_ccd_simulator ; fi
