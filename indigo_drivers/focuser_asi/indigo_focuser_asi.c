@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -64,23 +64,16 @@ typedef struct {
 	int dev_id;
 	EAF_INFO info;
 	int current_position, target_position, max_position;
+	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 	indigo_property *beep_property;
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
+static void compensate_focus(indigo_device *device, double new_temp);
+
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
-
-static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
-		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
-			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
-	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
-}
-
-
 static void focuser_timer_callback(indigo_device *device) {
 	bool moving;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -111,31 +104,6 @@ static void focuser_timer_callback(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
-static void compensate_focus(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
-	}
-
-	// Calculate compensation here !!!
-	//PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
-
-	/* Make sure we do not attempt to go beyond the limits */
-	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
-	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
-	}
-
-	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-}
 
 static void temperature_timer_callback(indigo_device *device) {
 	float temp;
@@ -186,6 +154,10 @@ static void temperature_timer_callback(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 		}
+		// static double ctemp = 0;
+		// FOCUSER_TEMPERATURE_ITEM->number.value = ctemp;
+		// temp = ctemp;
+		// ctemp += 0.12;
 		if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			if (has_sensor) {
@@ -197,8 +169,80 @@ static void temperature_timer_callback(indigo_device *device) {
 			has_sensor = true;
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 		}
+		if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+			compensate_focus(device, temp);
+		}
 	}
 	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
+}
+
+
+static void compensate_focus(indigo_device *device, double new_temp) {
+	int compensation;
+	double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
+
+	/* we do not have previous temperature reading */
+	if (PRIVATE_DATA->prev_temp < -270) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PRIVATE_DATA->prev_temp = %f", PRIVATE_DATA->prev_temp);
+		PRIVATE_DATA->prev_temp = new_temp;
+		return;
+	}
+
+	/* we do not have current temperature reading or focuser is moving */
+	if ((new_temp < -270) || (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: new_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", new_temp, FOCUSER_POSITION_PROPERTY->state);
+		return;
+	}
+
+	/* temperature difference if more than 1 degree so compensation needed */
+	if ((abs(temp_difference) >= 1.0) && (abs(temp_difference) < 100)) {
+		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.1f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating (not needed): temp_difference = %f", temp_difference);
+		return;
+	}
+
+	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + compensation;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	/* Make sure we do not attempt to go beyond the limits */
+	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	PRIVATE_DATA->prev_temp = new_temp;
+	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+}
+
+
+static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
+			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
+	}
+	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
 
@@ -306,6 +350,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 						indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
+						PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
 						device->is_connected = true;
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0.1, temperature_timer_callback);
@@ -476,6 +521,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION_PROPERTY
+		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(EAF_BEEP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- EAF_BEEP_PROPERTY
