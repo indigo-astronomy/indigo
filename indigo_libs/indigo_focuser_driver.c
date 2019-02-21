@@ -52,7 +52,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_SPEED_ITEM, FOCUSER_SPEED_ITEM_NAME, "Speed", 1, 100, 1, 1);
 			// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
-			FOCUSER_REVERSE_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Invert on and out motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			FOCUSER_REVERSE_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Invert in and out motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_REVERSE_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
@@ -130,21 +130,19 @@ indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
 		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-			if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property))
-				indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property))
-				indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_DIRECTION_PROPERTY, property))
 				indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property))
 				indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property))
-				indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property))
 				indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		}
+		if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property))
+			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property))
 			indigo_define_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property))
+			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		if (indigo_property_match(FOCUSER_ON_POSITION_SET_PROPERTY, property))
 			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 		if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property))
@@ -155,6 +153,8 @@ indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		if (indigo_property_match(FOCUSER_MODE_PROPERTY, property))
 			indigo_define_property(device, FOCUSER_MODE_PROPERTY, NULL);
+		if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property))
+			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -167,34 +167,34 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
 			if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-				indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-				indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 			}
+			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_MODE_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		} else {
 			if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-				indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-				indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 				indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 				indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 				indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 			}
+			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_MODE_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		}
 	// -------------------------------------------------------------------------------- FOCUSER_SPEED
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
@@ -238,18 +238,12 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
 		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		} else {
-			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		}
 		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
