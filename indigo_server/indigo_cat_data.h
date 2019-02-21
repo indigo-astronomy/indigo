@@ -31,7 +31,7 @@ typedef struct {
 	int hip;
 	double ra, dec;
 	float promora, promodec, px, rv, mag;
-	char *name, *desig;
+	char *name;
 } indigo_star_entry;
 
 typedef struct {
