@@ -227,9 +227,10 @@ static indigo_property *restart_property;
 static indigo_property *log_level_property;
 static indigo_property *server_features_property;
 
-static indigo_property *wifi_adhoc_property;
+static indigo_property *wifi_ap_property;
 static indigo_property *wifi_infrastructure_property;
 static indigo_property *shutdown_property;
+static indigo_property *reboot_property;
 
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
@@ -376,13 +377,16 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(CTRL_PANEL_ITEM, "CTRL_PANEL", "Control panel / Server manager", use_ctrl_panel);
 	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
 	if (use_rpi_management) {
-		wifi_adhoc_property = indigo_init_text_property(NULL, server_device.name, "WIFI_ADHOC", MAIN_GROUP, "Configure ad-hoc WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		indigo_init_text_item(wifi_adhoc_property->items + 0, "PASSWORD", "Password", "");
+		wifi_ap_property = indigo_init_text_property(NULL, server_device.name, "WIFI_AP", MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "SSID", "");
+		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
 		shutdown_property = indigo_init_switch_property(NULL, server_device.name, "SHUTDOWN", MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
+		reboot_property = indigo_init_switch_property(NULL, server_device.name, "REBOOT", MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
 	}
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
@@ -416,9 +420,10 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, log_level_property, NULL);
 	indigo_define_property(device, server_features_property, NULL);
 	if (use_rpi_management) {
-		indigo_define_property(device, wifi_adhoc_property, NULL);
+		indigo_define_property(device, wifi_ap_property, NULL);
 		indigo_define_property(device, wifi_infrastructure_property, NULL);
 		indigo_define_property(device, shutdown_property, NULL);
+		indigo_define_property(device, reboot_property, NULL);
 	}
 	return INDIGO_OK;
 }
@@ -552,18 +557,24 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		log_level_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, log_level_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(wifi_adhoc_property, property)) {
-			// -------------------------------------------------------------------------------- WIFI_ADHOC
-		indigo_property_copy_values(wifi_adhoc_property, property, false);
-		return execute_command(device, wifi_adhoc_property, "indigo_rpi.sh --set-wifi-adhoc \"%s\"", wifi_adhoc_property->items[0].text.value);
+	} else if (indigo_property_match(wifi_ap_property, property)) {
+		// -------------------------------------------------------------------------------- WIFI_AP
+		indigo_property_copy_values(wifi_ap_property, property, false);
+		return execute_command(device, wifi_ap_property, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"",
+				       wifi_ap_property->items[0].text.value, wifi_ap_property->items[1].text.value);
 	} else if (indigo_property_match(wifi_infrastructure_property, property)) {
-			// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
+		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(wifi_infrastructure_property, property, false);
-		return execute_command(device, wifi_infrastructure_property, "indigo_rpi.sh --set-wifi-infrastructure \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
+		return execute_command(device, wifi_infrastructure_property, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"",
+				       wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
 	} else if (indigo_property_match(shutdown_property, property)) {
-			// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
+		// -------------------------------------------------------------------------------- SHUTDOWN
 		indigo_property_copy_values(shutdown_property, property, false);
-		return execute_command(device, shutdown_property, "indigo_rpi.sh --poweroff");
+		return execute_command(device, shutdown_property, "s_rpi_ctrl.sh --poweroff");
+	} else if (indigo_property_match(reboot_property, property)) {
+		// -------------------------------------------------------------------------------- REBOOT
+		indigo_property_copy_values(reboot_property, property, false);
+		return execute_command(device, reboot_property, "s_rpi_ctrl.sh --reboot");
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -579,9 +590,10 @@ static indigo_result detach(indigo_device *device) {
 	indigo_delete_property(device, log_level_property, NULL);
 	indigo_delete_property(device, server_features_property, NULL);
 	if (use_rpi_management) {
-		indigo_delete_property(device, wifi_adhoc_property, NULL);
+		indigo_delete_property(device, wifi_ap_property, NULL);
 		indigo_delete_property(device, wifi_infrastructure_property, NULL);
 		indigo_delete_property(device, shutdown_property, NULL);
+		indigo_delete_property(device, reboot_property, NULL);
 	}
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
