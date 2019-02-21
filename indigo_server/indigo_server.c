@@ -261,9 +261,9 @@ static bool use_bonjour = true;
 static bool use_ctrl_panel = true;
 static bool use_web_apps = true;
 
-#ifdef INDIGO_SKY
+#ifdef RPI_MANAGEMENT
 static bool use_rpi_management = false;
-#endif /* INDIGO_SKY */
+#endif /* RPI_MANAGEMENT */
 
 static char const *server_argv[128];
 static int server_argc = 1;
@@ -379,7 +379,7 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(BONJOUR_ITEM, "BONJOUR", "Bonjour", use_bonjour);
 	indigo_init_switch_item(CTRL_PANEL_ITEM, "CTRL_PANEL", "Control panel / Server manager", use_ctrl_panel);
 	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
-#ifdef INDIGO_SKY
+#ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
 		wifi_ap_property = indigo_init_text_property(NULL, server_device.name, "WIFI_AP", MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "SSID", "");
@@ -392,7 +392,7 @@ static indigo_result attach(indigo_device *device) {
 		reboot_property = indigo_init_switch_property(NULL, server_device.name, "REBOOT", MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
 	}
-#endif /* INDIGO_SKY */
+#endif /* RPI_MANAGEMENT */
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
 		case INDIGO_LOG_ERROR:
@@ -424,14 +424,14 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, restart_property, NULL);
 	indigo_define_property(device, log_level_property, NULL);
 	indigo_define_property(device, server_features_property, NULL);
-#ifdef INDIGO_SKY
+#ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
 		indigo_define_property(device, wifi_ap_property, NULL);
 		indigo_define_property(device, wifi_infrastructure_property, NULL);
 		indigo_define_property(device, shutdown_property, NULL);
 		indigo_define_property(device, reboot_property, NULL);
 	}
-#endif /* INDIGO_SKY */
+#endif /* RPI_MANAGEMENT */
 	return INDIGO_OK;
 }
 
@@ -564,7 +564,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		log_level_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, log_level_property, NULL);
 		return INDIGO_OK;
-#ifdef INDIGO_SKY
+#ifdef RPI_MANAGEMENT
 	} else if (indigo_property_match(wifi_ap_property, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
 		indigo_property_copy_values(wifi_ap_property, property, false);
@@ -583,7 +583,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- REBOOT
 		indigo_property_copy_values(reboot_property, property, false);
 		return execute_command(device, reboot_property, "s_rpi_ctrl.sh --reboot");
-#endif /* INDIGO_SKY */
+#endif /* RPI_MANAGEMENT */
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -598,14 +598,14 @@ static indigo_result detach(indigo_device *device) {
 	indigo_delete_property(device, unload_property, NULL);
 	indigo_delete_property(device, log_level_property, NULL);
 	indigo_delete_property(device, server_features_property, NULL);
-#ifdef INDIGO_SKY
+#ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
 		indigo_delete_property(device, wifi_ap_property, NULL);
 		indigo_delete_property(device, wifi_infrastructure_property, NULL);
 		indigo_delete_property(device, shutdown_property, NULL);
 		indigo_delete_property(device, reboot_property, NULL);
 	}
-#endif /* INDIGO_SKY */
+#endif /* RPI_MANAGEMENT */
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }
@@ -714,7 +714,7 @@ static void server_main() {
 			use_web_apps = false;
 		} else if (!strcmp(server_argv[i], "-u-") || !strcmp(server_argv[i], "--disable-blob-urls")) {
 			indigo_use_blob_urls = false;
-#ifdef INDIGO_SKY
+#ifdef RPI_MANAGEMENT
 		} else if (!strcmp(server_argv[i], "-f") || !strcmp(server_argv[i], "--enable-rpi-management")) {
 			FILE *output = popen("which s_rpi_ctrl.sh", "r");
 			if (output) {
@@ -727,7 +727,7 @@ static void server_main() {
 			if (!use_rpi_management) {
 				indigo_log("No s_rpi_ctrl.sh found");
 			}
-#endif /* INDIGO_SKY */
+#endif /* RPI_MANAGEMENT */
 		} else if(server_argv[i][0] != '-') {
 			indigo_load_driver(server_argv[i], true, NULL);
 			command_line_drivers = true;
@@ -957,9 +957,9 @@ int main(int argc, const char * argv[]) {
 			       "       -u- | --disable-blob-urls\n"
 			       "       -w- | --disable-web-apps\n"
 			       "       -c- | --disable-control-panel\n"
-#ifdef INDIGO_SKY
+#ifdef RPI_MANAGEMENT
 			       "       -f  | --enable-rpi-management\n"
-#endif /* INDIGO_SKY */
+#endif /* RPI_MANAGEMENT */
 			       "       -v  | --enable-info\n"
 			       "       -vv | --enable-debug\n"
 			       "       -vvv| --enable-trace\n"
