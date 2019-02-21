@@ -946,14 +946,26 @@ int main(int argc, const char * argv[]) {
 		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use-syslog")) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] "
-			          "[-b-|--disable-bonjour] [-w-|--disable-web-apps] [-c-|--disable-control-panel] "
+			printf("usage: %s [-h | --help]\n", argv[0]);
+			printf("       %s [options] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("options:\n"
+			       "       --  | --do-not-fork\n"
+			       "       -l  | --use-syslog\n"
+			       "       -p  | --port port                     (default: 7624)\n"
+			       "       -b  | --bonjour name                  (default: hostname)\n"
+			       "       -b- | --disable-bonjour\n"
+			       "       -u- | --disable-blob-urls\n"
+			       "       -w- | --disable-web-apps\n"
+			       "       -c- | --disable-control-panel\n"
 #ifdef INDIGO_SKY
-					  "[-f|--enable-wifi-management] "
+			       "       -f  | --enable-wifi-management\n"
 #endif /* INDIGO_SKY */
-					  "[-v|--enable-info] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] "
-					  "[-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			       "       -v  | --enable-info\n"
+			       "       -vv | --enable-debug\n"
+			       "       -vvv| --enable-trace\n"
+			       "       -r  | --remote-server host[:port]     (default port: 7624)\n"
+			       "       -i  | --indi-driver driver_executable\n"
+			);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];
