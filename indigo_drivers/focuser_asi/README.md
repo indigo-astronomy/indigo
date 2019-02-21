@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_focuser_asi
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * ASI EAF
