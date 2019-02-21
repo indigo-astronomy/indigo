@@ -716,7 +716,7 @@ static void server_main() {
 			indigo_use_blob_urls = false;
 #ifdef INDIGO_SKY
 		} else if (!strcmp(server_argv[i], "-f") || !strcmp(server_argv[i], "--enable-rpi-management")) {
-			FILE *output = popen("which indigo_rpi.sh", "r");
+			FILE *output = popen("which s_rpi_ctrl.sh", "r");
 			if (output) {
 				char *line = NULL;
 				size_t size = 0;
@@ -725,7 +725,7 @@ static void server_main() {
 				}
 			}
 			if (!use_rpi_management) {
-				indigo_log("No indigo_rpi.sh found");
+				indigo_log("No s_rpi_ctrl.sh found");
 			}
 #endif /* INDIGO_SKY */
 		} else if(server_argv[i][0] != '-') {
@@ -958,7 +958,7 @@ int main(int argc, const char * argv[]) {
 			       "       -w- | --disable-web-apps\n"
 			       "       -c- | --disable-control-panel\n"
 #ifdef INDIGO_SKY
-			       "       -f  | --enable-wifi-management\n"
+			       "       -f  | --enable-rpi-management\n"
 #endif /* INDIGO_SKY */
 			       "       -v  | --enable-info\n"
 			       "       -vv | --enable-debug\n"
