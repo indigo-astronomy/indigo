@@ -171,6 +171,9 @@ static void temperature_timer_callback(indigo_device *device) {
 		}
 		if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
 			compensate_focus(device, temp);
+		} else {
+			/* reset temp so that the compensation starts when auto mode is selected */
+			PRIVATE_DATA->prev_temp = -273;
 		}
 	}
 	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
