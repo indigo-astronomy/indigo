@@ -75,7 +75,7 @@ static void compensate_focus(indigo_device *device, double new_temp);
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 static void focuser_timer_callback(indigo_device *device) {
-	bool moving;
+	bool moving, moving_HC;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
 	if (res != EAF_SUCCESS) {
@@ -85,7 +85,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 
-	res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving);
+	res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_HC);
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -110,7 +110,7 @@ static void temperature_timer_callback(indigo_device *device) {
 	static bool has_sensor = true;
 	static bool first_call = true;
 	bool has_handcontrol;
-	bool moving = false;
+	bool moving = false, moving_HC = false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res = EAFIsHandControl(PRIVATE_DATA->dev_id, &has_handcontrol);
@@ -128,17 +128,20 @@ static void temperature_timer_callback(indigo_device *device) {
 	if (has_handcontrol) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
+		//fprintf(stderr, "pos=%d\n", PRIVATE_DATA->current_position);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res != EAF_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 		} else if (FOCUSER_POSITION_ITEM->number.value != PRIVATE_DATA->current_position) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			EAFIsMoving(PRIVATE_DATA->dev_id, &moving);
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_HC);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (moving) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
-			FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->target_position;
+			FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
 	} else { /* No Hand control, this does not guarantee that we have temperature sensor */

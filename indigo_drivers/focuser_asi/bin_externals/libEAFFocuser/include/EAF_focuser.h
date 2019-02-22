@@ -95,7 +95,7 @@ EAF_API	EAF_ERROR_CODE EAFOpen(int ID);
 
 /***************************************************************************
 Descriptions:
-Get property of focuser. SlotNum is 0 if not opened.
+Get property of focuser.
 
 Paras:
 int ID: the ID of focuser
@@ -116,7 +116,7 @@ EAF_API	EAF_ERROR_CODE EAFGetProperty(int ID, EAF_INFO *pInfo);
 
 /***************************************************************************
 Descriptions:
-Move focuser.
+Move focuser to an absolute position.
 
 Paras:
 int ID: the ID of focuser
@@ -158,8 +158,8 @@ Check if the focuser is moving.
 
 Paras:
 int ID: the ID of focuser
-bool *pbVal: pointer to the value
-
+bool *pbVal: pointer to the value, imply if focuser is moving
+bool* pbHandControl: pointer to the value, imply focuser is moved by handle control, can't be stopped by calling EAFStop()
 Return: 
 EAF_ERROR_INVALID_ID: invalid ID value
 EAF_ERROR_CLOSED: not opened
@@ -168,7 +168,7 @@ EAF_ERROR_ERROR_STATE: focuser is in error state
 EAF_ERROR_REMOVED: focuser is removed
 
 ***************************************************************************/
-EAF_API	EAF_ERROR_CODE EAFIsMoving(int ID, bool *pbVal); 
+EAF_API	EAF_ERROR_CODE EAFIsMoving(int ID, bool *pbVal, bool* pbHandControl); 
 
 
 /***************************************************************************
@@ -346,6 +346,38 @@ EAF_ERROR_CLOSED: not opened
 EAF_SUCCESS: operation succeeds
 ***************************************************************************/
 EAF_API	EAF_ERROR_CODE EAFGetReverse(int ID, bool* pbVal);
+
+/***************************************************************************
+Descriptions:
+Set backlash of focuser
+
+Paras:
+int ID: the ID of focuser
+
+int iVal: backlash value.
+
+Return: 
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API	EAF_ERROR_CODE EAFSetBacklash(int ID, int iVal);
+
+/***************************************************************************
+Descriptions:
+Get backlash of focuser
+
+Paras:
+int ID: the ID of focuser
+
+int *piVal: pointer to backlash value.
+
+Return: 
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API	EAF_ERROR_CODE EAFGetBacklash(int ID, int* piVal);
 
 /***************************************************************************
 Descriptions:
