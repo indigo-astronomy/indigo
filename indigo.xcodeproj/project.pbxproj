@@ -116,7 +116,6 @@
 		59A5302221A35167000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A5301421A3514E000B6F27 /* libatik.h */; };
 		59A5302521A35264000B6F27 /* libqhy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5300721A34310000B6F27 /* libqhy.a */; };
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
-		59AC720021FE5726004406D4 /* solsys3.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8ADF321A9D79900C3594F /* solsys3.c */; };
 		59AC720921FE57EB004406D4 /* eph_manager.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8ADFA21A9D79900C3594F /* eph_manager.c */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
@@ -136,6 +135,7 @@
 		59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
 		59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 590A86401DB80A04002F12FB /* indigo_ccd_asi.c */; };
 		59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */; };
+		59CB5E052221D28500B57BE5 /* solsys1.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8ADFB21A9D79900C3594F /* solsys1.c */; };
 		59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59CBD47B1FAF6C80000DAFDB /* indigo_gps_simulator.c */; };
 		59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59CBD4781FAF6C19000DAFDB /* indigo_gps_driver.c */; };
 		59CC779D1F27BD07003AD2DB /* indigo_ica_ptp_sony.m in Sources */ = {isa = PBXBuildFile; fileRef = 59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */; };
@@ -7538,19 +7538,15 @@
 			children = (
 				59C8ADED21A9D79900C3594F /* cio_file.c */,
 				59C8ADEE21A9D79900C3594F /* checkout-stars-full-usno.txt */,
-				59C8ADEF21A9D79900C3594F /* eph_manager.h */,
 				59C8ADF021A9D79900C3594F /* checkout-stars-usno.txt */,
 				59C8ADF121A9D79900C3594F /* checkout-mp-usno.txt */,
 				59C8ADF221A9D79900C3594F /* NOVAS_C3.1_Guide.pdf */,
-				59C8ADF321A9D79900C3594F /* solsys3.c */,
 				59C8ADF421A9D79900C3594F /* novas.c */,
 				59C8ADF521A9D79900C3594F /* novascon.h */,
 				59C8ADF621A9D79900C3594F /* nutation.h */,
 				59C8ADF721A9D79900C3594F /* example-usno.txt */,
 				59C8ADF821A9D79900C3594F /* checkout-mp.c */,
 				59C8ADF921A9D79900C3594F /* example.c */,
-				59C8ADFA21A9D79900C3594F /* eph_manager.c */,
-				59C8ADFB21A9D79900C3594F /* solsys1.c */,
 				59C8ADFC21A9D79900C3594F /* novas.h */,
 				59C8ADFD21A9D79900C3594F /* solarsystem.h */,
 				59C8ADFE21A9D79900C3594F /* checkout-stars-full.c */,
@@ -7560,9 +7556,13 @@
 				59C8AE0221A9D79900C3594F /* jplint.f */,
 				59C8AE0321A9D79900C3594F /* readeph0.c */,
 				59C8AE0421A9D79900C3594F /* checkout-stars.c */,
-				59C8AE0521A9D79900C3594F /* solsys2.c */,
 				59C8AE0621A9D79900C3594F /* CIO_RA.TXT */,
 				59C8AE0721A9D79900C3594F /* nutation.c */,
+				59C8ADFB21A9D79900C3594F /* solsys1.c */,
+				59C8AE0521A9D79900C3594F /* solsys2.c */,
+				59C8ADF321A9D79900C3594F /* solsys3.c */,
+				59C8ADEF21A9D79900C3594F /* eph_manager.h */,
+				59C8ADFA21A9D79900C3594F /* eph_manager.c */,
 			);
 			path = novas;
 			sourceTree = "<group>";
@@ -12245,7 +12245,6 @@
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				9D59D62D20D3F829009EA8FF /* CamHelpers.cpp in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
-				59AC720021FE5726004406D4 /* solsys3.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
 				9D73E60621FF36C4003CEC15 /* indigo_ccd_uvc_main.c in Sources */,
@@ -12373,6 +12372,7 @@
 				9D59D62920D3F829009EA8FF /* AscentData.cpp in Sources */,
 				5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */,
 				9D59D5F220D3F829009EA8FF /* Alta.cpp in Sources */,
+				59CB5E052221D28500B57BE5 /* solsys1.c in Sources */,
 				9D59D5F620D3F829009EA8FF /* IUsb.cpp in Sources */,
 				9D59D60120D3F829009EA8FF /* UdpSocketBase.cpp in Sources */,
 				9D59D66F20D3F82A009EA8FF /* indigo_ccd_apogee.cpp in Sources */,
@@ -12645,6 +12645,7 @@
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/externals";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
 			};
 			name = Debug;
 		};
@@ -12689,6 +12690,7 @@
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/externals";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
 			};
 			name = Release;
 		};

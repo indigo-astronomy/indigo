@@ -227,10 +227,12 @@ static indigo_property *restart_property;
 static indigo_property *log_level_property;
 static indigo_property *server_features_property;
 
+#ifdef RPI_MANAGEMENT
 static indigo_property *wifi_ap_property;
 static indigo_property *wifi_infrastructure_property;
 static indigo_property *shutdown_property;
 static indigo_property *reboot_property;
+#endif
 
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
@@ -301,6 +303,7 @@ static void server_callback(int count) {
 	}
 }
 
+#ifdef RPI_MANAGEMENT
 static indigo_result execute_command(indigo_device *device, indigo_property *property, char *command, ...) {
 	char buffer[1024];
 	va_list args;
@@ -335,6 +338,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 	indigo_update_property(device, property, strerror(errno));
 	return INDIGO_OK;
 }
+#endif
 
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);

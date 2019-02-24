@@ -75,8 +75,8 @@ libindigo: version libusb libhidapi libjpeg libnovas libftd2xx $(BUILD_LIB)/libi
 $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c)))
-	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl
+$(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c))) $(BUILD_LIB)/libnovas.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl
 
 #---------------------------------------------------------------------
 #
@@ -109,8 +109,8 @@ $(BUILD_LIB)/libjpeg.a:
 
 libnovas: $(BUILD_LIB)/libnovas.a
 
-$(BUILD_LIB)/libnovas.a:
-	cd externals/novas; rm -f *.o; $(CC) -c $(CFLAGS) novas.c eph_manager.c novascon.c nutation.c readeph0.c solsys3.c; $(AR) $(ARFLAGS) $@ *.o; install *.h $(BUILD_INCLUDE); install JPLEPH.421 $(BUILD_LIB)
+$(BUILD_LIB)/libnovas.a: externals/novas/novas.c externals/novas/eph_manager.c externals/novas/novascon.c externals/novas/nutation.c externals/novas/readeph0.c externals/novas/solsys1.c
+	cd externals/novas; rm -f *.o; $(CC) -c $(CFLAGS) novas.c eph_manager.c novascon.c nutation.c readeph0.c solsys1.c; $(AR) $(ARFLAGS) $@ *.o; install *.h $(BUILD_INCLUDE);
 
 #---------------------------------------------------------------------
 #
