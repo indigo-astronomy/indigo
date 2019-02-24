@@ -38,7 +38,7 @@ typedef struct {
 	char *id;
 	double ra, dec;
 	float mag, r1, r2, angle;
-	char *type, *name;
+	char *name;
 } indigo_dso_entry;
 
 extern indigo_star_entry indigo_star_data[];
