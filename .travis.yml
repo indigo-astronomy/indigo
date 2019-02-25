@@ -20,10 +20,9 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-5
-            - bash build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc
+            - build-essential gcc-6
       env:
-         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
     - os: linux
       addons:
@@ -31,23 +30,22 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-6
-            - bash build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc
-      env:
-        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-7
-            - bash build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc
+            - build-essential gcc-7
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - build-essential gcc-8
+      env:
+        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
+
 before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update && sudo apt-get install -y bash build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then sh tools/cltools.sh ; fi
   - eval "${MATRIX_EVAL}"
 
