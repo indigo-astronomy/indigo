@@ -44,8 +44,8 @@ typedef struct {
 extern indigo_star_entry indigo_star_data[];
 extern indigo_dso_entry indigo_dso_data[];
 
-extern void indigo_add_star_json_resource(int max_mag);
-extern void indigo_add_dso_json_resource(int max_mag);
-extern void indigo_add_constellations_lines_json_resource(void);
+extern void *indigo_add_star_json_resource(int max_mag);
+extern void *indigo_add_dso_json_resource(int max_mag);
+extern void *indigo_add_constellations_lines_json_resource(void);
 
 #endif /* star_data_h */

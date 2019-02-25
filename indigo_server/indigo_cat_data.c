@@ -41311,10 +41311,9 @@ static void indigo_compress(char *name, char *buffer, unsigned size, unsigned ch
 	r = deflateEnd(&defstream);
 	*data_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)*data);
 	*data = realloc(*data, *data_size);
-
 }
 
-void indigo_add_star_json_resource(int max_mag) {
+void *indigo_add_star_json_resource(int max_mag) {
 	int buffer_size = 1024 * 1024;
 	char *buffer =  malloc(buffer_size);
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
@@ -41349,9 +41348,10 @@ void indigo_add_star_json_resource(int max_mag) {
 	unsigned data_size = buffer_size;
 	indigo_compress("stars.json", buffer, size, &data, &data_size);
 	indigo_server_add_resource("/data/stars.json", data, (int)data_size, "application/json; charset=utf-8");
+	return data;
 }
 
-void indigo_add_dso_json_resource(int max_mag) {
+void *indigo_add_dso_json_resource(int max_mag) {
 	int buffer_size = 1024 * 1024;
 	char *buffer =  malloc(buffer_size);
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
@@ -41374,6 +41374,7 @@ void indigo_add_dso_json_resource(int max_mag) {
 	unsigned data_size = buffer_size;
 	indigo_compress("stars.json", buffer, size, &data, &data_size);
 	indigo_server_add_resource("/data/dsos.json", data, (int)data_size, "application/json; charset=utf-8");
+	return data;
 }
 
 static int add_multiline(char *buffer, ...) {
@@ -41397,7 +41398,7 @@ static int add_multiline(char *buffer, ...) {
 	return size;
 }
 
-void indigo_add_constellations_lines_json_resource() {
+void *indigo_add_constellations_lines_json_resource() {
 	int buffer_size = 1024 * 1024;
 	char *buffer =  malloc(buffer_size);
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"id\":\"Const\",\"properties\":{},\"geometry\":{\"type\":\"MultiLineString\",\"coordinates\":[");
@@ -41525,4 +41526,5 @@ void indigo_add_constellations_lines_json_resource() {
 	unsigned data_size = buffer_size;
 	indigo_compress("constellations.lines.json", buffer, size, &data, &data_size);
 	indigo_server_add_resource("/data/constellations.lines.json", data, (int)data_size, "application/json; charset=utf-8");
+	return data;
 }
