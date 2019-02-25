@@ -237,9 +237,9 @@ static indigo_property *reboot_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 
-static void *star_data;
-static void *dso_data;
-static void *constellation_data;
+static void *star_data = NULL;
+static void *dso_data = NULL;
+static void *constellation_data = NULL;
 
 #ifdef INDIGO_MACOS
 static bool runLoop = true;
