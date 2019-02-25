@@ -237,6 +237,10 @@ static indigo_property *reboot_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 
+static void *star_data;
+static void *dso_data;
+static void *constellation_data;
+
 #ifdef INDIGO_MACOS
 static bool runLoop = true;
 #endif
@@ -850,9 +854,9 @@ static void server_main() {
 			#include "resource/data/planets.json.data"
 		};
 		indigo_server_add_resource("/data/planets.json", planets_json, sizeof(planets_json), "application/json; charset=utf-8");
-		indigo_add_star_json_resource(6);
-		indigo_add_dso_json_resource(10);
-		indigo_add_constellations_lines_json_resource();
+		star_data = indigo_add_star_json_resource(6);
+		dso_data = indigo_add_dso_json_resource(10);
+		constellation_data = indigo_add_constellations_lines_json_resource();
 		// INDIGO Guider
 		static unsigned char guider_png[] = {
 			#include "resource/guider.png.data"
@@ -934,9 +938,14 @@ static void signal_handler(int signo) {
 			kill(server_pid, SIGKILL);
 		else
 			kill(server_pid, SIGINT);
-
 		use_sigkill = true;
 	}
+	if (star_data)
+		free(star_data);
+	if (dso_data)
+		free(dso_data);
+	if (constellation_data)
+		free(constellation_data);
 }
 
 int main(int argc, const char * argv[]) {
