@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -63,7 +63,7 @@
 typedef struct {
 	int dev_id;
 	EAF_INFO info;
-	int current_position, target_position, max_position;
+	int current_position, target_position, max_position, backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
@@ -268,6 +268,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_ITEM->number.min = 0;
+		FOCUSER_BACKLASH_ITEM->number.max = 10000;
+		FOCUSER_BACKLASH_ITEM->number.step = 1;
+
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 1;
 		FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
@@ -333,6 +338,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
 						}
 						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+
+						res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+						}
+						FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
 
 						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
 						if (res != EAF_SUCCESS) {
@@ -461,11 +472,32 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
+		int res = EAFSetBacklash(PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetBacklash(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash, res);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
