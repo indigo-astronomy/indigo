@@ -297,7 +297,7 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 	unsigned char *setup_data = PRIVATE_DATA->setup_data;
 	int rc = 0;
 	int transferred;
-	if (exposure <= 3) {
+	if (exposure < 1) {
 		int milis = (int)round(1000 * exposure);
 		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
 		setup_data[REQ ] = CCD_READ_PIXELS_DELAYED;
@@ -434,8 +434,8 @@ static bool sx_read_pixels(indigo_device *device) {
 	int vertical_bin = PRIVATE_DATA->vertical_bin;
 	int size = (frame_width/horizontal_bin)*(frame_height/vertical_bin);
 	if (PRIVATE_DATA->is_interlaced) {
-		if (vertical_bin>1) {
-			if (PRIVATE_DATA->exposure > 3) {
+		if (vertical_bin > 1) {
+			if (PRIVATE_DATA->exposure >= 1) {
 				setup_data[REQ ] = CCD_READ_PIXELS;
 				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
 				setup_data[REQ_VALUE_H ] = 0;
@@ -458,7 +458,7 @@ static bool sx_read_pixels(indigo_device *device) {
 			rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
 		} else {
 			unsigned char *even = PRIVATE_DATA->even;
-			if (PRIVATE_DATA->exposure > 3) {
+			if (PRIVATE_DATA->exposure >= 1) {
 				setup_data[REQ ] = CCD_READ_PIXELS;
 				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
 				setup_data[REQ_VALUE_H ] = 0;
@@ -527,7 +527,7 @@ static bool sx_read_pixels(indigo_device *device) {
 			}
 		}
 	} else {
-		if (PRIVATE_DATA->exposure > 3) {
+		if (PRIVATE_DATA->exposure >= 1) {
 			setup_data[REQ ] = CCD_READ_PIXELS;
 			setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
 			setup_data[REQ_VALUE_H ] = 0;
@@ -830,8 +830,30 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_FRAME
+		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
+		if (PRIVATE_DATA->is_interlaced) {
+			CCD_FRAME_WIDTH_ITEM->number.value = ((int)CCD_FRAME_WIDTH_ITEM->number.value / 2) * 2;
+			CCD_FRAME_HEIGHT_ITEM->number.value = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / 2) * 2;
+		}
+		CCD_FRAME_WIDTH_ITEM->number.value = ((int)CCD_FRAME_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		CCD_FRAME_HEIGHT_ITEM->number.value = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+		if (CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value > CCD_INFO_WIDTH_ITEM->number.value) {
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_INFO_WIDTH_ITEM->number.value - CCD_FRAME_LEFT_ITEM->number.value;
+			CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (CCD_FRAME_TOP_ITEM->number.value + CCD_FRAME_HEIGHT_ITEM->number.value > CCD_INFO_HEIGHT_ITEM->number.value) {
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value - CCD_FRAME_TOP_ITEM->number.value;
+			CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (IS_CONNECTED) {
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- CCD_BIN
+		// -------------------------------------------------------------------------------- CCD_BIN
 		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int v = CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
