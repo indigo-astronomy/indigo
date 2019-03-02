@@ -101,7 +101,7 @@ The choice 'None (2x2 binning mono)' creates a FIT file of dimension width/2 x h
 The data is thus 2x2 binned and monocolor. This choice is useful for focusing, aligment and other
 routines where FIT data has to be efficiently transported to a client in short intervals.
 Note that 2x2 binning reduces the data size by a factor of 4 and at the same time doubles the SNR.
-On course the data can also be debayered by the driver, where the prefered debayering algorithm is VNG which computationally
+Of course the data can also be debayered by the driver, where the prefered debayering algorithm is VNG which computationally
 intensive however very good. Linear interpolation is a very basic interpolation but it is faster compared to VNG.
 This debayered FIT output is currently 3 colors (RGB) each 16-bit and has the following FIT keyword embedded
 ```
