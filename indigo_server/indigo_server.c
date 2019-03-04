@@ -232,6 +232,7 @@ static indigo_property *wifi_ap_property;
 static indigo_property *wifi_infrastructure_property;
 static indigo_property *shutdown_property;
 static indigo_property *reboot_property;
+static indigo_property *install_property;
 #endif
 
 static DNSServiceRef sd_http;
@@ -399,6 +400,38 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
 		reboot_property = indigo_init_switch_property(NULL, server_device.name, "REBOOT", MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
+		install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
+		install_property->count = 0;
+		FILE *output = popen("s_rpi_ctrl.sh --list-available-versions", "r");
+		if (output) {
+			char *line = NULL;
+			size_t size = 0;
+			if (getline(&line, &size, output) >= 0) {
+				char *versions[10] = { strtok(line, " \n") };
+				int count = 1;
+				while ((versions[count] = strtok(NULL, " \n"))) {
+					if (count == 9)
+						count = 1;
+					else
+						count++;
+				}
+				for (int i = 0; i < count; i++) {
+					char *smallest = "XXXXX";
+					int ii = 0;
+					for (int j = 0; j < count; j++) {
+						if (versions[j] && strcmp(versions[j], smallest) < 0) {
+							smallest = versions[j];
+							ii = j;
+						}
+					}
+					versions[ii] = NULL;
+					indigo_init_switch_item(install_property->items + i, smallest, smallest, smallest == line);
+					install_property->count++;
+				}
+			}
+			if (line)
+				free(line);
+		}
 	}
 #endif /* RPI_MANAGEMENT */
 	indigo_log_levels log_level = indigo_get_log_level();
@@ -438,6 +471,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 		indigo_define_property(device, wifi_infrastructure_property, NULL);
 		indigo_define_property(device, shutdown_property, NULL);
 		indigo_define_property(device, reboot_property, NULL);
+		indigo_define_property(device, install_property, NULL);
 	}
 #endif /* RPI_MANAGEMENT */
 	return INDIGO_OK;
@@ -576,13 +610,11 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(wifi_ap_property, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
 		indigo_property_copy_values(wifi_ap_property, property, false);
-		return execute_command(device, wifi_ap_property, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"",
-				       wifi_ap_property->items[0].text.value, wifi_ap_property->items[1].text.value);
+		return execute_command(device, wifi_ap_property, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"", wifi_ap_property->items[0].text.value, wifi_ap_property->items[1].text.value);
 	} else if (indigo_property_match(wifi_infrastructure_property, property)) {
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(wifi_infrastructure_property, property, false);
-		return execute_command(device, wifi_infrastructure_property, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"",
-				       wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
+		return execute_command(device, wifi_infrastructure_property, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
 	} else if (indigo_property_match(shutdown_property, property)) {
 		// -------------------------------------------------------------------------------- SHUTDOWN
 		indigo_property_copy_values(shutdown_property, property, false);
@@ -591,6 +623,13 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- REBOOT
 		indigo_property_copy_values(reboot_property, property, false);
 		return execute_command(device, reboot_property, "s_rpi_ctrl.sh --reboot");
+	} else if (indigo_property_match(install_property, property)) {
+		// -------------------------------------------------------------------------------- INSTALL
+		indigo_property_copy_values(install_property, property, false);
+		for (int i = 0; i < property->count; i++) {
+			if (property->items[i].sw.value)
+				return execute_command(device, install_property, "s_rpi_ctrl.sh --install-version %s", property->items[i].name);
+		}
 #endif /* RPI_MANAGEMENT */
 	// --------------------------------------------------------------------------------
 	}
@@ -612,6 +651,7 @@ static indigo_result detach(indigo_device *device) {
 		indigo_delete_property(device, wifi_infrastructure_property, NULL);
 		indigo_delete_property(device, shutdown_property, NULL);
 		indigo_delete_property(device, reboot_property, NULL);
+		indigo_delete_property(device, install_property, NULL);
 	}
 #endif /* RPI_MANAGEMENT */
 	INDIGO_LOG(indigo_log("%s detached", device->name));

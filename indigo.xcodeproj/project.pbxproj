@@ -4139,7 +4139,7 @@
 		9D97F8061D9A89ED00582EAF /* indigo_server_tcp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_server_tcp.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D97F8071D9A89ED00582EAF /* indigo_server_tcp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_server_tcp.h; sourceTree = "<group>"; };
 		9D97F8171D9A8A1900582EAF /* indigo_server */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_server; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D97F81A1D9A8A5D00582EAF /* indigo_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_server.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		9D97F81A1D9A8A5D00582EAF /* indigo_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_server.c; sourceTree = "<group>"; wrapsLines = 0; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D97F81E1D9E9E4F00582EAF /* indigo_version.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_version.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D97F81F1D9E9E4F00582EAF /* indigo_version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_version.h; sourceTree = "<group>"; };
 		9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik_main.c; sourceTree = "<group>"; };
@@ -12527,6 +12527,7 @@
 					INDIGO_MACOS,
 					"$(inherited)",
 					STATIC_DRIVERS,
+					RPI_MANAGEMENT,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
