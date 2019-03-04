@@ -2,7 +2,7 @@
 
 ## Supported devices
 
-Any NexStar protocol compatible mount (SkyWatcher; Celestron; Orion; ...) connected over serial port or network.
+Any NexStar protocol compatible mount (SkyWatcher; Celestron; Orion; ...) connected over the serial port of the hand controller or network.
 
 Single device is present on startup (no hot-plug support).
 
@@ -28,7 +28,7 @@ Driver is developed and tested with:
 ## Comments
 
 Use URL in form tcp://host:port to connect to the mount over network (default port is 9999).
-To export the mount over the network one can use Nexbridge https://sourceforge.net/projects/nexbridge
+To export the mount over the network one can use Nexbridge https://sourceforge.net/projects/nexbridge, and the serial connection to the mount should be over the hand controler.
 
 This driver uses libnexstar library https://sourceforge.net/projects/libnexstar/
 
