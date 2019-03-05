@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 #define FIT_FORMAT_AMATEUR_CCD
 
@@ -165,7 +165,7 @@ do {							\
 #define SONY_EXPOSURE_PROGRAM		NIKON_EXPOSURE_PROGRAM
 #define SONY_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
 
-#define TIMER_COUNTER_STEP_SEC		0.1	/* 100 ms. */
+#define TIMER_COUNTER_STEP_SEC		1	/* 1000 ms. */
 #define TIMER_BATTERY_LEVEL_UPDATE_SEC	120
 
 #define UNUSED(x)					(void)(x)
