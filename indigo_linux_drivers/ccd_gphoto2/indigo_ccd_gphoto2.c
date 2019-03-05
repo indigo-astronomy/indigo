@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 #define FIT_FORMAT_AMATEUR_CCD
 
@@ -2399,6 +2399,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 
 		int rc = pthread_create(&thread_id_capture, NULL,
 					thread_capture, device);
