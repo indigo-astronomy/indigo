@@ -337,6 +337,8 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 		}
 		if (line)
 			free(line);
+		pclose(output);
+
 		return INDIGO_OK;
 	}
 	property->state = INDIGO_ALERT_STATE;
@@ -431,6 +433,7 @@ static indigo_result attach(indigo_device *device) {
 			}
 			if (line)
 				free(line);
+			pclose(output);
 		}
 	}
 #endif /* RPI_MANAGEMENT */
@@ -771,6 +774,7 @@ static void server_main() {
 				if (getline(&line, &size, output) >= 0) {
 					use_rpi_management = true;
 				}
+				pclose(output);
 			}
 			if (!use_rpi_management) {
 				indigo_log("No s_rpi_ctrl.sh found");
