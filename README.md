@@ -93,7 +93,7 @@ This is the list of requirements taken into the consideration:
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO
 
-### Prerequisits
+### Prerequisites
 #### Ubuntu / Debian / Raspbian
 
 `sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl`
