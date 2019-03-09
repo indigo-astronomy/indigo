@@ -156,16 +156,20 @@ void indigo_log_message(const char *format, va_list args) {
 	} else {
 		char timestamp[16];
 		struct timeval tmnow;
+		gettimeofday(&tmnow, NULL);
+#if defined(INDIGO_WINDOWS)
 		struct tm *lt;
 		time_t rawtime;
-		gettimeofday(&tmnow, NULL);
-
 		lt = localtime((const time_t *) &(tmnow.tv_sec));
 		if (lt == NULL) {
 			time(&rawtime);
 			lt = localtime(&rawtime);
 		}
 		strftime (timestamp, 9, "%H:%M:%S", lt);
+#else
+		strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
+#endif
+
 #ifdef INDIGO_MACOS
 		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
 #else
