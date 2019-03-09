@@ -260,7 +260,7 @@ static bool ieq_open(indigo_device *device) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Unknown mount");
 				PRIVATE_DATA->protocol = 0x0200;
 			} else {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "No MountIndo reply, old iEQ45?", response);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "No MountInfo reply, old iEQ45?", response);
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45");
 				PRIVATE_DATA->protocol = 0x0100;
 			}
