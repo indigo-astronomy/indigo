@@ -639,7 +639,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(host_time_property, property)) {
 		// -------------------------------------------------------------------------------- HOST_TIME
 		indigo_property_copy_values(host_time_property, property, false);
-		return execute_command(device, host_time_property, "s_rpi_ctrl.sh --set-host-time %s", host_time_property->items[0].text.value);
+		return execute_command(device, host_time_property, "s_rpi_ctrl.sh --set-host-date \"%s\"", host_time_property->items[0].text.value);
 	} else if (indigo_property_match(shutdown_property, property)) {
 		// -------------------------------------------------------------------------------- SHUTDOWN
 		indigo_property_copy_values(shutdown_property, property, false);
