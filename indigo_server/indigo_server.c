@@ -400,7 +400,7 @@ static indigo_result attach(indigo_device *device) {
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
-		output = popen("s_rpi_ctrl.sh --get-host-date", "r");
+		output = popen("s_rpi_ctrl.sh --get-date", "r");
 		if (output) {
 			char *line = NULL;
 			size_t size = 0;
@@ -639,7 +639,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(host_time_property, property)) {
 		// -------------------------------------------------------------------------------- HOST_TIME
 		indigo_property_copy_values(host_time_property, property, false);
-		return execute_command(device, host_time_property, "s_rpi_ctrl.sh --set-host-date \"%s\"", host_time_property->items[0].text.value);
+		return execute_command(device, host_time_property, "s_rpi_ctrl.sh --set-date \"%s\"", host_time_property->items[0].text.value);
 	} else if (indigo_property_match(shutdown_property, property)) {
 		// -------------------------------------------------------------------------------- SHUTDOWN
 		indigo_property_copy_values(shutdown_property, property, false);
