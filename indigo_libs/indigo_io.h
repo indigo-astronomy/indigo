@@ -55,6 +55,12 @@ extern int indigo_open_udp(const char *host, int port);
  */
 extern int indigo_read(int handle, char *buffer, long length);
 
+#if defined(INDIGO_WINDOWS)
+/** Read buffer from socket.
+ */
+extern int indigo_recv(int handle, char *buffer, long length);
+#endif
+
 /** Read line.
  */
 extern int indigo_read_line(int handle, char *buffer, int length);

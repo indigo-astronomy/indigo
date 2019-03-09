@@ -288,26 +288,30 @@ void indigo_service_name(const char *host, int port, char *name) {
 static void *server_thread(indigo_server_entry *server) {
   INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
 	pthread_detach(pthread_self());
-  while (server->socket >= 0) {
-    server->socket = 0;
+	while (server->socket >= 0) {
+		server->socket = 0;
 		struct addrinfo hints = { 0 }, *address = NULL;
 		int result;
 		hints.ai_family = AF_INET;
-    if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
-      INDIGO_LOG(indigo_error("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
+		if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
+			INDIGO_LOG(indigo_error("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
 			strncpy(server->last_error, gai_strerror(result), sizeof(server->last_error));
-    } else if ((server->socket = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
-      INDIGO_LOG(indigo_error("Can't create socket (%s)", strerror(errno)));
+		} else if ((server->socket = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
+			INDIGO_LOG(indigo_error("Can't create socket (%s)", strerror(errno)));
 			strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
-    } else {
-     	((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
-      if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
+		} else {
+			((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
+			if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
 				INDIGO_LOG(indigo_error("Can't connect to socket (%s)", strerror(errno)));
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
-        close(server->socket);
-        server->socket = 0;
-      }
-    }
+#if defined(INDIGO_WINDOWS)
+				closesocket(server->socket);
+#else
+				close(server->socket);
+#endif
+				server->socket = 0;
+			}
+		}
 		if (address)
 			freeaddrinfo(address);
     if (server->socket > 0) {
@@ -325,7 +329,11 @@ static void *server_thread(indigo_server_entry *server) {
       free(server->protocol_adapter);
 			server->protocol_adapter = NULL;
 			if (server->socket > 0) {
+#if defined(INDIGO_WINDOWS)
+				closesocket(server->socket);
+#else
 				close(server->socket);
+#endif
 				server->socket = 0;
       }
       INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
@@ -396,7 +404,11 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 #if defined(INDIGO_WINDOWS)
 		shutdown(server->socket, SD_BOTH);
 #endif
-    close(server->socket);
+#if defined(INDIGO_WINDOWS)
+		closesocket(server->socket);
+#else
+		close(server->socket);
+#endif
 	}
   server->socket = -1;
   pthread_mutex_unlock(&mutex);

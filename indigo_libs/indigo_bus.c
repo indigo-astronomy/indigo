@@ -156,8 +156,16 @@ void indigo_log_message(const char *format, va_list args) {
 	} else {
 		char timestamp[16];
 		struct timeval tmnow;
+		struct tm *lt;
+		time_t rawtime;
 		gettimeofday(&tmnow, NULL);
-		strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
+
+		lt = localtime((const time_t *) &(tmnow.tv_sec));
+		if (lt == NULL) {
+			time(&rawtime);
+			lt = localtime(&rawtime);
+		}
+		strftime (timestamp, 9, "%H:%M:%S", lt);
 #ifdef INDIGO_MACOS
 		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
 #else
@@ -792,12 +800,13 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	if ((count != 2) || (http_result != 200)){
 		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-    shutdown(socket, SHUT_RDWR);
+		shutdown(socket, SHUT_RDWR);
+		close(socket);
 #endif
 #if defined(INDIGO_WINDOWS)
-    shutdown(socket, SD_BOTH);
+		shutdown(socket, SD_BOTH);
+		closesocket(socket);
 #endif
-		close(socket);
 		return false;
 	}
 	INDIGO_DEBUG(indigo_debug("%s(): http_result = %d, response = \"%s\"", __FUNCTION__, http_result, http_response));
@@ -825,12 +834,13 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	clean_return:
 	INDIGO_DEBUG(indigo_debug("%s() = %d", __FUNCTION__, res));
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-  shutdown(socket, SHUT_RDWR);
+	shutdown(socket, SHUT_RDWR);
+	close(socket);
 #endif
 #if defined(INDIGO_WINDOWS)
-  shutdown(socket, SD_BOTH);
+	shutdown(socket, SD_BOTH);
+	closesocket(socket);
 #endif
-  close(socket);
 	return res;
 }
 
