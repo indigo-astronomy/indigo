@@ -230,6 +230,7 @@ static indigo_property *server_features_property;
 #ifdef RPI_MANAGEMENT
 static indigo_property *wifi_ap_property;
 static indigo_property *wifi_infrastructure_property;
+static indigo_property *host_time_property;
 static indigo_property *shutdown_property;
 static indigo_property *reboot_property;
 static indigo_property *install_property;
@@ -392,19 +393,32 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
+		FILE *output;
 		wifi_ap_property = indigo_init_text_property(NULL, server_device.name, "WIFI_AP", MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
+		output = popen("s_rpi_ctrl.sh --get-host-date", "r");
+		if (output) {
+			char *line = NULL;
+			size_t size = 0;
+			if (getline(&line, &size, output) >= 0) {
+				char *nl = strchr(line, '\n');
+				if (nl)
+					*nl = 0;
+				host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+				indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", line);
+			}
+		}
 		shutdown_property = indigo_init_switch_property(NULL, server_device.name, "SHUTDOWN", MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
 		reboot_property = indigo_init_switch_property(NULL, server_device.name, "REBOOT", MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
 		install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
 		install_property->count = 0;
-		FILE *output = popen("s_rpi_ctrl.sh --list-available-versions", "r");
+		output = popen("s_rpi_ctrl.sh --list-available-versions", "r");
 		if (output) {
 			char *line = NULL;
 			size_t size = 0;
@@ -472,6 +486,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	if (use_rpi_management) {
 		indigo_define_property(device, wifi_ap_property, NULL);
 		indigo_define_property(device, wifi_infrastructure_property, NULL);
+		indigo_define_property(device, host_time_property, NULL);
 		indigo_define_property(device, shutdown_property, NULL);
 		indigo_define_property(device, reboot_property, NULL);
 		indigo_define_property(device, install_property, NULL);
@@ -618,6 +633,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(wifi_infrastructure_property, property, false);
 		return execute_command(device, wifi_infrastructure_property, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
+	} else if (indigo_property_match(host_time_property, property)) {
+		// -------------------------------------------------------------------------------- HOST_TIME
+		indigo_property_copy_values(host_time_property, property, false);
+		return execute_command(device, host_time_property, "s_rpi_ctrl.sh --set-host-time %s", host_time_property->items[0].text.value);
 	} else if (indigo_property_match(shutdown_property, property)) {
 		// -------------------------------------------------------------------------------- SHUTDOWN
 		indigo_property_copy_values(shutdown_property, property, false);
@@ -652,6 +671,7 @@ static indigo_result detach(indigo_device *device) {
 	if (use_rpi_management) {
 		indigo_delete_property(device, wifi_ap_property, NULL);
 		indigo_delete_property(device, wifi_infrastructure_property, NULL);
+		indigo_delete_property(device, host_time_property, NULL);
 		indigo_delete_property(device, shutdown_property, NULL);
 		indigo_delete_property(device, reboot_property, NULL);
 		indigo_delete_property(device, install_property, NULL);
@@ -724,7 +744,6 @@ static void add_drivers(const char *folder) {
 		if (line)
 			free(line);
 	}
-
 }
 
 static void server_main() {
