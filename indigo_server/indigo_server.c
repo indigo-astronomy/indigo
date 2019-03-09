@@ -411,6 +411,9 @@ static indigo_result attach(indigo_device *device) {
 				host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 				indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", line);
 			}
+			if (line)
+				free(line);
+			pclose(output);
 		}
 		shutdown_property = indigo_init_switch_property(NULL, server_device.name, "SHUTDOWN", MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
