@@ -285,11 +285,26 @@ void indigo_service_name(const char *host, int port, char *name) {
   }
 }
 
+static reset_socket(indigo_server_entry *server, int new_socket) {
+   pthread_mutex_t rw_lock = PTHREAD_MUTEX_INITIALIZER;
+   pthread_mutex_lock(&rw_lock);
+   if (server->socket > 0) {
+#if defined(INDIGO_WINDOWS)
+     closesocket(server->socket);
+#else
+     close(server->socket);
+#endif
+      server->socket = new_socket;
+   }
+   pthread_mutex_unlock(&rw_lock);
+}
+
+
 static void *server_thread(indigo_server_entry *server) {
   INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
 	pthread_detach(pthread_self());
-	while (server->socket >= 0) {
-		server->socket = 0;
+  while (server->socket >= 0) {
+    reset_socket(server, 0);
 		struct addrinfo hints = { 0 }, *address = NULL;
 		int result;
 		hints.ai_family = AF_INET;
@@ -304,14 +319,9 @@ static void *server_thread(indigo_server_entry *server) {
 			if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
 				INDIGO_LOG(indigo_error("Can't connect to socket (%s)", strerror(errno)));
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
-#if defined(INDIGO_WINDOWS)
-				closesocket(server->socket);
-#else
-				close(server->socket);
-#endif
-				server->socket = 0;
-			}
-		}
+        reset_socket(server, 0);
+      }
+    }
 		if (address)
 			freeaddrinfo(address);
     if (server->socket > 0) {
@@ -327,15 +337,8 @@ static void *server_thread(indigo_server_entry *server) {
       indigo_detach_device(server->protocol_adapter);
       free(server->protocol_adapter->device_context);
       free(server->protocol_adapter);
-			server->protocol_adapter = NULL;
-			if (server->socket > 0) {
-#if defined(INDIGO_WINDOWS)
-				closesocket(server->socket);
-#else
-				close(server->socket);
-#endif
-				server->socket = 0;
-      }
+      server->protocol_adapter = NULL;
+      reset_socket(server, 0);
       INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
     } else if (server->socket == 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -399,18 +402,17 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
   pthread_mutex_lock(&mutex);
 	if (server->socket > 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		shutdown(server->socket, SHUT_RDWR);
+      int rc = shutdown(server->socket, SHUT_RDWR);
 #endif
 #if defined(INDIGO_WINDOWS)
-		shutdown(server->socket, SD_BOTH);
+      int rc = shutdown(server->socket, SD_BOTH);
 #endif
-#if defined(INDIGO_WINDOWS)
-		closesocket(server->socket);
-#else
-		close(server->socket);
-#endif
+    if (rc != 0) {
+      INDIGO_LOG(indigo_error("Can't shutdown socket (%s)", strerror(rc)));
+      return INDIGO_FAILED;
+    }
 	}
-  server->socket = -1;
+  reset_socket(server, -1);
   pthread_mutex_unlock(&mutex);
   return INDIGO_OK;
 }
