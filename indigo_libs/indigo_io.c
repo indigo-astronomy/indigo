@@ -154,7 +154,11 @@ int indigo_read(int handle, char *buffer, long length) {
 	long remains = length;
 	long total_bytes = 0;
 	while (true) {
+#if defined(INDIGO_WINDOWS)
+		long bytes_read = recv(handle, buffer, remains, 0);
+#else
 		long bytes_read = read(handle, buffer, remains);
+#endif
 		if (bytes_read <= 0) {
 			return (int)bytes_read;
 		}
@@ -167,12 +171,24 @@ int indigo_read(int handle, char *buffer, long length) {
 	}
 }
 
+#if defined(INDIGO_WINDOWS)
+int indigo_recv(int handle, char *buffer, long length) {
+	long bytes_read = recv(handle, buffer, length, 0);
+	return (int)bytes_read;
+}
+#endif
+
+
 
 int indigo_read_line(int handle, char *buffer, int length) {
 	char c = '\0';
 	long total_bytes = 0;
 	while (total_bytes < length) {
+#if defined(INDIGO_WINDOWS)
+		long bytes_read = recv(handle, &c, 1, 0);
+#else
 		long bytes_read = read(handle, &c, 1);
+#endif
 		if (bytes_read > 0) {
 			if (c == '\r')
 				;
@@ -194,7 +210,12 @@ int indigo_read_line(int handle, char *buffer, int length) {
 bool indigo_write(int handle, const char *buffer, long length) {
 	long remains = length;
 	while (true) {
+
+#if defined(INDIGO_WINDOWS)
+		long bytes_written = send(handle, buffer, remains, 0);
+#else
 		long bytes_written = write(handle, buffer, remains);
+#endif
 		if (bytes_written < 0)
 			return false;
 		if (bytes_written == remains)

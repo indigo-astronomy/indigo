@@ -55,7 +55,7 @@
 
 #define PROPERTY_SIZE sizeof(indigo_property)+INDIGO_MAX_ITEMS*(sizeof(indigo_item))
 
-typedef enum {
+typedef enum PARSE_STATES {
 	ERROR,
 	IDLE,
 	BEGIN_TAG1,
@@ -194,7 +194,7 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 			indigo_enable_blob(client, property, record->mode);
 		} else {
 			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_NEVER);
-		}		
+		}
 	} else if (state == END_TAG) {
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
@@ -1258,7 +1258,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			goto exit_loop;
 		}
 		while ((c = *pointer++) == 0) {
+#if defined(INDIGO_WINDOWS)
+			ssize_t count = indigo_recv(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
+#else
 			ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
+#endif
 			if (count <= 0) {
 				goto exit_loop;
 			}
@@ -1443,7 +1447,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					ssize_t bytes_needed = len % 4;
 					if(bytes_needed) bytes_needed = 4 - bytes_needed;
 					while (bytes_needed) {
+#if defined(INDIGO_WINDOWS)
+						count = indigo_recv(handle, (void *)buffer_end, bytes_needed);
+#else
 						count = (int)read(handle, (void *)buffer_end, bytes_needed);
+#endif
 						if (count <= 0)
 							goto exit_loop;
 						len += count;
@@ -1458,7 +1466,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						ssize_t to_read = len;
 						char *ptr = buffer;
 						while(to_read) {
+#if defined(INDIGO_WINDOWS)
+							count = indigo_recv(handle, (void *)ptr, to_read);
+#else
 							count = (int)read(handle, (void *)ptr, to_read);
+#endif
 							if (count <= 0)
 								goto exit_loop;
 							ptr += count;
