@@ -393,35 +393,21 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
-		FILE *output;
 		wifi_ap_property = indigo_init_text_property(NULL, server_device.name, "WIFI_AP", MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
-		output = popen("s_rpi_ctrl.sh --get-date", "r");
-		if (output) {
-			char *line = NULL;
-			size_t size = 0;
-			if (getline(&line, &size, output) >= 0) {
-				char *nl = strchr(line, '\n');
-				if (nl)
-					*nl = 0;
-				host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-				indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", line);
-			}
-			if (line)
-				free(line);
-			pclose(output);
-		}
+		host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", "");
 		shutdown_property = indigo_init_switch_property(NULL, server_device.name, "SHUTDOWN", MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
 		reboot_property = indigo_init_switch_property(NULL, server_device.name, "REBOOT", MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
 		install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
 		install_property->count = 0;
-		output = popen("s_rpi_ctrl.sh --list-available-versions", "r");
+		FILE *output = popen("s_rpi_ctrl.sh --list-available-versions", "r");
 		if (output) {
 			char *line = NULL;
 			size_t size = 0;

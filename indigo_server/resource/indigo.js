@@ -225,3 +225,21 @@ function stod(str) {
 		return d - m / 60.0 - s / 3600.0;
 	return d + m / 60.0 + s / 3600.0;
 }
+
+function timestamp() {
+	 function pad(number) {
+		 if (number < 10) {
+			 return '0' + number;
+		 }
+		 return number;
+	 }
+	var d = new Date();
+	var o = d.getTimezoneOffset();
+	return d.getFullYear() +
+	'-' + pad(d.getMonth() + 1) +
+	'-' + pad(d.getDate()) +
+	'T' + pad(d.getHours()) +
+	':' + pad(d.getMinutes()) +
+	':' + pad(d.getSeconds()) +
+	(o >= 0 ? '-' + pad(o / 60) : '+' + pad(-o / 60)) + '00';
+}

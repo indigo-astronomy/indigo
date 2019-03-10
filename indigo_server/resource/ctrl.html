@@ -76,6 +76,11 @@
 		function checkState() {
 			if (INDIGO.devices["Server"] == null) {
 				console.log("No 'Server' device.");
+			} else {
+				var hostTime = INDIGO.devices["Server"]["HOST_TIME"];
+				if (hostTime != null && hostTime.items[0].value == "") {
+					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() })
+				}
 			}
 		}
 	
