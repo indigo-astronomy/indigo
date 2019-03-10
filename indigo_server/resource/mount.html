@@ -244,6 +244,10 @@
 			if (server == null) {
 				console.log("No 'Server' device.");
 			} else {
+				var hostTime = INDIGO.devices["Server"]["HOST_TIME"];
+				if (hostTime != null && hostTime.items[0].value == "") {
+					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() })
+				}
 				if (INDIGO.devices["Mount Agent"] == null) {
 					console.log("No 'Mount Agent' device.");
 					if (server["DRIVERS"].item("indigo_agent_mount") == null) {
