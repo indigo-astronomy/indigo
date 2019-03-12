@@ -192,6 +192,8 @@ typedef struct _ASI_ID{
 	unsigned char id[8];
 }ASI_ID;
 
+typedef ASI_ID ASI_SN;
+
 typedef struct _ASI_SUPPORTED_MODE{
 	ASI_CAMERA_MODE SupportedCameraMode[16];// this array will content with the support camera mode type.ASI_MODE_END is the end of supported camera mode
 }ASI_SUPPORTED_MODE;
@@ -256,6 +258,25 @@ return:
 
 ***************************************************************************/
 ASICAMERA_API ASI_ERROR_CODE ASIGetCameraProperty(ASI_CAMERA_INFO *pASICameraInfo, int iCameraIndex);
+
+
+/***************************************************************************
+Descriptions:
+get the property of the connected cameras by ID.
+				
+Paras:		
+	ASI_CAMERA_INFO *pASICameraInfo: Pointer to structure containing the property of camera
+									user need to malloc the buffer
+
+	int CameraID: this is get from the camera property use the API ASIGetCameraProperty
+
+return:
+ASI_SUCCESS : Operation is successful
+ASI_ERROR_CAMERA_CLOSED : camera didn't open
+ASI_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+***************************************************************************/
+ASICAMERA_API ASI_ERROR_CODE ASIGetCameraPropertyByID(int iCameraID, ASI_CAMERA_INFO *pASICameraInfo);
+
 
 /***************************************************************************
 Descriptions:
@@ -814,6 +835,20 @@ int CameraID: this is get from the camera property use the API ASIGetCameraPrope
 ASI_BOOL starts:send a softTrigger start/stop signal
 ***************************************************************************/
 ASICAMERA_API ASI_ERROR_CODE  ASISendSoftTrigger(int iCameraID, ASI_BOOL bStart);
+
+/***************************************************************************
+Description:
+Get a serial number from a camera.
+Paras:
+int CameraID: this is get from the camera property use the API ASIGetCameraProperty
+ASI_SN* pSN: pointer to SN
+
+return:
+ASI_SUCCESS : Operation is successful
+ASI_ERROR_CAMERA_CLOSED : camera didn't open
+ASI_ERROR_GENERAL_ERROR : camera does not have Serial Number
+***************************************************************************/
+ASICAMERA_API ASI_ERROR_CODE  ASIGetSerialNumber(int iCameraID, ASI_SN* pSN);
 #ifdef __cplusplus
 }
 #endif
