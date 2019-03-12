@@ -23,7 +23,7 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
@@ -528,6 +528,10 @@ static indigo_result guider_detach(indigo_device *device) {
 #define QHY5_LOADER_VENDOR_ID 0x1618
 #define QHY5_LOADER_PRODUCT_ID 0x0901
 
+/* uninitialized OTI VID/PID */
+#define OTI_LOADER_VENDOR_ID 0x16C0
+#define OTI_LOADER_PRODUCT_ID 0x296D
+
 static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -552,7 +556,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-			if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID)) {
+			if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID) || (descriptor.idVendor == OTI_LOADER_VENDOR_ID && descriptor.idProduct == OTI_LOADER_PRODUCT_ID)) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
 				libusb_ref_device(dev);
 				indigo_async((void *)(void *)ssag_firmware, dev);
