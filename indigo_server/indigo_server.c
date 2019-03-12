@@ -346,6 +346,29 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 	indigo_update_property(device, property, strerror(errno));
 	return INDIGO_OK;
 }
+
+static char *execute_query(char *command, ...) {
+	char buffer[1024];
+	va_list args;
+	va_start(args, command);
+	vsnprintf(buffer, sizeof(buffer), command, args);
+	va_end(args);
+	FILE *output = popen(buffer, "r");
+	if (output) {
+		char *line = NULL;
+		size_t size = 0;
+		if (getline(&line, &size, output) >= 0) {
+			char *nl = strchr(line, '\n');
+			if (nl)
+				*nl = 0;
+			pclose(output);
+			return line;
+		}
+		pclose(output);
+	}
+	return NULL;
+}
+
 #endif
 
 static indigo_result attach(indigo_device *device) {
@@ -393,12 +416,28 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
+		char *line;
 		wifi_ap_property = indigo_init_text_property(NULL, server_device.name, "WIFI_AP", MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
+		line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
+		if (line) {
+			char *token = strtok(line, " ");
+			if (token)
+				strncpy(wifi_ap_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
+			token = strtok(NULL, " ");
+			if (token)
+				strncpy(wifi_ap_property->items[1].text.value, token, INDIGO_VALUE_SIZE);
+		}
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
+		line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
+		if (line) {
+			char *token = strtok(line, " ");
+			if (token)
+				strncpy(wifi_infrastructure_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
+		}
 		host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", "");
 		shutdown_property = indigo_init_switch_property(NULL, server_device.name, "SHUTDOWN", MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
@@ -407,36 +446,30 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
 		install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
 		install_property->count = 0;
-		FILE *output = popen("s_rpi_ctrl.sh --list-available-versions", "r");
-		if (output) {
-			char *line = NULL;
-			size_t size = 0;
-			if (getline(&line, &size, output) >= 0) {
-				char *versions[10] = { strtok(line, " \n") };
-				int count = 1;
-				while ((versions[count] = strtok(NULL, " \n"))) {
-					if (count == 9)
-						count = 1;
-					else
-						count++;
-				}
-				for (int i = 0; i < count; i++) {
-					char *smallest = "XXXXX";
-					int ii = 0;
-					for (int j = 0; j < count; j++) {
-						if (versions[j] && strcmp(versions[j], smallest) < 0) {
-							smallest = versions[j];
-							ii = j;
-						}
-					}
-					versions[ii] = NULL;
-					indigo_init_switch_item(install_property->items + i, smallest, smallest, smallest == line);
-					install_property->count++;
-				}
+		line = execute_query("s_rpi_ctrl.sh --list-available-versions");
+		if (line) {
+			char *versions[10] = { strtok(line, " ") };
+			int count = 1;
+			while ((versions[count] = strtok(NULL, " "))) {
+				if (count == 9)
+					count = 1;
+				else
+					count++;
 			}
-			if (line)
-				free(line);
-			pclose(output);
+			for (int i = 0; i < count; i++) {
+				char *smallest = "XXXXX";
+				int ii = 0;
+				for (int j = 0; j < count; j++) {
+					if (versions[j] && strcmp(versions[j], smallest) < 0) {
+						smallest = versions[j];
+						ii = j;
+					}
+				}
+				versions[ii] = NULL;
+				indigo_init_switch_item(install_property->items + i, smallest, smallest, smallest == line);
+				install_property->count++;
+			}
+			free(line);
 		}
 	}
 #endif /* RPI_MANAGEMENT */

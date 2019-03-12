@@ -263,7 +263,14 @@
 	
 		window.onresize = function() {
 			var map = $("#map");
-			map.css('max-height', map.width() + 'px');
+			if (window.innerWidth > 750) {
+				if (window.innerHeight > 650)
+					map.css('max-height', (window.innerHeight - 180) + 'px');
+				else
+				map.css('max-height', '470px');
+			} else {
+				map.css('max-height', map.width() + 'px');
+			}
 		}
 	
 		function zoomIn() {
@@ -396,7 +403,7 @@
 							map.scrollTop(current[1] - map.width() / 2);
 						}
 					} else {
-						map.css('max-height', map.width() + 'px');
+						window.onresize();
 						celestialVisible = true;
 						Celestial.display(config);
 						map.scrollLeft((zooms[zoom] - map.width()) / 2);
