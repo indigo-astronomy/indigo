@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -847,7 +847,7 @@ static void unplug_handler(indigo_device *device) {
 			devices[i] = NULL;
 		}
 	}
-	pthread_mutex_lock(&mutex);
+	pthread_mutex_unlock(&mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
