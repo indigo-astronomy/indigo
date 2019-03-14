@@ -1620,6 +1620,8 @@ exit_loop:
 	}
 	if (blob_buffer != NULL)
 		free(blob_buffer);
+	if (context->properties)
+		free(context->properties);
 	free(context);
 	free(buffer);
 	free(value_buffer);
