@@ -659,9 +659,9 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- HOST_TIME
 		indigo_property_copy_values(host_time_property, property, false);
 		execute_command(device, host_time_property, "s_rpi_ctrl.sh --set-date \"%s\"", host_time_property->items[0].text.value);
-		if (property->state == INDIGO_OK_STATE) {
-			indigo_delete_property(device, property, NULL);
-			property->hidden = true;
+		if (host_time_property->state == INDIGO_OK_STATE) {
+			indigo_delete_property(device, host_time_property, NULL);
+			host_time_property->hidden = true;
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(shutdown_property, property)) {
