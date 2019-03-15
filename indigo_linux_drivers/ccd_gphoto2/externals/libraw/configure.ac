@@ -121,7 +121,6 @@ AC_ARG_ENABLE([examples],
 AM_CONDITIONAL([EXAMPLES], [test x$examples = xtrue])
 
 LIBS="$LIBS -lm"
-CPPFLAGS="$CPPFLAGS -fPIC"
 
 AC_SUBST([LIBRAW_SHLIB_VERSION],m4_esyscmd([./shlib-version.sh]))
 AC_SUBST([LIBRAW_RELEASE_VERSION],m4_esyscmd([./version.sh]))
