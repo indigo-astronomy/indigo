@@ -59,6 +59,10 @@ extern int indigo_read(int handle, char *buffer, long length);
 /** Read buffer from socket.
  */
 extern int indigo_recv(int handle, char *buffer, long length);
+
+/** Read buffer from socket.
+ */
+extern int indigo_close(int handle);
 #endif
 
 /** Read line.
