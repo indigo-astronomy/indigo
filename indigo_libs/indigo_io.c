@@ -44,6 +44,7 @@
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <winsock2.h>
+#define close closesocket
 #pragma warning(disable:4996)
 #endif
 
@@ -175,6 +176,10 @@ int indigo_read(int handle, char *buffer, long length) {
 int indigo_recv(int handle, char *buffer, long length) {
 	long bytes_read = recv(handle, buffer, length, 0);
 	return (int)bytes_read;
+}
+
+int indigo_close(int handle) {
+	return closesocket(handle);
 }
 #endif
 
