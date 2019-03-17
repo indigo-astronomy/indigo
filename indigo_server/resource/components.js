@@ -649,3 +649,158 @@ Vue.component('indigo-query-db', {
 		<div>
 		`
 });
+
+
+Vue.component('indigo-wifi-setup', {
+	props: {
+		ap_property: Object,
+		infra_property: Object
+	},
+	data: {
+		mode: String
+	},
+	methods: {
+		onChange: function(e) {
+			self.mode = e.target.value;
+			if (self.mode == "AP") {
+				for (var i in this.ap_property.items) {
+					var item = this.ap_property.items[i];
+					if (item.name == "SSID") {
+						$("#SSID").val(item.value);
+					} else if (item.name == "PASSWORD") {
+						$("#PASSWORD").val(item.value);
+					}
+				}
+				$("#PASSWORD").removeAttr("placeholder");
+			} else if (self.mode == "INFRA") {
+				for (var i in this.infra_property.items) {
+					var item = this.infra_property.items[i];
+					if (item.name == "SSID") {
+						$("#SSID").val(item.value);
+					}
+				}
+				$("#PASSWORD").val("");
+				$("#PASSWORD").attr("placeholder", "<value is hidden>");
+			}
+		},
+		isAP: function() {
+			for (var i in this.ap_property.items) {
+				var item = this.ap_property.items[i];
+				if (item.name == "SSID" && item.value) {
+					self.mode = "AP";	
+					return true;
+				}
+			}
+			return false;
+		},
+		isInfra: function() {
+			for (var i in this.infra_property.items) {
+				var item = this.infra_property.items[i];
+				if (item.name == "SSID" && item.value) {
+					self.mode = "INFRA";	
+					return true;
+				}
+			}
+			return false;
+		},
+		value: function(name) {
+			for (var i in this.ap_property.items) {
+				var item = this.ap_property.items[i];
+				if (item.name == name && item.value) {
+					return item.value;
+				}
+			}
+			for (var i in this.infra_property.items) {
+				var item = this.infra_property.items[i];
+				if (item.name == name && item.value) {
+					return item.value;
+				}
+			}
+			return "";
+		},
+		set: function() {
+			var values = {};
+			values["SSID"] = $("#SSID").val();
+			values["PASSWORD"] = $("#PASSWORD").val();
+			if (self.mode == "AP") {
+				changeProperty(this.ap_property.device, this.ap_property.name, values);
+			} else if (self.mode == "INFRA") {
+				changeProperty(this.infra_property.device, this.infra_property.name, values);
+			}
+		},
+		reset: function() {
+			for (var i in this.ap_property.items) {
+				var item = this.ap_property.items[i];
+				if (item.name == "SSID") {
+					if (item.value) {
+						$("#MODE").val("AP")
+						$("#PASSWORD").removeAttr("placeholder");
+						$("#SSID").val(item.value);
+					}
+				} else if (item.name == "PASSWORD") {
+					if (item.value) {
+						$("#PASSWORD").val(item.value);
+					}
+				}
+			}
+			for (var i in this.infra_property.items) {
+				var item = this.infra_property.items[i];
+				if (item.name == "SSID") {
+					if (item.value) {
+						$("#MODE").val("INFRA")
+						$("#PASSWORD").val("");
+						$("#PASSWORD").attr("placeholder", "<value is hidden>");
+						$("#SSID").val(item.value);
+					}
+				}
+			}
+		}
+	},	
+	template: `
+		<div class="w-100 d-flex flex-wrap">
+			<div class="w-100 p-1">
+				<select id="MODE" class="custom-select ok-state" style="cursor: pointer" @change="onChange">
+					<option :selected="isAP()" value="AP">Configure access point</option>
+					<option :selected="isInfra()" value="INFRA">Join existing network</option>
+				</select>
+			</div>
+			<div class="input-group p-1 w-100">
+				<div class="input-group-prepend">
+					<span class="input-group-text ok-state" style="width: 10em;">SSID</span>
+				</div>
+				<input id="SSID" type="text" class="form-control" :value="value('SSID')">
+			</div>
+			<div class="input-group p-1 w-100">
+				<div class="input-group-prepend">
+					<span class="input-group-text ok-state" style="width: 10em;">Password</span>
+				</div>
+				<input id="PASSWORD" v-if="isInfra()" type="text" class="form-control" value="indigosky" :value="value('PASSWORD')" placeholder="<value is hidden>">
+				<input id="PASSWORD" v-else type="text" class="form-control" :value="value('PASSWORD')">
+			</div>
+			<div class="d-flex w-100 mt-1 p-1">
+				<button type="submit" class="btn btn-sm btn-primary ml-auto mr-2" @click.prevent="set()">Submit</button>
+				<button class="btn btn-sm btn-default mr-0" @click.prevent="reset()">Reset</button>
+			</div>
+		</div>
+		`
+});
+
+Vue.component('indigo-shutdown', {
+	props: {
+		property: Object
+	},
+	methods: {
+		shutdown: function() {
+			if (confirm("Do you really want to shutdown?")) {
+				var values = {};
+				values["SHUTDOWN"] = true;
+				changeProperty(this.property.device, this.property.name, values);
+			}
+		}
+	},	
+	template: `
+		<div class="w-100 d-flex flex-wrap p-1">
+			<button type="submit" class="btn btn-danger w-100" @click.prevent="shutdown()">Shutdown</button>
+		</div>
+		`
+});
