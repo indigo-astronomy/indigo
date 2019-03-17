@@ -6,13 +6,13 @@
 		<link rel="stylesheet" href="bootstrap.min.css"/>
 		<link rel="stylesheet" href="indigo.css"/>
 	</head>
-	<title>INDIGO Control Panel</title>
+	<title>INDIGO Server Manager</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
 			<nav class="navbar navbar-expand-sm navbar-light bg-secondary">
 				<a class="navbar-brand text-white" href="#">
 					<img src="mng.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">INDIGO Driver Manager</h4>
+					<h4 class="title">Server Manager</h4>
 				</a>
 				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
 					<span class="navbar-toggler-icon"></span>
@@ -59,6 +59,16 @@
 									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Dome drivers'" :prefix="'indigo_dome'"></indigo-select-multi-item>
 									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'System drivers'" :prefix="'indigo_system'"></indigo-select-multi-item>
 									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Agents'" :prefix="'indigo_agent'"></indigo-select-multi-item>
+								</div>
+							</div>
+							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'WIFI_AP') != null && findProperty('Server', 'WIFI_INFRASTRUCTURE') != null">
+								<div class="card-block d-flex flex-wrap">
+									<indigo-wifi-setup :ap_property="findProperty('Server', 'WIFI_AP')" :infra_property="findProperty('Server', 'WIFI_INFRASTRUCTURE')"></indigo-wifi-setup>
+								</div>
+							</div>
+							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'SHUTDOWN') != null">
+								<div class="card-block d-flex flex-wrap">
+									<indigo-shutdown :property="findProperty('Server', 'SHUTDOWN')"></indigo-wifi-setup>
 								</div>
 							</div>
 						</div>

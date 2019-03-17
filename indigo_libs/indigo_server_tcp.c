@@ -308,7 +308,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		close(server_socket);
 		return INDIGO_CANT_START_SERVER;
 	}
-	if (listen(server_socket, 5) < 0) {
+	if (listen(server_socket, 64) < 0) {
 		indigo_error("Can't listen on server socket (%s)", strerror(errno));
 		close(server_socket);
 		return INDIGO_CANT_START_SERVER;
