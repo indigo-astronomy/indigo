@@ -37,8 +37,9 @@
 
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
+#include <winsock2.h>
 #define ssize_t size_t
-#define close _close
+#define close closesocket
 #pragma warning(disable:4996)
 #endif
 
