@@ -95,6 +95,8 @@
 8. FCUSB focuser driver __DONE__
 9. WeMacro rail focuser driver __DONE__
 10. MJKZZ rail focuser driver __DONE__ __UNTESTED__
+11. Microtouch focuser
+12. Sesto-Senso focuser
 
 #### Mounts
 
@@ -114,6 +116,7 @@
 #### Dome
 1. Dome Simulator driver __DONE__
 2. UNIVERSAL dome driver
+3. Maxdome II
 
 #### AUX
 
