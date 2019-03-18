@@ -1374,7 +1374,7 @@ sub main() {
 			if ($cmd[0] eq "FOSR") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
-				if (in_range($cmd[1], -49, 49, 2)) {
+				if (in_range($cmd[1], -100, 100, 2)) {
 					if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 					$req_rel_fo_pos = $cmd[1];
 					print_client($client, "1\n");
@@ -1385,7 +1385,7 @@ sub main() {
 			if ($cmd[0] eq "FOSA") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
-				if (in_range($cmd[1], 0, 49, 2)) {
+				if (in_range($cmd[1], 0, 100, 2)) {
 					if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 					$req_abs_fo_pos = $cmd[1];
 					print_client($client, "1\n");
