@@ -127,20 +127,20 @@ my $da_move_time = 0;
 my $da_state = HA_STOP;
 
 # FOCUS states
-use constant FO_OFF	=> 0;
-use constant FO_STOP	=> 1;
-use constant FO_PLUS	=> 2;
-use constant FO_MINUS	=> 3;
-use constant FO_SLEW	=> 4;
+use constant FO_OFF     => 0;
+use constant FO_STOP    => 1;
+use constant FO_PLUS    => 2;
+use constant FO_MINUS   => 3;
+use constant FO_SLEW    => 4;
 
 use constant FO_REL_MOVING_TIME => 5;
 use constant FO_ABS_MOVING_TIME => 10;
 
 # DOME states
-use constant DO_OFF	   => 0;
-use constant DO_STOP	   => 1;
-use constant DO_PLUS	   => 2;
-use constant DO_MINUS	   => 3;
+use constant DO_OFF        => 0;
+use constant DO_STOP       => 1;
+use constant DO_PLUS       => 2;
+use constant DO_MINUS      => 3;
 use constant DO_SLEW_PLUS  => 4;
 use constant DO_SLEW_MINUS => 5;
 use constant DO_AUTO_STOP  => 6;
@@ -156,7 +156,7 @@ use constant DO_AUTO_STOP_TIME => 60;
 use constant SL_UNDEF   => 0;
 use constant SL_OPENING => 1;
 use constant SL_CLOSING => 2;
-use constant SL_OPEN	=> 3;
+use constant SL_OPEN    => 3;
 use constant SL_CLOSE   => 4;
 
 use constant SL_OPENING_TIME => 10;
@@ -764,8 +764,8 @@ sub print_usage() {
 	print "    -T        : Telescope tracking is ON at startup (TETR 1)\n";
 	print "    -v        : Print global status on each command\n";
 	print "    -h        : Show this help\n";
-	print "    -p port   : TCP port to listen on (default: 2000)\n";
-	print "\n    example: $0 -l -t -p 2001\n\n";
+	print "    -p port   : TCP port to listen on (default: 2001)\n";
+	print "\n    example: $0 -l -t -p 2002\n\n";
 	exit;
 }
 
@@ -776,7 +776,7 @@ sub main() {
 	if (defined $opt{h}) {
 		print_usage();
 	}
-	my $port = 2000;
+	my $port = 2001;
 	if (defined $opt{p}) {
 		$port = $opt{p};
 	}
