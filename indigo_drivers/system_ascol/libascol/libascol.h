@@ -222,6 +222,8 @@ int ascol_hms2dd(double *dd, const char *hms);
 #define IS_REFRACTION_CORR(glst)    CHECK_BIT(glst.state_bits, 6)
 #define IS_ERR_MODEL_CORR(glst)     CHECK_BIT(glst.state_bits, 7)
 #define IS_GUIDE_MODE_ON(glst)      CHECK_BIT(glst.state_bits, 8)
+#define IS_USER_SPEED_ON(glst)      CHECK_BIT(glst.state_bits, 9)
+#define IS_CORRECTION_ON(glst)      CHECK_BIT(glst.state_bits, 10)
 #define IS_USER1_BIT_I_ON(glst)     CHECK_BIT(glst.state_bits, 14)
 #define IS_USER1_BIT_II_ON(glst)    CHECK_BIT(glst.state_bits, 15)
 
