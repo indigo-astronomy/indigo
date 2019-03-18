@@ -183,14 +183,14 @@ use constant FL_CD_OPENING_TIME => 5;
 use constant FL_CD_CLOSING_TIME => 5;
 
 # Guide value set time
-use constant GUIDE_VALUE_TIME => 0;
+use constant GUIDE_VALUE_TIME => 5;
 
 my $correction_model = 0;
 my $state_bits : shared = 3; # HA and DA calibrated
 my @alarm_bits : shared = (0,0,0,0,0);
 
-my $req_guide_value_ra = 0;
-my $req_guide_value_de = 0;
+#my $req_guide_value_ra = 0;
+#my $req_guide_value_de = 0;
 my $guide_value_ra = 0;
 my $guide_value_de = 0;
 my $guide_value_time = 0;
@@ -411,8 +411,9 @@ sub update_state {
 	if ($guide_value_time != 0) {
 		$elapsed_time = time() - $guide_value_time;
 		if ($elapsed_time > GUIDE_VALUE_TIME) {
-			$guide_value_ra = $req_guide_value_ra;
-			$guide_value_de = $req_guide_value_de;
+			#$guide_value_ra = $req_guide_value_ra;
+			#$guide_value_de = $req_guide_value_de;
+			$state_bits = $state_bits & ~(1 << 10);
 			$guide_value_time = 0;
 		}
 	}
@@ -1249,9 +1250,12 @@ sub main() {
 				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -3600, 3600, 1) and in_range($cmd[2], -3600, 3600, 1)) {
 					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
-					$req_guide_value_ra = $cmd[1];
-					$req_guide_value_de = $cmd[2];
+					#$req_guide_value_ra = $cmd[1];
+					#$req_guide_value_de = $cmd[2];
+					$guide_value_ra = $cmd[1];
+					$guide_value_de = $cmd[2];
 					$guide_value_time = time();
+					$state_bits = $state_bits | (1 << 10);
 					print_client($client, "1\n");
 					next;
 				}
