@@ -24,7 +24,7 @@
  \file indigo_system_ascol.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_system_ascol"
 
 #include <stdlib.h>
@@ -2675,7 +2675,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		strncpy(FOCUSER_STEPS_ITEM->label,"Distance (mm)", INDIGO_VALUE_SIZE);
 		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.max = 49;
+		FOCUSER_STEPS_ITEM->number.max = 100;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		strncpy(FOCUSER_POSITION_ITEM->label,"Absolute position (mm)", INDIGO_VALUE_SIZE);
 		FOCUSER_POSITION_ITEM->number.min = 0;
