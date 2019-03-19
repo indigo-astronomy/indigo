@@ -1895,7 +1895,11 @@ static void guider_update_state() {
 		return;
 	} else if (update_all || (prev_ra_corr != ra_corr) || (prev_dec_corr != dec_corr) ||
 	    GUIDE_CORRECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-		GUIDE_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (!IS_CORRECTION_ON(PRIVATE_DATA->glst)) {
+			GUIDE_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			GUIDE_CORRECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
 		GUIDE_CORRECTION_RA_ITEM->number.value = ra_corr;
 		GUIDE_CORRECTION_DEC_ITEM->number.value = dec_corr;
 		indigo_update_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
