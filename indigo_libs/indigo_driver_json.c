@@ -77,7 +77,7 @@ static const char *escape(const char *s) {
 		s = q + 1;
 		q = strchr(s, '"');
 	}
-	*t = 0;
+	strncpy(t, s, INDIGO_VALUE_SIZE);
 	return tmp;
 }
 
@@ -204,7 +204,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				
+
 				if (property->state == INDIGO_OK_STATE && item->blob.value)
 					size = sprintf(pnt, "%s { \"name\": \"%s\",  \"label\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, escape(item->label), item, item->blob.format);
 				else
