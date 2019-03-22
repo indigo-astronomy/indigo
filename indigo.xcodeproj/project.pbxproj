@@ -3579,6 +3579,7 @@
 		9D4F473F215A4440006110FD /* indigo_focuser_moonlite_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_moonlite_main.c; sourceTree = "<group>"; };
 		9D4F4740215A4440006110FD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D4F4741215A4440006110FD /* indigo_focuser_moonlite.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_moonlite.c; sourceTree = "<group>"; };
+		9D57C18F22452587009C187D /* DEVELOPMENT.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = DEVELOPMENT.md; sourceTree = "<group>"; };
 		9D59D3C320D3F828009EA8FF /* helpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpers.cpp; sourceTree = "<group>"; };
 		9D59D3C420D3F828009EA8FF /* AltaIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaIo.h; sourceTree = "<group>"; };
 		9D59D3C520D3F828009EA8FF /* PromFx2Io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PromFx2Io.h; sourceTree = "<group>"; };
@@ -5045,6 +5046,7 @@
 				5981C8E21DC2A2D300C7705F /* TODO.md */,
 				9D5D16CF212D5917001A849C /* PROTOCOLS.md */,
 				9D5D16D0212D93C9001A849C /* PROPERTIES.md */,
+				9D57C18F22452587009C187D /* DEVELOPMENT.md */,
 				9DC7830921AC565B009859FD /* .travis.yml */,
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,

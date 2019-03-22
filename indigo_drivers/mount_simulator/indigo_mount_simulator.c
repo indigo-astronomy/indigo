@@ -24,7 +24,7 @@
  \file indigo_mount_simulator.c
  */
 
-#define DRIVER_VERSION 0x0002	
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_mount_simulator"
 
 #include <stdlib.h>
@@ -301,7 +301,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked");
 		} else {
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-			if (indigo_cancel_timer(device, &PRIVATE_DATA->position_timer)) {
+			if (PRIVATE_DATA->slew_in_progress) {
+				PRIVATE_DATA->slew_in_progress = false;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, NULL);
 			}
