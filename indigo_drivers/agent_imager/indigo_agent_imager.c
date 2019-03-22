@@ -299,6 +299,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_WHEEL_FILTER_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
+		PROFILE_PROPERTY->hidden = true;
+		CONFIG_PROPERTY->hidden = true;
 		*DEVICE_PRIVATE_DATA->filter_name = 0;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
