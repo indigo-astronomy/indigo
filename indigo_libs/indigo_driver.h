@@ -165,25 +165,8 @@ extern "C" {
 
 /** Client name for saved configuration reader.
  */
-	
-#define CONFIG_READER								"CONFIG_READER"
 
-/** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
- */
-typedef enum {
-	INDIGO_INTERFACE_MOUNT     = (1 << 0),    ///< Mount interface
-	INDIGO_INTERFACE_CCD       = (1 << 1),    ///< CCD interface
-	INDIGO_INTERFACE_GUIDER    = (1 << 2),    ///< Guider interface
-	INDIGO_INTERFACE_FOCUSER   = (1 << 3),    ///< Focuser interface
-	INDIGO_INTERFACE_WHEEL     = (1 << 4),    ///< Filter wheel interface
-	INDIGO_INTERFACE_DOME      = (1 << 5),    ///< Dome interface
-	INDIGO_INTERFACE_GPS       = (1 << 6),    ///< GPS interface
-	INDIGO_INTERFACE_WEATHER   = (1 << 7),    ///< Weather interface
-	INDIGO_INTERFACE_AO        = (1 << 8),    ///< Adaptive Optics Interface
-	INDIGO_INTERFACE_DUSTCAP   = (1 << 9),    ///< Dust Cap Interface
-	INDIGO_INTERFACE_LIGHTBOX  = (1 << 10),   ///< Light Box Interface
-	INDIGO_INTERFACE_AUX       = (1 << 15)    ///< Auxiliary interface
-} indigo_device_interface;
+#define CONFIG_READER								"CONFIG_READER"
 
 /** Device driver entrypoint actions
  */
