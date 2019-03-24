@@ -949,8 +949,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						bool is_enabled = port_state & 0x00000100;
 						if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
 							if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value) {
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d on", i);
 								rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
 							} else {
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d off", i);
 								rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_CLEAR_FEATURE, 8, i, NULL, 0, 3000);
 							}
 							if (rc < 0) {
