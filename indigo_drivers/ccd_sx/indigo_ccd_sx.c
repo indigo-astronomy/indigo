@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -672,9 +672,12 @@ static void sx_close(indigo_device *device) {
 	libusb_close(PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close");
 	free(PRIVATE_DATA->buffer);
+	PRIVATE_DATA->buffer = NULL;
 	if (PRIVATE_DATA->is_interlaced) {
 		free(PRIVATE_DATA->even);
+		PRIVATE_DATA->even = NULL;
 		free(PRIVATE_DATA->odd);
+		PRIVATE_DATA->odd = NULL;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
