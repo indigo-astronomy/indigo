@@ -361,31 +361,31 @@ static size_t strncpy_n(char *dest, const char *src, size_t n){
 /* Utility functions */
 
 uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions) {
-	uint16_t result;
-	if (CHECK_BIT(conditions, ASCOL_COND_BRIGE_PARKED) && CHECK_ALARM(glst, ALARM_BRIDGE)) {
-		SET_BIT(result, ASCOL_COND_BRIGE_PARKED);
+	uint16_t result = 0;
+	if ((conditions & ASCOL_COND_BRIGE_PARKED) && CHECK_ALARM(glst, ALARM_BRIDGE)) {
+		result |= ASCOL_COND_BRIGE_PARKED;
 	}
-	if (CHECK_BIT(conditions, ASCOL_COND_OIL_ON) && (glst.oil_state != OIL_STATE_ON)) {
-		SET_BIT(result, ASCOL_COND_OIL_ON);
+	if ((conditions & ASCOL_COND_OIL_ON) && (glst.oil_state != OIL_STATE_ON)) {
+		result |= ASCOL_COND_OIL_ON;
 	}
-	if (CHECK_BIT(conditions, ASCOL_COND_TE_ON) && (glst.telescope_state < TE_STATE_STOP)) {
-		SET_BIT(result, ASCOL_COND_TE_ON);
+	if ((conditions & ASCOL_COND_TE_ON) && (glst.telescope_state < TE_STATE_STOP)) {
+		result |= ASCOL_COND_TE_ON;
 	}
-	if (CHECK_BIT(conditions, ASCOL_COND_TE_TRACK) && (glst.telescope_state != TE_STATE_TRACK)) {
-		SET_BIT(result, ASCOL_COND_TE_TRACK);
+	if ((conditions & ASCOL_COND_TE_TRACK) && (glst.telescope_state != TE_STATE_TRACK)) {
+		result |= ASCOL_COND_TE_TRACK;
 	}
-	if (CHECK_BIT(conditions, ASCOL_COND_TE_STOP) && (glst.telescope_state != TE_STATE_STOP)) {
-		SET_BIT(result, ASCOL_COND_TE_STOP);
+	if ((conditions & ASCOL_COND_TE_STOP) && (glst.telescope_state != TE_STATE_STOP)) {
+		result |= ASCOL_COND_TE_STOP;
 	}
-	if (CHECK_BIT(conditions, ASCOL_COND_TE_CALIBRATED) && (!IS_RA_CALIBRATED(glst) || !IS_RA_CALIBRATED(glst))) {
-		SET_BIT(result, ASCOL_COND_TE_CALIBRATED);
+	if ((conditions & ASCOL_COND_TE_CALIBRATED) && (!IS_RA_CALIBRATED(glst) || !IS_RA_CALIBRATED(glst))) {
+		result |= ASCOL_COND_TE_CALIBRATED;
 	}
-	if (CHECK_BIT(conditions, ASCOL_COND_DOME_ON) && (glst.dome_state == DOME_STATE_OFF)) {
-		SET_BIT(result, ASCOL_COND_DOME_ON);
+	if ((conditions & ASCOL_COND_DOME_ON) && (glst.dome_state == DOME_STATE_OFF)) {
+		result |= ASCOL_COND_DOME_ON;
 	}
 	/* NOTE: RC flap open powers on the focuser */
-	if (CHECK_BIT(conditions, ASCOL_COND_FOCUS_ON) && (glst.flap_tube_state != SF_STATE_OPEN)) {
-		SET_BIT(result, ASCOL_COND_FOCUS_ON);
+	if ((conditions & ASCOL_COND_FOCUS_ON) && (glst.flap_tube_state != SF_STATE_OPEN)) {
+		result |= ASCOL_COND_FOCUS_ON;
 	}
 	return result;
 }
