@@ -625,10 +625,17 @@ static void mount_handle_oil_power(indigo_device *device) {
 
 static void mount_handle_telescope_power(indigo_device *device) {
 	int res = ASCOL_OK;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (TELESCOPE_ON_ITEM->sw.value) {
-		res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON);
+		if (condition) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) will fail under condition = 0x%X", PRIVATE_DATA->dev_id, condition);
+			res = ASCOL_COMMAND_ERROR;
+		} else {
+			res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) = %d condition = 0x%X", PRIVATE_DATA->dev_id, res, condition);
+		}
 	} else {
 		res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
@@ -640,7 +647,12 @@ static void mount_handle_telescope_power(indigo_device *device) {
 		TELESCOPE_ON_ITEM->sw.value = !TELESCOPE_ON_ITEM->sw.value;
 		TELESCOPE_OFF_ITEM->sw.value = !TELESCOPE_OFF_ITEM->sw.value;
 		TELESCOPE_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEON(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, TELESCOPE_POWER_PROPERTY, "Oil pump is not ON");
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEON(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 }
