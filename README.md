@@ -96,7 +96,7 @@ This is the list of requirements taken into the consideration:
 ### Prerequisites
 #### Ubuntu / Debian / Raspbian
 
-`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl`
+`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl`
 
 It is advised to remove libraw1394-dev
 
