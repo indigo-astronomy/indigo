@@ -349,12 +349,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			duration = -GUIDER_GUIDE_EAST_ITEM->number.value;
-			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Guiding %dms EAST", -duration);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms EAST", -duration);
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		}
 		else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Guiding %dms WEST", duration);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms WEST", duration);
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		}
 		else {
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
@@ -390,12 +392,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "Guiding %dms NORTH", duration);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms NORTH", duration);
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		}
 		else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			duration = -GUIDER_GUIDE_SOUTH_ITEM->number.value;
-			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "Guiding %dms SOUTH", -duration);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms SOUTH", -duration);
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		}
 		else {
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);

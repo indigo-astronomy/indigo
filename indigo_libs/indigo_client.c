@@ -295,7 +295,8 @@ static void reset_socket(indigo_server_entry *server, int new_socket) {
 		close(server->socket);
 #endif
 	}
-	server->socket = new_socket;
+	if (server->socket != -1)
+		server->socket = new_socket;
 	pthread_mutex_unlock(&rw_lock);
 }
 
@@ -317,7 +318,9 @@ static void *server_thread(indigo_server_entry *server) {
 		} else {
 			((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
 			if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
-				INDIGO_LOG(indigo_error("Can't connect to socket (%s)", strerror(errno)));
+				char text[INET_ADDRSTRLEN];
+				inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
+				INDIGO_LOG(indigo_error("Can't connect to socket %s:%d (%s)", text, ((struct sockaddr_in *)address->ai_addr)->sin_port, strerror(errno)));
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
         reset_socket(server, 0);
       }
