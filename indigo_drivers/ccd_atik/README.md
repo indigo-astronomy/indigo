@@ -27,3 +27,4 @@ Driver is developed and tested with:
 * Atik One 9
 * Atik VS 6
 * Atik 11000
+* Atik Horizon
