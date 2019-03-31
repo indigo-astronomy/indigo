@@ -127,7 +127,7 @@ static void exposure_batch(indigo_device *device) {
 						indigo_send_message(device, "%s: CCD_EXPOSURE_PROPERTY didn't become busy in 1s", IMAGER_AGENT_NAME);
 						break;
 					}
-					while (remote_exposure_property->state == INDIGO_BUSY_STATE && time > 0) {
+					while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
 						if (time > 1) {
 							usleep(1000000);
 							time -= 1;
