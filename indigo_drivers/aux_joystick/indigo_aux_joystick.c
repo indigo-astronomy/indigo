@@ -23,7 +23,7 @@
  \file indigo_aux_joystick.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_joystick"
 
 #include <stdlib.h>
@@ -333,6 +333,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(JOYSTICK_AXES_PROPERTY);
 	indigo_release_property(JOYSTICK_BUTTONS_PROPERTY);
 	indigo_release_property(JOYSTICK_MAPPING_PROPERTY);
@@ -343,8 +345,6 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_MOTION_RA_PROPERTY);
 	indigo_release_property(MOUNT_TRACKING_PROPERTY);
 	indigo_release_property(MOUNT_ABORT_MOTION_PROPERTY);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }
@@ -697,40 +697,55 @@ static void close_joystick(indigo_device *device) {
 #define MAX_DEVICES		5
 
 static indigo_device *devices[MAX_DEVICES];
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *poll(indigo_device *device) {
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread started", PRIVATE_DATA->index);
+	int index = PRIVATE_DATA->index;
+	int joy_fd;
 	char path[128];
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread started", index);
 	sprintf(path, "/dev/input/js%ld", PRIVATE_DATA->index);
-	if ((PRIVATE_DATA->fd = open(path, O_RDONLY)) == -1) {
+	if ((joy_fd = open(path, O_RDONLY)) == -1) {
+		PRIVATE_DATA->fd = 0;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't access %s (%s)", path, strerror(errno));
 	} else {
-		int joy_fd, axis_count=0, button_count=0;
 		struct js_event js;
-		ioctl(joy_fd, JSIOCGAXES, &axis_count);
-		ioctl(joy_fd, JSIOCGBUTTONS, &button_count);
-		fcntl(PRIVATE_DATA->fd, F_SETFL, O_NONBLOCK);
-		while (PRIVATE_DATA->fd) {
-			while (read(PRIVATE_DATA->fd, &js, sizeof(struct js_event)) != -1) {
-				switch (js.type & ~JS_EVENT_INIT) {
-					case JS_EVENT_AXIS:
-						if (js.number < MAX_AXES && PRIVATE_DATA->last_axis_value[js.number] != js.value) {
-							event_axis(device, js.number, 2 * js.value);
-							PRIVATE_DATA->last_axis_value[js.number] = js.value;
+		PRIVATE_DATA->fd = joy_fd;
+		fcntl(joy_fd, F_SETFL, O_NONBLOCK);
+		while (joy_fd) {
+			if (read(joy_fd, &js, sizeof(struct js_event)) > 0) {
+				pthread_mutex_lock(&mutex);
+				if (devices[index]) {
+					switch (js.type & ~JS_EVENT_INIT) {
+						case JS_EVENT_AXIS: {
+							if (js.number < MAX_AXES && PRIVATE_DATA->last_axis_value[js.number] != js.value) {
+								event_axis(device, js.number, 2 * js.value);
+								PRIVATE_DATA->last_axis_value[js.number] = js.value;
+							}
+							break;
 						}
-						break;
-					case JS_EVENT_BUTTON:
-						if (js.number < MAX_BUTTONS && PRIVATE_DATA->last_button_state[js.number] != js.value) {
-							event_button(device, js.number, js.value);
-							PRIVATE_DATA->last_button_state[js.number] = js.value;
+						case JS_EVENT_BUTTON: {
+							if (js.number < MAX_BUTTONS && PRIVATE_DATA->last_button_state[js.number] != js.value) {
+								event_button(device, js.number, js.value);
+								PRIVATE_DATA->last_button_state[js.number] = js.value;
+							}
+							break;
 						}
-						break;
+					}
+				} else {
+					joy_fd = 0;
+				}
+				pthread_mutex_unlock(&mutex);
+			} else {
+				if (errno == EBADF) {
+					joy_fd = 0;
+				} else {
+					usleep(100000);
 				}
 			}
-			usleep(100000);
 		}
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread finished", PRIVATE_DATA->index);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread finished", index);
 }
 
 static void rescan() {
@@ -741,6 +756,7 @@ static void rescan() {
 	}
 	struct dirent * dir;
 	bool found[MAX_DEVICES];
+	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < MAX_DEVICES; i++)
 		found[i] = false;
 	while ((dir = readdir(dev_input)) != NULL) {
@@ -754,6 +770,7 @@ static void rescan() {
 			memset(name, 0, sizeof(name));
 			snprintf(name, sizeof(name), "/dev/input/%s", dir->d_name);
 			if ((joy_fd = open(name, O_RDONLY)) == -1) {
+				pthread_mutex_unlock(&mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't access %s (%s)", name, strerror(errno));
 				return;
 			}
@@ -770,15 +787,18 @@ static void rescan() {
 			devices[i] = NULL;
 		}
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
 static void shutdown() {
+	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i]) {
 			release_device(devices[i]);
 			devices[i] = NULL;
 		}
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
 static bool open_joystick(indigo_device *device) {
@@ -787,8 +807,10 @@ static bool open_joystick(indigo_device *device) {
 }
 
 static void close_joystick(indigo_device *device) {
-	close(PRIVATE_DATA->fd);
-	PRIVATE_DATA->fd = 0;
+	if (PRIVATE_DATA->fd) {
+		close(PRIVATE_DATA->fd);
+		PRIVATE_DATA->fd = 0;
+	}
 }
 
 #endif
