@@ -24,6 +24,16 @@
 #define ASCOL_RESPONCE_ERROR   (4)
 #define ASCOL_PARAM_ERROR      (5)
 
+/* Command precondition bits */
+#define ASCOL_COND_BRIGE_PARKED   (1<<0)
+#define ASCOL_COND_OIL_ON         (1<<2)
+#define ASCOL_COND_TE_ON          (1<<3)
+#define ASCOL_COND_TE_TRACK       (1<<4)
+#define ASCOL_COND_TE_STOP        (1<<5)
+#define ASCOL_COND_TE_CALIBRATED  (1<<6)
+#define ASCOL_COND_DOME_ON        (1<<7)
+#define ASCOL_COND_FOCUS_ON       (1<<8)
+
 /* Oil States */
 #define OIL_STATE_OFF          (0)
 #define OIL_STATE_START1       (1)
@@ -163,7 +173,8 @@
 #define ALARM_HUMIDITY    ALARM_1_BIT_3
 
 /* Bitwise checks */
-#define CHECK_BIT(bitmap, bit)      (((bitmap) >> (bit)) & 1)
+#define CHECK_BIT(bitmap, bit)      (((bitmap) >> (bit)) & 1UL)
+#define SET_BIT(bitmap, bit)        (bitmap |= 1UL << bit)
 #define CHECK_ALARM(glst, alarm)    CHECK_BIT(glst.alarm_bits[(int)(alarm/16)], (alarm%16))
 
 /* Data structures */
@@ -231,6 +242,7 @@ int ascol_hms2dd(double *dd, const char *hms);
 int ascol_check_alarm(ascol_glst_t glst, int alarm, char **descr, int *state);
 
 /* Utility functions */
+uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions, char **description);
 int ascol_parse_devname(char *device, char *host, int *port);
 int ascol_open(char *host, int port);
 int ascol_read(int devfd, char *reply, int len);

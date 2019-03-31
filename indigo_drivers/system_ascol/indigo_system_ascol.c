@@ -578,11 +578,19 @@ static void mount_handle_t3_speed(indigo_device *device) {
 
 static void mount_handle_tracking(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-		res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_ON);
-		PRIVATE_DATA->park_update = true;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_TE_ON, &description);
+		if (condition) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_ON) unmet condition: %s", PRIVATE_DATA->dev_id, description);
+			res = ASCOL_COMMAND_ERROR;
+		} else {
+			res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_ON);
+			PRIVATE_DATA->park_update = true;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	} else {
 		res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
@@ -594,7 +602,12 @@ static void mount_handle_tracking(indigo_device *device) {
 		MOUNT_TRACKING_ON_ITEM->sw.value = !MOUNT_TRACKING_ON_ITEM->sw.value;
 		MOUNT_TRACKING_OFF_ITEM->sw.value = !MOUNT_TRACKING_OFF_ITEM->sw.value;
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TETR(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Unmet condition: %s", description);
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TETR(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
@@ -625,10 +638,18 @@ static void mount_handle_oil_power(indigo_device *device) {
 
 static void mount_handle_telescope_power(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (TELESCOPE_ON_ITEM->sw.value) {
-		res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON, &description);
+		if (condition) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) unmet condition: %s", PRIVATE_DATA->dev_id, description);
+			res = ASCOL_COMMAND_ERROR;
+		} else {
+			res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	} else {
 		res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
@@ -640,7 +661,12 @@ static void mount_handle_telescope_power(indigo_device *device) {
 		TELESCOPE_ON_ITEM->sw.value = !TELESCOPE_ON_ITEM->sw.value;
 		TELESCOPE_OFF_ITEM->sw.value = !TELESCOPE_OFF_ITEM->sw.value;
 		TELESCOPE_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEON(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, TELESCOPE_POWER_PROPERTY, "Unmet condition: %s", description);
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEON(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 }
@@ -648,10 +674,18 @@ static void mount_handle_telescope_power(indigo_device *device) {
 
 static void mount_handle_ra_calibration(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (RA_CALIBRATION_START_ITEM->sw.value) {
-		res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
+		if (condition) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+			res = ASCOL_COMMAND_ERROR;
+		} else {
+			res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	} else {
 		res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
@@ -663,7 +697,12 @@ static void mount_handle_ra_calibration(indigo_device *device) {
 		RA_CALIBRATION_START_ITEM->sw.value = false;
 		RA_CALIBRATION_STOP_ITEM->sw.value = false;
 		RA_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEHC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, RA_CALIBRATION_PROPERTY, "Unmet conditions(s): %s", description);
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEHC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
 }
@@ -671,10 +710,18 @@ static void mount_handle_ra_calibration(indigo_device *device) {
 
 static void mount_handle_dec_calibration(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (DEC_CALIBRATION_START_ITEM->sw.value) {
-		res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
+		if (condition) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+			res = ASCOL_COMMAND_ERROR;
+		} else {
+			res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	} else {
 		res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
@@ -686,7 +733,12 @@ static void mount_handle_dec_calibration(indigo_device *device) {
 		DEC_CALIBRATION_START_ITEM->sw.value = false;
 		DEC_CALIBRATION_STOP_ITEM->sw.value = false;
 		DEC_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEDC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, DEC_CALIBRATION_PROPERTY, "Unmet condition(s): %s", description);
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEDC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
 }
