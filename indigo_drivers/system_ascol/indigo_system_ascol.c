@@ -672,10 +672,17 @@ static void mount_handle_telescope_power(indigo_device *device) {
 
 static void mount_handle_ra_calibration(indigo_device *device) {
 	int res = ASCOL_OK;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (RA_CALIBRATION_START_ITEM->sw.value) {
-		res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED);
+		if (condition) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) will fail under condition = 0x%X", PRIVATE_DATA->dev_id, condition);
+			res = ASCOL_COMMAND_ERROR;
+		} else {
+			res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	} else {
 		res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
@@ -687,7 +694,12 @@ static void mount_handle_ra_calibration(indigo_device *device) {
 		RA_CALIBRATION_START_ITEM->sw.value = false;
 		RA_CALIBRATION_STOP_ITEM->sw.value = false;
 		RA_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEHC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, RA_CALIBRATION_PROPERTY, "Calibration can not start: condition = %X", condition);
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEHC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
 }
@@ -695,10 +707,17 @@ static void mount_handle_ra_calibration(indigo_device *device) {
 
 static void mount_handle_dec_calibration(indigo_device *device) {
 	int res = ASCOL_OK;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (DEC_CALIBRATION_START_ITEM->sw.value) {
-		res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED);
+		if (condition) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) will fail under condition = 0x%X", PRIVATE_DATA->dev_id, condition);
+			res = ASCOL_COMMAND_ERROR;
+		} else {
+			res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	} else {
 		res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
@@ -710,7 +729,12 @@ static void mount_handle_dec_calibration(indigo_device *device) {
 		DEC_CALIBRATION_START_ITEM->sw.value = false;
 		DEC_CALIBRATION_STOP_ITEM->sw.value = false;
 		DEC_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEDC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, RA_CALIBRATION_PROPERTY, "Calibration can not start: condition = %X", condition);
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEDC(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
 }
