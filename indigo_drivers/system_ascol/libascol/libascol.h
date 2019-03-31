@@ -242,7 +242,7 @@ int ascol_hms2dd(double *dd, const char *hms);
 int ascol_check_alarm(ascol_glst_t glst, int alarm, char **descr, int *state);
 
 /* Utility functions */
-uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions);
+uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions, char **description);
 int ascol_parse_devname(char *device, char *host, int *port);
 int ascol_open(char *host, int port);
 int ascol_read(int devfd, char *reply, int len);

@@ -360,33 +360,43 @@ static size_t strncpy_n(char *dest, const char *src, size_t n){
 
 /* Utility functions */
 
-uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions) {
+uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions, char **description) {
 	uint16_t result = 0;
+	static char desc[255] = {0};
 	if ((conditions & ASCOL_COND_BRIGE_PARKED) && CHECK_ALARM(glst, ALARM_BRIDGE)) {
 		result |= ASCOL_COND_BRIGE_PARKED;
+		strcpy(desc, "BRIDGE_PARKED ");
 	}
 	if ((conditions & ASCOL_COND_OIL_ON) && (glst.oil_state != OIL_STATE_ON)) {
 		result |= ASCOL_COND_OIL_ON;
+		strcat(desc, "OIL_PUMP_ON ");
 	}
 	if ((conditions & ASCOL_COND_TE_ON) && (glst.telescope_state < TE_STATE_STOP)) {
 		result |= ASCOL_COND_TE_ON;
+		strcat(desc, "TELESCOPE_ON ");
 	}
 	if ((conditions & ASCOL_COND_TE_TRACK) && (glst.telescope_state != TE_STATE_TRACK)) {
 		result |= ASCOL_COND_TE_TRACK;
+		strcat(desc, "TELESCOPE_TRACKING ");
 	}
 	if ((conditions & ASCOL_COND_TE_STOP) && (glst.telescope_state != TE_STATE_STOP)) {
 		result |= ASCOL_COND_TE_STOP;
+		strcat(desc, "TELESCOPE_STOPPED ");
 	}
 	if ((conditions & ASCOL_COND_TE_CALIBRATED) && (!IS_RA_CALIBRATED(glst) || !IS_RA_CALIBRATED(glst))) {
 		result |= ASCOL_COND_TE_CALIBRATED;
+		strcat(desc, "TELESCOPE_CALIBRATED ");
 	}
 	if ((conditions & ASCOL_COND_DOME_ON) && (glst.dome_state == DOME_STATE_OFF)) {
 		result |= ASCOL_COND_DOME_ON;
+		strcat(desc, "DOME_ON ");
 	}
 	/* NOTE: RC flap open powers on the focuser */
 	if ((conditions & ASCOL_COND_FOCUS_ON) && (glst.flap_tube_state != SF_STATE_OPEN)) {
 		result |= ASCOL_COND_FOCUS_ON;
+		strcat(desc, "TUBE_FLAP_OPEN ");
 	}
+	if (description) *description = desc;
 	return result;
 }
 
