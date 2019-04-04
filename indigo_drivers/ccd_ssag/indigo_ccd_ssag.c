@@ -26,7 +26,7 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
@@ -223,7 +223,8 @@ static bool ssag_open(indigo_device *device) {
 static bool ssag_start_exposure(indigo_device *device, double exposure) {
 	unsigned char data[16];
 	unsigned duration = 1000 * exposure;
-	int rc = libusb_control_transfer(PRIVATE_DATA->handle, 0xc0, USB_RQ_EXPOSE, duration & 0xFFFF, duration >> 16, data, 2, USB_TIMEOUT);
+	int rc = ssag_init_sequence(device);
+	rc = rc < 0 ? rc : libusb_control_transfer(PRIVATE_DATA->handle, 0xc0, USB_RQ_EXPOSE, duration & 0xFFFF, duration >> 16, data, 2, USB_TIMEOUT);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	return rc >= 0;
 }
@@ -289,35 +290,35 @@ static void exposure_timer_callback(indigo_device *device) {
 	}
 }
 
-static void streaming_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
-		return;
-	while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-		if (ssag_read_pixels(device)) {
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), 8, true, true, NULL);
-		} else {
-			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
-			break;
-		}
-		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
-			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
-		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
-			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-			break;
-		} else {
-			ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
-			if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
-				usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
-			} else
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);
-			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-		}
-	}
-}
+//static void streaming_timer_callback(indigo_device *device) {
+//	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+//		return;
+//	while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+//		if (ssag_read_pixels(device)) {
+//			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), 8, true, true, NULL);
+//		} else {
+//			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+//			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
+//			break;
+//		}
+//		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+//			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+//		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+//			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+//			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+//			break;
+//		} else {
+//			ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
+//			if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
+//				usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
+//				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
+//			} else
+//				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);
+//			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+//			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+//		}
+//	}
+//}
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -329,7 +330,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = 1024;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
 		CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
-		CCD_STREAMING_PROPERTY->hidden = false;
+//		CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_GAIN_PROPERTY->hidden = false;
+		CCD_GAIN_ITEM->number.min = CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = 1;
+		CCD_GAIN_ITEM->number.max = 15;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -388,31 +392,30 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, exposure_timer_callback);
 		} else
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
-	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
-			return INDIGO_OK;
-		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
-		indigo_use_shortest_exposure_if_bias(device);
-		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		} else {
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
-		ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
-		if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
-			usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
-		} else
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);
-		return INDIGO_OK;
+//	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+//		// -------------------------------------------------------------------------------- CCD_STREAMING
+//		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+//			return INDIGO_OK;
+//		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+//		indigo_use_shortest_exposure_if_bias(device);
+//		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+//		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+//		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+//			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+//			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+//		} else {
+//			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+//			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+//		}
+//		ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
+//		if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
+//			usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
+//			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
+//		} else
+//			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);
+//		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			if (indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer))
 				ssag_abort_exposure(device);
@@ -420,6 +423,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_STREAMING_COUNT_ITEM->number.value = 0;
 		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_GAIN
+		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		ssag_set_gain(device, CCD_GAIN_ITEM->number.target);
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
