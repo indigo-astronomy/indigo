@@ -1,6 +1,9 @@
 // Copyright (c) 2016 CloudMakers, s. r. o.
 // All rights reserved.
 //
+// Code is based on OpenSSAG library
+// Copyright (c) 2011 Eric J. Holmes, Orion Telescopes & Binoculars
+//
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 //
