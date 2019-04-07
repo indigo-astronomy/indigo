@@ -1648,6 +1648,7 @@
 		59A5301E21A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59A5302021A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59A5302621A35359000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AAF37B21A7449700EFBB61 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqsiapi.a; path = .libs/libqsiapi.a; sourceTree = "<group>"; };
@@ -11864,6 +11865,7 @@
 				9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */,
 				9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */,
 				9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */,
+				59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */,
 				9DB88E9D214BEDD900CECBCE /* dmfc_simulator */,
 			);
 			path = focuser_dmfc;
