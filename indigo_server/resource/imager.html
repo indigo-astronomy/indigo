@@ -96,7 +96,7 @@
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST')"></indigo-select-item>
-										<indigo-edit-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'glyphicons-ruler'"></indigo-edit-number>
+										<indigo-edit-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'glyphicons-ruler'" :use_value="true"></indigo-edit-number>
 										<indigo-stepper :property="findProperty('Imager Agent', 'FOCUSER_STEPS')" :name="'STEPS'" :direction="findProperty('Imager Agent', 'FOCUSER_DIRECTION')" :direction_left="'MOVE_INWARD'" :direction_right="'MOVE_OUTWARD'"></indigo-stepper>
 									</div>
 								</div>

@@ -48,7 +48,8 @@ Vue.component('indigo-edit-number', {
 		icon: String,
 		values: Array,
 		cls: String,
-		ident: String
+		ident: String,
+		use_value: Boolean
 	},
 	methods: {
 		change: function(value) {
@@ -104,7 +105,7 @@ Vue.component('indigo-edit-number', {
 			for (var i in this.property.items) {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
-					if (this.property.perm == "ro")
+					if (this.property.perm == "ro" || this.use_value)
 						return item.value;
 					return item.target;
 				}
