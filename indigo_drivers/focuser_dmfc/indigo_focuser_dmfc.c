@@ -151,7 +151,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		}
 #endif
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usb_focuser");
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usbDMFC");
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 5;
