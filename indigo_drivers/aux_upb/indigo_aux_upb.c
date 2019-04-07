@@ -115,7 +115,7 @@
 #define AUX_WEATHER_PROPERTY								(PRIVATE_DATA->weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM				(AUX_WEATHER_PROPERTY->items + 0)
 #define AUX_WEATHER_HUMIDITY_ITEM						(AUX_WEATHER_PROPERTY->items + 1)
-#define AUX_WEATHER_DEVPOINT_ITEM						(AUX_WEATHER_PROPERTY->items + 2)
+#define AUX_WEATHER_DEWPOINT_ITEM						(AUX_WEATHER_PROPERTY->items + 2)
 
 #define AUX_DEW_CONTROL_PROPERTY						(PRIVATE_DATA->heating_mode_property)
 #define AUX_DEW_CONTROL_MANUAL_ITEM					(AUX_DEW_CONTROL_PROPERTY->items + 0)
@@ -232,9 +232,9 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 		if ((token = strtok(NULL, ":"))) { // Dewpoint
 			double value = atof(token);
-			if (AUX_WEATHER_DEVPOINT_ITEM->number.value != value) {
+			if (AUX_WEATHER_DEWPOINT_ITEM->number.value != value) {
 				updateWeather = true;
-				AUX_WEATHER_DEVPOINT_ITEM->number.value = value;
+				AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok(NULL, ":"))) { // portstatus
@@ -557,7 +557,7 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_DEVPOINT_ITEM, AUX_WEATHER_DEVPOINT_ITEM_NAME, "Devpoint [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", -50, 100, 0, 0);
 		// -------------------------------------------------------------------------------- INFO
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 6);
 		if (AUX_INFO_PROPERTY == NULL)
@@ -676,7 +676,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						AUX_WEATHER_HUMIDITY_ITEM->number.value = atof(token);
 					}
 					if ((token = strtok(NULL, ":"))) { // Dewpoint
-						AUX_WEATHER_DEVPOINT_ITEM->number.value = atof(token);
+						AUX_WEATHER_DEWPOINT_ITEM->number.value = atof(token);
 					}
 					if ((token = strtok(NULL, ":"))) { // portstatus
 						AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';

@@ -283,7 +283,7 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 
 <tr><td>AUX_WEATHER</td><td>number</td><td>yes</td><td>no</td><td>TEMPERATURE</td><td>no</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>HUMIDITY</td><td>no</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td>DEVPOINT</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>DEWPOINT</td><td>no</td><td></td></tr>
 
 <tr><td>AUX_INFO</td><td>number</td><td>yes</td><td>no</td><td>...</td><td>no</td><td>Any number of any number items</td></tr>
 <tr><td>AUX_CONTROL</td><td>switch</td><td>no</td><td>no</td><td>...</td><td>no</td><td>Any number of any switch items</td></tr>
