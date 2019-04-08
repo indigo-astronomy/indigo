@@ -8,7 +8,7 @@ Any EQDir compatible mount controlled by EQMac application
 
 ## Supported platforms
 
-This driver is MacOS specific.
+This driver is MacOS specific. Doesn't work in sandboxed applications on Mojave because of security issues with Apple Events.
 
 ## License
 
