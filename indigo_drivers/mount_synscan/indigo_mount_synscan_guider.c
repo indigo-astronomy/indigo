@@ -41,6 +41,7 @@ static void guider_delay_ms(int millis) {
 }
 
 void guider_timer_callback_ra(indigo_device *device) {
+	PRIVATE_DATA->timer_count++;
 	while (true) {
 		//  Wait for pulse or exit
 		int pulse_length_ms;
@@ -52,8 +53,10 @@ void guider_timer_callback_ra(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->ha_mutex);
 
 		//  Exit if requested
-		if (PRIVATE_DATA->guiding_thread_exit)
+		if (PRIVATE_DATA->guiding_thread_exit) {
+			PRIVATE_DATA->timer_count--;
 			return;
+		}
 
 		//  Determine the rate and duration
 		double guideRate = synscan_tracking_rate(device->master_device);
@@ -92,6 +95,7 @@ void guider_timer_callback_ra(indigo_device *device) {
 }
 
 void guider_timer_callback_dec(indigo_device *device) {
+	PRIVATE_DATA->timer_count++;
 	while (true) {
 		//  Wait for pulse or exit
 		int pulse_length_ms;
@@ -103,9 +107,11 @@ void guider_timer_callback_dec(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
 		
 		//  Exit if requested
-		if (PRIVATE_DATA->guiding_thread_exit)
+		if (PRIVATE_DATA->guiding_thread_exit) {
+			PRIVATE_DATA->timer_count--;
 			return;
-		
+		}
+
 		//  Determine the rate and duration
 		double guideRate = synscan_tracking_rate(device->master_device);
 		if (pulse_length_ms < 0) {

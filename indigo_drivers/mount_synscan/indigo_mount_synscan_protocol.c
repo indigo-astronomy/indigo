@@ -196,7 +196,7 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 }
 
 static bool synscan_command_with_long_result(indigo_device* device, char* cmd, long* val) {
-	char buffer[20];
+	char buffer[20] = { 0 };
 	if (!synscan_command(device, cmd, buffer)) {
 		return false;
 	}
