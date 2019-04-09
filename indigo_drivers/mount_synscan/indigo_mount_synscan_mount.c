@@ -103,6 +103,7 @@ sla_de2h(double ha, double dec, double phi, double* az, double* el) {
 }
 
 static void position_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->timer_count++;
 	if (PRIVATE_DATA->handle > 0) {
 		//  Longitude needed for LST
 		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
@@ -164,6 +165,7 @@ static void position_timer_callback(indigo_device *device) {
 		}
 	}
 	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+	PRIVATE_DATA->timer_count--;
 }
 
 static bool synscan_open(indigo_device *device) {

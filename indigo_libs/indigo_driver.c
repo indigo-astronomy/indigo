@@ -292,10 +292,10 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, DEVICE_PORT_PROPERTY, NULL);
 	if (indigo_property_match(DEVICE_PORTS_PROPERTY, property) && !DEVICE_PORTS_PROPERTY->hidden)
 		indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property) && !CONNECTION_PROPERTY->hidden)
-		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
 	if (indigo_property_match(AUTHENTICATION_PROPERTY, property) && !AUTHENTICATION_PROPERTY->hidden)
 		indigo_define_property(device, AUTHENTICATION_PROPERTY, NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property) && !CONNECTION_PROPERTY->hidden)
+		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
