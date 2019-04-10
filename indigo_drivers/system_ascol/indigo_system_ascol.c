@@ -746,7 +746,19 @@ static void mount_handle_dec_calibration(indigo_device *device) {
 
 static void mount_handle_aberration(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_TE_STOP, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		ABERRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		ABERRATION_ON_ITEM->sw.value = !ABERRATION_ON_ITEM->sw.value;
+		ABERRATION_OFF_ITEM->sw.value = !ABERRATION_ON_ITEM->sw.value;
+		indigo_update_property(device, ABERRATION_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	if (ABERRATION_ON_ITEM->sw.value) {
 		res = ascol_TSCA(PRIVATE_DATA->dev_id, ASCOL_ON);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCA(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
@@ -767,7 +779,19 @@ static void mount_handle_aberration(indigo_device *device) {
 
 static void mount_handle_precession(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_TE_STOP, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCP(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		PRECESSION_PROPERTY->state = INDIGO_ALERT_STATE;
+		PRECESSION_ON_ITEM->sw.value = !PRECESSION_ON_ITEM->sw.value;
+		PRECESSION_OFF_ITEM->sw.value = !PRECESSION_ON_ITEM->sw.value;
+		indigo_update_property(device, PRECESSION_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	if (PRECESSION_ON_ITEM->sw.value) {
 		res = ascol_TSCP(PRIVATE_DATA->dev_id, ASCOL_ON);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCP(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
@@ -788,7 +812,19 @@ static void mount_handle_precession(indigo_device *device) {
 
 static void mount_handle_refraction(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_TE_STOP, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		REFRACTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		REFRACTION_ON_ITEM->sw.value = !REFRACTION_ON_ITEM->sw.value;
+		REFRACTION_OFF_ITEM->sw.value = !REFRACTION_ON_ITEM->sw.value;
+		indigo_update_property(device, REFRACTION_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	if (REFRACTION_ON_ITEM->sw.value) {
 		res = ascol_TSCR(PRIVATE_DATA->dev_id, ASCOL_ON);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCR(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
@@ -809,7 +845,19 @@ static void mount_handle_refraction(indigo_device *device) {
 
 static void mount_handle_error_correction(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_TE_STOP, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCM(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		ERROR_CORRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		ERROR_CORRECTION_ON_ITEM->sw.value = !ERROR_CORRECTION_ON_ITEM->sw.value;
+		ERROR_CORRECTION_OFF_ITEM->sw.value = !ERROR_CORRECTION_ON_ITEM->sw.value;
+		indigo_update_property(device, ERROR_CORRECTION_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	if (ERROR_CORRECTION_ON_ITEM->sw.value) {
 		res = ascol_TSCM(PRIVATE_DATA->dev_id, ASCOL_ON);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCM(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
