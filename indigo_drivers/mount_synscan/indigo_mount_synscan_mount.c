@@ -240,17 +240,20 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 	if (result) {
 		PRIVATE_DATA->device_count++;
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device == device->master_device) { // For mount device only
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+
+			//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
+			indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+			indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+
+			//  Start position timer
+			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+		} else {
+			indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+		}
 		indigo_update_property(device, CONNECTION_PROPERTY, "connected to mount!");
-		
-		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-
-		//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
-		indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
-		indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-
-		//  Start position timer
-		PRIVATE_DATA->position_timer = indigo_set_timer(device->master_device, 0, position_timer_callback);
 	}
 	else {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
