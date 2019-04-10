@@ -362,7 +362,8 @@ static size_t strncpy_n(char *dest, const char *src, size_t n){
 
 uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions, char **description) {
 	uint16_t result = 0;
-	static char desc[255] = {0};
+	static char desc[255];
+	desc[0] = '\0';
 	if ((conditions & ASCOL_COND_BRIGE_PARKED) && CHECK_ALARM(glst, ALARM_BRIDGE)) {
 		result |= ASCOL_COND_BRIGE_PARKED;
 		strcpy(desc, "BRIDGE_PARKED ");
