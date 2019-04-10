@@ -919,7 +919,7 @@ sub main() {
 					print_client($client, "1\n");
 					next;
 				}
-				if (($oil_state == TE_TRACK) && ($cmd[1] eq "0")) {
+				if (($te_state == TE_TRACK) && ($cmd[1] eq "0")) {
 					$te_state = TE_STOP;
 					$te_tracking = 0;
 					print_client($client, "1\n");
