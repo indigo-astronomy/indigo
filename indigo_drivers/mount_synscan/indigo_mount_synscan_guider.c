@@ -92,6 +92,7 @@ void guider_timer_callback_ra(indigo_device *device) {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	}
+	PRIVATE_DATA->timer_count--;
 }
 
 void guider_timer_callback_dec(indigo_device *device) {
@@ -143,4 +144,5 @@ void guider_timer_callback_dec(indigo_device *device) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
+	PRIVATE_DATA->timer_count--;
 }

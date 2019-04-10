@@ -11,6 +11,7 @@
 
 #include "indigo_driver.h"
 #include "indigo_mount_driver.h"
+#include "indigo_guider_driver.h"
 
 void synscan_mount_connect(indigo_device* device);
 
