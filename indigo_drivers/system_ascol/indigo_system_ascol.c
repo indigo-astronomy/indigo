@@ -426,8 +426,17 @@ static bool ascol_device_open(indigo_device *device) {
 
 static void mount_handle_eq_coordinates(indigo_device *device) {
 	int res = INDIGO_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_TRACK | ASCOL_COND_BRIGE_PARKED, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TGRA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	/* GOTO requested */
 	res = ascol_TSRA(
