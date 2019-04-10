@@ -878,8 +878,18 @@ static void mount_handle_error_correction(indigo_device *device) {
 
 static void mount_handle_correction_model(indigo_device *device) {
 	int res = ASCOL_OK;
-	int index = (int)CORRECTION_MODEL_INDEX_ITEM->number.value;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_TE_STOP, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCS(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		CORRECTION_MODEL_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CORRECTION_MODEL_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
+	int index = (int)CORRECTION_MODEL_INDEX_ITEM->number.value;
 	res = ascol_TSCS(PRIVATE_DATA->dev_id, index);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCS(%d, %d) = %d", PRIVATE_DATA->dev_id, index, res);
