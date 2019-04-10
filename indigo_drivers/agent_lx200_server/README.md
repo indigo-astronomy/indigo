@@ -20,5 +20,3 @@ indigo_server indigo_agent_lx200_server
 
 ## Status: Stable
 
-Driver is developed and tested with:
-* LX200GPS
