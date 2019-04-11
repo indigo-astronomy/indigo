@@ -429,7 +429,7 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 	char *description;
 	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_TRACK | ASCOL_COND_BRIGE_PARKED, &description);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_ON | ASCOL_COND_TE_CALIBRATED | ASCOL_COND_TE_TRACK | ASCOL_COND_BRIGE_PARKED, &description);
 	if (condition) {
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TGRA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
@@ -465,7 +465,7 @@ static void mount_handle_hadec_coordinates(indigo_device *device) {
 	char *description;
 	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_ON | ASCOL_COND_TE_CALIBRATED | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
 	if (condition) {
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TGHA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
@@ -496,7 +496,17 @@ static void mount_handle_hadec_coordinates(indigo_device *device) {
 
 static void mount_handle_hadec_relative_move(indigo_device *device) {
 	int res = INDIGO_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_ON | ASCOL_COND_TE_CALIBRATED | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TGHR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, HADEC_RELATIVE_MOVE_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 	/* Relative GOTO requested */
 	res = ascol_TSHR(PRIVATE_DATA->dev_id, HADEC_RELATIVE_MOVE_HA_ITEM->number.target, HADEC_RELATIVE_MOVE_DEC_ITEM->number.target);
@@ -518,8 +528,17 @@ static void mount_handle_hadec_relative_move(indigo_device *device) {
 
 static void mount_handle_radec_relative_move(indigo_device *device) {
 	int res = INDIGO_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_ON | ASCOL_COND_TE_CALIBRATED | ASCOL_COND_TE_TRACK | ASCOL_COND_BRIGE_PARKED, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TGRR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, RADEC_RELATIVE_MOVE_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 	/* Relative GOTO requested */
 	res = ascol_TSRR(PRIVATE_DATA->dev_id, RADEC_RELATIVE_MOVE_RA_ITEM->number.target, RADEC_RELATIVE_MOVE_DEC_ITEM->number.target);
@@ -697,7 +716,7 @@ static void mount_handle_ra_calibration(indigo_device *device) {
 	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (RA_CALIBRATION_START_ITEM->sw.value) {
-		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
 		if (condition) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
 			res = ASCOL_COMMAND_ERROR;
@@ -717,7 +736,7 @@ static void mount_handle_ra_calibration(indigo_device *device) {
 		RA_CALIBRATION_STOP_ITEM->sw.value = false;
 		RA_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
 		if (condition) {
-			indigo_update_property(device, RA_CALIBRATION_PROPERTY, "Unmet conditions(s): %s", description);
+			indigo_update_property(device, RA_CALIBRATION_PROPERTY, "Unmet condition(s): %s", description);
 			return;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEHC(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -733,7 +752,7 @@ static void mount_handle_dec_calibration(indigo_device *device) {
 	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (DEC_CALIBRATION_START_ITEM->sw.value) {
-		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
+		condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
 		if (condition) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
 			res = ASCOL_COMMAND_ERROR;
@@ -1339,8 +1358,12 @@ static void mount_update_state() {
 		if (HADEC_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
 			HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
-		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+		if (HADEC_RELATIVE_MOVE_PROPERTY->state != INDIGO_ALERT_STATE) {
+			HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		if (RADEC_RELATIVE_MOVE_PROPERTY->state != INDIGO_ALERT_STATE) {
+			RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		HADEC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
