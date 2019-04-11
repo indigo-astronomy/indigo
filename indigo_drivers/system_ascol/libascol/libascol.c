@@ -382,7 +382,7 @@ uint16_t asocol_check_conditions(ascol_glst_t glst, uint16_t conditions, char **
 	}
 	if ((conditions & ASCOL_COND_TE_STOP) && (glst.telescope_state != TE_STATE_STOP)) {
 		result |= ASCOL_COND_TE_STOP;
-		strcat(desc, "TELESCOPE_STOPPED ");
+		strcat(desc, "TELESCOPE_TRACKING_STOPPED ");
 	}
 	if ((conditions & ASCOL_COND_TE_CALIBRATED) && (!IS_RA_CALIBRATED(glst) || !IS_RA_CALIBRATED(glst))) {
 		result |= ASCOL_COND_TE_CALIBRATED;
