@@ -462,7 +462,17 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 
 static void mount_handle_hadec_coordinates(indigo_device *device) {
 	int res = INDIGO_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_OIL_ON | ASCOL_COND_TE_STOP | ASCOL_COND_BRIGE_PARKED, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TGHA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		HADEC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, HADEC_COORDINATES_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	/* GOTO requested */
 	res = ascol_TSHA(
@@ -1323,8 +1333,12 @@ static void mount_update_state() {
 	double ra, ha, dec;
 	if ((PRIVATE_DATA->glst.telescope_state >= TE_STATE_INIT) &&
 	    (PRIVATE_DATA->glst.telescope_state <= TE_STATE_OFF_REQ)) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		if (HADEC_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
+			HADEC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		HADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 		RADEC_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
