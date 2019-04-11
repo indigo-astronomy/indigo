@@ -167,19 +167,14 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 	}
 #elif defined(INDIGO_LINUX)
 	DIR *dir = opendir("/dev");
-	char slink_target[PATH_MAX];
-	char *device_path;
+	char target[PATH_MAX];
 	int count;
 	struct dirent *entry;
 	while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
 		snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
-		count = readlink(name, slink_target, PATH_MAX);
-		if (count < 0) device_path = name;
-		else device_path = slink_target;
-
-		if (!strstr(device_path, "tty")) continue;
-
-		if (is_serial(device_path)) {
+		if (!realpath(name, target)) continue;
+		if (!strstr(target, "/tty")) continue;
+		if (is_serial(target)) {
 			int i = DEVICE_PORTS_PROPERTY->count++;
 			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
 			if (i == 0)
@@ -189,7 +184,6 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 	closedir(dir);
 	dir = opendir("/dev/serial/by-id");
 	if (dir) {
-		char target[PATH_MAX];
 		while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
 			if (entry->d_name[0] != '.') {
 				snprintf(name, PATH_MAX, "/dev/serial/by-id/%s", entry->d_name);
