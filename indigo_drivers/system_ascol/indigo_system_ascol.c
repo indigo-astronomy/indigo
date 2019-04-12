@@ -2442,9 +2442,20 @@ static void dome_handle_abort(indigo_device *device) {
 
 static void dome_handle_coordinates(indigo_device *device) {
 	int res = INDIGO_OK;
+	char *description;
+	uint16_t condition;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_DOME_ON, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOGA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		ascol_DOPO(PRIVATE_DATA->dev_id, &DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
+		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	res = ascol_DOSA(PRIVATE_DATA->dev_id, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target);
 	if (res != INDIGO_OK) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2464,9 +2475,20 @@ static void dome_handle_coordinates(indigo_device *device) {
 static void dome_handle_steps(indigo_device *device) {
 	int res = INDIGO_OK;
 	int sign = 0;
+	char *description;
+	uint16_t condition;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_DOME_ON, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOGR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		DOME_STEPS_ITEM->number.target = 0;
+		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_STEPS_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* Dome relative GOTO requested */
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value)
 		sign = 1; /* move clockwise */
 	else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value)
