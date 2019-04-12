@@ -398,16 +398,21 @@ Vue.component('indigo-ctrl', {
 				return "dirty";
 			return "";
 		},
+		format: function(item, value) {
+			if (item.format != null && item.format.endsWith("m"))
+				return dtos(value);
+			return value;
+		},
 		value: function(item) {
-			return item.newValue != null ? item.newValue : (item.target != null ? item.target : item.value);
+			if (item.newValue != null)
+				return item.newValue;
+			var value = item.target != null ? item.target : item.value;
+			if (item.format != null && item.format.endsWith("m"))
+				return dtos(value);
+			return value;
 		},
 		newValue: function(item, value) {
-			if (item.target != null) {
-				if (!Number.isNaN(value) && item.target != value)
-					Vue.set(item, 'newValue', value);
-			}
-			if (!Number.isNaN(value) && item.value != value)
-				Vue.set(item, 'newValue', value);
+			Vue.set(item, 'newValue', value);
 		},
 		reset: function(property) {
 			for (i in property.items) {
@@ -418,7 +423,16 @@ Vue.component('indigo-ctrl', {
 			var values = {};
 			for (i in property.items) {
 				var item = property.items[i];
-				values[item.name] = item.newValue != null ? item.newValue : (property.type == "number" ? item.target : item.value);
+				var newValue = item.newValue;
+				if (newValue != null) {
+					if (property.type == "number") {
+						if (item.format != null && item.format.endsWith("m"))
+							newValue = stod(newValue);
+						else
+							newValue = parseFloat(newValue);
+					}
+				}
+				values[item.name] = newValue != null ? newValue : (property.type == "number" ? item.target : item.value);
 				item.newValue = null;
 			}
 			changeProperty(property.device, property.name, values);
@@ -477,7 +491,7 @@ Vue.component('indigo-ctrl', {
 											<div v-for="item in property.items" class="form-group row m-1">
 												<label class="col-sm-4 col-form-label pl-0 mt-1">{{item.label}}</label>
 												<input type="text" v-if="property.perm == 'ro'" readonly class="col-sm-8 form-control mt-1" :value="item.value">
-												<input type="text" v-else class="col-sm-8 form-control mt-1" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, $event.target.value)">
+												<input type="text" v-else class="col-sm-8 form-control mt-1" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
 											</div>
 											<template v-if="property.perm != 'ro'">
 												<div class="float-right mt-1 mr-1">
@@ -490,12 +504,12 @@ Vue.component('indigo-ctrl', {
 											<div v-for="item in property.items" class="form-group row m-1">
 												<template v-if="property.perm == 'ro'">
 													<label class="col-sm-9 col-form-label pl-0 mt-1">{{item.label}}</label>
-													<input type="text" readonly class="col-sm-3 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="item.value">
+													<input type="text" readonly class="col-sm-3 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="format(item, item.value)">
 												</template>
 												<template v-else>
 													<label class="col-sm-5 col-form-label pl-0 mt-1">{{item.label}}</label>
-													<input type="text" readonly class="col-sm-3 form-control mt-1" :value="item.value" style="min-width: 5rem">
-													<input type="text" class="col-sm-3 offset-sm-1 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, parseFloat($event.target.value))">
+													<input type="text" readonly class="col-sm-3 form-control mt-1" :value="format(item, item.value)" style="min-width: 5rem">
+													<input type="text" class="col-sm-3 offset-sm-1 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
 												</template>
 											</div>
 											<template v-if="property.perm != 'ro'">
