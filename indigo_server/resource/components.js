@@ -394,13 +394,18 @@ Vue.component('indigo-ctrl', {
 			changeProperty(property.device, property.name, values);
 		},
 		dirty: function(item) {
-			if (item.newValue != null) return "dirty";
+			if (item.newValue != null)
+				return "dirty";
 			return "";
 		},
 		value: function(item) {
-			return item.newValue != null ? item.newValue : item.value;
+			return item.newValue != null ? item.newValue : (item.target != null ? item.target : item.value);
 		},
 		newValue: function(item, value) {
+			if (item.target != null) {
+				if (!Number.isNaN(value) && item.target != value)
+					Vue.set(item, 'newValue', value);
+			}
 			if (!Number.isNaN(value) && item.value != value)
 				Vue.set(item, 'newValue', value);
 		},
@@ -413,7 +418,7 @@ Vue.component('indigo-ctrl', {
 			var values = {};
 			for (i in property.items) {
 				var item = property.items[i];
-				values[item.name] = item.newValue != null ? item.newValue : item.value;
+				values[item.name] = item.newValue != null ? item.newValue : (property.type == "number" ? item.target : item.value);
 				item.newValue = null;
 			}
 			changeProperty(property.device, property.name, values);
@@ -485,11 +490,11 @@ Vue.component('indigo-ctrl', {
 											<div v-for="item in property.items" class="form-group row m-1">
 												<template v-if="property.perm == 'ro'">
 													<label class="col-sm-9 col-form-label pl-0 mt-1">{{item.label}}</label>
-													<input type="text" readonly class="col-sm-3 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, parseFloat($event.target.value))">
+													<input type="text" readonly class="col-sm-3 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="item.value">
 												</template>
 												<template v-else>
 													<label class="col-sm-5 col-form-label pl-0 mt-1">{{item.label}}</label>
-													<input type="text" readonly class="col-sm-3 form-control mt-1" :value="item.target" style="min-width: 5rem">
+													<input type="text" readonly class="col-sm-3 form-control mt-1" :value="item.value" style="min-width: 5rem">
 													<input type="text" class="col-sm-3 offset-sm-1 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @keyup="newValue(item, parseFloat($event.target.value))">
 												</template>
 											</div>
