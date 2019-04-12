@@ -24,7 +24,7 @@
  \file indigo_system_ascol.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_system_ascol"
 
 #include <stdlib.h>
@@ -2739,9 +2739,19 @@ static void focus_update_state() {
 
 static void focus_handle_position(indigo_device *device) {
 	int res = INDIGO_OK;
+	char *description;
+	uint16_t condition;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_FOCUS_ON, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FOGA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* focuser GOTO requested */
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	res = ascol_FOSA(PRIVATE_DATA->dev_id, FOCUSER_POSITION_ITEM->number.target);
 	if (res != INDIGO_OK) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2761,9 +2771,19 @@ static void focus_handle_position(indigo_device *device) {
 static void focus_handle_steps(indigo_device *device) {
 	int res = INDIGO_OK;
 	int sign = 0; /*  move out */
+	char *description;
+	uint16_t condition;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_FOCUS_ON, &description);
+	if (condition) {
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FOGR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Unmet condition(s): %s", description);
+		return;
+	}
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* focuser relative GOTO requested */
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value)
 		sign = -1; /* move in */
 	else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value)
