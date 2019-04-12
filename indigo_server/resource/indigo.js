@@ -35,23 +35,23 @@ function init() {
 function onOpen(evt) {
 	INDIGO.state = 'Connected to ' + URL.host;
 	INDIGO.host = URL.host;
-	$('#SUCCESS').show()
-	$('#FAILURE').hide()
+	$('#SUCCESS').show();
+	$('#FAILURE').hide();
 	enumerateProperties();
 }
 
 function onClose(evt) {
 	INDIGO.devices = { };
 	INDIGO.state = 'Lost connection to ' + URL.host;
-	$('#SUCCESS').hide()
-	$('#FAILURE').show()
+	$('#SUCCESS').hide();
+	$('#FAILURE').show();
 	setTimeout(init, 1000);
 }
 
 function onError(evt) {
 	INDIGO.state ='Error' + evt;
-	$('#SUCCESS').hide()
-	$('#FAILURE').show()
+	$('#SUCCESS').hide();
+	$('#FAILURE').show();
 }
 
 function onMessage(evt) {
@@ -165,6 +165,12 @@ function processUpdateProperty(property) {
 		} else {
 			Vue.set(savedProperty, "state", property.state);
 			Vue.set(savedProperty, "message", property.message);
+			if (property.message != null) {
+				INDIGO.state = property.message;
+				$('#SUCCESS').hide();
+				$('#FAILURE').hide();
+				$('#MESSAGE').show();
+			}
 			for (var i in property.items) {
 				var item = property.items[i];
 				for (var s in savedProperty.items) {
