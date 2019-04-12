@@ -2482,7 +2482,7 @@ static void dome_handle_steps(indigo_device *device) {
 	if (condition) {
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOGR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
-		DOME_STEPS_ITEM->number.target = 0;
+		DOME_STEPS_ITEM->number.value = 0;
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, "Unmet condition(s): %s", description);
 		return;
@@ -2496,11 +2496,13 @@ static void dome_handle_steps(indigo_device *device) {
 	res = ascol_DOSR(PRIVATE_DATA->dev_id, sign * DOME_STEPS_ITEM->number.target);
 	if (res != INDIGO_OK) {
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_STEPS_ITEM->number.value = 0;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOSR(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else {
 		res = ascol_DOGR(PRIVATE_DATA->dev_id);
 		if (res != INDIGO_OK) {
 			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			DOME_STEPS_ITEM->number.value = 0;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOGR(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
@@ -2801,7 +2803,7 @@ static void focus_handle_steps(indigo_device *device) {
 	if (condition) {
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FOGR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
-		FOCUSER_STEPS_ITEM->number.target = 0;
+		FOCUSER_STEPS_ITEM->number.value = 0;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Unmet condition(s): %s", description);
 		return;
@@ -2815,13 +2817,13 @@ static void focus_handle_steps(indigo_device *device) {
 	res = ascol_FOSR(PRIVATE_DATA->dev_id, sign * FOCUSER_STEPS_ITEM->number.target);
 	if (res != INDIGO_OK) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_STEPS_ITEM->number.target = 0;
+		FOCUSER_STEPS_ITEM->number.value = 0;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FOSR(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else {
 		res = ascol_FOGR(PRIVATE_DATA->dev_id);
 		if (res != INDIGO_OK) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_STEPS_ITEM->number.target = 0;
+			FOCUSER_STEPS_ITEM->number.value = 0;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FOGR(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
