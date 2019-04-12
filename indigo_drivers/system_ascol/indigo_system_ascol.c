@@ -2746,6 +2746,7 @@ static void focus_handle_position(indigo_device *device) {
 	if (condition) {
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FOGA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		ascol_FOPO(PRIVATE_DATA->dev_id, &FOCUSER_POSITION_ITEM->number.value);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Unmet condition(s): %s", description);
 		return;
@@ -2778,6 +2779,7 @@ static void focus_handle_steps(indigo_device *device) {
 	if (condition) {
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FOGR(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
+		FOCUSER_STEPS_ITEM->number.target = 0;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Unmet condition(s): %s", description);
 		return;
@@ -2791,11 +2793,13 @@ static void focus_handle_steps(indigo_device *device) {
 	res = ascol_FOSR(PRIVATE_DATA->dev_id, sign * FOCUSER_STEPS_ITEM->number.target);
 	if (res != INDIGO_OK) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_ITEM->number.target = 0;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FOSR(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else {
 		res = ascol_FOGR(PRIVATE_DATA->dev_id);
 		if (res != INDIGO_OK) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_ITEM->number.target = 0;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_FOGR(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
