@@ -2400,13 +2400,21 @@ static void dome_handle_auto_mode(indigo_device *device) {
 
 static void dome_handle_slit(indigo_device *device) {
 	int res = ASCOL_OK;
+	char *description;
+	uint16_t condition;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
-		res = ascol_DOSO(PRIVATE_DATA->dev_id, ASCOL_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOSO(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	condition = asocol_check_conditions(PRIVATE_DATA->glst, ASCOL_COND_DOME_ON, &description);
+	if (condition) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOSO(%d) unmet condition: %s", PRIVATE_DATA->dev_id, description);
+		res = ASCOL_COMMAND_ERROR;
 	} else {
-		res = ascol_DOSO(PRIVATE_DATA->dev_id, ASCOL_OFF);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOSO(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+		if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
+			res = ascol_DOSO(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOSO(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+		} else {
+			res = ascol_DOSO(PRIVATE_DATA->dev_id, ASCOL_OFF);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOSO(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if(res == ASCOL_OK) {
@@ -2415,7 +2423,12 @@ static void dome_handle_slit(indigo_device *device) {
 		DOME_SHUTTER_OPENED_ITEM->sw.value = !DOME_SHUTTER_OPENED_ITEM->sw.value;
 		DOME_SHUTTER_CLOSED_ITEM->sw.value = !DOME_SHUTTER_CLOSED_ITEM->sw.value;
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOSO(%d) = %d", PRIVATE_DATA->dev_id, res);
+		if (condition) {
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Unmet condition: %s", description);
+			return;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOSO(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
 	}
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
