@@ -2463,8 +2463,8 @@ static void dome_handle_coordinates(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOGA(%d) unmet condition(s): %s", PRIVATE_DATA->dev_id, description);
 		ascol_DOPO(PRIVATE_DATA->dev_id, &DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Unmet condition(s): %s", description);
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Unmet condition(s): %s", description);
 		return;
 	}
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
