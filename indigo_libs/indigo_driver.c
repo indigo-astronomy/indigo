@@ -168,7 +168,7 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 #elif defined(INDIGO_LINUX)
 	DIR *dir = opendir("/dev");
 	char target[PATH_MAX];
-	int count;
+	//int count;
 	struct dirent *entry;
 	while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
 		snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
@@ -189,9 +189,9 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 				snprintf(name, PATH_MAX, "/dev/serial/by-id/%s", entry->d_name);
 				if (realpath(name, target)) {
 					int i = DEVICE_PORTS_PROPERTY->count++;
-					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, target, target, false);
+					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
 					if (i == 0)
-						strncpy(DEVICE_PORT_ITEM->text.value, target, INDIGO_VALUE_SIZE);
+						strncpy(DEVICE_PORT_ITEM->text.value, name, INDIGO_VALUE_SIZE);
 				}
 			}
 		}
