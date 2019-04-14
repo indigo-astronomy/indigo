@@ -18,4 +18,4 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_imager indigo_ccd_...
 
-## Status: Under development
+## Status: Stable

@@ -18,4 +18,4 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_alignment indigo_mount_...
 
-## Status: Under development
+## Status: Stable

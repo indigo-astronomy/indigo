@@ -16,4 +16,4 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_snoop
 
-## Status: Under development
+## Status: Stable
