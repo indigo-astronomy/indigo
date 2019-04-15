@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -493,12 +493,15 @@ static void streaming_timer_callback(indigo_device *device) {
 	if (asi_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIStartVideoCapture(id);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartVideoCapture(%d) = %d", id, res);
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIStartVideoCapture(%d) = %d", id, res);
 			while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = ASIGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, timeout);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetVideoData((%d) = %d", id, res);
 					break;
@@ -514,7 +517,9 @@ static void streaming_timer_callback(indigo_device *device) {
 				CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			}
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = ASIStopVideoCapture(id);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res)
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
 			else
