@@ -70,7 +70,7 @@ typedef struct {
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_stats_property;
-	u_long frame;
+	long frame;
 	indigo_frame_digest reference;
 } agent_private_data;
 
