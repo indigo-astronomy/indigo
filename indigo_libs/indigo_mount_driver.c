@@ -468,6 +468,25 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
 			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0) {
+			if (MOUNT_PARK_POSITION_DEC_ITEM->number.value == 90) {
+				MOUNT_PARK_POSITION_DEC_ITEM->number.value = MOUNT_PARK_POSITION_DEC_ITEM->number.target = -90;
+				indigo_update_property(device, MOUNT_PARK_POSITION_PROPERTY, NULL);
+			}
+			if (MOUNT_HOME_POSITION_DEC_ITEM->number.value == 90) {
+				MOUNT_HOME_POSITION_DEC_ITEM->number.value = MOUNT_HOME_POSITION_DEC_ITEM->number.target = -90;
+				indigo_update_property(device, MOUNT_HOME_POSITION_PROPERTY, NULL);
+			}
+		} else {
+			if (MOUNT_PARK_POSITION_DEC_ITEM->number.value == -90) {
+				MOUNT_PARK_POSITION_DEC_ITEM->number.value = MOUNT_PARK_POSITION_DEC_ITEM->number.target = 90;
+				indigo_update_property(device, MOUNT_PARK_POSITION_PROPERTY, NULL);
+			}
+			if (MOUNT_HOME_POSITION_DEC_ITEM->number.value == -90) {
+				MOUNT_HOME_POSITION_DEC_ITEM->number.value = MOUNT_HOME_POSITION_DEC_ITEM->number.target = 90;
+				indigo_update_property(device, MOUNT_HOME_POSITION_PROPERTY, NULL);
+			}
+		}
 		indigo_update_coordinates(device, NULL);
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
