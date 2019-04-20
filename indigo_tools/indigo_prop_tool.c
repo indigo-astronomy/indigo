@@ -322,6 +322,10 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 		called = true;
 	}
 
+	if ((property->type == INDIGO_BLOB_VECTOR) && (save_blobs)) {
+		indigo_enable_blob(client, property, indigo_use_blob_urls ? INDIGO_ENABLE_BLOB_URL : INDIGO_ENABLE_BLOB_ALSO);
+	}
+
 	if (change_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
 			static char *items[INDIGO_MAX_ITEMS];
@@ -371,7 +375,6 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 				break;
 			case INDIGO_BLOB_VECTOR:
 				printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
-				indigo_enable_blob(client, property, indigo_use_blob_urls ? INDIGO_ENABLE_BLOB_URL : INDIGO_ENABLE_BLOB_ALSO);
 				break;
 			}
 #ifdef DEBUG
@@ -440,6 +443,7 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_use_host_suffix = false;
+	indigo_use_blob_urls = true;
 
 	if (argc < 2) {
 		print_help(argv[0]);
