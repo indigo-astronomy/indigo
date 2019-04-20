@@ -184,7 +184,7 @@ static void save_blob(char *filename, char *data, size_t length) {
 void print_property_string(indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
-	if (print_verbose && !change_requested) {
+	if (print_verbose) {
 		char perm_str[3] = "";
 		switch(property->perm) {
 		case INDIGO_RW_PERM:
