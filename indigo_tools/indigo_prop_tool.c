@@ -503,7 +503,7 @@ int main(int argc, const char * argv[]) {
 			print_help(argv[0]);
 			return 0;
 		} else if (argv[i][0] == '-') {
-			i++; /* skip unknown options */
+			/* skip unknown options */
 		} else {
 			prop_string = argv[i];
 		}
