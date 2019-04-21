@@ -31,7 +31,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-
 #include "indigo_bus.h"
 #include "indigo_client.h"
 #include "indigo_xml.h"
@@ -39,7 +38,9 @@
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
 
-static bool change_requested = false;
+static bool set_requested = false;
+static bool get_requested = false;
+static bool state_requested = false;
 static bool print_verbose = false;
 static bool save_blobs = false;
 
@@ -306,6 +307,87 @@ static void print_property_string_filtered(indigo_property *property, const char
 }
 
 
+void print_property_state(indigo_property *property, const char *message) {
+	if (print_verbose) {
+		char perm_str[3] = "";
+		switch(property->perm) {
+		case INDIGO_RW_PERM:
+			strcpy(perm_str, "RW");
+			break;
+		case INDIGO_RO_PERM:
+			strcpy(perm_str, "RO");
+			break;
+		case INDIGO_WO_PERM:
+			strcpy(perm_str, "WO");
+			break;
+		}
+
+		char type_str[20] = "";
+		switch(property->type) {
+		case INDIGO_TEXT_VECTOR:
+			strcpy(type_str, "TEXT_VECTOR");
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			strcpy(type_str, "NUMBER_VECTOR");
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			strcpy(type_str, "SWITCH_VECTOR");
+			break;
+		case INDIGO_LIGHT_VECTOR:
+			strcpy(type_str, "LIGHT_VECTOR");
+			break;
+		case INDIGO_BLOB_VECTOR:
+			strcpy(type_str, "BLOB_VECTOR");
+			break;
+		}
+
+		printf("Name : %s.%s (%s, %s)\nGroup: %s\nLabel: %s\n", property->device, property->name, perm_str, type_str, property->group, property->label);
+		if (message) {
+			printf("Message:\"%s\"\n", message);
+		}
+	}
+
+	char state_str[20] = "";
+	switch(property->state) {
+	case INDIGO_IDLE_STATE:
+		strcpy(state_str, "IDLE");
+		break;
+	case INDIGO_ALERT_STATE:
+		strcpy(state_str, "ALERT");
+		break;
+	case INDIGO_OK_STATE:
+		strcpy(state_str, "OK");
+		break;
+	case INDIGO_BUSY_STATE:
+		strcpy(state_str, "BUSY");
+		break;
+	}
+
+	printf("%s.%s = %s\n", property->device, property->name, state_str);
+
+	if (print_verbose) printf("\n");
+}
+
+
+static void print_property_state_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
+	if ((filter == NULL) || ((filter->device_name[0] == '\0') && (filter->property_name[0] == '\0'))) {
+		/* list all properties */
+		print_property_state(property, message);
+	} else if (filter->property_name[0] == '\0') {
+		/* list all poperties of the device */
+		if (!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) {
+			print_property_state(property, message);
+		}
+	} else {
+		/* list all poperties that match device and property name */
+		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
+		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
+			print_property_state(property, message);
+		}
+	}
+}
+
+
 static indigo_result client_attach(indigo_client *client) {
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
@@ -326,7 +408,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 		indigo_enable_blob(client, property, indigo_use_blob_urls ? INDIGO_ENABLE_BLOB_URL : INDIGO_ENABLE_BLOB_ALSO);
 	}
 
-	if (change_requested) {
+	if (set_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
 			static char *items[INDIGO_MAX_ITEMS];
 			static char *txt_values[INDIGO_MAX_ITEMS];
@@ -386,6 +468,8 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 #endif
 		}
 		return INDIGO_OK;
+	} else if (state_requested) {
+		print_property_state_filtered(property, message, &list_request);
 	} else {
 		print_property_string_filtered(property, message, &list_request);
 	}
@@ -394,8 +478,10 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 
 static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (change_requested) {
+	if (set_requested) {
 		print_property_string(property, message);
+	} else if (state_requested) {
+		print_property_state_filtered(property, message, &list_request);
 	} else {
 		print_property_string_filtered(property, message, &list_request);
 	}
@@ -424,7 +510,9 @@ static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%d built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
+	printf("       %s get [options] device.property.item (NOT IMPLEMETED)\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
+	printf("       %s state [options] [device[.property]]\n", name);
 	printf("options:\n"
 	       "       -h  | --help\n"
 	       "       -b  | --save-blobs\n"
@@ -454,15 +542,23 @@ int main(int argc, const char * argv[]) {
 	int time_to_wait = 2;
 	int port = INDIGO_DEFAULT_PORT;
 	char hostname[255] = "localhost";
-	bool action_set = true;
 	char const *prop_string = NULL;
-	int arg_base = 1;
 
+	set_requested = true;
+	int arg_base = 1;
 	if(!strcmp(argv[1], "set")) {
-		action_set = true;
+		set_requested = true;
 		arg_base = 2;
 	} else if (!strcmp(argv[1], "list")) {
-		action_set = false;
+		set_requested = false;
+		arg_base = 2;
+	} else if (!strcmp(argv[1], "get")) {
+		set_requested = false;
+		get_requested = true;
+		arg_base = 2;
+	} else if (!strcmp(argv[1], "state")) {
+		set_requested = false;
+		state_requested = true;
 		arg_base = 2;
 	}
 
@@ -470,6 +566,10 @@ int main(int argc, const char * argv[]) {
 		if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--extended-info")) {
 			print_verbose = true;
 		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--save-blobs")) {
+			if (state_requested) {
+				fprintf(stderr, "Blobs can not be saved with 'state' command\n");
+				return 1;
+			}
 			save_blobs = true;
 		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use_legacy-blobs")) {
 			indigo_use_blob_urls = false;
@@ -520,7 +620,7 @@ int main(int argc, const char * argv[]) {
 		return 1;
 	}
 
-	if (action_set) {
+	if (set_requested) {
 		if (parse_set_property_string(prop_string, &change_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
@@ -530,7 +630,14 @@ int main(int argc, const char * argv[]) {
 			printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
 		}
 #endif
-		change_requested = true;
+	} else if (state_requested) {
+		if (parse_list_property_string(prop_string, &list_request) < 0) {
+			fprintf(stderr, "Invalid property string format\n");
+			return 1;
+		}
+#ifdef DEBUG
+		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
+#endif
 	} else {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
@@ -539,7 +646,6 @@ int main(int argc, const char * argv[]) {
 #ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 #endif
-		change_requested = false;
 	}
 
 	indigo_start();
