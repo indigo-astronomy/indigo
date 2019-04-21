@@ -221,9 +221,8 @@ typedef struct {
 #define INDIGO_DEVICE_ATTACH_LOG(driver_name, device_name) INDIGO_DRIVER_LOG(driver_name, "'%s' attached", device_name)
 #define INDIGO_DEVICE_DETACH_LOG(driver_name, device_name) INDIGO_DRIVER_LOG(driver_name, "'%s' detached", device_name)
 
-
-/** set driver info.
-*/
+ /** set driver info.
+  */
 
 #define SET_DRIVER_INFO(dinfo, ddescr, dname, dversion, dmulti, dstatus)\
 {\

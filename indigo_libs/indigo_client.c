@@ -419,10 +419,3 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
   pthread_mutex_unlock(&mutex);
   return INDIGO_OK;
 }
-
-/* NOTE: indigo_device_get_interface() hould be called after INFO_PROPERTY is defined.
-   If INFO_PROPERTY is not defined 0 is returned.
-*/
-extern int indigo_device_get_interface(indigo_device *device) {
-	return atoi(INFO_DEVICE_INTERFACE_ITEM);
-}
