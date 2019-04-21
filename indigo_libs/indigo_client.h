@@ -125,6 +125,12 @@ extern indigo_result indigo_connect_server(const char *name, const char *host, i
  */
 extern indigo_result indigo_disconnect_server(indigo_server_entry *server);
 
+/** get device type: CCD, FOCUSER etc.
+    NOTE: indigo_device_get_interface() hould be called after INFO_PROPERTY is defined
+    If INFO_PROPERTY is not defined 0 is returned.
+*/
+extern int indigo_device_get_interface(indigo_device *device);
+
 #ifdef __cplusplus
 }
 #endif
