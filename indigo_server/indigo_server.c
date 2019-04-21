@@ -1051,6 +1051,7 @@ int main(int argc, const char * argv[]) {
 		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use-syslog")) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+			printf("INDIGO server v.%d.%d-%d built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 			printf("usage: %s [-h | --help]\n", argv[0]);
 			printf("       %s [options] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			printf("options:\n"
