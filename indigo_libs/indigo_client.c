@@ -320,7 +320,7 @@ static void *server_thread(indigo_server_entry *server) {
 			if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
 				char text[INET_ADDRSTRLEN];
 				inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
-				INDIGO_LOG(indigo_error("Can't connect to socket %s:%d (%s)", text, ((struct sockaddr_in *)address->ai_addr)->sin_port, strerror(errno)));
+				INDIGO_LOG(indigo_error("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
         reset_socket(server, 0);
       }
