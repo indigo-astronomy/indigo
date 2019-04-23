@@ -651,7 +651,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			if (PRIVATE_DATA->handle) {
 				int num_filters, moving, current_pos, target_pos;
 				if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
-					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = num_filters;
+					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = num_filters;
 					WHEEL_SLOT_ITEM->number.value = current_pos;
 					WHEEL_SLOT_ITEM->number.target = target_pos;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

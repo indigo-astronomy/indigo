@@ -142,7 +142,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 						FLIGetFilterCount(id, &num_slots);
-						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = (int)num_slots;
+						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count = (int)num_slots;
 						WHEEL_SLOT_ITEM->number.min = 1;
 						FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
 						if (PRIVATE_DATA->target_slot < 0) {

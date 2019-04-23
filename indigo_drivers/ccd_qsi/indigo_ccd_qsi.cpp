@@ -112,7 +112,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			assert(PRIVATE_DATA->filter_count > 0);
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->filter_count;
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->filter_count;
 			try {
 				short slot;
 				cam.get_Position(&slot);
