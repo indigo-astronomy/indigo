@@ -1838,7 +1838,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 						return INDIGO_FAILED;
 					}
 
-					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->fw_count;
+					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->fw_count;
 					cfwp.cfwCommand = CFWC_QUERY;
 					res = sbig_command(CC_CFW, &cfwp, &cfwr);
 					if (res != CE_NO_ERROR) {

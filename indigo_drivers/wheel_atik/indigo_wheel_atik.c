@@ -96,7 +96,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 						break;
 					sleep(1);
 				}
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->slot_count;
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {

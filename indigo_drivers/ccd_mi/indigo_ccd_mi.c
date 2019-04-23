@@ -512,7 +512,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			if (PRIVATE_DATA->camera) {
 				int int_value;
 				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_FILTERS, &int_value);
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = int_value;
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = int_value;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				PRIVATE_DATA->device_count--;

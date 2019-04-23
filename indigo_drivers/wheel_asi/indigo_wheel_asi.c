@@ -123,7 +123,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					if (!res) {
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						EFWGetProperty(PRIVATE_DATA->dev_id, &info);
-						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
+						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
 						res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
