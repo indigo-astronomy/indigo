@@ -283,7 +283,7 @@ indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indig
 	if ((ref->width != new->width) || (ref->height != new->height))
 		return INDIGO_FAILED;
 	if (ref->algorithm == centroid) {
-		*drift_x = ref->centroid_x - new->centroid_x;
+		*drift_x = -(ref->centroid_x - new->centroid_x);
 		*drift_y = ref->centroid_y - new->centroid_y;
 		return INDIGO_OK;
 	}
@@ -293,7 +293,7 @@ indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indig
 		c_buf = malloc(2 * max_dim * sizeof(double));
 		/* find X correction */
 		corellate_fft(ref->width, ref->fft_x, new->fft_x, c_buf);
-		*drift_x = find_distance(ref->width, c_buf);
+		*drift_x = -find_distance(ref->width, c_buf);
 		/* find Y correction */
 		corellate_fft(ref->height, ref->fft_y, new->fft_y, c_buf);
 		*drift_y = find_distance(ref->height, c_buf);
