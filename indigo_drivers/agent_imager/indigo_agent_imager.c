@@ -300,7 +300,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
-		CONFIG_PROPERTY->hidden = true;
 		*DEVICE_PRIVATE_DATA->filter_name = 0;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -386,6 +385,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, AGENT_IMAGER_BATCH_PROPERTY);
+		}
 	}
 	return indigo_filter_change_property(device, client, property);
 }
