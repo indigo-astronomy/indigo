@@ -443,12 +443,12 @@ static void calibrate_process(indigo_device *device) {
 				if (DEVICE_PRIVATE_DATA->phase == MOVE_SOUTH) {
 					if (DEVICE_PRIVATE_DATA->drift < last_drift) {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = round(1000 * (last_drift - DEVICE_PRIVATE_DATA->drift)) / 1000;
-						indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-						DEVICE_PRIVATE_DATA->phase = MOVE_WEST;
 					} else {
+						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
 						indigo_send_message(device, "%s: Inconsitent DEC backlash", GUIDER_AGENT_NAME);
-						DEVICE_PRIVATE_DATA->phase = FAILED;
 					}
+					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+					DEVICE_PRIVATE_DATA->phase = MOVE_WEST;
 				}
 				break;
 			}
@@ -717,19 +717,17 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
 				if (AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
-					AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_process);
 				} else if (AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value) {
-					AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, calibrate_process);
 				} else if (AGENT_GUIDER_START_GUIDING_ITEM->sw.value) {
-					AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, guide_process);
 				}
 			}
+			AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		} else {
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
