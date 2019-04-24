@@ -357,6 +357,56 @@ static void print_property_list_filtered(indigo_property *property, const char *
 }
 
 
+static void print_property_get_filtered(indigo_property *property, const char *message, const property_get_request *filter) {
+	indigo_item *item;
+	char value_string[INDIGO_MAX_ITEMS][INDIGO_VALUE_SIZE] = {0};
+	int i, r, items_found = 0;
+
+	if (filter == NULL) return;
+
+	if ((strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) ||
+	   (strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE)))
+		return;
+
+	for (r = 0; r < filter->item_count; r++) {
+		for (i = 0; i < property->count; i++) {
+			item = &(property->items[i]);
+			if (strcmp(item->name, filter->item_name[r])) continue;
+
+			switch (property->type) {
+			case INDIGO_TEXT_VECTOR:
+				sprintf(value_string[items_found], "%s", item->text.value);
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				sprintf(value_string[items_found], "%f", item->number.value);
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				if (item->sw.value)
+					sprintf(value_string[items_found], "ON");
+				else
+					sprintf(value_string[items_found], "OFF");
+				break;
+			case INDIGO_LIGHT_VECTOR:
+				if (item->light.value)
+					sprintf(value_string[items_found], "ON");
+				else
+					sprintf(value_string[items_found], "OFF");
+				break;
+			case INDIGO_BLOB_VECTOR:
+				/* TBD */
+				break;
+			}
+			items_found++;
+		}
+	}
+	if (items_found != filter->item_count) return;
+
+	for (i = 0; i < items_found; i++) {
+		printf("%s\n", value_string[i]);
+	}
+}
+
+
 void print_property_list_state(indigo_property *property, const char *message) {
 	if (print_verbose) {
 		char perm_str[3] = "";
@@ -459,15 +509,7 @@ void print_property_get_state(indigo_property *property, const char *message) {
 
 
 static void print_property_get_state_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
-	if ((filter == NULL) || ((filter->device_name[0] == '\0') && (filter->property_name[0] == '\0'))) {
-		/* list all properties */
-		print_property_get_state(property, message);
-	} else if (filter->property_name[0] == '\0') {
-		/* list all poperties of the device */
-		if (!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) {
-			print_property_get_state(property, message);
-		}
-	} else {
+	if (filter != NULL) {
 		/* list all poperties that match device and property name */
 		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
@@ -560,7 +602,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 	} else if (list_state_requested) {
 		print_property_list_state_filtered(property, message, &list_request);
 	} else if (get_requested) {
-		//print_property_get_value_filtered(property, message, &get_request);
+		print_property_get_filtered(property, message, &get_request);
 	} else if (get_state_requested) {
 		print_property_get_state_filtered(property, message, &list_request);
 	} else {
@@ -574,7 +616,7 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 	if (set_requested) {
 		print_property_list(property, message);
 	} else if (get_requested) {
-		//print_property_get_value_filtered(property, message, &get_request);
+		print_property_get_filtered(property, message, &get_request);
 	} else if (list_state_requested) {
 		print_property_list_state_filtered(property, message, &list_request);
 	} else if (get_state_requested) {
@@ -607,7 +649,7 @@ static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%d built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
-	printf("       %s get [options] device.property.item[;item;..] (NOT IMPLEMETED)\n", name);
+	printf("       %s get [options] device.property.item[;item;..]\n", name);
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("       %s list_state [options] [device[.property]]\n", name);
