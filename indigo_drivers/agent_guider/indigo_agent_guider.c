@@ -321,6 +321,7 @@ static void calibrate_process(indigo_device *device) {
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = 0;
+	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->phase = INIT;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		switch (DEVICE_PRIVATE_DATA->phase) {
@@ -344,14 +345,15 @@ static void calibrate_process(indigo_device *device) {
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Clearing DEC backlash", GUIDER_AGENT_NAME);
 				if (capture_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Clearing DEC backlash", GUIDER_AGENT_NAME);
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value))
 						break;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
 						indigo_send_message(device, "%s: DEC backlash cleared", GUIDER_AGENT_NAME);
 						DEVICE_PRIVATE_DATA->phase = CLEAR_RA;
@@ -369,14 +371,15 @@ static void calibrate_process(indigo_device *device) {
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Clearing RA backlash", GUIDER_AGENT_NAME);
 				if (capture_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Clearing RA backlash", GUIDER_AGENT_NAME);
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0))
 						break;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
 						indigo_send_message(device, "%s: RA backlash cleared", GUIDER_AGENT_NAME);
 						DEVICE_PRIVATE_DATA->phase = MOVE_NORTH;
@@ -394,14 +397,15 @@ static void calibrate_process(indigo_device *device) {
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving north", GUIDER_AGENT_NAME);
 				if (capture_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving north", GUIDER_AGENT_NAME);
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value))
 						break;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM->number.value) {
 						if (i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value / 5) {
 							change_step(device, 0.5);
@@ -425,14 +429,15 @@ static void calibrate_process(indigo_device *device) {
 			}
 			case MOVE_SOUTH: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving south", GUIDER_AGENT_NAME);
 				if (capture_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving south", GUIDER_AGENT_NAME);
 				for (int i = 0; i < last_count; i++) {
 					if (!guide_and_capture_frame(device, 0, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value))
 						break;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				}
 				if (DEVICE_PRIVATE_DATA->phase == MOVE_SOUTH) {
 					if (DEVICE_PRIVATE_DATA->drift < last_drift) {
@@ -448,14 +453,15 @@ static void calibrate_process(indigo_device *device) {
 			}
 			case MOVE_WEST: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving west", GUIDER_AGENT_NAME);
 				if (capture_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving west", GUIDER_AGENT_NAME);
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0))
 						break;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM->number.value) {
 						if (i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value / 5) {
 							change_step(device, 0.5);
@@ -489,14 +495,15 @@ static void calibrate_process(indigo_device *device) {
 			}
 			case MOVE_EAST: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving east", GUIDER_AGENT_NAME);
 				if (capture_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving east", GUIDER_AGENT_NAME);
 				for (int i = 0; i < last_count; i++) {
 					if (!guide_and_capture_frame(device, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0))
 						break;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				}
 				if (DEVICE_PRIVATE_DATA->phase == MOVE_EAST) {
 					DEVICE_PRIVATE_DATA->phase = DONE;
@@ -517,7 +524,6 @@ static void calibrate_process(indigo_device *device) {
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				break;
 		}
-		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	}
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 }
