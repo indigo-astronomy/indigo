@@ -487,6 +487,7 @@ static void print_property_list_state_filtered(indigo_property *property, const 
 	}
 }
 
+
 void print_property_get_state(indigo_property *property, const char *message) {
 	char state_str[20] = "";
 	switch(property->state) {
@@ -769,46 +770,46 @@ int main(int argc, const char * argv[]) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
-#ifdef DEBUG
+		#ifdef DEBUG
 		for (int i = 0; i< change_request.item_count; i++) {
 			printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
 		}
-#endif
-} else if (get_requested) {
+		#endif
+	} else if (get_requested) {
 		if (parse_get_property_string(prop_string, &get_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
-#ifdef DEBUG
+		#ifdef DEBUG
 		for (int i = 0; i< get_request.item_count; i++) {
-		printf("PARSED: %s.%s.%s\n", get_request.device_name, get_request.property_name, get_request.item_name[i]);
+			printf("PARSED: %s.%s.%s\n", get_request.device_name, get_request.property_name, get_request.item_name[i]);
 		}
-#endif
+		#endif
 	} else if (list_state_requested) {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
-#ifdef DEBUG
+		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
-#endif
+		#endif
 	} else if (get_state_requested) {
 		/* Device and property is needed so != 2 */
 		if (parse_list_property_string(prop_string, &list_request) != 2) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
-#ifdef DEBUG
+		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
-#endif
+		#endif
 	} else {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
-#ifdef DEBUG
+		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
-#endif
+		#endif
 	}
 
 	indigo_start();
