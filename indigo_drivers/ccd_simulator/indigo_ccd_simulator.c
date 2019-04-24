@@ -214,7 +214,11 @@ static void exposure_timer_callback(indigo_device *device) {
 			}
 
 			if (device == PRIVATE_DATA->guider && light_frame) {
-				double x_offset = PRIVATE_DATA->guider_ra_offset * GUIDER_COS - PRIVATE_DATA->guider_dec_offset * GUIDER_SIN + PRIVATE_DATA->ao_ra_offset * AO_COS - PRIVATE_DATA->ao_dec_offset * AO_SIN + rand() / (double)RAND_MAX/10 - 0.1;
+				static time_t start_time = 0;
+				if (start_time == 0)
+					start_time = time(NULL);
+				double phase = M_PI * ((time(NULL) - start_time) % 360) / 180;					
+				double x_offset = 5 * sin(phase) + PRIVATE_DATA->guider_ra_offset * GUIDER_COS - PRIVATE_DATA->guider_dec_offset * GUIDER_SIN + PRIVATE_DATA->ao_ra_offset * AO_COS - PRIVATE_DATA->ao_dec_offset * AO_SIN + rand() / (double)RAND_MAX/10 - 0.1;
 				double y_offset = PRIVATE_DATA->guider_ra_offset * GUIDER_SIN + PRIVATE_DATA->guider_dec_offset * GUIDER_COS + PRIVATE_DATA->ao_ra_offset * AO_SIN + PRIVATE_DATA->ao_dec_offset * AO_COS + rand() / (double)RAND_MAX/10 - 0.1;
 				if (GUIDER_MODE_STARS_ITEM->sw.value) {
 					for (int i = 0; i < STARS; i++) {
