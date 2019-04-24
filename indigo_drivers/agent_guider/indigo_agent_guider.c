@@ -538,30 +538,33 @@ static void guide_process(indigo_device *device) {
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			break;
 		}
-		double angle = PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
+		double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
 		double sin_angle = sin(angle);
 		double cos_angle = cos(angle);
+		double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
+		double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
+		double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
 		double drift_ra = DEVICE_PRIVATE_DATA->drift_x * cos_angle - DEVICE_PRIVATE_DATA->drift_y * sin_angle;
 		double drift_dec = DEVICE_PRIVATE_DATA->drift_x * sin_angle + DEVICE_PRIVATE_DATA->drift_y * cos_angle;
 		AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = round(1000 * drift_ra) / 1000;
 		AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
 		double correction_ra = 0, correction_dec = 0;
-		if (drift_ra > AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value) {
+		if (fabs(drift_ra) > min_error) {
 			correction_ra = -drift_ra * AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
-			if (correction_ra > AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value)
-				correction_ra = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
-			else if (correction_ra < -AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value)
-				correction_ra = -AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
-			else if (abs(correction_ra) < AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value)
+			if (correction_ra > max_pulse)
+				correction_ra = max_pulse;
+			else if (correction_ra < -max_pulse)
+				correction_ra = -max_pulse;
+			else if (fabs(correction_ra) < min_pulse)
 				correction_ra = 0;
 		}
-		if (drift_dec > AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value) {
-			correction_dec = -drift_dec * AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
-			if (correction_dec > AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value)
-				correction_dec = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
-			else if (correction_dec < -AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value)
-				correction_dec = -AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
-			else if (abs(correction_dec) < AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value)
+		if (fabs(drift_dec) > min_error) {
+			correction_dec = drift_dec * AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
+			if (correction_dec > max_pulse)
+				correction_dec = max_pulse;
+			else if (correction_dec < -max_pulse)
+				correction_dec = -max_pulse;
+			else if (fabs(correction_dec) < min_pulse)
 				correction_dec = 0;
 		}
 		if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value)
@@ -633,7 +636,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
 		// -------------------------------------------------------------------------------- Guiding properties
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Process", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 14);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Process", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 15);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 60, 0, 1);
@@ -642,10 +645,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM_NAME, "Min clear backlash drift (px)", 0, 15, 0, 3);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM, AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM_NAME, "Max calibration steps", 0, 50, 0, 20);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM_NAME, "Min calibration drift (px)", 0, 15, 0, 5);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA aggressivity (%)", 0, 100, 5, 10);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "DEC aggressivity (%)", 0, 100, 5, 10);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA aggressivity (%)", 0, 200, 5, 50);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "DEC aggressivity (%)", 0, 200, 5, 50);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM, AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM_NAME, "Min error (px)", 0, 5, 0, 0.1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM_NAME, "Min pulse (s)", 0, 1, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM_NAME, "Min pulse (s)", 0, 1, 0, 0.02);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM_NAME, "Max pulse (s)", 0, 5, 0, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_ANGLE_ITEM, AGENT_GUIDER_SETTINGS_ANGLE_ITEM_NAME, "Angle (deg)", -360, 360, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM, AGENT_GUIDER_SETTINGS_BACKLASH_ITEM_NAME, "DEC backlash (px)", 0, 100, 0, 0);
