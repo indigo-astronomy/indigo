@@ -38,9 +38,12 @@
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
 
+//#define DEBUG
+
 static bool set_requested = false;
 static bool get_requested = false;
-static bool state_requested = false;
+static bool list_state_requested = false;
+static bool get_state_requested = false;
 static bool print_verbose = false;
 static bool save_blobs = false;
 
@@ -53,6 +56,13 @@ typedef struct {
 } property_change_request;
 
 typedef struct {
+	int item_count;
+	char device_name[INDIGO_NAME_SIZE];
+	char property_name[INDIGO_NAME_SIZE];
+	char item_name[INDIGO_MAX_ITEMS][INDIGO_NAME_SIZE];
+} property_get_request;
+
+typedef struct {
 	char device_name[INDIGO_NAME_SIZE];
 	char property_name[INDIGO_NAME_SIZE];
 } property_list_request;
@@ -60,6 +70,7 @@ typedef struct {
 
 static property_change_request change_request;
 static property_list_request list_request;
+static property_get_request get_request;
 
 
 void trim_ending_spaces(char * str) {
@@ -168,6 +179,45 @@ int parse_set_property_string(const char *prop_string, property_change_request *
 }
 
 
+int parse_get_property_string(const char *prop_string, property_get_request *sgr) {
+	int res;
+	char format[1024];
+	char remainder[REMINDER_MAX_SIZE];
+
+	if ((prop_string == NULL) || ( *prop_string == '\0')) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+	res = sscanf(prop_string, format, sgr->device_name, sgr->property_name, remainder);
+	if (res != 3) {
+		errno = EINVAL;
+		return -1;
+	}
+	trim_spaces(remainder);
+
+	sgr->item_count = 0;
+	bool finished = false;
+	while(!finished) {
+		sprintf(format, "%%%d[^;];%%%d[^\r]s", INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+		res = sscanf(remainder, format, sgr->item_name[sgr->item_count], remainder);
+		trim_spaces(sgr->item_name[sgr->item_count]);
+		if (res == 1) {
+			sgr->item_count++;
+			finished = true;
+			break;
+		} else if (res == 2) {
+			sgr->item_count++;
+		} else {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+	return sgr->item_count;
+}
+
+
 static void save_blob(char *filename, char *data, size_t length) {
 	int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
 	if (fd == -1) {
@@ -182,7 +232,7 @@ static void save_blob(char *filename, char *data, size_t length) {
 }
 
 
-void print_property_string(indigo_property *property, const char *message) {
+void print_property_list(indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
 	if (print_verbose) {
@@ -288,26 +338,26 @@ void print_property_string(indigo_property *property, const char *message) {
 }
 
 
-static void print_property_string_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
+static void print_property_list_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
 	if ((filter == NULL) || ((filter->device_name[0] == '\0') && (filter->property_name[0] == '\0'))) {
 		/* list all properties */
-		print_property_string(property, message);
+		print_property_list(property, message);
 	} else if (filter->property_name[0] == '\0') {
 		/* list all poperties of the device */
 		if (!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) {
-			print_property_string(property, message);
+			print_property_list(property, message);
 		}
 	} else {
 		/* list all poperties that match device and property name */
 		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
-			print_property_string(property, message);
+			print_property_list(property, message);
 		}
 	}
 }
 
 
-void print_property_state(indigo_property *property, const char *message) {
+void print_property_list_state(indigo_property *property, const char *message) {
 	if (print_verbose) {
 		char perm_str[3] = "";
 		switch(property->perm) {
@@ -369,20 +419,59 @@ void print_property_state(indigo_property *property, const char *message) {
 }
 
 
-static void print_property_state_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
+static void print_property_list_state_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
 	if ((filter == NULL) || ((filter->device_name[0] == '\0') && (filter->property_name[0] == '\0'))) {
 		/* list all properties */
-		print_property_state(property, message);
+		print_property_list_state(property, message);
 	} else if (filter->property_name[0] == '\0') {
 		/* list all poperties of the device */
 		if (!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) {
-			print_property_state(property, message);
+			print_property_list_state(property, message);
 		}
 	} else {
 		/* list all poperties that match device and property name */
 		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
-			print_property_state(property, message);
+			print_property_list_state(property, message);
+		}
+	}
+}
+
+void print_property_get_state(indigo_property *property, const char *message) {
+	char state_str[20] = "";
+	switch(property->state) {
+	case INDIGO_IDLE_STATE:
+		strcpy(state_str, "IDLE");
+		break;
+	case INDIGO_ALERT_STATE:
+		strcpy(state_str, "ALERT");
+		break;
+	case INDIGO_OK_STATE:
+		strcpy(state_str, "OK");
+		break;
+	case INDIGO_BUSY_STATE:
+		strcpy(state_str, "BUSY");
+		break;
+	}
+
+	printf("%s\n", state_str);
+}
+
+
+static void print_property_get_state_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
+	if ((filter == NULL) || ((filter->device_name[0] == '\0') && (filter->property_name[0] == '\0'))) {
+		/* list all properties */
+		print_property_get_state(property, message);
+	} else if (filter->property_name[0] == '\0') {
+		/* list all poperties of the device */
+		if (!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) {
+			print_property_get_state(property, message);
+		}
+	} else {
+		/* list all poperties that match device and property name */
+		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
+		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
+			print_property_get_state(property, message);
 		}
 	}
 }
@@ -468,10 +557,14 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 #endif
 		}
 		return INDIGO_OK;
-	} else if (state_requested) {
-		print_property_state_filtered(property, message, &list_request);
+	} else if (list_state_requested) {
+		print_property_list_state_filtered(property, message, &list_request);
+	} else if (get_requested) {
+		//print_property_get_value_filtered(property, message, &get_request);
+	} else if (get_state_requested) {
+		print_property_get_state_filtered(property, message, &list_request);
 	} else {
-		print_property_string_filtered(property, message, &list_request);
+		print_property_list_filtered(property, message, &list_request);
 	}
 	return INDIGO_OK;
 }
@@ -479,11 +572,15 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (set_requested) {
-		print_property_string(property, message);
-	} else if (state_requested) {
-		print_property_state_filtered(property, message, &list_request);
+		print_property_list(property, message);
+	} else if (get_requested) {
+		//print_property_get_value_filtered(property, message, &get_request);
+	} else if (list_state_requested) {
+		print_property_list_state_filtered(property, message, &list_request);
+	} else if (get_state_requested) {
+		print_property_get_state_filtered(property, message, &list_request);
 	} else {
-		print_property_string_filtered(property, message, &list_request);
+		print_property_list_filtered(property, message, &list_request);
 	}
 	return INDIGO_OK;
 }
@@ -510,9 +607,10 @@ static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%d built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
-	printf("       %s get [options] device.property.item (NOT IMPLEMETED)\n", name);
+	printf("       %s get [options] device.property.item[;item;..] (NOT IMPLEMETED)\n", name);
+	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
-	printf("       %s state [options] [device[.property]]\n", name);
+	printf("       %s list_state [options] [device[.property]]\n", name);
 	printf("options:\n"
 	       "       -h  | --help\n"
 	       "       -b  | --save-blobs\n"
@@ -556,9 +654,13 @@ int main(int argc, const char * argv[]) {
 		set_requested = false;
 		get_requested = true;
 		arg_base = 2;
-	} else if (!strcmp(argv[1], "state")) {
+	} else if (!strcmp(argv[1], "list_state")) {
 		set_requested = false;
-		state_requested = true;
+		list_state_requested = true;
+		arg_base = 2;
+	} else if (!strcmp(argv[1], "get_state")) {
+		set_requested = false;
+		get_state_requested = true;
 		arg_base = 2;
 	}
 
@@ -566,7 +668,7 @@ int main(int argc, const char * argv[]) {
 		if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--extended-info")) {
 			print_verbose = true;
 		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--save-blobs")) {
-			if (state_requested) {
+			if (list_state_requested) {
 				fprintf(stderr, "Blobs can not be saved with 'state' command\n");
 				return 1;
 			}
@@ -630,8 +732,27 @@ int main(int argc, const char * argv[]) {
 			printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
 		}
 #endif
-	} else if (state_requested) {
+} else if (get_requested) {
+		if (parse_get_property_string(prop_string, &get_request) < 0) {
+			fprintf(stderr, "Invalid property string format\n");
+			return 1;
+		}
+#ifdef DEBUG
+		for (int i = 0; i< get_request.item_count; i++) {
+		printf("PARSED: %s.%s.%s\n", get_request.device_name, get_request.property_name, get_request.item_name[i]);
+		}
+#endif
+	} else if (list_state_requested) {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
+			fprintf(stderr, "Invalid property string format\n");
+			return 1;
+		}
+#ifdef DEBUG
+		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
+#endif
+	} else if (get_state_requested) {
+		/* Device and property is needed so != 2 */
+		if (parse_list_property_string(prop_string, &list_request) != 2) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
