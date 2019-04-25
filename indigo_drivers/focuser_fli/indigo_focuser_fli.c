@@ -26,7 +26,7 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0005
+#define DRIVER_VERSION             0x0006
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -390,6 +390,33 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "Focuser stopped");
 
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- FOCUSER_MODE
+	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
+		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		} else {
+			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// ---------------------------------------------------------------------------
 	}
