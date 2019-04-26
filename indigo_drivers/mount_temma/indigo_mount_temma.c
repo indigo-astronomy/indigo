@@ -25,7 +25,7 @@
  \file indigo_mount_temma.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_mount_temma"
 
 #include <stdlib.h>
@@ -376,7 +376,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			int ra_m = (ra / 60) % 60;
 			int ra_s = ra % 60;
 			temma_set_lst(device);
-			sprintf(buffer, "P%02d%02d%02d+90000", ra_h, ra_m, ra_s);
+			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0)
+				sprintf(buffer, "P%02d%02d%02d+90000", ra_h, ra_m, ra_s);
+			else
+				sprintf(buffer, "P%02d%02d%02d-90000", ra_h, ra_m, ra_s);
 			temma_command(device, buffer, true);
 			temma_command(device, TEMMA_MOTOR_OFF, true);
 		}

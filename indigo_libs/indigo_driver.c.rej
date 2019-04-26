@@ -1,0 +1,36 @@
+--- indigo_libs/indigo_driver.c
++++ indigo_libs/indigo_driver.c
+@@ -125,22 +125,23 @@ indigo_result indigo_global_unlock(indigo_device *device) {
+ 
+ 
+ #if defined(INDIGO_LINUX)
+-static bool is_serial(char *path) {
++static int serial_type(char *path) {
+ 	int fd, res;
+ 	struct serial_struct serinfo = {0};
+ 
+-	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) return false;
++	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) return -1;
+ 
+-	bool is_sp = false;
++	int sp_type = 0;
+ 	res = ioctl(fd, TIOCGSERIAL, &serinfo);
+-	if ((res == 0) && (serinfo.type != PORT_UNKNOWN)) is_sp = true;
+-	if (res == -1)
+-		INDIGO_DEBUG(indigo_debug("%s(): path = %s, is_sp = %d (type = %d, res = %d error = '%s')", __FUNCTION__, path, is_sp, serinfo.type, res, strerror(errno)));
+-	else
+-		INDIGO_DEBUG(indigo_debug("%s(): path = %s, is_sp = %d (type = %d, res = %d)", __FUNCTION__, path, is_sp, serinfo.type, res));
+-
++	if (res != 0) {
++		sp_type = -1;
++		INDIGO_DEBUG(indigo_debug("%s(): path = %s, type = %d, res = %d error = '%s'", __FUNCTION__, path, serinfo.type, res, strerror(errno)));
++	} else {
++		sp_type = serinfo.type;
++		INDIGO_DEBUG(indigo_debug("%s(): path = %s, type = %d, res = %d", __FUNCTION__, path, serinfo.type, res));
++	}
+ 	close(fd);
+-	return is_sp;
++	return sp_type;
+ }
+ #endif
+ 
