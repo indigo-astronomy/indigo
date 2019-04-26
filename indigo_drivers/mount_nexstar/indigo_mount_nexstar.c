@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -614,8 +614,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->parked = true;  /* a but premature but need to cancel other movements from now on until unparked */
 			PRIVATE_DATA->park_in_progress = true;
 
+			double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, 0, 90);
+			int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, 0, lat > 0 ? 90 : -90);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d", PRIVATE_DATA->dev_id, res);
