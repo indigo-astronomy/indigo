@@ -391,12 +391,12 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 			case INDIGO_BLOB_VECTOR:
 				if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
 					snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
-					sprintf(value_string[items_found], "file://\"%s\"", filename);
+					sprintf(value_string[items_found], "file://%s/%s", getcwd(NULL, 0), filename);
 					save_blob(filename, item->blob.value, item->blob.size);
 				} else if ((save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
 					if (indigo_populate_http_blob_item(item)) {
 						snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
-						sprintf(value_string[items_found], "file://\"%s\"", filename);
+						sprintf(value_string[items_found], "file://%s/%s", getcwd(NULL, 0), filename);
 						save_blob(filename, item->blob.value, item->blob.size);
 					} else {
 						INDIGO_ERROR(indigo_error("Can not retrieve data from %s", item->blob.url));
@@ -550,7 +550,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 		called = true;
 	}
 
-	if ((property->type == INDIGO_BLOB_VECTOR) && (save_blobs)) {
+	if ((property->type == INDIGO_BLOB_VECTOR) && (save_blobs || indigo_use_blob_urls)) {
 		indigo_enable_blob(client, property, indigo_use_blob_urls ? INDIGO_ENABLE_BLOB_URL : INDIGO_ENABLE_BLOB_ALSO);
 	}
 
