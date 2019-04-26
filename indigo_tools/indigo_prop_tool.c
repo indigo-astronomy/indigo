@@ -301,13 +301,10 @@ void print_property_list(indigo_property *property, const char *message) {
 			printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
 			break;
 		case INDIGO_SWITCH_VECTOR:
-			if (item->sw.value)
-				printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
-			else
-				printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
+			printf("%s.%s.%s = %s\n", property->device, property->name, item->name, item->sw.value ? "ON" : "OFF");
 			break;
 		case INDIGO_LIGHT_VECTOR:
-			printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+			printf("%s.%s.%s = %s\n", property->device, property->name, item->name, item->light.value ? "ON" : "OFF");
 			break;
 		case INDIGO_BLOB_VECTOR:
 			if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
@@ -381,10 +378,7 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 				sprintf(value_string[items_found], "%f", item->number.value);
 				break;
 			case INDIGO_SWITCH_VECTOR:
-				if (item->sw.value)
-					sprintf(value_string[items_found], "ON");
-				else
-					sprintf(value_string[items_found], "OFF");
+				sprintf(value_string[items_found], item->sw.value ? "ON" : "OFF");
 				break;
 			case INDIGO_LIGHT_VECTOR:
 				if (item->light.value)
