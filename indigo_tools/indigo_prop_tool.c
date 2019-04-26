@@ -30,6 +30,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <limits.h>
 
 #include "indigo_bus.h"
 #include "indigo_client.h"
@@ -356,7 +357,8 @@ static void print_property_list_filtered(indigo_property *property, const char *
 
 static void print_property_get_filtered(indigo_property *property, const char *message, const property_get_request *filter) {
 	indigo_item *item;
-	char value_string[INDIGO_MAX_ITEMS][INDIGO_VALUE_SIZE] = {0};
+	char value_string[INDIGO_MAX_ITEMS][PATH_MAX] = {0};
+	char filename[PATH_MAX+15];
 	int i, r, items_found = 0;
 
 	if (filter == NULL) return;
@@ -387,7 +389,25 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 					sprintf(value_string[items_found], "OFF");
 				break;
 			case INDIGO_BLOB_VECTOR:
-				/* TBD */
+				if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
+					snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
+					sprintf(value_string[items_found], "file://\"%s\"", filename);
+					save_blob(filename, item->blob.value, item->blob.size);
+				} else if ((save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
+					if (indigo_populate_http_blob_item(item)) {
+						snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
+						sprintf(value_string[items_found], "file://\"%s\"", filename);
+						save_blob(filename, item->blob.value, item->blob.size);
+					} else {
+						INDIGO_ERROR(indigo_error("Can not retrieve data from %s", item->blob.url));
+					}
+				} else if ((!save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
+					sprintf(value_string[items_found], "%s", item->blob.url);
+				} else if ((!save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
+					sprintf(value_string[items_found], "<BLOB NOT SHOWN>");
+				} else {
+					sprintf(value_string[items_found], "<NO BLOB DATA>");
+				}
 				break;
 			}
 			items_found++;
