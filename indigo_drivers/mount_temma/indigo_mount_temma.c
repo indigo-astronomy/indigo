@@ -25,7 +25,7 @@
  \file indigo_mount_temma.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_mount_temma"
 
 #include <stdlib.h>
@@ -84,7 +84,6 @@
 #define TEMMA_MOTOR_OFF							"STN-ON"
 
 typedef struct {
-	bool parked;
 	int handle;
 	int device_count;
 	double currentRA;
@@ -253,7 +252,7 @@ static void temma_set_latitude(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
+	if (PRIVATE_DATA->handle > 0) {
 		temma_command(device, TEMMA_GET_POSITION, true);
 		temma_command(device, TEMMA_GET_GOTO_STATE, true);
 		if (PRIVATE_DATA->isBusy) {
@@ -293,6 +292,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_UTC_TIME_PROPERTY->hidden = true;
 		MOUNT_PARK_PROPERTY->count = 1;
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -369,19 +369,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
-		if (!PRIVATE_DATA->parked && MOUNT_PARK_PARKED_ITEM->sw.value) {
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 			char buffer[128];
-			int ra = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 3600;
+			int ra = (indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value) * 3600;
 			int ra_h = ra / 3600;
 			int ra_m = (ra / 60) % 60;
 			int ra_s = ra % 60;
+			int dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value * 600;
+			int dec_d = dec / 600;
+			int dec_m = (dec / 10) % 60;
+			int dec_s = dec % 10;
 			temma_set_lst(device);
-			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0)
-				sprintf(buffer, "P%02d%02d%02d+90000", ra_h, ra_m, ra_s);
-			else
-				sprintf(buffer, "P%02d%02d%02d-90000", ra_h, ra_m, ra_s);
+			sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
 			temma_command(device, buffer, true);
 			temma_command(device, TEMMA_MOTOR_OFF, true);
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		}
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -400,61 +403,51 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		if (PRIVATE_DATA->parked) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_coordinates(device, "Mount is parked!");
+		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+		char buffer[128];
+		int ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value * 3600;
+		int ra_h = ra / 3600;
+		int ra_m = (ra / 60) % 60;
+		int ra_s = ra % 60;
+		int dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * 600;
+		int dec_d = dec / 600;
+		int dec_m = (dec / 10) % 60;
+		int dec_s = dec % 10;
+		temma_command(device, TEMMA_MOTOR_ON, true);
+		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+			sprintf(buffer, "D%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+			temma_set_lst(device);
+			temma_command(device, "Z", false);
+			temma_set_lst(device);
+			temma_command(device, buffer, true);
+			PRIVATE_DATA->startTracking = true;
+		} else if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+			sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+			temma_set_lst(device);
+			temma_command(device, buffer, true);
+			PRIVATE_DATA->startTracking = true;
 		} else {
-			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-			char buffer[128];
-			int ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value * 3600;
-			int ra_h = ra / 3600;
-			int ra_m = (ra / 60) % 60;
-			int ra_s = ra % 60;
-			int dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * 600;
-			int dec_d = dec / 600;
-			int dec_m = (dec / 10) % 60;
-			int dec_s = dec % 10;
-			temma_command(device, TEMMA_MOTOR_ON, true);
-			if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-				sprintf(buffer, "D%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
-				temma_set_lst(device);
-				temma_command(device, "Z", false);
-				temma_set_lst(device);
-				temma_command(device, buffer, true);
-				PRIVATE_DATA->startTracking = true;
-			} else if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-				sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
-				temma_set_lst(device);
-				temma_command(device, buffer, true);
-				PRIVATE_DATA->startTracking = true;
-			} else {
-				sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
-				temma_set_lst(device);
-				temma_command(device, buffer, true);
-				PRIVATE_DATA->stopTracking = true;
-			}
-			indigo_update_coordinates(device, NULL);
+			sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+			temma_set_lst(device);
+			temma_command(device, buffer, true);
+			PRIVATE_DATA->stopTracking = true;
 		}
+		indigo_update_coordinates(device, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		if (PRIVATE_DATA->parked) {
-			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked!");
-		} else {
-			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-				temma_command(device, TEMMA_SLEW_STOP, false);
+		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
+		if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
+			temma_command(device, TEMMA_SLEW_STOP, false);
+			temma_command(device, TEMMA_GOTO_STOP, false);
+			for (int i = 0; i < 16; i++) {
+				usleep(250000);
+				temma_command(device, TEMMA_GET_GOTO_STATE, true);
+				if (!PRIVATE_DATA->isBusy)
+					break;
 				temma_command(device, TEMMA_GOTO_STOP, false);
-				for (int i = 0; i < 16; i++) {
-					usleep(250000);
-					temma_command(device, TEMMA_GET_GOTO_STATE, true);
-					if (!PRIVATE_DATA->isBusy)
-						break;
-					temma_command(device, TEMMA_GOTO_STOP, false);
-				}
-				indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 			}
+			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
@@ -489,71 +482,61 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
-		if (PRIVATE_DATA->parked) {
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
+		if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
+			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_NORTH);
+			else
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_NORTH);
+			if (PRIVATE_DATA->slew_timer)
+				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
+			else
+				PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
+		} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_SOUTH);
+			else
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_SOUTH);
+			if (PRIVATE_DATA->slew_timer)
+				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
+			else
+				PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
 		} else {
-			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-			if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
-				if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_NORTH);
-				else
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_NORTH);
-				if (PRIVATE_DATA->slew_timer)
-					indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-				else
-					PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
-			} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
-				if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_SOUTH);
-				else
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_SOUTH);
-				if (PRIVATE_DATA->slew_timer)
-					indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-				else
-					PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
-			} else {
-				*PRIVATE_DATA->slewCommand = 0;
-				indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
-				temma_command(device, TEMMA_SLEW_STOP, false);
-			}
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			*PRIVATE_DATA->slewCommand = 0;
+			indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
+			temma_command(device, TEMMA_SLEW_STOP, false);
 		}
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
-		if (PRIVATE_DATA->parked) {
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
+		if (MOUNT_MOTION_WEST_ITEM->sw.value) {
+			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_WEST);
+			else
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_WEST);
+			if (PRIVATE_DATA->slew_timer)
+				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
+			else
+				PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
+		} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
+			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_EAST);
+			else
+				strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_EAST);
+			if (PRIVATE_DATA->slew_timer)
+				indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
+			else
+				PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
 		} else {
-			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
-			if (MOUNT_MOTION_WEST_ITEM->sw.value) {
-				if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_WEST);
-				else
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_WEST);
-				if (PRIVATE_DATA->slew_timer)
-					indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-				else
-					PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
-			} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
-				if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value || MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_SLOW_EAST);
-				else
-					strcpy(PRIVATE_DATA->slewCommand, TEMMA_SLEW_FAST_EAST);
-				if (PRIVATE_DATA->slew_timer)
-					indigo_reschedule_timer(device, 0.0, &PRIVATE_DATA->slew_timer);
-				else
-					PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.0, slew_timer_callback);
-			} else {
-				*PRIVATE_DATA->slewCommand = 0;
-				indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
-				temma_command(device, TEMMA_SLEW_STOP, false);
-			}
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+			*PRIVATE_DATA->slewCommand = 0;
+			indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
+			temma_command(device, TEMMA_SLEW_STOP, false);
 		}
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CORRECTION_SPEED

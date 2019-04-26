@@ -99,6 +99,7 @@ typedef struct {
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_settings_property;
 	indigo_property *agent_stats_property;
+	bool properties_defined;
 	indigo_frame_digest reference;
 	double drift_x, drift_y, drift;
 	double rmse_ra_sum, rmse_dec_sum;
@@ -165,6 +166,7 @@ static indigo_property_state capture_frame(indigo_device *device) {
 				if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48) {
 					if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
 						indigo_result result;
+						indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
 						if (donuts)
 							result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &DEVICE_PRIVATE_DATA->reference);
 						else
@@ -718,7 +720,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
-				indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
 				if (AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_process);
@@ -728,6 +729,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				} else if (AGENT_GUIDER_START_GUIDING_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, guide_process);
+				} else {
+					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
 			AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
@@ -766,6 +769,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_SETTINGS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_STATS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DEC_MODE_PROPERTY);
+	indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
 	return indigo_filter_device_detach(device);
 }
 
@@ -779,19 +783,25 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	if (!strcmp(property->device, GUIDER_AGENT_NAME) && (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME) || !strcmp(property->name, FILTER_GUIDER_LIST_PROPERTY_NAME))) {
 		if (FILTER_CCD_LIST_PROPERTY->items->sw.value || FILTER_GUIDER_LIST_PROPERTY->items->sw.value) {
 			abort_process(device);
-			indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+			if (CLIENT_PRIVATE_DATA->properties_defined) {
+				indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				indigo_delete_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+				indigo_delete_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+				indigo_delete_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+				indigo_delete_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+				CLIENT_PRIVATE_DATA->properties_defined = false;
+			}
 		} else {
-			indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+			if (!CLIENT_PRIVATE_DATA->properties_defined) {
+				indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
+				indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+				indigo_define_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+				indigo_define_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+				indigo_define_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+				CLIENT_PRIVATE_DATA->properties_defined = true;
+			}
 		}
 	}
 	return indigo_filter_update_property(client, device, property, message);
