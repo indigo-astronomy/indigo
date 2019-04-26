@@ -309,14 +309,14 @@ void print_property_list(indigo_property *property, const char *message) {
 			break;
 		case INDIGO_BLOB_VECTOR:
 			if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
-				char filename[256];
-				snprintf(filename, 256, "%s.%s%s", property->device, property->name, item->blob.format);
+				char filename[PATH_MAX];
+				snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
 				printf("%s.%s.%s = <BLOB => %s>\n", property->device, property->name, item->name, filename);
 				save_blob(filename, item->blob.value, item->blob.size);
 			} else if ((save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
 				if (indigo_populate_http_blob_item(item)) {
-					char filename[256];
-					snprintf(filename, 256, "%s.%s%s", property->device, property->name, item->blob.format);
+					char filename[PATH_MAX];
+					snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
 					printf("%s.%s.%s = <%s => %s>\n", property->device, property->name, item->name, item->blob.url, filename);
 					save_blob(filename, item->blob.value, item->blob.size);
 				} else {
