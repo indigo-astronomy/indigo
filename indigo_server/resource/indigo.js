@@ -83,6 +83,11 @@ function onMessage(evt) {
 		processUpdateProperty(property);
 	} else if ((property = message["deleteProperty"]) != null) {
 		processDeleteProperty(property);
+	} else if ((msg = message["message"]) != null) {
+		INDIGO.state = msg;
+		$('#SUCCESS').hide();
+		$('#FAILURE').hide();
+		$('#MESSAGE').show();
 	}
 }
 
