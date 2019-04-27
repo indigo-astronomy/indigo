@@ -950,6 +950,10 @@ static void server_main() {
 		dso_data = indigo_add_dso_json_resource(10);
 		constellation_data = indigo_add_constellations_lines_json_resource();
 		// INDIGO Guider
+		static unsigned char guider_html[] = {
+			#include "resource/guider.html.data"
+		};
+		indigo_server_add_resource("/guider.html", guider_html, sizeof(guider_html), "text/html");
 		static unsigned char guider_png[] = {
 			#include "resource/guider.png.data"
 		};

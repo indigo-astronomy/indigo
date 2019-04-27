@@ -1673,6 +1673,7 @@
 		59AF321521F264D40008CC52 /* celestial.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = celestial.css; sourceTree = "<group>"; };
 		59AF321721F3078D0008CC52 /* mng.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mng.png; sourceTree = "<group>"; };
 		59AF321821F308870008CC52 /* mng.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mng.html; sourceTree = "<group>"; };
+		59AF6E9E2273881C00B838BF /* guider.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = guider.html; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
 		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
 		59BBD17021823693008199D6 /* indigo_ccd_altair.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_altair.h; sourceTree = "<group>"; };
@@ -5027,6 +5028,7 @@
 				59AF321821F308870008CC52 /* mng.html */,
 				9D38D14321F09CE000549B67 /* ctrl.html */,
 				9D38D13F21F09CDF00549B67 /* imager.html */,
+				59AF6E9E2273881C00B838BF /* guider.html */,
 				9D7244F621F1D6A50028FDF4 /* mount.html */,
 				9D38D14621F09CE000549B67 /* components.js */,
 				9D38D13D21F09CDF00549B67 /* indigo.js */,
