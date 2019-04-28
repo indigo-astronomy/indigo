@@ -75,12 +75,12 @@
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_RA'" :icon="'cor α'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_DEC'" :icon="'cor δ'"></indigo-show-number>
 										<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
-											<button id="calibrate_button" class="btn btn-svg idle-state mr-2" onclick="load()">
+											<button class="btn btn-svg idle-state mr-2" onclick="load()">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M9.62946,11.41876l5.55682-7.77954a1,1,0,0,1,1.62744,0l5.55682,7.77954A1,1,0,0,1,21.55682,13H19v6a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V13H10.44318A1,1,0,0,1,9.62946,11.41876ZM27,22H5a1,1,0,0,0-1,1v4a1,1,0,0,0,1,1H27a1,1,0,0,0,1-1V23A1,1,0,0,0,27,22Z"/>
 												</svg>
 											</button>
-											<button id="calibrate_button" class="btn btn-svg idle-state mr-2" onclick="save()">
+											<button class="btn btn-svg idle-state mr-2" onclick="save()">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M28,23v4a1,1,0,0,1-1,1H5a1,1,0,0,1-1-1V23a1,1,0,0,1,1-1H27A1,1,0,0,1,28,23ZM15.18628,19.36078a1,1,0,0,0,1.62744,0l5.55682-7.77954A1,1,0,0,0,21.55682,10H19V4a1,1,0,0,0-1-1H14a1,1,0,0,0-1,1v6H10.44318a1,1,0,0,0-.81372,1.58124Z"/>
 												</svg>
@@ -267,21 +267,29 @@
 					$("#guide_button").removeClass("busy-state");
 					$("#guide_button").addClass("idle-state");
 				} else if (property.name == "AGENT_GUIDER_STATS") {
+					var phase = property.item("PHASE").value;
 					var frame = property.item("FRAME").value;
 					if (frame <= 1) {
 						raDrift = [];
 						decDrift = [];
+						raCorr = [];
+						decCorr = [];
 					}
 					while (raDrift.length >= 200)
-						raDrift.shift()
+						raDrift.shift();
 					while (decDrift.length >= 200)
-						decDrift.shift()
+						decDrift.shift();
 					while (raCorr.length >= 200)
-						raCorr.shift()
+						raCorr.shift();
 					while (decCorr.length >= 200)
-						decCorr.shift()
-					raDrift.push(property.item("DRIFT_RA").value);
-					decDrift.push(property.item("DRIFT_DEC").value);
+						decCorr.shift();
+					if (phase > 0) {
+						raDrift.push(property.item("DRIFT_X").value);
+						decDrift.push(property.item("DRIFT_Y").value);
+					} else {
+						raDrift.push(property.item("DRIFT_RA").value);
+						decDrift.push(property.item("DRIFT_DEC").value);
+					}
 					raCorr.push(property.item("CORR_RA").value);
 					decCorr.push(property.item("CORR_DEC").value);
 					paintGraph("graph_drift", raDrift, decDrift);
