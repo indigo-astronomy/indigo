@@ -18,7 +18,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_mount_synscan
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * SkyWatcher NEQ6 Pro
