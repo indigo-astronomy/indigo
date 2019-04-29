@@ -82,13 +82,13 @@ This is the list of requirements taken into the consideration:
 53. LakesideAstro focuser (untested)
 54. SX AO driver
 55. SBIG AO driver (part of CCD driver)
+56. SynScan (EQMod) mount driver
+57. ASCOL driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
 2. ASCOM driver for INDIGO focuser
 3. Apogee filter wheel driver
-4. SynScan (EQMod) mount driver
-5. ASCOL driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO
