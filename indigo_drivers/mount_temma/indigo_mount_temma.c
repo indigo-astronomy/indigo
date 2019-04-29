@@ -293,6 +293,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_PROPERTY->count = 1;
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
+		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
