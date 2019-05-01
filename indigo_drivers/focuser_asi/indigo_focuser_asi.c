@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -608,6 +608,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
 			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
+		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
