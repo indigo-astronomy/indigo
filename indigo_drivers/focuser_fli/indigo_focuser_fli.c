@@ -26,7 +26,7 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0006
+#define DRIVER_VERSION             0x0007
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -417,6 +417,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
 			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
+		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 	// ---------------------------------------------------------------------------
 	}
