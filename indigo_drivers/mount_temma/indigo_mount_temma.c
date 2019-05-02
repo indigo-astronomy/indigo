@@ -373,6 +373,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 			char buffer[128];
 			int ra = (indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value) * 3600;
+			if (ra < 0)
+				ra += 24 * 3600;
 			int ra_h = ra / 3600;
 			int ra_m = (ra / 60) % 60;
 			int ra_s = ra % 60;
