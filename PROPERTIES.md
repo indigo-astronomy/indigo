@@ -142,7 +142,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 <tr><td>MOUNT_GEOGRAPHIC_COORDINATES</td><td>number</td><td>no</td><td>yes</td><td>LATITUDE</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>LONGITUDE</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>ELEVATION</td><td>yes</td><td></td></tr>
-<tr><td>MOUNT_LST_TIME</td><td>number</td><td></td><td>no</td><td>TIME</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
+<tr><td>MOUNT_LST_TIME</td><td>number</td><td></td><td>yes</td><td>TIME</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
 <tr><td>MOUNT_UTC_TIME</td><td>number</td><td></td><td>no</td><td>TIME</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
 <tr><td></td><td></td><td></td><td></td><td>OFFSET</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_SET_HOST_TIME</td><td>switch</td><td>no</td><td>no</td><td>SET</td><td>yes</td><td></td></tr>
