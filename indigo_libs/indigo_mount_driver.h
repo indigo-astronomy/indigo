@@ -88,7 +88,7 @@ extern "C" {
  */
 #define MOUNT_INFO_MODEL_ITEM													(MOUNT_INFO_PROPERTY->items+1)
 
-/** MOUNT_INFO.MODEL property item pointer.
+/** MOUNT_INFO.FIRMWARE property item pointer.
  */
 #define MOUNT_INFO_FIRMWARE_ITEM											(MOUNT_INFO_PROPERTY->items+2)
 
@@ -100,11 +100,15 @@ extern "C" {
 
 /** MOUNT_UTC_TIME.UTC property item pointer.
  */
-#define MOUNT_UTC_ITEM																(MOUNT_UTC_TIME_PROPERTY->items+0)
+#define MOUNT_UTC_ITEM															(MOUNT_UTC_TIME_PROPERTY->items+0)
 
-/** MOUNT_UTC_TIME.UTC property item pointer.
+/** MOUNT_UTC_TIME.OFFSET property item pointer.
  */
 #define MOUNT_UTC_OFFEST_ITEM													(MOUNT_UTC_TIME_PROPERTY->items+1)
+
+/** MOUNT_UTC_TIME.DST property item pointer.
+ */
+#define MOUNT_UTC_DST_ITEM														(MOUNT_UTC_TIME_PROPERTY->items+2)
 
 //----------------------------------------------
 /** MOUNT_SET_HOST_TIME property pointer, property is optional, property change request should be fully handled by the device driver.
