@@ -487,7 +487,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
 
-		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
