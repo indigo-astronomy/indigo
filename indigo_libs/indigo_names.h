@@ -206,6 +206,10 @@
  */
 #define UTC_OFFSET_ITEM_NAME							"OFFSET"
 
+/** UTC_TIME.DST property item name.
+ */
+#define UTC_DST_ITEM_NAME								"DST"
+
 //----------------------------------------------------------------------
 /** CCD_INFO property name.
  */
