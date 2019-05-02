@@ -1502,7 +1502,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.max=89.99999;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value=89.99999;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.min=-89.99999;
-		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = true;
 
 		MOUNT_PARK_PROPERTY->hidden = false;

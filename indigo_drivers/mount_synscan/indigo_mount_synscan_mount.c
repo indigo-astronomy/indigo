@@ -162,6 +162,8 @@ static void position_timer_callback(indigo_device *device) {
 			MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
 			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
 			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			MOUNT_LST_TIME_ITEM->number.value = lst;
+			indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 		}
 	}
 	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
