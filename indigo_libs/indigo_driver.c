@@ -672,3 +672,26 @@ time_t indigo_isototime(char *isotime) {
 
 	return -1;
 }
+
+void indigo_localtimetoiso(time_t tstamp, char *isotime, int isotime_len) {
+	struct tm tm_stamp;
+
+	localtime_r(&tstamp, &tm_stamp);
+	tm_stamp.tm_isdst = 0;
+	tm_stamp.tm_zone = 0;
+	snprintf(isotime, isotime_len, "%04d-%02d-%02dT%02d:%02d:%02d", tm_stamp.tm_year + 1900, tm_stamp.tm_mon + 1, tm_stamp.tm_mday, tm_stamp.tm_hour, tm_stamp.tm_min, tm_stamp.tm_sec);
+}
+
+time_t indigo_isotolocaltime(char *isotime) {
+	struct tm tm_ts;
+
+	memset(&tm_ts, 0, sizeof(tm_ts));
+	if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_ts.tm_year, &tm_ts.tm_mon, &tm_ts.tm_mday, &tm_ts.tm_hour, &tm_ts.tm_min, &tm_ts.tm_sec) == 6) {
+		tm_ts.tm_mon -= 1;             /* mon is 0..11 */
+		tm_ts.tm_year -= 1900;         /* year since 1900 */
+		tm_ts.tm_isdst = -1;
+		return (mktime(&tm_ts));
+	}
+
+	return -1;
+}
