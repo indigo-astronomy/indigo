@@ -298,17 +298,25 @@ extern char* indigo_dtos(double value, char *format);
  */
 time_t indigo_utc(time_t *ltime);
 
-/** Convert time_t to ISO 8601 string.
+/** Convert local time_t to UTC ISO 8601 string.
  */
 void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len);
 
-/** Convert ISO 8601 string to time_t.
+/** Convert local time ISO 8601 string to UTC time_t.
  */
 time_t indigo_isototime(char *isotime);
 
+/** Convert time_t to ISO 8601 string.
+ */
+void indigo_localtimetoiso(time_t tstamp, char *isotime, int isotime_len);
+
+/** Convert ISO 8601 string to time_t.
+ */
+time_t indigo_isotolocaltime(char *isotime);
+
 /** Enumerate serial ports.
  */
-	void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
+void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
 
 #ifdef __cplusplus
 }
