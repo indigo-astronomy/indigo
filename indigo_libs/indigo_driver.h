@@ -294,9 +294,11 @@ extern double indigo_stod(char *string);
  */
 extern char* indigo_dtos(double value, char *format);
 
-/** get current utc.
+/** get current utc. TO BE REMOVED!
  */
+/*
 time_t indigo_utc(time_t *ltime);
+*/
 
 /** Convert local time_t to UTC ISO 8601 string.
  */
