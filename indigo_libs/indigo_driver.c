@@ -642,6 +642,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	return string;
 }
 
+/* TO BE REMOVED!
 time_t indigo_utc(time_t *ltime) {
 	struct tm tm_now;
 	time_t now;
@@ -652,7 +653,7 @@ time_t indigo_utc(time_t *ltime) {
 	gmtime_r(&now, &tm_now);
 	return timegm(&tm_now);
 }
-
+*/
 void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len) {
 	struct tm tm_stamp;
 
