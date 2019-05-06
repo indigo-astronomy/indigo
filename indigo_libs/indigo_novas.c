@@ -23,13 +23,14 @@
  \file indigo_novas.c
  */
 
-#include <time.h>
+//#include <time.h>
 #include <novas.h>
 #include <eph_manager.h>
 
 #include "indigo_bus.h"
 #include "indigo_novas.h"
 
+#define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
 static double DELTA_T = 34+32.184+0.477677;
 static double DELTA_UTC_UT1 = -0.477677/86400.0;
 
@@ -43,10 +44,15 @@ static void init() {
 	}
 }
 
-double indigo_lst(double longitude) {
-	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
+double indigo_lst(time_t *utc, double longitude) {
+	double ut1;
+	if (utc)
+		ut1 = UT2JD(*utc);
+	else
+		ut1 = UT2JD(time(NULL));
+
 	double gst;
-	int error = sidereal_time(ut1_now, 0.0, DELTA_T, 0, 0, 0, &gst);
+	int error = sidereal_time(ut1, 0.0, DELTA_T, 0, 0, 0, &gst);
 	if (error != 0) {
 		indigo_error("sidereal_time() -> %d", error);
 		return 0;
