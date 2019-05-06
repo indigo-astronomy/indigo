@@ -208,6 +208,13 @@ static void exposure_timer_callback(indigo_device *device) {
 						raw[j * frame_width + i] = indigo_ccd_simulator_raw_image[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x7F);
 					}
 				}
+			} else if (device == PRIVATE_DATA->guider) {
+				for (int j = 0; j < frame_height; j++) {
+					int jj = j * j;
+					for (int i = 0; i < frame_width; i++) {
+						raw[j * frame_width + i] = sqrt(i * i + jj) / 5 + (rand() & 0x7F);
+					}
+				}
 			} else {
 				for (int i = 0; i < size; i++)
 					raw[i] = (rand() & 0x7F);
