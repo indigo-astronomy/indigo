@@ -207,7 +207,16 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	return INDIGO_OK;
 }
 
-indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c) {
+static double min_re(double (*vector)[2], int size) {
+	double result = vector[0][RE];
+	for (int i = 1; i < size; i++) {
+		if (vector[i][RE] < result)
+			result = vector[i][RE];
+	}
+	return result;
+}
+
+indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, int gradient_removal, indigo_frame_digest *c) {
 	int i, ci, li, max;
 	double (*col_x)[2];
 	double (*col_y)[2];
@@ -259,9 +268,30 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			li++;
 		}
 	}
+	
+	if (gradient_removal) {
+		int e = width - gradient_removal;
+		int mm = 0;
+		for (int i =  0; i < e; i++) {
+			mm = min_re(col_x + i, gradient_removal);
+			col_x[i][RE] -= mm;
+		}
+		for (int i =  e; i < width; i++) {
+			col_x[i][RE] -= mm;
+		}
+		e = height - gradient_removal;
+		mm = 0;
+		for (int i =  0; i < e; i++) {
+			mm = min_re(col_y + i, gradient_removal);
+			col_y[i][RE] -= mm;
+		}
+		for (int i =  e; i < height; i++) {
+			col_y[i][RE] -= mm;
+		}
+	}
 //	printf("col_x:");
-//	for (i=0; i < fdigest->width; i++) {
-//		printf(" %5.2f",col_x[i][RE]);
+//	for (i=0; i < c->width; i++) {
+//		printf(" %5.2f\n",col_x[i][RE]);
 //	}
 //	printf("\n");
 //	printf("col_y:");

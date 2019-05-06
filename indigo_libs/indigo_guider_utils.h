@@ -32,7 +32,7 @@ typedef struct {
 } indigo_frame_digest;
 
 extern indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c);
-extern indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *fdigest);
+extern indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, int gradient_removal, indigo_frame_digest *fdigest);
 extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
