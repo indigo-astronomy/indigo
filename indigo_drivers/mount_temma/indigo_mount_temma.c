@@ -228,7 +228,8 @@ static void temma_close(indigo_device *device) {
 
 static void temma_set_lst(indigo_device *device) {
 	char buffer[128];
-	double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	time_t utc = indigo_get_mount_utc(device);
+	double lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	sprintf(buffer, "T%.2d%.2d%.2d", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
 	temma_command(device, buffer, false);
 }
@@ -372,7 +373,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 			char buffer[128];
-			int ra = (indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value) * 3600;
+			time_t utc = indigo_get_mount_utc(device);
+			int ra = (indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value) * 3600;
 			if (ra < 0)
 				ra += 24 * 3600;
 			int ra_h = ra / 3600;

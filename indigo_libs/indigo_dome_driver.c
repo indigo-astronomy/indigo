@@ -306,7 +306,7 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 		double threshold = DOME_SYNC_THRESHOLD_ITEM->number.value;
 		static double az_prev = 0;
 		double az_now;
-		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+		double lst = indigo_lst(NULL, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
 		az_now = indigo_dome_solve_azimuth (
 			ha,

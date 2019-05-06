@@ -538,7 +538,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_PARK_SET_DEFAULT_ITEM->sw.value = false;
 		} else if (MOUNT_PARK_SET_CURRENT_ITEM->sw.value) {
 			double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-			MOUNT_PARK_POSITION_HA_ITEM->number.value = indigo_lst(lng) - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+			time_t utc = indigo_get_mount_utc(device);
+			MOUNT_PARK_POSITION_HA_ITEM->number.value = indigo_lst(&utc, lng) - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			MOUNT_PARK_POSITION_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			MOUNT_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_POSITION_PROPERTY, NULL);
@@ -567,7 +568,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_HOME_SET_DEFAULT_ITEM->sw.value = false;
 		} else if (MOUNT_HOME_SET_CURRENT_ITEM->sw.value) {
 			double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-			MOUNT_HOME_POSITION_HA_ITEM->number.value = indigo_lst(lng) - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+			time_t utc = indigo_get_mount_utc(device);
+			MOUNT_HOME_POSITION_HA_ITEM->number.value = indigo_lst(&utc, lng) - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			MOUNT_HOME_POSITION_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			MOUNT_HOME_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_HOME_POSITION_PROPERTY, NULL);
@@ -609,7 +611,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 				indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 				int index = MOUNT_CONTEXT->alignment_point_count++;
 				indigo_alignment_point *point = MOUNT_CONTEXT->alignment_points + index;
-				point->lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+				time_t utc = indigo_get_mount_utc(device);
+				point->lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 				point->ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 				point->dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 				point->raw_ra = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
@@ -961,7 +964,8 @@ indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double 
 		*raw_dec = dec;
 		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value || MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
-		double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+		time_t utc = indigo_get_mount_utc(device);
+		double lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = indigo_range24(lst - ra);
 		if (ha > 12.0)
 			ha -= 24.0;
@@ -1034,7 +1038,8 @@ indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, dou
 		*dec = raw_dec;
 		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value || MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
-		double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+		time_t utc = indigo_get_mount_utc(device);
+		double lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = indigo_range24(lst - raw_ra);
 		if (ha > 12.0)
 			ha -= 24.0;
@@ -1101,6 +1106,13 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 	return INDIGO_FAILED;
 }
 
+time_t indigo_get_mount_utc(indigo_device *device) {
+	if (MOUNT_UTC_TIME_PROPERTY && (MOUNT_UTC_TIME_PROPERTY->hidden == false))
+		return (time_t)MOUNT_UTC_ITEM->number.value;
+	else
+		return time(NULL);
+}
+
 void indigo_update_coordinates(indigo_device *device, const char *message) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 	if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
@@ -1108,6 +1120,7 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
 		indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	}
-	MOUNT_LST_TIME_ITEM->number.value = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	time_t utc = indigo_get_mount_utc(device);
+	MOUNT_LST_TIME_ITEM->number.value = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 }
