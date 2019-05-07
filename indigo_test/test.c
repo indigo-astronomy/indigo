@@ -28,10 +28,8 @@
 #include "indigo_client.h"
 #include "ccd_simulator/indigo_ccd_simulator.h"
 
-#include "indigo_json.h"
-#include "indigo_driver_json.h"
 
-#define CCD_SIMULATOR "CCD Imager Simulator"
+#define CCD_SIMULATOR "CCD Imager Simulator @ indigosky"
 
 static bool connected = false;
 
@@ -42,17 +40,20 @@ static indigo_result test_attach(indigo_client *client) {
 }
 
 static indigo_result test_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		indigo_device_connect(client, CCD_SIMULATOR);
 		return INDIGO_OK;
 	}
+	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
+	}
 	return INDIGO_OK;
 }
 
 static indigo_result test_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
@@ -81,6 +82,7 @@ static indigo_result test_update_property(indigo_client *client, indigo_device *
 		return INDIGO_OK;
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		indigo_populate_http_blob_item(&property->items[0]);
 		indigo_log("image received (%d bytes)...", property->items[0].blob.size);
 		indigo_device_disconnect(client, CCD_SIMULATOR);
 	}
@@ -89,7 +91,6 @@ static indigo_result test_update_property(indigo_client *client, indigo_device *
 
 static indigo_result test_detach(indigo_client *client) {
 	indigo_log("detached from INDI bus...");
-	exit(0);
 	return INDIGO_OK;
 }
 
@@ -108,15 +109,13 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_start();
+	indigo_set_log_level(INDIGO_LOG_INFO);
 
-	indigo_client *protocol_adapter = indigo_json_device_adapter(0, 1, 0);
-	indigo_attach_client(protocol_adapter);
-
-	indigo_driver_entry *driver;
-	indigo_add_driver(&indigo_ccd_simulator, true, &driver);
+	indigo_server_entry *server;
+	indigo_connect_server("indigosky", "192.168.1.40", 7624, &server); // Check IP adress!!!
 	indigo_attach_client(&test);
-	sleep(1000);
-	indigo_remove_driver(driver);
+	sleep(10);
+	indigo_disconnect_server(server);
 	indigo_stop();
 	return 0;
 }
