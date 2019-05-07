@@ -21,12 +21,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <unistd.h>
+#endif
 #include "indigo_bus.h"
 #include "indigo_client.h"
-#include "ccd_simulator/indigo_ccd_simulator.h"
+
 
 
 #define CCD_SIMULATOR "CCD Imager Simulator @ indigosky"
@@ -114,7 +115,12 @@ int main(int argc, const char * argv[]) {
 	indigo_server_entry *server;
 	indigo_connect_server("indigosky", "192.168.1.40", 7624, &server); // Check IP adress!!!
 	indigo_attach_client(&test);
-	sleep(10);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+  sleep(10);
+#endif
+#if defined(INDIGO_WINDOWS)
+  Sleep(10);
+#endif
 	indigo_disconnect_server(server);
 	indigo_stop();
 	return 0;
