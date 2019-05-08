@@ -25,6 +25,9 @@
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <unistd.h>
 #endif
+#if defined(INDIGO_WINDOWS)
+#include <windows.h>
+#endif
 #include "indigo_bus.h"
 #include "indigo_client.h"
 
@@ -119,7 +122,7 @@ int main(int argc, const char * argv[]) {
   sleep(10);
 #endif
 #if defined(INDIGO_WINDOWS)
-  Sleep(10);
+  Sleep(10000);
 #endif
 	indigo_disconnect_server(server);
 	indigo_stop();

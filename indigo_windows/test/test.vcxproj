@@ -20,21 +20,41 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_test\test.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_base64.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_bus.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_client.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_client_xml.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_io.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_version.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_xml.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\indigo_libs\indigo_base64.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo_base64_luts.h" />
     <ClInclude Include="..\..\indigo_libs\indigo_bus.h" />
     <ClInclude Include="..\..\indigo_libs\indigo_client.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo_client_xml.h" />
     <ClInclude Include="..\..\indigo_libs\indigo_config.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_names.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo_io.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo_version.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo_xml.h" />
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\pthread.h" />
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\sched.h" />
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\semaphore.h" />
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\_ptw32.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\indigo_client\indigo_client.vcxproj">
-      <Project>{5502c713-37d8-4fc1-95c6-d8a1ba1f1694}</Project>
-    </ProjectReference>
+    <Library Include="..\indigo_client\externals\pthreads4w\lib\libpthreadVC3.lib" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -114,9 +134,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>
-      </AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\indigo_client\externals\pthreads4w\lib;..\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>

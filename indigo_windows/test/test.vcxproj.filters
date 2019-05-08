@@ -5,44 +5,80 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="indigo">
+      <UniqueIdentifier>{cfaca15f-7fa8-4692-83e3-ee638fb15acc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_test\test.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_base64.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_bus.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_client.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_client_xml.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_io.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_version.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_xml.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\indigo_libs\indigo_client.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\indigo_client\externals\pthreads4w\include\_ptw32.h">
+      <Filter>indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo_base64.h">
+      <Filter>indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo_base64_luts.h">
+      <Filter>indigo</Filter>
     </ClInclude>
     <ClInclude Include="..\..\indigo_libs\indigo_bus.h">
-      <Filter>Header Files</Filter>
+      <Filter>indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo_client.h">
+      <Filter>indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo_client_xml.h">
+      <Filter>indigo</Filter>
     </ClInclude>
     <ClInclude Include="..\..\indigo_libs\indigo_config.h">
-      <Filter>Header Files</Filter>
+      <Filter>indigo</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_names.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\..\indigo_libs\indigo_io.h">
+      <Filter>indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo_version.h">
+      <Filter>indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo_xml.h">
+      <Filter>indigo</Filter>
     </ClInclude>
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\pthread.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\indigo_client\externals\pthreads4w\include\_ptw32.h">
-      <Filter>Header Files</Filter>
+      <Filter>indigo</Filter>
     </ClInclude>
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\sched.h">
-      <Filter>Header Files</Filter>
+      <Filter>indigo</Filter>
     </ClInclude>
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\semaphore.h">
-      <Filter>Header Files</Filter>
+      <Filter>indigo</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\indigo_client\externals\pthreads4w\lib\libpthreadVC3.lib">
+      <Filter>indigo</Filter>
+    </Library>
   </ItemGroup>
 </Project>
