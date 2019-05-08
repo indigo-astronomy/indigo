@@ -557,9 +557,6 @@ indigo_result indigo_stop() {
 			if (client != NULL && client->detach != NULL)
 				client->last_result = client->detach(client);
 		}
-#if defined(INDIGO_WINDOWS)
-    WSACleanup();
-#endif
 		pthread_mutex_unlock(&client_mutex);
 	}
 	return INDIGO_OK;
