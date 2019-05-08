@@ -319,6 +319,11 @@ indigo_result indigo_start() {
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
 		is_started = true;
 	}
+#if defined(INDIGO_WINDOWS)
+  WORD version_requested = MAKEWORD(1, 1);
+  WSADATA data;
+  WSAStartup(version_requested, &data);
+#endif
 	pthread_mutex_unlock(&client_mutex);
 	return INDIGO_OK;
 }
@@ -552,6 +557,9 @@ indigo_result indigo_stop() {
 			if (client != NULL && client->detach != NULL)
 				client->last_result = client->detach(client);
 		}
+#if defined(INDIGO_WINDOWS)
+    WSACleanup();
+#endif
 		pthread_mutex_unlock(&client_mutex);
 	}
 	return INDIGO_OK;
