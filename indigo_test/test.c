@@ -117,7 +117,7 @@ int main(int argc, const char * argv[]) {
 
 	indigo_server_entry *server;
 #if defined(INDIGO_WINDOWS)
-  indigo_connect_server("indigosky", "indigosky", 7624, &server); // Check correct host name in 2nd arg!!!
+  indigo_connect_server("indigosky", "192.168.1.52", 7624, &server); // Check correct host name in 2nd arg!!!
 #else
   indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
 #endif
