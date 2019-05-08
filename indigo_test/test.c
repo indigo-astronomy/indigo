@@ -135,7 +135,7 @@ int main(int argc, const char * argv[]) {
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
 	
 	indigo_server_entry *server;
-	indigo_connect_server("indigosky", "192.168.1.40", 7624, &server); // Check correct host name in 2nd arg!!!
+	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
 	indigo_attach_client(&test);
 	while (count > 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
