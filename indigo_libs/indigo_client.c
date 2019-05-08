@@ -334,6 +334,9 @@ static void *server_thread(indigo_server_entry *server) {
       char  url[INDIGO_NAME_SIZE];
       snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
       INDIGO_LOG(indigo_log("Server %s:%d (%s, %s) connected", server->host, server->port, server->name, url));
+#if defined(INDIGO_WINDOWS)
+			indigo_send_message(server->protocol_adapter, "connected");
+#endif
       server->protocol_adapter = indigo_xml_client_adapter(server->name, url, server->socket, server->socket);
       indigo_attach_device(server->protocol_adapter);
       indigo_xml_parse(server->protocol_adapter, NULL);
@@ -343,6 +346,9 @@ static void *server_thread(indigo_server_entry *server) {
       server->protocol_adapter = NULL;
       reset_socket(server, 0);
       INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
+#if defined(INDIGO_WINDOWS)
+			indigo_send_message(server->protocol_adapter, "disconnected");
+#endif
     } else if (server->socket == 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
       sleep(5);
