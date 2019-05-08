@@ -179,8 +179,12 @@ void indigo_log_message(const char *format, va_list args) {
 			if (indigo_main_argc == 0) {
 				strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
 			} else {
-				char *name = strrchr(indigo_main_argv[0], '/');
-				if (name != NULL) {
+#if defined(INDIGO_WINDOWS)
+        char *name = strrchr(indigo_main_argv[0], '\\');
+#else
+        char *name = strrchr(indigo_main_argv[0], '/');
+#endif
+        if (name != NULL) {
 					name++;
 				} else {
 					name = (char *)indigo_main_argv[0];

@@ -348,7 +348,7 @@ static void *server_thread(indigo_server_entry *server) {
       sleep(5);
 #endif
 #if defined(INDIGO_WINDOWS)
-      Sleep(5);
+      Sleep(5000);
 #endif
     }
   }
