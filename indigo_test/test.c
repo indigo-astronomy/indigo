@@ -27,15 +27,15 @@
 #endif
 #if defined(INDIGO_WINDOWS)
 #include <windows.h>
+#pragma warning(disable:4996)
 #endif
 #include "indigo_bus.h"
 #include "indigo_client.h"
 
-
-
 #define CCD_SIMULATOR "CCD Imager Simulator @ indigosky"
 
 static bool connected = false;
+static int count = 10;
 
 static indigo_result test_attach(indigo_client *client) {
 	indigo_log("attached to INDI bus...");
@@ -53,19 +53,24 @@ static indigo_result test_define_property(indigo_client *client, indigo_device *
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
 	}
+	if (!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
+		static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
+		static bool values[] = { true };
+		indigo_change_switch_property(client, CCD_SIMULATOR, CCD_IMAGE_FORMAT_PROPERTY_NAME, 1, items, values);
+	}
 	return INDIGO_OK;
 }
 
 static indigo_result test_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
+	static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+	static double values[] = { 3.0 };
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			if (!connected) {
 				connected = true;
 				indigo_log("connected...");
-				static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
-				static double values[] = { 3.0 };
 				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 			}
 		} else {
@@ -77,18 +82,29 @@ static indigo_result test_update_property(indigo_client *client, indigo_device *
 		}
 		return INDIGO_OK;
 	}
+	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		if (indigo_populate_http_blob_item(&property->items[0])) {
+			indigo_log("image URL received (%s, %d bytes)...", property->items[0].blob.url, property->items[0].blob.size);
+			char name[32];
+			sprintf(name, "img_%02d.fits", count);
+			FILE *f = fopen(name, "wb");
+			fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
+			fclose(f);
+			indigo_log("image saved to %s...", name);
+		}
+	}
 	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_BUSY_STATE) {
 			indigo_log("exposure %gs...", property->items[0].number.value);
 		} else if (property->state == INDIGO_OK_STATE) {
 			indigo_log("exposure done...");
+			if (--count > 0) {
+				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+			} else {
+				indigo_device_disconnect(client, CCD_SIMULATOR);
+			}
 		}
 		return INDIGO_OK;
-	}
-	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-		indigo_populate_http_blob_item(&property->items[0]);
-		indigo_log("image received (%d bytes)...", property->items[0].blob.size);
-		indigo_device_disconnect(client, CCD_SIMULATOR);
 	}
 	return INDIGO_OK;
 }
@@ -108,26 +124,27 @@ static indigo_client test = {
 	test_detach
 };
 
-
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
+#if defined(INDIGO_WINDOWS)
+	//freopen("indigo.log", "w", stderr);
+#endif
+	
 	indigo_start();
-	indigo_set_log_level(INDIGO_LOG_INFO);
-
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	
 	indigo_server_entry *server;
-#if defined(INDIGO_WINDOWS)
-  indigo_connect_server("indigosky", "indigosky", 7624, &server); // Check correct host name in 2nd arg!!!
-#else
-  indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
-#endif
+	indigo_connect_server("indigosky", "192.168.1.40", 7624, &server); // Check correct host name in 2nd arg!!!
 	indigo_attach_client(&test);
+	while (count > 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-  sleep(10);
+		sleep(1);
 #endif
 #if defined(INDIGO_WINDOWS)
-  Sleep(10000);
+		Sleep(1000);
 #endif
+	}
 	indigo_disconnect_server(server);
 	indigo_stop();
 	return 0;
