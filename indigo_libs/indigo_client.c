@@ -308,7 +308,7 @@ static void *server_thread(indigo_server_entry *server) {
     reset_socket(server, 0);
 		struct addrinfo hints = { 0 }, *address = NULL;
 		int result;
-		hints.ai_family = AF_UNSPEC;
+		hints.ai_family = AF_INET;
 		if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
 			INDIGO_LOG(indigo_error("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
 			strncpy(server->last_error, gai_strerror(result), sizeof(server->last_error));
