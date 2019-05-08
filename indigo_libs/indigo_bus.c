@@ -806,8 +806,10 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		goto clean_return;
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-	if (res < 0)
+	if (res < 0) {
+		res = false;
 		goto clean_return;
+	}
 
 	count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if ((count != 2) || (http_result != 200)){
@@ -826,8 +828,10 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	do {
 		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-		if (res < 0)
+		if (res < 0) {
+			res = false;
 			goto clean_return;
+		}
 		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		count = sscanf(http_line, "Content-Length: %20ld[^\n]", &content_len);
 	} while (http_line[0] != '\0');
@@ -845,7 +849,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	}
 
 	clean_return:
-	INDIGO_DEBUG(indigo_debug("%s() = %d", __FUNCTION__, res));
+	INDIGO_DEBUG(indigo_debug("%s() -> %s", __FUNCTION__, res ? "OK" : "Failed"));
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	shutdown(socket, SHUT_RDWR);
 	close(socket);
