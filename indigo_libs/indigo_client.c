@@ -412,6 +412,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 #endif
     if (rc != 0) {
       INDIGO_LOG(indigo_error("Can't shutdown socket (%s)", strerror(rc)));
+			pthread_mutex_unlock(&mutex);
       return INDIGO_FAILED;
     }
 	}
