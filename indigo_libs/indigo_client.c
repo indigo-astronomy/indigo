@@ -411,16 +411,11 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
   pthread_mutex_lock(&mutex);
 	if (server->socket > 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-      int rc = shutdown(server->socket, SHUT_RDWR);
+      shutdown(server->socket, SHUT_RDWR);
 #endif
 #if defined(INDIGO_WINDOWS)
-      int rc = shutdown(server->socket, SD_BOTH);
+      shutdown(server->socket, SD_BOTH);
 #endif
-    if (rc != 0) {
-      INDIGO_LOG(indigo_error("Can't shutdown socket (%s)", strerror(rc)));
-			pthread_mutex_unlock(&mutex);
-      return INDIGO_FAILED;
-    }
 	}
   reset_socket(server, -1);
   pthread_mutex_unlock(&mutex);
