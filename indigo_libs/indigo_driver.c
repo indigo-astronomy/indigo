@@ -654,14 +654,14 @@ time_t indigo_utc(time_t *ltime) {
 	return timegm(&tm_now);
 }
 */
-void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len) {
+void indigo_timetoisogm(time_t tstamp, char *isotime, int isotime_len) {
 	struct tm tm_stamp;
 
 	gmtime_r(&tstamp, &tm_stamp);
 	strftime(isotime, isotime_len, "%Y-%m-%dT%H:%M:%S", &tm_stamp);
 }
 
-time_t indigo_isototime(char *isotime) {
+time_t indigo_isogmtotime(char *isotime) {
 	struct tm tm_ts;
 
 	memset(&tm_ts, 0, sizeof(tm_ts));
@@ -674,7 +674,7 @@ time_t indigo_isototime(char *isotime) {
 	return -1;
 }
 
-void indigo_localtimetoiso(time_t tstamp, char *isotime, int isotime_len) {
+void indigo_timetoisolocal(time_t tstamp, char *isotime, int isotime_len) {
 	struct tm tm_stamp;
 
 	localtime_r(&tstamp, &tm_stamp);
@@ -683,7 +683,7 @@ void indigo_localtimetoiso(time_t tstamp, char *isotime, int isotime_len) {
 	snprintf(isotime, isotime_len, "%04d-%02d-%02dT%02d:%02d:%02d", tm_stamp.tm_year + 1900, tm_stamp.tm_mon + 1, tm_stamp.tm_mday, tm_stamp.tm_hour, tm_stamp.tm_min, tm_stamp.tm_sec);
 }
 
-time_t indigo_isotolocaltime(char *isotime) {
+time_t indigo_isolocaltotime(char *isotime) {
 	struct tm tm_ts;
 
 	memset(&tm_ts, 0, sizeof(tm_ts));

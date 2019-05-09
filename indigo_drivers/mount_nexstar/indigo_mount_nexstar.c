@@ -300,7 +300,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 
 
 static void mount_handle_utc(indigo_device *device) {
-	time_t utc_time = indigo_isotolocaltime(MOUNT_UTC_ITEM->text.value);
+	time_t utc_time = indigo_isolocaltotime(MOUNT_UTC_ITEM->text.value);
 	if (utc_time == -1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -469,7 +469,7 @@ static void position_timer_callback(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 
-	indigo_localtimetoiso(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+	indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 	snprintf(MOUNT_UTC_OFFEST_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 
