@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -300,7 +300,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 
 
 static void mount_handle_utc(indigo_device *device) {
-	time_t utc_time = indigo_isolocaltotime(MOUNT_UTC_ITEM->text.value);
+	time_t utc_time = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
 	if (utc_time == -1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -311,7 +311,7 @@ static void mount_handle_utc(indigo_device *device) {
 	int offset = atoi(MOUNT_UTC_OFFEST_ITEM->text.value);
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	/* set mount time to local time */
-	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time + (3600 * offset), offset, 0);
+	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, offset, 0);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
