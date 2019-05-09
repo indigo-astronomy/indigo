@@ -277,7 +277,7 @@ int tc_goto_in_progress(int dev) {
 	if (reply[0]=='0') return 0;
 
 	return RC_FAILED;
-} 
+}
 
 int tc_goto_cancel(int dev) {
 	char reply;
@@ -291,7 +291,7 @@ int tc_goto_cancel(int dev) {
 	if (reply=='#') return RC_OK;
 
 	return RC_FAILED;
-} 
+}
 
 int tc_echo(int dev, char ch) {
 	char buf[2];
@@ -580,8 +580,9 @@ time_t tc_get_time(int dev, time_t *ttime, int *tz, int *dst) {
 	*tz = (int)reply[6];
 	if (*tz > 12) *tz -= 256;
 	*dst = reply[7];
-
+	tms.tm_gmtoff = (tms.tm_isdst + *tz) * 3600;
 	*ttime = mktime(&tms);
+	// printf("%s() %d %d:%d:%d %d %d\n", __FUNCTION__, *ttime, tms.tm_hour, tms.tm_min, tms.tm_sec, tms.tm_gmtoff, tms.tm_isdst);
 	return *ttime;
 }
 
@@ -591,7 +592,7 @@ int tc_set_time(char dev, time_t ttime, int tz, int dst) {
 	char res;
 	int model;
 	int timezone;
-	time_t utime;
+	time_t ltime;
 
 	REQUIRE_VER(VER_2_3);
 
@@ -601,8 +602,11 @@ int tc_set_time(char dev, time_t ttime, int tz, int dst) {
 	if (dst) dst = 1;
 	else dst=0;
 
-	localtime_r(&ttime, &tms);
+	/* calculate localtime stamp so that gmtime_r will return localtime */
+	ltime = ttime + ((timezone + dst) * 3600);
+	gmtime_r(&ltime, &tms);
 
+	//printf("%s() %ld %d:%d:%d %d %d\n", __FUNCTION__, ttime, tms.tm_hour, tms.tm_min, tms.tm_sec, tms.tm_gmtoff, tms.tm_isdst);
 	cmd[0] = 'H';
 	cmd[1] = (unsigned char)tms.tm_hour;
 	cmd[2] = (unsigned char)tms.tm_min;
@@ -628,9 +632,7 @@ int tc_set_time(char dev, time_t ttime, int tz, int dst) {
 	/* If the mount has RTC set date/time to RTC too */
 	/* I only know CGE(5) and AdvancedVX(20) to have RTC */
 	if ((model = 5) || (model = 20)) {
-		/* calculate UT from localtime */
-		utime = ttime - ((timezone + dst) * 3600);
-		localtime_r(&utime, &tms);
+		gmtime_r(&ttime, &tms);
 
 		/* set year */
 		if (tc_pass_through_cmd(dev, 3, 178, 132,
@@ -872,11 +874,11 @@ int pnex2dd(char *nex, double *d1, double *d2){
 	unsigned int d2_x;
 	double d1_factor;
 	double d2_factor;
-	
+
 	sscanf(nex, "%x,%x", &d1_x, &d2_x);
 	d1_factor = d1_x / (double)0xffffffff;
 	d2_factor = d2_x / (double)0xffffffff;
-	*d1 = 360 * d1_factor; 
+	*d1 = 360 * d1_factor;
 	*d2 = 360 * d2_factor;
 	if (*d2 < -90.0001) *d2 += 360;
 	if (*d2 > 90.0001) *d2 -= 360;
@@ -889,11 +891,11 @@ int nex2dd(char *nex, double *d1, double *d2){
 	unsigned int d2_x;
 	double d1_factor;
 	double d2_factor;
-	
+
 	sscanf(nex, "%x,%x", &d1_x, &d2_x);
 	d1_factor = d1_x / 65536.0;
 	d2_factor = d2_x / 65536.0;
-	*d1 = 360 * d1_factor; 
+	*d1 = 360 * d1_factor;
 	*d2 = 360 * d2_factor;
 	if (*d2 < -90.0001) *d2 += 360;
 	if (*d2 > 90.0001) *d2 -= 360;
@@ -909,7 +911,7 @@ int dd2nex(double d1, double d2, char *nex) {
 		d2 = d2 + 360;
 	}
 	//printf("%f *** %f\n" ,d1,d2);
-	
+
 	double d2_factor = d2 / 360.0;
 	double d1_factor = d1 / 360.0;
 	unsigned short int nex1 = (unsigned short int)(d1_factor*65536);
@@ -927,7 +929,7 @@ int dd2pnex(double d1, double d2, char *nex) {
 		d2 = d2 + 360;
 	}
 	//printf("%f *** %f\n" ,d1,d2);
-	
+
 	double d2_factor = d2 / 360.0;
 	double d1_factor = d1 / 360.0;
 	unsigned int nex1 = (unsigned)(d1_factor*(0xffffffff));
