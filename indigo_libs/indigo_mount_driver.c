@@ -1108,7 +1108,7 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 
 time_t indigo_get_mount_utc(indigo_device *device) {
 	if (MOUNT_UTC_TIME_PROPERTY && (MOUNT_UTC_TIME_PROPERTY->hidden == false)) {
-		return indigo_isototime(MOUNT_UTC_ITEM->text.value);
+		return indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
 	} else {
 		return time(NULL);
 	}
