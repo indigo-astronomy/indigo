@@ -151,7 +151,13 @@ Vue.component('indigo-edit-number-60', {
 			for (var i in this.property.items) {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
-					item.newValue = stod(value);
+					if (self.ident != null) {
+						item.newValue = stod(value);
+					} else {
+						var values = {}
+						values[item.name] = stod(value)
+						changeProperty(this.property.device, this.property.name, values);
+					}
 					return;
 				}
 			}
@@ -257,6 +263,39 @@ Vue.component('indigo-show-number-60', {
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
 				<small v-if="icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
 				<small v-else class="ml-1 p-1">{{icon}}</small>
+				<small class="mr-2 p-1">{{value()}}</small>
+			</div>
+		</div>`
+});
+
+Vue.component('indigo-show-text', {
+	props: {
+		property: Object,
+		name: String,
+		icon: String,
+		cls: String
+	},
+	methods: {
+		state: function() {
+			return this.property.state.toLowerCase() + "-state";
+		},
+		value: function() {
+			if (this.property == null)
+				return null;
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.name == this.name)
+					return item.value;
+			}
+			return null;
+		}
+	},
+	template: `
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')">
+			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
+				<small v-if="icon != null && icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
+				<small v-else-if="icon != null" class="ml-1 p-1">{{icon}}</small>
+				<small v-else class="ml-1 p-1"></small>
 				<small class="mr-2 p-1">{{value()}}</small>
 			</div>
 		</div>`

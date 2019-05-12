@@ -1619,11 +1619,11 @@
 
 /** DOME_AUTO_SYNC.ENABLE property item name.
  */
-#define DOME_AUTO_SYNC_ENABLE_ITEM_NAME							"ENABLE"
+#define DOME_AUTO_SYNC_ENABLE_ITEM_NAME							"ENABLED"
 
 /** DOME_AUTO_SYNC.DISABLE property item name.
  */
-#define DOME_AUTO_SYNC_DISABLE_ITEM_NAME							"DISABLE"
+#define DOME_AUTO_SYNC_DISABLE_ITEM_NAME							"DISABLED"
 
 //----------------------------------------------------------------------
 /** DOME_SYNC_PARAMETERS property name.

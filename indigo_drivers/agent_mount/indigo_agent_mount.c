@@ -148,10 +148,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_SITE_DATA_SOURCE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SITE_DATA_SOURCE_PROPERTY_NAME, "Agent", "Location coordinates source", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AGENT_SITE_DATA_SOURCE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_HOST_ITEM, AGENT_SITE_DATA_SOURCE_HOST_ITEM_NAME, "Host", true);
-		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_MOUNT_ITEM, AGENT_SITE_DATA_SOURCE_MOUNT_ITEM_NAME, "Mount", false);
-		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_DOME_ITEM, AGENT_SITE_DATA_SOURCE_DOME_ITEM_NAME, "Dome", false);
-		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "GPS", false);
+		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_HOST_ITEM, AGENT_SITE_DATA_SOURCE_HOST_ITEM_NAME, "Use agent coordinates", true);
+		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_MOUNT_ITEM, AGENT_SITE_DATA_SOURCE_MOUNT_ITEM_NAME, "Use mount coordinates", false);
+		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_DOME_ITEM, AGENT_SITE_DATA_SOURCE_DOME_ITEM_NAME, "Use dome coordinates", false);
+		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "Use GPS coordinates", false);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -213,11 +213,11 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->mount_latitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->mount_latitude = property->items[i].number.value;
 				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->mount_longitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->mount_longitude = property->items[i].number.value;
 				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->mount_elevation = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->mount_elevation = property->items[i].number.value;
 			}
 			if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[1].sw.value)
 			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
@@ -226,12 +226,30 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				indigo_property *eq_property = indigo_init_number_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 				for (int i = 0; i < property->count; i++) {
 					if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
-					indigo_init_number_item(eq_property->items + 0, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
+						indigo_init_number_item(eq_property->items + 0, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
 					else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
-					indigo_init_number_item(eq_property->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
+						indigo_init_number_item(eq_property->items + 1, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
 				}
 				indigo_change_property(FILTER_CLIENT_CONTEXT->client, eq_property);
 				indigo_release_property(eq_property);
+			}
+		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+			if (CLIENT_PRIVATE_DATA->do_sync && *FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
+				indigo_property *park_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+				indigo_property *shutter_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_SHUTTER_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+				for (int i = 0; i < property->count; i++) {
+					if (!strcmp(property->items[i].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
+						indigo_init_switch_item(park_property->items + 0, DOME_PARK_PARKED_ITEM_NAME, NULL, property->items[i].sw.value);
+						indigo_init_switch_item(shutter_property->items + 0, DOME_SHUTTER_CLOSED_ITEM_NAME, NULL, property->items[i].sw.value);
+					} else if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
+						indigo_init_switch_item(park_property->items + 1, DOME_PARK_UNPARKED_ITEM_NAME, NULL, property->items[i].sw.value);
+						indigo_init_switch_item(shutter_property->items + 1, DOME_SHUTTER_OPENED_ITEM_NAME, NULL, property->items[i].sw.value);
+					}
+				}
+				indigo_change_property(FILTER_CLIENT_CONTEXT->client, park_property);
+				indigo_change_property(FILTER_CLIENT_CONTEXT->client, shutter_property);
+				indigo_release_property(park_property);
+				indigo_release_property(shutter_property);
 			}
 		}
 	}
@@ -239,18 +257,18 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->dome_latitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->dome_latitude = property->items[i].number.value;
 				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->dome_longitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->dome_longitude = property->items[i].number.value;
 				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->dome_elevation = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->dome_elevation = property->items[i].number.value;
 			}
 			if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[2].sw.value)
-			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+				set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
 		} else if (!strcmp(property->name, DOME_AUTO_SYNC_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, DOME_AUTO_SYNC_ENABLE_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->do_sync = property->items[i].sw.value;
+					CLIENT_PRIVATE_DATA->do_sync = property->items[i].sw.value;
 			}
 		}
 	}
@@ -258,14 +276,14 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->gps_latitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->gps_latitude = property->items[i].number.value;
 				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->gps_longitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->gps_longitude = property->items[i].number.value;
 				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME))
-				CLIENT_PRIVATE_DATA->gps_elevation = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->gps_elevation = property->items[i].number.value;
 			}
 			if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[3].sw.value)
-			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+				set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
 		}
 	}
 }
