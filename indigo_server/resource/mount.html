@@ -43,6 +43,15 @@
 				<template v-else>
 					<div class="row no-gutters">
 						<div class="col-sm-4" style="min-width:360px">
+							<template v-if="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE') != null">
+								<div class="card p-1 m-1 bg-light">
+									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE')"></indigo-select-item>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'"></indigo-edit-number-60>
+									</div>
+								</div>
+							</template>
 							<template v-if="findProperty('Mount Agent', 'FILTER_MOUNT_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
@@ -131,6 +140,26 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block">
 										<indigo-query-db :container="db"></indigo-query-db>
+									</div>
+								</div>
+							</template>
+							<template v-if="findProperty('Mount Agent', 'FILTER_DOME_LIST') != null">
+								<div class="card p-1 m-1 bg-light">
+									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_DOME_LIST')"></indigo-select-item>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'"></indigo-show-number-60>
+									</div>
+								</div>
+							</template>
+							<template v-if="findProperty('Mount Agent', 'FILTER_GPS_LIST') != null">
+								<div class="card p-1 m-1 bg-light">
+									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_GPS_LIST')"></indigo-select-item>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'"></indigo-show-number-60>
+										<indigo-show-number :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'ELEVATION'" :icon="'↑'"></indigo-show-number>
 									</div>
 								</div>
 							</template>
@@ -492,6 +521,9 @@
 
 		function onDefineProperty(property) {
 			if (property.device == "Mount Agent") {
+				if (property.name == "FILTER_MOUNT_LIST" && property.state == "Ok") {
+					updateMap();
+				}
 				if (property.name == "GEOGRAPHIC_COORDINATES" && property.state == "Ok") {
 					updateMap();
 				}
@@ -499,6 +531,11 @@
 					currentCoordinates = [h2deg(property.item("RA").value), property.item("DEC").value];
 					targetCoordinates = [h2deg(property.item("RA").target), property.item("DEC").target];
 					updateMap();
+				}
+				if (property.name == "DOME_AUTO_SYNC") {
+					values = {};
+					values["ENABLED"] = true;
+					changeProperty(property.device, property.name, values);
 				}
 			}
 		}

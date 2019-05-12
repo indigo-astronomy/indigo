@@ -131,13 +131,13 @@ extern "C" {
  */
 #define DOME_SHUTTER_PROPERTY								(DOME_CONTEXT->dome_shutter_property)
 
-/** DOME_SHUTTER.OPENED property item pointer.
- */
-#define DOME_SHUTTER_OPENED_ITEM							(DOME_SHUTTER_PROPERTY->items+0)
-
 /** DOME_SHUTTER.CLOSED property item pointer.
  */
-#define DOME_SHUTTER_CLOSED_ITEM							(DOME_SHUTTER_PROPERTY->items+1)
+#define DOME_SHUTTER_CLOSED_ITEM							(DOME_SHUTTER_PROPERTY->items+0)
+	
+/** DOME_SHUTTER.OPENED property item pointer.
+ */
+#define DOME_SHUTTER_OPENED_ITEM							(DOME_SHUTTER_PROPERTY->items+1)
 
 /** DOME_PARK property pointer, property is optional, property change request should be fully handled by device driver.
  */
