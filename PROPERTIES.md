@@ -29,6 +29,11 @@ properties are first of all defined memory structures which are, if needed, mapp
 <tr><td>PROFILE</td><td>switch</td><td>no</td><td>yes</td><td>PROFILE_0,...</td><td>yes</td><td>Select the profile number for subsequent CONFIG operation</td></tr>
 <tr><td>DEVICE_PORT</td><td>text</td><td>no</td><td>no</td><td>PORT</td><td>no</td><td>Either device path like "/dev/tty0" or URL like "lx200://host:port".</td></tr>
 <tr><td>DEVICE_PORTS</td><td>switch</td><td>no</td><td>no</td><td>valid serial port name</td><td></td><td>When selected, it is copied to DEVICE_PORT property.</td></tr>
+<tr><td>GEOGRAPHIC_COORDINATES</td><td>number</td><td>no</td><td>yes</td><td>LATITUDE</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>LONGITUDE</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>ELEVATION</td><td>yes</td><td></td></tr>
+<tr><td>UTC_TIME</td><td>number</td><td></td><td>no</td><td>TIME</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OFFSET</td><td>yes</td><td></td></tr>
 </table>
 
 
@@ -139,12 +144,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 <tr><td>MOUNT_INFO</td><td>text</td><td>no</td><td>no</td><td>MODEL</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>VENDOR</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>FIRMWARE_VERSION</td><td>yes</td><td></td></tr>
-<tr><td>MOUNT_GEOGRAPHIC_COORDINATES</td><td>number</td><td>no</td><td>yes</td><td>LATITUDE</td><td>yes</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td>LONGITUDE</td><td>yes</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td>ELEVATION</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_LST_TIME</td><td>number</td><td></td><td>yes</td><td>TIME</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
-<tr><td>MOUNT_UTC_TIME</td><td>number</td><td></td><td>no</td><td>TIME</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
-<tr><td></td><td></td><td></td><td></td><td>OFFSET</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_SET_HOST_TIME</td><td>switch</td><td>no</td><td>no</td><td>SET</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_PARK</td><td>switch</td><td>no</td><td>no</td><td>PARKED</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>UNPARKED</td><td>yes</td><td></td></tr>
