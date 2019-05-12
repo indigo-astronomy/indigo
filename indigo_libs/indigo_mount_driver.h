@@ -104,7 +104,7 @@ extern "C" {
 
 /** MOUNT_UTC_TIME.OFFSET property item pointer.
  */
-#define MOUNT_UTC_OFFEST_ITEM													(MOUNT_UTC_TIME_PROPERTY->items+1)
+#define MOUNT_UTC_OFFSET_ITEM													(MOUNT_UTC_TIME_PROPERTY->items+1)
 
 //----------------------------------------------
 /** MOUNT_SET_HOST_TIME property pointer, property is optional, property change request should be fully handled by the device driver.

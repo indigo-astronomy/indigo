@@ -38,6 +38,10 @@ extern "C" {
 */
 #define DOME_MAIN_GROUP									"Dome"
 
+/** Site group name string.
+ */
+#define DOME_SITE_GROUP									"Site"
+	
 /** Device context pointer.
  */
 #define DOME_CONTEXT                					((indigo_dome_context *)device->device_context)
@@ -192,6 +196,28 @@ extern "C" {
  */
 #define DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+2)
 
+//---------------------------------------------
+/** DOME_UTC_TIME property pointer, property is optional, property change request should be fully handled by the device driver.
+*/
+#define DOME_UTC_TIME_PROPERTY												(DOME_CONTEXT->dome_utc_time_property)
+
+/** DOME_UTC_TIME.UTC property item pointer.
+*/
+#define DOME_UTC_ITEM															(DOME_UTC_TIME_PROPERTY->items+0)
+
+/** DOME_UTC_TIME.OFFSET property item pointer.
+*/
+#define DOME_UTC_OFFSET_ITEM													(DOME_UTC_TIME_PROPERTY->items+1)
+
+//----------------------------------------------
+/** DOME_SET_HOST_TIME property pointer, property is optional, property change request should be fully handled by the device driver.
+*/
+#define DOME_SET_HOST_TIME_PROPERTY									(DOME_CONTEXT->dome_set_host_time_property)
+
+/** DOME_SET_HOST_TIME.SET property item pointer.
+*/
+#define DOME_SET_HOST_TIME_ITEM											(DOME_SET_HOST_TIME_PROPERTY->items+0)
+	
 /** DOME_SNOOP_DEVICES property pointer, property is optional.
  */
 #define DOME_SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->dome_snoop_devices_property)
@@ -214,14 +240,16 @@ typedef struct {
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
 	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
-	indigo_property *dome_auto_sync_property;										///< DOME_AUTO_SYNC property pointer
-	indigo_property *dome_sync_parameters_property;									///< DOME_SYNC_PARAMETERS property pointer
+	indigo_property *dome_auto_sync_property;								///< DOME_AUTO_SYNC property pointer
+	indigo_property *dome_sync_parameters_property;					///< DOME_SYNC_PARAMETERS property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
-	indigo_property *dome_dimension_property;							///< DOME_DIMENSION property pointer
+	indigo_property *dome_dimension_property;								///< DOME_DIMENSION property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
-	indigo_property *dome_snoop_devices_property;								///< DOME_SNOOP_DEVICES property pointer
+	indigo_property *dome_utc_time_property;               	///< DOME_UTC_TIME property_pointer
+	indigo_property *dome_set_host_time_property;          	///< DOME_UTC_FROM_HOST property_pointer
+	indigo_property *dome_snoop_devices_property;						///< DOME_SNOOP_DEVICES property pointer
 	indigo_timer *sync_timer;
 } indigo_dome_context;
 

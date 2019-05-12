@@ -37,6 +37,9 @@
 #include "indigo_filter.h"
 
 static int interface_mask[INDIGO_FILTER_LIST_COUNT] = { INDIGO_INTERFACE_CCD, INDIGO_INTERFACE_WHEEL, INDIGO_INTERFACE_FOCUSER, INDIGO_INTERFACE_MOUNT, INDIGO_INTERFACE_GUIDER, INDIGO_INTERFACE_DOME, INDIGO_INTERFACE_GPS, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX };
+static char *property_name_prefix[INDIGO_FILTER_LIST_COUNT] = { "CCD_", "WHEEL_", "FOCUSER_", "MOUNT_", "GUIDER_", "DOME_", "GPS_", "AUX_1_", "AUX_2_", "AUX_3_", "AUX_4_" };
+static int property_name_prefix_len[INDIGO_FILTER_LIST_COUNT] = { 4, 6, 8, 6, 7, 5, 4, 6, 6, 6, 6 };
+static char *property_name_label[INDIGO_FILTER_LIST_COUNT] = { "CCD ", "Wheel ", "Focuser ", "Mount ", "Guider ", "Dome ", "GPS ", "AUX #1 ", "AUX #2 ", "AUX #3 ", "AUX #4 " };
 
 indigo_result indigo_filter_device_attach(indigo_device *device, unsigned version, indigo_device_interface device_interface) {
 	assert(device != NULL);
@@ -297,6 +300,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			indigo_property *copy = (indigo_property *)malloc(size);
 			memcpy(copy, property, size);
 			strcpy(copy->device, FILTER_DEVICE_CONTEXT->device_property_cache[i]->device);
+			strcpy(copy->name, FILTER_DEVICE_CONTEXT->device_property_cache[i]->name);
 			indigo_change_property(client, copy);
 			indigo_release_property(copy);
 			return INDIGO_OK;
@@ -375,6 +379,8 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 		return INDIGO_OK;
 	} else {
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
+			char *name_prefix = property_name_prefix[i];
+			int name_prefix_length = property_name_prefix_len[i];
 			if (strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[i]))
 				continue;
 			bool found = false;
@@ -385,14 +391,20 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 				}
 			}
 			if (!found) {
-				for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
-					if (device_cache[i] == NULL) {
-						device_cache[i] = property;
+				for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
+					if (device_cache[j] == NULL) {
+						device_cache[j] = property;
 						int size = sizeof(indigo_property) + property->count * sizeof(indigo_item);
 						indigo_property *copy = (indigo_property *)malloc(size);
 						memcpy(copy, property, size);
 						strcpy(copy->device, device->name);
-						agent_cache[i] = copy;
+						if (strncmp(name_prefix, copy->name, name_prefix_length)) {
+							strcpy(copy->name, name_prefix);
+							strcat(copy->name, property->name);
+							strcpy(copy->label, property_name_label[i]);
+							strcat(copy->label, property->label);
+						}
+						agent_cache[j] = copy;
 						if (copy->type == INDIGO_BLOB_VECTOR)
 							indigo_add_blob(copy);
 						indigo_define_property(device, copy, NULL);

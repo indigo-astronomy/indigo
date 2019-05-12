@@ -308,7 +308,7 @@ static void mount_handle_utc(indigo_device *device) {
 		return;
 	}
 
-	int offset = atoi(MOUNT_UTC_OFFEST_ITEM->text.value);
+	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	/* set mount time to local time */
 	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, offset, 0);
@@ -470,7 +470,7 @@ static void position_timer_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 
 	indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-	snprintf(MOUNT_UTC_OFFEST_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+	snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->position_timer);
