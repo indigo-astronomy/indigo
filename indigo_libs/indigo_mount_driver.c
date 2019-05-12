@@ -83,13 +83,13 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			MOUNT_UTC_TIME_PROPERTY->hidden = true;
 			indigo_init_text_item(MOUNT_UTC_ITEM, UTC_TIME_ITEM_NAME, "UTC Time", "0000-00-00T00:00:00");
-			indigo_init_text_item(MOUNT_UTC_OFFEST_ITEM, UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */
+			indigo_init_text_item(MOUNT_UTC_OFFSET_ITEM, UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */
 			// -------------------------------------------------------------------------------- MOUNT_UTC_FROM_HOST
 			MOUNT_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SITE_GROUP, "Set UTC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (MOUNT_SET_HOST_TIME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
-			indigo_init_switch_item(MOUNT_SET_HOST_TIME_ITEM  , MOUNT_SET_HOST_TIME_ITEM_NAME, "From host", false);
+			indigo_init_switch_item(MOUNT_SET_HOST_TIME_ITEM, MOUNT_SET_HOST_TIME_ITEM_NAME, "From host", false);
 			// -------------------------------------------------------------------------------- MOUNT_PARK
 			MOUNT_PARK_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Park", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_PARK_PROPERTY == NULL)
@@ -1107,7 +1107,7 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 }
 
 time_t indigo_get_mount_utc(indigo_device *device) {
-	if (MOUNT_UTC_TIME_PROPERTY && (MOUNT_UTC_TIME_PROPERTY->hidden == false)) {
+	if (MOUNT_UTC_TIME_PROPERTY->hidden == false) {
 		return indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
 	} else {
 		return time(NULL);

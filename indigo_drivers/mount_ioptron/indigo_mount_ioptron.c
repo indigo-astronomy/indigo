@@ -153,7 +153,7 @@ static void ieq_get_utc(indigo_device *device) {
 					tm.tm_gmtoff = atoi(response) * 60;
 					time_t secs = mktime(&tm);
 					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					sprintf(MOUNT_UTC_OFFEST_ITEM->text.value, "%g", atof(response));
+					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", atof(response));
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
@@ -166,7 +166,7 @@ static void ieq_get_utc(indigo_device *device) {
 			tm.tm_gmtoff = tz * 60;
 			time_t secs = mktime(&tm);
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			sprintf(MOUNT_UTC_OFFEST_ITEM->text.value, "%d", tz / 60);
+			sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", tz / 60);
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}

@@ -266,13 +266,15 @@
 	
 		window.onresize = function() {
 			var map = $("#map");
-			if (window.innerWidth > 750) {
-				if (window.innerHeight > 650)
-					map.css('max-height', (window.innerHeight - 180) + 'px');
-				else
-				map.css('max-height', '470px');
-			} else {
-				map.css('max-height', map.width() + 'px');
+			if (map != null && map.length > 0) {
+				if (window.innerWidth > 750) {
+					if (window.innerHeight > 650)
+						map.css('max-height', (window.innerHeight - 180) + 'px');
+					else
+					map.css('max-height', '470px');
+				} else {
+					map.css('max-height', map.width() + 'px');
+				}
 			}
 		}
 	
@@ -348,18 +350,20 @@
 
 		function followMarker() {
 			var map = $("#map");
-			if (follow == 0) {
-				var current = Celestial.mapProjection(currentCoordinates);
-				map.scrollLeft(current[0] - map.width() / 2);
-				map.scrollTop(current[1] - map.width() / 2);
-				follow = 1;
-			} else if (follow == 1) {
-				var current = Celestial.mapProjection(objectCoordinates);
-				map.scrollLeft(current[0] - map.width() / 2);
-				map.scrollTop(current[1] - map.width() / 2);
-				follow = 0;
+			if (map != null && map.length > 0) {
+				if (follow == 0) {
+					var current = Celestial.mapProjection(currentCoordinates);
+					map.scrollLeft(current[0] - map.width() / 2);
+					map.scrollTop(current[1] - map.width() / 2);
+					follow = 1;
+				} else if (follow == 1) {
+					var current = Celestial.mapProjection(objectCoordinates);
+					map.scrollLeft(current[0] - map.width() / 2);
+					map.scrollTop(current[1] - map.width() / 2);
+					follow = 0;
+				}
+				updateMap();
 			}
-			updateMap();
 		}
 	
 		function canvasClick(e) {
@@ -387,7 +391,7 @@
 	
 		function updateMap() {
 			var map = $("#map");
-			if (map != null) {
+			if (map != null && map.length > 0) {
 				var device = INDIGO.devices["Mount Agent"];
 				if (device != null) {
 					var geo_coordinates = device["GEOGRAPHIC_COORDINATES"];
