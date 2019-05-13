@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -60,6 +60,20 @@ typedef struct {
 	double gps_latitude, gps_longitude, gps_elevation;
 	bool do_sync;
 } agent_private_data;
+
+static void save_config(indigo_device *device) {
+	indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
+	indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
+	if (DEVICE_CONTEXT->property_save_file_handle) {
+		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+		close(DEVICE_CONTEXT->property_save_file_handle);
+		DEVICE_CONTEXT->property_save_file_handle = 0;
+	} else {
+		CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	CONFIG_SAVE_ITEM->sw.value = false;
+	indigo_update_property(device, CONFIG_PROPERTY, NULL);
+}
 
 static void set_site_coordinates2(indigo_device *device, int index, double latitude, double longitude, double elevation) {
 	if (*FILTER_DEVICE_CONTEXT->device_name[index]) {
@@ -154,6 +168,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "Use GPS coordinates", false);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
+		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -181,6 +196,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_SITE_DATA_SOURCE_PROPERTY, property, false);
 		set_site_coordinates(device);
 		AGENT_SITE_DATA_SOURCE_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
@@ -188,12 +204,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		set_site_coordinates(device);
 		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
+			save_config(device);
 		}
 	}
 	return indigo_filter_change_property(device, client, property);

@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -110,6 +110,20 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
+static void save_config(indigo_device *device) {
+	indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
+	indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
+	indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
+	if (DEVICE_CONTEXT->property_save_file_handle) {
+		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+		close(DEVICE_CONTEXT->property_save_file_handle);
+		DEVICE_CONTEXT->property_save_file_handle = 0;
+	} else {
+		CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	CONFIG_SAVE_ITEM->sw.value = false;
+	indigo_update_property(device, CONFIG_PROPERTY, NULL);
+}
 
 static indigo_property *cached_remote_ccd_property(indigo_device *device, char *name) {
 	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
@@ -525,6 +539,7 @@ static void calibrate_process(indigo_device *device) {
 			}
 			case DONE: {
 				indigo_send_message(device, "%s: Calibration done", GUIDER_AGENT_NAME);
+				save_config(device);
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				break;
 			}
@@ -679,6 +694,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_RMSE_DEC_ITEM, AGENT_GUIDER_STATS_RMSE_DEC_ITEM_NAME, "RMSE Dec", -1000, 1000, 0, 0);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
+		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -712,18 +728,25 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_DETECTION_MODE
 		indigo_property_copy_values(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property, false);
 		AGENT_GUIDER_DETECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_DEC_MODE_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_DEC_MODE
 		indigo_property_copy_values(AGENT_GUIDER_DEC_MODE_PROPERTY, property, false);
 		AGENT_GUIDER_DEC_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
 		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
 		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -747,6 +770,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "%s: No CCD is selected", GUIDER_AGENT_NAME);
 		}
 	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
 			abort_process(device);
@@ -758,11 +782,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, "%s: No CCD is selected", GUIDER_AGENT_NAME);
 		}
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- CONFIG
+// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
-			indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
-			indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
+			save_config(device);
+			return INDIGO_OK;
 		}
 	}
 	return indigo_filter_change_property(device, client, property);
