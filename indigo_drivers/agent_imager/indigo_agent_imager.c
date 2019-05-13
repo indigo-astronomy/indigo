@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdlib.h>
@@ -68,6 +68,19 @@ typedef struct {
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
+
+static void save_config(indigo_device *device) {
+	indigo_save_property(device, NULL, AGENT_IMAGER_BATCH_PROPERTY);
+	if (DEVICE_CONTEXT->property_save_file_handle) {
+		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+		close(DEVICE_CONTEXT->property_save_file_handle);
+		DEVICE_CONTEXT->property_save_file_handle = 0;
+	} else {
+		CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	CONFIG_SAVE_ITEM->sw.value = false;
+	indigo_update_property(device, CONFIG_PROPERTY, NULL);
+}
 
 static void set_headers(indigo_device *device) {
 	char item_1[INDIGO_NAME_SIZE], item_2[INDIGO_NAME_SIZE], item_3[INDIGO_NAME_SIZE], item_4[INDIGO_NAME_SIZE], item_5[INDIGO_NAME_SIZE], item_6[INDIGO_NAME_SIZE];
@@ -300,6 +313,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		*DEVICE_PRIVATE_DATA->filter_name = 0;
+		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -340,10 +354,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_IMAGER_BATCH
 		indigo_property_copy_values(AGENT_IMAGER_BATCH_PROPERTY, property, false);
 		AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -363,6 +380,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "%s: No CCD is selected", IMAGER_AGENT_NAME);
 		}
 	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
 			abort_batch(device);
@@ -374,6 +392,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, "%s: No CCD is selected", IMAGER_AGENT_NAME);
 		}
 	} else 	if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_WHEEL_FILTER
 		indigo_property_copy_values(AGENT_WHEEL_FILTER_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
 			if (AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value) {
@@ -385,9 +404,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
+// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, AGENT_IMAGER_BATCH_PROPERTY);
+			save_config(device);
 		}
 	}
 	return indigo_filter_change_property(device, client, property);
