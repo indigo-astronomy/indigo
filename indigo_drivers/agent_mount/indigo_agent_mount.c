@@ -227,7 +227,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static void process_snooping(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])) {
-		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
 					CLIENT_PRIVATE_DATA->mount_latitude = property->items[i].number.value;
@@ -271,7 +273,9 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		}
 	}
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])) {
-		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
 					CLIENT_PRIVATE_DATA->dome_latitude = property->items[i].number.value;
