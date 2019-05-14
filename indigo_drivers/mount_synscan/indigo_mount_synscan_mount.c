@@ -217,7 +217,6 @@ static bool synscan_open(indigo_device *device) {
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
-		indigo_send_message(device, "Failed to connect to %s", name);
 		return false;
 	}
 }
