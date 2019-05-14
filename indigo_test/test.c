@@ -51,7 +51,10 @@ static indigo_result test_define_property(indigo_client *client, indigo_device *
 		return INDIGO_OK;
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
-		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
+		if (device->version >= INDIGO_VERSION_2_0)
+			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
+		else
+			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
 	}
 	if (!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
 		static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
@@ -83,15 +86,14 @@ static indigo_result test_update_property(indigo_client *client, indigo_device *
 		return INDIGO_OK;
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-		if (indigo_populate_http_blob_item(&property->items[0])) {
+		if (*property->items[0].blob.url && indigo_populate_http_blob_item(&property->items[0]))
 			indigo_log("image URL received (%s, %d bytes)...", property->items[0].blob.url, property->items[0].blob.size);
-			char name[32];
-			sprintf(name, "img_%02d.fits", count);
-			FILE *f = fopen(name, "wb");
-			fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
-			fclose(f);
-			indigo_log("image saved to %s...", name);
-		}
+		char name[32];
+		sprintf(name, "img_%02d.fits", count);
+		FILE *f = fopen(name, "wb");
+		fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
+		fclose(f);
+		indigo_log("image saved to %s...", name);
 	}
 	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_BUSY_STATE) {
