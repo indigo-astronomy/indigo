@@ -200,8 +200,8 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 <tr><td></td><td></td><td></td><td></td><td>SOUTH</td><td>yes</td><td></td></tr>
 <tr><td>GUIDER_GUIDE_RA</td><td>number</td><td>no</td><td>yes</td><td>EAST</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>WEST</td><td>yes</td><td></td></tr>
-<tr><td>GUIDER_RATE</td><td>number</td><td>no</td><td>no</td><td>RATE</td><td>yes</td><td>% of sidereal rate</td></tr>
-<tr><td>GUIDER_DEC_RATE</td><td>number</td><td>no</td><td>no</td><td>DEC_RATE</td><td>no</td><td>% of sidereal rate</td></tr>
+<tr><td>GUIDER_RATE</td><td>number</td><td>no</td><td>no</td><td>RATE</td><td>yes</td><td>% of sidereal rate (RA or both)</td></tr>
+<tr><td></td><td>number</td><td>no</td><td>no</td><td>DEC_RATE</td><td>no</td><td>% of sidereal rate (DEC)</td></tr>
 </table>
 
 
