@@ -137,7 +137,7 @@ static void exposure_batch(indigo_device *device) {
 					for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000; i++)
 						usleep(1000);
 					if (remote_exposure_property->state != INDIGO_BUSY_STATE) {
-						indigo_send_message(device, "%s: CCD_EXPOSURE_PROPERTY didn't become busy in 1s", IMAGER_AGENT_NAME);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
 						break;
 					}
 					while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
@@ -181,12 +181,18 @@ static void exposure_batch(indigo_device *device) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 				indigo_release_property(local_exposure_property);
+				if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE)
+					indigo_send_message(device, "Batch finished");
+				else
+					indigo_send_message(device, "Batch failed");
+				return;
 			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't allocate CCD_EXPOSURE_PROPERTY");
 			return;
 		}
 	}
 	if (remote_exposure_property == NULL) {
-		indigo_send_message(device, "%s: CCD_EXPOSURE_PROPERTY not found", IMAGER_AGENT_NAME);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY not found");
 	}
 	AGENT_IMAGER_BATCH_COUNT_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 	AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
@@ -195,6 +201,7 @@ static void exposure_batch(indigo_device *device) {
 	indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	indigo_send_message(device, "Batch failed");
 }
 
 static void streaming_batch(indigo_device *device) {
@@ -227,7 +234,7 @@ static void streaming_batch(indigo_device *device) {
 				for (int i = 0; remote_streaming_property->state != INDIGO_BUSY_STATE && i < 1000; i++)
 					usleep(1000);
 				if (remote_streaming_property->state != INDIGO_BUSY_STATE) {
-					indigo_send_message(device, "%s: CCD_STREAMING_PROPERTY didn't become busy in 1s", IMAGER_AGENT_NAME);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_STREAMING_PROPERTY didn't become busy in 1 second");
 					break;
 				}
 				while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && remote_streaming_property->state == INDIGO_BUSY_STATE) {
@@ -252,12 +259,18 @@ static void streaming_batch(indigo_device *device) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 				indigo_release_property(local_streaming_property);
+				if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE)
+					indigo_send_message(device, "Batch finished");
+				else
+					indigo_send_message(device, "Batch failed");
+				return;
 			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't allocate CCD_STREAMING_PROPERTY");
 			return;
 		}
 	}
 	if (remote_streaming_property == NULL) {
-		indigo_send_message(device, "%s: CCD_STREAMING_PROPERTY not found", IMAGER_AGENT_NAME);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_STREAMING_PROPERTY not found");
 	}
 	AGENT_IMAGER_BATCH_COUNT_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 	AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
@@ -266,6 +279,7 @@ static void streaming_batch(indigo_device *device) {
 	indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	indigo_send_message(device, "Batch failed");
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -342,7 +356,7 @@ static void abort_batch(indigo_device *device) {
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, abort_property);
 			indigo_release_property(abort_property);
 		}
-		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 }
