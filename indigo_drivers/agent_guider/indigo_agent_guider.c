@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -340,6 +340,8 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 	return true;
 }
 
+static void guide_process(indigo_device *device);
+
 static void calibrate_process(indigo_device *device) {
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0;
@@ -554,6 +556,11 @@ static void calibrate_process(indigo_device *device) {
 		}
 	}
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		guide_process(device);
+	}
 }
 
 static void guide_process(indigo_device *device) {
