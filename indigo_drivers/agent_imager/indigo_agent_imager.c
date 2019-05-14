@@ -323,9 +323,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
+	if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property))
+	indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
-		if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property))
-			indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 		if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
 			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
@@ -467,11 +467,9 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	if (!strcmp(property->device, IMAGER_AGENT_NAME) && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
 		if (property->items->sw.value) {
 			abort_batch(device);
-			indigo_delete_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 			indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			indigo_delete_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		} else {
-			indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		}
