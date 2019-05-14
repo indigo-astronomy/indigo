@@ -702,7 +702,7 @@ Vue.component('indigo-query-db', {
 				</div>
 				<input type="text" class="form-control" @change="onChange">			
 			</div>
-			<div class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
+			<div v-if="this.result != null && this.result.length > 0" class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
 				<a v-for="object in this.result" href="#" class="list-group-item list-group-item-action" @click="setTarget(object)">{{object.name}}</a>
 			</div>
 		<div>
