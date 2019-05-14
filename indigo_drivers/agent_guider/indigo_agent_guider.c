@@ -140,7 +140,7 @@ static indigo_property_state capture_frame(indigo_device *device) {
 	indigo_property *remote_exposure_property = cached_remote_ccd_property(device, CCD_EXPOSURE_PROPERTY_NAME);
 	indigo_property *remote_image_property = cached_remote_ccd_property(device, CCD_IMAGE_PROPERTY_NAME);
 	if (remote_exposure_property == NULL || remote_image_property == NULL) {
-		indigo_send_message(device, "%s: CCD_EXPOSURE_PROPERTY or CCD_IMAGE_PROPERTY not found", GUIDER_AGENT_NAME);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY or CCD_IMAGE_PROPERTY not found");
 		return INDIGO_ALERT_STATE;
 	} else {
 		indigo_property *remote_format_property = cached_remote_ccd_property(device, CCD_IMAGE_FORMAT_PROPERTY_NAME);
@@ -164,7 +164,7 @@ static indigo_property_state capture_frame(indigo_device *device) {
 			for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000; i++)
 				usleep(1000);
 			if (remote_exposure_property->state != INDIGO_BUSY_STATE) {
-				indigo_send_message(device, "%s: CCD_EXPOSURE_PROPERTY didn't become busy in 1s", GUIDER_AGENT_NAME);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
 				indigo_release_property(local_exposure_property);
 				return INDIGO_ALERT_STATE;
 			}
@@ -213,7 +213,7 @@ static indigo_property_state capture_frame(indigo_device *device) {
 						indigo_delete_frame_digest(&digest);
 					}
 				} else {
-					indigo_send_message(device, "%s: Invalid image format, only RAW is supported", GUIDER_AGENT_NAME);
+					indigo_send_message(device, "Invalid image format, only RAW is supported");
 					indigo_release_property(local_exposure_property);
 					return INDIGO_ALERT_STATE;
 				}
@@ -238,7 +238,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 	if (ra) {
 		indigo_property *remote_guide_property = cached_remote_guider_property(device, GUIDER_GUIDE_RA_PROPERTY_NAME);
 		if (remote_guide_property == NULL) {
-			indigo_send_message(device, "%s: GUIDER_GUIDE_RA_PROPERTY not found", GUIDER_AGENT_NAME);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GUIDER_GUIDE_RA_PROPERTY not found");
 			return INDIGO_ALERT_STATE;
 		} else {
 			indigo_property *local_guide_property = indigo_init_number_property(NULL, remote_guide_property->device, remote_guide_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, remote_guide_property->count);
@@ -265,7 +265,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 	if (dec) {
 		indigo_property *remote_guide_property = cached_remote_guider_property(device, GUIDER_GUIDE_DEC_PROPERTY_NAME);
 		if (remote_guide_property == NULL) {
-			indigo_send_message(device, "%s: GUIDER_GUIDE_DEC_PROPERTY not found", GUIDER_AGENT_NAME);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GUIDER_GUIDE_DEC_PROPERTY not found");
 			return INDIGO_ALERT_STATE;
 		} else {
 			indigo_property *local_guide_property = indigo_init_number_property(NULL, remote_guide_property->device, remote_guide_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, remote_guide_property->count);
@@ -307,19 +307,19 @@ static void preview_process(indigo_device *device) {
 
 static void change_step(indigo_device *device, double q) {
 	if (q > 1) {
-		indigo_send_message(device, "%s: Drift is too slow", GUIDER_AGENT_NAME);
+		indigo_send_message(device, "Drift is too slow");
 		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
 			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value *= q);
-			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "%s: Increasing calibration step to %.3g", GUIDER_AGENT_NAME, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
+			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Increasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
 			DEVICE_PRIVATE_DATA->phase = INIT;
 		} else {
 			DEVICE_PRIVATE_DATA->phase = FAILED;
 		}
 	} else {
-		indigo_send_message(device, "%s: Drift is too fast", GUIDER_AGENT_NAME);
+		indigo_send_message(device, "Drift is too fast");
 		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
 			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value *= q);
-			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "%s: Decreasing calibration step to %.3g", GUIDER_AGENT_NAME, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
+			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Decreasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
 			DEVICE_PRIVATE_DATA->phase = INIT;
 		} else {
 			DEVICE_PRIVATE_DATA->phase = FAILED;
@@ -353,15 +353,14 @@ static void calibrate_process(indigo_device *device) {
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase;
 		switch (DEVICE_PRIVATE_DATA->phase) {
 			case INIT: {
-				indigo_send_message(device, "%s: Calibration started", GUIDER_AGENT_NAME);
 				AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
-				indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 				DEVICE_PRIVATE_DATA->phase = CLEAR_DEC;
+				indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Calibration started");
 				break;
 			}
 			case CLEAR_DEC: {
@@ -378,13 +377,12 @@ static void calibrate_process(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Clearing DEC backlash", GUIDER_AGENT_NAME);
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Clearing DEC backlash");
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value))
 						break;
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
-						indigo_send_message(device, "%s: DEC backlash cleared", GUIDER_AGENT_NAME);
 						DEVICE_PRIVATE_DATA->phase = CLEAR_RA;
 						break;
 					}
@@ -404,13 +402,13 @@ static void calibrate_process(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Clearing RA backlash", GUIDER_AGENT_NAME);
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Clearing RA backlash");
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0))
 						break;
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
-						indigo_send_message(device, "%s: RA backlash cleared", GUIDER_AGENT_NAME);
+						indigo_send_message(device, "Backlash cleared");
 						DEVICE_PRIVATE_DATA->phase = MOVE_NORTH;
 						break;
 					}
@@ -430,7 +428,7 @@ static void calibrate_process(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving north", GUIDER_AGENT_NAME);
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving north");
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value))
 						break;
@@ -462,7 +460,7 @@ static void calibrate_process(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving south", GUIDER_AGENT_NAME);
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving south");
 				for (int i = 0; i < last_count; i++) {
 					if (!guide_and_capture_frame(device, 0, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value))
 						break;
@@ -473,7 +471,7 @@ static void calibrate_process(indigo_device *device) {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = round(1000 * (last_drift - DEVICE_PRIVATE_DATA->drift)) / 1000;
 					} else {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
-						indigo_send_message(device, "%s: Inconsitent DEC backlash", GUIDER_AGENT_NAME);
+						indigo_send_message(device, "Inconsitent backlash");
 					}
 					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 					DEVICE_PRIVATE_DATA->phase = MOVE_WEST;
@@ -486,7 +484,7 @@ static void calibrate_process(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving west", GUIDER_AGENT_NAME);
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving west");
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0))
 						break;
@@ -528,7 +526,7 @@ static void calibrate_process(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
-				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Moving east", GUIDER_AGENT_NAME);
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving east");
 				for (int i = 0; i < last_count; i++) {
 					if (!guide_and_capture_frame(device, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0))
 						break;
@@ -540,12 +538,12 @@ static void calibrate_process(indigo_device *device) {
 				break;
 			}
 			case FAILED: {
-				indigo_send_message(device, "%s: Calibration failed", GUIDER_AGENT_NAME);
+				indigo_send_message(device, "Calibration failed");
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				break;
 			}
 			case DONE: {
-				indigo_send_message(device, "%s: Calibration done", GUIDER_AGENT_NAME);
+				indigo_send_message(device, "Calibration done");
 				save_config(device);
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				break;
@@ -567,7 +565,7 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = 0;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
-	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "%s: Guiding", GUIDER_AGENT_NAME);
+	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Guiding");
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (capture_frame(device) != INDIGO_OK_STATE) {
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -621,6 +619,10 @@ static void guide_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	}
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	if (AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE)
+		indigo_send_message(device, "Guiding done");
+	else
+	indigo_send_message(device, "Guiding failed");
 }
 
 static void abort_process(indigo_device *device) {
@@ -631,7 +633,7 @@ static void abort_process(indigo_device *device) {
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, abort_property);
 			indigo_release_property(abort_property);
 		}
-		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 }
@@ -781,7 +783,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		} else {
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "%s: No CCD is selected", GUIDER_AGENT_NAME);
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No CCD is selected");
 		}
 	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
@@ -793,7 +795,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		} else {
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, "%s: No CCD is selected", GUIDER_AGENT_NAME);
+			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, "No CCD is selected");
 		}
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- CONFIG
