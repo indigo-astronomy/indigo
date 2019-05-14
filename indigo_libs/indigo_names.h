@@ -111,6 +111,16 @@
  */
 #define DEVICE_PORT_ITEM_NAME									"PORT"
 
+/** DEVICE_BAUDRATE property name.
+ */
+#define DEVICE_BAUDRATE_PROPERTY_NAME                                                       "DEVICE_BAUDRATE"
+
+/** DEVICE_BAUDRATE.DEVICE_BAUDRATE property name.
+ */
+#define DEVICE_BAUDRATE_ITEM_NAME                                                                   "BAUDRATE"
+
+
+
 //----------------------------------------------------------------------
 
 /** AUTHENTICATION property name.
