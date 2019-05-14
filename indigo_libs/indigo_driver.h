@@ -147,6 +147,15 @@ extern "C" {
  */
 #define DEVICE_PORT_ITEM							(DEVICE_PORT_PROPERTY->items+0)
 
+/** DEVICE_BAUDRATE property pointer, property is optional, property change request is handled by indigo_device_change_property.
+ */
+#define DEVICE_BAUDRATE_PROPERTY                                    (DEVICE_CONTEXT->device_baudrate_property)
+
+/** DEVICE_BAUDRATE.BAUDRATE property item pointer.
+ */
+#define DEVICE_BAUDRATE_ITEM                                                        (DEVICE_BAUDRATE_PROPERTY->items+0)
+
+
 /** DEVICE_PORTS property pointer, property is optional, property change request is handled by indigo_device_change_property.
  */
 #define DEVICE_PORTS_PROPERTY					(DEVICE_CONTEXT->device_ports_property)
@@ -206,6 +215,7 @@ typedef struct {
 	indigo_property *configuration_property;  ///< CONFIGURATION property pointer
 	indigo_property *profile_property; 				///< PROFILE property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
+	indigo_property *device_baudrate_property;          ///< DEVICE_BAUDRATE property pointer
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
 	indigo_property *device_auth_property;		///< SECURITY property pointer
 } indigo_device_context;
