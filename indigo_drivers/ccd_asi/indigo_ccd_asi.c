@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -1557,6 +1557,12 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 	ASIGetCameraProperty(&info, index);
+
+	/* If more than one camera of the same type is connected
+	   SDK adds (CAM%d) to the name, we do not need it! */
+	char *p = strstr(info.Name, "(CAM");
+	if (p != NULL) *p = '\0';
+
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	device->master_device = master_device;
