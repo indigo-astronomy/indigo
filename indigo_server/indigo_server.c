@@ -185,6 +185,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_wemacro_bt,
 #endif
 	indigo_gps_simulator,
+	indigo_gps_nmea,
 	indigo_guider_asi,
 	indigo_guider_cgusbst4,
 #ifdef INDIGO_MACOS
