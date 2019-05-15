@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
@@ -54,7 +54,7 @@ static bool gps_open(indigo_device *device) {
 	if (PRIVATE_DATA->count_open == 0) {
 		char *name = DEVICE_PORT_ITEM->text.value;
 		if (strncmp(name, "gps://", 6)) {
-			PRIVATE_DATA->handle = indigo_open_serial(name);
+			PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
 		} else {
 			char *host = name + 8;
 			char *colon = strchr(host, ':');
@@ -260,6 +260,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		GPS_ADVANCED_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
