@@ -236,6 +236,7 @@ static indigo_property *host_time_property;
 static indigo_property *shutdown_property;
 static indigo_property *reboot_property;
 static indigo_property *install_property;
+static pthread_mutex_t install_property_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 static DNSServiceRef sd_http;
@@ -371,6 +372,49 @@ static char *execute_query(char *command, ...) {
 	return NULL;
 }
 
+static void check_versions(indigo_device *device) {
+	while (true) {
+		pthread_mutex_lock(&install_property_mutex);
+		bool redefine = false;
+		if (install_property) {
+			indigo_delete_property(device, install_property, NULL);
+			indigo_release_property(install_property);
+			redefine = true;
+		}
+		install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
+		install_property->count = 0;
+		char *line = execute_query("s_rpi_ctrl.sh --list-available-versions");
+		if (line) {
+			char *versions[10] = { strtok(line, " ") };
+			int count = 1;
+			while ((versions[count] = strtok(NULL, " "))) {
+				if (count == 9)
+					count = 1;
+				else
+					count++;
+			}
+			for (int i = 0; i < count; i++) {
+				char *smallest = "XXXXX";
+				int ii = 0;
+				for (int j = 0; j < count; j++) {
+					if (versions[j] && strcmp(versions[j], smallest) < 0) {
+						smallest = versions[j];
+						ii = j;
+					}
+				}
+				versions[ii] = NULL;
+				indigo_init_switch_item(install_property->items + i, smallest, smallest, smallest == line);
+				install_property->count++;
+			}
+			free(line);
+		}
+		if (redefine)
+			indigo_define_property(device, install_property, NULL);
+		pthread_mutex_unlock(&install_property_mutex);
+		sleep(60 * 3600);
+	}
+}
+
 #endif
 
 static indigo_result attach(indigo_device *device) {
@@ -430,6 +474,7 @@ static indigo_result attach(indigo_device *device) {
 			token = strtok(NULL, " ");
 			if (token)
 				strncpy(wifi_ap_property->items[1].text.value, token, INDIGO_VALUE_SIZE);
+			free(line);
 		}
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
@@ -439,6 +484,7 @@ static indigo_result attach(indigo_device *device) {
 			char *token = strtok(line, " ");
 			if (token)
 				strncpy(wifi_infrastructure_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
+			free(line);
 		}
 		host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", "");
@@ -474,6 +520,7 @@ static indigo_result attach(indigo_device *device) {
 			free(line);
 		}
 	}
+	indigo_async((void *(*)(void *))check_versions, device);
 #endif /* RPI_MANAGEMENT */
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
@@ -522,6 +569,21 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(property != NULL);
+#ifdef RPI_MANAGEMENT
+	pthread_mutex_lock(&install_property_mutex);
+	if (indigo_property_match(install_property, property)) {
+	// -------------------------------------------------------------------------------- INSTALL
+		indigo_property_copy_values(install_property, property, false);
+		for (int i = 0; i < property->count; i++) {
+			if (property->items[i].sw.value) {
+				indigo_result result = execute_command(device, install_property, "s_rpi_ctrl.sh --install-version %s", property->items[i].name);
+				pthread_mutex_unlock(&install_property_mutex);
+				return result;
+			}
+		}
+	}
+	pthread_mutex_unlock(&install_property_mutex);
+#endif /* RPI_MANAGEMENT */
 	if (indigo_property_match(drivers_property, property)) {
 	// -------------------------------------------------------------------------------- DRIVERS
 		if (command_line_drivers && !strcmp(client->name, CONFIG_READER))
@@ -674,13 +736,6 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- REBOOT
 		indigo_property_copy_values(reboot_property, property, false);
 		return execute_command(device, reboot_property, "s_rpi_ctrl.sh --reboot");
-	} else if (indigo_property_match(install_property, property)) {
-		// -------------------------------------------------------------------------------- INSTALL
-		indigo_property_copy_values(install_property, property, false);
-		for (int i = 0; i < property->count; i++) {
-			if (property->items[i].sw.value)
-				return execute_command(device, install_property, "s_rpi_ctrl.sh --install-version %s", property->items[i].name);
-		}
 #endif /* RPI_MANAGEMENT */
 	// --------------------------------------------------------------------------------
 	}
