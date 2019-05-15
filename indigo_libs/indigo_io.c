@@ -224,7 +224,6 @@ static void close_tty(int tty_fd, struct termios *old_options) {
 }
 
 
-
 int indigo_open_serial(const char *dev_file) {
 	return indigo_open_serial_with_speed(dev_file, 9600);
 }
@@ -237,6 +236,7 @@ int indigo_open_serial_with_speed(const char *dev_file, int speed) {
 	return indigo_open_serial_with_config(dev_file, baud_str);
 }
 
+
 /* baudconfig is in form "9600-8N1" */
 int indigo_open_serial_with_config(const char *dev_file, const char *baudconfig) {
 	struct termios to;
@@ -247,41 +247,8 @@ int indigo_open_serial_with_config(const char *dev_file, const char *baudconfig)
 	return open_tty(dev_file, &to, NULL);
 }
 
+#endif /* Linux and Mac */
 
-/*
-int indigo_open_serial_with_speed(const char *dev_file, int speed) {
-	int dev_fd;
-	struct termios options;
-	if ((dev_fd = open(dev_file, O_RDWR | O_NOCTTY | O_SYNC)) == -1) {
-		return -1;
-	}
-	memset(&options, 0, sizeof options);
-	if (tcgetattr(dev_fd, &options) != 0) {
-		close(dev_fd);
-		return -1;
-	}
-	cfsetispeed(&options, speed);
-	cfsetospeed(&options, speed);
-	options.c_lflag &= ~(ICANON|ECHO|ECHOE|ISIG|IEXTEN);
-	options.c_oflag &= ~(OPOST);
-	options.c_iflag &= ~(INLCR|ICRNL|IXON|IXOFF|IXANY|IMAXBEL);
-	options.c_cflag &= ~PARENB;
-	options.c_cflag &= ~CSTOPB;
-	options.c_cflag &= ~CSIZE;
-	options.c_cflag |= CS8;
-	options.c_cflag |= CLOCAL;
-	options.c_cc[VMIN]  = 0;
-	options.c_cc[VTIME] = 50;
-	if (tcsetattr(dev_fd,TCSANOW, &options) != 0) {
-		close(dev_fd);
-		return -1;
-	}
-
-	return dev_fd;
-}
-*/
-
-#endif
 
 int indigo_open_tcp(const char *host, int port) {
 	struct sockaddr_in srv_info;
