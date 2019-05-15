@@ -28,6 +28,7 @@ properties are first of all defined memory structures which are, if needed, mapp
 <tr><td></td><td></td><td></td><td></td><td>REMOVE</td><td>yes</td><td></td></tr>
 <tr><td>PROFILE</td><td>switch</td><td>no</td><td>yes</td><td>PROFILE_0,...</td><td>yes</td><td>Select the profile number for subsequent CONFIG operation</td></tr>
 <tr><td>DEVICE_PORT</td><td>text</td><td>no</td><td>no</td><td>PORT</td><td>no</td><td>Either device path like "/dev/tty0" or URL like "lx200://host:port".</td></tr>
+<tr><td>DEVICE_BAUDRATE</td><td>text</td><td>no</td><td>no</td><td>BAUDRATE</td><td>no</td><td>Serial port configuration in a string like this: 9600-8N1</td></tr>
 <tr><td>DEVICE_PORTS</td><td>switch</td><td>no</td><td>no</td><td>valid serial port name</td><td></td><td>When selected, it is copied to DEVICE_PORT property.</td></tr>
 <tr><td>GEOGRAPHIC_COORDINATES</td><td>number</td><td>no</td><td>yes</td><td>LATITUDE</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>LONGITUDE</td><td>yes</td><td></td></tr>
