@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 35.14139.2019.0311</li></ul>
+<ul><li>Version: 37.14643.2019.0511</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -22,7 +22,7 @@
         </ul>
       </li>
 	  <li>WinRT: x86, x64, arm, arm64; Windows10 or above</li>
-      <li>macOS: x86, x64; macOS 10.10 or above</li>
+      <li>macOS: universal (x64 + x86); macOS 10.10 or above</li>
       <li>Linux: kernel 2.6.27 or above
 	    <ul>
 		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
@@ -32,6 +32,7 @@
 		  <li>arm64: GLIBC 2.17 or above; built by toolchain aarch64-linux-gnu (version 4.9.2)</li>
 		</ul>
 	  </li>
+      <li>Android: arm, arm64, x86, x64; built by android-ndk-r18b; __ANDROID_API__ = 23</li>
     </ul>
   </li>
 </ul>
@@ -39,7 +40,7 @@
 <h1><font color="#0000FF">2. Introduction</font></h1>
 <hr/>
 <p>ToupCam cameras support various kinds of APIs (Application Program Interface), namely
- Native C/C++, .NET/C#/VB.NET, Python, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/dd375454(v=vs.85).aspx">DirectShow</a>, <a href="http://twain.org/">Twain</a>, LabView and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
+ Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/dd375454(v=vs.85).aspx">DirectShow</a>, <a href="http://twain.org/">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
 <ul><li>inc</li></ul>
 <blockquote>
@@ -56,25 +57,25 @@ The SDK zip file contains all of the necessary resources and information:</p>
      </blockquote></li>
      <li>x86
      <blockquote>
-       <p align="left">toupcam.lib, lib file for x86.<br/>
-         toupcam.dll, dll file for x86.<br/>
-         democpp.exe, x86 C++ demo exe file.</p>
+       <p align="left">toupcam.lib, lib file for x86<br/>
+         toupcam.dll, dll file for x86<br/>
+         democpp.exe, x86 C++ demo exe file</p>
      </blockquote></li>
      <li>x64
       <blockquote>
-        <p align="left">toupcam.lib, lib file for x64.<br/>
-          toupcam.dll, dll file for x64.<br/>
-         democpp.exe, x64 C++ demo exe file.</p>
+        <p align="left">toupcam.lib, lib file for x64<br/>
+          toupcam.dll, dll file for x64<br/>
+         democpp.exe, x64 C++ demo exe file</p>
       </blockquote></li>
 	  <li>arm
      <blockquote>
-       <p align="left">toupcam.lib, lib file for arm.<br/>
-         toupcam.dll, dll file for arm.<br/>
+       <p align="left">toupcam.lib, lib file for arm<br/>
+         toupcam.dll, dll file for arm<br/></p>
      </blockquote></li>
 	  <li>arm64
      <blockquote>
-       <p align="left">toupcam.lib, lib file for arm64.<br/>
-         toupcam.dll, dll file for arm64.<br/>
+       <p align="left">toupcam.lib, lib file for arm64<br/>
+         toupcam.dll, dll file for arm64<br/></p>
      </blockquote></li>
 	 <li>winrt
 		<blockquote>
@@ -93,44 +94,50 @@ The SDK zip file contains all of the necessary resources and information:</p>
      </li>
      <li>samples
        <ol>
-         <li>democpp, C++ sample. It demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></li>
-         <li>demomfc, a simple C++ sample. It use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode.</li>
-         <li>demowinformcs1, C# winform sample. This sample use Pull Mode, StartPullModeWithWndMsg.</li>
+         <li>democpp, C++ sample. It demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></li>
+         <li>demopush, C++ sample, this sample use Push Mode, StartPushModeV3</li>
+		 <li>demomfc, a simple C++ sample. It use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode.</li>
+         <li>demomono, a simple C++ sample. It demonstrates to use mono camera with 8 or 16 bits.</li>
+		 <li>demowinformcs1, C# winform sample. This sample use Pull Mode, StartPullModeWithWndMsg.</li>
          <li>demowinformcs2, C# winform sample. This sample use Pull Mode, StartPullModeWithCallback.</li>
-         <li>demowinformcs3, C# winform sample. This sample use Push Mode, StartPushMode.</li>
+         <li>demowinformcs3, C# winform sample. This sample use Push Mode, StartPushModeV3.</li>
          <li>demowinformvb, VB.NET winform sample. This sample use Pull Mode.</li>
        </ol>
       </li>
-     <li>extras
-       <ol>
-         <li>directshow: DirectShow SDK and demo.</li>
-         <li>twain: TWAIN SDK.</li>
-         <li>labview: Labview SDK and demo.</li>
-       </ol>
-     </li>
    </ul>
 </li>
 </ul>
  <ul><li>linux: For Linux
  	<ul>
  	<li>udev: 99-toupcam.rules, udev rule file. Please see: <a href="http://reactivated.net/writing_udev_rules.html">http://reactivated.net/writing_udev_rules.html</a></li>
-     <li>c#: toupcam.cs, for .Net Core C#. The toupcam.cs use P/Invoke to call into libtoupcam.so. Please copy toupcam.cs to your C# project to use it.</li>
-     <li>x86: libtoupcam.so, so file for x86.</li>
-     <li>x64: libtoupcam.so, so file for x64.</li>
-	 <li>armel: libtoupcam.so, so file for armel, use toolchain arm-linux-gnueabi.</li>
-	 <li>armhf: libtoupcam.so, so file for armhf, use toolchain arm-linux-gnueabihf.</li>
-	 <li>arm64: libtoupcam.so, so file for arm64, use toolchain aarch64-linux-gnu.</li>
+     <li>c#: toupcam.cs, for .Net Core C#. The toupcam.cs use P/Invoke to call into libtoupcam.so. Please copy toupcam.cs to your C# project to use it</li>
+     <li>x86: libtoupcam.so, so file for x86</li>
+     <li>x64: libtoupcam.so, so file for x64</li>
+	 <li>armel: libtoupcam.so, so file for armel, use toolchain arm-linux-gnueabi</li>
+	 <li>armhf: libtoupcam.so, so file for armhf, use toolchain arm-linux-gnueabihf</li>
+	 <li>arm64: libtoupcam.so, so file for arm64, use toolchain aarch64-linux-gnu</li>
 	</ul>
  	</li></ul>
- <ul><li>mac: For macOS.</li></ul> 
- <ul><li>python: toupcam.py and sample code</li></ul>
- <ul><li>doc: User manuals in English and Simplified Chinese.</li></ul>
+ <ul><li>android: libtoupcam.so for Android on arm, arm64, x86 and x64</li></ul>
+ <ul><li>mac: For macOS</li></ul> 
+ <ul><li>python: toupcam.py and sample code (Console and pyQt)</li></ul>
+ <ul><li>java: toupcam.java and sample code (Console and Swing)</li></ul>
+ <ul><li>doc: User manuals in English and Simplified Chinese</li></ul>
  <ul><li>sample
 	<ul>
-	<li>demosimplest: a simplest sample, about 60 lines of code.</li>
-	<li>demoraw: raw data and snap still image, about 120 lines of code.</li>
+	<li>demosimplest: a simplest sample, about 60 lines of code</li>
+	<li>demoraw: raw data and snap still image, about 120 lines of code</li>
 	</ul>
 	</li></ul>
+ <ul>
+     <li>extras
+       <ul>
+         <li>directshow: DirectShow SDK and demo</li>
+         <li>twain: TWAIN SDK</li>
+         <li>labview: Labview SDK and demo</li>
+		 <li>matlab: MatLab demo</li>
+       </ul>
+     </li></ul>
  <hr/>
 <h1><font color="#0000FF">3. Concepts and terminology</font></h1>
 <hr/>
@@ -212,7 +219,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <p>Most cameras support the so-called still capture capability. This function switches the camera to another resolution temporarily when the camera is in preview mode, after a "still" image in the new resolution is captured and then switch back to the original resolution and resume preview mode.</p>
 <p>For example, UCMOS05100KPA support 3 resolutions and the current one in preview mode is 1280 * 960. Call Toupcam_Snap(h, 0) to "still capture" an image in 2592 * 1944 resolution. To realize this function, the camera will temporarily switch to 2592 * 1944 firstly, get an image in 2592 * 1944 resolution and then switch back to 1280 * 960 and resume preview.</p>
 <blockquote>a) In pull mode operation, after the still capture, TOUPCAM_EVENT_STILLIMAGE will be sent out for external acknowledgement. The external application should call Toupcam_PullStillImage(V2) to get the still captured image.</blockquote>
-<blockquote>b) In push mode operation, after the still capture, the callback function PTOUPCAM_DATA_CALLBACK(_V2) will be called with bSnap parameter setting TRUE. The image information including the resolution information will be obtained via the parameter pHeader.</blockquote>
+<blockquote>b) In push mode operation, after the still capture, the callback function PTOUPCAM_DATA_CALLBACK_V3 will be called with bSnap parameter setting TRUE. The image information including the resolution information will be obtained via the parameter pHeader.</blockquote>
 <p>To check whether the camera have the still capture capability, call Toupcam_get_StillResolutionNumber function or check the still field of the struct ToupcamModelV2.</p>
 <h2><font color="#0000FF"><a id="raw">c. Data format: RGB vs RAW</a></font></h2>
 <p>Toupcam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning TOUPCAM_OPTION_RAW parameter to 1 when calling Toupcam_put_Option function.</p>
@@ -308,6 +315,11 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		<td>0x80004005</td>
 	  </tr>
 	  <tr>
+        <td>E_ACCESSDENIED</td>
+        <td>General access denied error</td>
+		<td>0x80070005</td>
+	  </tr>
+	  <tr>
         <td>E_INVALIDARG</td>
         <td>One or more arguments are not valid</td>
 		<td>0x80070057</td>
@@ -341,9 +353,9 @@ The SDK zip file contains all of the necessary resources and information:</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Calling Convention</font></h2>
 	<p>Win: __stdcall, please see <a href="https://docs.microsoft.com/en-us/cpp/cpp/stdcall">here</a></p>
-	<p>macOS and Linux: __cdecl</p>
+	<p>macOS, Linux and Android: __cdecl</p>
 </li></ul>
-<ul><li><h2><a id="callback"><font color="#0000FF">Callback: PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK(_V2)</font></a></h2>
+<ul><li><h2><a id="callback"><font color="#0000FF">Callback: PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK_V3</font></a></h2>
 	<p>These callback functions are called back from the internal thread in toupcam.dll, so great attention should be paid to multithread issue.</p>
 	<p><strong>There are limitations in the callback context:</strong></p>
 	<p><strong>(a) Do NOT call Toupcam_Stop and Toupcam_Close in this callback function, otherwise, deadlocks.</strong></p>
@@ -502,11 +514,11 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td valign="top">use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</td>
   </tr>
   <tr>
-    <td valign="top">>TOUPCAM_FLAG_CG</td>
+    <td valign="top">TOUPCAM_FLAG_CG</td>
     <td valign="top">Conversion Gain: LCG, HCG</td>
   </tr>
   <tr>
-    <td valign="top">>TOUPCAM_FLAG_CGHDR</td>
+    <td valign="top">TOUPCAM_FLAG_CGHDR</td>
     <td valign="top">Conversion Gain: LCG, HCG, HDR</td>
   </tr>
   <tr>
@@ -575,9 +587,9 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p>void* pCallbackCtx: callback context</p>
   </blockquote>
   <p><strong>Remarks:</strong></p><blockquote>
-  <p>This function is only available on macOS and Linux.</p>
+  <p>This function is only available on macOS, Linux and Android.</p>
   <p>To process the device plug in / pull out in Windows, please refer to the MSDN(<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363224(v=vs.85).aspx">Device Management</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363215(v=vs.85).aspx">Detecting Media Insertion or Removal</a>).</p>
-  <p>To process the device plug in / pull out in Linux / macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Toupcam_EnumV2(...) again to enum the cameras.</p>
+  <p>To process the device plug in / pull out in Linux/macOS/Android, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Toupcam_EnumV2(...) again to enum the cameras.</p>
   <p>On macOS, IONotificationPortCreate series APIs can also be used as an alternative.</p>
   <p>Recommendation: for better rubustness, when notify of device insertion arrives, don't open handle of this device immediately, but open it <b>after delaying a short time (e.g., 200 milliseconds)</b>.</p>
 </blockquote>
@@ -615,8 +627,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </blockquote>
     <p><strong>Remarks:</strong> Obviously, Toupcam_StartPullModeWithWndMsg is only supported in Windows OS.</p>
 </li></ul>
-<ul><li><h2><a id="infov2">Toupcam_PullImageV2, Toupcam_PullStillImageV2, Toupcam_PullImageWithRowPitchV2, Toupcam_PullStillImageWithRowPitchV2</a>,
-			Toupcam_PullImage, Toupcam_PullStillImage, <a id="rowpitch1">Toupcam_PullImageWithRowPitch</a>, <a id="rowpitch2">Toupcam_PullStillImageWithRowPitch</a></h2>
+<ul><li><h2><font color="#0000FF"><a id="infov2">Toupcam_PullImageV2, Toupcam_PullStillImageV2, Toupcam_PullImageWithRowPitchV2, Toupcam_PullStillImageWithRowPitchV2</a>,
+			Toupcam_PullImage, Toupcam_PullStillImage, <a id="rowpitch1">Toupcam_PullImageWithRowPitch</a>, <a id="rowpitch2">Toupcam_PullStillImageWithRowPitch</a></font></h2>
       <p><strong>Return value:</strong> HRESULT type means "success/ failure". Return E_FAIL when there isn't image ready for pull.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
@@ -671,18 +683,17 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 </td></tr>
 </table></div></blockquote>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Toupcam_StartPushModeV2, Toupcam_StartPushMode</font></h2>
+<ul><li><h2><font color="#0000FF">Toupcam_StartPushModeV3</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HToupCam h: instance handle opened by Toupcam.</p>
-      <p>PTOUPCAM_DATA_CALLBACK(_V2) pDataCallback, void* pCallbackCtx: the callback function and callback context parameters that are specified by the user's program. Toupcam.dll gets image data from the camera, then calls back this function.</p>
+      <p>PTOUPCAM_DATA_CALLBACK_V3 pDataCallback, void* pDataCallbackCtx: the callback function and callback context parameters that are specified by the user's program. Toupcam.dll gets image data from the camera, then calls back this function.</p>
     </blockquote>
   <blockquote>
     <table width="100%" border="0" bgcolor="#B0D0B0">
       <tr>
-        <td>typedef void (*PTOUPCAM_DATA_CALLBACK)(const void* pData, const BITMAPINFOHEADER* pHeader, int bSnap, void* pCallbackCtx);<br/>
-		typedef void (*PTOUPCAM_DATA_CALLBACK_V2)(const void* pData, const ToupcamFrameInfoV2* pInfo, int bSnap, void* pCallbackCtx);</td>
+		<td>typedef void (*PTOUPCAM_DATA_CALLBACK_V3)(const void* pData, const ToupcamFrameInfoV2* pInfo, int bSnap, void* pCallbackCtx);</td>
       </tr>
     </table>
 	<p>see <a href="#callback">here</a>.</p>
@@ -704,7 +715,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <blockquote>
       <p>Step 1: call Toupcam_Stop to stop</p>
       <p>Step 2: call Toupcam_put_Size or Toupcam_put_eSize to set the new resolution</p>
-      <p>Step 3: call Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushMode to restart</p>
+      <p>Step 3: call Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushModeV3 to restart</p>
     </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_Pause</font></h2>
@@ -726,7 +737,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Remarks:</strong> snap 'still' image, please see <a href="#stillcapture">here</a>. When snap successfully:</p>
   <blockquote><blockquote>
   <p>a) If we use Pull Mode, it will be notified by TOUPCAM_EVENT_STILLIMAGE.</p>
-  <p>b) If we use Push Mode, the image will be returned by callback function PTOUPCAM_DATA_CALLBACK(_V2) with the parameter int bSnap is TRUE.</p>
+  <p>b) If we use Push Mode, the image will be returned by callback function PTOUPCAM_DATA_CALLBACK_V3 with the parameter int bSnap is TRUE.</p>
 	</blockquote>
     <p>Most cameras can snap still image with different resolutions under continuous preview. For example, UCMOS03100KPA's previewed resolution is 1024*768, if we call Toupcam_Snap(h, 0), we get so called "still image" with 2048*1536 resolution.<br/>
     Some cameras hasn't this ability, so nResolutionIndex must be equal the preview resolution which is set by Toupcam_put_Size, or Toupcam_put_eSize.<br/>
@@ -744,7 +755,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Remarks:</strong> in trigger mode, call this function to trigger an image:</p>
   <blockquote>
   <p>a) If we use Pull Mode, it will be notified by TOUPCAM_EVENT_IMAGE.</p>
-  <p>b) If we use Push Mode, the image will be returned by callback function PTOUPCAM_DATA_CALLBACK(_V2) with the parameter int bSnap is FALSE.</p>
+  <p>b) If we use Push Mode, the image will be returned by callback function PTOUPCAM_DATA_CALLBACK_V3 with the parameter int bSnap is FALSE.</p>
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_put_Size, Toupcam_get_Size, Toupcam_put_eSize, Toupcam_get_eSize</font></h2>
@@ -757,7 +768,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     </blockquote>
   <p><strong>Remarks:</strong> set/get current resolution</p>
         <blockquote>
-          <p align="left">Set resolution before running Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushMode<br/>
+          <p align="left">Set resolution before running Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushModeV3<br/>
             There are two ways to set current resolution: one is by resolution index, the other by width/height. Both ways are equivalent. For example, UCMOS03100KPA supports the following three kinds of resolution: <br/>
             &nbsp;&nbsp;&nbsp;&nbsp;Index 0: 2048, 1536<br/>
             &nbsp;&nbsp;&nbsp;&nbsp;Index 1: 1024, 768<br/>
@@ -765,7 +776,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
             So Toupcam_put_Size(h, 1024, 768) is as effective as Toupcam_put_eSize(h, 1)</p>
         </blockquote>
 </li></ul>
-<ul><li><h2><a id="roi">Toupcam_put_Roi, Toupcam_get_Roi</a></h2>
+<ul><li><h2><a id="roi"><font color="#0000FF">Toupcam_put_Roi, Toupcam_get_Roi</font></a></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -777,7 +788,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     </blockquote>
   <p><strong>Remarks:</strong> set/get the ROI. Toupcam_put_Roi(h, 0, 0, 0, 0) means to clear the ROI and restore the original size.</p>
   <blockquote>
-	<p><strong>Important: It is forbidden to call Toupcam_put_Roi in the callback context of PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK(_V2), the return value is E_WRONG_THREAD.</strong></p>
+	<p><strong>Important: It is forbidden to call Toupcam_put_Roi in the callback context of PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK_V3, the return value is E_WRONG_THREAD.</strong></p>
   	<p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
 	<p>The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support ROI, so the return value is E_NOTIMPL.</p>
   </blockquote>
@@ -856,7 +867,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     	<td width="28%">Option</td>
     	<td width="48%">Description</td>
     	<td width="4%">Default</td>
-    	<td width="20%">The value can be changed after Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushMode?<br/>
+    	<td width="20%">The value can be changed after Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushModeV3?<br/>
 					<b>The value can be changed on-the-fly?</b></td>
 	</tr>
       <tr>
@@ -910,35 +921,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Yes</td>
       </tr>
       <tr>
-      	<td>TOUPCAM_OPTION_LINEAR</td>
-      	<td>0 = turn off the builtin linear tone mapping<br/>
-      	  1 = turn on the builtin linear tone mapping</td>
-      	<td>1</td>
-      	<td>Yes</td>
-      </tr>
-      <tr>
-      	<td>TOUPCAM_OPTION_CURVE</td>
-      	<td>0 = turn off the builtin curve tone mapping<br/>
-      	  1 = turn on the builtin polynomial curve tone mapping<br/>
-		  2 = turn on the builtin logarithmic curve tone mapping</td>
-      	<td>2</td>
-      	<td>Yes</td>
-      </tr>
-      <tr>
-      	<td>TOUPCAM_OPTION_COLORMATIX</td>
-      	<td>0 = turn off the builtin color matrix<br/>
-      	  1 = turn on the builtin color matrix</td>
-      	<td>1</td>
-      	<td>Yes</td>
-      </tr>
-      <tr>
-      	<td>TOUPCAM_OPTION_WBGAIN</td>
-      	<td>0 = turn off the builtin white balance gain<br/>
-      	  1 = turn on the builtin white balance gain</td>
-      	<td>1</td>
-      	<td>Yes</td>
-      </tr>
-      <tr>
       	<td>TOUPCAM_OPTION_TRIGGER</td>
       	<td>0 = video mode<br/>
       	  1 = software or simulated trigger mode<br/>
@@ -967,6 +949,12 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td><a id="aepolicy">TOUPCAM_OPTION_AUTOEXP_POLICY</a></td>
       	<td>Auto Exposure Policy:<br/>0: Exposure Only<br/>1: Exposure Preferred<br/>2: Analog Gain Only<br/>3: Analog Gain Preferred</td>
       	<td>1</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td><a id="aepolicy">TOUPCAM_OPTION_AUTOEXP_THRESHOLD</a></td>
+      	<td>threshold of auto exposure, range: [5~15]</td>
+      	<td>5</td>
       	<td>Yes</td>
       </tr>
       <tr>
@@ -1033,12 +1021,11 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Yes</td>
       </tr>
       <tr>
-      	<td><a id="rotate">TOUPCAM_OPTION_UPSIDE_DOWN</a></td>
+      	<td>TOUPCAM_OPTION_UPSIDE_DOWN</td>
       	<td>Upside down:<br/>
 			1: yes<br/>
 			0: no</td>
-      	<td>Win: 1<br/>
-			Linux/MacOS: 0</td>
+      	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
       	<td>No</td>
       </tr>
       <tr>
@@ -1061,8 +1048,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>the number of the frames that DDR can cache:<br/>
 		                    1: DDR cache only one frame<br/>
                             0: Auto:
-                                   <blockquote>->one for video mode when auto exposure is enabled</blockquote>
-                                   <blockquote>->full capacity for others</blockquote>
+                                   <blockquote>->&gt;one for video mode when auto exposure is enabled</blockquote>
+                                   <blockquote>->&gt;full capacity for others</blockquote>
                             -1: DDR can cache frames to full capacity</td>
       	<td>0</td>
       	<td>Yes</td>
@@ -1076,9 +1063,9 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 						<blockquote>-1: reset</blockquote>
                         <blockquote>(0xff000000 | n): set the average number to n, [1~255]</blockquote>
                     get:
-                        <blockquote>(val &amp; 0xff): 0 -> disable, 1 -> enable, 2 -> inited</blockquote>
-                        <blockquote>((val &amp; 0xff00) >> 8): sequence</blockquote>
-                        <blockquote>((val &amp; 0xff0000) >> 8): average number</blockquote></td>
+                        <blockquote>(val &amp; 0xff): 0 ->&gt; disable, 1 ->&gt; enable, 2 ->&gt; inited</blockquote>
+                        <blockquote>((val &amp; 0xff00) &gt;&gt; 8): sequence</blockquote>
+                        <blockquote>((val &amp; 0xff0000) &gt;&gt; 8): average number</blockquote></td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
@@ -1091,15 +1078,15 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 						<blockquote>-1: reset</blockquote>
                         <blockquote>(0xff000000 | n): set the average number to n, [1~255]</blockquote>
                     get:
-                        <blockquote>(val &amp; 0xff): 0 -> disable, 1 -> enable, 2 -> inited</blockquote>
-                        <blockquote>((val &amp; 0xff00) >> 8): sequence</blockquote>
-                        <blockquote>((val &amp; 0xff0000) >> 8): average number</blockquote></td>
+                        <blockquote>(val &amp; 0xff): 0 ->&gt; disable, 1 ->&gt; enable, 2 ->&gt; inited</blockquote>
+                        <blockquote>((val &amp; 0xff00) &gt;&gt; 8): sequence</blockquote>
+                        <blockquote>((val &amp; 0xff0000) &gt;&gt; 8): average number</blockquote></td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_SHARPENING</td>
-      	<td>Sharpening, (threshold << 24) | (radius << 16) | strength)<br/>
+      	<td>Sharpening, (threshold &lt;&lt; 24) | (radius &lt;&lt; 16) | strength)<br/>
 						<blockquote>strength: [0, 500], default: 0 (disable)</blockquote>
 						<blockquote>radius: [1, 10]</blockquote>
 						<blockquote>threshold: [0, 255]</blockquote>
@@ -1109,32 +1096,32 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_FACTORY</td>
-      	<td>restore the factory settings</td>
+      	<td>restore the factory settings<br/>Only put</td>
       	<td>Always 0</td>
-      	<td">Yes</td>
+      	<td>Yes</td>
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_TEC_VOLTAGE</td>
-      	<td>get the current TEC voltage in 0.1V, 59 mean 5.9V; readonly<br/>
-					Please do not get this value too frequently, the recommended interval is 2 seconds or more</td>
-      	<td>NA/td>
+      	<td>get the current TEC voltage in 0.1V, 59 mean 5.9V;<br/>
+					Please do not get this value too frequently, the recommended interval is 2 seconds or more<br/>Only get</td>
+      	<td>NA</td>
       	<td>NA</td>
       </tr>
 	  <tr>
       	<td>TOUPCAM_OPTION_TEC_VOLTAGE_MAX</td>
-      	<td>get the TEC maximum voltage in 0.1V; readonly</td>
+      	<td>get the TEC maximum voltage in 0.1V<br/>Only get</td>
       	<td>NA</td>
       	<td>NA</td>
       </tr>
 	  <tr>
       	<td>TOUPCAM_OPTION_DEVICE_RESET</td>
-      	<td>reset usb device, simulate a replug</td>
+      	<td>reset usb device, simulate a replug<br/>Only put</td>
       	<td>NA</td>
       	<td>NA</td>
       </tr>
 	  <tr>
       	<td>TOUPCAM_OPTION_AFPOSITION</td>
-      	<td>auto focus sensor board positon.</td>
+      	<td>auto focus sensor board positon</td>
       	<td>NA</td>
       	<td>Yes</td>
       </tr>
@@ -1146,14 +1133,49 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
 	  <tr>
       	<td>TOUPCAM_OPTION_AFZONE</td>
-      	<td>auto focus zone.</td>
+      	<td>auto focus zone</td>
       	<td>NA</td>
       	<td>Yes</td>
       </tr>
 	  <tr>
       	<td>TOUPCAM_OPTION_AFFEEDBACK</td>
-      	<td>auto focus information feedback:<br/>0: unknown<br/>1: focused<br/>2: focusing<br/>3: defocus<br/>4: up<br/>5: down<br/></td>
+      	<td>auto focus information feedback:<br/>0: unknown<br/>1: focused<br/>2: focusing<br/>3: defocus<br/>4: up<br/>5: down<br/>Only get</td>
       	<td>NA</td>
+      	<td>Yes</td>
+      </tr>
+	  <tr>
+      	<td>TOUPCAM_OPTION_TESTPATTERN</td>
+      	<td>test pattern:<br/>0: TestPattern Off<br/>3: monochrome diagonal stripes<br/>5: monochrome vertical stripes<br/>7: monochrome horizontal stripes<br/>9: chromatic diagonal stripes<br/>Only put</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+	  <tr>
+      	<td>TOUPCAM_OPTION_LINEAR</td>
+      	<td>0 = turn off the builtin linear tone mapping<br/>
+      	  1 = turn on the builtin linear tone mapping</td>
+      	<td>1</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_CURVE</td>
+      	<td>0 = turn off the builtin curve tone mapping<br/>
+      	  1 = turn on the builtin polynomial curve tone mapping<br/>
+		  2 = turn on the builtin logarithmic curve tone mapping</td>
+      	<td>2</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_COLORMATIX</td>
+      	<td>0 = turn off the builtin color matrix<br/>
+      	  1 = turn on the builtin color matrix</td>
+      	<td>1</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_WBGAIN</td>
+      	<td>0 = turn off the builtin white balance gain<br/>
+      	  1 = turn on the builtin white balance gain</td>
+      	<td>1</td>
       	<td>Yes</td>
       </tr>
     </table>
@@ -1162,7 +1184,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 <blockquote>
 	<p><strong>Important:</strong></p>
 <p><strong>a. Some options cannot be changed after the camera is started. This is to say the option cannot be changed on-the-fly.</strong></p>
-  <p><strong>b. It is forbidden to call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE in the callback context of PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK, the return value is E_WRONG_THREAD.</strong></p>
+  <p><strong>b. It is forbidden to call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE in the callback context of PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK_V3, the return value is E_WRONG_THREAD.</strong></p>
   <p>c. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
 </blockquote>
 </li></ul>
@@ -1302,7 +1324,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, TOUPCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
-<ul><li><h2><a id="black">Toupcam_AbbOnePush</a></h2>
+<ul><li><h2><a id="black"><font color="#0000FF">Toupcam_AbbOnePush</font></a></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1347,7 +1369,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Remarks:</strong> Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.</p>
 </li></ul>
 <ul><li>
-    <h2>Toupcam_get_StillResolutionNumber, Toupcam_get_StillResolution</font></h2>
+    <h2><font color="#0000FF">Toupcam_get_StillResolutionNumber, Toupcam_get_StillResolution</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1358,7 +1380,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Remarks:</strong> Toupcam_get_StillResolutionNumber means the number of supported still resolution. Take UCMOS03100KPA as an example, if we call the function Toupcam_get_StillResolutionNumber and get "3", which means it can support three kinds of resolution. If it doesn't support "still snap", then we get "0". Toupcam_get_Resolution gs the width/height of each kind of resolution.</p>
 </li></ul>
 <ul><li>
-    <h2>Toupcam_get_SerialNumber, Toupcam_get_FwVersion, Toupcam_get_HwVersion, Toupcam_get_ProductionDate, Toupcam_get_Revision</font></h2>
+    <h2><font color="#0000FF">Toupcam_get_SerialNumber, Toupcam_get_FwVersion, Toupcam_get_HwVersion, Toupcam_get_ProductionDate, Toupcam_get_Revision</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
@@ -1372,7 +1394,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Remarks:</strong> each camera has a unique serial number with 31 letters.</p>
 </li></ul>
 <ul><li>
-    <h2>Toupcam_get_PixelSize</font></h2>
+    <h2><font color="#0000FF">Toupcam_get_PixelSize</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
@@ -1382,7 +1404,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </blockquote>
 </li></ul>
 <ul><li>
-    <h2>Toupcam_put_LEDState</font></h2>
+    <h2><font color="#0000FF">Toupcam_put_LEDState</font></h2>
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
@@ -1418,11 +1440,11 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
         <td width="28%" valign="top">TOUPCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
-        <td width="72%" valign="top">get the supported mode:<br/>0x01->Input<br/>0x02->Output<br/>(0x01 | 0x02)->support both Input and Output</td>
+        <td width="72%" valign="top">get the supported mode:<br/>0x01->&gt;Input<br/>0x02->&gt;Output<br/>(0x01 | 0x02)->&gt;support both Input and Output</td>
       </tr>
       <tr>
         <td>TOUPCAM_IOCONTROLTYPE_GET_GPIODIR</td>
-        <td>0x01->Input, 0x02->Output</td>
+        <td>0x00->&gt;Input, 0x01->&gt;Output</td>
       </tr>
       <tr>
         <td>TOUPCAM_IOCONTROLTYPE_SET_GPIODIR</td>
@@ -1430,7 +1452,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
         <td>TOUPCAM_IOCONTROLTYPE_GET_FORMAT</td>
-        <td>format:<br/>0x00->not connected<br/>0x01->Tri-state<br/>0x02->TTL<br/>0x03->LVDS<br/?0x04->RS422<br/>0x05->Opto-coupled</td>
+        <td>format:<br/>0x00->&gt;not connected<br/>0x01->&gt;Tri-state<br/>0x02->&gt;TTL<br/>0x03->&gt;LVDS<br/>0x04->&gt;RS422<br/>0x05->&gt;Opto-coupled</td>
       </tr>
       <tr>
         <td>TOUPCAM_IOCONTROLTYPE_SET_FORMAT</td>
@@ -1446,7 +1468,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
         <td>TOUPCAM_IOCONTROLTYPE_GET_INPUTACTIVATION</td>
-        <td>0x01->Positive, 0x02->Negative</td>
+        <td>0x00->&gt;Positive, 0x01->&gt;Negative</td>
       </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_INPUTACTIVATION</td>
@@ -1454,7 +1476,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_DEBOUNCERTIME</td>
-   <td>debouncer time in microseconds</td>
+   <td>debouncer time in microseconds, [0, 20000]</td>
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_DEBOUNCERTIME</td>
@@ -1462,12 +1484,12 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_TRIGGERSOURCE</td>
-   <td>0x00-> Opto-isolated input<br/>
-                                0x01-> GPIO0<br/>
-                                0x02-> GPIO1<br/>
-                                0x03-> Counter<br/>
-                                0x04-> PWM<br/>
-                                0x05-> Software</td>
+   <td>0x00->&gt; Opto-isolated input<br/>
+                                0x01->&gt; GPIO0<br/>
+                                0x02->&gt; GPIO1<br/>
+                                0x03->&gt; Counter<br/>
+                                0x04->&gt; PWM<br/>
+                                0x05->&gt; Software</td>
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_TRIGGERSOURCE</td>
@@ -1475,7 +1497,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_TRIGGERDELAY</td>
-   <td>Trigger delay time in microseconds</td>
+   <td>Trigger delay time in microseconds, [0, 5000000]</td>
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_TRIGGERDELAY</td>
@@ -1491,7 +1513,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_COUNTERSOURCE</td>
-   <td>0x00-> Opto-isolated input<br/>0x01-> GPIO0<br/>0x02-> GPIO1</td>
+   <td>0x00->&gt; Opto-isolated input<br/>0x01->&gt; GPIO0<br/>0x02->&gt; GPIO1</td>
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_COUNTERSOURCE</td>
@@ -1511,9 +1533,9 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_PWMSOURCE</td>
-   <td>0x00-> Opto-isolated input<br/>
-		0x01-> GPIO0<br/>
-		0x02-> GPIO1</td>
+   <td>0x00->&gt; Opto-isolated input<br/>
+		0x01->&gt; GPIO0<br/>
+		0x02->&gt; GPIO1</td>
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_PWMSOURCE</td>
@@ -1521,10 +1543,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_OUTPUTMODE</td>
-   <td>0x00-> Frame Trigger Wait<br/>
-                                0x01-> Exposure Active<br/>
-                                0x02-> Strobe<br/>
-                                0x03-> User output</td>
+   <td>0x00->&gt; Frame Trigger Wait<br/>
+                                0x01->&gt; Exposure Active<br/>
+                                0x02->&gt; Strobe<br/>
+                                0x03->&gt; User output</td>
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_OUTPUTMODE</td>
@@ -1532,7 +1554,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_STROBEDELAYMODE</td>
-   <td>boolean, 1 -> delay, 0 -> pre-delay; compared to exposure active signal</td>
+   <td>boolean, 0->&gt; pre-delay, 1->&gt; delay; compared to exposure active signal</td>
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_STROBEDELAYMODE</td>
@@ -1540,7 +1562,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_STROBEDELAYTIME</td>
-   <td>Strobe delay or pre-delay time in microseconds</td>
+   <td>Strobe delay or pre-delay time in microseconds, [0, 5000000]</td>
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_STROBEDELAYTIME</td>
@@ -1548,7 +1570,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_STROBEDURATION</td>
-   <td>Strobe duration time in microseconds</td>
+   <td>Strobe duration time in microseconds, [0, 5000000]</td>
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_STROBEDURATION</td>
@@ -1556,9 +1578,9 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_USERVALUE</td>
-   <td>bit0-> Opto-isolated output<br/>
-       bit1-> GPIO0 output<br/>
-       bit2-> GPIO1 output</td>
+   <td>bit0->&gt; Opto-isolated output<br/>
+       bit1->&gt; GPIO0 output<br/>
+       bit2->&gt; GPIO1 output</td>
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_USERVALUE</td>
@@ -1638,10 +1660,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Remarks:</strong> get histogram data.</p>
 </li></ul>
 <hr/>
-<h1><font color="#0000FF">5. .NET and C# and VB.NET</font></h1>
+<h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1>
 <hr/>
 <p>Toupcam does support .NET development environment (C# and VB.NET).</p>
-<p>toupcam.cs in the 'inc' directory use P/Invoke call into toupcam.dll. Copy toupcam.cs to your C# project, please reference demowinformcs1, demowinformcs2 and demowinformcs3 in the samples directory.</p>
+<p>toupcam.cs use P/Invoke to call into toupcam.dll. Copy toupcam.cs to your C# project, please reference demowinformcs1, demowinformcs2 and demowinformcs3 in the samples directory.</p>
 <p>Please pay attation to that <strong>the object of the C# class ToupTek.ToupCam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new ToupTek.ToupCam</strong> (The constructor is private on purpose).</p>
 <p>Most properties and methods of the ToupCam class P/Invoke into the corresponding Toupcam_xxxx functions of toupcam.dll/so. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding C# properties or methods. For example, the C# Snap method call the function Toupcam_Snap, the descriptions of the Toupcam_Snap function is applicable for C# Snap method:</p>
 <table width="100%" border="0" bgcolor="#B0D0B0">
@@ -1656,21 +1678,28 @@ public bool Snap(uint nResolutionIndex)
 }</pre></td></tr></table>
 <p>VB.NET is similar with C#, not otherwise specified.</p>
 <hr/>
-<h1><font color="#0000FF">6. Python</font></h1>
+<h1><font color="#0000FF"><a id="python">6. Python</a></font></h1>
 <hr/>
-<p>Toupcam does support Python (version 2.7.* or 3.0 or above), please import toupcam to use toupcam.py and reference the sample code simplest.py.</p>
+<p>Toupcam does support Python (version 3.0 or above), please import toupcam to use toupcam.py and reference the sample code simplest.py and qt.py.</p>
 <p>Please pay attation to that <strong>the object of the python class toupcam.ToupCam must be obtained by classmethod Open or OpenByIndex, it cannot be obtained by obj = toupcam.ToupCam()</strong></p>
 <p>Most methods of the ToupCam class use ctypes to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding python methods.</p>
 <p>Please reference __errcheck in toupcam.py, the original HRESULT return code is mapped to HRESULTException exception (in win32 it's inherited from OSError).</p>
-<p>Please make sure the toupcam library file is in the same directory with toupcam.py.</p>
+<p>Please make sure the toupcam dll/so/dylib library file is in the same directory with toupcam.py.</p>
+<h1><font color="#0000FF"><a id="java">7. Java</a></font></h1>
 <hr/>
-<h1><font color="#0000FF">7. Misc</font></h1>
+<p>Toupcam does support Java, toupcam.java use <a href="https://github.com/java-native-access/jna">JNA (https://github.com/java-native-access/jna)</a> to call into toupcam.dll/so/dylib. Copy toupcam.java to your java project, please reference the sample code simplest.java (Console), javafx.java, swing.java.</p>
+<p>Please pay attation to that <strong>the object of the java class toupcam must be obtained by static method Open or OpenByIndex, it cannot be obtained by obj = new toupcam()</strong>(The constructor is private on purpose).</p>
+<p>Most methods of the toupcam class use <a href="https://github.com/java-native-access/jna">JNA</a> to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding java methods.</p>
+<p>Please reference errcheck in toupcam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
+<p>Remark: (1) Download jna-*.jar from github; (2) Make sure toupcam.dll/so/dylib is placed in the correct directory.</p>
+<hr/>
+<h1><font color="#0000FF">8. Misc</font></h1>
 <hr/>
 <ul>
   <li>Byte order (BGR vs RGB)
     <blockquote>
       <p>Windows: BGR</p>
-      <p>macOS, Linux: RGB</p>
+      <p>macOS, Linux, Android: RGB</p>
     </blockquote>
   </li>
 </ul>
@@ -1822,7 +1851,9 @@ public bool Snap(uint nResolutionIndex)
 <hr/>
 <h1><font color="#0000FF">7. Changelog</font></h1>
 <hr/>
-<p>v35: Python</p>
+<p>v37: Add Android support<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Toupcam_StartPushModeV3 (Toupcam_StartPushModeV2 and Toupcam_StartPushMode are obsoleted)</p>
+<p>v36: Add Java support. Please see <a href="#java">here</a></p>
+<p>v35: Add Python support. Please see <a href="#python">here</a></p>
 <p>v34: Auto Focus and Focus Motor</p>
 <p>v33: extend TOUPCAM_OPTION_AGAIN to TOUPCAM_OPTION_AUTOEXP_POLICY, support more options. Please see <a href="#aepolicy">here</a></p>
 <p>v32: Addd support to Windows 10 on ARM and ARM64, both desktop and WinRT</p>
