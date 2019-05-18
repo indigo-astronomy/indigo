@@ -619,7 +619,7 @@ static void guide_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	}
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE)
+	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE)
 		indigo_send_message(device, "Guiding done");
 	else
 	indigo_send_message(device, "Guiding failed");
