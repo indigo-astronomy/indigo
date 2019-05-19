@@ -81,24 +81,6 @@ static void ifft(const int n, const double (*X)[2], double (*x)[2]) {
 	}
 }
 
-//static void corellate(const int n, const double (*x1)[2], const double (*x2)[2], double (*c)[2]) {
-//	int i;
-//	double (*X1)[2] = malloc(2 * n * sizeof(double));
-//	double (*X2)[2] = malloc(2 * n * sizeof(double));
-//	double (*C)[2] = malloc(2 * n * sizeof(double));
-//	fft(n, x1, X1);
-//	fft(n, x2, X2);
-//	/* pointwise multiply X1 conjugate with X2 here */
-//	for (i = 0; i < n; i++) {
-//		C[i][RE] = X1[i][RE] * X2[i][RE] + X1[i][IM] * X2[i][IM];
-//		C[i][IM] = X1[i][IM] * X2[i][RE] - X1[i][RE] * X2[i][IM];
-//	}
-//	ifft(n, C, c);
-//	free(X1);
-//	free(X2);
-//	free(C);
-//}
-
 static void corellate_fft(const int n, const double (*X1)[2], const double (*X2)[2], double (*c)[2]) {
 	int i;
 	double (*C)[2] = malloc(2 * n * sizeof(double));
@@ -233,7 +215,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	c->centroid_x = *x = m10 / m00;
 	c->centroid_y = *y = m01 / m00;
 	c->algorithm = centroid;
-	INDIGO_DEBUG(indigo_log("centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
+	INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
 }
 
@@ -280,20 +262,63 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	c->centroid_x = m10 / m00;
 	c->centroid_y = m01 / m00;
 	c->algorithm = centroid;
-	INDIGO_DEBUG(indigo_debug("centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
+	INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
 }
 
-static double min_re(double (*vector)[2], int size) {
-	double result = vector[0][RE];
-	for (int i = 1; i < size; i++) {
-		if (vector[i][RE] < result)
-			result = vector[i][RE];
+#define BG_RADIUS	5
+
+static double calibrate_re(double (*vector)[2], int size) {
+	int first = BG_RADIUS + 1, last = size - BG_RADIUS - 1;
+	double avg = 0;
+	double mins[size];
+	for (int i = first; i <= last; i++) {
+		double min = vector[i - BG_RADIUS][RE];
+		for (int j = -BG_RADIUS + 1; j <= BG_RADIUS; j++) {
+			double value = vector[i + j][RE];
+			if (value < min)
+				min = value;
+		}
+		mins[i] = min;
 	}
-	return result;
+	for (int i = 0; i < first; i++)
+		vector[i][RE] = 0;
+	for (int i = last + 1; i < size; i++)
+		vector[i][RE] = 0;
+	avg = 0;
+	int count = last - first + 1;
+	for (int i = first; i <= last; i++) {
+		double value = vector[i][RE] - mins[i];
+		vector[i][RE] = value;
+		avg += value;
+	}
+	avg /= count;
+	double stddev = 0;
+	for (int i = first; i <= last; i++) {
+		double value = vector[i][RE] - avg;
+		stddev += value * value;
+	}
+	stddev /= count;
+	double threshold = avg + sqrt(stddev);
+	double signal_ms = 0, noise_ms = 0;
+	int signal_count = 0, noise_count = 0;
+	for (int i = first; i <= last; i++) {
+		double value = vector[i][RE];
+		if (value > threshold) {
+			signal_ms += value * value;
+			signal_count++;
+		} else {
+			noise_ms += value * value;
+			noise_count++;
+		}
+	}
+	
+	double snr = (signal_ms / signal_count) / (noise_ms / noise_count);
+	INDIGO_DEBUG(indigo_debug("calibrate_re: threshold = %g, S/N = %g", threshold, snr));
+	return snr;
 }
 
-indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, int gradient_removal, indigo_frame_digest *c) {
+indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c) {
 	if ((width < 3) || (height < 3))
 		return INDIGO_FAILED;
 	if ((data == NULL) || (c == NULL))
@@ -304,7 +329,6 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	double (*col_y)[2] = calloc(2 * c->height * sizeof(double), 1);
 	c->fft_x = malloc(2 * c->width * sizeof(double));
 	c->fft_y = malloc(2 * c->height * sizeof(double));
-	double total = 0;
 	int ci = 0, li = 0, max = width * height;
 	for (int i = 0; i < max; i++) {
 		double value;
@@ -328,43 +352,13 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		}
 		col_x[ci][RE] += value;
 		col_y[li][RE] += value;
-		total += value;
 		ci++;
 		if (ci == width) {
 			ci = 0;
 			li++;
 		}
 	}
-	
-	double avg = total / width;
-	for (int i = 0; i < width; i++) {
-		col_x[i][RE] = (col_x[i][RE] > avg) ? col_x[i][RE] - avg : 0;
-	}
-	avg = total / height;
-	for (int i = 0; i < height; i++) {
-		col_y[i][RE] = (col_y[i][RE] > avg) ? col_y[i][RE] - avg : 0;
-	}
-
-	if (gradient_removal) {
-		int e = width - gradient_removal;
-		int mm = 0;
-		for (int i = 0; i < e; i++) {
-			mm = min_re(col_x + i, gradient_removal);
-			col_x[i][RE] -= mm;
-		}
-		for (int i = e; i < width; i++) {
-			col_x[i][RE] -= mm;
-		}
-		e = height - gradient_removal;
-		mm = 0;
-		for (int i = 0; i < e; i++) {
-			mm = min_re(col_y + i, gradient_removal);
-			col_y[i][RE] -= mm;
-		}
-		for (int i =  e; i < height; i++) {
-			col_y[i][RE] -= mm;
-		}
-	}
+	c->snr = (calibrate_re(col_x, width) + calibrate_re(col_y, height)) / 2;
 //	printf("col_x:");
 //	for (i=0; i < c->width; i++) {
 //		printf(" %5.2f\n",col_x[i][RE]);
