@@ -151,47 +151,124 @@ static int next_power_2(const int n) {
 	return k;
 }
 
+indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *c) {
+	if ((width <= 2 * radius) || (height <= 2 * radius))
+		return INDIGO_FAILED;
+	int xx = (int)round(*x);
+	int yy = (int)round(*y);
+	if (xx < radius || width - radius < xx)
+		return INDIGO_FAILED;
+	if (yy < radius || height - radius < yy)
+		return INDIGO_FAILED;
+	if ((data == NULL) || (c == NULL))
+		return INDIGO_FAILED;
+	double m10 = 0, m01 = 0, m00 = 0, min = 1e20, max = 0;
+	int ce = xx + radius, le = yy + radius;
+	for (int j = yy - radius; j <= le; j++) {
+		int k = j * width;
+		for (int i = xx - radius; i <= ce; i++) {
+			int kk = k + i;
+			double value;
+			switch (raw_type) {
+				case INDIGO_RAW_MONO8: {
+					value = ((uint8_t *)data)[kk];
+					break;
+				}
+				case INDIGO_RAW_MONO16: {
+					value = ((uint16_t *)data)[kk];
+					break;
+				}
+				case INDIGO_RAW_RGB24: {
+					kk *= 3;
+					value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+					break;
+				}
+				case INDIGO_RAW_RGB48: {
+					kk *= 3;
+					value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
+					break;
+				}
+			}
+			if (value > max)
+				max = value;
+			if (value < min)
+				min = value;
+		}
+	}
+	double scale = (max - min) / 10000;
+	if (scale == 0)
+		return INDIGO_FAILED;
+	for (int j = yy - radius; j <= le; j++) {
+		int k = j * width;
+		for (int i = xx - radius; i <= ce; i++) {
+			int kk = k + i;
+			double value;
+			switch (raw_type) {
+				case INDIGO_RAW_MONO8: {
+					value = (((uint8_t *)data)[kk] - min) / scale;
+					break;
+				}
+				case INDIGO_RAW_MONO16: {
+					value = (((uint16_t *)data)[kk] - min) / scale;
+					break;
+				}
+				case INDIGO_RAW_RGB24: {
+					kk *= 3;
+					value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] - min) / scale;
+					break;
+				}
+				case INDIGO_RAW_RGB48: {
+					kk *= 3;
+					value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2] - min) / scale;
+					break;
+				}
+			}
+			m10 += i * value;
+			m01 += j * value;
+			m00 += value;
+		}
+	}
+	c->width = width;
+	c->height = height;
+	c->centroid_x = *x = m10 / m00;
+	c->centroid_y = *y = m01 / m00;
+	c->algorithm = centroid;
+	INDIGO_DEBUG(indigo_log("centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
+	return INDIGO_OK;
+}
+
 indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c) {
-	int i, ci, li, max;
-	double m10, m01, m00;
 	if ((width < 3) || (height < 3))
 		return INDIGO_FAILED;
 	if ((data == NULL) || (c == NULL))
 		return INDIGO_FAILED;
-	m10 = m01 = m00 = 0;
-	ci = li = 0;
-	max = width * height;
-	for (i=0; i < max; i++) {
+	double m10 = 0, m01 = 0, m00 = 0;
+	int ci = 0, li = 0, max = width * height;
+	for (int i = 0; i < max; i++) {
+		double value;
 		switch (raw_type) {
 			case INDIGO_RAW_MONO8: {
-				int value = ((uint8_t *)data)[i];
-				m10 += ci * value;
-				m01 += li * value;
-				m00 += value;
+				value = ((uint8_t *)data)[i];
 				break;
 			}
 			case INDIGO_RAW_MONO16: {
-				int value = ((uint16_t *)data)[i];
-				m10 += ci * value;
-				m01 += li * value;
-				m00 += value;
+				value = ((uint16_t *)data)[i];
 				break;
 			}
 			case INDIGO_RAW_RGB24: {
-				int value = ((uint8_t *)data)[i] + ((uint8_t *)data)[i + 1] + ((uint8_t *)data)[i + 2];
-				m10 += ci * value;
-				m01 += li * value;
-				m00 += value;
+				value = ((uint8_t *)data)[i] + ((uint8_t *)data)[i + 1] + ((uint8_t *)data)[i + 2];
+				i += 2;
 				break;
 			}
 			case INDIGO_RAW_RGB48: {
-				int value = ((uint16_t *)data)[i] + ((uint16_t *)data)[i + 1] + ((uint16_t *)data)[i + 2];
-				m10 += ci * value;
-				m01 += li * value;
-				m00 += value;
+				value = ((uint16_t *)data)[i] + ((uint16_t *)data)[i + 1] + ((uint16_t *)data)[i + 2];
+				i += 2;
 				break;
 			}
 		}
+		m10 += ci * value;
+		m01 += li * value;
+		m00 += value;
 		ci++;
 		if (ci == width) {
 			ci = 0;
@@ -203,7 +280,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	c->centroid_x = m10 / m00;
 	c->centroid_y = m01 / m00;
 	c->algorithm = centroid;
-//	INDIGO_DEBUG(indigo_debug("c->centroid_x =%5.2f, c->centroid_y =%5.2f\n", c->centroid_x, c->centroid_y));
+	INDIGO_DEBUG(indigo_debug("centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
 }
 
@@ -217,51 +294,41 @@ static double min_re(double (*vector)[2], int size) {
 }
 
 indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, int gradient_removal, indigo_frame_digest *c) {
-	int i, ci, li, max;
-	double (*col_x)[2];
-	double (*col_y)[2];
 	if ((width < 3) || (height < 3))
 		return INDIGO_FAILED;
 	if ((data == NULL) || (c == NULL))
 		return INDIGO_FAILED;
 	c->width = next_power_2(width);
 	c->height = next_power_2(height);
+	double (*col_x)[2] = calloc(2 * c->width * sizeof(double), 1);
+	double (*col_y)[2] = calloc(2 * c->height * sizeof(double), 1);
 	c->fft_x = malloc(2 * c->width * sizeof(double));
 	c->fft_y = malloc(2 * c->height * sizeof(double));
-	col_x = calloc(2 * c->width * sizeof(double), 1);
-	col_y = calloc(2 * c->height * sizeof(double), 1);	
-	/* collapse the frame in X and Y directions */
-	ci = 0;
-	li = 0;
-	max = width * height;
-	for (i=0; i < max; i++) {
-		
+	double total = 0;
+	int ci = 0, li = 0, max = width * height;
+	for (int i = 0; i < max; i++) {
+		double value;
 		switch (raw_type) {
 			case INDIGO_RAW_MONO8: {
-				int value = ((uint8_t *)data)[i];
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
+				value = ((uint8_t *)data)[i];
 				break;
 			}
 			case INDIGO_RAW_MONO16: {
-				int value = ((uint16_t *)data)[i];
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
+				value = ((uint16_t *)data)[i];
 				break;
 			}
 			case INDIGO_RAW_RGB24: {
-				int value = ((uint8_t *)data)[i] + ((uint8_t *)data)[i + 1] + ((uint8_t *)data)[i + 2];
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
+				value = ((uint8_t *)data)[i] + ((uint8_t *)data)[i + 1] + ((uint8_t *)data)[i + 2];
 				break;
 			}
 			case INDIGO_RAW_RGB48: {
-				int value = ((uint16_t *)data)[i] + ((uint16_t *)data)[i + 1] + ((uint16_t *)data)[i + 2];
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
+				value = ((uint16_t *)data)[i] + ((uint16_t *)data)[i + 1] + ((uint16_t *)data)[i + 2];
 				break;
 			}
 		}
+		col_x[ci][RE] += value;
+		col_y[li][RE] += value;
+		total += value;
 		ci++;
 		if (ci == width) {
 			ci = 0;
@@ -269,19 +336,28 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		}
 	}
 	
+	double avg = total / width;
+	for (int i = 0; i < width; i++) {
+		col_x[i][RE] = (col_x[i][RE] > avg) ? col_x[i][RE] - avg : 0;
+	}
+	avg = total / height;
+	for (int i = 0; i < height; i++) {
+		col_y[i][RE] = (col_y[i][RE] > avg) ? col_y[i][RE] - avg : 0;
+	}
+
 	if (gradient_removal) {
 		int e = width - gradient_removal;
 		int mm = 0;
-		for (int i =  0; i < e; i++) {
+		for (int i = 0; i < e; i++) {
 			mm = min_re(col_x + i, gradient_removal);
 			col_x[i][RE] -= mm;
 		}
-		for (int i =  e; i < width; i++) {
+		for (int i = e; i < width; i++) {
 			col_x[i][RE] -= mm;
 		}
 		e = height - gradient_removal;
 		mm = 0;
-		for (int i =  0; i < e; i++) {
+		for (int i = 0; i < e; i++) {
 			mm = min_re(col_y + i, gradient_removal);
 			col_y[i][RE] -= mm;
 		}
