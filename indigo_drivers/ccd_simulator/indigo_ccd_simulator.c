@@ -212,7 +212,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				for (int j = 0; j < frame_height; j++) {
 					int jj = j * j;
 					for (int i = 0; i < frame_width; i++) {
-						raw[j * frame_width + i] = sqrt(i * i + jj) / 5 + (rand() & 0x7F);
+						raw[j * frame_width + i] = sqrt(i * i + jj) / 5 + (rand() & 0x7F) + 2000;
 					}
 				}
 			} else {
@@ -253,7 +253,7 @@ static void exposure_timer_callback(indigo_device *device) {
 								if (x < 0 || x >= frame_width)
 									continue;
 								double xx = center_x - x;
-								double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
+								double v = a * exp(-(xx * xx / 4.0 + yy * yy / 4.0));
 								raw[yw + x] += (unsigned short)v;
 							}
 						}
