@@ -104,7 +104,12 @@ static bool synscan_flush(indigo_device* device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
 			return false;
 		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
+		if (PRIVATE_DATA->udp) {
+			char buf[64];
+			result = recv(PRIVATE_DATA->handle, buf, sizeof(buf), 0);
+		} else {
+			result = read(PRIVATE_DATA->handle, &c, 1);
+		}
 		if (result < 1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ FAIL 1");
 			return false;
@@ -116,13 +121,19 @@ static bool synscan_flush(indigo_device* device) {
 static bool synscan_command_unlocked(indigo_device* device, const char* cmd) {
 	//  Send the command to the port
 	INDIGO_DRIVER_TRACE(DRIVER_NAME, "CMD: [%s]", cmd);
-	if (!indigo_write(PRIVATE_DATA->handle, cmd, strlen(cmd))) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command failed");
-		return false;
-	}
-	if (!indigo_write(PRIVATE_DATA->handle, "\r", 1)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command terminator failed");
-		return false;
+	if (PRIVATE_DATA->udp) {
+		char buf[64];
+		snprintf(buf, sizeof(buf), "%s\r", cmd);
+		send(PRIVATE_DATA->handle, buf, strlen(buf), 0);
+	} else {
+		if (!indigo_write(PRIVATE_DATA->handle, cmd, strlen(cmd))) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command failed");
+			return false;
+		}
+		if (!indigo_write(PRIVATE_DATA->handle, "\r", 1)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sending command terminator failed");
+			return false;
+		}
 	}
 	return true;
 }
@@ -131,25 +142,29 @@ static bool synscan_read_response(indigo_device* device, char* r) {
 	//  Read a response
 	char c;
 	char resp[20];
-	long total_bytes = 0;
-	while (total_bytes < sizeof(resp)) {
-		long bytes_read = read(PRIVATE_DATA->handle, &c, 1);
-		if (bytes_read == 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SYNSCAN_TIMEOUT");
-			break;
-		}
-		if (bytes_read > 0) {
-			resp[total_bytes++] = c;
-			if (c == '\r')
+	if (PRIVATE_DATA->udp) {
+		long bytes_read = recv(PRIVATE_DATA->handle, resp, sizeof(resp), 0);
+		resp[bytes_read] = 0;
+	} else {
+		long total_bytes = 0;
+		while (total_bytes < sizeof(resp)) {
+			long bytes_read = read(PRIVATE_DATA->handle, &c, 1);
+			if (bytes_read == 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SYNSCAN_TIMEOUT");
 				break;
+			}
+			if (bytes_read > 0) {
+				resp[total_bytes++] = c;
+				if (c == '\r')
+					break;
+			}
+		}
+		resp[total_bytes] = 0;
+		if (total_bytes <= 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Reading response failed");
+			return false;
 		}
 	}
-	resp[total_bytes] = 0;
-	if (total_bytes <= 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Reading response failed");
-		return false;
-	}
-	
 	//  Check response syntax =...<cr>, if invalid retry
 	size_t len = strlen(resp);
 	if (len < 2 || resp[0] != '=' || resp[len - 1] != '\r') {
