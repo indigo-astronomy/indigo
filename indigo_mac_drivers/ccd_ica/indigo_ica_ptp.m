@@ -856,8 +856,20 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       return self;
     _manufacturer = ptpReadString(&buf);
     
+    if (buf - buffer >= dataLength)
+      return self;
+    _model = ptpReadString(&buf);
+    if (buf - buffer >= dataLength)
+      return self;
+    _version = ptpReadString(&buf);
+    if (buf - buffer >= dataLength)
+      return self;
+    _serial = ptpReadString(&buf);
+    
+    _properties = [NSMutableDictionary dictionary];
+    
     if (self.vendorExtension == PTPVendorExtensionMicrosoft) {
-      if ([_manufacturer containsString:@"Nikon"]) {
+      if ([_manufacturer containsString:@"Nikon"] || [_model containsString:@"Nikon"]) {
         self.vendorExtension = PTPVendorExtensionNikon;
         _vendorExtensionVersion = 100;
         _vendorExtensionDesc = @"Nikon & Microsoft PTP Extensions";
@@ -870,17 +882,6 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       self.vendorExtension = PTPVendorExtensionSony;
       _vendorExtensionDesc = @"Sony PTP Extensions";
     }
-    if (buf - buffer >= dataLength)
-      return self;
-    _model = ptpReadString(&buf);
-    if (buf - buffer >= dataLength)
-      return self;
-    _version = ptpReadString(&buf);
-    if (buf - buffer >= dataLength)
-      return self;
-    _serial = ptpReadString(&buf);
-    
-    _properties = [NSMutableDictionary dictionary];
   }
   return self;
 }
