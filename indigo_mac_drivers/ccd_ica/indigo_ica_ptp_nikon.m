@@ -393,6 +393,9 @@
 
 -(NSString *)debug {
   NSMutableString *s = [NSMutableString stringWithFormat:@"%@ %@, PTP V%.2f + %@ V%.2f\n", self.model, self.version, self.standardVersion / 100.0, self.vendorExtensionDesc, self.vendorExtensionVersion / 100.0];
+  [s appendFormat:@"Model: %@\n", self.model];
+  [s appendFormat:@"Manufacturer: %@\n", self.manufacturer];
+  [s appendFormat:@"Extension: 0x%x\n", self.vendorExtension];
   if (self.operationsSupported.count > 0) {
     for (NSNumber *code in self.operationsSupported)
       [s appendFormat:@"%@\n", [PTPNikonRequest operationCodeName:code.intValue]];
