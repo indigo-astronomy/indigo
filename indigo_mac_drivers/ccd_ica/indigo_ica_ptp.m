@@ -869,7 +869,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     _properties = [NSMutableDictionary dictionary];
     
     if (self.vendorExtension == PTPVendorExtensionMicrosoft) {
-      if ([_manufacturer containsString:@"Nikon"] || [_model containsString:@"Nikon"]) {
+      if ([_manufacturer containsString:@"Nikon"]) {
         self.vendorExtension = PTPVendorExtensionNikon;
         _vendorExtensionVersion = 100;
         _vendorExtensionDesc = @"Nikon & Microsoft PTP Extensions";
@@ -878,6 +878,10 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         _vendorExtensionVersion = 100;
         _vendorExtensionDesc = @"Canon & Microsoft PTP Extensions";
       }
+    } else if ([_manufacturer containsString:@"Nikon"]) {
+      self.vendorExtension = PTPVendorExtensionNikon;
+      _vendorExtensionVersion = 100;
+      _vendorExtensionDesc = @"Nikon PTP Extensions";
     } else if ([_manufacturer containsString:@"Sony"]) {
       self.vendorExtension = PTPVendorExtensionSony;
       _vendorExtensionDesc = @"Sony PTP Extensions";
