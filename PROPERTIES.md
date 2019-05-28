@@ -35,7 +35,6 @@ properties are first of all defined memory structures which are, if needed, mapp
 | UTC_TIME | number |  | no | TIME | yes | It depends on hardware if it is undefined, read-only or read-write. |
 |  |  |  |  | OFFSET | yes |  |
 
-
 Properties are implemented by driver base class in [indigo_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver.c).
 
 ## CCD specific properties
