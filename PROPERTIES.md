@@ -7,254 +7,236 @@ properties are first of all defined memory structures which are, if needed, mapp
 
 ## Common properties
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>CONNECTION&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>CONNECTED&nbsp;</td><td>yes&nbsp;</td><td>Item values are undefined if state is not Idle or Ok.&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DISCONNECTED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>INFO&nbsp;</td><td>text&nbsp;</td><td>yes&nbsp;</td><td>yes&nbsp;</td><td>DEVICE_NAME&nbsp;</td><td>yes&nbsp;</td><td>"Device in INDIGO strictly represents device itself and not device driver. Valid DEVICE_INTERFACE values are defined in indigo_driver.h as indigo_device_interface enumeration."&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEVICE_VERSION&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEVICE_INTERFACE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>FRAMEWORK_NAME&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>FRAMEWORK_VERSION&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEVICE_MODEL&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEVICE_FIRMWARE_REVISION&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEVICE_HARDWARE_REVISION&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEVICE_SERIAL_NUMBER&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>SIMULATION&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ENABLED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DISABLED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CONFIG&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>LOAD&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SAVE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>REMOVE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>PROFILE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>PROFILE_0,...&nbsp;</td><td>yes&nbsp;</td><td>Select the profile number for subsequent CONFIG operation&nbsp;</td></tr>
-<tr><td>DEVICE_PORT&nbsp;</td><td>text&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>PORT&nbsp;</td><td>no&nbsp;</td><td>Either device path like "/dev/tty0" or URL like "lx200://host:port".&nbsp;</td></tr>
-<tr><td>DEVICE_BAUDRATE&nbsp;</td><td>text&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>BAUDRATE&nbsp;</td><td>no&nbsp;</td><td>Serial port configuration in a string like this: 9600-8N1&nbsp;</td></tr>
-<tr><td>DEVICE_PORTS&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>valid serial port name&nbsp;</td><td>&nbsp;</td><td>When selected, it is copied to DEVICE_PORT property.&nbsp;</td></tr>
-<tr><td>GEOGRAPHIC_COORDINATES&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>LATITUDE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>LONGITUDE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>ELEVATION&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>UTC_TIME&nbsp;</td><td>number&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>TIME&nbsp;</td><td>yes&nbsp;</td><td>It depends on hardware if it is undefined, read-only or read-write.&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OFFSET&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-</table>
-
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| CONNECTION | switch | no | yes | CONNECTED | yes | Item values are undefined if state is not Idle or Ok. |
+|  |  |  |  | DISCONNECTED | yes |  |
+| INFO | text | yes | yes | DEVICE_NAME | yes | "Device in INDIGO strictly represents device itself and not device driver. Valid DEVICE_INTERFACE values are defined in indigo_driver.h as indigo_device_interface enumeration." |
+|  |  |  |  | DEVICE_VERSION | yes |  |
+|  |  |  |  | DEVICE_INTERFACE | yes |  |
+|  |  |  |  | FRAMEWORK_NAME | no |  |
+|  |  |  |  | FRAMEWORK_VERSION | no |  |
+|  |  |  |  | DEVICE_MODEL | no |  |
+|  |  |  |  | DEVICE_FIRMWARE_REVISION | no |  |
+|  |  |  |  | DEVICE_HARDWARE_REVISION | no |  |
+|  |  |  |  | DEVICE_SERIAL_NUMBER | no |  |
+| SIMULATION | switch | no | no | ENABLED | yes |  |
+|  |  |  |  | DISABLED | yes |  |
+| CONFIG | switch | no | yes | LOAD | yes |  |
+|  |  |  |  | SAVE | yes |  |
+|  |  |  |  | REMOVE | yes |  |
+| PROFILE | switch | no | yes | PROFILE_0,... | yes | Select the profile number for subsequent CONFIG operation |
+| DEVICE_PORT | text | no | no | PORT | no | Either device path like "/dev/tty0" or URL like "lx200://host:port". |
+| DEVICE_BAUDRATE | text | no | no | BAUDRATE | no | Serial port configuration in a string like this: 9600-8N1 |
+| DEVICE_PORTS | switch | no | no | valid serial port name |  | When selected, it is copied to DEVICE_PORT property. |
+| GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes |  |
+|  |  |  |  | LONGITUDE | yes |  |
+|  |  |  |  | ELEVATION | yes |  |
+| UTC_TIME | number |  | no | TIME | yes | It depends on hardware if it is undefined, read-only or read-write. |
+|  |  |  |  | OFFSET | yes |  |
 
 Properties are implemented by driver base class in [indigo_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver.c).
 
 ## CCD specific properties
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>CCD_INFO&nbsp;</td><td>number&nbsp;</td><td>yes&nbsp;</td><td>yes&nbsp;</td><td>WIDTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>HEIGHT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>MAX_HORIZONTAL_BIN&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>MAX_VERTICAL_BIN&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PIXEL_SIZE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PIXEL_WIDTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PIXEL_HEIGHT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>BITS_PER_PIXEL&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_UPLOAD_MODE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>CLIENT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>LOCAL&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>BOTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PREVIEW&nbsp;</td><td>yes&nbsp;</td><td>Send JPEG preview to client&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PREVIEW_LOCAL&nbsp;</td><td>yes&nbsp;</td><td>Send JPEG preview to client and save original format locally&nbsp;</td></tr>
-<tr><td>CCD_LOCAL_MODE&nbsp;</td><td>text&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>DIR&nbsp;</td><td>yes&nbsp;</td><td>XXX is replaced by sequence.&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PREFIX&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_EXPOSURE&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>EXPOSURE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_STREAMING&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>EXPOSURE&nbsp;</td><td>yes&nbsp;</td><td>The same as CCD_EXPOSURE, but will upload COUNT images. Use COUNT -1 for endless loop.&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>COUNT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_ABORT_EXPOSURE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>ABORT_EXPOSURE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_FRAME&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>LEFT&nbsp;</td><td>yes&nbsp;</td><td>If BITS_PER_PIXEL can't be changed, set min and max to the same value.&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>TOP&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>WIDTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>HEIGHT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>BITS_PER_PIXEL&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_BIN&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>HORIZONTAL&nbsp;</td><td>yes&nbsp;</td><td>CCD_MODE is prefered way how to set binning.&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>VERTICAL&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_MODE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>mode identifier&nbsp;</td><td>yes&nbsp;</td><td>CCD_MODE is a prefered way how to set binning, resolution, color mode etc.&nbsp;</td></tr>
-<tr><td>CCD_READ_MODE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>HIGH_SPEED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>LOW_NOISE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_GAIN&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>GAIN&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_OFFSET&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>OFFSET&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_GAMMA&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>GAMMA&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_FRAME_TYPE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>LIGHT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>BIAS&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DARK&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>FLAT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_IMAGE_FORMAT&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>RAW&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>FITS&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>XISF&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>JPEG&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_IMAGE_FILE&nbsp;</td><td>text&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>FILE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_IMAGE&nbsp;</td><td>blob&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>IMAGE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_TEMPERATURE&nbsp;</td><td>number&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>TEMPERATURE&nbsp;</td><td>yes&nbsp;</td><td>It depends on hardware if it is undefined, read-only or read-write.&nbsp;</td></tr>
-<tr><td>CCD_COOLER&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ON&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OFF&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>CCD_COOLER_POWER&nbsp;</td><td>number&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>POWER&nbsp;</td><td>yes&nbsp;</td><td>It depends on hardware if it is undefined, read-only or read-write.&nbsp;</td></tr>
-<tr><td>CCD_FITS_HEADERS&nbsp;</td><td>text&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>HEADER_1, ...&nbsp;</td><td>yes&nbsp;</td><td>String in form "name = value", "name = 'value'" or "comment text"&nbsp;</td></tr>
-</table>
-
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| CCD_INFO | number | yes | yes | WIDTH | yes |  |
+|  |  |  |  | HEIGHT | yes |  |
+|  |  |  |  | MAX_HORIZONTAL_BIN | yes |  |
+|  |  |  |  | MAX_VERTICAL_BIN | yes |  |
+|  |  |  |  | PIXEL_SIZE | yes |  |
+|  |  |  |  | PIXEL_WIDTH | yes |  |
+|  |  |  |  | PIXEL_HEIGHT | yes |  |
+|  |  |  |  | BITS_PER_PIXEL | yes |  |
+| CCD_UPLOAD_MODE | switch | no | yes | CLIENT | yes |  |
+|  |  |  |  | LOCAL | yes |  |
+|  |  |  |  | BOTH | yes |  |
+|  |  |  |  | PREVIEW | yes | Send JPEG preview to client |
+|  |  |  |  | PREVIEW_LOCAL | yes | Send JPEG preview to client and save original format locally |
+| CCD_LOCAL_MODE | text | no | yes | DIR | yes | XXX is replaced by sequence. |
+|  |  |  |  | PREFIX | yes |  |
+| CCD_EXPOSURE | number | no | yes | EXPOSURE | yes |  |
+| CCD_STREAMING | number | no | no | EXPOSURE | yes | The same as CCD_EXPOSURE, but will upload COUNT images. Use COUNT -1 for endless loop. |
+|  |  |  |  | COUNT | yes |  |
+| CCD_ABORT_EXPOSURE | switch | no | yes | ABORT_EXPOSURE | yes |  |
+| CCD_FRAME | number | no | no | LEFT | yes | If BITS_PER_PIXEL can't be changed, set min and max to the same value. |
+|  |  |  |  | TOP | yes |  |
+|  |  |  |  | WIDTH | yes |  |
+|  |  |  |  | HEIGHT | yes |  |
+|  |  |  |  | BITS_PER_PIXEL | yes |  |
+| CCD_BIN | number | no | no | HORIZONTAL | yes | CCD_MODE is prefered way how to set binning. |
+|  |  |  |  | VERTICAL | yes |  |
+| CCD_MODE | switch | no | yes | mode identifier | yes | CCD_MODE is a prefered way how to set binning, resolution, color mode etc. |
+| CCD_READ_MODE | switch | no | no | HIGH_SPEED | yes |  |
+|  |  |  |  | LOW_NOISE | yes |  |
+| CCD_GAIN | number | no | no | GAIN | yes |  |
+| CCD_OFFSET | number | no | no | OFFSET | yes |  |
+| CCD_GAMMA | number | no | no | GAMMA | yes |  |
+| CCD_FRAME_TYPE | switch | no | yes | LIGHT | yes |  |
+|  |  |  |  | BIAS | yes |  |
+|  |  |  |  | DARK | yes |  |
+|  |  |  |  | FLAT | yes |  |
+| CCD_IMAGE_FORMAT | switch | no | yes | RAW | yes |  |
+|  |  |  |  | FITS | yes |  |
+|  |  |  |  | XISF | yes |  |
+|  |  |  |  | JPEG | yes |  |
+| CCD_IMAGE_FILE | text | no | yes | FILE | yes |  |
+| CCD_IMAGE | blob | no | yes | IMAGE | yes |  |
+| CCD_TEMPERATURE | number |  | no | TEMPERATURE | yes | It depends on hardware if it is undefined, read-only or read-write. |
+| CCD_COOLER | switch | no | no | ON | yes |  |
+|  |  |  |  | OFF | yes |  |
+| CCD_COOLER_POWER | number | yes | no | POWER | yes | It depends on hardware if it is undefined, read-only or read-write. |
+| CCD_FITS_HEADERS | text | no | yes | HEADER_1, ... | yes | String in form "name = value", "name = 'value'" or "comment text" |
 
 Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_ccd_driver.c).
 
 ### DSLR extensions (in addition to CCD specific properties)
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>DSLR_PROGRAM&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td>DSLR_APERTURE&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera/lens&nbsp;</td></tr>
-<tr><td>DSLR_SHUTTER&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td>DSLR_COMPRESSION&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td>DSLR_WHITE_BALANCE&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td>DSLR_ISO&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_EXPOSURE_METERING&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_FOCUS_METERING&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_FOCUS_MODE&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_FOCUS_MODE&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_CAPTURE_MODE&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_FLASH_MODE&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_EXPOSURE_COMPENSATION&nbsp;</td><td>switch&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_BATTERY_LEVEL&nbsp;</td><td>switch&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>VALUE&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_FOCAL_LENGTH&nbsp;</td><td>switch&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>VALUE&nbsp;</td><td>yes&nbsp;</td><td>RO/RW status and items set depends on particular camera&nbsp;</td></tr>
-<tr><td> DSLR_LOCK&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>LOCK&nbsp;</td><td>yes&nbsp;</td><td>Lock camera UI&nbsp;</td></tr>
-<tr><td> &nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>UNLOCK&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td> DSLR_MIRROR_LOCKUP&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>LOCK&nbsp;</td><td>yes&nbsp;</td><td>Lock camera mirror&nbsp;</td></tr>
-<tr><td> &nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>UNLOCK&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td> DSLR_AF&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>AF&nbsp;</td><td>yes&nbsp;</td><td>Start autofocus&nbsp;</td></tr>
-<tr><td> DSLR_AVOID_AF&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ON&nbsp;</td><td>yes&nbsp;</td><td>Avoid autofocus&nbsp;</td></tr>
-<tr><td> &nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OF&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td> DSLR_STREAMING_MODE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>LIVE_VIEW&nbsp;</td><td>yes&nbsp;</td><td>Operation used for streaming&nbsp;</td></tr>
-<tr><td> &nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>BURST_MODE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td> DSLR_ZOOM_PREVIEW&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ON&nbsp;</td><td>yes&nbsp;</td><td>LiveView zoom&nbsp;</td></tr>
-<tr><td> &nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OFF&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td> DSLR_DELETE_IMAGE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ON&nbsp;</td><td>yes&nbsp;</td><td>Delete image from camera memory/card&nbsp;</td></tr>
-<tr><td> &nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OFF&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-</table>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| DSLR_PROGRAM | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_APERTURE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera/lens |
+| DSLR_SHUTTER | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_COMPRESSION | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_WHITE_BALANCE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_ISO | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_EXPOSURE_METERING | switch | ... | no |  | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FOCUS_METERING | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FOCUS_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FOCUS_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_CAPTURE_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FLASH_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_EXPOSURE_COMPENSATION | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_BATTERY_LEVEL | switch | yes | no | VALUE | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FOCAL_LENGTH | switch | yes | no | VALUE | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_LOCK | switch | no | no | LOCK | yes | Lock camera UI |
+|   |  |  |  | UNLOCK | yes |  |
+|  DSLR_MIRROR_LOCKUP | switch | no | no | LOCK | yes | Lock camera mirror |
+|   |  |  |  | UNLOCK | yes |  |
+|  DSLR_AF | switch | no | no | AF | yes | Start autofocus |
+|  DSLR_AVOID_AF | switch | no | no | ON | yes | Avoid autofocus |
+|   |  |  |  | OF | yes |  |
+|  DSLR_STREAMING_MODE | switch | no | no | LIVE_VIEW | yes | Operation used for streaming |
+|   |  |  |  | BURST_MODE | yes |  |
+|  DSLR_ZOOM_PREVIEW | switch | no | no | ON | yes | LiveView zoom |
+|   |  |  |  | OFF | yes |  |
+|  DSLR_DELETE_IMAGE | switch | no | no | ON | yes | Delete image from camera memory/card |
+|   |  |  |  | OFF | yes |  |
+
+A reference implementation is ICA driver [indigo_ccd_ica.m](https://github.com/indigo-astronomy/indigo/blob/master/indigo_mac_drivers/ccd_ica/indigo_ccd_ica.m).
 
 ## Wheel specific properties
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>WHEEL_SLOT&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>SLOT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>WHEEL_SLOT_NAME&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>SLOT_NAME_1, ...&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>WHEEL_SLOT_OFFSET&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>SLOT_OFFSET_1, ...&nbsp;</td><td>yes&nbsp;</td><td>Value is number of focuser steps&nbsp;</td></tr>
-</table>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| WHEEL_SLOT | number | no | yes | SLOT | yes |  |
+| WHEEL_SLOT_NAME | switch | no | yes | SLOT_NAME_1, ... | yes |  |
+| WHEEL_SLOT_OFFSET | switch | no | yes | SLOT_OFFSET_1, ... | yes | Value is number of focuser steps |
 
 
 Properties are implemented by wheel driver base class in [indigo_wheel_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_wheel_driver.c).
 
 ## Focuser specific properties
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>FOCUSER_SPEED&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>SPEED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>FOCUSER_REVERSE_MOTION&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ENABLED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DIABLED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>FOCUSER_DIRECTION&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>MOVE_INWARD&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>MOVE_OUTWARD&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>FOCUSER_STEPS&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>STEPS&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>FOCUSER_ON_POSITION_SET&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>GOTO&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SYNC&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>FOCUSER_POSITION&nbsp;</td><td>number&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>POSITION&nbsp;</td><td>yes&nbsp;</td><td>It depends on hardware if it is undefined, read-only or read-write.&nbsp;</td></tr>
-<tr><td>FOCUSER_ABORT_MOTION&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>ABORT_MOTION&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>FOCUSER_TEMPERATURE&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>TEMPERATURE&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>FOCUSER_BACKLASH&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>BACKLASH&nbsp;</td><td>yes&nbsp;</td><td>Mechanical backlash compensation&nbsp;</td></tr>
-<tr><td>FOCUSER_COMPENSATION&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>COMPENSATION&nbsp;</td><td>yes&nbsp;</td><td>Temperature compensation (if FOCUSER_MODE.AUTOMATIC is set&nbsp;</td></tr>
-<tr><td>FOCUSER_MODE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>MANUAL&nbsp;</td><td>yes&nbsp;</td><td>Manual mode&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>AUTOMATIC&nbsp;</td><td>yes&nbsp;</td><td>Temperature compensated mode&nbsp;</td></tr>
-<tr><td>FOCUSER_LIMITS&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>MIN_POSITION&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>MAX_POSITION&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-</table>
-
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FOCUSER_SPEED | number | no | no | SPEED | yes |  |
+| FOCUSER_REVERSE_MOTION | switch | no | no | ENABLED | yes |  |
+|  |  |  |  | DIABLED | yes |  |
+| FOCUSER_DIRECTION | switch | no | yes | MOVE_INWARD | yes |  |
+|  |  |  |  | MOVE_OUTWARD | yes |  |
+| FOCUSER_STEPS | number | no | yes | STEPS | yes |  |
+| FOCUSER_ON_POSITION_SET | switch | no | no | GOTO | yes |  |
+|  |  |  |  | SYNC | yes |  |
+| FOCUSER_POSITION | number |  | no | POSITION | yes | It depends on hardware if it is undefined, read-only or read-write. |
+| FOCUSER_ABORT_MOTION | switch | no | yes | ABORT_MOTION | yes |  |
+| FOCUSER_TEMPERATURE | number | no | no | TEMPERATURE | yes |  |
+| FOCUSER_BACKLASH | number | no | no | BACKLASH | yes | Mechanical backlash compensation |
+| FOCUSER_COMPENSATION | number | no | no | COMPENSATION | yes | Temperature compensation (if FOCUSER_MODE.AUTOMATIC is set |
+| FOCUSER_MODE | switch | no | no | MANUAL | yes | Manual mode |
+|  |  |  |  | AUTOMATIC | yes | Temperature compensated mode |
+| FOCUSER_LIMITS | number | no | no | MIN_POSITION | yes |  |
+|  |  |  |  | MAX_POSITION | yes |  |
 
 Properties are implemented by focuser driver base class in [indigo_focuser_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_focuser_driver.c).
 
 ## Mount specific properties
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>MOUNT_INFO&nbsp;</td><td>text&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>MODEL&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>VENDOR&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>FIRMWARE_VERSION&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_LST_TIME&nbsp;</td><td>number&nbsp;</td><td>&nbsp;</td><td>yes&nbsp;</td><td>TIME&nbsp;</td><td>yes&nbsp;</td><td>It depends on hardware if it is undefined, read-only or read-write.&nbsp;</td></tr>
-<tr><td>MOUNT_SET_HOST_TIME&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>SET&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_PARK&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>PARKED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>UNPARKED&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUT_PARK_SET&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>DEFAULT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>CURRENT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_PARK_POSITION&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>RA&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEC&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_ON_COORDINATES_SET&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>TRACK&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SYNC&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SLEW&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_SLEW_RATE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>GUIDE&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>CENTERING&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>FIND&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>MAX&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_MOTION_DEC&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>NORTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SOUTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_MOTION_RA&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>WEST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>EAST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_TRACK_RATE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>SIDEREAL&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SOLAR&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>LUNAR&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_TRACKING&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ON&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OFF&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_GUIDE_RATE&nbsp;</td><td>nuber&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>RA&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEC&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_EQUATORIAL_COORDINATES&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>RA&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEC&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_HORIZONTAL_COORDINATES&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>ALT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>AZ&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_ABORT_MOTION&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>ABORT_MOTION&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_RAW_COORDINATES&nbsp;</td><td>number&nbsp;</td><td>yes&nbsp;</td><td>yes&nbsp;</td><td>RA&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEC&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_ALIGNMENT_MODE&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>CONTROLLER&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SINGLE_POINT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>NEAREST_POINT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>MULTI_POINT&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_ALIGNMENT_SELECT_POINTS&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>point id&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>point id&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_EPOCH&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>EPOCH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>MOUNT_SIDE_OF_PIER&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>EAST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>WEST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-</table>
-
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| MOUNT_INFO | text | no | no | MODEL | yes |  |
+|  |  |  |  | VENDOR | yes |  |
+|  |  |  |  | FIRMWARE_VERSION | yes |  |
+| MOUNT_LST_TIME | number |  | yes | TIME | yes | It depends on hardware if it is undefined, read-only or read-write. |
+| MOUNT_SET_HOST_TIME | switch | no | no | SET | yes |  |
+| MOUNT_PARK | switch | no | no | PARKED | yes |  |
+|  |  |  |  | UNPARKED | yes |  |
+| MOUT_PARK_SET | switch | no | no | DEFAULT | yes |  |
+|  |  |  |  | CURRENT | yes |  |
+| MOUNT_PARK_POSITION | number | no | no | RA | yes |  |
+|  |  |  |  | DEC | yes |  |
+| MOUNT_ON_COORDINATES_SET | switch | no | yes | TRACK | yes |  |
+|  |  |  |  | SYNC | yes |  |
+|  |  |  |  | SLEW | no |  |
+| MOUNT_SLEW_RATE | switch | no | no | GUIDE | no |  |
+|  |  |  |  | CENTERING | no |  |
+|  |  |  |  | FIND | no |  |
+|  |  |  |  | MAX | no |  |
+| MOUNT_MOTION_DEC | switch | no | yes | NORTH | yes |  |
+|  |  |  |  | SOUTH | yes |  |
+| MOUNT_MOTION_RA | switch | no | yes | WEST | yes |  |
+|  |  |  |  | EAST | yes |  |
+| MOUNT_TRACK_RATE | switch | no | no | SIDEREAL | no |  |
+|  |  |  |  | SOLAR | no |  |
+|  |  |  |  | LUNAR | no |  |
+| MOUNT_TRACKING | switch | no | no | ON | yes |  |
+|  |  |  |  | OFF | yes |  |
+| MOUNT_GUIDE_RATE | nuber | no | no | RA | yes |  |
+|  |  |  |  | DEC | yes |  |
+| MOUNT_EQUATORIAL_COORDINATES | number | no | yes | RA | yes |  |
+|  |  |  |  | DEC | yes |  |
+| MOUNT_HORIZONTAL_COORDINATES | number | no | no | ALT | yes |  |
+|  |  |  |  | AZ | yes |  |
+| MOUNT_ABORT_MOTION | switch | no | yes | ABORT_MOTION | yes |  |
+| MOUNT_RAW_COORDINATES | number | yes | yes | RA | yes |  |
+|  |  |  |  | DEC | yes |  |
+| MOUNT_ALIGNMENT_MODE | switch | no | yes | CONTROLLER | yes |  |
+|  |  |  |  | SINGLE_POINT | yes |  |
+|  |  |  |  | NEAREST_POINT | yes |  |
+|  |  |  |  | MULTI_POINT | yes |  |
+| MOUNT_ALIGNMENT_SELECT_POINTS | switch | no | yes | point id | yes |  |
+| MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY | switch | no | yes | point id | yes |  |
+| MOUNT_EPOCH | number | no | yes | EPOCH | yes |  |
+| MOUNT_SIDE_OF_PIER | switch | no | yes | EAST | yes |  |
+|  |  |  |  | WEST | yes |  |
 
 Properties are implemented by mount driver base class in [indigo_mount_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_mount_driver.c).
 
 ## Guider specific properties
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>GUIDER_GUIDE_DEC&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>NORTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SOUTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>GUIDER_GUIDE_RA&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>EAST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>WEST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>GUIDER_RATE&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>RATE&nbsp;</td><td>yes&nbsp;</td><td>% of sidereal rate (RA or both)&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>DEC_RATE&nbsp;</td><td>no&nbsp;</td><td>% of sidereal rate (DEC)&nbsp;</td></tr>
-</table>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| GUIDER_GUIDE_DEC | number | no | yes | NORTH | yes |  |
+|  |  |  |  | SOUTH | yes |  |
+| GUIDER_GUIDE_RA | number | no | yes | EAST | yes |  |
+|  |  |  |  | WEST | yes |  |
+| GUIDER_RATE | number | no | no | RATE | yes | % of sidereal rate (RA or both) |
+|  | number | no | no | DEC_RATE | no | % of sidereal rate (DEC) |
 
 
 Properties are implemented by guider driver base class in [indigo_guider_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_guider_driver.c).
 
 ## AO specific properties
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>AO_GUIDE_DEC&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>NORTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>SOUTH&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>AO_GUIDE_RA&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>EAST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>WEST&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>AO_RESET&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>yes&nbsp;</td><td>CENTER&nbsp;</td><td>yes&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>UNJAM&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-</table>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| AO_GUIDE_DEC | number | no | yes | NORTH | yes | | 
+|  |  |  |  | SOUTH | yes | | 
+| AO_GUIDE_RA | number | no | yes | EAST | yes | | 
+|  |  |  |  | WEST | yes | | 
+| AO_RESET | switch | no | yes | CENTER | yes | | 
+|  |  |  |  | UNJAM | no | | 
 
 
 Properties are implemented by AO driver base class in [indigo_ao_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_ao_driver.c).
@@ -263,64 +245,153 @@ Properties are implemented by AO driver base class in [indigo_ao_driver.c](https
 
 To be used by auxiliary devices like powerboxes, weather stations, etc.
 
-<table>
-<tr><th  align="left" colspan='4'>Property&nbsp;</th><th  align="left" colspan='2'>Items&nbsp;</th><th  align="left">Comments&nbsp;</th></tr>
-<tr><th  align="left">Name&nbsp;</th><th  align="left">Type&nbsp;</th><th  align="left">RO&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">Name&nbsp;</th><th  align="left">Required&nbsp;</th><th  align="left">&nbsp;</th></tr>
-<tr><td>AUX_POWER_OUTLET&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>OUTLET_1&nbsp;</td><td>yes&nbsp;</td><td>Enable power outlets&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| AUX_POWER_OUTLET | switch | no | no | OUTLET_1 | yes | Enable power outlets |
+|  |  |  |  | OUTLET_2 | no |  |
+|  |  |  |  | OUTLET_3 | no |  |
+|  |  |  |  | OUTLET_4 | no |  |
+| AUX_POWER_OUTLET_STATE | light | yes | no | OUTLET_1 | yes | Power outlets state (IDLE = unused, OK = used, ALERT = over-current etc.) |
+|  |  |  |  | OUTLET_2 | no |  |
+|  |  |  |  | OUTLET_3 | no |  |
+|  |  |  |  | OUTLET_4 | no |  |
+| AUX_POWER_OUTLET_CURRENT | number | yes | no | OUTLET_1 | yes | Power outlets current |
+|  |  |  | no | OUTLET_2 | no |  |
+|  |  |  | no | OUTLET_3 | no |  |
+|  |  |  | no | OUTLET_4 | no |  |
+| AUX_HEATER_OUTLET | number | no | no | OUTLET_1 | yes | Set heater outlets power |
+|  |  |  |  | OUTLET_2 | no |  |
+|  |  |  |  | OUTLET_3 | no |  |
+|  |  |  |  | OUTLET_4 | no |  |
+| AUX_HEATER_OUTLET_STATE | light | yes | no | OUTLET_1 | yes | Heater outlets state (IDLE = unused, OK = used, ALERT = over-current etc.) |
+|  |  |  |  | OUTLET_2 | no |  |
+|  |  |  |  | OUTLET_3 | no |  |
+|  |  |  |  | OUTLET_4 | no |  |
+| AUX_HEATER_OUTLET_CURRENT | number | yes | no | OUTLET_1 | yes | Heater outlets current |
+|  |  |  |  | OUTLET_2 | no |  |
+|  |  |  |  | OUTLET_3 | no |  |
+|  |  |  |  | OUTLET_4 | no |  |
+| AUX_USB_PORT | switch | no | no | PORT_1 | yes | Enable USB ports on smart hub |
+|  |  |  |  | PORT_2 | no |  |
+|  |  |  |  | PORT_3 | no |  |
+|  |  |  |  | PORT_4 | no |  |
+|  |  |  |  | PORT_5 | no |  |
+|  |  |  |  | PORT_6 | no |  |
+|  |  |  |  | PORT_7 | no |  |
+|  |  |  |  | PORT_8 | no |  |
+| AUX_USB_PORT_STATE | light | yes | no | PORT_1 | yes | USB port state (IDLE = unused or disabled, OK = used, BUSY = transient state, ALERT = over-current etc.) |
+|  |  |  |  | PORT_2 | no |  |
+|  |  |  |  | PORT_3 | no |  |
+|  |  |  |  | PORT_4 | no |  |
+|  |  |  |  | PORT_5 | no |  |
+|  |  |  |  | PORT_6 | no |  |
+|  |  |  |  | PORT_7 | no |  |
+|  |  |  |  | PORT_8 | no |  |
+| AUX_DEW_CONTROL | switch | no | no | MANUAL | yes | Use AUX_HEATER_OUTLET values |
+|  |  |  |  | AUTOMATIC | yes | Set power automatically |
+| AUX_WEATHER | number | yes | no | TEMPERATURE | no |  |
+|  |  |  |  | HUMIDITY | no |  |
+|  |  |  |  | DEWPOINT | no |  |
+| AUX_INFO | number | yes | no | ... | no | Any number of any number items |
+| AUX_CONTROL | switch | no | no | ... | no | Any number of any switch items |
 
-<tr><td>AUX_POWER_OUTLET_STATE&nbsp;</td><td>light&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>OUTLET_1&nbsp;</td><td>yes&nbsp;</td><td>Power outlets state (IDLE = unused, OK = used, ALERT = over-current etc.)&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+## Agent specific properties
 
-<tr><td>AUX_POWER_OUTLET_CURRENT&nbsp;</td><td>number&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>OUTLET_1&nbsp;</td><td>yes&nbsp;</td><td>Power outlets current&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>OUTLET_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>OUTLET_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>no&nbsp;</td><td>OUTLET_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+### Snoop agent
 
-<tr><td>AUX_HEATER_OUTLET&nbsp;</td><td>number&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>OUTLET_1&nbsp;</td><td>yes&nbsp;</td><td>Set heater outlets power&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| SNOOP_ADD_RULE | text | no | yes | SOURCE_DEVICE | yes | Add new rule | 
+|  |  |  |  | SOURCE_PROPERTY | yes | | 
+|  |  |  |  | TARGET_DEVICE | yes | | 
+|  |  |  |  | TARGET_PROPERTY | yes | | 
+| SNOOP_REMOVE_RULE | text | no | yes | SOURCE_DEVICE | yes | Remove existing rule | 
+|  |  |  |  | SOURCE_PROPERTY | yes | | 
+|  |  |  |  | TARGET_DEVICE | yes | | 
+|  |  |  |  | TARGET_PROPERTY | yes | | 
+| SNOOP_RULES | light | yes | yes | ... | yes | Lists all rules | 
 
-<tr><td>AUX_HEATER_OUTLET_STATE&nbsp;</td><td>light&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>OUTLET_1&nbsp;</td><td>yes&nbsp;</td><td>Heater outlets state (IDLE = unused, OK = used, ALERT = over-current etc.)&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+### LX200 server agent
 
-<tr><td>AUX_HEATER_OUTLET_CURRENT&nbsp;</td><td>number&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>OUTLET_1&nbsp;</td><td>yes&nbsp;</td><td>Heater outlets current&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>OUTLET_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| LX200_DEVICES | text | no | yes | MOUNT | yes | Select snooped mount | 
+|  |  |  |  | GUIDER | yes | Select snooped guider (not used yet) | 
+| LX200_CONFIGURATION | number | no | yes | PORT | yes | Server port number | 
+| LX200_SERVER | switch | no | yes | STARTED | yes | Select server state | 
+|  |  |  |  | STOPPED | yes | | 
 
-<tr><td>AUX_USB_PORT&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>PORT_1&nbsp;</td><td>yes&nbsp;</td><td>Enable USB ports on smart hub&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_5&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_6&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_7&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_8&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+### Imager agent
 
-<tr><td>AUX_USB_PORT_STATE&nbsp;</td><td>light&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>PORT_1&nbsp;</td><td>yes&nbsp;</td><td>USB port state (IDLE = unused or disabled, OK = used, BUSY = transient state, ALERT = over-current etc.)&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_2&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_3&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_4&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_5&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_6&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_7&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>PORT_8&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD | 
+| FILTER_WHEEL_LIST | switch | no | yes | ... | yes | Select wheel | 
+| FILTER_FOCUSER_LIST | switch | no | yes | ... | yes | Select focuser | 
+| AGENT_START_PROCESS | switch | no | yes | EXPOSURE | yes | Start exposure | 
+|  |  |  |  | STREAMING | yes | Start streaming | 
+| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process | 
+| AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count | 
+|  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) | 
+|  |  |  |  | DELAY | yes | Delay between exposures duration (in seconds) | 
 
-<tr><td>AUX_DEW_CONTROL&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>MANUAL&nbsp;</td><td>yes&nbsp;</td><td>Use AUX_HEATER_OUTLET values&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>AUTOMATIC&nbsp;</td><td>yes&nbsp;</td><td>Set power automatically&nbsp;</td></tr>
+### Guider agent
 
-<tr><td>AUX_WEATHER&nbsp;</td><td>number&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>TEMPERATURE&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>HUMIDITY&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>DEWPOINT&nbsp;</td><td>no&nbsp;</td><td>&nbsp;</td></tr>
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD | 
+| FILTER_GUIDER_LIST | switch | no | yes | ... | yes | Select guider | 
+| AGENT_IMAGER_BATCH | switch | no | yes | PREVIEW | yes | Start preview | 
+|  |  |  |  | CALIBRATION | yes | Start calibration | 
+|  |  |  |  | GUIDING | yes | Start guiding | 
+| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process | 
+| AGENT_GUIDER_DETECTION_MODE | switch | no | yes | DONUTS | yes | Use DONUTS algorithm | 
+|  |  |  |  | CENTROID | yes | Use full frame centroid algorithm | 
+|  |  |  |  | SELECTION | yes | Use selected star centroid algorithm | 
+| AGENT_GUIDER_DEC_MODE | switch | no | yes | BOTH | yes | Guide both north and south | 
+|  |  |  |  | NORTH | yes | Guide north only | 
+|  |  |  |  | SOUTH | yes | Guide south only | 
+|  |  |  |  | NONE | yes | Don't guide in declination axis | 
+| AGENT_GUIDER_SELECTION | switch | no | yes | X | yes | Selected star coordinates (pixels) | 
+|  |  |  |  | Y | yes | Guide north only | 
+| AGENT_GUIDER_SETTINGS | number | no | yes | EXPOSURE | yes | Exposure duration (in seconds) | 
+|  |  |  |  | STEP0 | yes | Initial step size (in pixels) | 
+|  |  |  |  | ANGLE | yes | Measured angle (in degrees) | 
+|  |  |  |  | BACKLASH | yes | Measured backlash (in pixels) | 
+|  |  |  |  | SPEED_RA | yes | Measured RA speed (in pixels/second) | 
+|  |  |  |  | SPEED_DEC | yes | Measured dec speed (in pixels/seconds) | 
+|  |  |  |  | MAX_BL_STEPS | yes | Max backlash clearing steps | 
+|  |  |  |  | MIN_BL_DRIFT | yes | Min required backlash drift (in pixels) | 
+|  |  |  |  | MAX_CALIBRATION_STEPS | yes | Max calibration steps | 
+|  |  |  |  | AGGRESSIVITY_RA | yes | RA aggressivity (in %) | 
+|  |  |  |  | AGGRESSIVITY_DEC | yes | Dec aggressivity (in %) | 
+|  |  |  |  | MIN_ERROR | yes | Min error to coorect (in pixels) | 
+|  |  |  |  | MIN_PULSE | yes | Min pulse length to emit (in seconds) | 
+|  |  |  |  | MAX_PULSE | yes | Max pulse length to emit (in seconds) | 
+|  |  |  |  | DITHERING_X | yes | Dithering offset (in pixels) | 
+|  |  |  |  | DITHERING_Y | yes |  | 
+| AGENT_GUIDER_STATS | number | yes | yes | PHASE | yes | Process phase | 
+|  |  |  |  | FRAME | yes | Frame number | 
+|  |  |  |  | DRIFT_X | yes | Measured drift (X/Y) | 
+|  |  |  |  | DRIFT_Y | yes |  | 
+|  |  |  |  | DRIFT_RA | yes | Measured drift (RA/dec) | 
+|  |  |  |  | DRIFT_DEC | yes |  | 
+|  |  |  |  | CORR_RA | yes | Correction (RA/dec) | 
+|  |  |  |  | CORR_DEC | yes | | 
+|  |  |  |  | RMSE_RA | yes | Root Mean Square Error (RA/dec) | 
+|  |  |  |  | RMSE_DEC | yes | | 
 
-<tr><td>AUX_INFO&nbsp;</td><td>number&nbsp;</td><td>yes&nbsp;</td><td>no&nbsp;</td><td>...&nbsp;</td><td>no&nbsp;</td><td>Any number of any number items&nbsp;</td></tr>
-<tr><td>AUX_CONTROL&nbsp;</td><td>switch&nbsp;</td><td>no&nbsp;</td><td>no&nbsp;</td><td>...&nbsp;</td><td>no&nbsp;</td><td>Any number of any switch items&nbsp;</td></tr>
-</table>
+### Mount agent
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FILTER_DOME_LIST | switch | no | yes | ... | yes | Select dome | 
+| FILTER_MOUNT_LIST | switch | no | yes | ... | yes | Select mount | 
+| FILTER_GPS_LIST | switch | no | yes | ... | yes | Select GPS | 
+| GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Observatory coordinates | 
+|  |  |  |  | LONGITUDE | yes | | 
+|  |  |  |  | ELEVATION | yes | | 
+| AGENT_SITE_DATA_SOURCE | switch | no | yes | HOST | yes | Use host coordinates | 
+|  |  |  |  | MOUNT | yes | Use mount controller coordinates | 
+|  |  |  |  | DOME | yes | Use dome controller coordinates | 
+|  |  |  |  | GPS | yes | Use GPS coordinates | 
