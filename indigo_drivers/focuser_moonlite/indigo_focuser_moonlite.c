@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_moonlite"
 
 #include <stdlib.h>
@@ -46,7 +46,6 @@
 #define X_FOCUSER_STEPPING_MODE_PROPERTY			(PRIVATE_DATA->stepping_mode_property)
 #define X_FOCUSER_STEPPING_MODE_HALF_ITEM			(X_FOCUSER_STEPPING_MODE_PROPERTY->items+0)
 #define X_FOCUSER_STEPPING_MODE_FULL_ITEM			(X_FOCUSER_STEPPING_MODE_PROPERTY->items+1)
-
 
 typedef struct {
 	int handle;
@@ -184,6 +183,18 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_COMPENSATION_ITEM->number.min = -127;
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_MODE_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0xFFFF;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = 1;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 0xFFFF;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 1;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 0xFFFF;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -281,11 +292,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		int position = FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1);
+		int position = FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1) * (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1);
 		if (position < 0)
 			position = 0;
+		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 		if (position > 0xFFFF)
 			position = 0xFFFF;
+		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 		snprintf(command, sizeof(command), ":SN%04X#:FG#", position);
 		if (moonlite_command(device, command, NULL, 0)) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -300,7 +315,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		snprintf(command, sizeof(command), ":SN%04X#:FG#", (int)FOCUSER_POSITION_ITEM->number.value);
+		int position = (int)FOCUSER_POSITION_ITEM->number.value;
+		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		snprintf(command, sizeof(command), ":SN%04X#:FG#", position);
 		if (moonlite_command(device, command, NULL, 0)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
