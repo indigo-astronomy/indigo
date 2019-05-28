@@ -32,6 +32,7 @@ properties are first of all defined memory structures which are, if needed, mapp
 | GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes |  |
 |  |  |  |  | LONGITUDE | yes |  |
 |  |  |  |  | ELEVATION | yes |  |
+|  |  |  |  | ACCURACY | no| GPS driver only |
 | UTC_TIME | number |  | no | TIME | yes | It depends on hardware if it is undefined, read-only or read-write. |
 |  |  |  |  | OFFSET | yes |  |
 
@@ -240,6 +241,23 @@ Properties are implemented by guider driver base class in [indigo_guider_driver.
 
 
 Properties are implemented by AO driver base class in [indigo_ao_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_ao_driver.c).
+
+## GPS specific properties
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| GPS_STATUS | light | yes | yes | NO_FIX | yes | GPS fix status | 
+|  |  |  |  | 2D_FIX | yes | | 
+|  |  |  |  | 3D_FIX | yes | | 
+| GPS_ADVANCED | switch | no | yes | ENABLED | yes |  Enable advanced status report | 
+|  |  |  |  | DISABLED | yes | | 
+| GPS_ADVANCED_STATUS | number | yes | yes | SVS_IN_USE | yes | Advanced status report | 
+|  |  |  |  | SVS_IN_VIEW | yes | | 
+|  |  |  |  | PDOP | yes | | 
+|  |  |  |  | HDOP | yes | | 
+|  |  |  |  | VDOP | yes | | 
+
+Properties are implemented by GPS driver base class in [indigo_gps_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_gps_driver.c).
 
 ## Auxiliary properties
 
