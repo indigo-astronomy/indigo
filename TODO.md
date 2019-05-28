@@ -91,7 +91,7 @@
 4. Pegasus DMFC focuser driver __DONE__
 5. RigelSys nSTEP focuser driver __DONE__
 6. RigelSys nFOCUS focuser driver (untested) __DONE__ __UNTESTED__
-7. MoonLite focuser driver (untested) __DONE__ __UNTESTED__
+7. MoonLite focuser driver (untested) __DONE__
 8. FCUSB focuser driver __DONE__
 9. WeMacro rail focuser driver __DONE__
 10. MJKZZ rail focuser driver __DONE__ __UNTESTED__
@@ -103,8 +103,8 @@
 1. NexStar protocol mount driver (based on libnexstar) __DONE__
 2. NexStar EVO protocol mount driver
 3. LX200 protocol mount driver __DONE__
-4. SysScan (EQMod) mount driver
-5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
+4. SynScan (EQMod) mount driver __DONE__
+5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft) __DONE__
 6. Temma protocol mount driver __DONE__
 7. iOptron protocol (LX200 with extensions) mount driver __DONE__
 
