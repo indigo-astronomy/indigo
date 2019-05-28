@@ -54,7 +54,7 @@
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\_ptw32.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\indigo_client\externals\pthreads4w\lib\libpthreadVC3.lib" />
+    <Library Include="..\indigo_client\externals\pthreads4w\lib\x86\libpthreadVC3.lib" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -135,7 +135,8 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\indigo_client\externals\pthreads4w\lib;..\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\indigo_client\externals\pthreads4w\lib\x86;..\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>

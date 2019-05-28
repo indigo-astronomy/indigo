@@ -77,7 +77,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\indigo_client\externals\pthreads4w\lib\libpthreadVC3.lib">
+    <Library Include="..\indigo_client\externals\pthreads4w\lib\x86\libpthreadVC3.lib">
       <Filter>indigo</Filter>
     </Library>
   </ItemGroup>

@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -204,7 +204,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
 			int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 			int size = frame_width * frame_height;
-			int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
+			double gain = (CCD_GAIN_ITEM->number.value / 100);
 			int offset = (int)CCD_OFFSET_ITEM->number.value;
 			double gamma = CCD_GAMMA_ITEM->number.value;
 			bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
@@ -1148,7 +1148,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			memcpy(guider_ao, &ao_template, sizeof(indigo_device));
 			guider_ao->private_data = private_data;
 			indigo_attach_device(guider_ao);
-			
+
 			dslr = malloc(sizeof(indigo_device));
 			assert(dslr != NULL);
 			memcpy(dslr, &dslr_template, sizeof(indigo_device));
