@@ -96,19 +96,19 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| DSLR_PROGRAM | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-| DSLR_APERTURE | switch |  | no |  | yes | RO/RW status and items set depends on particular camera/lens |
-| DSLR_SHUTTER | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-| DSLR_COMPRESSION | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-| DSLR_WHITE_BALANCE | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-| DSLR_ISO | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-|  DSLR_EXPOSURE_METERING | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-|  DSLR_FOCUS_METERING | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-|  DSLR_FOCUS_MODE | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-|  DSLR_FOCUS_MODE | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-|  DSLR_CAPTURE_MODE | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-|  DSLR_FLASH_MODE | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
-|  DSLR_EXPOSURE_COMPENSATION | switch |  | no |  | yes | RO/RW status and items set depends on particular camera |
+| DSLR_PROGRAM | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_APERTURE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera/lens |
+| DSLR_SHUTTER | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_COMPRESSION | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_WHITE_BALANCE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+| DSLR_ISO | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_EXPOSURE_METERING | switch | ... | no |  | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FOCUS_METERING | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FOCUS_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FOCUS_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_CAPTURE_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_FLASH_MODE | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
+|  DSLR_EXPOSURE_COMPENSATION | switch |  | no | ... | yes | RO/RW status and items set depends on particular camera |
 |  DSLR_BATTERY_LEVEL | switch | yes | no | VALUE | yes | RO/RW status and items set depends on particular camera |
 |  DSLR_FOCAL_LENGTH | switch | yes | no | VALUE | yes | RO/RW status and items set depends on particular camera |
 |  DSLR_LOCK | switch | no | no | LOCK | yes | Lock camera UI |
@@ -124,6 +124,8 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 |   |  |  |  | OFF | yes |  |
 |  DSLR_DELETE_IMAGE | switch | no | no | ON | yes | Delete image from camera memory/card |
 |   |  |  |  | OFF | yes |  |
+
+A reference implementation is ICA driver [indigo_ccd_ica.m](https://github.com/indigo-astronomy/indigo/blob/master/indigo_mac_drivers/ccd_ica/indigo_ccd_ica.m).
 
 ## Wheel specific properties
 
@@ -293,3 +295,104 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | DEWPOINT | no |  |
 | AUX_INFO | number | yes | no | ... | no | Any number of any number items |
 | AUX_CONTROL | switch | no | no | ... | no | Any number of any switch items |
+
+## Agent specific properties
+
+### Snoop agent
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| SNOOP_ADD_RULE | text | no | yes | SOURCE_DEVICE | yes | Add new rule | 
+|  |  |  |  | SOURCE_PROPERTY | yes | | 
+|  |  |  |  | TARGET_DEVICE | yes | | 
+|  |  |  |  | TARGET_PROPERTY | yes | | 
+| SNOOP_REMOVE_RULE | text | no | yes | SOURCE_DEVICE | yes | Remove existing rule | 
+|  |  |  |  | SOURCE_PROPERTY | yes | | 
+|  |  |  |  | TARGET_DEVICE | yes | | 
+|  |  |  |  | TARGET_PROPERTY | yes | | 
+| SNOOP_RULES | light | yes | yes | ... | yes | Lists all rules | 
+
+### LX200 server agent
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| LX200_DEVICES | text | no | yes | MOUNT | yes | Select snooped mount | 
+|  |  |  |  | GUIDER | yes | Select snooped guider (not used yet) | 
+| LX200_CONFIGURATION | number | no | yes | PORT | yes | Server port number | 
+| LX200_SERVER | switch | no | yes | STARTED | yes | Select server state | 
+|  |  |  |  | STOPPED | yes | | 
+
+### Imager agent
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD | 
+| FILTER_WHEEL_LIST | switch | no | yes | ... | yes | Select wheel | 
+| FILTER_FOCUSER_LIST | switch | no | yes | ... | yes | Select focuser | 
+| AGENT_START_PROCESS | switch | no | yes | EXPOSURE | yes | Start exposure | 
+|  |  |  |  | STREAMING | yes | Start streaming | 
+| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process | 
+| AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count | 
+|  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) | 
+|  |  |  |  | DELAY | yes | Delay between exposures duration (in seconds) | 
+
+### Guider agent
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD | 
+| FILTER_GUIDER_LIST | switch | no | yes | ... | yes | Select guider | 
+| AGENT_IMAGER_BATCH | switch | no | yes | PREVIEW | yes | Start preview | 
+|  |  |  |  | CALIBRATION | yes | Start calibration | 
+|  |  |  |  | GUIDING | yes | Start guiding | 
+| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process | 
+| AGENT_GUIDER_DETECTION_MODE | switch | no | yes | DONUTS | yes | Use DONUTS algorithm | 
+|  |  |  |  | CENTROID | yes | Use full frame centroid algorithm | 
+|  |  |  |  | SELECTION | yes | Use selected star centroid algorithm | 
+| AGENT_GUIDER_DEC_MODE | switch | no | yes | BOTH | yes | Guide both north and south | 
+|  |  |  |  | NORTH | yes | Guide north only | 
+|  |  |  |  | SOUTH | yes | Guide south only | 
+|  |  |  |  | NONE | yes | Don't guide in declination axis | 
+| AGENT_GUIDER_SELECTION | switch | no | yes | X | yes | Selected star coordinates (pixels) | 
+|  |  |  |  | Y | yes | Guide north only | 
+| AGENT_GUIDER_SETTINGS | number | no | yes | EXPOSURE | yes | Exposure duration (in seconds) | 
+|  |  |  |  | STEP0 | yes | Initial step size (in pixels) | 
+|  |  |  |  | ANGLE | yes | Measured angle (in degrees) | 
+|  |  |  |  | BACKLASH | yes | Measured backlash (in pixels) | 
+|  |  |  |  | SPEED_RA | yes | Measured RA speed (in pixels/second) | 
+|  |  |  |  | SPEED_DEC | yes | Measured dec speed (in pixels/seconds) | 
+|  |  |  |  | MAX_BL_STEPS | yes | Max backlash clearing steps | 
+|  |  |  |  | MIN_BL_DRIFT | yes | Min required backlash drift (in pixels) | 
+|  |  |  |  | MAX_CALIBRATION_STEPS | yes | Max calibration steps | 
+|  |  |  |  | AGGRESSIVITY_RA | yes | RA aggressivity (in %) | 
+|  |  |  |  | AGGRESSIVITY_DEC | yes | Dec aggressivity (in %) | 
+|  |  |  |  | MIN_ERROR | yes | Min error to coorect (in pixels) | 
+|  |  |  |  | MIN_PULSE | yes | Min pulse length to emit (in seconds) | 
+|  |  |  |  | MAX_PULSE | yes | Max pulse length to emit (in seconds) | 
+|  |  |  |  | DITHERING_X | yes | Dithering offset (in pixels) | 
+|  |  |  |  | DITHERING_Y | yes |  | 
+| AGENT_GUIDER_STATS | number | yes | yes | PHASE | yes | Process phase | 
+|  |  |  |  | FRAME | yes | Frame number | 
+|  |  |  |  | DRIFT_X | yes | Measured drift (X/Y) | 
+|  |  |  |  | DRIFT_Y | yes |  | 
+|  |  |  |  | DRIFT_RA | yes | Measured drift (RA/dec) | 
+|  |  |  |  | DRIFT_DEC | yes |  | 
+|  |  |  |  | CORR_RA | yes | Correction (RA/dec) | 
+|  |  |  |  | CORR_DEC | yes | | 
+|  |  |  |  | RMSE_RA | yes | Root Mean Square Error (RA/dec) | 
+|  |  |  |  | RMSE_DEC | yes | | 
+
+### Mount agent
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| FILTER_DOME_LIST | switch | no | yes | ... | yes | Select dome | 
+| FILTER_MOUNT_LIST | switch | no | yes | ... | yes | Select mount | 
+| FILTER_GPS_LIST | switch | no | yes | ... | yes | Select GPS | 
+| GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Observatory coordinates | 
+|  |  |  |  | LONGITUDE | yes | | 
+|  |  |  |  | ELEVATION | yes | | 
+| AGENT_SITE_DATA_SOURCE | switch | no | yes | HOST | yes | Use host coordinates | 
+|  |  |  |  | MOUNT | yes | Use mount controller coordinates | 
+|  |  |  |  | DOME | yes | Use dome controller coordinates | 
+|  |  |  |  | GPS | yes | Use GPS coordinates | 
