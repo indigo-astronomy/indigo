@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -40,7 +40,7 @@
 #define WIDTH               1600
 #define HEIGHT              1200
 #define TEMP_UPDATE         5.0
-#define STARS               100
+#define STARS               30
 #define ECLIPSE							360
 #define GUIDER_SIN					0.8414709848078965
 #define GUIDER_COS					0.5403023058681398
@@ -63,6 +63,13 @@
 #define GUIDER_MODE_SUN_ITEM				(GUIDER_MODE_PROPERTY->items + 1)
 #define GUIDER_MODE_ECLIPSE_ITEM		(GUIDER_MODE_PROPERTY->items + 2)
 
+#define GUIDER_SETTINGS_PROPERTY		PRIVATE_DATA->guider_settings_property
+#define GUIDER_IMAGE_NOISE_FIX_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 0)
+#define GUIDER_IMAGE_NOISE_VAR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 1)
+#define GUIDER_IMAGE_PERR_SPD_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 2)
+#define GUIDER_IMAGE_PERR_VAL_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 3)
+#define GUIDER_IMAGE_GRADIENT_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 4)
+
 extern unsigned short indigo_ccd_simulator_raw_image[];
 extern unsigned char indigo_ccd_simulator_rgb_image[];
 
@@ -75,6 +82,7 @@ typedef struct {
 	indigo_property *dslr_compression_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *guider_mode_property;
+	indigo_property *guider_settings_property;
 
 	int star_x[STARS], star_y[STARS], star_a[STARS];
 	char imager_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
@@ -196,7 +204,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
 			int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 			int size = frame_width * frame_height;
-			int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
+			double gain = (CCD_GAIN_ITEM->number.value / 100);
 			int offset = (int)CCD_OFFSET_ITEM->number.value;
 			double gamma = CCD_GAMMA_ITEM->number.value;
 			bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
@@ -208,6 +216,13 @@ static void exposure_timer_callback(indigo_device *device) {
 						raw[j * frame_width + i] = indigo_ccd_simulator_raw_image[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x7F);
 					}
 				}
+			} else if (device == PRIVATE_DATA->guider) {
+				for (int j = 0; j < frame_height; j++) {
+					int jj = j * j;
+					for (int i = 0; i < frame_width; i++) {
+						raw[j * frame_width + i] = GUIDER_IMAGE_GRADIENT_ITEM->number.target * sqrt(i * i + jj) + (rand() % (int)GUIDER_IMAGE_NOISE_VAR_ITEM->number.target) + GUIDER_IMAGE_NOISE_FIX_ITEM->number.target;
+					}
+				}
 			} else {
 				for (int i = 0; i < size; i++)
 					raw[i] = (rand() & 0x7F);
@@ -217,7 +232,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				static time_t start_time = 0;
 				if (start_time == 0)
 					start_time = time(NULL);
-				double ra_offset = 5 * sin(M_PI * ((time(NULL) - start_time) % 360) / 180) + PRIVATE_DATA->guider_ra_offset;
+				double ra_offset = GUIDER_IMAGE_PERR_VAL_ITEM->number.target * sin(GUIDER_IMAGE_PERR_SPD_ITEM->number.target * M_PI * ((time(NULL) - start_time) % 360) / 180) + PRIVATE_DATA->guider_ra_offset;
 				double x_offset = ra_offset * GUIDER_COS - PRIVATE_DATA->guider_dec_offset * GUIDER_SIN + PRIVATE_DATA->ao_ra_offset * AO_COS - PRIVATE_DATA->ao_dec_offset * AO_SIN + rand() / (double)RAND_MAX/10 - 0.1;
 				double y_offset = ra_offset * GUIDER_SIN + PRIVATE_DATA->guider_dec_offset * GUIDER_COS + PRIVATE_DATA->ao_ra_offset * AO_SIN + PRIVATE_DATA->ao_dec_offset * AO_COS + rand() / (double)RAND_MAX/10 - 0.1;
 				if (GUIDER_MODE_STARS_ITEM->sw.value) {
@@ -246,7 +261,7 @@ static void exposure_timer_callback(indigo_device *device) {
 								if (x < 0 || x >= frame_width)
 									continue;
 								double xx = center_x - x;
-								double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
+								double v = a * exp(-(xx * xx / 4 + yy * yy / 4));
 								raw[yw + x] += (unsigned short)v;
 							}
 						}
@@ -410,6 +425,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_IMAGE", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
+				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "NOISE_FIX", "Noise offset", 0, 5000, 0, 500);
+				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "NOISE_VAR", "Noise range", 1, 1000, 0, 100);
+				indigo_init_number_item(GUIDER_IMAGE_PERR_SPD_ITEM, "PER_ERR_SPD", "Periodic error speed", 0, 1, 0, 0.5);
+				indigo_init_number_item(GUIDER_IMAGE_PERR_VAL_ITEM, "PER_ERR_VAL", "Periodic error value", 0, 10, 0, 5);
+				indigo_init_number_item(GUIDER_IMAGE_GRADIENT_ITEM, "GRADIENT", "Gradient intensity", 0, 0.5, 0, 0.2);
 			}
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
@@ -433,15 +454,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 			// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
 			CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 			// -------------------------------------------------------------------------------- CCD_IMAGE
-			for (int i = 0; i < 10; i++) {
+			for (int i = 0; i < 5; i++) {
 				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
 				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 500 * (rand() % 100);       // and brightness
+				PRIVATE_DATA->star_a[i] = 100 * (rand() % 100);       // and brightness
 			}
 			for (int i = 10; i < STARS; i++) {
 				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
 				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 50 * (rand() % 30);       // and brightness
+				PRIVATE_DATA->star_a[i] = 30 * (rand() % 100);       // and brightness
 			}
 			// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 			CCD_COOLER_PROPERTY->hidden = false;
@@ -479,6 +500,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 		} else if (device == PRIVATE_DATA->guider) {
 			if (indigo_property_match(GUIDER_MODE_PROPERTY, property))
 				indigo_define_property(device, GUIDER_MODE_PROPERTY, NULL);
+			if (indigo_property_match(GUIDER_SETTINGS_PROPERTY, property))
+				indigo_define_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -606,6 +629,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		GUIDER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (GUIDER_MODE_PROPERTY && indigo_property_match(GUIDER_SETTINGS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDER_MODE
+		indigo_property_copy_values(GUIDER_SETTINGS_PROPERTY, property, false);
+		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
@@ -626,6 +655,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(DSLR_ISO_PROPERTY);
 	} else if (device == PRIVATE_DATA->guider) {
 		indigo_release_property(GUIDER_MODE_PROPERTY);
+		indigo_release_property(GUIDER_SETTINGS_PROPERTY);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
@@ -1118,7 +1148,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			memcpy(guider_ao, &ao_template, sizeof(indigo_device));
 			guider_ao->private_data = private_data;
 			indigo_attach_device(guider_ao);
-			
+
 			dslr = malloc(sizeof(indigo_device));
 			assert(dslr != NULL);
 			memcpy(dslr, &dslr_template, sizeof(indigo_device));

@@ -104,7 +104,7 @@ extern "C" {
 
 /** MOUNT_UTC_TIME.OFFSET property item pointer.
  */
-#define MOUNT_UTC_OFFEST_ITEM													(MOUNT_UTC_TIME_PROPERTY->items+1)
+#define MOUNT_UTC_OFFSET_ITEM													(MOUNT_UTC_TIME_PROPERTY->items+1)
 
 //----------------------------------------------
 /** MOUNT_SET_HOST_TIME property pointer, property is optional, property change request should be fully handled by the device driver.
@@ -506,6 +506,10 @@ extern indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, do
 
 extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
 extern indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double lst, double raw_ra, double raw_dec, int side_of_pier, double *ra, double *dec);
+
+/** Get mount UTC if available otherwise return host UTC.
+ */
+time_t indigo_get_mount_utc(indigo_device *device);
 
 /** Translate coordinates from native.
  */

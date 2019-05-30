@@ -76,6 +76,8 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
+		595F7478228224800091B366 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
+		595F7486228224900091B366 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 592662B01D9590630021746A /* test.c */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
 		59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */; };
@@ -391,6 +393,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		595F7474228224800091B366 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 592662A51D9590630021746A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 599C9A471DA022C0008BBCC1;
+			remoteInfo = indigo;
+		};
 		599C9A5F1DA02953008BBCC1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 592662A51D9590630021746A /* Project object */;
@@ -464,6 +473,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		595F7479228224800091B366 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 		59D3820A1D97343000E87393 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -939,6 +957,7 @@
 		595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidKeyboardBarcodeScanner.m; sourceTree = "<group>"; };
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
+		595F747D228224800091B366 /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
 		5963BBCD21D2A88100F1EC5A /* metainfo.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = metainfo.sh; sourceTree = "<group>"; };
 		5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-G.pdf"; sourceTree = "<group>"; };
 		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
@@ -4256,6 +4275,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		595F7477228224800091B366 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				595F7478228224800091B366 /* libindigo.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		599C9A451DA022C0008BBCC1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -5096,6 +5123,7 @@
 				9D97F8171D9A8A1900582EAF /* indigo_server */,
 				599C9A481DA022C0008BBCC1 /* libindigo.dylib */,
 				9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */,
+				595F747D228224800091B366 /* test */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -12064,6 +12092,24 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		595F7472228224800091B366 /* test */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 595F747A228224800091B366 /* Build configuration list for PBXNativeTarget "test" */;
+			buildPhases = (
+				595F7475228224800091B366 /* Sources */,
+				595F7477228224800091B366 /* Frameworks */,
+				595F7479228224800091B366 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				595F7473228224800091B366 /* PBXTargetDependency */,
+			);
+			name = test;
+			productName = client;
+			productReference = 595F747D228224800091B366 /* test */;
+			productType = "com.apple.product-type.tool";
+		};
 		599C9A471DA022C0008BBCC1 /* indigo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 599C9A491DA022C0008BBCC1 /* Build configuration list for PBXNativeTarget "indigo" */;
@@ -12180,6 +12226,7 @@
 				9D97F8091D9A8A1900582EAF /* indigo_server */,
 				59D3820B1D97343000E87393 /* client */,
 				9D1880A71E534B5E002F75D7 /* indigo_prop_tool */,
+				595F7472228224800091B366 /* test */,
 			);
 		};
 /* End PBXProject section */
@@ -12258,6 +12305,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		595F7475228224800091B366 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				595F7486228224900091B366 /* test.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		599C9A441DA022C0008BBCC1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -12486,6 +12541,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		595F7473228224800091B366 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 599C9A471DA022C0008BBCC1 /* indigo */;
+			targetProxy = 595F7474228224800091B366 /* PBXContainerItemProxy */;
+		};
 		599C9A601DA02953008BBCC1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 599C9A471DA022C0008BBCC1 /* indigo */;
@@ -12634,6 +12694,30 @@
 				SDKROOT = macosx;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
+			};
+			name = Release;
+		};
+		595F747B228224800091B366 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		595F747C228224800091B366 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -12851,6 +12935,15 @@
 			buildConfigurations = (
 				592662B21D9590630021746A /* Debug */,
 				592662B31D9590630021746A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		595F747A228224800091B366 /* Build configuration list for PBXNativeTarget "test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				595F747B228224800091B366 /* Debug */,
+				595F747C228224800091B366 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

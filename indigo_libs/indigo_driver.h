@@ -147,6 +147,15 @@ extern "C" {
  */
 #define DEVICE_PORT_ITEM							(DEVICE_PORT_PROPERTY->items+0)
 
+/** DEVICE_BAUDRATE property pointer, property is optional, property change request is handled by indigo_device_change_property.
+ */
+#define DEVICE_BAUDRATE_PROPERTY                                    (DEVICE_CONTEXT->device_baudrate_property)
+
+/** DEVICE_BAUDRATE.BAUDRATE property item pointer.
+ */
+#define DEVICE_BAUDRATE_ITEM                                                        (DEVICE_BAUDRATE_PROPERTY->items+0)
+
+
 /** DEVICE_PORTS property pointer, property is optional, property change request is handled by indigo_device_change_property.
  */
 #define DEVICE_PORTS_PROPERTY					(DEVICE_CONTEXT->device_ports_property)
@@ -206,6 +215,7 @@ typedef struct {
 	indigo_property *configuration_property;  ///< CONFIGURATION property pointer
 	indigo_property *profile_property; 				///< PROFILE property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
+	indigo_property *device_baudrate_property;          ///< DEVICE_BAUDRATE property pointer
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
 	indigo_property *device_auth_property;		///< SECURITY property pointer
 } indigo_device_context;
@@ -300,21 +310,21 @@ extern char* indigo_dtos(double value, char *format);
 time_t indigo_utc(time_t *ltime);
 */
 
-/** Convert local time_t to UTC ISO 8601 string.
+/** Convert time_t to UTC ISO 8601 string.
  */
-void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len);
+void indigo_timetoisogm(time_t tstamp, char *isotime, int isotime_len);
 
-/** Convert local time ISO 8601 string to UTC time_t.
+/** Convert UTC ISO 8601 time string to time_t.
  */
-time_t indigo_isototime(char *isotime);
+time_t indigo_isogmtotime(char *isotime);
 
-/** Convert time_t to ISO 8601 string.
+/** Convert time_t to local time ISO 8601 string.
  */
-void indigo_localtimetoiso(time_t tstamp, char *isotime, int isotime_len);
+void indigo_timetoisolocal(time_t tstamp, char *isotime, int isotime_len);
 
-/** Convert ISO 8601 string to time_t.
+/** Convert local time ISO 8601 string to time_t.
  */
-time_t indigo_isotolocaltime(char *isotime);
+time_t indigo_isolocaltotime(char *isotime);
 
 /** Enumerate serial ports.
  */

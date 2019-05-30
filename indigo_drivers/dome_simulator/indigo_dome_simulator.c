@@ -53,11 +53,6 @@ static void dome_timer_callback(indigo_device *device) {
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 	} else {
-		if (DOME_PARK_PROPERTY->state != INDIGO_BUSY_STATE && DOME_PARK_PARKED_ITEM->sw.value) {
-			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
-			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_PARK_PROPERTY, "Unparked");
-		}
 		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
@@ -118,6 +113,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
+		if (DOME_PARK_PARKED_ITEM->sw.value) {
+			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked");
+			return INDIGO_OK;
+		}
 		DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
 		if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
 			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value + 360) % 360;
@@ -134,6 +134,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+		if (DOME_PARK_PARKED_ITEM->sw.value) {
+			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked");
+			return INDIGO_OK;
+		}
 		double alt, az;
 		if (indigo_fix_dome_coordinates(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &alt, &az) == INDIGO_OK) {
 			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;

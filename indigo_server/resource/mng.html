@@ -104,7 +104,16 @@
 			} else {
 				var hostTime = INDIGO.devices["Server"]["HOST_TIME"];
 				if (hostTime != null && hostTime.items[0].value == "") {
-					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() })
+					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() });
+				}
+				var install = INDIGO.devices["Server"]["INSTALL"];
+				if (install != null) {
+					var last = install.items.slice(-1)[0];
+					if (!last.value && confirm("INDIGO " +last.name+ " is available. Do you want to upgrade now?")) {
+						var values = {};
+						values[last.name] = true;
+						changeProperty("Server", "INSTALL", values);
+					}
 				}
 			}
 		}

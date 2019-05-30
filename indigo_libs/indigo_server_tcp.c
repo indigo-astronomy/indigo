@@ -167,8 +167,12 @@ static void start_worker_thread(int *client_socket) {
 									indigo_printf(socket, "Connection: keep-alive\r\n");
 								indigo_printf(socket, "Content-Length: %ld\r\n", item->blob.size);
 								indigo_printf(socket, "\r\n");
-								indigo_write(socket, item->blob.value, item->blob.size);
-								INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)\r\n", request, item->blob.size));
+								if (indigo_write(socket, item->blob.value, item->blob.size)) {
+									INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, item->blob.size));
+								} else {
+									INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
+									break;
+								}
 							} else {
 								indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
 								indigo_printf(socket, "Content-Type: text/plain\r\n");

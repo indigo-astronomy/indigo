@@ -25,3 +25,4 @@ indigo_server/resource/data/*.data
 /indigo_windows/Debug
 /.vs
 indigo.xcodeproj/xcshareddata/
+/indigo_windows/test/Debug
