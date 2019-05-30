@@ -26,10 +26,11 @@
 #ifndef indigo_novas_h
 #define indigo_novas_h
 
+#include <time.h>
 #include <stdio.h>
 
-extern double indigo_lst(double longitude);
-extern void indigo_eq2hor(double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az);
+extern double indigo_lst(time_t *utc, double longitude);
+extern void indigo_eq2hor(time_t *utc, double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az);
 extern void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec);
 extern void indigo_topo_star(double latitude, double longitude, double elevation, double promora, double promodec, double parallax, double rv, double *ra, double *dec);
 extern void indigo_topo_planet(double latitude, double longitude, double elevation, int id, double *ra, double *dec);

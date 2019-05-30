@@ -334,6 +334,9 @@ static void *server_thread(indigo_server_entry *server) {
       char  url[INDIGO_NAME_SIZE];
       snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
       INDIGO_LOG(indigo_log("Server %s:%d (%s, %s) connected", server->host, server->port, server->name, url));
+#if defined(INDIGO_WINDOWS)
+			indigo_send_message(server->protocol_adapter, "connected");
+#endif
       server->protocol_adapter = indigo_xml_client_adapter(server->name, url, server->socket, server->socket);
       indigo_attach_device(server->protocol_adapter);
       indigo_xml_parse(server->protocol_adapter, NULL);
@@ -343,12 +346,15 @@ static void *server_thread(indigo_server_entry *server) {
       server->protocol_adapter = NULL;
       reset_socket(server, 0);
       INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
+#if defined(INDIGO_WINDOWS)
+			indigo_send_message(server->protocol_adapter, "disconnected");
+#endif
     } else if (server->socket == 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
       sleep(5);
 #endif
 #if defined(INDIGO_WINDOWS)
-      Sleep(5);
+      Sleep(5000);
 #endif
     }
   }
@@ -405,15 +411,12 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
   pthread_mutex_lock(&mutex);
 	if (server->socket > 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-      int rc = shutdown(server->socket, SHUT_RDWR);
+		shutdown(server->socket, SHUT_RDWR);
 #endif
 #if defined(INDIGO_WINDOWS)
-      int rc = shutdown(server->socket, SD_BOTH);
+		shutdown(server->socket, SD_BOTH);
+		Sleep(500);
 #endif
-    if (rc != 0) {
-      INDIGO_LOG(indigo_error("Can't shutdown socket (%s)", strerror(rc)));
-      return INDIGO_FAILED;
-    }
 	}
   reset_socket(server, -1);
   pthread_mutex_unlock(&mutex);

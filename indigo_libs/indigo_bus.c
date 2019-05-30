@@ -179,8 +179,12 @@ void indigo_log_message(const char *format, va_list args) {
 			if (indigo_main_argc == 0) {
 				strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
 			} else {
-				char *name = strrchr(indigo_main_argv[0], '/');
-				if (name != NULL) {
+#if defined(INDIGO_WINDOWS)
+        char *name = strrchr(indigo_main_argv[0], '\\');
+#else
+        char *name = strrchr(indigo_main_argv[0], '/');
+#endif
+        if (name != NULL) {
 					name++;
 				} else {
 					name = (char *)indigo_main_argv[0];
@@ -315,6 +319,11 @@ indigo_result indigo_start() {
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
 		is_started = true;
 	}
+#if defined(INDIGO_WINDOWS)
+  WORD version_requested = MAKEWORD(1, 1);
+  WSADATA data;
+  WSAStartup(version_requested, &data);
+#endif
 	pthread_mutex_unlock(&client_mutex);
 	return INDIGO_OK;
 }
@@ -797,8 +806,10 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		goto clean_return;
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-	if (res < 0)
+	if (res < 0) {
+		res = false;
 		goto clean_return;
+	}
 
 	count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if ((count != 2) || (http_result != 200)){
@@ -817,8 +828,10 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	do {
 		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-		if (res < 0)
+		if (res < 0) {
+			res = false;
 			goto clean_return;
+		}
 		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		count = sscanf(http_line, "Content-Length: %20ld[^\n]", &content_len);
 	} while (http_line[0] != '\0');
@@ -836,7 +849,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	}
 
 	clean_return:
-	INDIGO_DEBUG(indigo_debug("%s() = %d", __FUNCTION__, res));
+	INDIGO_DEBUG(indigo_debug("%s() -> %s", __FUNCTION__, res ? "OK" : "Failed"));
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	shutdown(socket, SHUT_RDWR);
 	close(socket);

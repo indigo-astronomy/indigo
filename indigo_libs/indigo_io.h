@@ -41,16 +41,20 @@ extern int indigo_open_serial(const char *dev_file);
 /** Open serial connection at any speed.
  */
 extern int indigo_open_serial_with_speed(const char *dev_file, int speed);
-	
+
+/** Open serial connection with configuration string of the form "9600-8N1".
+ */
+extern int indigo_open_serial_with_config(const char *dev_file, const char *baudconfig);
+
 /** Open TCP network connection.
  */
 extern int indigo_open_tcp(const char *host, int port);
 
-	
+
 /** Open UDP network connection.
  */
 extern int indigo_open_udp(const char *host, int port);
-	
+
 /** Read buffer.
  */
 extern int indigo_read(int handle, char *buffer, long length);
@@ -75,14 +79,14 @@ extern bool indigo_write(int handle, const char *buffer, long length);
 
 /** Write formatted.
  */
-	
+
 extern bool indigo_printf(int handle, const char *format, ...);
-	
+
 /** Read formatted.
  */
 
 extern int indigo_scanf(int handle, const char *format, ...);
-	
+
 #ifdef __cplusplus
 }
 #endif

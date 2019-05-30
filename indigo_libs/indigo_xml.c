@@ -1530,11 +1530,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						if (blob_size > 0) {
 							state = BLOB;
 							if (blob_buffer != NULL) {
-								unsigned char *ptmp = realloc(blob_buffer, blob_size);
+								unsigned char *ptmp = realloc(blob_buffer, blob_size + 3); /* +3 to handle indi - reason unknown */
 								assert(ptmp != NULL);
 								blob_buffer = ptmp;
 							} else {
-								blob_buffer = malloc(blob_size);
+								blob_buffer = malloc(blob_size + 3); /* +3 to handle indi - reason unknown */
 								assert(blob_buffer != NULL);
 							}
 							blob_pointer = blob_buffer;

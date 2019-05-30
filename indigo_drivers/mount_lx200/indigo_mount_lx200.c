@@ -245,8 +245,8 @@ static void meade_get_utc(indigo_device *device) {
 					tm.tm_isdst = -1;
 					tm.tm_gmtoff = atoi(response) * 3600;
 					time_t secs = mktime(&tm);
-					indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					sprintf(MOUNT_UTC_OFFEST_ITEM->text.value, "%g", atof(response));
+					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", atof(response));
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
@@ -840,7 +840,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					} else {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 					}
 				}
@@ -852,7 +852,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_UTC_TIME_PROPERTY
 		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
-		time_t secs = indigo_isototime(MOUNT_UTC_ITEM->text.value);
+		time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
 		if (secs == -1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_mount_lx200: Wrong date/time format!");
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;

@@ -92,7 +92,7 @@ static void gps_timer_callback(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = (int)(SIM_ELEVATION + 0.5 + (double)(rand())/RAND_MAX);
 		GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM->number.value = (int)(5 + 0.5 + (double)(rand())/RAND_MAX);
 		time_t ttime = time(NULL);
-		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		indigo_timetoisogm(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 
 		/* Simulate SVs used / visible and DOP values */
 		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(SIM_SV_IN_USE + 0.5 + (double)(rand())/RAND_MAX);
@@ -133,7 +133,7 @@ static void gps_timer_callback(indigo_device *device) {
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		time_t ttime = 0;
 		GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		indigo_timetoisogm(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 
 		/* Simulate 0 or 1 SVs used / visible if there is no fix */
 		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(0.5 + (double)(rand())/RAND_MAX);

@@ -85,8 +85,8 @@ clean: status
 clean-all:
 
 externals/libapogee/libapogee.a:
-	cd externals/libapogee; make clean; make
+	cd externals/libapogee; make
 
 externals/boost_regex/build/gcc/libboost_regex-gcc-1_53.a:
-	cd externals/boost_regex/build; make clean; make
+	cd externals/boost_regex/build; make
 

@@ -180,6 +180,7 @@
 			var canvas = document.getElementById(graph);
 			canvas.width = $("#" + graph).outerWidth();
 			canvas.height = $("#" + graph).outerHeight();
+			var pulse = graph == "graph_corr";
 			var width = canvas.width;
 			var height = canvas.height;
 			var height2 = height / 2;
@@ -206,8 +207,8 @@
 			} else {
 				maxValue = Math.ceil(maxValue);
 			}
-			var xScale = (height2 - 5.0) / maxValue;
-			var yScale = width / 200;
+			var yScale = (height2 - 5.0) / maxValue;
+			var xScale = width / 200;
 			ctx.save();
 			ctx.strokeStyle = "#AAA";
 			var path = new Path2D();
@@ -217,7 +218,7 @@
 			path = new Path2D();
 			if (maxValue >= 1) {
 				for (r = 1; r <= maxValue; r++) {
-					var rr = r * xScale;
+					var rr = r * yScale;
 					path.moveTo(0, height2 - rr);
 					path.lineTo(width, height2 - rr);
 					path.moveTo(0, height2 + rr);
@@ -226,7 +227,7 @@
 			} else {
 				ctx.setLineDash([1.0, 5.0]);
 				for (r = 1; r <= 10 * maxValue; r++) {
-					var rr = r * xScale / 10;
+					var rr = r * yScale / 10;
 					path.moveTo(0, height2 - rr);
 					path.lineTo(width, height2 - rr);
 					path.moveTo(0, height2 + rr);
@@ -238,22 +239,30 @@
 			ctx.save();
 			ctx.strokeStyle = "#00F";
 			path = new Path2D();
-			path.moveTo(0, height2 + ra[0]*xScale);
-			var y = 0;
+			var x = 0;
+			var y = height2 + ra[0]*yScale;
+			path.moveTo(x, y);
 			for (i in raDrift) {
-				path.lineTo(y, height2 + ra[i]*xScale);
-				y += yScale;
+				y = height2 + ra[i]*yScale;
+				path.lineTo(x, y);
+				x += xScale;
+				if (pulse)
+					path.lineTo(x, y);
 			}
 			ctx.stroke(path);
 			ctx.restore();
 			ctx.save();
 			ctx.strokeStyle = "#F00";
 			path = new Path2D();
-			path.moveTo(0, height2 + dec[0]*xScale);
-			y = 0;
+			x = 0;
+			y = height2 + dec[0]*yScale;
+			path.moveTo(x, y);
 			for (i in raDrift) {
-				path.lineTo(y, height2 + dec[i]*xScale);
-				y += yScale;
+				y = height2 + dec[i]*yScale;
+				path.lineTo(x, y);
+				x += xScale;
+				if (pulse)
+					path.lineTo(x, y);
 			}
 			ctx.stroke(path);
 			ctx.restore();

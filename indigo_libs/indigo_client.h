@@ -33,6 +33,8 @@
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include "indigo_driver.h"
+#else
+#include "indigo_names.h"
 #endif
 
 #ifdef __cplusplus

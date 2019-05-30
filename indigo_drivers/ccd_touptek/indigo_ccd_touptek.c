@@ -671,7 +671,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result < 0) {
 				CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
-				indigo_send_message(device, "Analog gain setting is not supported");
 			} else {
 				CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
@@ -687,7 +686,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result < 0) {
 				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
-				indigo_send_message(device, "Contrast setting is not supported");
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
 			}
@@ -695,7 +693,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result < 0) {
 				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
-				indigo_send_message(device, "Hue setting is not supported");
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
 			}
@@ -703,7 +700,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result < 0) {
 				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
-				indigo_send_message(device, "Saturation setting is not supported");
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
 			}
@@ -711,7 +707,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result < 0) {
 				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
-				indigo_send_message(device, "Brightness setting is not supported");
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
 			}
@@ -719,7 +714,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result < 0) {
 				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
-				indigo_send_message(device, "Gamma setting is not supported");
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
 			}
@@ -728,7 +722,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result < 0) {
 				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
-				indigo_send_message(device, "White ballance gain setting is not supported");
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
 			}
@@ -743,11 +736,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (result < 0) {
 			X_CCD_FAN_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
-			indigo_send_message(device, "Fan speed setting is not supported");
+			indigo_update_property(device, X_CCD_FAN_PROPERTY, "Fan speed setting is not supported");
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
+			indigo_update_property(device, X_CCD_FAN_PROPERTY, NULL);
 		}
-		indigo_update_property(device, X_CCD_FAN_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

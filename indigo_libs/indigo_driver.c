@@ -291,9 +291,15 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY = indigo_init_text_property(NULL, device->name, DEVICE_PORT_PROPERTY_NAME, MAIN_GROUP, "Serial port", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (DEVICE_PORT_PROPERTY == NULL)
-		return INDIGO_FAILED;
+			return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
 		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or URL", DEVICE_PORTS_PROPERTY->count > 1 ? DEVICE_PORTS_PROPERTY->items[1].name : DEFAULT_TTY);
+		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
+		DEVICE_BAUDRATE_PROPERTY = indigo_init_text_property(NULL, device->name, DEVICE_BAUDRATE_PROPERTY_NAME, MAIN_GROUP, "Serial port baud rate", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (DEVICE_BAUDRATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		DEVICE_BAUDRATE_PROPERTY->hidden = true;
+		indigo_init_text_item(DEVICE_BAUDRATE_ITEM, DEVICE_BAUDRATE_ITEM_NAME, "Baud rate (bps)", "9600-8N1");
 		// -------------------------------------------------------------------------------- SECURITY
 		AUTHENTICATION_PROPERTY = indigo_init_text_property(NULL, device->name, AUTHENTICATION_PROPERTY_NAME, MAIN_GROUP, "Device authorization", INDIGO_OK_STATE, INDIGO_WO_PERM, 2);
 		if (AUTHENTICATION_PROPERTY == NULL)
@@ -319,6 +325,8 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, PROFILE_PROPERTY, NULL);
 	if (indigo_property_match(DEVICE_PORT_PROPERTY, property) && !DEVICE_PORT_PROPERTY->hidden)
 		indigo_define_property(device, DEVICE_PORT_PROPERTY, NULL);
+	if (indigo_property_match(DEVICE_BAUDRATE_PROPERTY, property) && !DEVICE_BAUDRATE_PROPERTY->hidden)
+		indigo_define_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 	if (indigo_property_match(DEVICE_PORTS_PROPERTY, property) && !DEVICE_PORTS_PROPERTY->hidden)
 		indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
 	if (indigo_property_match(AUTHENTICATION_PROPERTY, property) && !AUTHENTICATION_PROPERTY->hidden)
@@ -351,6 +359,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		} else if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
+			indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
 			if (DEVICE_CONTEXT->property_save_file_handle) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 				close(DEVICE_CONTEXT->property_save_file_handle);
@@ -387,6 +396,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
+	} else if (indigo_property_match(DEVICE_BAUDRATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
+		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
+		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 	} else if (indigo_property_match(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		indigo_property_copy_values(DEVICE_PORTS_PROPERTY, property, false);
@@ -423,6 +437,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(CONNECTION_PROPERTY);
 	indigo_release_property(INFO_PROPERTY);
 	indigo_release_property(DEVICE_PORT_PROPERTY);
+	indigo_release_property(DEVICE_BAUDRATE_PROPERTY);
 	indigo_release_property(DEVICE_PORTS_PROPERTY);
 	indigo_release_property(SIMULATION_PROPERTY);
 	indigo_release_property(CONFIG_PROPERTY);
@@ -654,14 +669,14 @@ time_t indigo_utc(time_t *ltime) {
 	return timegm(&tm_now);
 }
 */
-void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len) {
+void indigo_timetoisogm(time_t tstamp, char *isotime, int isotime_len) {
 	struct tm tm_stamp;
 
 	gmtime_r(&tstamp, &tm_stamp);
 	strftime(isotime, isotime_len, "%Y-%m-%dT%H:%M:%S", &tm_stamp);
 }
 
-time_t indigo_isototime(char *isotime) {
+time_t indigo_isogmtotime(char *isotime) {
 	struct tm tm_ts;
 
 	memset(&tm_ts, 0, sizeof(tm_ts));
@@ -674,7 +689,7 @@ time_t indigo_isototime(char *isotime) {
 	return -1;
 }
 
-void indigo_localtimetoiso(time_t tstamp, char *isotime, int isotime_len) {
+void indigo_timetoisolocal(time_t tstamp, char *isotime, int isotime_len) {
 	struct tm tm_stamp;
 
 	localtime_r(&tstamp, &tm_stamp);
@@ -683,7 +698,7 @@ void indigo_localtimetoiso(time_t tstamp, char *isotime, int isotime_len) {
 	snprintf(isotime, isotime_len, "%04d-%02d-%02dT%02d:%02d:%02d", tm_stamp.tm_year + 1900, tm_stamp.tm_mon + 1, tm_stamp.tm_mday, tm_stamp.tm_hour, tm_stamp.tm_min, tm_stamp.tm_sec);
 }
 
-time_t indigo_isotolocaltime(char *isotime) {
+time_t indigo_isolocaltotime(char *isotime) {
 	struct tm tm_ts;
 
 	memset(&tm_ts, 0, sizeof(tm_ts));

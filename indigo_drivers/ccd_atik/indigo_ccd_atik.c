@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -434,15 +434,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
-			ArtemisSetCooling(PRIVATE_DATA->handle, CCD_TEMPERATURE_ITEM->number.target * 100);
-		} else {
-			ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
-			CCD_COOLER_POWER_ITEM->number.value = 0;
-			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+			if (CCD_COOLER_ON_ITEM->sw.value) {
+				ArtemisSetCooling(PRIVATE_DATA->handle, CCD_TEMPERATURE_ITEM->number.target * 100);
+			} else {
+				ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
+				CCD_COOLER_POWER_ITEM->number.value = 0;
+				CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+			}
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		}
-		CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
