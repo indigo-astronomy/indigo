@@ -40,7 +40,8 @@
 #endif
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
-#define ssize_t size_t
+#include <basetsd.h>
+#define ssize_t SSIZE_T
 #define close indigo_close
 #pragma warning(disable:4996)
 #endif
