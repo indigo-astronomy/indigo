@@ -192,6 +192,7 @@ package: reconfigure init all
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 	@$(MAKE)	-C indigo_server install
+	@$(MAKE)	-C indigo_tools install
 	install -d $(INSTALL_ROOT)/DEBIAN
 	printf "Package: indigo\n" > $(INSTALL_ROOT)/DEBIAN/control
 	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
