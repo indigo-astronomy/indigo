@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Written by Thomas Stibor <thomas@stibor.net>
-VERSION="0.1.6"
+VERSION="0.1.7"
 
 # ANSI color codes.
 COL_R='\033[0;31m'
@@ -92,14 +92,14 @@ __set_verify_property() {
     __log_info "setting property '${SET_ARG}' was successful"
 }
 
-__echo_driver_name() {
+__echo_device_name() {
 
-    local DRIVER_NAME=$(${INDIGO_PROP_TOOL} list \
+    local DEVICE_NAME=$(${INDIGO_PROP_TOOL} list \
 			    | grep "INFO.DEVICE_NAME" \
 			    | grep -v "Guider\|(wheel)\|(focuser)\|DSLR" \
 			    | awk '{split($0, a, "."); print a[1]}')
 
-    echo "${DRIVER_NAME}"
+    echo "${DEVICE_NAME}"
 }
 
 #-------------- INDIGO test functions --------------#
@@ -138,18 +138,17 @@ __test_capture() {
     __start_indigo_server
 
     local TMPDIR="$(mktemp -q -d -t "$(basename "$0").XXXXXX" 2>/dev/null || mktemp -q -d)/"
-    local DRIVER_NAME=""
+    local DEVICE_NAME=""
     local TIME_WAIT_SET=1
     local TIME_WAIT_LIST=1
 
-    # Some older DSLR having timing problem when connecting, thiis give them some time.
+    # Some older DSLR having timing problem when connecting, thus give them some time.
     [[ "${1}" == "indigo_ccd_gphoto2" ]] && { TIME_WAIT_LIST=4; }
 
     # Note, if longer exposure times are added, then make sure the
     # indigo_prop_tool time out is properly set. At current it is set to 1 second.
     declare -a EXP_TIMES=("0.01" "0.05" "0.1" "0.5" "1")
 
-    # Load CCD driver.
     __set_verify_property "Server.LOAD.DRIVER=${1}" \
     			  "Server.DRIVERS" \
 			  "${1} = ON" \
@@ -157,32 +156,28 @@ __test_capture() {
 			  "${TIME_WAIT_LIST}"
 
     TIME_WAIT_LIST=1
-    DRIVER_NAME=$(__echo_driver_name)
+    DEVICE_NAME=$(__echo_device_name)
 
-    # Verify driver is loaded.
-    __set_verify_property "${DRIVER_NAME}.CONNECTION.CONNECTED=ON" \
-			  "${DRIVER_NAME}.CONNECTION" \
+    __set_verify_property "${DEVICE_NAME}.CONNECTION.CONNECTED=ON" \
+			  "${DEVICE_NAME}.CONNECTION" \
     			  "CONNECTED = ON" \
 			  "${TIME_WAIT_SET}" \
 			  "${TIME_WAIT_LIST}"
 
-    # Set image format.
-    __set_verify_property "${DRIVER_NAME}.CCD_IMAGE_FORMAT.RAW=ON" \
-			  "${DRIVER_NAME}.CCD_IMAGE_FORMAT" \
+    __set_verify_property "${DEVICE_NAME}.CCD_IMAGE_FORMAT.RAW=ON" \
+			  "${DEVICE_NAME}.CCD_IMAGE_FORMAT" \
 			  "RAW = ON" \
 			  "${TIME_WAIT_SET}" \
 			  "${TIME_WAIT_LIST}"
 
-    # Set local mode.
-    __set_verify_property "${DRIVER_NAME}.CCD_UPLOAD_MODE.LOCAL=ON" \
-			  "${DRIVER_NAME}.CCD_UPLOAD_MODE" \
+    __set_verify_property "${DEVICE_NAME}.CCD_UPLOAD_MODE.LOCAL=ON" \
+			  "${DEVICE_NAME}.CCD_UPLOAD_MODE" \
     			  "LOCAL = ON" \
 			  "${TIME_WAIT_SET}" \
 			  "${TIME_WAIT_LIST}"
 
-    # Set directory.
-    __set_verify_property "${DRIVER_NAME}.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
-			  "${DRIVER_NAME}.CCD_LOCAL_MODE" \
+    __set_verify_property "${DEVICE_NAME}.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
+			  "${DEVICE_NAME}.CCD_LOCAL_MODE" \
     			  "DIR = \"${TMPDIR}\"" \
 			  "${TIME_WAIT_SET}" \
 			  "${TIME_WAIT_LIST}"
@@ -197,8 +192,8 @@ __test_capture() {
 	else
 	    WAIT_TIME=$(echo ${e} | awk '{print int($1+2)}')
 	fi
-	__set_verify_property "${DRIVER_NAME}.CCD_EXPOSURE.EXPOSURE=${e}" \
-			      "${DRIVER_NAME}.CCD_EXPOSURE" \
+	__set_verify_property "${DEVICE_NAME}.CCD_EXPOSURE.EXPOSURE=${e}" \
+			      "${DEVICE_NAME}.CCD_EXPOSURE" \
     			      "EXPOSURE = 0" \
 			      "${WAIT_TIME}" \
 			      "1"
@@ -223,7 +218,7 @@ __test_format() {
 
     __start_indigo_server
 
-    local DRIVER_NAME=""
+    local DEVICE_NAME=""
     local TMPDIR="$(mktemp -q -d -t "$(basename "$0").XXXXXX" 2>/dev/null || mktemp -q -d)/"
     declare -a IMG_FORMAT=("FITS" "XISF" "JPEG" "RAW")
     local EXP_TIME=3 # Note, set exposure to 3 seconds to get it work also with buggy ASI120/130mm USB 2.0 cameras.
@@ -239,7 +234,6 @@ __test_format() {
 	TIME_WAIT_LIST=4
     fi
 
-    # Load CCD driver.
     __set_verify_property "Server.LOAD.DRIVER=${1}" \
 			  "Server.DRIVERS" \
 			  "${1} = ON" \
@@ -247,25 +241,22 @@ __test_format() {
 			  "${TIME_WAIT_LIST}"
 
     TIME_WAIT_LIST=1
-    DRIVER_NAME=$(__echo_driver_name)
+    DEVICE_NAME=$(__echo_device_name)
 
-    # Verify driver is loaded.
-    __set_verify_property "${DRIVER_NAME}.CONNECTION.CONNECTED=ON" \
-			  "${DRIVER_NAME}.CONNECTION" \
+    __set_verify_property "${DEVICE_NAME}.CONNECTION.CONNECTED=ON" \
+			  "${DEVICE_NAME}.CONNECTION" \
 			  "CONNECTED = ON" \
 			  "${TIME_WAIT_SET}" \
 			  "${TIME_WAIT_LIST}"
 
-    # Set local mode.
-    __set_verify_property "${DRIVER_NAME}.CCD_UPLOAD_MODE.LOCAL=ON" \
-			  "${DRIVER_NAME}.CCD_UPLOAD_MODE" \
+    __set_verify_property "${DEVICE_NAME}.CCD_UPLOAD_MODE.LOCAL=ON" \
+			  "${DEVICE_NAME}.CCD_UPLOAD_MODE" \
 			  "LOCAL = ON" \
 			  "${TIME_WAIT_SET}" \
 			  "${TIME_WAIT_LIST}"
 
-    # Set directory.
-    __set_verify_property "${DRIVER_NAME}.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
-			  "${DRIVER_NAME}.CCD_LOCAL_MODE" \
+    __set_verify_property "${DEVICE_NAME}.CCD_LOCAL_MODE.DIR=${TMPDIR}" \
+			  "${DEVICE_NAME}.CCD_LOCAL_MODE" \
 			  "DIR = \"${TMPDIR}\"" \
 			  "${TIME_WAIT_SET}" \
 			  "${TIME_WAIT_LIST}"
@@ -273,14 +264,14 @@ __test_format() {
     local fn=""
     for f in "${IMG_FORMAT[@]}"
     do
-	__set_verify_property "${DRIVER_NAME}.CCD_IMAGE_FORMAT.${f}=ON" \
-			      "${DRIVER_NAME}.CCD_IMAGE_FORMAT" \
+	__set_verify_property "${DEVICE_NAME}.CCD_IMAGE_FORMAT.${f}=ON" \
+			      "${DEVICE_NAME}.CCD_IMAGE_FORMAT" \
 			      "${f} = ON" \
 			      "${TIME_WAIT_SET}" \
 			      "${TIME_WAIT_LIST}"
 
-	__set_verify_property "${DRIVER_NAME}.CCD_EXPOSURE.EXPOSURE=${EXP_TIME}" \
-			      "${DRIVER_NAME}.CCD_EXPOSURE" \
+	__set_verify_property "${DEVICE_NAME}.CCD_EXPOSURE.EXPOSURE=${EXP_TIME}" \
+			      "${DEVICE_NAME}.CCD_EXPOSURE" \
 			      "EXPOSURE = 0" \
 			      "${TIME_WAIT_EXP}" \
 			      "${TIME_WAIT_LIST}"
