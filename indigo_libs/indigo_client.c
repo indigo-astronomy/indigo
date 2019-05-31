@@ -54,6 +54,30 @@
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#if defined(INDIGO_WINDOWS)
+static bool is_pre_vista() {
+	char buffer[MAX_PATH];
+	HKEY hKey;
+	DWORD dwBufLen;
+	LONG lret;
+	HRESULT hr = E_FAIL;
+	DWORD* reservedNULL = NULL;
+	DWORD reservedZero = 0;
+	bool bRet = false;
+	lret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", reservedZero, KEY_READ, &hKey);
+	if (lret == ERROR_SUCCESS) {
+		dwBufLen = MAX_PATH;
+		lret = RegQueryValueEx(hKey, "CurrentVersion", reservedNULL, NULL, (BYTE*)buffer, &dwBufLen);
+		if (lret == ERROR_SUCCESS) {
+			if (atof(buffer) < 6.0) // Vista is 6.0
+				bRet = true;
+		}
+		RegCloseKey(hKey);
+	}
+	return bRet;
+}
+#endif
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 static int used_driver_slots = 0;
@@ -319,7 +343,24 @@ static void *server_thread(indigo_server_entry *server) {
 			((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
 			if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
 				char text[INET_ADDRSTRLEN];
+#if defined(INDIGO_WINDOWS)
+				if (is_pre_vista()) {
+					char *p;
+					memset(text, 0, sizeof(text));
+					p = inet_ntoa(((struct sockaddr_in *)address->ai_addr)->sin_addr);
+					if (p)
+						strncpy(text, p, strlen(p));
+				} else {
+					HMODULE hMod = LoadLibrary(TEXT("ws2_32.dll"));
+					if (hMod) {
+						PCTSTR(WINAPI *fn)(INT, PVOID, PTSTR, size_t) = GetProcAddress(hMod, "inet_ntop");
+						if (fn)
+							(*fn)(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
+					}
+				}
+#else
 				inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
+#endif
 				INDIGO_LOG(indigo_error("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
         reset_socket(server, 0);
