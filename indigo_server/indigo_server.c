@@ -105,6 +105,7 @@
 #include "ao_sx/indigo_ao_sx.h"
 #include "ccd_uvc/indigo_ccd_uvc.h"
 #include "agent_guider/indigo_agent_guider.h"
+#include "system_ascol/indigo_system_ascol.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -207,6 +208,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_sx,
 	indigo_wheel_trutek,
 	indigo_wheel_xagyl,
+	indigo_system_ascol,
 #endif
 	NULL
 };
