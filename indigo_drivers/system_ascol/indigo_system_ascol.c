@@ -3208,8 +3208,8 @@ static indigo_result panel_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, GLME_PROPERTY, NULL);
 					device->is_connected = true;
 					/* start updates */
-					PRIVATE_DATA->panel_timer = indigo_set_timer(device, 0, panel_timer_callback);
 					panel_attach_devices(device);
+					PRIVATE_DATA->panel_timer = indigo_set_timer(device, 0, panel_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
