@@ -24,7 +24,7 @@ var INDIGO = new Vue({
 });
 
 function init() {
-	websocket = new WebSocket(URL);
+	websocket = new WebSocket(indigoURL);
 	websocket.onopen = onOpen;
 	websocket.onclose = onClose;
 	websocket.onmessage = onMessage;
@@ -33,8 +33,8 @@ function init() {
 }
 
 function onOpen(evt) {
-	INDIGO.state = 'Connected to ' + URL.host;
-	INDIGO.host = URL.host;
+	INDIGO.state = 'Connected to ' + indigoURL.host;
+	INDIGO.host = indigoURL.host;
 	$('#SUCCESS').show();
 	$('#FAILURE').hide();
 	enumerateProperties();
@@ -42,7 +42,7 @@ function onOpen(evt) {
 
 function onClose(evt) {
 	INDIGO.devices = { };
-	INDIGO.state = 'Lost connection to ' + URL.host;
+	INDIGO.state = 'Lost connection to ' + indigoURL.host;
 	$('#SUCCESS').hide();
 	$('#FAILURE').show();
 	setTimeout(init, 1000);

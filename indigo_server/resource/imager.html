@@ -47,18 +47,20 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_CCD_LIST')"></indigo-select-item>
-										<indigo-select-item :property="findProperty('Imager Agent', 'CCD_FRAME_TYPE')"></indigo-select-item>
-										<indigo-select-item :property="findProperty('Imager Agent', 'CCD_MODE')"></indigo-select-item>
-										<indigo-edit-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature-low'" :values="['Off', 0, -10, -15, -20, -30]" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :values="[0, 5, 10, 15, 20, 30]"></indigo-edit-number>
-										<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'"></indigo-edit-text>
-										<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'"></indigo-edit-text>
-										<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'"></indigo-show-number>
+										<template v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null">
+											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_FRAME_TYPE')"></indigo-select-item>
+											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_MODE')"></indigo-select-item>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature-low'" :values="['Off', 0, -10, -15, -20, -30]" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-edit-number>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]"></indigo-edit-number>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]"></indigo-edit-number>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :values="[0, 5, 10, 15, 20, 30]"></indigo-edit-number>
+											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'"></indigo-edit-text>
+											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'"></indigo-edit-text>
+											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :enabler="findProperty('Imager Agent', 'CCD_COOLER')"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'"></indigo-show-number>
+										</template>
 										<div v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
 											<button id="preview1_button" class="btn btn-svg idle-state mr-2" onclick="preview1()">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -73,6 +75,11 @@
 											<button id="capture_button" class="btn btn-svg idle-state mr-auto" onclick="capture_batch()">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M16,5A11,11,0,1,0,27,16,11.01245,11.01245,0,0,0,16,5Zm0,19a8,8,0,1,1,8-8A8.00917,8.00917,0,0,1,16,24Zm5-8a5,5,0,1,1-5-5A5,5,0,0,1,21,16Z"/>
+												</svg>
+											</button>
+											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD').items.length > 1" cid="download_button" class="btn btn-svg idle-state mr-auto" onclick="download()">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M28,23v4a1,1,0,0,1-1,1H5a1,1,0,0,1-1-1V23a1,1,0,0,1,1-1H27A1,1,0,0,1,28,23ZM15.18628,19.36078a1,1,0,0,0,1.62744,0l5.55682-7.77954A1,1,0,0,0,21.55682,10H19V4a1,1,0,0,0-1-1H14a1,1,0,0,0-1,1v6H10.44318a1,1,0,0,0-.81372,1.58124Z"/>
 												</svg>
 											</button>
 											<button class="btn btn-svg idle-state" onclick="stop()">
@@ -133,7 +140,7 @@
 	<script src="components.js"></script>
 	<script language="javascript" type="text/javascript">
 		
-		URL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
 
 		window.addEventListener("load", init, false);
 		
@@ -160,7 +167,10 @@
 		}
 	
 		var targetExposureTime = 0;
-		var repeatExposure = false
+		var repeatExposure = false;
+		var downloadInProgress = false;
+		var downloadURL = "";
+		var downloadFileName = "";
 		
 		function onDefineProperty(property) {
 			onUpdateProperty(property);
@@ -180,6 +190,38 @@
 						var value = property.item("IMAGE").value;
 						if (value != null) {
 							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime());
+						}
+					}
+				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
+					if (property.state == "Ok") {
+						downloadURL = property.item("IMAGE").value;
+					}
+				} else if (property.name == "AGENT_IMAGER_DOWNLOAD") {
+					if (property.state == "Busy") {
+						for (i in property.items) {
+							if (property.items[i].value) {
+								downloadFileName = property.items[i].name;
+								break;
+							}
+						}
+					} else if (property.state == "Ok" && downloadInProgress) {
+						property = INDIGO.devices["Imager Agent"]["AGENT_IMAGER_DOWNLOAD_IMAGE"];
+						if (property != null && property.state == "Ok") {
+							var xhr = new XMLHttpRequest();
+							xhr.open("GET", downloadURL);
+							xhr.responseType = "blob";
+							xhr.onload = function () {
+								var a = document.createElement("a");
+								a.style = "display: none";
+								document.body.appendChild(a);
+								var url = URL.createObjectURL(this.response);
+								a.href = url;
+								a.download = downloadFileName;
+								a.click();
+								URL.revokeObjectURL(url);
+								download();
+							};
+							xhr.send();
 						}
 					}
 				}
@@ -233,6 +275,23 @@
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "LOCAL" : true });
 			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
 		}
+	
+	function download() {
+		var images = INDIGO.devices["Imager Agent"]["AGENT_IMAGER_DOWNLOAD"];
+		if (images.items.length > 1) {
+			downloadInProgress = true;
+			$("#download_button").removeClass("idle-state");
+			$("#download_button").addClass("busy-state");
+			var values = { };
+			values[images.items[1].name] = true;
+			changeProperty("Imager Agent", "AGENT_IMAGER_DOWNLOAD", values);
+		} else {
+			downloadInProgress = false;
+			$("#download_button").removeClass("busy-state");
+			$("#download_button").addClass("idle-state");
+		}
+	}
+
 	
 		function stop() {
 			repeatExposure = false;
