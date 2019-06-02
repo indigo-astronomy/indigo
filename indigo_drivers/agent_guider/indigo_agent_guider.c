@@ -115,7 +115,7 @@ typedef struct {
 	indigo_frame_digest reference;
 	double drift_x, drift_y, drift;
 	double rmse_ra_sum, rmse_dec_sum;
-	enum { INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
+	enum { INIT = 1, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
 	double stack_x[5], stack_y[5];
 	int stack_size;
 } agent_private_data;
@@ -172,9 +172,9 @@ static indigo_property_state capture_frame(indigo_device *device) {
 			double time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
 			local_exposure_property->items[0].number.value = time;
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_exposure_property);
-			for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000; i++)
+			for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000 && AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE; i++)
 				usleep(1000);
-			if (remote_exposure_property->state != INDIGO_BUSY_STATE) {
+			if (remote_exposure_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
 				indigo_release_property(local_exposure_property);
 				return INDIGO_ALERT_STATE;
@@ -235,7 +235,7 @@ static indigo_property_state capture_frame(indigo_device *device) {
 						if (result == INDIGO_OK) {
 							double drift_x, drift_y;
 							result = indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
-							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target == 1) {
+							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != 0) {
 								DEVICE_PRIVATE_DATA->drift_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value + drift_x;
 								DEVICE_PRIVATE_DATA->drift_y = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value + drift_y;
 							} else {
@@ -417,11 +417,10 @@ static void calibrate_process(indigo_device *device) {
 	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0;
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INIT;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = 0;
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	DEVICE_PRIVATE_DATA->phase = INIT;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase;
 		switch (DEVICE_PRIVATE_DATA->phase) {
@@ -727,10 +726,7 @@ static void guide_process(indigo_device *device) {
 	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_ALERT_STATE)
-		indigo_send_message(device, "Guiding failed");
-	else
-		indigo_send_message(device, "Guiding finished");
+	indigo_send_message(device, "Guiding finished");
 }
 
 static void abort_process(indigo_device *device) {

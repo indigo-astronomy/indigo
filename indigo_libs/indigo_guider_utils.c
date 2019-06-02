@@ -215,7 +215,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	c->centroid_x = *x = m10 / m00;
 	c->centroid_y = *y = m01 / m00;
 	c->algorithm = centroid;
-	INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
+	//INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
 }
 
@@ -262,7 +262,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	c->centroid_x = m10 / m00;
 	c->centroid_y = m01 / m00;
 	c->algorithm = centroid;
-	INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
+	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
 }
 
@@ -314,7 +314,7 @@ static double calibrate_re(double (*vector)[2], int size) {
 	}
 	
 	double snr = (signal_ms / signal_count) / (noise_ms / noise_count);
-	INDIGO_DEBUG(indigo_debug("calibrate_re: threshold = %g, S/N = %g", threshold, snr));
+	//INDIGO_DEBUG(indigo_debug("calibrate_re: threshold = %g, S/N = %g", threshold, snr));
 	return snr;
 }
 
