@@ -26,24 +26,38 @@
 #define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_agent_imager"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_filter.h"
+#include "indigo_io.h"
 #include "indigo_agent_imager.h"
 
 #define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
-#define AGENT_IMAGER_BATCH_PROPERTY						(DEVICE_PRIVATE_DATA->agent_ccd_batch_property)
+#define AGENT_IMAGER_BATCH_PROPERTY						(DEVICE_PRIVATE_DATA->agent_imager_batch_property)
 #define AGENT_IMAGER_BATCH_COUNT_ITEM    			(AGENT_IMAGER_BATCH_PROPERTY->items+0)
 #define AGENT_IMAGER_BATCH_EXPOSURE_ITEM  		(AGENT_IMAGER_BATCH_PROPERTY->items+1)
 #define AGENT_IMAGER_BATCH_DELAY_ITEM     		(AGENT_IMAGER_BATCH_PROPERTY->items+2)
+
+#define AGENT_IMAGER_DOWNLOAD_PROPERTY				(DEVICE_PRIVATE_DATA->agent_imager_download_property)
+#define AGENT_IMAGER_DOWNLOAD_REFRESH_ITEM    (AGENT_IMAGER_DOWNLOAD_PROPERTY->items+0)
+#define DOWNLOAD_MAX_COUNT										128
+
+#define AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY	(DEVICE_PRIVATE_DATA->agent_imager_download_image_property)
+#define AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM    	(AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->items+0)
+
 
 #define AGENT_START_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_start_process_property)
 #define AGENT_IMAGER_START_EXPOSURE_ITEM  		(AGENT_START_PROCESS_PROPERTY->items+0)
@@ -52,15 +66,18 @@
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
 
-#define AGENT_WHEEL_FILTER_PROPERTY					(DEVICE_PRIVATE_DATA->agent_wheel_filter_property)
-
+#define AGENT_WHEEL_FILTER_PROPERTY						(DEVICE_PRIVATE_DATA->agent_wheel_filter_property)
 #define FILTER_SLOT_COUNT											24
 
 typedef struct {
-	indigo_property *agent_ccd_batch_property;
+	indigo_property *agent_imager_batch_property;
+	indigo_property *agent_imager_download_property;
+	indigo_property *agent_imager_download_image_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_wheel_filter_property;
+	char current_folder[INDIGO_VALUE_SIZE], current_type[16];
+	void *image_buffer;
 	char filter_name[INDIGO_NAME_SIZE];
 	int focuser_position;
 	double site_lat, site_long;
@@ -312,6 +329,17 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort batch", false);
+		// -------------------------------------------------------------------------------- Download properties
+		AGENT_IMAGER_DOWNLOAD_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_PROPERTY_NAME, "Agent", "Download images", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, DOWNLOAD_MAX_COUNT + 1);
+		if (AGENT_IMAGER_DOWNLOAD_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_IMAGER_DOWNLOAD_PROPERTY->hidden = true;
+		indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_REFRESH_ITEM, AGENT_IMAGER_DOWNLOAD_REFRESH_ITEM_NAME, "Refresh", false);
+		AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY_NAME, "Agent", "Download image data", INDIGO_OK_STATE, 1);
+		if (AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->hidden = true;
+		indigo_init_blob_item(AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM_NAME, "Image");
 		// -------------------------------------------------------------------------------- Wheel helpers
 		AGENT_WHEEL_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Agent", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, FILTER_SLOT_COUNT);
 		if (AGENT_WHEEL_FILTER_PROPERTY == NULL)
@@ -338,7 +366,11 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property))
-	indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+		indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, NULL);
 	if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
 		if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
 			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
@@ -361,6 +393,34 @@ static void abort_batch(indigo_device *device) {
 	}
 }
 
+static void setup_download(indigo_device *device) {
+	if (*DEVICE_PRIVATE_DATA->current_folder && *DEVICE_PRIVATE_DATA->current_type) {
+		indigo_delete_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, NULL);
+		DIR *folder;
+		struct dirent *entry;
+		folder = opendir(DEVICE_PRIVATE_DATA->current_folder);
+		if (folder) {
+			int index = 1;
+			while ((entry = readdir(folder)) != NULL && index <= DOWNLOAD_MAX_COUNT) {
+				if (strstr(entry->d_name, DEVICE_PRIVATE_DATA->current_type)) {
+					indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_PROPERTY->items + index, entry->d_name, entry->d_name, false);
+					index++;
+				}
+			}
+			AGENT_IMAGER_DOWNLOAD_PROPERTY->count = index;
+			closedir(folder);
+		}
+		AGENT_IMAGER_DOWNLOAD_PROPERTY->hidden = false;
+		AGENT_IMAGER_DOWNLOAD_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, NULL);
+		if (AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->hidden) {
+			indigo_delete_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
+			AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->hidden = false;
+			indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
+		}
+	}
+}
+
 static indigo_result agent_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -373,6 +433,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
@@ -393,6 +454,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "%s: No CCD is selected", IMAGER_AGENT_NAME);
 		}
+		return INDIGO_OK;
 	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
@@ -405,6 +467,61 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, "%s: No CCD is selected", IMAGER_AGENT_NAME);
 		}
+		return INDIGO_OK;
+	} else 	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_IMAGER_DOWNLOAD
+		indigo_property_copy_values(AGENT_IMAGER_DOWNLOAD_PROPERTY, property, false);
+		if (AGENT_IMAGER_DOWNLOAD_REFRESH_ITEM->sw.value) {
+			AGENT_IMAGER_DOWNLOAD_REFRESH_ITEM->sw.value = false;
+		} else {
+			AGENT_IMAGER_DOWNLOAD_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, NULL);
+			for (int i = 1; i < AGENT_IMAGER_DOWNLOAD_PROPERTY->count; i++) {
+				indigo_item *item = AGENT_IMAGER_DOWNLOAD_PROPERTY->items + i;
+				if (item->sw.value) {
+					char file_name[INDIGO_VALUE_SIZE + INDIGO_NAME_SIZE];
+					struct stat file_stat;
+					strcpy(file_name, DEVICE_PRIVATE_DATA->current_folder);
+					strcat(file_name, item->name);
+					if (stat(file_name, &file_stat) < 0) {
+						AGENT_IMAGER_DOWNLOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, strerror(errno));
+						return INDIGO_OK;
+					}
+					if (DEVICE_PRIVATE_DATA->image_buffer)
+						DEVICE_PRIVATE_DATA->image_buffer = realloc(DEVICE_PRIVATE_DATA->image_buffer, file_stat.st_size);
+					else
+						DEVICE_PRIVATE_DATA->image_buffer = malloc(file_stat.st_size);
+					int fd = open(file_name, O_RDONLY, 0);
+					if (fd == -1) {
+						AGENT_IMAGER_DOWNLOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, strerror(errno));
+						return INDIGO_OK;
+					}
+					int result = indigo_read(fd, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.value = DEVICE_PRIVATE_DATA->image_buffer, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.size = file_stat.st_size);
+					close(fd);
+					if (result == -1) {
+						AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
+						AGENT_IMAGER_DOWNLOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, strerror(errno));
+						return INDIGO_OK;
+					}
+					*AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.url = 0;
+					strcpy(AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.format, DEVICE_PRIVATE_DATA->current_type);
+					indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
+					if (unlink(file_name) == -1) {
+						AGENT_IMAGER_DOWNLOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, strerror(errno));
+						return INDIGO_OK;
+					}
+					item->sw.value = false;
+					break;
+				}
+			}
+		}
+		setup_download(device);
+		return INDIGO_OK;
 	} else 	if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_WHEEL_FILTER
 		indigo_property_copy_values(AGENT_WHEEL_FILTER_PROPERTY, property, false);
@@ -417,6 +534,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -429,6 +547,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(AGENT_IMAGER_BATCH_PROPERTY);
+	if (DEVICE_PRIVATE_DATA->image_buffer)
+		free(DEVICE_PRIVATE_DATA->image_buffer);
+	indigo_release_property(AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_DOWNLOAD_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	return indigo_filter_device_detach(device);
@@ -437,7 +559,38 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
+		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
+			*CLIENT_PRIVATE_DATA->current_folder = 0;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (strcmp(item->name, CCD_LOCAL_MODE_DIR_ITEM_NAME) == 0) {
+					strncpy(CLIENT_PRIVATE_DATA->current_folder, item->text.value, INDIGO_VALUE_SIZE);
+					break;
+				}
+			}
+			setup_download(FILTER_CLIENT_CONTEXT->device);
+		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
+			*CLIENT_PRIVATE_DATA->current_type = 0;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_RAW_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".raw");
+					break;
+				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_FITS_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".fits");
+					break;
+				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_XISF_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".xisf");
+					break;
+				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".jpeg");
+					break;
+				}
+			}
+			setup_download(FILTER_CLIENT_CONTEXT->device);
+		}
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
 		agent_wheel_filter_property->count = property->count;
 		for (int i = 0; i < property->count; i++)
@@ -487,9 +640,40 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		}
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
-		if (property->state == INDIGO_OK_STATE) {
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
+		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TBD: plate solve etc...");
+		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
+			setup_download(FILTER_CLIENT_CONTEXT->device);
+		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
+			*CLIENT_PRIVATE_DATA->current_folder = 0;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (strcmp(item->name, CCD_LOCAL_MODE_DIR_ITEM_NAME) == 0) {
+					strncpy(CLIENT_PRIVATE_DATA->current_folder, item->text.value, INDIGO_VALUE_SIZE);
+					break;
+				}
+			}
+			setup_download(FILTER_CLIENT_CONTEXT->device);
+		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
+			*CLIENT_PRIVATE_DATA->current_type = 0;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_RAW_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".raw");
+					break;
+				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_FITS_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".fits");
+					break;
+				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_XISF_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".xisf");
+					break;
+				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME) == 0) {
+					strcpy(CLIENT_PRIVATE_DATA->current_type, ".jpeg");
+					break;
+				}
+			}
+			setup_download(FILTER_CLIENT_CONTEXT->device);
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
@@ -533,7 +717,12 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME))
+	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) || !strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME))) {
+		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_imager_download_property, NULL);
+		CLIENT_PRIVATE_DATA->agent_imager_download_property->hidden = true;
+		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_imager_download_image_property, NULL);
+		CLIENT_PRIVATE_DATA->agent_imager_download_image_property->hidden = true;
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME))
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_wheel_filter_property, NULL);
 	return indigo_filter_delete_property(client, device, property, message);
 }
