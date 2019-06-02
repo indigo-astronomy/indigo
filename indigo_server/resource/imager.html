@@ -164,37 +164,45 @@
 		
 		function onDefineProperty(property) {
 			onUpdateProperty(property);
+			if (property.device == "Imager Agent") {
+				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
+					changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
+				}
+			}
 		}
 	
 		function onUpdateProperty(property) {
 			if (property.device == "Imager Agent") {
 				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
 					targetExposureTime = property.item("EXPOSURE").value;
-				} else if (property.name == "CCD_IMAGE") {
+				} else if (property.name == "CCD_PREVIEW_IMAGE") {
 					if (property.state == "Ok") {
-						$("#preview1_button").removeClass("busy-state");
-						$("#preview1_button").addClass("idle-state");
-						$("#preview_button").removeClass("busy-state");
-						$("#preview_button").addClass("idle-state");
-						$("#capture_button").removeClass("busy-state");
-						$("#capture_button").addClass("idle-state");
 						var value = property.item("IMAGE").value;
 						if (value != null) {
 							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime());
 						}
-						if (repeatExposure) {
-							$("#preview_button").removeClass("idle-state");
-							$("#preview_button").addClass("busy-state");
-							changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
-						}
-					} else if (property.state == "Alert") {
-						$("#preview1_button").removeClass("busy-state");
-						$("#preview1_button").addClass("idle-state");
-						$("#preview_button").removeClass("busy-state");
-						$("#preview_button").addClass("idle-state");
-						$("#capture_button").removeClass("busy-state");
-						$("#capture_button").addClass("idle-state");
 					}
+				}
+			} else if (property.name == "CCD_EXPOSURE") {
+				if (property.state == "Ok") {
+					$("#preview1_button").removeClass("busy-state");
+					$("#preview1_button").addClass("idle-state");
+					$("#preview_button").removeClass("busy-state");
+					$("#preview_button").addClass("idle-state");
+					$("#capture_button").removeClass("busy-state");
+					$("#capture_button").addClass("idle-state");
+					if (repeatExposure) {
+						$("#preview_button").removeClass("idle-state");
+						$("#preview_button").addClass("busy-state");
+						changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+					}
+				} else if (property.state == "Alert") {
+					$("#preview1_button").removeClass("busy-state");
+					$("#preview1_button").addClass("idle-state");
+					$("#preview_button").removeClass("busy-state");
+					$("#preview_button").addClass("idle-state");
+					$("#capture_button").removeClass("busy-state");
+					$("#capture_button").addClass("idle-state");
 				}
 			}
 		}
@@ -206,7 +214,7 @@
 			repeatExposure = false;
 			$("#preview1_button").removeClass("idle-state");
 			$("#preview1_button").addClass("busy-state");
-			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "PREVIEW" : true });
+			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
 		}
 	
@@ -214,7 +222,7 @@
 			repeatExposure = true;
 			$("#preview_button").removeClass("idle-state");
 			$("#preview_button").addClass("busy-state");
-			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "PREVIEW" : true });
+			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
 		}
 	
@@ -222,7 +230,7 @@
 			repeatExposure = false;
 			$("#capture_button").removeClass("idle-state");
 			$("#capture_button").addClass("busy-state");
-			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "PREVIEW_LOCAL" : true });
+			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "LOCAL" : true });
 			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
 		}
 	
