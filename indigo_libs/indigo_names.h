@@ -269,13 +269,28 @@
  */
 #define CCD_UPLOAD_MODE_BOTH_ITEM_NAME        "BOTH"
 
-/** CCD_UPLOAD_MODE.PREVIEW property item name.
- */
-#define CCD_UPLOAD_MODE_PREVIEW_ITEM_NAME     "PREVIEW"
+//----------------------------------------------------------------------
 
-/** CCD_UPLOAD_MODE.PREVIEW_LOCAL property item name.
+/** CCD_PREVIEW property name.
  */
-#define CCD_UPLOAD_MODE_PREVIEW_LOCAL_ITEM_NAME	"PREVIEW_LOCAL"
+#define CCD_PREVIEW_PROPERTY_NAME							"CCD_PREVIEW"
+
+/** CCD_PREVIEW.ENABLED property item name.
+ */
+#define CCD_PREVIEW_ENABLED_ITEM_NAME       	"ENABLED"
+
+/** CCD_PREVIEW.DISABLED property item name.
+ */
+#define CCD_PREVIEW_DISABLED_ITEM_NAME       	"DISABLED"
+
+/** CCD_PREVIEW_IMAGE property name.
+ */
+#define CCD_PREVIEW_IMAGE_PROPERTY_NAME				"CCD_PREVIEW_IMAGE"
+
+/** CCD_PREVIEW_IMAGE.IMAGE property item name.
+ */
+#define CCD_PREVIEW_IMAGE_ITEM_NAME           "IMAGE"
+
 
 //----------------------------------------------------------------------
 /** CCD_LOCAL_MODE property name.
@@ -547,11 +562,11 @@
 
 /** CCD_RBI_FLUSH_ENABLE.ENABLE property item name.
  */
-#define CCD_RBI_FLUSH_ENABLED_ITEM_NAME      "ENABLE"
+#define CCD_RBI_FLUSH_ENABLED_ITEM_NAME      "ENABLED"
 
 /** CCD_RBI_FLUSH_ENABLE.DISABLE property item name.
  */
-#define CCD_RBI_FLUSH_DISABLED_ITEM_NAME     "DISABLE"
+#define CCD_RBI_FLUSH_DISABLED_ITEM_NAME     "DISABLED"
 
 //----------------------------------------------------------------------
 /** DSLR_PROGRAM property name.
