@@ -106,6 +106,7 @@
 #include "ccd_uvc/indigo_ccd_uvc.h"
 #include "agent_guider/indigo_agent_guider.h"
 #include "system_ascol/indigo_system_ascol.h"
+#include "focuser_steeldrive2/indigo_focuser_steeldrive2.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -181,6 +182,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_nstep,
 	indigo_focuser_optec,
 	indigo_focuser_usbv3,
+	indigo_focuser_steeldrive2,
 	indigo_focuser_wemacro,
 #ifdef INDIGO_MACOS
 	indigo_focuser_wemacro_bt,
