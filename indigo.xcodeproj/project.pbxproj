@@ -98,6 +98,8 @@
 		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
 		59A242DA22A2C6AE001C38F8 /* indigo_system_ascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */; };
 		59A242E322A2C6CE001C38F8 /* libascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F921A6FCC7009859FD /* libascol.c */; };
+		59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */; };
+		59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */; };
 		59A3217621D52C4700EC0F4A /* indigo_focuser_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */; };
 		59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A3217C21D52C6100EC0F4A /* EAF_focuser.h */; };
 		59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
@@ -1045,6 +1047,9 @@
 		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
 		59A0772A21FE1C2F00244521 /* indigo_cat_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_cat_data.c; sourceTree = "<group>"; wrapsLines = 0; };
+		59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_steeldrive2.h; sourceTree = "<group>"; };
+		59A242F222A5B45E001C38F8 /* indigo_focuser_steeldrive2_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2_main.c; sourceTree = "<group>"; };
+		59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2.c; sourceTree = "<group>"; };
 		59A3217021D52C4600EC0F4A /* indigo_focuser_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_asi.c; sourceTree = "<group>"; };
 		59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_asi.h; sourceTree = "<group>"; };
 		59A3217221D52C4600EC0F4A /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -10840,6 +10845,9 @@
 			isa = PBXGroup;
 			children = (
 				9D2696E522A56BD8008BE82C /* README.md */,
+				59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */,
+				59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */,
+				59A242F222A5B45E001C38F8 /* indigo_focuser_steeldrive2_main.c */,
 				9D2696E322A56BD8008BE82C /* steeldrive2_simulator */,
 			);
 			path = focuser_steeldrive2;
@@ -12020,6 +12028,7 @@
 				59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */,
 				9D59D64820D3F829009EA8FF /* AscentBasedUsbIo.h in Headers */,
 				9D59D61120D3F829009EA8FF /* UdpSocketBase.h in Headers */,
+				59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
 				9D59D65A20D3F829009EA8FF /* CamHelpers.h in Headers */,
 				9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */,
@@ -12347,6 +12356,7 @@
 				9D59D65E20D3F829009EA8FF /* apgHelper.cpp in Sources */,
 				9D59D66B20D3F82A009EA8FF /* ImgFix.cpp in Sources */,
 				9D59D65820D3F829009EA8FF /* AltaData.cpp in Sources */,
+				59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */,
 				59C6F75F21FE4C7C0043DC52 /* novascon.c in Sources */,
 				9D59D5F420D3F829009EA8FF /* CameraIo.cpp in Sources */,
 				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
