@@ -18,7 +18,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Based on SteelDrive II Focuser Technical documentation v0.732 by Baader Planetarium
+// Based on SteelDrive II Focuser Technical documentation v0.733 by Baader Planetarium
 
 #ifdef ARDUINO_SAM_DUE
 //#define Serial SerialUSB
@@ -140,7 +140,7 @@ void loop() {
     } else if (!strcmp(command, "$BS GET USE_ENDSTOP")) {
       sprintf(response, "$BS STATUS USE_ENDSTOP:%d", use_endstop);
     } else if (!strcmp(command, "$BS INFO")) {
-      sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d", name, pos, moving ? "MOVING" : "STOPPED", limit);
+			sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d", name, pos, moving ? (target > pos ? "GOING_UP" : "GOING_DOWN") : "STOPPED", limit);
     } else if (!strcmp(command, "")) {
       char temp0_str[6];
       char temp1_str[6];
@@ -148,7 +148,7 @@ void loop() {
       dtostrf(temp0, 4, 2, temp0_str);
       dtostrf(temp1, 4, 2, temp1_str);
       dtostrf((temp0 + temp1) / 2, 4, 2, temp_avg_str);
-      sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d;FOCUS:%d;TEMP0:%s;TEMP1:%s;TEMP_AVG:%s;TCOMP:%d;PWM:%d", name, pos, moving ? "MOVING" : "STOPPED", limit, focus, temp0_str, temp1_str, temp_avg_str, tcomp, pwm);
+      sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d;FOCUS:%d;TEMP0:%s;TEMP1:%s;TEMP_AVG:%s;TCOMP:%d;PWM:%d", name, pos, moving ? (target > pos ? "GOING_UP" : "GOING_DOWN") : "STOPPED", limit, focus, temp0_str, temp1_str, temp_avg_str, tcomp, pwm);
     } else if (!strcmp(command, "$BS ZEROING")) {
       pos = 0;
       strcpy(response, "$BS OK");
@@ -189,7 +189,7 @@ void loop() {
       moving = false;
       strcpy(response, "$BS OK");
     } else {
-      return;
+			strcpy(response, "$BS ERROR: Unknown command!");
     }
 
     if (use_crc) {
