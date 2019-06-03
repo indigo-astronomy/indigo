@@ -243,6 +243,18 @@ static void start_worker_thread(handler_data *data) {
 			} else if (strcmp(buffer_in, "RS") == 0) {
 				indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SLEW_RATE_MAX_ITEM, true);
 				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_SLEW_RATE_PROPERTY);
+			} else if (strcmp(buffer_in, "Sw2") == 0) {
+				indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SLEW_RATE_CENTERING_ITEM, true);
+				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_SLEW_RATE_PROPERTY);
+				strcpy(buffer_out, "1");
+			} else if (strcmp(buffer_in, "Sw3") == 0) {
+				indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SLEW_RATE_FIND_ITEM, true);
+				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_SLEW_RATE_PROPERTY);
+				strcpy(buffer_out, "1");
+			} else if (strcmp(buffer_in, "Sw4") == 0) {
+				indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SLEW_RATE_MAX_ITEM, true);
+				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_SLEW_RATE_PROPERTY);
+				strcpy(buffer_out, "1");
 			} else if (strcmp(buffer_in, "Mn") == 0) {
 				unpark(device);
 				indigo_set_switch(MOUNT_MOTION_DEC_PROPERTY, MOUNT_MOTION_NORTH_ITEM, true);
