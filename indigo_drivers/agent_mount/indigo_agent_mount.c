@@ -32,9 +32,15 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <netinet/in.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_filter.h"
+#include "indigo_io.h"
 #include "indigo_mount_driver.h"
 #include "indigo_agent_mount.h"
 
@@ -52,23 +58,32 @@
 #define AGENT_SITE_DATA_SOURCE_DOME_ITEM  						(AGENT_SITE_DATA_SOURCE_PROPERTY->items+2)
 #define AGENT_SITE_DATA_SOURCE_GPS_ITEM  							(AGENT_SITE_DATA_SOURCE_PROPERTY->items+3)
 
-#define LX200_SERVER_PROPERTY										(DEVICE_PRIVATE_DATA->lx200_server_property)
-#define LX200_SERVER_STARTED_ITEM								(LX200_SERVER_PROPERTY->items+0)
-#define LX200_SERVER_STOPPED_ITEM								(LX200_SERVER_PROPERTY->items+1)
+#define AGENT_LX200_SERVER_PROPERTY										(DEVICE_PRIVATE_DATA->agent_lx200_server_property)
+#define AGENT_LX200_SERVER_STARTED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+0)
+#define AGENT_LX200_SERVER_STOPPED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+1)
+
+#define AGENT_LX200_CONFIGURATION_PROPERTY						(DEVICE_PRIVATE_DATA->agent_lx200_configuration_property)
+#define AGENT_LX200_CONFIGURATION_PORT_ITEM						(AGENT_LX200_CONFIGURATION_PROPERTY->items+0)
+
 
 typedef struct {
 	indigo_property *agent_geographic_property;
 	indigo_property *agent_site_data_source_property;
-	indigo_property *lx200_server_property;
+	indigo_property *agent_lx200_server_property;
+	indigo_property *agent_lx200_configuration_property;
 	double mount_latitude, mount_longitude, mount_elevation;
 	double dome_latitude, dome_longitude, dome_elevation;
 	double gps_latitude, gps_longitude, gps_elevation;
+	double mount_ra, mount_dec;
+	double mount_target_ra, mount_target_dec;
 	bool do_sync;
+	int server_socket;
 } agent_private_data;
 
 static void save_config(indigo_device *device) {
 	indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
+	indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
 	if (DEVICE_CONTEXT->property_save_file_handle) {
 		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		close(DEVICE_CONTEXT->property_save_file_handle);
@@ -85,6 +100,7 @@ static void forward_property_update(indigo_client *client, indigo_property *prop
 	indigo_property *local_property = malloc(size);
 	memcpy(local_property, property, size);
 	strcpy(local_property->device, device_name);
+	property->perm = INDIGO_RW_PERM;
 	indigo_change_property(client, local_property);
 	free(local_property);
 }
@@ -182,12 +198,17 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_DOME_ITEM, AGENT_SITE_DATA_SOURCE_DOME_ITEM_NAME, "Use dome coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "Use GPS coordinates", false);
 		// -------------------------------------------------------------------------------- LX200_SERVER
-		LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, LX200_SERVER_PROPERTY_NAME, "Agent", "LX200 Server", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (LX200_SERVER_PROPERTY == NULL)
+		AGENT_LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_LX200_SERVER_PROPERTY_NAME, "Agent", "LX200 Server state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AGENT_LX200_SERVER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		LX200_SERVER_PROPERTY->hidden = true;
-		indigo_init_switch_item(LX200_SERVER_STARTED_ITEM, LX200_SERVER_STARTED_ITEM_NAME, "Start LX200 server", false);
-		indigo_init_switch_item(LX200_SERVER_STOPPED_ITEM, LX200_SERVER_STOPPED_ITEM_NAME, "Stop LX200 server", true);
+		AGENT_LX200_SERVER_PROPERTY->hidden = true;
+		indigo_init_switch_item(AGENT_LX200_SERVER_STARTED_ITEM, AGENT_LX200_SERVER_STARTED_ITEM_NAME, "Start LX200 server", false);
+		indigo_init_switch_item(AGENT_LX200_SERVER_STOPPED_ITEM, AGENT_LX200_SERVER_STOPPED_ITEM_NAME, "Stop LX200 server", true);
+		AGENT_LX200_CONFIGURATION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LX200_CONFIGURATION_PROPERTY_NAME, "Agent", "LX200 Server configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (AGENT_LX200_CONFIGURATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_LX200_CONFIGURATION_PROPERTY->hidden = true;
+		indigo_init_number_item(AGENT_LX200_CONFIGURATION_PORT_ITEM, AGENT_LX200_CONFIGURATION_PORT_ITEM_NAME, "Server port", 0, 0xFFFF, 0, 4030);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		indigo_load_properties(device, false);
@@ -204,17 +225,325 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_SITE_DATA_SOURCE_PROPERTY, property))
 		indigo_define_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
-	if (indigo_property_match(LX200_SERVER_PROPERTY, property))
-		indigo_define_property(device, LX200_SERVER_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_LX200_SERVER_PROPERTY, property))
+		indigo_define_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property))
+		indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
-static void startLX200Server(indigo_device *device) {
-	// TBD
+typedef struct {
+	int client_socket;
+	indigo_device *device;
+} handler_data;
+
+static char * doubleToSexa(double value, char *format) {
+	static char buffer[128];
+	double d = fabs(value);
+	double m = 60.0 * (d - floor(d));
+	double s = round(60.0 * (m - floor(m)));
+	if (s == 60) {
+		s = 0;
+		++m;
+	}
+	if (m == 60) {
+		m = 0;
+		++d;
+	}
+	if (value < 0) {
+		d = -d;
+	}
+	snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, (int)s);
+	return buffer;
 }
 
-static void stopLX200Server(indigo_device *device) {
-		// TBD
+static void unpark(indigo_device *device, char *mount_name) {
+	indigo_property *property = indigo_init_switch_property(NULL, mount_name, MOUNT_PARK_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+	indigo_init_switch_item(property->items, MOUNT_PARK_UNPARKED_ITEM_NAME, NULL, true);
+	indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+	indigo_release_property(property);
+}
+
+static void worker_thread(handler_data *data) {
+	indigo_device *device = data->device;
+	int client_socket = data->client_socket;
+	char buffer_in[128];
+	char buffer_out[128];
+	long result = 1;
+	char mount_name[INDIGO_NAME_SIZE];
+	indigo_property *property;
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 500000;
+	setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", client_socket);
+	strcpy(mount_name, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
+	while (true) {
+		*buffer_in = 0;
+		*buffer_out = 0;
+		result = read(client_socket, buffer_in, 1);
+		if (result <= 0)
+			break;
+		if (*buffer_in == 6) {
+			strcpy(buffer_out, "P");
+		} else if (*buffer_in == '#') {
+			continue;
+		} else if (*buffer_in == ':') {
+			int i = 0;
+			while (i < sizeof(buffer_in)) {
+				result = read(client_socket, buffer_in + i, 1);
+				if (result <= 0)
+					break;
+				if (buffer_in[i] == '#') {
+					buffer_in[i] = 0;
+					break;
+				}
+				i++;
+			}
+			if (result == -1)
+				break;
+			if (strcmp(buffer_in, "GVP") == 0) {
+				strcpy(buffer_out, "indigo#");
+			} else if (strcmp(buffer_in, "GR") == 0) {
+				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->mount_ra, "%02d:%02d:%02d#"));
+			} else if (strcmp(buffer_in, "GD") == 0) {
+				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->mount_dec, "%+03d*%02d'%02d#"));
+			} else if (strncmp(buffer_in, "Sr", 2) == 0) {
+				int h = 0, m = 0;
+				double s = 0;
+				char c;
+				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &h, &c, &m, &c, &s) == 5) {
+					DEVICE_PRIVATE_DATA->mount_target_ra = h + m/60.0 + s/3600.0;
+					strcpy(buffer_out, "1");
+				} else if (sscanf(buffer_in + 2, "%d%c%d", &h, &c, &m) == 3) {
+					DEVICE_PRIVATE_DATA->mount_target_ra = h + m/60.0;
+					strcpy(buffer_out, "1");
+				} else {
+					strcpy(buffer_out, "0");
+				}
+			} else if (strncmp(buffer_in, "Sd", 2) == 0) {
+				int d = 0, m = 0;
+				double s = 0;
+				char c;
+				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &d, &c, &m, &c, &s) == 5) {
+					DEVICE_PRIVATE_DATA->mount_target_dec = d > 0 ? d + m/60.0 + s/3600.0 : d - m/60.0 - s/3600.0;
+					strcpy(buffer_out, "1");
+				} else if (sscanf(buffer_in + 2, "%d%c%d", &d, &c, &m) == 3) {
+					DEVICE_PRIVATE_DATA->mount_target_dec = d > 0 ? d + m/60.0 : d - m/60.0;
+					strcpy(buffer_out, "1");
+				} else {
+					strcpy(buffer_out, "0");
+				}
+			} else if (strncmp(buffer_in, "MS", 2) == 0) {
+				unpark(device, mount_name);
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+				property = indigo_init_number_property(NULL, mount_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, 0, 0, 2);
+				indigo_init_number_item(property->items + 0, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_ra);
+				indigo_init_number_item(property->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_dec);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+				strcpy(buffer_out, "0");
+			} else if (strncmp(buffer_in, "CM", 2) == 0) {
+				unpark(device, mount_name);
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+				property = indigo_init_number_property(NULL, mount_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, 0, 0, 2);
+				indigo_init_number_item(property->items + 0, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_ra);
+				indigo_init_number_item(property->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_dec);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+				strcpy(buffer_out, "OK#");
+			} else if (strcmp(buffer_in, "RG") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "RC") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "RM") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_FIND_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "RS") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_MAX_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Sw2") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+				strcpy(buffer_out, "1");
+			} else if (strcmp(buffer_in, "Sw3") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+				strcpy(buffer_out, "1");
+			} else if (strcmp(buffer_in, "Sw4") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_MAX_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+				strcpy(buffer_out, "1");
+			} else if (strcmp(buffer_in, "Mn") == 0) {
+				unpark(device, mount_name);
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_NORTH_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Qn") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_NORTH_ITEM_NAME, NULL, false);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Ms") == 0) {
+				unpark(device, mount_name);
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_SOUTH_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Qs") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_SOUTH_ITEM_NAME, NULL, false);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Mw") == 0) {
+				unpark(device, mount_name);
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_WEST_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Qw") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_WEST_ITEM_NAME, NULL, false);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Me") == 0) {
+				unpark(device, mount_name);
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_EAST_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Qe") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_MOTION_EAST_ITEM_NAME, NULL, false);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strcmp(buffer_in, "Q") == 0) {
+				property = indigo_init_switch_property(NULL, mount_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
+				indigo_init_switch_item(property->items, MOUNT_ABORT_MOTION_ITEM_NAME, NULL, true);
+				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+				indigo_release_property(property);
+			} else if (strncmp(buffer_in, "SC", 2) == 0) {
+				strcpy(buffer_out, "1Updating        planetary data. #                              #");
+			} else if (strncmp(buffer_in, "S", 1) == 0) {
+				strcpy(buffer_out, "1");
+			}
+			if (*buffer_out) {
+				indigo_write(client_socket, buffer_out, strlen(buffer_out));
+				if (*buffer_in == 'G')
+					INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
+				else
+					INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
+			} else {
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", client_socket, buffer_in);
+			}
+		}
+	}
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", client_socket);
+	
+	close(client_socket);
+	free(data);
+}
+
+static void start_lx200_server(indigo_device *device) {
+	struct sockaddr_in client_name;
+	unsigned int name_len = sizeof(client_name);
+	
+	int port = (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value;
+	int server_socket = socket(PF_INET, SOCK_STREAM, 0);
+	if (server_socket == -1) {
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: socket() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
+		return;
+	}
+	int reuse = 1;
+	if (setsockopt(server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+		close(server_socket);
+		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: setsockopt() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
+		return;
+	}
+	struct sockaddr_in server_address;
+	unsigned int server_address_length = sizeof(server_address);
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(port);
+	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (bind(server_socket, (struct sockaddr *)&server_address, server_address_length) < 0) {
+		close(server_socket);
+		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: bind() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
+		return;
+	}
+	if (getsockname(server_socket, (struct sockaddr *)&(server_address), &server_address_length) < 0) {
+		close(server_socket);
+		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: getsockname() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
+		return;
+	}
+	if (listen(server_socket, 5) < 0) {
+		close(server_socket);
+		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: Can't listen on server socket (%s)", MOUNT_AGENT_NAME, strerror(errno));
+		return;
+	}
+	if (port == 0) {
+		AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value = port = ntohs(server_address.sin_port);
+		AGENT_LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
+	}
+	DEVICE_PRIVATE_DATA->server_socket = server_socket;
+	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Server started on %d", (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value);
+	while (DEVICE_PRIVATE_DATA->server_socket) {
+		int client_socket = accept(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&client_name, &name_len);
+		if (client_socket != -1) {
+			handler_data *data = malloc(sizeof(handler_data));
+			data->client_socket = client_socket;
+			data->device = device;
+			if (!indigo_async((void *(*)(void *))worker_thread, data))
+				INDIGO_DRIVER_ERROR(MOUNT_AGENT_NAME, "Can't create worker thread for connection (%s)", strerror(errno));
+		}
+	}
+	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
+	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Server finished");
+}
+
+static void stop_lx200_server(indigo_device *device) {
+	int server_socket = DEVICE_PRIVATE_DATA->server_socket;
+	if (server_socket) {
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
+		DEVICE_PRIVATE_DATA->server_socket = 0;
+		shutdown(server_socket, SHUT_RDWR);
+		close(server_socket);
+	}
 }
 
 static indigo_result agent_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -239,16 +568,22 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(LX200_SERVER_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_LX200_SERVER_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- LX200_SERVER
-		indigo_property_copy_values(LX200_SERVER_PROPERTY, property, false);
-		LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
-		if (LX200_SERVER_STARTED_ITEM->sw.value) {
-			indigo_set_timer(device, 0, startLX200Server);
+		indigo_property_copy_values(AGENT_LX200_SERVER_PROPERTY, property, false);
+		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
+		if (AGENT_LX200_SERVER_STARTED_ITEM->sw.value) {
+			indigo_set_timer(device, 0, start_lx200_server);
 		} else {
-			indigo_set_timer(device, 0, stopLX200Server);
+			indigo_set_timer(device, 0, stop_lx200_server);
 		}
-		indigo_update_property(device, LX200_SERVER_PROPERTY, NULL);
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_LX200_CONFIGURATION
+		indigo_property_copy_values(AGENT_LX200_CONFIGURATION_PROPERTY, property, false);
+		AGENT_LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
@@ -263,7 +598,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
-	indigo_release_property(LX200_SERVER_PROPERTY);
+	indigo_release_property(AGENT_LX200_SERVER_PROPERTY);
+	indigo_release_property(AGENT_LX200_CONFIGURATION_PROPERTY);
 	return indigo_filter_device_detach(device);
 }
 
@@ -284,6 +620,13 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 			}
 			if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[1].sw.value)
 			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
+					CLIENT_PRIVATE_DATA->mount_ra = property->items[i].number.value;
+				else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
+					CLIENT_PRIVATE_DATA->mount_dec = property->items[i].number.value;
+			}
 		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state != INDIGO_ALERT_STATE) {
 			if (CLIENT_PRIVATE_DATA->do_sync && *FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
 				indigo_property *eq_property = indigo_init_number_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
@@ -363,14 +706,22 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, MOUNT_AGENT_NAME) && !strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) {
 		if (property->items->sw.value) {
-			if (!LX200_SERVER_PROPERTY->hidden) {
-				indigo_delete_property(device, LX200_SERVER_PROPERTY, NULL);
-				LX200_SERVER_PROPERTY->hidden = true;
+			if (!AGENT_LX200_SERVER_PROPERTY->hidden) {
+				indigo_delete_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
+				AGENT_LX200_SERVER_PROPERTY->hidden = true;
+			}
+			if (!AGENT_LX200_CONFIGURATION_PROPERTY->hidden) {
+				indigo_delete_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
+				AGENT_LX200_CONFIGURATION_PROPERTY->hidden = true;
 			}
 		} else {
-			if (LX200_SERVER_PROPERTY->hidden) {
-				LX200_SERVER_PROPERTY->hidden = false;
-				indigo_define_property(device, LX200_SERVER_PROPERTY, NULL);
+			if (AGENT_LX200_SERVER_PROPERTY->hidden) {
+				AGENT_LX200_SERVER_PROPERTY->hidden = false;
+				indigo_define_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
+			}
+			if (AGENT_LX200_CONFIGURATION_PROPERTY->hidden) {
+				AGENT_LX200_CONFIGURATION_PROPERTY->hidden = false;
+				indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 			}
 		}
 	} else {
