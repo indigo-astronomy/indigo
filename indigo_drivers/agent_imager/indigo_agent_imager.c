@@ -323,11 +323,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		AGENT_START_PROCESS_PROPERTY->hidden = true;
 		indigo_init_switch_item(AGENT_IMAGER_START_EXPOSURE_ITEM, AGENT_IMAGER_START_EXPOSURE_ITEM_NAME, "Start batch", false);
 		indigo_init_switch_item(AGENT_IMAGER_START_STREAMING_ITEM, AGENT_IMAGER_START_STREAMING_ITEM_NAME, "Start streaming", false);
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		AGENT_ABORT_PROCESS_PROPERTY->hidden = true;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort batch", false);
 		// -------------------------------------------------------------------------------- Download properties
 		AGENT_IMAGER_DOWNLOAD_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_PROPERTY_NAME, "Agent", "Download images", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, DOWNLOAD_MAX_COUNT + 1);
@@ -371,12 +373,10 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_PROPERTY, property))
 		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_PROPERTY, NULL);
-	if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
-		if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
-			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
-			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-	}
+	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
+		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
+		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -634,11 +634,23 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	if (!strcmp(property->device, IMAGER_AGENT_NAME) && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
 		if (property->items->sw.value) {
 			abort_batch(device);
-			indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			indigo_delete_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+			if (!AGENT_START_PROCESS_PROPERTY->hidden) {
+				indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				AGENT_START_PROCESS_PROPERTY->hidden = true;
+			}
+			if (!AGENT_ABORT_PROCESS_PROPERTY->hidden) {
+				indigo_delete_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+				AGENT_ABORT_PROCESS_PROPERTY->hidden = true;
+			}
 		} else {
-			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+			if (AGENT_START_PROCESS_PROPERTY->hidden) {
+				AGENT_START_PROCESS_PROPERTY->hidden = false;
+				indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			}
+			if (AGENT_ABORT_PROCESS_PROPERTY->hidden) {
+				AGENT_ABORT_PROCESS_PROPERTY->hidden = false;
+				indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
