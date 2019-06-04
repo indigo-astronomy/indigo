@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define INDIGO_FILTER_LIST_COUNT							11
+#define INDIGO_FILTER_LIST_COUNT							12
 #define INDIGO_FILTER_MAX_DEVICES							32
 #define INDIGO_FILTER_MAX_CACHED_PROPERTIES		256
 	
@@ -44,10 +44,11 @@ extern "C" {
 #define INDIGO_FILTER_GUIDER_INDEX						4
 #define INDIGO_FILTER_DOME_INDEX							5
 #define INDIGO_FILTER_GPS_INDEX								6
-#define INDIGO_FILTER_AUX_1_INDEX							7
-#define INDIGO_FILTER_AUX_2_INDEX							8
-#define INDIGO_FILTER_AUX_3_INDEX							9
-#define INDIGO_FILTER_AUX_4_INDEX							10
+#define INDIGO_FILTER_JOYSTICK_INDEX					7
+#define INDIGO_FILTER_AUX_1_INDEX							8
+#define INDIGO_FILTER_AUX_2_INDEX							9
+#define INDIGO_FILTER_AUX_3_INDEX							10
+#define INDIGO_FILTER_AUX_4_INDEX							11
 
 /** Device context pointer.
  */
@@ -85,6 +86,10 @@ extern "C" {
 /** GPS list switch property.
 */
 #define FILTER_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GPS_INDEX])
+
+/** Joystick list switch property.
+ */
+#define FILTER_JOYSTICK_LIST_PROPERTY	(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_JOYSTICK_INDEX])
 
 /** AUX #1 list switch property.
 */
@@ -130,6 +135,10 @@ extern "C" {
 */
 #define FILTER_RELATED_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GPS_INDEX + INDIGO_FILTER_LIST_COUNT])
 
+/** Related joystick list switch property.
+ */
+#define FILTER_RELATED_JOYSTICK_LIST_PROPERTY	(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_JOYSTICK_INDEX + INDIGO_FILTER_LIST_COUNT])
+	
 /** Related AUX #1 list switch property.
 */
 #define FILTER_RELATED_AUX_1_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_1_INDEX + INDIGO_FILTER_LIST_COUNT])

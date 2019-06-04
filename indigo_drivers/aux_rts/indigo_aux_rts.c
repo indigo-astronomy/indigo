@@ -89,7 +89,7 @@ static void aux_timer_callback(indigo_device *device) {
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SHUTTER) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_CCD_EXPOSURE
 		X_CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Start exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_CCD_EXPOSURE_PROPERTY == NULL)

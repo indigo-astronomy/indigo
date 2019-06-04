@@ -36,10 +36,10 @@
 
 #include "indigo_filter.h"
 
-static int interface_mask[INDIGO_FILTER_LIST_COUNT] = { INDIGO_INTERFACE_CCD, INDIGO_INTERFACE_WHEEL, INDIGO_INTERFACE_FOCUSER, INDIGO_INTERFACE_MOUNT, INDIGO_INTERFACE_GUIDER, INDIGO_INTERFACE_DOME, INDIGO_INTERFACE_GPS, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX };
-static char *property_name_prefix[INDIGO_FILTER_LIST_COUNT] = { "CCD_", "WHEEL_", "FOCUSER_", "MOUNT_", "GUIDER_", "DOME_", "GPS_", "AUX_1_", "AUX_2_", "AUX_3_", "AUX_4_" };
-static int property_name_prefix_len[INDIGO_FILTER_LIST_COUNT] = { 4, 6, 8, 6, 7, 5, 4, 6, 6, 6, 6 };
-static char *property_name_label[INDIGO_FILTER_LIST_COUNT] = { "CCD ", "Wheel ", "Focuser ", "Mount ", "Guider ", "Dome ", "GPS ", "AUX #1 ", "AUX #2 ", "AUX #3 ", "AUX #4 " };
+static int interface_mask[INDIGO_FILTER_LIST_COUNT] = { INDIGO_INTERFACE_CCD, INDIGO_INTERFACE_WHEEL, INDIGO_INTERFACE_FOCUSER, INDIGO_INTERFACE_MOUNT, INDIGO_INTERFACE_GUIDER, INDIGO_INTERFACE_DOME, INDIGO_INTERFACE_GPS, INDIGO_INTERFACE_AUX_JOYSTICK, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX };
+static char *property_name_prefix[INDIGO_FILTER_LIST_COUNT] = { "CCD_", "WHEEL_", "FOCUSER_", "MOUNT_", "GUIDER_", "DOME_", "GPS_", "JOYSTICK_", "AUX_1_", "AUX_2_", "AUX_3_", "AUX_4_" };
+static int property_name_prefix_len[INDIGO_FILTER_LIST_COUNT] = { 4, 6, 8, 6, 7, 5, 4, 9, 6, 6, 6, 6 };
+static char *property_name_label[INDIGO_FILTER_LIST_COUNT] = { "CCD ", "Wheel ", "Focuser ", "Mount ", "Guider ", "Dome ", "GPS ", "Joystick", "AUX #1 ", "AUX #2 ", "AUX #3 ", "AUX #4 " };
 
 indigo_result indigo_filter_device_attach(indigo_device *device, unsigned version, indigo_device_interface device_interface) {
 	assert(device != NULL);
@@ -101,6 +101,13 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 			FILTER_GPS_LIST_PROPERTY->hidden = true;
 			FILTER_GPS_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_GPS_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No GPS", true);
+			// -------------------------------------------------------------------------------- Joystick property
+			FILTER_JOYSTICK_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_JOYSTICK_LIST_PROPERTY_NAME, "Main", "Joystick list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
+			if (FILTER_JOYSTICK_LIST_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			FILTER_JOYSTICK_LIST_PROPERTY->hidden = true;
+			FILTER_JOYSTICK_LIST_PROPERTY->count = 1;
+			indigo_init_switch_item(FILTER_JOYSTICK_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No joystick", true);
 			// -------------------------------------------------------------------------------- AUX #1 property
 			FILTER_AUX_1_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_AUX_1_LIST_PROPERTY_NAME, "Main", "AUX #1 list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
 			if (FILTER_AUX_1_LIST_PROPERTY == NULL)
@@ -178,6 +185,13 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 			FILTER_RELATED_GPS_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_GPS_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_RELATED_GPS_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No GPS", true);
+			// -------------------------------------------------------------------------------- Related joystick property
+			FILTER_RELATED_JOYSTICK_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_JOYSTICK_LIST_PROPERTY_NAME, "Main", "Related AUX #1 list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
+			if (FILTER_RELATED_JOYSTICK_LIST_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			FILTER_RELATED_JOYSTICK_LIST_PROPERTY->hidden = true;
+			FILTER_RELATED_JOYSTICK_LIST_PROPERTY->count = 1;
+			indigo_init_switch_item(FILTER_RELATED_JOYSTICK_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No joystick", true);
 			// -------------------------------------------------------------------------------- Related AUX #1 property
 			FILTER_RELATED_AUX_1_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_AUX_1_LIST_PROPERTY_NAME, "Main", "Related AUX #1 list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
 			if (FILTER_RELATED_AUX_1_LIST_PROPERTY == NULL)
@@ -185,14 +199,14 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 			FILTER_RELATED_AUX_1_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AUX_1_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_RELATED_AUX_1_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No AUX device #1", true);
-				// -------------------------------------------------------------------------------- Related AUX #2 property
+			// -------------------------------------------------------------------------------- Related AUX #2 property
 			FILTER_RELATED_AUX_2_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_AUX_2_LIST_PROPERTY_NAME, "Main", "Related AUX #2 list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
 			if (FILTER_RELATED_AUX_2_LIST_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FILTER_RELATED_AUX_2_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AUX_2_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_RELATED_AUX_2_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No AUX device #2", true);
-				// -------------------------------------------------------------------------------- Related AUX #3 property
+			// -------------------------------------------------------------------------------- Related AUX #3 property
 			FILTER_RELATED_AUX_3_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_AUX_3_LIST_PROPERTY_NAME, "Main", "Related AUX #3 list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
 			if (FILTER_RELATED_AUX_3_LIST_PROPERTY == NULL)
 				return INDIGO_FAILED;

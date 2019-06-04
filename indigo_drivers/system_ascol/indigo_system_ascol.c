@@ -3135,7 +3135,7 @@ static void panel_timer_callback(indigo_device *device) {
 static indigo_result panel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		AUTHENTICATION_PROPERTY->hidden = false;

@@ -151,7 +151,7 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	assert(device != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_JOYSTICK) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- JOYSTICK_BUTTONS
 		JOYSTICK_BUTTONS_PROPERTY = indigo_init_switch_property(NULL, device->name, JOYSTICK_BUTTONS_PROPERTY_NAME, JOYSTICK_CONFIG_GROUP, "Joystick buttons", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, PRIVATE_DATA->button_count);
 		if (JOYSTICK_BUTTONS_PROPERTY == NULL)
