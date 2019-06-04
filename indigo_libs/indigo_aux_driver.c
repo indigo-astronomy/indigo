@@ -36,9 +36,9 @@
 
 #include "indigo_aux_driver.h"
 
-indigo_result indigo_aux_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_aux_attach(indigo_device *device, unsigned version, int interface) {
 	assert(device != NULL);
-	if (indigo_device_attach(device, version, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
+	if (indigo_device_attach(device, version, interface) == INDIGO_OK) {
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
