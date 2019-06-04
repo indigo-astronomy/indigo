@@ -547,15 +547,15 @@ indigo_result indigo_stop() {
 	pthread_mutex_lock(&client_mutex);
 	if (is_started) {
 		is_started = false;
-		for (int i = 0; i < MAX_DEVICES; i++) {
-			indigo_device *device = devices[i];
-			if (device != NULL && device->detach != NULL)
-				device->last_result = device->detach(device);
-		}
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->detach != NULL)
 				client->last_result = client->detach(client);
+		}
+		for (int i = 0; i < MAX_DEVICES; i++) {
+			indigo_device *device = devices[i];
+			if (device != NULL && device->detach != NULL)
+				device->last_result = device->detach(device);
 		}
 		pthread_mutex_unlock(&client_mutex);
 	}
