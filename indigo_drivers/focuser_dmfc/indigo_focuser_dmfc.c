@@ -133,7 +133,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		if (X_FOCUSER_ENCODER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_FOCUSER_ENCODER_ENABLED_ITEM, "ENABLED", "Enabled", false);
-		indigo_init_switch_item(X_FOCUSER_ENCODER_DISABLED_ITEM, "DISABLED", "Enabled", false);
+		indigo_init_switch_item(X_FOCUSER_ENCODER_DISABLED_ITEM, "DISABLED", "Disabled", false);
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
