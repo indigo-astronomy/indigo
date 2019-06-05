@@ -70,7 +70,8 @@ void setup() {
 }
 
 void loop() {
-  char command[64], response[64], *pnt, crc = 0;
+  char command[64], response[64], *pnt;
+  unsigned char crc = 0;
   if (boot) {
     Serial.println("$BS Hello World!");
     boot = false;
@@ -141,7 +142,7 @@ void loop() {
       sprintf(response, "$BS STATUS USE_ENDSTOP:%d", use_endstop);
     } else if (!strcmp(command, "$BS INFO")) {
 			sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d", name, pos, moving ? (target > pos ? "GOING_UP" : "GOING_DOWN") : "STOPPED", limit);
-    } else if (!strcmp(command, "")) {
+    } else if (!strcmp(command, "$BS SUMMARY")) {
       char temp0_str[6];
       char temp1_str[6];
       char temp_avg_str[6];
