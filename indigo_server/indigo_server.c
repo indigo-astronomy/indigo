@@ -684,7 +684,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						}
 					}
 					unload_property->state = INDIGO_OK_STATE;
-					indigo_update_property(device, unload_property, NULL);
+					indigo_update_property(device, unload_property, "Driver %s unoaded", name);
 					return INDIGO_OK;
 				}
 			unload_property->state = INDIGO_ALERT_STATE;
