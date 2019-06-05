@@ -66,10 +66,11 @@ typedef struct {
 	int handle;
 	pthread_mutex_t port_mutex;
 	indigo_timer *timer;
+	bool moving;
 } steeldrive2_private_data;
 
 static bool steeldrive2_command(indigo_device *device, char *command, char *response, int length) {
-	char tmp[256], *crc;
+	char tmp[1024], *crc;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	indigo_printf(PRIVATE_DATA->handle, "%s\r\n", command);
 	while (true) {
@@ -85,8 +86,17 @@ static bool steeldrive2_command(indigo_device *device, char *command, char *resp
 			return false;
 		}
 		if ((crc = strchr(tmp, '*'))) {
+			unsigned char c, remote = 0, local = 0;
 			*crc++ = 0;
-			unsigned char remote = atoi(crc), local = 0;
+			while ((c = *crc++)) {
+				if (c >= 'a') {
+					remote = remote * 16 + c - 'a' + 10;
+				} else if (c >= 'A') {
+					remote = remote * 16 + c - 'A' + 10;
+				} else {
+					remote = remote * 16 + c - '0';
+				}
+			}
 			crc = tmp;
 			while (*crc) {
 				local = crc_array[*crc++ ^ local];
@@ -106,7 +116,33 @@ static bool steeldrive2_command(indigo_device *device, char *command, char *resp
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
 static void timer_callback(indigo_device *device) {
-	
+	char response[256], *token, *value;
+	if (steeldrive2_command(device, "$BS SUMMARY", response, sizeof(response))) {
+		token = strtok(response, ";");
+		while (token) {
+			if ((value = strchr(token, ':'))) {
+				*value++ = 0;
+				if (!strcmp(token, "STATE")) {
+					if (!strcmp(value, "STOPPED")) {
+						PRIVATE_DATA->moving = false;
+					} else {
+						PRIVATE_DATA->moving = true;
+					}
+				} else if (!strcmp(token, "POS")) {
+					FOCUSER_POSITION_ITEM->number.value = atoi(value);
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				} else if (!strcmp(token, "LIMIT")) {
+					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.max = atoi(value);
+					indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+				} else if (!strcmp(token, "TEMP_AVG")) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = atof(value);
+					indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+				}
+			}
+			token = strtok(NULL, ";");
+		}
+	}
+	PRIVATE_DATA->timer = indigo_set_timer(device, PRIVATE_DATA->moving ? 0.1 : 0.5, timer_callback);
 }
 
 static indigo_result focuser_attach(indigo_device *device) {
@@ -133,13 +169,16 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		FOCUSER_STEPS_ITEM->number.min = 0;
 		FOCUSER_STEPS_ITEM->number.max = 0xFFFF;
 		FOCUSER_STEPS_ITEM->number.step = 1;
-
-		// TBD
-
+		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 0xFFFF;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -156,7 +195,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	char command[16], response[64], *colon;
+	char command[64], response[256], *colon;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -176,7 +215,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				steeldrive2_command(device, "$BS CRC_ENABLE", response, sizeof(response));
-				// TBD
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
@@ -195,23 +233,47 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				PRIVATE_DATA->handle = 0;
 			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+		}
+	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		int value = FOCUSER_POSITION_ITEM->number.value;
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		FOCUSER_POSITION_ITEM->number.value = value;
+		int position = FOCUSER_POSITION_ITEM->number.target;
+		if (position < 0)
+			position = 0;
+		else if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+		sprintf(command, "$BS GO %d", position);
+		if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : 0;
-
-		// TBD
-
-
+		int position = FOCUSER_POSITION_ITEM->number.value + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1) * FOCUSER_STEPS_ITEM->number.target;
+		if (position < 0)
+			position = 0;
+		else if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+		sprintf(command, "$BS GO %d", position);
+		if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-
-			// TBD
-
+			if (steeldrive2_command(device, "$BS STOP", response, sizeof(response)) && !strcmp(response, "$BS OK"))
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
