@@ -5,6 +5,7 @@ http://www.pegasusastro.com
 ## Supported devices
 * PegasusAstro Motor Focus Kit
 * PegasusAstro FocusCube
+* PegasusAstro FocusCube 2
 
 Single device is present on startup (no hot-plug support).
 
