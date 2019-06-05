@@ -257,6 +257,7 @@
 			$("#preview1_button").removeClass("idle-state");
 			$("#preview1_button").addClass("busy-state");
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
+			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
 		}
 	
@@ -265,6 +266,7 @@
 			$("#preview_button").removeClass("idle-state");
 			$("#preview_button").addClass("busy-state");
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
+			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
 		}
 	
@@ -273,6 +275,7 @@
 			$("#capture_button").removeClass("idle-state");
 			$("#capture_button").addClass("busy-state");
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "LOCAL" : true });
+			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
 			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
 		}
 	
