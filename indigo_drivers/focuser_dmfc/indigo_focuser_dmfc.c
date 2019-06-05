@@ -23,7 +23,7 @@
  \file indigo_focuser_dmfc.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_dmfc"
 
 #include <stdlib.h>
@@ -42,15 +42,19 @@
 #include "indigo_io.h"
 #include "indigo_focuser_dmfc.h"
 
-#define PRIVATE_DATA													((dmfc_private_data *)device->private_data)
+#define PRIVATE_DATA	((dmfc_private_data *)device->private_data)
 
-#define X_FOCUSER_MOTOR_TYPE_PROPERTY					(PRIVATE_DATA->motor_type_property)
-#define X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM			(X_FOCUSER_MOTOR_TYPE_PROPERTY->items+0)
-#define X_FOCUSER_MOTOR_TYPE_DC_ITEM					(X_FOCUSER_MOTOR_TYPE_PROPERTY->items+1)
+#define X_FOCUSER_MOTOR_TYPE_PROPERTY		(PRIVATE_DATA->motor_type_property)
+#define X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM	(X_FOCUSER_MOTOR_TYPE_PROPERTY->items+0)
+#define X_FOCUSER_MOTOR_TYPE_DC_ITEM		(X_FOCUSER_MOTOR_TYPE_PROPERTY->items+1)
 
-#define X_FOCUSER_ENCODER_PROPERTY						(PRIVATE_DATA->encoder_property)
-#define X_FOCUSER_ENCODER_ENABLED_ITEM				(X_FOCUSER_ENCODER_PROPERTY->items+0)
-#define X_FOCUSER_ENCODER_DISABLED_ITEM				(X_FOCUSER_ENCODER_PROPERTY->items+1)
+#define X_FOCUSER_ENCODER_PROPERTY		(PRIVATE_DATA->encoder_property)
+#define X_FOCUSER_ENCODER_ENABLED_ITEM		(X_FOCUSER_ENCODER_PROPERTY->items+0)
+#define X_FOCUSER_ENCODER_DISABLED_ITEM		(X_FOCUSER_ENCODER_PROPERTY->items+1)
+
+#define X_FOCUSER_LED_PROPERTY			(PRIVATE_DATA->led_property)
+#define X_FOCUSER_LED_ENABLED_ITEM		(X_FOCUSER_LED_PROPERTY->items+0)
+#define X_FOCUSER_LED_DISABLED_ITEM		(X_FOCUSER_LED_PROPERTY->items+1)
 
 typedef struct {
 	int handle;
@@ -59,6 +63,7 @@ typedef struct {
 	indigo_property *motor_type_property;
 	indigo_property *encoder_property;
 	indigo_property *backlash_property;
+	indigo_property *led_property;
 } dmfc_private_data;
 
 static bool dmfc_command(indigo_device *device, char *command, char *response, int max) {
@@ -134,6 +139,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_FOCUSER_ENCODER_ENABLED_ITEM, "ENABLED", "Enabled", false);
 		indigo_init_switch_item(X_FOCUSER_ENCODER_DISABLED_ITEM, "DISABLED", "Disabled", false);
+		X_FOCUSER_LED_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_LED", FOCUSER_MAIN_GROUP, "LED status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_FOCUSER_LED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_FOCUSER_LED_ENABLED_ITEM, "ENABLED", "Enabled", false);
+		indigo_init_switch_item(X_FOCUSER_LED_DISABLED_ITEM, "DISABLED", "Disabled", false);
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
@@ -188,6 +198,8 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 		if (indigo_property_match(X_FOCUSER_ENCODER_PROPERTY, property))
 			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
+		if (indigo_property_match(X_FOCUSER_LED_PROPERTY, property))
+			indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -237,7 +249,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					if (token) { // moving status
 						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					}
-					token = strtok(NULL, ":"); // led status
+					token = strtok(NULL, ":");
+					if (token) { // led status
+						indigo_set_switch(X_FOCUSER_LED_PROPERTY, *token == '1' ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
+					}
 					token = strtok(NULL, ":");
 					if (token) { // reverse
 						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
@@ -264,7 +279,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-				dmfc_command(device, "L:2", response, sizeof(response));
+				indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 				PRIVATE_DATA->timer = indigo_set_timer(device, 0, timer_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -276,9 +291,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			if (PRIVATE_DATA->handle > 0) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->timer);
-				dmfc_command(device, "L:1", response, sizeof(response));
 				indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
+				indigo_delete_property(device, X_FOCUSER_LED_PROPERTY, NULL);
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
@@ -390,6 +405,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- X_FOCUSER_LED
+	} else if (indigo_property_match(X_FOCUSER_LED_PROPERTY, property)) {
+		indigo_property_copy_values(X_FOCUSER_LED_PROPERTY, property, false);
+		snprintf(command, sizeof(command), "L:%d", (int)X_FOCUSER_LED_ENABLED_ITEM->sw.value ? 2 : 1);
+		if (dmfc_command(device, command, response, sizeof(response))) {
+			X_FOCUSER_LED_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			X_FOCUSER_LED_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, X_FOCUSER_LED_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
 		if (IS_CONNECTED) {
@@ -413,6 +439,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_FOCUSER_MOTOR_TYPE_PROPERTY);
 	indigo_release_property(X_FOCUSER_ENCODER_PROPERTY);
+	indigo_release_property(X_FOCUSER_LED_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
