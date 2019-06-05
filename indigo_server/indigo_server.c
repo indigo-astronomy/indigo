@@ -416,7 +416,7 @@ static void check_versions(indigo_device *device) {
 		if (redefine)
 			indigo_define_property(device, install_property, NULL);
 		pthread_mutex_unlock(&install_property_mutex);
-		sleep(60 * 3600);
+		sleep(10 * 60);
 	}
 }
 
