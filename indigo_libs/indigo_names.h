@@ -1153,6 +1153,14 @@
  */
 #define FOCUSER_COMPENSATION_ITEM_NAME				"COMPENSATION"
 
+/** FOCUSER_COMPENSATION.PERIOD property item name.
+ */
+#define FOCUSER_COMPENSATION_PERIOD_ITEM_NAME		"PERIOD"
+
+/** FOCUSER_COMPENSATION.THRESHOLD property item name.
+ */
+#define FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME		"THRESHOLD"
+
 //----------------------------------------------------------------------
 /** FOCUSER_MODE property name.
  */

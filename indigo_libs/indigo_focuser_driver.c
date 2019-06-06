@@ -99,11 +99,14 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 			indigo_init_number_item(FOCUSER_TEMPERATURE_ITEM, FOCUSER_TEMPERATURE_ITEM_NAME, "Temperature (°C)", -50, 50, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_COMPENSATION
-			FOCUSER_COMPENSATION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature compensation", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_COMPENSATION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature compensation", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 			if (FOCUSER_COMPENSATION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_COMPENSATION_PROPERTY->hidden = true;
 			indigo_init_number_item(FOCUSER_COMPENSATION_ITEM, FOCUSER_COMPENSATION_ITEM_NAME, "Compensation (steps/°C)", -50, 50, 1, 0);
+			indigo_init_number_item(FOCUSER_COMPENSATION_PERIOD_ITEM, FOCUSER_COMPENSATION_PERIOD_ITEM_NAME, "Compensation period (s)", 0, 60, 1, 1);
+			indigo_init_number_item(FOCUSER_COMPENSATION_THRESHOLD_ITEM, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, "Compensation threshold (°C)", 0, 10, 1, 0.5);
+			FOCUSER_COMPENSATION_PROPERTY->count = 1;
 			// -------------------------------------------------------------------------------- FOCUSER_MODE
 			FOCUSER_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Compensation mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_MODE_PROPERTY == NULL)
