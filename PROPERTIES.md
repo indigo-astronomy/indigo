@@ -156,6 +156,8 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 | FOCUSER_TEMPERATURE | number | no | no | TEMPERATURE | yes |  |
 | FOCUSER_BACKLASH | number | no | no | BACKLASH | yes | Mechanical backlash compensation |
 | FOCUSER_COMPENSATION | number | no | no | COMPENSATION | yes | Temperature compensation (if FOCUSER_MODE.AUTOMATIC is set |
+|  |  |  |  | PERIOD | no | Compensation period |
+|  |  |  |  | THRESHOLD | no | Compensation threshold |
 | FOCUSER_MODE | switch | no | no | MANUAL | yes | Manual mode |
 |  |  |  |  | AUTOMATIC | yes | Temperature compensated mode |
 | FOCUSER_LIMITS | number | no | no | MIN_POSITION | yes |  |
