@@ -168,16 +168,16 @@ void loop() {
       strcpy(response, "$BS OK");
     } else if (!strcmp(command, "$BS GET FOCUS")) {
       sprintf(response, "$BS STATUS FOCUS:%d", focus);
-    } else if (!strncmp(command, "$BS SET JOGSTEP:", 16)) {
-      jogstep = atoi(command + 16);
+    } else if (!strncmp(command, "$BS SET JOGSTEPS:", 17)) {
+      jogstep = atoi(command + 17);
       strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET JOGSTEP")) {
-      sprintf(response, "$BS STATUS JOGSTEP:%d", jogstep);
-    } else if (!strncmp(command, "$BS SET SINGLESTEP:", 21)) {
-      singlestep = atoi(command + 21);
+    } else if (!strcmp(command, "$BS GET JOGSTEPS")) {
+      sprintf(response, "$BS STATUS JOGSTEPS:%d", jogstep);
+    } else if (!strncmp(command, "$BS SET SINGLESTEPS:", 22)) {
+      singlestep = atoi(command + 22);
       strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET SINGLESTEP")) {
-      sprintf(response, "$BS STATUS SINGLESTEP:%d", singlestep);
+    } else if (!strcmp(command, "$BS GET SINGLESTEPS")) {
+      sprintf(response, "$BS STATUS SINGLESTEPS:%d", singlestep);
     } else if (!strncmp(command, "$BS GO ", 7)) {
       target = atoi(command + 7);
       if (target < 0)
