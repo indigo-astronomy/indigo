@@ -65,17 +65,16 @@ typedef struct {
 	int current_position, target_position, max_position, backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
-	pthread_mutex_t usb_mutex;
+	pthread_mutex_t serial_mutex;
 	indigo_property *beep_property;
 } dsd_private_data;
 
-static int find_index_by_device_id(int id);
 static void compensate_focus(indigo_device *device, double new_temp);
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 static void focuser_timer_callback(indigo_device *device) {
 	bool moving, moving_HC;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	/*
 	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
 	if (res != EAF_SUCCESS) {
@@ -92,7 +91,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	*/
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	if ((!moving) || (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -113,9 +112,9 @@ static void temperature_timer_callback(indigo_device *device) {
 	bool moving = false, moving_HC = false;
 
 	/*
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	int res = EAFIsHandControl(PRIVATE_DATA->dev_id, &has_handcontrol);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsHandControl(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else {
@@ -127,18 +126,18 @@ static void temperature_timer_callback(indigo_device *device) {
 	if (first_call) has_handcontrol = false;
 
 	if (has_handcontrol) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
 		//fprintf(stderr, "pos=%d\n", PRIVATE_DATA->current_position);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res != EAF_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 		} else if (FOCUSER_POSITION_ITEM->number.value != PRIVATE_DATA->current_position) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 			EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_HC);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (moving) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
@@ -148,10 +147,10 @@ static void temperature_timer_callback(indigo_device *device) {
 	} else { // No Hand control, this does not guarantee that we have temperature sensor
 		first_call = false;
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
 		FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res != EAF_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -214,12 +213,12 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
 
 	/*
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	*/
 	/* Make sure we do not attempt to go beyond the limits */
 	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
@@ -230,13 +229,13 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
 	/*
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	*/
 	PRIVATE_DATA->prev_temp = new_temp;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -259,7 +258,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
+		// -------------------------------------------------------------------------------- SIMULATION
+		SIMULATION_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- DEVICE_PORT
+		DEVICE_PORT_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- DEVICE_PORTS
+		DEVICE_PORTS_PROPERTY->hidden = false;
+		// --------------------------------------------------------------------------------
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
@@ -302,6 +308,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(EAF_BEEP_ON_ITEM, EAF_BEEP_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(EAF_BEEP_OFF_ITEM, EAF_BEEP_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -315,16 +322,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
-		if (index < 0) {
-			return INDIGO_NOT_FOUND;
-		}
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -334,9 +337,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					EAFGetID(index, &(PRIVATE_DATA->dev_id));
 					int res = EAFOpen(PRIVATE_DATA->dev_id);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 					if (!res) {
-						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+						pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 						res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
 						if (res != EAF_SUCCESS) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -366,7 +369,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
 						}
 						EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
-						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
@@ -389,7 +392,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 				/*
 				int res = EAFClose(PRIVATE_DATA->dev_id);
 				if (res != EAF_SUCCESS) {
@@ -405,7 +408,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 				*/
 				indigo_global_unlock(device);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -415,7 +418,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		/*
 		int res = EAFSetReverse(PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 		if (res != EAF_SUCCESS) {
@@ -423,7 +426,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		*/
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
@@ -439,7 +442,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 				/*
 				int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
@@ -447,11 +450,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				*/
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 				PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 				/*
 				int res = EAFResetPostion(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
@@ -465,7 +468,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				*/
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			}
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -476,7 +479,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		/*
 		int res = EAFSetMaxStep(PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetMaxStep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position, res);
@@ -490,7 +493,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		*/
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
@@ -498,7 +501,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
 		/*
 		int res = EAFSetBacklash(PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash);
@@ -513,7 +516,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		*/
 		FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
@@ -523,7 +526,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 			/*
 			int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
 			if (res != EAF_SUCCESS) {
@@ -549,7 +552,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			*/
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -561,7 +564,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		/*
 		int res = EAFStop(PRIVATE_DATA->dev_id);
 		if (res != EAF_SUCCESS) {
@@ -574,7 +577,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		*/
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -594,7 +597,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
 		EAF_BEEP_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		/*
 		int res = EAFSetBeep(PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value);
 		if (res != EAF_SUCCESS) {
@@ -602,7 +605,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			EAF_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		*/
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
@@ -649,218 +652,24 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return indigo_focuser_detach(device);
 }
 
-// -------------------------------------------------------------------------------- hot-plug support
+// --------------------------------------------------------------------------------
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
-#define MAX_DEVICES                   10
-#define NO_DEVICE                 (-1000)
+static dsd_private_data *private_data = NULL;
+static indigo_device *focuser = NULL;
 
-
-static int eaf_products[100];
-static int eaf_id_count = 0;
-
-
-static indigo_device *devices[MAX_DEVICES] = {NULL};
-static bool connected_ids[MAX_DEVICES ];
-
-static int find_index_by_device_id(int id) {
-	/*
-	int count = EAFGetNum();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetNum() = %d", count);
-	int cur_id;
-	for (int index = 0; index < count; index++) {
-		int res = EAFGetID(index, &cur_id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetID(%d, -> %d) = %d", index, cur_id, res);
-		if (res == EAF_SUCCESS && cur_id == id) {
-			return index;
-		}
-	}
-	*/
-	return -1;
-}
-
-
-static int find_plugged_device_id() {
-	int id = NO_DEVICE, new_id = NO_DEVICE;
-	/*
-	int count = EAFGetNum();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetNum() = %d", count);
-	for (int index = 0; index < count; index++) {
-		int res = EAFGetID(index, &id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetID(%d, -> %d) = %d", index, id, res);
-		if (res == EAF_SUCCESS && !connected_ids[id]) {
-			new_id = id;
-			connected_ids[id] = true;
-			break;
-		}
-	}
-	*/
-	return new_id;
-}
-
-
-static int find_available_device_slot() {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		if (devices[slot] == NULL) return slot;
-	}
-	return -1;
-}
-
-
-static int find_device_slot(int id) {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
-		if (PRIVATE_DATA->dev_id == id) return slot;
-	}
-	return -1;
-}
-
-
-static int find_unplugged_device_id() {
-	int id = -1;
-	/*
-	int count = EAFGetNum();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetNum() = %d", count);
-	for (int index = 0; index < count; index++) {
-		int res = EAFGetID(index, &id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetID(%d, -> %d) = %d", index, id, res);
-		if (res == EAF_SUCCESS)
-			dev_tmp[id] = true;
-	}
-	id = -1;
-	for (int index = 0; index < EAF_ID_MAX; index++) {
-		if (connected_ids[index] && !dev_tmp[index]) {
-			id = index;
-			connected_ids[id] = false;
-			break;
-		}
-	}
-	*/
-	return id;
-}
-
-static void process_plug_event(indigo_device *unused) {
-	//EAF_INFO info;
+indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"",
+		FOCUSER_DSD_NAME,
 		focuser_attach,
 		eaf_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach
-		);
-	pthread_mutex_lock(&device_mutex);
-	int slot = find_available_device_slot();
-	if (slot < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-		pthread_mutex_unlock(&device_mutex);
-		return;
-	}
-	int id = find_plugged_device_id();
-	if (id == NO_DEVICE) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
-		pthread_mutex_unlock(&device_mutex);
-		return;
-	}
-	/*
-	int res = EAFOpen(id);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d}) = %d", id, res);
-		pthread_mutex_unlock(&device_mutex);
-		return;
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d}) = %d", id, res);
-	}
-	while (true) {
-		res = EAFGetProperty(id, &info);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetProperty(%d, -> { %d, '%s', %d }) = %d", id, info.ID, info.Name, info.MaxStep, res);
-		if (res == EAF_SUCCESS) {
-			EAFClose(id);
-			break;
-		}
-		if (res != EAF_ERROR_MOVING) {
-			EAFClose(id);
-			pthread_mutex_unlock(&device_mutex);
-			return;
-		}
-		sleep(1);
-	}
-	*/
-	indigo_device *device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &focuser_template, sizeof(indigo_device));
-	//sprintf(device->name, "%s #%d", info.Name, id);
-	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-	dsd_private_data *private_data = malloc(sizeof(dsd_private_data));
-	assert(private_data != NULL);
-	memset(private_data, 0, sizeof(dsd_private_data));
-	private_data->dev_id = id;
-	//private_data->info = info;
-	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
-	devices[slot]=device;
-	pthread_mutex_unlock(&device_mutex);
-}
+	);
 
-static void process_unplug_event(indigo_device *unused) {
-	int slot, id;
-	bool removed = false;
-	pthread_mutex_lock(&device_mutex);
-	while ((id = find_unplugged_device_id()) != -1) {
-		slot = find_device_slot(id);
-		if (slot < 0) continue;
-		indigo_device **device = &devices[slot];
-		if (*device == NULL) {
-			pthread_mutex_unlock(&device_mutex);
-			return;
-		}
-		indigo_detach_device(*device);
-		free((*device)->private_data);
-		free(*device);
-		*device = NULL;
-		removed = true;
-	}
-	if (!removed) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No dsd EAF device unplugged (maybe dsd Camera)!");
-	}
-	pthread_mutex_unlock(&device_mutex);
-}
-
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	struct libusb_device_descriptor descriptor;
-	switch (event) {
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			libusb_get_device_descriptor(dev, &descriptor);
-			for (int i = 0; i < eaf_id_count; i++) {
-				if (descriptor.idVendor != dsd_VENDOR_ID || eaf_products[i] != descriptor.idProduct) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No dsd EAF device plugged (maybe dsd Camera)!");
-					continue;
-				}
-				indigo_set_timer(NULL, 0.5, process_plug_event);
-			}
-			break;
-		}
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event);
-			break;
-		}
-	}
-	return 0;
-};
-
-
-static void remove_all_devices() {
-
-}
-
-
-static libusb_hotplug_callback_handle callback_handle;
-
-indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Deepsky Dad Focuser", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	SET_DRIVER_INFO(info, "Deep Sky Dad Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -868,25 +677,28 @@ indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		/*
-		for(int index = 0; index < EAF_ID_MAX; index++)
-			connected_ids[index] = false;
-		eaf_id_count = EAFGetProductIDs(eaf_products);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetProductIDs(-> [ %d, %d, ... ]) = %d", eaf_products[0], eaf_products[1], eaf_id_count);
-		if (eaf_id_count <= 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs.");
-			return INDIGO_FAILED;
-		}
-		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, dsd_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-		*/
+		private_data = malloc(sizeof(dsd_private_data));
+		assert(private_data != NULL);
+		memset(private_data, 0, sizeof(dsd_private_data));
+		private_data->dev_id = -1;
+		focuser = malloc(sizeof(indigo_device));
+		assert(focuser != NULL);
+		memcpy(focuser, &focuser_template, sizeof(indigo_device));
+		focuser->private_data = private_data;
+		indigo_attach_device(focuser);
+		break;
+
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
-		//libusb_hotplug_deregister_callback(NULL, callback_handle);
-		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-		remove_all_devices();
+		if (focuser != NULL) {
+			indigo_detach_device(focuser);
+			free(focuser);
+			focuser = NULL;
+		}
+		if (private_data != NULL) {
+			free(private_data);
+			private_data = NULL;
+		}
 		break;
 
 	case INDIGO_DRIVER_INFO:
