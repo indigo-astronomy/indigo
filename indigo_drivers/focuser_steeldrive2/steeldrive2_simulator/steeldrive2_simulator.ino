@@ -58,6 +58,10 @@ int singlestep = 1;
 double temp0 = 22.45;
 double temp1 = 21.78;
 int tcomp = 0;
+double tcomp_factor = 2.5;
+int tcomp_period = 1000;
+double tcomp_delta = 0.5;
+int tcomp_sensor = 1000;
 int pwm = 100;
 int target = 0;
 bool moving = false;
@@ -178,6 +182,35 @@ void loop() {
       strcpy(response, "$BS OK");
     } else if (!strcmp(command, "$BS GET SINGLESTEPS")) {
       sprintf(response, "$BS STATUS SINGLESTEPS:%d", singlestep);
+    } else if (!strncmp(command, "$BS SET TCOMP:", 14)) {
+      tcomp = atoi(command + 14);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TCOMP")) {
+      sprintf(response, "$BS STATUS TCOMP:%d", tcomp);
+    } else if (!strncmp(command, "$BS SET TCOMP_FACTOR:", 22)) {
+      tcomp_factor = atof(command + 22);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TCOMP_FACTOR")) {
+      char str[6];
+      dtostrf(tcomp_factor, 5, 2, str);
+      sprintf(response, "$BS STATUS TCOMP_FACTOR:%s", str);
+    } else if (!strncmp(command, "$BS SET TCOMP_PERIOD:", 22)) {
+      tcomp_period = atof(command + 22);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TCOMP_PERIOD")) {
+      sprintf(response, "$BS STATUS TCOMP_PERIOD:%d", tcomp_period);      
+    } else if (!strncmp(command, "$BS SET TCOMP_DELTA:", 21)) {
+      tcomp_delta = atoi(command + 21);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TCOMP_DELTA")) {
+      char str[6];
+      dtostrf(tcomp_delta, 5, 2, str);
+      sprintf(response, "$BS STATUS TCOMP_DELTA:%s", str);      
+    } else if (!strncmp(command, "$BS SET TCOMP_SENSOR:", 21)) {
+      tcomp_sensor = atoi(command + 21);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TCOMP_SENSOR")) {
+      sprintf(response, "$BS STATUS TCOMP_SENSOR:%d", tcomp_sensor);      
     } else if (!strncmp(command, "$BS GO ", 7)) {
       target = atoi(command + 7);
       if (target < 0)
