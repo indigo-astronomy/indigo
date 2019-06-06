@@ -33,8 +33,7 @@
 extern "C" {
 #endif
 
-/** Register DSD focuser hot-plug callback
- */
+#define FOCUSER_DSD_NAME              "Focuser DSD AF"
 
 extern indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info *info);
 
