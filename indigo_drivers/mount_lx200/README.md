@@ -8,6 +8,7 @@
 * 10micron mounts
 * EQMac
 * Astro-Physics GTO mounts
+* OnStep controllers
 
 Connection over serial port or network.
 
