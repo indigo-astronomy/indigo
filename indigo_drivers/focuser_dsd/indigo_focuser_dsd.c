@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -653,9 +653,10 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 // --------------------------------------------------------------------------------
-
-static dsd_private_data *private_data = NULL;
-static indigo_device *focuser = NULL;
+#define MAX_DEVICES 8
+static int device_number = 1;
+static dsd_private_data *private_data[MAX_DEVICES] = {NULL};
+static indigo_device *focuser[MAX_DEVICES] = {NULL};
 
 indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
@@ -677,27 +678,41 @@ indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		private_data = malloc(sizeof(dsd_private_data));
-		assert(private_data != NULL);
-		memset(private_data, 0, sizeof(dsd_private_data));
-		private_data->dev_id = -1;
-		focuser = malloc(sizeof(indigo_device));
-		assert(focuser != NULL);
-		memcpy(focuser, &focuser_template, sizeof(indigo_device));
-		focuser->private_data = private_data;
-		indigo_attach_device(focuser);
+
+		/* figure out the number of devices to expose */
+		if (getenv("FOCUSER_DSD_DEVICE_NUMBER") != NULL) {
+			device_number = atoi(getenv("FOCUSER_DSD_DEVICE_NUMBER"));
+			if (device_number < 1) device_number = 1;
+			if (device_number > MAX_DEVICES) device_number = MAX_DEVICES;
+		}
+
+
+		for (int index = 0; index < device_number; index++) {
+			private_data[index] = malloc(sizeof(dsd_private_data));
+			assert(private_data[index] != NULL);
+			memset(private_data[index], 0, sizeof(dsd_private_data));
+			private_data[index]->dev_id = -1;
+			focuser[index] = malloc(sizeof(indigo_device));
+			assert(focuser[index] != NULL);
+			memcpy(focuser[index], &focuser_template, sizeof(indigo_device));
+			focuser[index]->private_data = private_data[index];
+			sprintf(focuser[index]->name, "%s #%d", FOCUSER_DSD_NAME, index);
+			indigo_attach_device(focuser[index]);
+		}
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
-		if (focuser != NULL) {
-			indigo_detach_device(focuser);
-			free(focuser);
-			focuser = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
+		for (int index = 0; index < device_number; index++) {
+			if (focuser[index] != NULL) {
+				indigo_detach_device(focuser[index]);
+				free(focuser[index]);
+				focuser[index] = NULL;
+			}
+			if (private_data[index] != NULL) {
+				free(private_data[index]);
+				private_data[index] = NULL;
+			}
 		}
 		break;
 
