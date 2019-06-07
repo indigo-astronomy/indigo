@@ -193,6 +193,10 @@ package: reconfigure init all
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 	@$(MAKE)	-C indigo_server install
 	@$(MAKE)	-C indigo_tools install
+ifeq ($(ARCH_DETECTED),arm)
+	install -d $(INSTALL_ROOT)/usr/bin
+	install -m 0755 tools/rpi_ctrl.sh $(INSTALL_ROOT)/usr/bin
+endif
 	install -d $(INSTALL_ROOT)/DEBIAN
 	printf "Package: indigo\n" > $(INSTALL_ROOT)/DEBIAN/control
 	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
