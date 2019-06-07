@@ -86,6 +86,7 @@ typedef struct {
 	char product[64];
 	indigo_property *alignment_mode_property;
 	indigo_property *mount_type_property;
+	indigo_timer *focuser_timer;
 } lx200_private_data;
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
@@ -1049,7 +1050,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (PRIVATE_DATA->device_count++ == 0) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				result = meade_open(device);
+				result = meade_open(device->master_device);
 			}
 			if (result) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1127,12 +1128,137 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
+// -------------------------------------------------------------------------------- INDIGO focuser device implementation
+
+static void focuser_timer_callback(indigo_device *device) {
+	if (IS_CONNECTED) {
+		meade_command(device, ":FQ#", NULL, 0, 0);
+		char response[16];
+		if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
+			FOCUSER_POSITION_ITEM->number.value = atoi(response);
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	}
+}
+
+static indigo_result focuser_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+		FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+		FOCUSER_SPEED_ITEM->number.max = 2;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			bool result = true;
+			if (PRIVATE_DATA->device_count++ == 0) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				result = meade_open(device->master_device);
+			}
+			if (result) {
+				char response[16];
+				if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_ITEM->number.value = atoi(response);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				PRIVATE_DATA->device_count--;
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		} else {
+			if (--PRIVATE_DATA->device_count == 0) {
+				meade_close(device);
+			}
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	// -------------------------------------------------------------------------------- FOCUSER_SPEED
+	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+		if (FOCUSER_SPEED_ITEM->number.value == 1) {
+			meade_command(device, ":FS#", NULL, 0, 0);
+		} else {
+			meade_command(device, ":FF#", NULL, 0, 0);
+		}
+		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- FOCUSER_STEPS
+	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value) {
+			meade_command(device, ":F+#", NULL, 0, 0);
+		} else {
+			meade_command(device, ":F-#", NULL, 0, 0);
+		}
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		PRIVATE_DATA->focuser_timer = indigo_set_timer(device, FOCUSER_STEPS_ITEM->number.value / 1000, focuser_timer_callback);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
+	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+			meade_command(device, ":FQ#", NULL, 0, 0);
+			char response[16];
+			if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
+				FOCUSER_POSITION_ITEM->number.value = atoi(response);
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_focuser_change_property(device, client, property);
+}
+
+static indigo_result focuser_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_focuser_detach(device);
+}
+
 // --------------------------------------------------------------------------------
 
 static lx200_private_data *private_data = NULL;
 
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
+static indigo_device *mount_focuser = NULL;
 
 indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
@@ -1151,6 +1277,14 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 		NULL,
 		guider_detach
 	);
+	static indigo_device mount_focuser_template = INDIGO_DEVICE_INITIALIZER(
+	 MOUNT_LX200_FOCUSER_NAME,
+	 focuser_attach,
+	 indigo_focuser_enumerate_properties,
+	 focuser_change_property,
+	 NULL,
+	 focuser_detach
+	 );
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
@@ -1169,12 +1303,20 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 			assert(mount != NULL);
 			memcpy(mount, &mount_template, sizeof(indigo_device));
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			mount_guider = malloc(sizeof(indigo_device));
 			assert(mount_guider != NULL);
 			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
 			mount_guider->private_data = private_data;
+			mount_guider->master_device = mount;
 			indigo_attach_device(mount_guider);
+			mount_focuser = malloc(sizeof(indigo_device));
+			assert(mount_focuser != NULL);
+			memcpy(mount_focuser, &mount_focuser_template, sizeof(indigo_device));
+			mount_focuser->private_data = private_data;
+			mount_focuser->master_device = mount;
+			indigo_attach_device(mount_focuser);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
@@ -1188,6 +1330,11 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 				indigo_detach_device(mount_guider);
 				free(mount_guider);
 				mount_guider = NULL;
+			}
+			if (mount_focuser != NULL) {
+				indigo_detach_device(mount_focuser);
+				free(mount_focuser);
+				mount_focuser = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);

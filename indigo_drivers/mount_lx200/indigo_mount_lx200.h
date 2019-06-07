@@ -29,6 +29,7 @@
 #include "indigo_driver.h"
 #include "indigo_mount_driver.h"
 #include "indigo_guider_driver.h"
+#include "indigo_focuser_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +37,7 @@ extern "C" {
 
 #define MOUNT_LX200_NAME              "Mount LX200"
 #define MOUNT_LX200_GUIDER_NAME       "Mount LX200 (guider)"
+#define MOUNT_LX200_FOCUSER_NAME       "Mount LX200 (focuser)"
 
 
 /** Create mount LX200 device instance
