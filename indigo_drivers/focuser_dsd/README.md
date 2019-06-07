@@ -6,7 +6,10 @@ https://deepskydad.com
 
 AF1 and AF2 focusers.
 
-This driver does not support hotplug (single device).
+This driver supports up to 8 devices, no hot plug support. By default the driver exposes one device.
+In order to change that one should export environment variable FOCUSER_DSD_DEVICE_NUMBER and set it to the desired number. For example:
+
+export FOCUSER_DSD_DEVICE_NUMBER=3
 
 ## Supported platforms
 
