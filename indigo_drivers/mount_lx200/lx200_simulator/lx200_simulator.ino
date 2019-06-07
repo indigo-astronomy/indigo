@@ -68,6 +68,10 @@ bool is_slewing = false;
 bool is_tracking = true;
 bool is_parked = false;
 
+int focuser_position = 0;
+int focuser_move = 0;
+int focuser_speed = 1;
+
 void update_state() {
   static long unsigned last_millis = 0;
   static unsigned long time_lapse = 0;
@@ -111,6 +115,7 @@ void update_state() {
     if (dec > 90L * 360000L)
       dec = 90L * 360000L; 
   }
+  focuser_position += focuser_move * lapse;
   int s = time_second + time_lapse / 1000;
   int m = time_minute + s / 60;
   int h = time_hour + m / 60;
@@ -363,6 +368,19 @@ void loop() {
         ra_slew = -1;
       } else if (!strcmp(buffer, "Qe")) {
         ra_slew = 0;
+      } else if (!strcmp(buffer, "F+")) {
+        focuser_move = focuser_speed;
+      } else if (!strcmp(buffer, "F-")) {
+        focuser_move = -focuser_speed;
+      } else if (!strcmp(buffer, "FS")) {
+        focuser_speed = 1;
+      } else if (!strcmp(buffer, "FF")) {
+        focuser_speed = 5;
+      } else if (!strcmp(buffer, "FQ")) {
+        focuser_move = 0;
+      } else if (!strcmp(buffer, "FP")) {
+        sprintf(buffer, "%d#", focuser_position);
+        Serial.print(buffer);
       }
     }
   }
