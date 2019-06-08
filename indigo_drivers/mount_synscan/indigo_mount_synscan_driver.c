@@ -137,6 +137,8 @@ bool synscan_configure(indigo_device* device) {
 			return false;
 
 		MOUNT_OPERATING_MODE_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kIsAZEQ) || (PRIVATE_DATA->decFeatures & kIsAZEQ));
+		MOUNT_USE_ENCODERS_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasEncoder) || (PRIVATE_DATA->decFeatures & kHasEncoder));
+		MOUNT_USE_PPEC_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasPPEC) || (PRIVATE_DATA->decFeatures & kHasPPEC));
 
 //		PRIVATE_DATA->raTotalSteps = PRIVATE_DATA->decTotalSteps = 9024000;
 //		PRIVATE_DATA->raWormSteps = PRIVATE_DATA->decWormSteps = 50133;
