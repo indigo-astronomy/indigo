@@ -90,6 +90,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EPOCH_ITEM->number.value = 0;
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		MOUNT_POLARSCOPE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_POLARSCOPE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Polarscope", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (MOUNT_POLARSCOPE_PROPERTY == NULL)
@@ -186,12 +187,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if (IS_CONNECTED) {
-			if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+			if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked.");
+			} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 					//  Pass sync requests through to indigo common code
 					return indigo_mount_change_property(device, client, property);
-				}
-				else {
+				} else {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_coordinates(device, "Sync not performed - mount is busy.");
 					return INDIGO_OK;
@@ -204,8 +207,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 					mount_handle_coordinates(device);
-				}
-				else {
+				} else {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_coordinates(device, "Slew not started - mount is busy.");
 				}
@@ -252,8 +254,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING (on/off)
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
-			mount_handle_tracking(device);
+			if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Mount is parked.");
+			} else {
+				indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
+				mount_handle_tracking(device);
+			}
 			return INDIGO_OK;
 		}
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
@@ -263,13 +270,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		//MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
-		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
-		mount_handle_motion_ra(device);
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked.");
+		} else {
+			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
+			mount_handle_motion_ra(device);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
-		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-		mount_handle_motion_dec(device);
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked.");
+		} else {
+			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
+			mount_handle_motion_dec(device);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
@@ -307,9 +324,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_AUTOHOME
-		indigo_property_copy_values(MOUNT_AUTOHOME_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			mount_handle_autohome(device);
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Mount is parked.");
+		} else {
+			indigo_property_copy_values(MOUNT_AUTOHOME_PROPERTY, property, false);
+			if (IS_CONNECTED) {
+				mount_handle_autohome(device);
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property)) {
@@ -325,6 +347,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, MOUNT_POLARSCOPE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_OPERATING_MODE_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_USE_ENCODERS_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_USE_PPEC_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
