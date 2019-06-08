@@ -54,6 +54,7 @@ typedef struct {
 	indigo_property *mount_polarscope_property;
 	indigo_property *use_encoders_property;
 	indigo_property *use_ppec_property;
+	indigo_property *autohome_property;
 
 	bool mountConfigured;
 
@@ -135,5 +136,11 @@ typedef struct {
 #define MOUNT_USE_PPEC_PROPERTY_NAME		    			"MOUNT_USE_PPEC"
 #define MOUNT_USE_RA_PPEC_ITEM_NAME            		"RA"
 #define MOUNT_USE_DEC_PPEC_ITEM_NAME           		"DEC"
+
+#define MOUNT_AUTOHOME_PROPERTY										(PRIVATE_DATA->autohome_property)
+#define MOUNT_AUTOHOME_ITEM		                		(MOUNT_AUTOHOME_PROPERTY->items+0)
+
+#define MOUNT_AUTOHOME_PROPERTY_NAME		    			"MOUNT_AUTOHOME"
+#define MOUNT_AUTOHOME_ITEM_NAME            			"AUTOHOME"
 
 #endif /* indigo_mount_synscan_private_h */
