@@ -220,7 +220,7 @@ bool synscan_configure(indigo_device* device) {
 
 	//  Read the current position
 	synscan_get_coords(device);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position: RA == %g, DEC == %g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position:     RA == %10g, DEC == %10g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
 
 	//  Consider the mount configured once we reach here
 	PRIVATE_DATA->mountConfigured = true;
