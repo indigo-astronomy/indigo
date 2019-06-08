@@ -647,6 +647,9 @@
 		590DD8812127597A00F2B978 /* 17350_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = 17350_manual.pdf; sourceTree = "<group>"; };
 		590EE1A322AAFE3500828030 /* rpi_ctrl.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl.sh; sourceTree = "<group>"; };
 		590EE1AF22ABD56600828030 /* rpi_ctrl_fix.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = rpi_ctrl_fix.sh; sourceTree = "<group>"; };
+		590EE1B022AC046C00828030 /* synscan_protocol.ino */ = {isa = PBXFileReference; lastKnownFileType = text; name = synscan_protocol.ino; path = synscan_simulator/synscan_protocol.ino; sourceTree = "<group>"; };
+		590EE1B122AC046D00828030 /* synscan_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; name = synscan_simulator.ino; path = synscan_simulator/synscan_simulator.ino; sourceTree = "<group>"; };
+		590EE1B222AC046D00828030 /* synscan_protocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = synscan_protocol.h; path = synscan_simulator/synscan_protocol.h; sourceTree = "<group>"; };
 		5911B6C822630FE900D6B9EC /* indigo_guider_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_guider_utils.h; sourceTree = "<group>"; };
 		5911B6C922630FE900D6B9EC /* indigo_guider_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_utils.c; sourceTree = "<group>"; };
 		5911B6D622633DBE00D6B9EC /* indigo_agent_guider.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_guider.c; sourceTree = "<group>"; };
@@ -4643,6 +4646,9 @@
 		590EE1AE22ABA01C00828030 /* synscan_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				590EE1B122AC046D00828030 /* synscan_simulator.ino */,
+				590EE1B222AC046D00828030 /* synscan_protocol.h */,
+				590EE1B022AC046C00828030 /* synscan_protocol.ino */,
 			);
 			path = synscan_simulator;
 			sourceTree = "<group>";
