@@ -25,25 +25,21 @@
 void setup() {
 
 // EQ8
-setupVersion("020304");
-setupRA(435, 1, 1, 200, 64, 2);
-setupDE(435, 1, 1, 200, 64, 2);
+setup_version("020304");
+setup_axes(435, 1, 1, 200, 64, 2);
+setup_features(HAS_ENCODER | HAS_PPEC | HAS_HOME_INDEXER | HAS_POLAR_LED);
 // EQ6
-//setupVersion("020300");
-//setupRA(180, 47, 12, 200, 64, 2);
-//setupDE(180, 47, 12, 200, 64, 2);
+//setup_version("020300");
+//setup_axes(180, 47, 12, 200, 64, 2);
 // HEQ5"
-setupVersion("020301");
-//setupRA(135, 47, 9, 200, 64, 2);
-//setupDE(135, 47, 9, 200, 64, 2);
+//setup_version("020301");
+//setup_axes(135, 47, 9, 200, 64, 2);
 // NEQ5"
-//setupVersion("020302");
-//setupRA(144, 44, 9, 200, 32, 2);
-//setupDE(144, 44, 9, 200, 32, 2);
+//setup_version("020302");
+//setup_axes(144, 44, 9, 200, 32, 2);
 // NEQ3"
-//setupVersion("020303");
-//setupRA(130, 55, 10, 200, 32, 2);
-//setupDE(130, 55, 10, 200, 32, 2);
+//setup_version("020303");
+//setup_axes(130, 55, 10, 200, 32, 2);
   
   Serial.begin(9600);
   Serial.setTimeout(1000);
