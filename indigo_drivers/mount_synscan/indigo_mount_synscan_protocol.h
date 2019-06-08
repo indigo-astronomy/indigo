@@ -49,6 +49,35 @@ enum GuideRate {
 	kGuideRate_x0_125 = 4
 };
 
+enum ExtInquiry {
+	kGetIndexr = 0x0000,
+	kGetFeatures = 0x0001
+};
+
+enum ExtSetting {
+	kStarPECCTtraining = 0x0000,
+	kStopPECCTtraining = 0x0001,
+	kTurnPECCOn = 0x0002,
+	kTurnPECCOff = 0X0003,
+	kTurnEncoderOn = 0x0004,
+	kTurnEncoderOff = 0x0005,
+	kDisableFullCurrentLowSpeed = 0x0006,
+	kEnableFullCurrentLowSpeed = 0x0106,
+	kResetHomeIndexer = 0x0008
+};
+
+enum Features {
+	kHasEncoder = 0x0001,
+	kHasPPEC = 0x0002,
+	kHasHomeIndexer = 0x0004,
+	kIsAZEQ = 0x0008,
+	kInPPECTraining = 0x0010,
+	kInPPEC = 0x0020,
+	kHasPolarLED = 0x1000,
+	kHasCommonSlewStart = 0x2000,
+	kHasHalfCurrentTracking = 0x4000
+};
+
 bool synscan_firmware_version(indigo_device* device, long* v);
 bool synscan_total_axis_steps(indigo_device* device, enum AxisID axis, long* v);
 bool synscan_worm_rotation_steps(indigo_device* device, enum AxisID axis, long* v);
@@ -69,5 +98,8 @@ bool synscan_set_polarscope_brightness(indigo_device* device, unsigned char brig
 bool synscan_set_st4_guide_rate(indigo_device* device, enum AxisID axis, enum GuideRate rate);
 bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, long track_rate);
 bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, long guide_rate, int duration_ms);
+
+bool synscan_ext_inquiry(indigo_device* device, enum AxisID axis, enum ExtInquiry inquiry, long *v);
+bool synscan_ext_setting(indigo_device* device, enum AxisID axis, enum ExtSetting setting);
 
 #endif /* indigo_mount_synscan_protocol_h */

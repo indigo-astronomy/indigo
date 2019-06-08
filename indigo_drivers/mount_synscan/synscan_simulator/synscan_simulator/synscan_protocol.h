@@ -47,7 +47,19 @@
 
 #define HEX(c) (((c) < 'A') ? ((c) - '0') : ((c) - 'A') + 10)
 
-extern void setupVersion(const char *mcversion);
-extern void setupRA(uint32_t nb_teeth, uint32_t gear_ratio_num, uint32_t gear_ratio_den, uint32_t nb_steps, uint32_t nb_microsteps, uint32_t highspeed);
-extern void setupDE(uint32_t nb_teeth, uint32_t gear_ratio_num, uint32_t gear_ratio_den, uint32_t nb_steps, uint32_t nb_microsteps, uint32_t highspeed);
+enum FEATURE {
+  HAS_ENCODER                 = 0x0001,
+  HAS_PPEC                    = 0x0002,
+  HAS_HOME_INDEXER            = 0x0004,
+  IS_AZEQ                     = 0x0008,
+  IN_PPEC_TRAINING            = 0x0010,
+  IN_PPEC                     = 0x0020,
+  HAS_POLAR_LED               = 0x1000,
+  HAS_COMMON_SLEW_START       = 0x2000,  // supports :J3
+  HAS_HALF_CURRENT_TRACKING   = 0x4000
+};
+
+extern void setup_version(const char *mcversion);
+extern void setup_axes(uint32_t nb_teeth, uint32_t gear_ratio_num, uint32_t gear_ratio_den, uint32_t nb_steps, uint32_t nb_microsteps, uint32_t highspeed);
+extern void setup_features(uint32_t mask);
 extern char *process_command(const char *cmd);

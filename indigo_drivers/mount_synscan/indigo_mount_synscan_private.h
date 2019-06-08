@@ -65,7 +65,9 @@ typedef struct {
 	long raHighSpeedFactor;
 	long decHighSpeedFactor;
 	bool canSetPolarscopeBrightness;
-
+	long raFeatures;
+	long decFeatures;
+	
 	//  Zero position
 	long raZeroPos;
 	long decZeroPos;

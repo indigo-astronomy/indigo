@@ -100,9 +100,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_OPERATING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_OPERATING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Operating mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (MOUNT_OPERATING_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		MOUNT_OPERATING_MODE_PROPERTY->hidden = true;
 		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", true);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
-		MOUNT_OPERATING_MODE_PROPERTY->hidden = true;
 
 		//  FURTHER INITIALISATION
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
