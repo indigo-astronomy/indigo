@@ -25,7 +25,8 @@ enum GlobalMode {
 	kGlobalModeError,
 	kGlobalModeIdle,
 	kGlobalModeSlewing,
-	kGlobalModeParking
+	kGlobalModeParking,
+	kGlobalModeGoingHome
 };
 
 enum AxisMode {

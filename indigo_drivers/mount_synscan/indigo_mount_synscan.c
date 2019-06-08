@@ -67,6 +67,12 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_PARK_POSITION
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_HOME
+		MOUNT_HOME_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_HOME_SET
+		MOUNT_HOME_SET_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_HOME_POSITION
+		MOUNT_HOME_POSITION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		MOUNT_TRACKING_ON_ITEM->sw.value = false;
 		MOUNT_TRACKING_OFF_ITEM->sw.value = true;
@@ -183,6 +189,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		mount_handle_park(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_HOME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_HOME
+		indigo_property_copy_values(MOUNT_HOME_PROPERTY, property, false);
+		mount_handle_home(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
