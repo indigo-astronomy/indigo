@@ -39,5 +39,6 @@ void mount_handle_polarscope(indigo_device *device);
 // Ext. settings
 void mount_handle_encoders(indigo_device *device);
 void mount_handle_ppec(indigo_device *device);
+void mount_handle_autohome(indigo_device *device);
 
 #endif /* indigo_mount_synscan_mount_h */

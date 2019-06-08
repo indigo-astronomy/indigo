@@ -120,6 +120,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_USE_RA_PPEC_ITEM, MOUNT_USE_RA_PPEC_ITEM_NAME, "Use RA PPEC", false);
 		indigo_init_switch_item(MOUNT_USE_DEC_PPEC_ITEM, MOUNT_USE_DEC_PPEC_ITEM_NAME, "Use Dec PPEC", false);
 
+		// -------------------------------------------------------------------------------- MOUNT_AUTOHOME
+		MOUNT_AUTOHOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Auto home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (MOUNT_AUTOHOME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		MOUNT_AUTOHOME_PROPERTY->hidden = true;
+		indigo_init_switch_item(MOUNT_AUTOHOME_ITEM, MOUNT_AUTOHOME_ITEM_NAME, "Start auto home procedure", false);
+
 		//  FURTHER INITIALISATION
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->driver_mutex, NULL);
@@ -146,6 +153,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 				indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_USE_PPEC_PROPERTY, property))
 				indigo_define_property(device, MOUNT_USE_PPEC_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property))
+				indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -270,30 +279,37 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	}
 	else if (indigo_property_match(MOUNT_GUIDE_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
+		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
 			mount_handle_st4_guiding_rate(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
+		indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_POLARSCOPE_PROPERTY, property, false);
 			mount_handle_polarscope(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_USE_ENCODERS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_USE_ENCODERS
+		indigo_property_copy_values(MOUNT_USE_ENCODERS_PROPERTY, property, false);
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_USE_ENCODERS_PROPERTY, property, false);
 			mount_handle_encoders(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_USE_PPEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_USE_PPEC
+		indigo_property_copy_values(MOUNT_USE_PPEC_PROPERTY, property, false);
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_USE_PPEC_PROPERTY, property, false);
 			mount_handle_ppec(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_AUTOHOME
+		indigo_property_copy_values(MOUNT_AUTOHOME_PROPERTY, property, false);
+		if (IS_CONNECTED) {
+			mount_handle_autohome(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property)) {
@@ -325,6 +341,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_OPERATING_MODE_PROPERTY);
 	indigo_release_property(MOUNT_USE_ENCODERS_PROPERTY);
 	indigo_release_property(MOUNT_USE_PPEC_PROPERTY);
+	indigo_release_property(MOUNT_AUTOHOME_PROPERTY);
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
