@@ -646,6 +646,7 @@
 		590DD87A2127590600F2B978 /* indigo_wheel_optec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_optec.h; sourceTree = "<group>"; };
 		590DD8812127597A00F2B978 /* 17350_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = 17350_manual.pdf; sourceTree = "<group>"; };
 		590EE1A322AAFE3500828030 /* rpi_ctrl.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl.sh; sourceTree = "<group>"; };
+		590EE1AF22ABD56600828030 /* rpi_ctrl_fix.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = rpi_ctrl_fix.sh; sourceTree = "<group>"; };
 		5911B6C822630FE900D6B9EC /* indigo_guider_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_guider_utils.h; sourceTree = "<group>"; };
 		5911B6C922630FE900D6B9EC /* indigo_guider_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_utils.c; sourceTree = "<group>"; };
 		5911B6D622633DBE00D6B9EC /* indigo_agent_guider.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_guider.c; sourceTree = "<group>"; };
@@ -4639,6 +4640,13 @@
 			path = wheel_optec;
 			sourceTree = "<group>";
 		};
+		590EE1AE22ABA01C00828030 /* synscan_simulator */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = synscan_simulator;
+			sourceTree = "<group>";
+		};
 		5911B6D522633DBE00D6B9EC /* agent_guider */ = {
 			isa = PBXGroup;
 			children = (
@@ -5492,6 +5500,7 @@
 		599A240C1DBEC5820020BF8F /* tools */ = {
 			isa = PBXGroup;
 			children = (
+				590EE1AF22ABD56600828030 /* rpi_ctrl_fix.sh */,
 				590EE1A322AAFE3500828030 /* rpi_ctrl.sh */,
 				9D7D59191DF6B21B003D2B59 /* rjsmin.py */,
 				599A240D1DBEC5BA0020BF8F /* cltools.sh */,
@@ -11748,6 +11757,7 @@
 				59A321B221D691D600EC0F4A /* indigo_mount_synscan_guider.h */,
 				59A321B421D691D600EC0F4A /* indigo_mount_synscan_guider.c */,
 				9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */,
+				590EE1AE22ABA01C00828030 /* synscan_simulator */,
 			);
 			path = mount_synscan;
 			sourceTree = "<group>";

@@ -219,8 +219,10 @@ endif
 	printf "rm -f /usr/local/lib/libaltaircam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
 	printf "rm -rf /usr/local/etc/apogee\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
+ifeq ($(ARCH_DETECTED),arm)
 	cat tools/rpi_ctrl_fix.sh > $(INSTALL_ROOT)/DEBIAN/postinst
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
+endif
 	rm -f $(INSTALL_ROOT).deb
 	fakeroot dpkg --build $(INSTALL_ROOT)
 #	rm -rf $(INSTALL_ROOT)
