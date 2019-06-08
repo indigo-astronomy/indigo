@@ -3,6 +3,7 @@
 RPI_CTRL="/usr/bin/rpi_ctrl.sh"
 DHCPCD_CONF="/etc/dhcpcd.conf"
 
+[ ! `hostname` = "indigosky" ] && { echo "no patch applied because no INDIGO Sky installation"; exit 0; }
 [ ! -f ${RPI_CTRL} ] && { echo "no patch applied because no INDIGO Sky installation"; exit 0; }
 [ ! -f ${DHCPCD_CONF} ] && { echo "cannot apply patch because ${DHCPCD_CONF} is missing"; exit 0; }
 
@@ -31,4 +32,3 @@ if ! grep -Eq "^interface wlan0|^static ip_address=192.168.235.1/24|^nohook wpa_
 else
     echo "INDIGO Sky is in WiFi access point mode, no software maintainance is required"
 fi
-
