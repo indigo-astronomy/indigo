@@ -768,8 +768,8 @@ static void mount_park_timer_callback(indigo_device* device) {
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking stopped.");
 
 	//  Compute the axis positions for parking
-	double ha = MOUNT_PARK_POSITION_HA_ITEM->number.value * M_PI / 12.0;
-	double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value * M_PI / 180.0;
+	double ha = (PRIVATE_DATA->globalMode == kGlobalModeGoingHome ? MOUNT_HOME_POSITION_HA_ITEM->number.value : MOUNT_PARK_POSITION_HA_ITEM->number.value) * M_PI / 12.0;
+	double dec = (PRIVATE_DATA->globalMode == kGlobalModeGoingHome ? MOUNT_HOME_POSITION_DEC_ITEM->number.value : MOUNT_PARK_POSITION_DEC_ITEM->number.value) * M_PI / 180.0;
 	double haPos[2], decPos[2];
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 	int idx = synscan_select_best_encoder_point(device, haPos, decPos);
@@ -801,9 +801,14 @@ static void mount_park_timer_callback(indigo_device* device) {
 	}
 
 	//  Update state
-	MOUNT_PARK_PARKED_ITEM->sw.value = true;
-	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
+	if (PRIVATE_DATA->globalMode == kGlobalModeGoingHome) {
+		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount at home.");
+	} else {
+		MOUNT_PARK_PARKED_ITEM->sw.value = true;
+		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
+	}
 	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
@@ -825,6 +830,22 @@ void mount_handle_park(indigo_device* device) {
 	else {
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount unparked.");
+	}
+}
+
+void mount_handle_home(indigo_device* device) {
+	if (MOUNT_HOME_ITEM->sw.value) {
+		MOUNT_HOME_ITEM->sw.value = false;
+		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home...");
+			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
+			indigo_set_timer(device, 0, mount_park_timer_callback);
+		} else {
+			//  Can't go home while mount is doing something else
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Going home not started - mount is busy.");
+		}
 	}
 }
 
