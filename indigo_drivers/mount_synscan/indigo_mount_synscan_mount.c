@@ -245,6 +245,8 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_USE_PPEC_PROPERTY, NULL);
 			//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
 			indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 
@@ -254,13 +256,10 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 			indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 		}
 		indigo_update_property(device, CONNECTION_PROPERTY, "connected to mount!");
-	}
-	else {
+	} else {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_update_property(device, CONNECTION_PROPERTY, "Failed to connect to mount");
-		indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 	}
 
 	//  Need to define and delete the 2 custom properties on connect/disconnect
@@ -291,10 +290,12 @@ void synscan_mount_connect(indigo_device* device) {
 		if (PRIVATE_DATA->device_count > 0) {
 			PRIVATE_DATA->device_count--;
 			if (PRIVATE_DATA->device_count == 0) {
-				synscan_close(device);
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 				indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_USE_PPEC_PROPERTY, NULL);
+				synscan_close(device);
 			}
 		}
 	}
@@ -923,4 +924,18 @@ void mount_handle_polarscope(indigo_device *device) {
 
 	MOUNT_POLARSCOPE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_POLARSCOPE_PROPERTY, "Changed polarscope LED brightness.");
+}
+
+void mount_handle_encoders(indigo_device *device) {
+	synscan_ext_setting(device, kAxisRA,  MOUNT_USE_RA_ENCODER_ITEM->sw.value ? kTurnEncoderOn : kTurnEncoderOff);
+	synscan_ext_setting(device, kAxisDEC,  MOUNT_USE_DEC_ENCODER_ITEM->sw.value ? kTurnEncoderOn : kTurnEncoderOff);
+	MOUNT_USE_ENCODERS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_USE_ENCODERS_PROPERTY, "Updated encoders usage");
+}
+
+void mount_handle_ppec(indigo_device *device) {
+	synscan_ext_setting(device, kAxisRA,  MOUNT_USE_RA_PPEC_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
+	synscan_ext_setting(device, kAxisDEC,  MOUNT_USE_DEC_PPEC_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
+	MOUNT_USE_PPEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_USE_PPEC_PROPERTY, "Updated PPEC usage");
 }

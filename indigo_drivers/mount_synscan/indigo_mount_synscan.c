@@ -96,7 +96,7 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		MOUNT_POLARSCOPE_PROPERTY->hidden = true;
 		indigo_init_number_item(MOUNT_POLARSCOPE_BRIGHTNESS_ITEM, MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME, "Polarscope Brightness", 0, 255, 0, 0);
-		// -------------------------------------------------------------------------------- OPERATING_MODE
+		// -------------------------------------------------------------------------------- MOUNT_OPERATING_MODE
 		MOUNT_OPERATING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_OPERATING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Operating mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (MOUNT_OPERATING_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -104,14 +104,28 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", true);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 
+		// -------------------------------------------------------------------------------- MOUNT_USE_ENCODERS
+		MOUNT_USE_ENCODERS_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Use encoders", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (MOUNT_USE_ENCODERS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		MOUNT_USE_ENCODERS_PROPERTY->hidden = true;
+		indigo_init_switch_item(MOUNT_USE_RA_ENCODER_ITEM, MOUNT_USE_RA_ENCODER_ITEM_NAME, "Use RA encoder", false);
+		indigo_init_switch_item(MOUNT_USE_DEC_ENCODER_ITEM, MOUNT_USE_DEC_ENCODER_ITEM_NAME, "Use Dec encoder", false);
+
+		// -------------------------------------------------------------------------------- MOUNT_USE_ENCODERS
+		MOUNT_USE_PPEC_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_USE_PPEC_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Use PPEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (MOUNT_USE_PPEC_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		MOUNT_USE_PPEC_PROPERTY->hidden = true;
+		indigo_init_switch_item(MOUNT_USE_RA_PPEC_ITEM, MOUNT_USE_RA_PPEC_ITEM_NAME, "Use RA PPEC", false);
+		indigo_init_switch_item(MOUNT_USE_DEC_PPEC_ITEM, MOUNT_USE_DEC_PPEC_ITEM_NAME, "Use Dec PPEC", false);
+
 		//  FURTHER INITIALISATION
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->driver_mutex, NULL);
 		PRIVATE_DATA->mountConfigured = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		
-		indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -128,6 +142,10 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 				indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property))
 				indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_USE_ENCODERS_PROPERTY, property))
+				indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_USE_PPEC_PROPERTY, property))
+				indigo_define_property(device, MOUNT_USE_PPEC_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -264,6 +282,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			mount_handle_polarscope(device);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_USE_ENCODERS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_USE_ENCODERS
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_USE_ENCODERS_PROPERTY, property, false);
+			mount_handle_encoders(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_USE_PPEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_USE_PPEC
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_USE_PPEC_PROPERTY, property, false);
+			mount_handle_ppec(device);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_OPERATING_MODE
 		indigo_property_copy_values(MOUNT_OPERATING_MODE_PROPERTY, property, false);
@@ -291,6 +323,8 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 	indigo_release_property(MOUNT_POLARSCOPE_PROPERTY);
 	indigo_release_property(MOUNT_OPERATING_MODE_PROPERTY);
+	indigo_release_property(MOUNT_USE_ENCODERS_PROPERTY);
+	indigo_release_property(MOUNT_USE_PPEC_PROPERTY);
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
