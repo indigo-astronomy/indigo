@@ -32,8 +32,6 @@
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
-#include <termios.h>
-#include <fcntl.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/time.h>
@@ -45,6 +43,7 @@
 #endif
 
 #include "indigo_driver_xml.h"
+
 #include "indigo_io.h"
 #include "indigo_focuser_dsd.h"
 
@@ -296,6 +295,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
 	/*
+
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	res = EAFMove(PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 	if (res != EAF_SUCCESS) {
