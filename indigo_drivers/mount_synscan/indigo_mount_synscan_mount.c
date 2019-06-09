@@ -187,6 +187,10 @@ static bool synscan_open(indigo_device *device) {
 			if (handle > 0) {
 				int broadcast = 1;
 				setsockopt(handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof broadcast);
+				struct timeval timeout;
+				timeout.tv_sec = 3;
+				timeout.tv_usec = 0;
+				setsockopt(handle, SOL_SOCKET, SO_RCVTIMEO, &timeout ,sizeof timeout);
 				for (int i = 0; i < 3; i++) {
 					static char buffer[32];
 					sendto(handle, ":e1\r", 4, 0, (const struct sockaddr *) &addr, sizeof(addr));
@@ -199,7 +203,9 @@ static bool synscan_open(indigo_device *device) {
 				}
 			}
 		}
-		if (colon == NULL) {
+		if (*host == 0) {
+			PRIVATE_DATA->handle = 0;
+		} else if (colon == NULL) {
 			PRIVATE_DATA->handle = indigo_open_udp(host, 11880);
 		} else {
 			char host_name[INDIGO_NAME_SIZE];
@@ -212,7 +218,7 @@ static bool synscan_open(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_serial(name);
 		PRIVATE_DATA->udp = false;
 	}
-	if (PRIVATE_DATA->handle >= 0) {
+	if (PRIVATE_DATA->handle > 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 		return true;
 	} else {
