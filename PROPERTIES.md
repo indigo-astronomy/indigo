@@ -212,7 +212,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 | MOUNT_ALIGNMENT_SELECT_POINTS | switch | no | yes | point id | yes |  |
 | MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY | switch | no | yes | point id | yes |  |
 | MOUNT_EPOCH | number | no | yes | EPOCH | yes |  |
-| MOUNT_SIDE_OF_PIER | switch | no | yes | EAST | yes |  |
+| MOUNT_SIDE_OF_PIER | switch | no | no | EAST | yes |  |
 |  |  |  |  | WEST | yes |  |
 
 Properties are implemented by mount driver base class in [indigo_mount_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_mount_driver.c).

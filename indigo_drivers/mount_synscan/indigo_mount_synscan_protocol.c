@@ -406,8 +406,7 @@ current_time_millis() {
 	return tnow;
 }
 
-bool
-synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, long track_rate) {
+bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, long track_rate) {
 	static int pulse_count = 0;
 	static long total_overhead = 0;
 	static bool reported = false;
@@ -468,8 +467,7 @@ synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, 
 	return ok;
 }
 
-bool
-synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, long guide_rate, int duration_ms) {
+bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, long guide_rate, int duration_ms) {
 	static int pulse_count = 0;
 	static long total_overhead = 0;
 	static bool reported = false;
@@ -539,4 +537,16 @@ synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, l
 	
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return ok;
+}
+
+bool synscan_ext_inquiry(indigo_device* device, enum AxisID axis, enum ExtInquiry inquiry, long *v) {
+	char buffer[11];
+	sprintf(buffer, ":q%c%s", axis, longToHex(inquiry));
+	return synscan_command_with_long_result(device, buffer, v);
+}
+
+bool synscan_ext_setting(indigo_device* device, enum AxisID axis, enum ExtSetting setting) {
+	char buffer[11];
+	sprintf(buffer, ":W%c%s", axis, longToHex(setting));
+	return synscan_command(device, buffer, NULL);
 }

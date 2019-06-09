@@ -187,6 +187,10 @@ static bool synscan_open(indigo_device *device) {
 			if (handle > 0) {
 				int broadcast = 1;
 				setsockopt(handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof broadcast);
+				struct timeval timeout;
+				timeout.tv_sec = 3;
+				timeout.tv_usec = 0;
+				setsockopt(handle, SOL_SOCKET, SO_RCVTIMEO, &timeout ,sizeof timeout);
 				for (int i = 0; i < 3; i++) {
 					static char buffer[32];
 					sendto(handle, ":e1\r", 4, 0, (const struct sockaddr *) &addr, sizeof(addr));
@@ -199,7 +203,9 @@ static bool synscan_open(indigo_device *device) {
 				}
 			}
 		}
-		if (colon == NULL) {
+		if (*host == 0) {
+			PRIVATE_DATA->handle = 0;
+		} else if (colon == NULL) {
 			PRIVATE_DATA->handle = indigo_open_udp(host, 11880);
 		} else {
 			char host_name[INDIGO_NAME_SIZE];
@@ -212,7 +218,7 @@ static bool synscan_open(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_serial(name);
 		PRIVATE_DATA->udp = false;
 	}
-	if (PRIVATE_DATA->handle >= 0) {
+	if (PRIVATE_DATA->handle > 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 		return true;
 	} else {
@@ -243,11 +249,13 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (device == device->master_device) { // For mount device only
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-
-			//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
-			indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 			indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_USE_PPEC_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+			//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
+			indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 
 			//  Start position timer
 			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
@@ -255,13 +263,10 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 			indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 		}
 		indigo_update_property(device, CONNECTION_PROPERTY, "connected to mount!");
-	}
-	else {
+	} else {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_update_property(device, CONNECTION_PROPERTY, "Failed to connect to mount");
-		indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 	}
 
 	//  Need to define and delete the 2 custom properties on connect/disconnect
@@ -292,10 +297,13 @@ void synscan_mount_connect(indigo_device* device) {
 		if (PRIVATE_DATA->device_count > 0) {
 			PRIVATE_DATA->device_count--;
 			if (PRIVATE_DATA->device_count == 0) {
-				synscan_close(device);
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 				indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_USE_PPEC_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+				synscan_close(device);
 			}
 		}
 	}
@@ -766,8 +774,8 @@ static void mount_park_timer_callback(indigo_device* device) {
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking stopped.");
 
 	//  Compute the axis positions for parking
-	double ha = MOUNT_PARK_POSITION_HA_ITEM->number.value * M_PI / 12.0;
-	double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value * M_PI / 180.0;
+	double ha = (PRIVATE_DATA->globalMode == kGlobalModeGoingHome ? MOUNT_HOME_POSITION_HA_ITEM->number.value : MOUNT_PARK_POSITION_HA_ITEM->number.value) * M_PI / 12.0;
+	double dec = (PRIVATE_DATA->globalMode == kGlobalModeGoingHome ? MOUNT_HOME_POSITION_DEC_ITEM->number.value : MOUNT_PARK_POSITION_DEC_ITEM->number.value) * M_PI / 180.0;
 	double haPos[2], decPos[2];
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 	int idx = synscan_select_best_encoder_point(device, haPos, decPos);
@@ -799,9 +807,15 @@ static void mount_park_timer_callback(indigo_device* device) {
 	}
 
 	//  Update state
-	MOUNT_PARK_PARKED_ITEM->sw.value = true;
-	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
+	if (PRIVATE_DATA->globalMode == kGlobalModeGoingHome) {
+		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount at home.");
+	} else {
+		synscan_save_position(device);
+		MOUNT_PARK_PARKED_ITEM->sw.value = true;
+		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
+	}
 	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
@@ -823,6 +837,22 @@ void mount_handle_park(indigo_device* device) {
 	else {
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount unparked.");
+	}
+}
+
+void mount_handle_home(indigo_device* device) {
+	if (MOUNT_HOME_ITEM->sw.value) {
+		MOUNT_HOME_ITEM->sw.value = false;
+		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home...");
+			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
+			indigo_set_timer(device, 0, mount_park_timer_callback);
+		} else {
+			//  Can't go home while mount is doing something else
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Going home not started - mount is busy.");
+		}
 	}
 }
 
@@ -924,4 +954,29 @@ void mount_handle_polarscope(indigo_device *device) {
 
 	MOUNT_POLARSCOPE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_POLARSCOPE_PROPERTY, "Changed polarscope LED brightness.");
+}
+
+void mount_handle_encoders(indigo_device *device) {
+	synscan_ext_setting(device, kAxisRA,  MOUNT_USE_RA_ENCODER_ITEM->sw.value ? kTurnEncoderOn : kTurnEncoderOff);
+	synscan_ext_setting(device, kAxisDEC,  MOUNT_USE_DEC_ENCODER_ITEM->sw.value ? kTurnEncoderOn : kTurnEncoderOff);
+	MOUNT_USE_ENCODERS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_USE_ENCODERS_PROPERTY, "Updated encoders usage");
+}
+
+void mount_handle_ppec(indigo_device *device) {
+	synscan_ext_setting(device, kAxisRA,  MOUNT_USE_RA_PPEC_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
+	synscan_ext_setting(device, kAxisDEC,  MOUNT_USE_DEC_PPEC_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
+	MOUNT_USE_PPEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_USE_PPEC_PROPERTY, "Updated PPEC usage");
+}
+
+void mount_handle_autohome(indigo_device *device) {
+	if (MOUNT_AUTOHOME_ITEM->sw.value) {
+		MOUNT_AUTOHOME_ITEM->sw.value = false;
+		
+		// TBD like this: https://stargazerslounge.com/topic/238364-eq8-tools-autohome-without-handset/
+		
+		MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Not implemented yet!");
+	}
 }

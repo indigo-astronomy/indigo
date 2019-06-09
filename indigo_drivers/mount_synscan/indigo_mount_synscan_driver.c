@@ -130,6 +130,16 @@ bool synscan_configure(indigo_device* device) {
 			return false;
 		if (!synscan_high_speed_ratio(device, kAxisDEC, &PRIVATE_DATA->decHighSpeedFactor))
 			return false;
+		
+		if (!synscan_ext_inquiry(device, kAxisRA, kGetFeatures, &PRIVATE_DATA->raFeatures))
+			return false;
+		if (!synscan_ext_inquiry(device, kAxisDEC, kGetFeatures, &PRIVATE_DATA->decFeatures))
+			return false;
+
+		MOUNT_OPERATING_MODE_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kIsAZEQ) || (PRIVATE_DATA->decFeatures & kIsAZEQ));
+		MOUNT_USE_ENCODERS_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasEncoder) || (PRIVATE_DATA->decFeatures & kHasEncoder));
+		MOUNT_USE_PPEC_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasPPEC) || (PRIVATE_DATA->decFeatures & kHasPPEC));
+		MOUNT_AUTOHOME_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasHomeIndexer) || (PRIVATE_DATA->decFeatures & kHasHomeIndexer));
 
 //		PRIVATE_DATA->raTotalSteps = PRIVATE_DATA->decTotalSteps = 9024000;
 //		PRIVATE_DATA->raWormSteps = PRIVATE_DATA->decWormSteps = 50133;
@@ -156,12 +166,18 @@ bool synscan_configure(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Worm Steps:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raWormSteps, PRIVATE_DATA->decWormSteps);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Timer Freq:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raTimerFreq, PRIVATE_DATA->decTimerFreq);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  HS Factor:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raHighSpeedFactor, PRIVATE_DATA->decHighSpeedFactor);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Polarscope:  %s", PRIVATE_DATA->canSetPolarscopeBrightness ? "YES" : "NO");
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Home Pos:  RA == %10lu   DEC == %10lu", RA_HOME_POSITION, DEC_HOME_POSITION);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Zero Pos:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raZeroPos, PRIVATE_DATA->decZeroPos);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Features:  RA == %10lx   DEC == %10lx", PRIVATE_DATA->raFeatures, PRIVATE_DATA->decFeatures);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Encoders:  %s", PRIVATE_DATA->raFeatures & kHasEncoder ? "YES" : "NO");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "       AZEQ:  %s", PRIVATE_DATA->raFeatures & kIsAZEQ ? "YES" : "NO");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Home index:  %s", PRIVATE_DATA->raFeatures & kHasHomeIndexer ? "YES" : "NO");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "       PPEC:  %s", PRIVATE_DATA->raFeatures & kHasPPEC ? "YES" : "NO");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Polarscope:  %s/%s", PRIVATE_DATA->canSetPolarscopeBrightness ? "YES" : "NO", PRIVATE_DATA->raFeatures & kHasPolarLED ? "YES" : "NO");
 	}
 
 	//  Initialize motors if necessary
+	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 	if (raMotorStatus == kStatusNotInitialised || raMotorStatus == 0x000) {
 		if (!synscan_init_axis(device, kAxisRA))
 			return false;
@@ -172,7 +188,7 @@ bool synscan_configure(indigo_device* device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "RA MOTOR FAILURE: WILL NOT INITIALIZE!");
 			return false;
 		}
-		if (!synscan_init_axis_position(device, kAxisRA, RA_HOME_POSITION))
+		if (!synscan_restore_position(device, kAxisRA, false))
 			return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA MOTOR INITIALIZED!");
 	} else {
@@ -185,6 +201,7 @@ bool synscan_configure(indigo_device* device) {
 		//  actually if the assumption is that the software restarted AND EQMac previously configured it, then we can recover
 		//  by just reading the parameters and trusting the current position and computing where the home position should be
 
+		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA MOTOR OK %06X", raMotorStatus);
 	}
 	if (decMotorStatus == kStatusNotInitialised || decMotorStatus == 0x000) {
@@ -197,7 +214,7 @@ bool synscan_configure(indigo_device* device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DEC MOTOR FAILURE: WILL NOT INITIALIZE!");
 			return false;
 		}
-		if (!synscan_init_axis_position(device, kAxisDEC, DEC_HOME_POSITION))
+		if (!synscan_restore_position(device, kAxisDEC, true))
 			return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR INITIALIZED!");
 	} else {
@@ -206,6 +223,7 @@ bool synscan_configure(indigo_device* device) {
 		//  else this is also a fatal error - we don't know why the motors are not needing INIT
 		//  maybe the software restarted??
 		//  we could receover by configuring, but the user should be told that the assumption is the mount must be homed
+		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR OK %06X", decMotorStatus);
 	}
 
@@ -868,4 +886,49 @@ void synscan_wait_for_axis_stopped(indigo_device* device, enum AxisID axis, bool
 		}
 		usleep(100000);
 	}
+}
+
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/fcntl.h>
+
+void synscan_save_position(indigo_device *device) {
+	char buffer[INDIGO_VALUE_SIZE];
+	int path_end = snprintf(buffer, INDIGO_VALUE_SIZE, "%s/.indigo", getenv("HOME"));
+	int handle = mkdir(buffer, 0777);
+	if (handle == 0 || errno == EEXIST) {
+		strcat(buffer + path_end, "/synscan.park");
+		handle = open(buffer, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (handle < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't create %s (%s)", buffer, strerror(errno));
+			return;
+		}
+		long ra_pos, dec_pos;
+		synscan_axis_position(device, kAxisRA, &ra_pos);
+		synscan_axis_position(device, kAxisDEC, &dec_pos);
+		snprintf(buffer, INDIGO_VALUE_SIZE, "%06lx %06lx\n", ra_pos, dec_pos);
+		write(handle, buffer, strlen(buffer)+1);
+		close(handle);
+	}
+}
+
+bool synscan_restore_position(indigo_device *device, enum AxisID axis, bool remove) {
+	long ra_pos = 0, dec_pos = 0;
+	char path[INDIGO_VALUE_SIZE];
+	char buffer[INDIGO_VALUE_SIZE];
+	snprintf(path, INDIGO_VALUE_SIZE, "%s/.indigo/synscan.park", getenv("HOME"));
+	int handle = open(path, O_RDONLY, 0);
+	if (handle) {
+		if (!(read(handle, buffer, INDIGO_VALUE_SIZE) > 0 && sscanf(buffer, "%lx %lx", &ra_pos, &dec_pos) == 2)) {
+			ra_pos = RA_HOME_POSITION;
+			dec_pos = DEC_HOME_POSITION;
+		}
+		close(handle);
+		if (remove) {
+			unlink(path);
+		}
+	}
+	return synscan_init_axis_position(device, axis, axis == kAxisRA ? ra_pos : dec_pos);
 }
