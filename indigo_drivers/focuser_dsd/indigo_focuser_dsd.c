@@ -31,6 +31,9 @@
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
+#include <errno.h>
+#include <termios.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/time.h>
@@ -42,6 +45,7 @@
 #endif
 
 #include "indigo_driver_xml.h"
+#include "indigo_io.h"
 #include "indigo_focuser_dsd.h"
 
 #define dsd_VENDOR_ID                   0x03c3
@@ -60,38 +64,101 @@
 #define is_connected                    gp_bits
 
 typedef struct {
-	int dev_id;
+	int handle;
 	//EAF_INFO info;
 	int current_position, target_position, max_position, backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
-	pthread_mutex_t serial_mutex;
+	pthread_mutex_t port_mutex;
 	indigo_property *beep_property;
 } dsd_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
 
+
+static bool dsd_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+	char c;
+	struct timeval tv;
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	// flush
+	while (true) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		tv.tv_sec = 0;
+		tv.tv_usec = 100000;
+		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+		if (result == 0)
+			break;
+		if (result < 0) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+		result = read(PRIVATE_DATA->handle, &c, 1);
+		if (result < 1) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+	}
+	// write command
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	if (sleep > 0)
+		usleep(sleep);
+
+	// read responce
+	if (response != NULL) {
+		int index = 0;
+		int timeout = 3;
+		while (index < max) {
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(PRIVATE_DATA->handle, &readout);
+			tv.tv_sec = timeout;
+			tv.tv_usec = 100000;
+			timeout = 0;
+			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+			if (result <= 0)
+				break;
+			result = read(PRIVATE_DATA->handle, &c, 1);
+			if (result < 1) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+				return false;
+			}
+			response[index++] = c;
+
+			if (c == ')')
+				break;
+		}
+		response[index] = 0;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	return true;
+}
+
+
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 static void focuser_timer_callback(indigo_device *device) {
 	bool moving, moving_HC;
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	/*
-	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
+	int res = EAFGetPosition(PRIVATE_DATA->handle, &(PRIVATE_DATA->current_position));
 	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->current_position, res);
 
-	res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_HC);
+	res = EAFIsMoving(PRIVATE_DATA->handle, &moving, &moving_HC);
 	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->handle, res);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	*/
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	if ((!moving) || (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -112,13 +179,13 @@ static void temperature_timer_callback(indigo_device *device) {
 	bool moving = false, moving_HC = false;
 
 	/*
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	int res = EAFIsHandControl(PRIVATE_DATA->dev_id, &has_handcontrol);
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	int res = EAFIsHandControl(PRIVATE_DATA->handle, &has_handcontrol);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsHandControl(%d) = %d", PRIVATE_DATA->dev_id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsHandControl(%d) = %d", PRIVATE_DATA->handle, res);
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFIsHandControl(%d, <- %d) = %d", PRIVATE_DATA->dev_id, has_handcontrol, res);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFIsHandControl(%d, <- %d) = %d", PRIVATE_DATA->handle, has_handcontrol, res);
 	}
 
 	// Update temerature at first call even if HC is connected.
@@ -126,18 +193,18 @@ static void temperature_timer_callback(indigo_device *device) {
 	if (first_call) has_handcontrol = false;
 
 	if (has_handcontrol) {
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
+		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+		res = EAFGetPosition(PRIVATE_DATA->handle, &(PRIVATE_DATA->current_position));
 		//fprintf(stderr, "pos=%d\n", PRIVATE_DATA->current_position);
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->current_position, res);
 		} else if (FOCUSER_POSITION_ITEM->number.value != PRIVATE_DATA->current_position) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->current_position, res);
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_HC);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+			EAFIsMoving(PRIVATE_DATA->handle, &moving, &moving_HC);
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			if (moving) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
@@ -147,15 +214,15 @@ static void temperature_timer_callback(indigo_device *device) {
 	} else { // No Hand control, this does not guarantee that we have temperature sensor
 		first_call = false;
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
+		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+		res = EAFGetTemp(PRIVATE_DATA->handle, &temp);
 		FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 		}
 		// static double ctemp = 0;
 		// FOCUSER_TEMPERATURE_ITEM->number.value = ctemp;
@@ -213,12 +280,12 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
 
 	/*
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	int res = EAFGetPosition(PRIVATE_DATA->handle, &PRIVATE_DATA->current_position);
 	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	*/
 	/* Make sure we do not attempt to go beyond the limits */
 	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
@@ -229,13 +296,13 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
 	/*
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	res = EAFMove(PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->target_position, res);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	*/
 	PRIVATE_DATA->prev_temp = new_temp;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -258,7 +325,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -325,66 +392,54 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				} else {
-				/*
-					EAFGetID(index, &(PRIVATE_DATA->dev_id));
-					int res = EAFOpen(PRIVATE_DATA->dev_id);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-					pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-					if (!res) {
-						pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-						res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
-						}
-						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-
-						res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
-						}
-						FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
-
-						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
-						}
-						FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position;
-
-						res = EAFGetReverse(PRIVATE_DATA->dev_id, &(FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
-						}
-						FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
-
-						res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
-						}
-						EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
-						pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-
-						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
-						indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
-						PRIVATE_DATA->prev_temp = -273;
-						device->is_connected = true;
-						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0.1, temperature_timer_callback);
+					char *name = DEVICE_PORT_ITEM->text.value;
+					if (strncmp(name, "dsd://", 8)) {
+						PRIVATE_DATA->handle = indigo_open_serial(name);
+						/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
+						sleep(2);
 					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", index, res);
+						char *host = name + 8;
+						char *colon = strchr(host, ':');
+						if (colon == NULL) {
+							PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
+						} else {
+							char host_name[INDIGO_NAME_SIZE];
+							strncpy(host_name, host, colon - host);
+							host_name[colon - host] = 0;
+							int port = atoi(colon + 1);
+							PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
+						}
+					}
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					if ( PRIVATE_DATA->handle < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, " indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+					} else {
+						char response[100]={0};
+						if (dsd_command(device, "[GPOS]", response, sizeof(response), 100)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %s", response);
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+						pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+
+						device->is_connected = true;
+						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0.1, temperature_timer_callback);
 					}
-				*/
 				}
 			}
 		} else {
@@ -392,23 +447,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-				/*
-				int res = EAFClose(PRIVATE_DATA->dev_id);
-				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+				int res = close(PRIVATE_DATA->handle);
+				if (res < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
 				}
-				res = EAFGetID(index, &(PRIVATE_DATA->dev_id));
-				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
-				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
-				}
-				*/
 				indigo_global_unlock(device);
-				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -418,15 +465,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 		/*
-		int res = EAFSetReverse(PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+		int res = EAFSetReverse(PRIVATE_DATA->handle, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetReverse(%d, %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetReverse(%d, %d) = %d", PRIVATE_DATA->handle, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		*/
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
@@ -442,33 +489,33 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				/*
-				int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+				int res = EAFMove(PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->target_position, res);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				*/
-				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				/*
-				int res = EAFResetPostion(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+				int res = EAFResetPostion(PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFResetPostion(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFResetPostion(%d, %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->target_position, res);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+				res = EAFGetPosition(PRIVATE_DATA->handle, &PRIVATE_DATA->current_position);
 				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				*/
-				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			}
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -479,21 +526,21 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 		/*
-		int res = EAFSetMaxStep(PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetMaxStep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position, res);
+		int res = EAFSetMaxStep(PRIVATE_DATA->handle, PRIVATE_DATA->max_position);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetMaxStep(%d, -> %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->max_position, res);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d) = %d", PRIVATE_DATA->handle, res);
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
+		res = EAFGetMaxStep(PRIVATE_DATA->handle, &(PRIVATE_DATA->max_position));
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->handle, res);
 		}
 		*/
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
@@ -501,22 +548,22 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 		PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
 		/*
-		int res = EAFSetBacklash(PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetBacklash(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash, res);
+		int res = EAFSetBacklash(PRIVATE_DATA->handle, PRIVATE_DATA->backlash);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetBacklash(%d, -> %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->backlash, res);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBacklash(%d) = %d", PRIVATE_DATA->handle, res);
 			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
+		res = EAFGetBacklash(PRIVATE_DATA->handle, &(PRIVATE_DATA->backlash));
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->handle, res);
 		}
 		*/
 		FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
@@ -526,11 +573,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			/*
-			int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+			int res = EAFGetPosition(PRIVATE_DATA->handle, &PRIVATE_DATA->current_position);
 			if (res != EAF_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
 			}
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
@@ -546,13 +593,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+			res = EAFMove(PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 			if (res != EAF_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->target_position, res);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			*/
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -564,20 +611,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 		/*
-		int res = EAFStop(PRIVATE_DATA->dev_id);
+		int res = EAFStop(PRIVATE_DATA->handle);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFStop(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFStop(%d) = %d", PRIVATE_DATA->handle, res);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+		res = EAFGetPosition(PRIVATE_DATA->handle, &PRIVATE_DATA->current_position);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		*/
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -597,15 +644,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
 		EAF_BEEP_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 		/*
-		int res = EAFSetBeep(PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value);
+		int res = EAFSetBeep(PRIVATE_DATA->handle, EAF_BEEP_ON_ITEM->sw.value);
 		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBeep(%d, %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBeep(%d, %d) = %d", PRIVATE_DATA->handle, EAF_BEEP_ON_ITEM->sw.value, res);
 			EAF_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		*/
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
@@ -691,7 +738,7 @@ indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info
 			private_data[index] = malloc(sizeof(dsd_private_data));
 			assert(private_data[index] != NULL);
 			memset(private_data[index], 0, sizeof(dsd_private_data));
-			private_data[index]->dev_id = -1;
+			private_data[index]->handle = -1;
 			focuser[index] = malloc(sizeof(indigo_device));
 			assert(focuser[index] != NULL);
 			memcpy(focuser[index], &focuser_template, sizeof(indigo_device));
