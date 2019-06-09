@@ -78,7 +78,7 @@ static void compensate_focus(indigo_device *device, double new_temp);
 
 #define DSD_CMD_LEN 100
 
-static bool dsd_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+static bool dsd_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
 	char c;
 	struct timeval tv;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -135,7 +135,7 @@ static bool dsd_command(indigo_device *device, char *command, char *response, in
 		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -147,7 +147,7 @@ static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
 	if (dsd_command(device, "[GFRM]", response, sizeof(response), 100)) {
 		int parsed = sscanf(response, "(Board=%[^','], Version=%[^')'])", board, firmware);
 		if (parsed != 2) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: %s %s %s", response, board, firmware);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "[GFRM] -> %s = %s %s", response, board, firmware);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
@@ -155,34 +155,61 @@ static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
 }
 
 
-static bool dsd_get_position(indigo_device *device, uint32_t *pos) {
-	if (!pos) return false;
+static bool dsd_command_get_value(indigo_device *device, const char *command, uint32_t *value) {
+	if (!value) return false;
 
 	char response[DSD_CMD_LEN]={0};
-	if (dsd_command(device, "[GPOS]", response, sizeof(response), 100)) {
-		int parsed = sscanf(response, "(%d)", pos);
+	if (dsd_command(device, command, response, sizeof(response), 100)) {
+		int parsed = sscanf(response, "(%d)", value);
 		if (parsed != 1) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: %s %d", response, *pos);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %s = %d", command, response, *value);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
 	return false;
+}
+
+
+static bool dsd_command_set_value(indigo_device *device, const char *command, uint32_t value) {
+	char cmd[DSD_CMD_LEN];
+	char resp[DSD_CMD_LEN];
+
+	snprintf(cmd, DSD_CMD_LEN, command, value);
+	if(!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+
+	if(strcmp(resp, "(OK)") == 0) {
+		return true;
+	}
+	return false;
+}
+
+
+static bool dsd_stop(indigo_device *device) {
+	return dsd_command(device, "[STOP]", NULL, 0, 100);
 }
 
 
 static bool dsd_sync_position(indigo_device *device, uint32_t pos) {
-	char cmd[DSD_CMD_LEN];
-	char resp[DSD_CMD_LEN];
-	snprintf(cmd, DSD_CMD_LEN, "[SPOS%06d]", pos);
-	return dsd_command(device, cmd, resp, sizeof(resp), 100);
+	return dsd_command_set_value(device, "[SPOS%06d]", pos);
 }
 
 
 static bool dsd_set_reverse(indigo_device *device, bool enabled) {
 	char cmd[DSD_CMD_LEN];
 	char resp[DSD_CMD_LEN];
+
 	snprintf(cmd, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
-	return dsd_command(device, cmd, resp, sizeof(resp), 100);
+	if(!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+
+	if(strcmp(resp, "(OK)") == 0) {
+		return true;
+	}
+	return false;
+}
+
+
+static bool dsd_get_position(indigo_device *device, uint32_t *pos) {
+	return dsd_command_get_value(device, "[GPOS]", pos);
 }
 
 
@@ -201,7 +228,108 @@ static bool dsd_goto_position(indigo_device *device, uint32_t position) {
 	}
 
 	// Start motion toward position
-	return dsd_command(device, "[SMOV]", resp, sizeof(resp), 100);
+	return dsd_command(device, "[SMOV]", NULL, 0, 100);
+}
+
+
+static bool dsd_get_step_mode(indigo_device *device, uint32_t *mode) {
+	return dsd_command_get_value(device, "[GSTP]", mode);
+}
+
+
+static bool dsd_set_step_mode(indigo_device *device, uint32_t mode) {
+	return dsd_command_set_value(device, "[SSTP%d]", mode);
+}
+
+
+static bool dsd_get_max_move(indigo_device *device, uint32_t *move) {
+	return dsd_command_get_value(device, "[GMXM]", move);
+}
+
+
+static bool dsd_set_max_move(indigo_device *device, uint32_t move) {
+	return dsd_command_set_value(device, "[SMXM%d]", move);
+}
+
+
+static bool dsd_get_max_position(indigo_device *device, uint32_t *position) {
+	return dsd_command_get_value(device, "[GMXP]", position);
+}
+
+
+static bool dsd_set_max_position(indigo_device *device, uint32_t position) {
+	return dsd_command_set_value(device, "[SMXP%d]", position);
+}
+
+
+static bool dsd_get_settle_buffer(indigo_device *device, uint32_t *buffer) {
+	return dsd_command_get_value(device, "[GBUF]", buffer);
+}
+
+
+static bool dsd_set_settle_buffer(indigo_device *device, uint32_t buffer) {
+	return dsd_command_set_value(device, "[SBUF%06d]", buffer);
+}
+
+
+static bool dsd_get_coils_timeout(indigo_device *device, uint32_t *to) {
+	return dsd_command_get_value(device, "[GIDC]", to);
+}
+
+
+static bool dsd_set_coills_timeout(indigo_device *device, uint32_t to) {
+	return dsd_command_set_value(device, "[SIDC%06d]", to);
+}
+
+
+#define COILS_MODE_IDLE_OFF            0
+#define COILS_MODE_ALWAYS_ON           1
+#define COILS_MODE_IDLE_COILS_TIMEOUT  2
+
+static bool dsd_get_coils_mode(indigo_device *device, uint32_t *mode) {
+	return dsd_command_get_value(device, "[GCLM]", mode);
+}
+
+
+static bool dsd_set_coils_mode(indigo_device *device, uint32_t mode) {
+	if (mode > 2) return false;
+	return dsd_command_set_value(device, "[SCLM%d]", mode);
+}
+
+
+static bool dsd_get_current_move(indigo_device *device, uint32_t *move) {
+	return dsd_command_get_value(device, "[GCMV%]", move);
+}
+
+static bool dsd_set_current_move(indigo_device *device, uint32_t move) {
+	return dsd_command_set_value(device, "[SCMV%d%%]", move);
+}
+
+
+static bool dsd_get_current_hold(indigo_device *device, uint32_t *hold) {
+	return dsd_command_get_value(device, "[GCHD%]", hold);
+}
+
+
+static bool dsd_set_current_hold(indigo_device *device, uint32_t hold) {
+	return dsd_command_set_value(device, "[SCHD%d%%]", hold);
+}
+
+
+static bool dsd_get_speed(indigo_device *device, uint32_t *speed) {
+	return dsd_command_get_value(device, "[GSPD]", speed);
+}
+
+
+static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
+	if (speed > 3) return false;
+	return dsd_command_set_value(device, "[SSPD%d]", speed);
+}
+
+
+
+static bool dsd_is_moving(indigo_device *device, bool *is_moving) {
+	return dsd_command_get_value(device, "[GMOV]", (uint32_t *)is_moving);
 }
 
 
@@ -502,27 +630,42 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 
-						if (dsd_sync_position(device, 1234)) {
+						if (dsd_sync_position(device, 0)) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "sync OK");
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 
-						position;
 						if (dsd_get_position(device, &position)) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 
-						if (dsd_goto_position(device, 1200)) {
+						if (dsd_goto_position(device, 200)) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "goto OK");
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 
-						position;
+						bool is_moving;
+						dsd_is_moving(device, &is_moving);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "moving?: %d", is_moving);
+
 						if (dsd_get_position(device, &position)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+
+						if (dsd_set_speed(device, 3)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+
+						int speed;
+						if (dsd_get_speed(device, &speed)) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
