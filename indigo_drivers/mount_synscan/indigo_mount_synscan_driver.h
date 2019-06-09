@@ -48,6 +48,9 @@ int synscan_select_best_encoder_point(indigo_device* device, double haPos[], dou
 int synscan_select_best_encoder_point_aa(indigo_device* device, double azPos[], double altPos[]);
 bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double rate, int duration, double resume_rate);
 
+void synscan_save_position(indigo_device *device);
+bool synscan_restore_position(indigo_device *device, enum AxisID axis, bool remove);
+
 //  All rates are arcsecs/sec
 extern const double SIDEREAL_RATE;
 extern const double LUNAR_RATE;

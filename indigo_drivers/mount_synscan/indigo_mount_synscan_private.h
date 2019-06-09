@@ -25,7 +25,8 @@ enum GlobalMode {
 	kGlobalModeError,
 	kGlobalModeIdle,
 	kGlobalModeSlewing,
-	kGlobalModeParking
+	kGlobalModeParking,
+	kGlobalModeGoingHome
 };
 
 enum AxisMode {
@@ -52,7 +53,10 @@ typedef struct {
 	pthread_mutex_t driver_mutex;
 	indigo_property *operating_mode_property;
 	indigo_property *mount_polarscope_property;
-	
+	indigo_property *use_encoders_property;
+	indigo_property *use_ppec_property;
+	indigo_property *autohome_property;
+
 	bool mountConfigured;
 
 	//  Mount parameters
@@ -65,7 +69,9 @@ typedef struct {
 	long raHighSpeedFactor;
 	long decHighSpeedFactor;
 	bool canSetPolarscopeBrightness;
-
+	long raFeatures;
+	long decFeatures;
+	
 	//  Zero position
 	long raZeroPos;
 	long decZeroPos;
@@ -102,19 +108,12 @@ typedef struct {
 } synscan_private_data;
 
 //-----------------------------------------------
-/** MOUNT_POLARSCOPE property pointer, property is optional, read-write and should be fully controlled by device driver.
- */
 #define MOUNT_POLARSCOPE_PROPERTY							    (PRIVATE_DATA->mount_polarscope_property)
-#define MOUNT_POLARSCOPE_PROPERTY_NAME						"POLARSCOPE"
-
-
-/** MOUNT_POLARSCOPE.BRIGHTNESS property item pointer.
- */
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM					(MOUNT_POLARSCOPE_PROPERTY->items+0)
+
+#define MOUNT_POLARSCOPE_PROPERTY_NAME						"POLARSCOPE"
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME			"BRIGHTNESS"
 
-/** OPERATING_MODE property pointer, property is optional, read-write and should be fully controlled by device driver.
- */
 #define MOUNT_OPERATING_MODE_PROPERTY							(PRIVATE_DATA->operating_mode_property)
 #define POLAR_MODE_ITEM                 					(MOUNT_OPERATING_MODE_PROPERTY->items+0)
 #define ALTAZ_MODE_ITEM                 					(MOUNT_OPERATING_MODE_PROPERTY->items+1)
@@ -122,5 +121,27 @@ typedef struct {
 #define MOUNT_OPERATING_MODE_PROPERTY_NAME		    "MOUNT_OPERATING_MODE"
 #define POLAR_MODE_ITEM_NAME            					"POLAR"
 #define ALTAZ_MODE_ITEM_NAME            					"ALTAZ"
+
+#define MOUNT_USE_ENCODERS_PROPERTY								(PRIVATE_DATA->use_encoders_property)
+#define MOUNT_USE_RA_ENCODER_ITEM                 (MOUNT_USE_ENCODERS_PROPERTY->items+0)
+#define MOUNT_USE_DEC_ENCODER_ITEM                (MOUNT_USE_ENCODERS_PROPERTY->items+1)
+
+#define MOUNT_USE_ENCODERS_PROPERTY_NAME		    	"MOUNT_USE_ENCODERS"
+#define MOUNT_USE_RA_ENCODER_ITEM_NAME            "RA"
+#define MOUNT_USE_DEC_ENCODER_ITEM_NAME           "DEC"
+
+#define MOUNT_USE_PPEC_PROPERTY										(PRIVATE_DATA->use_ppec_property)
+#define MOUNT_USE_RA_PPEC_ITEM                		(MOUNT_USE_PPEC_PROPERTY->items+0)
+#define MOUNT_USE_DEC_PPEC_ITEM                		(MOUNT_USE_PPEC_PROPERTY->items+1)
+
+#define MOUNT_USE_PPEC_PROPERTY_NAME		    			"MOUNT_USE_PPEC"
+#define MOUNT_USE_RA_PPEC_ITEM_NAME            		"RA"
+#define MOUNT_USE_DEC_PPEC_ITEM_NAME           		"DEC"
+
+#define MOUNT_AUTOHOME_PROPERTY										(PRIVATE_DATA->autohome_property)
+#define MOUNT_AUTOHOME_ITEM		                		(MOUNT_AUTOHOME_PROPERTY->items+0)
+
+#define MOUNT_AUTOHOME_PROPERTY_NAME		    			"MOUNT_AUTOHOME"
+#define MOUNT_AUTOHOME_ITEM_NAME            			"AUTOHOME"
 
 #endif /* indigo_mount_synscan_private_h */
