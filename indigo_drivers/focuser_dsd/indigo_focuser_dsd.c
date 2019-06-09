@@ -74,6 +74,9 @@ typedef struct {
 
 static void compensate_focus(indigo_device *device, double new_temp);
 
+/* Deepsky Dad Commands ======================================================================== */
+
+#define DSD_CMD_LEN 100
 
 static bool dsd_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	char c;
@@ -134,6 +137,71 @@ static bool dsd_command(indigo_device *device, char *command, char *response, in
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
+}
+
+
+static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
+	if(!board || !firmware) return false;
+
+	char response[DSD_CMD_LEN]={0};
+	if (dsd_command(device, "[GFRM]", response, sizeof(response), 100)) {
+		int parsed = sscanf(response, "(Board=%[^','], Version=%[^')'])", board, firmware);
+		if (parsed != 2) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: %s %s %s", response, board, firmware);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+
+static bool dsd_get_position(indigo_device *device, uint32_t *pos) {
+	if (!pos) return false;
+
+	char response[DSD_CMD_LEN]={0};
+	if (dsd_command(device, "[GPOS]", response, sizeof(response), 100)) {
+		int parsed = sscanf(response, "(%d)", pos);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: %s %d", response, *pos);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+
+static bool dsd_sync_position(indigo_device *device, uint32_t pos) {
+	char cmd[DSD_CMD_LEN];
+	char resp[DSD_CMD_LEN];
+	snprintf(cmd, DSD_CMD_LEN, "[SPOS%06d]", pos);
+	return dsd_command(device, cmd, resp, sizeof(resp), 100);
+}
+
+
+static bool dsd_set_reverse(indigo_device *device, bool enabled) {
+	char cmd[DSD_CMD_LEN];
+	char resp[DSD_CMD_LEN];
+	snprintf(cmd, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
+	return dsd_command(device, cmd, resp, sizeof(resp), 100);
+}
+
+
+static bool dsd_goto_position(indigo_device *device, uint32_t position) {
+	char cmd[DSD_CMD_LEN];
+	char resp[DSD_CMD_LEN] = {0};
+
+	snprintf(cmd, DSD_CMD_LEN, "[STRG%06d]", position);
+
+	// Set Position First
+	if (!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+
+	if(strcmp(resp, "!101)") == 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Move failed");
+		return false;
+	}
+
+	// Start motion toward position
+	return dsd_command(device, "[SMOV]", resp, sizeof(resp), 100);
 }
 
 
@@ -402,6 +470,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				} else {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					char *name = DEVICE_PORT_ITEM->text.value;
 					if (strncmp(name, "dsd://", 8)) {
 						PRIVATE_DATA->handle = indigo_open_serial(name);
@@ -420,21 +489,54 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
 						}
 					}
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					if ( PRIVATE_DATA->handle < 0) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, " indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 					} else {
-						char response[100]={0};
-						if (dsd_command(device, "[GPOS]", response, sizeof(response), 100)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %s", response);
+						int position;
+						if (dsd_get_position(device, &position)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+
+						if (dsd_sync_position(device, 1234)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "sync OK");
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+
+						position;
+						if (dsd_get_position(device, &position)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+
+						if (dsd_goto_position(device, 1200)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "goto OK");
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+
+						position;
+						if (dsd_get_position(device, &position)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						}
+
+
+						char board[100];
+						char firmware[100];
+						if (dsd_get_info(device, board, firmware)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: #%s# #%s#", board, firmware);
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-						pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 
 						device->is_connected = true;
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
