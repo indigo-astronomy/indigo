@@ -811,6 +811,7 @@ static void mount_park_timer_callback(indigo_device* device) {
 		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount at home.");
 	} else {
+		synscan_save_position(device);
 		MOUNT_PARK_PARKED_ITEM->sw.value = true;
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
