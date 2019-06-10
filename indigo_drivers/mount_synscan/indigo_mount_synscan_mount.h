@@ -28,6 +28,7 @@ void mount_handle_tracking(indigo_device *device);
 void mount_handle_coordinates(indigo_device *device);
 void mount_handle_aa_coordinates(indigo_device *device);
 void mount_handle_park(indigo_device* device);
+void mount_handle_home(indigo_device* device);
 void mount_handle_abort(indigo_device* device);
 
 //  ST4 Guiding
