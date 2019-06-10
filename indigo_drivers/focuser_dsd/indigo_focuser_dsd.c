@@ -484,11 +484,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 5;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 100000;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
 		//FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 100000;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
 		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "\'%s\' MaxStep = %d",device->name ,PRIVATE_DATA->info.MaxStep);
 
 		FOCUSER_SPEED_PROPERTY->hidden = true;
@@ -608,48 +608,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						FOCUSER_POSITION_ITEM->number.max = 100000;
 						FOCUSER_POSITION_ITEM->number.step = 100;
 
-						//if (dsd_sync_position(device, 0)) {
-						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "sync OK");
-						//} else {
-						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						//}
-
-						//if (dsd_get_position(device, &position)) {
-						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
-						//} else {
-						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						//}
-
-						//if (dsd_goto_position(device, 200)) {
-						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "goto OK");
-						//} else {
-						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						//}
-						/*
-						bool is_moving;
-						dsd_is_moving(device, &is_moving);
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "moving?: %d", is_moving);
-
-						if (dsd_get_position(device, &position)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						}
-
-						if (dsd_set_speed(device, 3)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						}
-
-						int speed;
-						if (dsd_get_speed(device, &speed)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						}
-						*/
-
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 						device->is_connected = true;
@@ -670,7 +628,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				if (PRIVATE_DATA->focuser_version > 1) {
+					indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				}
 				indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
@@ -789,12 +749,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-			/*
-			int res = EAFGetPosition(PRIVATE_DATA->handle, &PRIVATE_DATA->current_position);
-			if (res != EAF_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
+			uint32_t position;
+			if (!dsd_get_position(device, &position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+			} else {
+				PRIVATE_DATA->current_position = (double)position;
 			}
+
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
 			} else {
@@ -809,13 +770,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			res = EAFMove(PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-			if (res != EAF_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->target_position, res);
+			if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			*/
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -827,20 +785,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-		/*
-		int res = EAFStop(PRIVATE_DATA->handle);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFStop(%d) = %d", PRIVATE_DATA->handle, res);
+
+		if (!dsd_stop(device)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_stop(%d) failed", PRIVATE_DATA->handle);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		res = EAFGetPosition(PRIVATE_DATA->handle, &PRIVATE_DATA->current_position);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
+		uint32_t position;
+		if (!dsd_get_position(device, &position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			PRIVATE_DATA->current_position = (double)position;
 		}
-		*/
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
