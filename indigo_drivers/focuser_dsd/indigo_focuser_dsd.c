@@ -64,7 +64,7 @@
 
 typedef struct {
 	int handle;
-	//EAF_INFO info;
+	int focuser_version;
 	int current_position, target_position, max_position, backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
@@ -171,13 +171,13 @@ static bool dsd_command_get_value(indigo_device *device, const char *command, ui
 
 
 static bool dsd_command_set_value(indigo_device *device, const char *command, uint32_t value) {
-	char cmd[DSD_CMD_LEN];
-	char resp[DSD_CMD_LEN];
+	char command_string[DSD_CMD_LEN];
+	char response[DSD_CMD_LEN];
 
-	snprintf(cmd, DSD_CMD_LEN, command, value);
-	if(!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+	snprintf(command_string, DSD_CMD_LEN, command, value);
+	if(!dsd_command(device, command_string, response, sizeof(response), 100)) return false;
 
-	if(strcmp(resp, "(OK)") == 0) {
+	if(strcmp(response, "(OK)") == 0) {
 		return true;
 	}
 	return false;
@@ -195,13 +195,13 @@ static bool dsd_sync_position(indigo_device *device, uint32_t pos) {
 
 
 static bool dsd_set_reverse(indigo_device *device, bool enabled) {
-	char cmd[DSD_CMD_LEN];
-	char resp[DSD_CMD_LEN];
+	char command[DSD_CMD_LEN];
+	char response[DSD_CMD_LEN];
 
-	snprintf(cmd, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
-	if(!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+	snprintf(command, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
+	if(!dsd_command(device, command, response, sizeof(response), 100)) return false;
 
-	if(strcmp(resp, "(OK)") == 0) {
+	if(strcmp(response, "(OK)") == 0) {
 		return true;
 	}
 	return false;
@@ -214,15 +214,15 @@ static bool dsd_get_position(indigo_device *device, uint32_t *pos) {
 
 
 static bool dsd_goto_position(indigo_device *device, uint32_t position) {
-	char cmd[DSD_CMD_LEN];
-	char resp[DSD_CMD_LEN] = {0};
+	char command[DSD_CMD_LEN];
+	char response[DSD_CMD_LEN] = {0};
 
-	snprintf(cmd, DSD_CMD_LEN, "[STRG%06d]", position);
+	snprintf(command, DSD_CMD_LEN, "[STRG%06d]", position);
 
 	// Set Position First
-	if (!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+	if (!dsd_command(device, command, response, sizeof(response), 100)) return false;
 
-	if(strcmp(resp, "!101)") == 0) {
+	if(strcmp(response, "!101)") == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Move failed");
 		return false;
 	}
@@ -297,22 +297,23 @@ static bool dsd_set_coils_mode(indigo_device *device, uint32_t mode) {
 }
 
 
-static bool dsd_get_current_move(indigo_device *device, uint32_t *move) {
-	return dsd_command_get_value(device, "[GCMV%]", move);
-}
-
-static bool dsd_set_current_move(indigo_device *device, uint32_t move) {
-	return dsd_command_set_value(device, "[SCMV%d%%]", move);
+static bool dsd_get_move_current(indigo_device *device, uint32_t *current) {
+	return dsd_command_get_value(device, "[GCMV%]", current);
 }
 
 
-static bool dsd_get_current_hold(indigo_device *device, uint32_t *hold) {
-	return dsd_command_get_value(device, "[GCHD%]", hold);
+static bool dsd_set_move_current(indigo_device *device, uint32_t current) {
+	return dsd_command_set_value(device, "[SCMV%d%%]", current);
 }
 
 
-static bool dsd_set_current_hold(indigo_device *device, uint32_t hold) {
-	return dsd_command_set_value(device, "[SCHD%d%%]", hold);
+static bool dsd_get_hold_current(indigo_device *device, uint32_t *current) {
+	return dsd_command_get_value(device, "[GCHD%]", current);
+}
+
+
+static bool dsd_set_hold_current(indigo_device *device, uint32_t current) {
+	return dsd_command_set_value(device, "[SCHD%d%%]", current);
 }
 
 
@@ -327,9 +328,23 @@ static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
 }
 
 
-
 static bool dsd_is_moving(indigo_device *device, bool *is_moving) {
 	return dsd_command_get_value(device, "[GMOV]", (uint32_t *)is_moving);
+}
+
+
+static bool dsd_get_temperature(indigo_device *device, double *temperature) {
+	if ((PRIVATE_DATA->focuser_version < 2) || (!temperature)) return false;
+
+	char response[DSD_CMD_LEN]={0};
+	if (dsd_command(device, "[GTMC]", response, sizeof(response), 100)) {
+		int parsed = sscanf(response, "(%lf)", temperature);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[GTMC] -> %s = %lf", response, *temperature);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
 }
 
 
@@ -367,80 +382,26 @@ static void focuser_timer_callback(indigo_device *device) {
 
 
 static void temperature_timer_callback(indigo_device *device) {
-	float temp;
+	double temp;
 	static bool has_sensor = true;
 	static bool first_call = true;
 	bool has_handcontrol;
 	bool moving = false, moving_HC = false;
 
-	/*
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	int res = EAFIsHandControl(PRIVATE_DATA->handle, &has_handcontrol);
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsHandControl(%d) = %d", PRIVATE_DATA->handle, res);
+	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+	if (!dsd_get_temperature(device, &temp)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle, temp);
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFIsHandControl(%d, <- %d) = %d", PRIVATE_DATA->handle, has_handcontrol, res);
+		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
+	}
+	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+
+	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+		compensate_focus(device, temp);
 	}
 
-	// Update temerature at first call even if HC is connected.
-	//   We want alert sate and T=-273 if the sensor is not connected.
-	if (first_call) has_handcontrol = false;
-
-	if (has_handcontrol) {
-		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-		res = EAFGetPosition(PRIVATE_DATA->handle, &(PRIVATE_DATA->current_position));
-		//fprintf(stderr, "pos=%d\n", PRIVATE_DATA->current_position);
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->current_position, res);
-		} else if (FOCUSER_POSITION_ITEM->number.value != PRIVATE_DATA->current_position) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->current_position, res);
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-			EAFIsMoving(PRIVATE_DATA->handle, &moving, &moving_HC);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			if (moving) {
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			}
-			FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-	} else { // No Hand control, this does not guarantee that we have temperature sensor
-		first_call = false;
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-		res = EAFGetTemp(PRIVATE_DATA->handle, &temp);
-		FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value, res);
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value, res);
-		}
-		// static double ctemp = 0;
-		// FOCUSER_TEMPERATURE_ITEM->number.value = ctemp;
-		// temp = ctemp;
-		// ctemp += 0.12;
-		if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) {
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			if (has_sensor) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
-				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
-				has_sensor = false;
-			}
-		} else {
-			has_sensor = true;
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-		}
-		if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-			compensate_focus(device, temp);
-		} else {
-			PRIVATE_DATA->prev_temp = -273;
-		}
-	}
-	*/
 	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
 }
 
@@ -474,14 +435,12 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + compensation;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
 
-	/*
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	int res = EAFGetPosition(PRIVATE_DATA->handle, &PRIVATE_DATA->current_position);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->handle, res);
+	uint32_t current_position;
+	if (!dsd_get_position(device, &current_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	*/
+	PRIVATE_DATA->current_position = (double)current_position;
+
 	/* Make sure we do not attempt to go beyond the limits */
 	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
 		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
@@ -490,16 +449,11 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
-	/*
-
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	res = EAFMove(PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->handle, PRIVATE_DATA->target_position, res);
+	if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	*/
+
 	PRIVATE_DATA->prev_temp = new_temp;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -529,6 +483,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
+		INFO_PROPERTY->count = 5;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
@@ -554,13 +509,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		//FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
-		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
-		// -------------------------------------------------------------------------- FOCUSER_COMPENSATION
-		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
-		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
 		// -------------------------------------------------------------------------- FOCUSER_MODE
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------- BEEP_PROPERTY
@@ -585,7 +535,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-
+		int position;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -622,13 +572,38 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					} else {
-						int position;
-						if (dsd_get_position(device, &position)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
+						return INDIGO_OK;;
+					} else if (!dsd_get_position(device, &position)) {  // check if it is DSD Focuser first
+						int res = close(PRIVATE_DATA->handle);
+						if (res < 0) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
 						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
 						}
+						indigo_global_unlock(device);
+						device->is_connected = false;
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Deep Sky Dad AF did not respond");
+						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+						indigo_update_property(device, CONNECTION_PROPERTY, "Deep Sky Dad AF did not respond");
+						return INDIGO_OK;;
+					} else { // Successfully connected
+						char board[DSD_CMD_LEN] = "N/A";
+						char firmware[DSD_CMD_LEN] = "N/A";
+						if (dsd_get_info(device, board, firmware)) {
+							strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+							strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+							indigo_update_property(device, INFO_PROPERTY, NULL);
+							if (strstr(board, "AF1")) {
+								PRIVATE_DATA->focuser_version = 1;
+							} else if (strstr(board, "AF2")) {
+								PRIVATE_DATA->focuser_version = 2;
+							} else if (strstr(board, "AF3")) {
+								PRIVATE_DATA->focuser_version = 3;
+							}
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "version = %d", PRIVATE_DATA->focuser_version);
+						}
+
 
 						if (dsd_sync_position(device, 0)) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "sync OK");
@@ -642,11 +617,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 
-						if (dsd_goto_position(device, 200)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "goto OK");
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						}
+						//if (dsd_goto_position(device, 200)) {
+						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "goto OK");
+						//} else {
+						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						//}
 
 						bool is_moving;
 						dsd_is_moving(device, &is_moving);
@@ -671,19 +646,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 
-
-						char board[100];
-						char firmware[100];
-						if (dsd_get_info(device, board, firmware)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: #%s# #%s#", board, firmware);
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						}
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 						device->is_connected = true;
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0.1, temperature_timer_callback);
+
+						if (PRIVATE_DATA->focuser_version > 1) {
+							FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+							dsd_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
+							PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
+							FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+							FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+							FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+							PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
+						}
 					}
 				}
 			}
