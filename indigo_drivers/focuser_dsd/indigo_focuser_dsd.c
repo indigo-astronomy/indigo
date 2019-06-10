@@ -64,7 +64,7 @@
 
 typedef struct {
 	int handle;
-	//EAF_INFO info;
+	int focuser_version;
 	int current_position, target_position, max_position, backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
@@ -330,6 +330,21 @@ static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
 
 static bool dsd_is_moving(indigo_device *device, bool *is_moving) {
 	return dsd_command_get_value(device, "[GMOV]", (uint32_t *)is_moving);
+}
+
+
+static bool dsd_get_temperature(indigo_device *device, double *temperature) {
+	if ((PRIVATE_DATA->focuser_version < 2) || (!temperature)) return false;
+
+	char response[DSD_CMD_LEN]={0};
+	if (dsd_command(device, "[GTMC]", response, sizeof(response), 100)) {
+		int parsed = sscanf(response, "(%lf)", temperature);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[GTMC] -> %s = %lf", response, *temperature);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
 }
 
 
@@ -639,14 +654,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						indigo_update_property(device, CONNECTION_PROPERTY, "Deep Sky Dad AF did not respond");
 						return INDIGO_OK;;
 					} else { // Successfully connected
-
 						char board[DSD_CMD_LEN] = "N/A";
 						char firmware[DSD_CMD_LEN] = "N/A";
 						if (dsd_get_info(device, board, firmware)) {
-							//strncpy(INFO_VENDOR_ITEM->text.value, "Deep Sky Dad", INDIGO_VALUE_SIZE);
 							strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 							strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 							indigo_update_property(device, INFO_PROPERTY, NULL);
+							if (strstr(board, "AF1")) {
+								PRIVATE_DATA->focuser_version = 1;
+							} else if (strstr(board, "AF2")) {
+								PRIVATE_DATA->focuser_version = 2;
+							} else if (strstr(board, "AF3")) {
+								PRIVATE_DATA->focuser_version = 3;
+							}
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "version = %d", PRIVATE_DATA->focuser_version);
 						}
 
 
@@ -662,11 +683,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
 
-						if (dsd_goto_position(device, 200)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "goto OK");
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						}
+						//if (dsd_goto_position(device, 200)) {
+						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "goto OK");
+						//} else {
+						//	INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+						//}
 
 						bool is_moving;
 						dsd_is_moving(device, &is_moving);
@@ -690,7 +711,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
 						}
-
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
