@@ -55,6 +55,7 @@ typedef struct {
 	indigo_property *mount_polarscope_property;
 	indigo_property *use_encoders_property;
 	indigo_property *use_ppec_property;
+	indigo_property *train_ppec_property;
 	indigo_property *autohome_property;
 
 	bool mountConfigured;
@@ -130,13 +131,21 @@ typedef struct {
 #define MOUNT_USE_RA_ENCODER_ITEM_NAME            "RA"
 #define MOUNT_USE_DEC_ENCODER_ITEM_NAME           "DEC"
 
-#define MOUNT_USE_PPEC_PROPERTY										(PRIVATE_DATA->use_ppec_property)
-#define MOUNT_USE_RA_PPEC_ITEM                		(MOUNT_USE_PPEC_PROPERTY->items+0)
-#define MOUNT_USE_DEC_PPEC_ITEM                		(MOUNT_USE_PPEC_PROPERTY->items+1)
+#define MOUNT_PPEC_PROPERTY												(PRIVATE_DATA->use_ppec_property)
+#define MOUNT_PPEC_ENABLED_ITEM                		(MOUNT_PPEC_PROPERTY->items+0)
+#define MOUNT_PPEC_DISABLED_ITEM               		(MOUNT_PPEC_PROPERTY->items+1)
 
-#define MOUNT_USE_PPEC_PROPERTY_NAME		    			"MOUNT_USE_PPEC"
-#define MOUNT_USE_RA_PPEC_ITEM_NAME            		"RA"
-#define MOUNT_USE_DEC_PPEC_ITEM_NAME           		"DEC"
+#define MOUNT_PPEC_PROPERTY_NAME		    					"MOUNT_PPEC"
+#define MOUNT_PPEC_ENABLED_ITEM_NAME           		"ENABLED"
+#define MOUNT_PPEC_DISABLED_ITEM_NAME          		"DISABLED"
+
+#define MOUNT_PPEC_TRAINING_PROPERTY							(PRIVATE_DATA->train_ppec_property)
+#define MOUNT_PPEC_TRAINIG_STARTED_ITEM           (MOUNT_PPEC_TRAINING_PROPERTY->items+0)
+#define MOUNT_PPEC_TRAINIG_STOPPED_ITEM           (MOUNT_PPEC_TRAINING_PROPERTY->items+1)
+
+#define MOUNT_PPEC_TRAINING_PROPERTY_NAME		    	"MOUNT_PPEC_TRAINING"
+#define MOUNT_PPEC_TRAINIG_STARTED_ITEM_NAME      "STARTED"
+#define MOUNT_PPEC_TRAINIG_STOPPED_ITEM_NAME      "STOPED"
 
 #define MOUNT_AUTOHOME_PROPERTY										(PRIVATE_DATA->autohome_property)
 #define MOUNT_AUTOHOME_ITEM		                		(MOUNT_AUTOHOME_PROPERTY->items+0)
