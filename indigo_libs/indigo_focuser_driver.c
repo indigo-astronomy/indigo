@@ -52,7 +52,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_SPEED_ITEM, FOCUSER_SPEED_ITEM_NAME, "Speed", 1, 100, 1, 1);
 			// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
-			FOCUSER_REVERSE_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Invert on and out motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			FOCUSER_REVERSE_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Invert IN and OUT motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_REVERSE_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
