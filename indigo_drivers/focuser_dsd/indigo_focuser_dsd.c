@@ -171,13 +171,13 @@ static bool dsd_command_get_value(indigo_device *device, const char *command, ui
 
 
 static bool dsd_command_set_value(indigo_device *device, const char *command, uint32_t value) {
-	char cmd[DSD_CMD_LEN];
-	char resp[DSD_CMD_LEN];
+	char command_string[DSD_CMD_LEN];
+	char response[DSD_CMD_LEN];
 
-	snprintf(cmd, DSD_CMD_LEN, command, value);
-	if(!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+	snprintf(command_string, DSD_CMD_LEN, command, value);
+	if(!dsd_command(device, command_string, response, sizeof(response), 100)) return false;
 
-	if(strcmp(resp, "(OK)") == 0) {
+	if(strcmp(response, "(OK)") == 0) {
 		return true;
 	}
 	return false;
@@ -195,13 +195,13 @@ static bool dsd_sync_position(indigo_device *device, uint32_t pos) {
 
 
 static bool dsd_set_reverse(indigo_device *device, bool enabled) {
-	char cmd[DSD_CMD_LEN];
-	char resp[DSD_CMD_LEN];
+	char command[DSD_CMD_LEN];
+	char response[DSD_CMD_LEN];
 
-	snprintf(cmd, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
-	if(!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+	snprintf(command, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
+	if(!dsd_command(device, command, response, sizeof(response), 100)) return false;
 
-	if(strcmp(resp, "(OK)") == 0) {
+	if(strcmp(response, "(OK)") == 0) {
 		return true;
 	}
 	return false;
@@ -214,15 +214,15 @@ static bool dsd_get_position(indigo_device *device, uint32_t *pos) {
 
 
 static bool dsd_goto_position(indigo_device *device, uint32_t position) {
-	char cmd[DSD_CMD_LEN];
-	char resp[DSD_CMD_LEN] = {0};
+	char command[DSD_CMD_LEN];
+	char response[DSD_CMD_LEN] = {0};
 
-	snprintf(cmd, DSD_CMD_LEN, "[STRG%06d]", position);
+	snprintf(command, DSD_CMD_LEN, "[STRG%06d]", position);
 
 	// Set Position First
-	if (!dsd_command(device, cmd, resp, sizeof(resp), 100)) return false;
+	if (!dsd_command(device, command, response, sizeof(response), 100)) return false;
 
-	if(strcmp(resp, "!101)") == 0) {
+	if(strcmp(response, "!101)") == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Move failed");
 		return false;
 	}
@@ -297,22 +297,23 @@ static bool dsd_set_coils_mode(indigo_device *device, uint32_t mode) {
 }
 
 
-static bool dsd_get_current_move(indigo_device *device, uint32_t *move) {
-	return dsd_command_get_value(device, "[GCMV%]", move);
-}
-
-static bool dsd_set_current_move(indigo_device *device, uint32_t move) {
-	return dsd_command_set_value(device, "[SCMV%d%%]", move);
+static bool dsd_get_move_current(indigo_device *device, uint32_t *current) {
+	return dsd_command_get_value(device, "[GCMV%]", current);
 }
 
 
-static bool dsd_get_current_hold(indigo_device *device, uint32_t *hold) {
-	return dsd_command_get_value(device, "[GCHD%]", hold);
+static bool dsd_set_move_current(indigo_device *device, uint32_t current) {
+	return dsd_command_set_value(device, "[SCMV%d%%]", current);
 }
 
 
-static bool dsd_set_current_hold(indigo_device *device, uint32_t hold) {
-	return dsd_command_set_value(device, "[SCHD%d%%]", hold);
+static bool dsd_get_hold_current(indigo_device *device, uint32_t *current) {
+	return dsd_command_get_value(device, "[GCHD%]", current);
+}
+
+
+static bool dsd_set_hold_current(indigo_device *device, uint32_t current) {
+	return dsd_command_set_value(device, "[SCHD%d%%]", current);
 }
 
 
@@ -325,7 +326,6 @@ static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
 	if (speed > 3) return false;
 	return dsd_command_set_value(device, "[SSPD%d]", speed);
 }
-
 
 
 static bool dsd_is_moving(indigo_device *device, bool *is_moving) {
