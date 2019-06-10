@@ -529,6 +529,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
+		INFO_PROPERTY->count = 5;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
@@ -585,7 +586,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-
+		int position;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -622,13 +623,32 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					} else {
-						int position;
-						if (dsd_get_position(device, &position)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: %d", position);
+						return INDIGO_OK;;
+					} else if (!dsd_get_position(device, &position)) {  // check if it is DSD Focuser first
+						int res = close(PRIVATE_DATA->handle);
+						if (res < 0) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
 						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
 						}
+						indigo_global_unlock(device);
+						device->is_connected = false;
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Deep Sky Dad AF did not respond");
+						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+						indigo_update_property(device, CONNECTION_PROPERTY, "Deep Sky Dad AF did not respond");
+						return INDIGO_OK;;
+					} else { // Successfully connected
+
+						char board[DSD_CMD_LEN] = "N/A";
+						char firmware[DSD_CMD_LEN] = "N/A";
+						if (dsd_get_info(device, board, firmware)) {
+							//strncpy(INFO_VENDOR_ITEM->text.value, "Deep Sky Dad", INDIGO_VALUE_SIZE);
+							strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+							strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+							indigo_update_property(device, INFO_PROPERTY, NULL);
+						}
+
 
 						if (dsd_sync_position(device, 0)) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "sync OK");
@@ -672,13 +692,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						}
 
 
-						char board[100];
-						char firmware[100];
-						if (dsd_get_info(device, board, firmware)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "RESPONSE: #%s# #%s#", board, firmware);
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, " NO response");
-						}
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 						device->is_connected = true;
