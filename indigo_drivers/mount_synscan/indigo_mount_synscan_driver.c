@@ -899,7 +899,7 @@ void synscan_save_position(indigo_device *device) {
 	int path_end = snprintf(buffer, INDIGO_VALUE_SIZE, "%s/.indigo", getenv("HOME"));
 	int handle = mkdir(buffer, 0777);
 	if (handle == 0 || errno == EEXIST) {
-		strcat(buffer + path_end, "/synscan.park");
+		sprintf(buffer + path_end, "/synscan-%s.park", MOUNT_INFO_MODEL_ITEM->text.value);
 		handle = open(buffer, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't create %s (%s)", buffer, strerror(errno));
@@ -918,7 +918,7 @@ bool synscan_restore_position(indigo_device *device, enum AxisID axis, bool remo
 	long ra_pos = 0, dec_pos = 0;
 	char path[INDIGO_VALUE_SIZE];
 	char buffer[INDIGO_VALUE_SIZE];
-	snprintf(path, INDIGO_VALUE_SIZE, "%s/.indigo/synscan.park", getenv("HOME"));
+	snprintf(path, INDIGO_VALUE_SIZE, "%s/.indigo/synscan-%s.park", getenv("HOME"), MOUNT_INFO_MODEL_ITEM->text.value);
 	int handle = open(path, O_RDONLY, 0);
 	if (handle) {
 		if (!(read(handle, buffer, INDIGO_VALUE_SIZE) > 0 && sscanf(buffer, "%lx %lx", &ra_pos, &dec_pos) == 2)) {
