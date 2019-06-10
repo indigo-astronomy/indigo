@@ -120,7 +120,7 @@ static bool synscan_flush(indigo_device* device) {
 
 static bool synscan_command_unlocked(indigo_device* device, const char* cmd) {
 	//  Send the command to the port
-	INDIGO_DRIVER_TRACE(DRIVER_NAME, "CMD: [%s]", cmd);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CMD: [%s]", cmd);
 	if (PRIVATE_DATA->udp) {
 		char buf[64];
 		snprintf(buf, sizeof(buf), "%s\r", cmd);
@@ -171,7 +171,7 @@ static bool synscan_read_response(indigo_device* device, char* r) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s] - error", len - 1, resp);
 		return false;
 	} else {
-		INDIGO_DRIVER_TRACE(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
 	}
 	
 	//  Extract response payload, return

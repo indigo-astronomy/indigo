@@ -119,14 +119,22 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_USE_RA_ENCODER_ITEM, MOUNT_USE_RA_ENCODER_ITEM_NAME, "Use RA encoder", false);
 		indigo_init_switch_item(MOUNT_USE_DEC_ENCODER_ITEM, MOUNT_USE_DEC_ENCODER_ITEM_NAME, "Use Dec encoder", false);
 
-		// -------------------------------------------------------------------------------- MOUNT_USE_ENCODERS
-		MOUNT_USE_PPEC_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_USE_PPEC_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Use PPEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (MOUNT_USE_PPEC_PROPERTY == NULL)
+		// -------------------------------------------------------------------------------- MOUNT_USE_PPEC
+		MOUNT_PPEC_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PPEC_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Use PPEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (MOUNT_PPEC_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		MOUNT_USE_PPEC_PROPERTY->hidden = true;
-		indigo_init_switch_item(MOUNT_USE_RA_PPEC_ITEM, MOUNT_USE_RA_PPEC_ITEM_NAME, "Use RA PPEC", false);
-		indigo_init_switch_item(MOUNT_USE_DEC_PPEC_ITEM, MOUNT_USE_DEC_PPEC_ITEM_NAME, "Use Dec PPEC", false);
+		MOUNT_PPEC_PROPERTY->hidden = true;
+		indigo_init_switch_item(MOUNT_PPEC_ENABLED_ITEM, MOUNT_PPEC_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(MOUNT_PPEC_DISABLED_ITEM, MOUNT_PPEC_DISABLED_ITEM_NAME, "Disabled", true);
 
+		// -------------------------------------------------------------------------------- MOUNT_TRAIN_PPEC
+		MOUNT_PPEC_TRAINING_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PPEC_TRAINING_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Train PPEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (MOUNT_PPEC_TRAINING_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		MOUNT_PPEC_TRAINING_PROPERTY->hidden = true;
+		indigo_init_switch_item(MOUNT_PPEC_TRAINIG_STARTED_ITEM, MOUNT_PPEC_TRAINIG_STARTED_ITEM_NAME, "Started", false);
+		indigo_init_switch_item(MOUNT_PPEC_TRAINIG_STOPPED_ITEM, MOUNT_PPEC_TRAINIG_STOPPED_ITEM_NAME, "Stopped", true);
+		
 		// -------------------------------------------------------------------------------- MOUNT_AUTOHOME
 		MOUNT_AUTOHOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Auto home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (MOUNT_AUTOHOME_PROPERTY == NULL)
@@ -158,8 +166,10 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 				indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_USE_ENCODERS_PROPERTY, property))
 				indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_USE_PPEC_PROPERTY, property))
-				indigo_define_property(device, MOUNT_USE_PPEC_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_PPEC_PROPERTY, property))
+				indigo_define_property(device, MOUNT_PPEC_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_PPEC_TRAINING_PROPERTY, property))
+				indigo_define_property(device, MOUNT_PPEC_TRAINING_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property))
 				indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 		}
@@ -326,11 +336,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			mount_handle_encoders(device);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_USE_PPEC_PROPERTY, property)) {
+	} else if (indigo_property_match(MOUNT_PPEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_USE_PPEC
-		indigo_property_copy_values(MOUNT_USE_PPEC_PROPERTY, property, false);
+		indigo_property_copy_values(MOUNT_PPEC_PROPERTY, property, false);
 		if (IS_CONNECTED) {
-			mount_handle_ppec(device);
+			mount_handle_use_ppec(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_PPEC_TRAINING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_TRAIN_PPEC
+		indigo_property_copy_values(MOUNT_PPEC_TRAINING_PROPERTY, property, false);
+		if (IS_CONNECTED) {
+			mount_handle_train_ppec(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property)) {
@@ -359,7 +376,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, MOUNT_POLARSCOPE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_OPERATING_MODE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_USE_ENCODERS_PROPERTY);
-			indigo_save_property(device, NULL, MOUNT_USE_PPEC_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_PPEC_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -375,7 +392,8 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_POLARSCOPE_PROPERTY);
 	indigo_release_property(MOUNT_OPERATING_MODE_PROPERTY);
 	indigo_release_property(MOUNT_USE_ENCODERS_PROPERTY);
-	indigo_release_property(MOUNT_USE_PPEC_PROPERTY);
+	indigo_release_property(MOUNT_PPEC_PROPERTY);
+	indigo_release_property(MOUNT_PPEC_TRAINING_PROPERTY);
 	indigo_release_property(MOUNT_AUTOHOME_PROPERTY);
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
