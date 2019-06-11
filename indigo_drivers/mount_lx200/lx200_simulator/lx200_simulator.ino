@@ -36,7 +36,8 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 bool is_meade = false;
 bool is_10micron = false;
 bool is_gemini = false;
-bool is_avalon = true;
+bool is_avalon = false;
+bool is_onestep = true;
 
 int date_day = 1;
 int date_month = 1;
@@ -166,6 +167,8 @@ void loop() {
           Serial.print("Losmandy Gemini#");
         else if (is_avalon)
 					Serial.print("Avalon#");
+				else if (is_onestep)
+					Serial.print("On-Step#");
 				else
           Serial.print("Autostar#");
       } else if (!strcmp(buffer, "GVF")) {

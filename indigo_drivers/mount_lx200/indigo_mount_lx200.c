@@ -1144,17 +1144,39 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static void focuser_timer_callback(indigo_device *device) {
 	if (IS_CONNECTED) {
-		meade_command(device, ":FQ#", NULL, 0, 0);
 		char response[16];
-		if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
-			FOCUSER_POSITION_ITEM->number.value = atoi(response);
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
+			meade_command(device, ":FQ#", NULL, 0, 0);
+			if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
+				FOCUSER_POSITION_ITEM->number.value = atoi(response);
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			if (!meade_command(device, ":FG#", response, sizeof(response), 0)) {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				FOCUSER_POSITION_ITEM->number.value = atoi(response);
+				if (!meade_command(device, ":FT#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else if (response[0] == 'M') {
+					PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0, focuser_timer_callback);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+				}
+			}
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		}
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	}
 }
 
@@ -1164,8 +1186,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
-		FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
-		FOCUSER_SPEED_ITEM->number.max = 2;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
@@ -1176,6 +1196,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
+	char command[16], response[16];
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -1187,12 +1208,36 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				result = meade_open(device->master_device);
 			}
 			if (result) {
-				char response[16];
-				if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
-					FOCUSER_POSITION_ITEM->number.value = atoi(response);
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				} else {
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
+					FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+					FOCUSER_SPEED_ITEM->number.max = 2;
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+					meade_command(device, FOCUSER_SPEED_ITEM->number.value == 1 ? ":FS#" : ":FF#", NULL, 0, 0);
+					if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
+						FOCUSER_POSITION_ITEM->number.value = atoi(response);
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					} else {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+					FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+					FOCUSER_SPEED_ITEM->number.max = 4;
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+					sprintf(command, "F%d", (int)FOCUSER_SPEED_ITEM->number.value);
+					meade_command(device, command, NULL, 0, 0);
+					if (meade_command(device, ":FG#", response, sizeof(response), 0)) {
+						FOCUSER_POSITION_ITEM->number.value = atoi(response);
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+						FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+					} else {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					if (meade_command(device, ":FI#", response, sizeof(response), 0)) {
+						FOCUSER_POSITION_ITEM->number.min = atoi(response);
+					}
+					if (meade_command(device, ":FM#", response, sizeof(response), 0)) {
+						FOCUSER_POSITION_ITEM->number.max = atoi(response);
+					}
 				}
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -1209,40 +1254,76 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- FOCUSER_SPEED
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-		if (FOCUSER_SPEED_ITEM->number.value == 1) {
-			meade_command(device, ":FS#", NULL, 0, 0);
-		} else {
-			meade_command(device, ":FF#", NULL, 0, 0);
+		if (IS_CONNECTED) {
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
+				meade_command(device, FOCUSER_SPEED_ITEM->number.value == 1 ? ":FS#" : ":FF#", NULL, 0, 0);
+			} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+				sprintf(command, "F%d", (int)FOCUSER_SPEED_ITEM->number.value);
+				meade_command(device, command, NULL, 0, 0);
+			}
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		}
-		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_STEPS
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value) {
-			meade_command(device, ":F+#", NULL, 0, 0);
-		} else {
-			meade_command(device, ":F-#", NULL, 0, 0);
+		if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
+			if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value) {
+				meade_command(device, ":F+#", NULL, 0, 0);
+			} else {
+				meade_command(device, ":F-#", NULL, 0, 0);
+			}
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, FOCUSER_STEPS_ITEM->number.value / 1000, focuser_timer_callback);
+		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			int sign = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? 1 : -1;
+			sprintf(command, "FR%+d", sign * (int)FOCUSER_STEPS_ITEM->number.value);
+			meade_command(device, command, NULL, 0, 0);
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0, focuser_timer_callback);
 		}
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		PRIVATE_DATA->focuser_timer = indigo_set_timer(device, FOCUSER_STEPS_ITEM->number.value / 1000, focuser_timer_callback);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			sprintf(command, "FS%+d", (int)FOCUSER_POSITION_ITEM->number.value);
+			meade_command(device, command, NULL, 0, 0);
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0, focuser_timer_callback);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-			meade_command(device, ":FQ#", NULL, 0, 0);
-			char response[16];
-			if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
-				FOCUSER_POSITION_ITEM->number.value = atoi(response);
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
+				meade_command(device, ":FQ#", NULL, 0, 0);
+				if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_ITEM->number.value = atoi(response);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+				meade_command(device, ":FQ#", NULL, 0, 0);
+				if (meade_command(device, ":FG#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_ITEM->number.value = atoi(response);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
