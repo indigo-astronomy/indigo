@@ -23,7 +23,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_dsd
 
-## Status: Under development
+## Status: Stable
 
 Driver is developed and tested with:
 * DSD AF1
