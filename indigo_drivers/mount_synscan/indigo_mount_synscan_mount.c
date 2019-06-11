@@ -252,8 +252,8 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 			indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_PPEC_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_PPEC_TRAINING_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 			//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
 			indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -302,8 +302,8 @@ void synscan_mount_connect(indigo_device* device) {
 				indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_PPEC_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_PPEC_TRAINING_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 				synscan_close(device);
 			}
@@ -966,17 +966,17 @@ void mount_handle_encoders(indigo_device *device) {
 }
 
 void mount_handle_use_ppec(indigo_device *device) {
-	synscan_ext_setting(device, kAxisRA,  MOUNT_PPEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
-	synscan_ext_setting(device, kAxisDEC,  MOUNT_PPEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
-	MOUNT_PPEC_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PPEC_PROPERTY, "Updated PPEC usage");
+	synscan_ext_setting(device, kAxisRA,  MOUNT_PEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
+	synscan_ext_setting(device, kAxisDEC,  MOUNT_PEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
+	MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_PEC_PROPERTY, "Updated PPEC usage");
 }
 
 void mount_handle_train_ppec(indigo_device *device) {
-	synscan_ext_setting(device, kAxisRA,  MOUNT_PPEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining);
-	synscan_ext_setting(device, kAxisDEC,  MOUNT_PPEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining);
-	MOUNT_PPEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PPEC_TRAINING_PROPERTY, "Updated PPEC training state");
+	synscan_ext_setting(device, kAxisRA,  MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining);
+	synscan_ext_setting(device, kAxisDEC,  MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining);
+	MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Updated PPEC training state");
 }
 
 void mount_handle_autohome(indigo_device *device) {

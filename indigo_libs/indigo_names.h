@@ -1520,6 +1520,21 @@
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
 
 //----------------------------------------------------------------------
+/** MOUNT_PEC property name.
+ */
+#define MOUNT_PEC_PROPERTY_NAME		    					"MOUNT_PEC"
+#define MOUNT_PEC_ENABLED_ITEM_NAME           		"ENABLED"
+#define MOUNT_PEC_DISABLED_ITEM_NAME          		"DISABLED"
+
+//----------------------------------------------------------------------
+/** MOUNT_PEC_TRAINING property name.
+ */
+#define MOUNT_PEC_TRAINING_PROPERTY_NAME		    	"MOUNT_PEC_TRAINING"
+#define MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME      "STARTED"
+#define MOUNT_PEC_TRAINIG_STOPPED_ITEM_NAME      "STOPED"
+
+
+//----------------------------------------------------------------------
 /** GPS_STATUS property name.
  */
 #define GPS_STATUS_PROPERTY_NAME                "GPS_STATUS"

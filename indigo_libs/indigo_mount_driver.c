@@ -242,6 +242,21 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_text_item(MOUNT_SNOOP_JOYSTICK_ITEM, SNOOP_JOYSTICK_ITEM_NAME, "Joystick", "");
 			indigo_init_text_item(MOUNT_SNOOP_GPS_ITEM, SNOOP_GPS_ITEM_NAME, "GPS", "");
+			// -------------------------------------------------------------------------------- MOUNT_USE_PPEC
+			MOUNT_PEC_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PEC_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Use PEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (MOUNT_PEC_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			MOUNT_PEC_PROPERTY->hidden = true;
+			indigo_init_switch_item(MOUNT_PEC_ENABLED_ITEM, MOUNT_PEC_ENABLED_ITEM_NAME, "Enabled", false);
+			indigo_init_switch_item(MOUNT_PEC_DISABLED_ITEM, MOUNT_PEC_DISABLED_ITEM_NAME, "Disabled", true);
+			
+			// -------------------------------------------------------------------------------- MOUNT_TRAIN_PPEC
+			MOUNT_PEC_TRAINING_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PEC_TRAINING_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Train PEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (MOUNT_PEC_TRAINING_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			MOUNT_PEC_TRAINING_PROPERTY->hidden = true;
+			indigo_init_switch_item(MOUNT_PEC_TRAINIG_STARTED_ITEM, MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME, "Started", false);
+			indigo_init_switch_item(MOUNT_PEC_TRAINIG_STOPPED_ITEM, MOUNT_PEC_TRAINIG_STOPPED_ITEM_NAME, "Stopped", true);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -373,6 +388,10 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_SNOOP_DEVICES_PROPERTY, property))
 			indigo_define_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_PEC_PROPERTY, property))
+			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_PEC_TRAINING_PROPERTY, property))
+			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -414,6 +433,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 			indigo_add_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);
 			indigo_add_snoop_rule(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_SLEW_RATE_PROPERTY_NAME);
 			indigo_add_snoop_rule(MOUNT_TRACKING_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_TRACKING_PROPERTY_NAME);
@@ -459,6 +480,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
@@ -594,6 +617,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, MOUNT_ALIGNMENT_MODE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_PARK_POSITION_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_EPOCH_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_PEC_PROPERTY);
 			indigo_mount_save_alignment_points(device);
 		} else if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
 			indigo_mount_load_alignment_points(device);
@@ -820,6 +844,8 @@ indigo_result indigo_mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY);
 	indigo_release_property(MOUNT_SNOOP_DEVICES_PROPERTY);
+	indigo_release_property(MOUNT_PEC_PROPERTY);
+	indigo_release_property(MOUNT_PEC_TRAINING_PROPERTY);
 	return indigo_device_detach(device);
 }
 
