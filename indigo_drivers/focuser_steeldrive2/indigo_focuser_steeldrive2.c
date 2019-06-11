@@ -289,11 +289,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 			if (PRIVATE_DATA->handle > 0) {
-				if (steeldrive2_command(device, "$BS GET VERSION", response, sizeof(response)) && (colon = strchr(response, ':'))) {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Baader Planetarium SteelDriveII");
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, colon + 1);
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-				} else {
+				bool success = false;
+				for (int i = 0; i < 3; i++) {
+					if (steeldrive2_command(device, "$BS GET VERSION", response, sizeof(response)) && (colon = strchr(response, ':'))) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Baader Planetarium SteelDriveII");
+						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, colon + 1);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						success = true;
+						break;
+					}
+					usleep(100000);
+				}
+				if (!success) {
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
