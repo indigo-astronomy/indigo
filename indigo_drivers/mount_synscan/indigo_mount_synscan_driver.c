@@ -157,7 +157,7 @@ bool synscan_configure(indigo_device* device) {
 			indigo_set_switch(MOUNT_PEC_PROPERTY, PRIVATE_DATA->raFeatures & kInPPEC ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
 		
 		if (!MOUNT_PEC_TRAINING_PROPERTY->hidden)
-			indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, PRIVATE_DATA->raFeatures & kInPPECTraining ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+			indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, (PRIVATE_DATA->raFeatures & kInPPECTraining) || (PRIVATE_DATA->decFeatures & kInPPECTraining) ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
 
 		//  Determine ZERO positions
 		PRIVATE_DATA->raZeroPos = RA_HOME_POSITION - (PRIVATE_DATA->raTotalSteps / 4);     //  HA == 0 (horizontal shaft, rotated clockwise)
