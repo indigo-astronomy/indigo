@@ -531,6 +531,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 					MOUNT_UTC_TIME_PROPERTY->hidden = false;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
+					MOUNT_PEC_PROPERTY->hidden = false;
 					MOUNT_PARK_PROPERTY->count = 1;
 					MOUNT_PARK_PARKED_ITEM->sw.value = false;
 					PRIVATE_DATA->parked = false;
@@ -562,6 +563,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 							longitude += 360;
 						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
 					}
+					if (meade_command(device, ":$QZ?", response, sizeof(response), 0))
+						indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
 					meade_get_coords(device);
 					meade_get_utc(device);
 				} else {
@@ -995,7 +998,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TYPE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_TYP
+		// -------------------------------------------------------------------------------- MOUNT_TYPE
 		indigo_property_copy_values(MOUNT_TYPE_PROPERTY, property, false);
 		MOUNT_TYPE_PROPERTY->state = INDIGO_OK_STATE;
 		if (MOUNT_TYPE_EQMAC_ITEM->sw.value) {
@@ -1004,6 +1007,15 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
 		indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_PEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PEC
+		indigo_property_copy_values(MOUNT_PEC_PROPERTY, property, false);
+		MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
+		if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			meade_command(device, MOUNT_PEC_ENABLED_ITEM->sw.value ? "$QZ+" : "$QZ-", NULL, 0, 0);
+		}
+		indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
