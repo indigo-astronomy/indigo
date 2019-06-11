@@ -1531,7 +1531,7 @@
  */
 #define MOUNT_PEC_TRAINING_PROPERTY_NAME		    	"MOUNT_PEC_TRAINING"
 #define MOUNT_PEC_TRAINIG_STARTED_ITEM_NAME      "STARTED"
-#define MOUNT_PEC_TRAINIG_STOPPED_ITEM_NAME      "STOPED"
+#define MOUNT_PEC_TRAINIG_STOPPED_ITEM_NAME      "STOPPED"
 
 
 //----------------------------------------------------------------------
