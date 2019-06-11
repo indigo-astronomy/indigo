@@ -152,6 +152,12 @@ bool synscan_configure(indigo_device* device) {
 			MOUNT_POLARSCOPE_PROPERTY->hidden = false;
 			MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value = 255;
 		}
+		
+		if (!MOUNT_PPEC_PROPERTY->hidden)
+			indigo_set_switch(MOUNT_PPEC_PROPERTY, PRIVATE_DATA->raFeatures & kInPPEC ? MOUNT_PPEC_ENABLED_ITEM : MOUNT_PPEC_DISABLED_ITEM, true);
+		
+		if (!MOUNT_PPEC_TRAINING_PROPERTY->hidden)
+			indigo_set_switch(MOUNT_PPEC_TRAINING_PROPERTY, PRIVATE_DATA->raFeatures & kInPPECTraining ? MOUNT_PPEC_TRAINIG_STARTED_ITEM : MOUNT_PPEC_TRAINIG_STOPPED_ITEM, true);
 
 		//  Determine ZERO positions
 		PRIVATE_DATA->raZeroPos = RA_HOME_POSITION - (PRIVATE_DATA->raTotalSteps / 4);     //  HA == 0 (horizontal shaft, rotated clockwise)
