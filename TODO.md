@@ -97,6 +97,8 @@
 10. MJKZZ rail focuser driver __DONE__ __UNTESTED__
 11. Microtouch focuser
 12. Sesto-Senso focuser
+13. ASI focuser __DONE__
+14. DeepSky Dad AF focuser __DONE__
 
 #### Mounts
 
