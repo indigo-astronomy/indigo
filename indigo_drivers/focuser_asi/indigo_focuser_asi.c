@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -76,21 +76,22 @@ static void compensate_focus(indigo_device *device, double new_temp);
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 static void focuser_timer_callback(indigo_device *device) {
 	bool moving, moving_HC;
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
+	int res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_HC);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+
+	res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_position));
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
-
-	res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_HC);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
