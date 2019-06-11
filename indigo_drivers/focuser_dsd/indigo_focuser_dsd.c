@@ -78,6 +78,12 @@ static void compensate_focus(indigo_device *device, double new_temp);
 
 #define DSD_CMD_LEN 100
 
+#define COILS_MODE_IDLE_OFF            0
+#define COILS_MODE_ALWAYS_ON           1
+#define COILS_MODE_IDLE_COILS_TIMEOUT  2
+
+#define NO_TEMP_READING                (-127)
+
 static bool dsd_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
 	char c;
 	struct timeval tv;
@@ -282,10 +288,6 @@ static bool dsd_set_coills_timeout(indigo_device *device, uint32_t to) {
 }
 
 
-#define COILS_MODE_IDLE_OFF            0
-#define COILS_MODE_ALWAYS_ON           1
-#define COILS_MODE_IDLE_COILS_TIMEOUT  2
-
 static bool dsd_get_coils_mode(indigo_device *device, uint32_t *mode) {
 	return dsd_command_get_value(device, "[GCLM]", mode);
 }
@@ -353,18 +355,18 @@ static void focuser_timer_callback(indigo_device *device) {
 	bool moving;
 	uint32_t position;
 
+	if (!dsd_is_moving(device, &moving)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_is_moving(%d) failed", PRIVATE_DATA->handle);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+
 	if (!dsd_get_position(device, &position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		PRIVATE_DATA->current_position = (double)position;
-	}
-
-	if (!dsd_is_moving(device, &moving)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sd_is_moving(%d) failed", PRIVATE_DATA->handle);
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -382,9 +384,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static void temperature_timer_callback(indigo_device *device) {
 	double temp;
 	static bool has_sensor = true;
-	static bool first_call = true;
-	bool has_handcontrol;
-	bool moving = false, moving_HC = false;
+	bool moving = false;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	if (!dsd_get_temperature(device, &temp)) {
@@ -394,10 +394,23 @@ static void temperature_timer_callback(indigo_device *device) {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
 	}
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 
+	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (has_sensor) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
+			has_sensor = false;
+		}
+	} else {
+		has_sensor = true;
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	}
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
 		compensate_focus(device, temp);
+	} else {
+		/* reset temp so that the compensation starts when auto mode is selected */
+		PRIVATE_DATA->prev_temp = NO_TEMP_READING;
 	}
 
 	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
@@ -409,14 +422,14 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
 
 	/* we do not have previous temperature reading */
-	if (PRIVATE_DATA->prev_temp < -270) {
+	if (PRIVATE_DATA->prev_temp <= NO_TEMP_READING) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PRIVATE_DATA->prev_temp = %f", PRIVATE_DATA->prev_temp);
 		PRIVATE_DATA->prev_temp = new_temp;
 		return;
 	}
 
 	/* we do not have current temperature reading or focuser is moving */
-	if ((new_temp < -270) || (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE)) {
+	if ((new_temp <= NO_TEMP_READING) || (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: new_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", new_temp, FOCUSER_POSITION_PROPERTY->state);
 		return;
 	}
@@ -492,7 +505,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
 
-		FOCUSER_SPEED_PROPERTY->hidden = true;
+		FOCUSER_SPEED_PROPERTY->hidden = false;
+		FOCUSER_SPEED_ITEM->number.min = 1;
+		FOCUSER_SPEED_ITEM->number.max = 3;
+		FOCUSER_SPEED_ITEM->number.step = 1;
 
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 100;
@@ -604,6 +620,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						}
 						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 
+						uint32_t speed;
+						if (!dsd_get_speed(device, &speed)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
+						}
+						FOCUSER_SPEED_ITEM->number.value = (double)speed;
+
 						/* While we do not have max move property hardoce it to max position */
 						dsd_set_max_move(device, (uint32_t)FOCUSER_POSITION_ITEM->number.max);
 
@@ -712,6 +734,22 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_SPEED
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+		if (!dsd_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.target)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_speed(%d) failed", PRIVATE_DATA->handle);
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		uint32_t speed;
+		if (!dsd_get_speed(device, &speed)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
+		}
+		FOCUSER_SPEED_ITEM->number.value = (double)speed;
+		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
