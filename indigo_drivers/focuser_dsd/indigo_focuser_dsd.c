@@ -47,16 +47,19 @@
 #include "indigo_io.h"
 #include "indigo_focuser_dsd.h"
 
-#define dsd_VENDOR_ID                   0x03c3
-
 #define PRIVATE_DATA                    ((dsd_private_data *)device->private_data)
 
-#define EAF_BEEP_PROPERTY               (PRIVATE_DATA->beep_property)
-#define EAF_BEEP_ON_ITEM                (EAF_BEEP_PROPERTY->items+0)
-#define EAF_BEEP_OFF_ITEM               (EAF_BEEP_PROPERTY->items+1)
-#define EAF_BEEP_PROPERTY_NAME          "EAF_BEEP_ON_MOVE"
-#define EAF_BEEP_ON_ITEM_NAME           "ON"
-#define EAF_BEEP_OFF_ITEM_NAME          "OFF"
+#define DSD_STEP_MODE_PROPERTY          (PRIVATE_DATA->step_mode_property)
+#define DSD_STEP_MODE_1_ITEM            (DSD_STEP_MODE_PROPERTY->items+0)
+#define DSD_STEP_MODE_2_ITEM            (DSD_STEP_MODE_PROPERTY->items+1)
+#define DSD_STEP_MODE_4_ITEM            (DSD_STEP_MODE_PROPERTY->items+2)
+#define DSD_STEP_MODE_8_ITEM            (DSD_STEP_MODE_PROPERTY->items+3)
+
+#define DSD_STEP_MODE_PROPERTY_NAME     "DSD_STEP_SIZE"
+#define DSD_STEP_MODE_1_ITEM_NAME       "STEP_1"
+#define DSD_STEP_MODE_2_ITEM_NAME       "STEP_2"
+#define DSD_STEP_MODE_4_ITEM_NAME       "STEP_4"
+#define DSD_STEP_MODE_8_ITEM_NAME       "STEP_8"
 
 
 // gp_bits is used as boolean
@@ -69,7 +72,7 @@ typedef struct {
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
-	indigo_property *beep_property;
+	indigo_property *step_mode_property;
 } dsd_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
@@ -473,10 +476,10 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 }
 
 
-static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
-			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
+		if (indigo_property_match(DSD_STEP_MODE_PROPERTY, property))
+			indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -521,13 +524,15 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
-		// -------------------------------------------------------------------------- BEEP_PROPERTY
-		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (EAF_BEEP_PROPERTY == NULL)
+		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
+		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (DSD_STEP_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-
-		indigo_init_switch_item(EAF_BEEP_ON_ITEM, EAF_BEEP_ON_ITEM_NAME, "On", false);
-		indigo_init_switch_item(EAF_BEEP_OFF_ITEM, EAF_BEEP_OFF_ITEM_NAME, "Off", true);
+		DSD_STEP_MODE_PROPERTY->hidden = false;
+		indigo_init_switch_item(DSD_STEP_MODE_1_ITEM, DSD_STEP_MODE_1_ITEM_NAME, "Full step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_2_ITEM, DSD_STEP_MODE_2_ITEM_NAME, "1/2 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_4_ITEM, DSD_STEP_MODE_4_ITEM_NAME, "1/4 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_8_ITEM, DSD_STEP_MODE_8_ITEM_NAME, "1/8 step", false);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -535,6 +540,31 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void update_step_mode_switches(indigo_device * device) {
+	uint32_t value;
+
+	if (!dsd_get_step_mode(device, &value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) failed", PRIVATE_DATA->handle);
+		return;
+	}
+
+	switch (value) {
+	case 1:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_1_ITEM, true);
+		break;
+	case 2:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_2_ITEM, true);
+		break;
+	case 4:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_4_ITEM, true);
+		break;
+	case 8:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_8_ITEM, true);
+		break;
+	default:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
+	}
+}
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -598,6 +628,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					} else { // Successfully connected
 						char board[DSD_CMD_LEN] = "N/A";
 						char firmware[DSD_CMD_LEN] = "N/A";
+						uint32_t value;
 						if (dsd_get_info(device, board, firmware)) {
 							strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 							strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
@@ -620,11 +651,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						}
 						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 
-						uint32_t speed;
-						if (!dsd_get_speed(device, &speed)) {
+						if (!dsd_get_speed(device, &value)) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
 						}
-						FOCUSER_SPEED_ITEM->number.value = (double)speed;
+						FOCUSER_SPEED_ITEM->number.value = (double)value;
 
 						/* While we do not have max move property hardoce it to max position */
 						dsd_set_max_move(device, (uint32_t)FOCUSER_POSITION_ITEM->number.max);
@@ -632,9 +662,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						/* DSD does not have reverse motion, so we set it to be sure we know its state */
 						dsd_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 
-						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+						update_step_mode_switches(device);
+						indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 
+						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
+
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 
 						if (PRIVATE_DATA->focuser_version > 1) {
@@ -659,7 +692,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				if (PRIVATE_DATA->focuser_version > 1) {
 					indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				}
-				indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
+				indigo_delete_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -820,13 +853,27 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(EAF_BEEP_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- EAF_BEEP_PROPERTY
+	} else if (indigo_property_match(DSD_STEP_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSD_STEP_MODE_PROPERTY
 		if (!IS_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
-		EAF_BEEP_PROPERTY->state = INDIGO_OK_STATE;
-		// ===========================
-		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
+		indigo_property_copy_values(DSD_STEP_MODE_PROPERTY, property, false);
+		DSD_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		uint32_t mode;
+		if(DSD_STEP_MODE_1_ITEM->sw.value) {
+			mode = 1;
+		} else if(DSD_STEP_MODE_2_ITEM->sw.value) {
+			mode = 2;
+		} else if(DSD_STEP_MODE_4_ITEM->sw.value) {
+			mode = 4;
+		} else if(DSD_STEP_MODE_8_ITEM->sw.value) {
+			mode = 8;
+		}
+		if (!dsd_set_step_mode(device, mode)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		update_step_mode_switches(device);
+		indigo_update_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
@@ -866,11 +913,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
-	indigo_release_property(EAF_BEEP_PROPERTY);
+	indigo_release_property(DSD_STEP_MODE_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
+
 
 // --------------------------------------------------------------------------------
 #define MAX_DEVICES 8
@@ -882,7 +930,7 @@ indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_DSD_NAME,
 		focuser_attach,
-		eaf_enumerate_properties,
+		dsd_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach
