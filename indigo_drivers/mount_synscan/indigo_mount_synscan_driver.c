@@ -138,7 +138,7 @@ bool synscan_configure(indigo_device* device) {
 
 		MOUNT_OPERATING_MODE_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kIsAZEQ) || (PRIVATE_DATA->decFeatures & kIsAZEQ));
 		MOUNT_USE_ENCODERS_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasEncoder) || (PRIVATE_DATA->decFeatures & kHasEncoder));
-		MOUNT_PPEC_PROPERTY->hidden = MOUNT_PPEC_TRAINING_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasPPEC) || (PRIVATE_DATA->decFeatures & kHasPPEC));
+		MOUNT_PEC_PROPERTY->hidden = MOUNT_PEC_TRAINING_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasPPEC) || (PRIVATE_DATA->decFeatures & kHasPPEC));
 		MOUNT_AUTOHOME_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasHomeIndexer) || (PRIVATE_DATA->decFeatures & kHasHomeIndexer));
 
 //		PRIVATE_DATA->raTotalSteps = PRIVATE_DATA->decTotalSteps = 9024000;
@@ -153,11 +153,11 @@ bool synscan_configure(indigo_device* device) {
 			MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value = 255;
 		}
 		
-		if (!MOUNT_PPEC_PROPERTY->hidden)
-			indigo_set_switch(MOUNT_PPEC_PROPERTY, PRIVATE_DATA->raFeatures & kInPPEC ? MOUNT_PPEC_ENABLED_ITEM : MOUNT_PPEC_DISABLED_ITEM, true);
+		if (!MOUNT_PEC_PROPERTY->hidden)
+			indigo_set_switch(MOUNT_PEC_PROPERTY, PRIVATE_DATA->raFeatures & kInPPEC ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
 		
-		if (!MOUNT_PPEC_TRAINING_PROPERTY->hidden)
-			indigo_set_switch(MOUNT_PPEC_TRAINING_PROPERTY, PRIVATE_DATA->raFeatures & kInPPECTraining ? MOUNT_PPEC_TRAINIG_STARTED_ITEM : MOUNT_PPEC_TRAINIG_STOPPED_ITEM, true);
+		if (!MOUNT_PEC_TRAINING_PROPERTY->hidden)
+			indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, PRIVATE_DATA->raFeatures & kInPPECTraining ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
 
 		//  Determine ZERO positions
 		PRIVATE_DATA->raZeroPos = RA_HOME_POSITION - (PRIVATE_DATA->raTotalSteps / 4);     //  HA == 0 (horizontal shaft, rotated clockwise)

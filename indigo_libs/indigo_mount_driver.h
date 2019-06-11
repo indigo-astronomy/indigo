@@ -414,12 +414,27 @@ extern "C" {
 
 /** MOUNT_SNOOP_DEVICES_PROPERTY.JOYSTICK property item pointer.
 */
-#define MOUNT_SNOOP_JOYSTICK_ITEM														(MOUNT_SNOOP_DEVICES_PROPERTY->items+0)
+#define MOUNT_SNOOP_JOYSTICK_ITEM											(MOUNT_SNOOP_DEVICES_PROPERTY->items+0)
 
 /** MOUNT_SNOOP_DEVICES_PROPERTY.GPS property item pointer.
  */
-#define MOUNT_SNOOP_GPS_ITEM																(MOUNT_SNOOP_DEVICES_PROPERTY->items+1)
+#define MOUNT_SNOOP_GPS_ITEM													(MOUNT_SNOOP_DEVICES_PROPERTY->items+1)
 
+
+//------------------------------------------------
+/** MOUNT_PEC property pointer, property is optional.
+ */
+#define MOUNT_PEC_PROPERTY														(MOUNT_CONTEXT->mount_pec_property)
+#define MOUNT_PEC_ENABLED_ITEM                				(MOUNT_PEC_PROPERTY->items+0)
+#define MOUNT_PEC_DISABLED_ITEM               				(MOUNT_PEC_PROPERTY->items+1)
+	
+//------------------------------------------------
+/** MOUNT_PEC_TRAINING property pointer, property is optional.
+ */
+#define MOUNT_PEC_TRAINING_PROPERTY										(MOUNT_CONTEXT->mount_pec_training_property)
+#define MOUNT_PEC_TRAINIG_STARTED_ITEM           			(MOUNT_PEC_TRAINING_PROPERTY->items+0)
+#define MOUNT_PEC_TRAINIG_STOPPED_ITEM           			(MOUNT_PEC_TRAINING_PROPERTY->items+1)
+	
 
 //------------------------------------------------
 /** Max number of alignment points.
@@ -480,6 +495,8 @@ typedef struct {
 	indigo_property *mount_epoch_property;									///< MOUNT_EPOCH property pointer
 	indigo_property *mount_side_of_pier_property;						///< MOUNT_SIDE_OF_PIER property pointer
 	indigo_property *mount_snoop_devices_property;					///< MOUNT_SNOOP_DEVICES property pointer
+	indigo_property *mount_pec_property;										///< MOUNT_PEC property pointer
+	indigo_property *mount_pec_training_property;						///< MOUNT_PEC_TRAINING property pointer
 } indigo_mount_context;
 
 /** Attach callback function.

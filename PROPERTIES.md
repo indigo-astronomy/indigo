@@ -214,6 +214,10 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 | MOUNT_EPOCH | number | no | yes | EPOCH | yes |  |
 | MOUNT_SIDE_OF_PIER | switch | no | no | EAST | yes |  |
 |  |  |  |  | WEST | yes |  |
+| MOUNT_PEC | switch | no | no | ENABLED | yes |  |
+|  |  |  |  | DISABLED | yes |  |
+| MOUNT_PEC_TRAINING | switch | no | no | STARTED | yes |  |
+|  |  |  |  | STOPED | yes |  |
 
 Properties are implemented by mount driver base class in [indigo_mount_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_mount_driver.c).
 
