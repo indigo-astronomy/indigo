@@ -88,6 +88,12 @@ const uint8_t crc_array[256] = {
 #define X_RESET_ITEM								(X_RESET_PROPERTY->items + 0)
 #define X_REBOOT_ITEM								(X_RESET_PROPERTY->items + 1)
 
+#define X_USE_ENDSTOP_PROPERTY			(PRIVATE_DATA->x_use_endstop_property)
+#define X_USE_ENDSTOP_ENABLED_ITEM	(X_USE_ENDSTOP_PROPERTY->items + 0)
+#define X_USE_ENDSTOP_DISABLED_ITEM	(X_USE_ENDSTOP_PROPERTY->items + 1)
+
+#define X_START_ZEROING_PROPERTY		(PRIVATE_DATA->x_start_zeroing_property)
+#define X_START_ZEROING_ITEM				(X_START_ZEROING_PROPERTY->items + 0)
 
 typedef struct {
 	int handle;
@@ -95,6 +101,8 @@ typedef struct {
 	indigo_property *x_status_property;
 	indigo_property *x_select_sensor_property;
 	indigo_property *x_reset_property;
+	indigo_property *x_use_endstop_property;
+	indigo_property *x_start_zeroing_property;
 	pthread_mutex_t port_mutex;
 	indigo_timer *timer;
 	bool moving;
@@ -239,6 +247,17 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_RESET_ITEM, "RESET", "Reset", false);
 		indigo_init_switch_item(X_REBOOT_ITEM, "REBOOT", "Reboot", false);
+		// -------------------------------------------------------------------------------- X_USE_ENDSTOP
+		X_USE_ENDSTOP_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_USE_ENDSTOP", "Advanced", "Use end-stop sensor", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_USE_ENDSTOP_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_USE_ENDSTOP_ENABLED_ITEM, "ENABLED", "Enabled", false);
+		indigo_init_switch_item(X_USE_ENDSTOP_DISABLED_ITEM, "DISABLED", "Disabled", true);
+		// -------------------------------------------------------------------------------- X_START_ZEROING
+		X_START_ZEROING_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_START_ZEROING", "Advanced", "Start zeroing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (X_START_ZEROING_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_START_ZEROING_ITEM, "START", "Start", false);
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
@@ -278,6 +297,10 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, X_SELECT_SENSOR_PROPERTY, NULL);
 		if (indigo_property_match(X_RESET_PROPERTY, property))
 			indigo_define_property(device, X_RESET_PROPERTY, NULL);
+		if (indigo_property_match(X_USE_ENDSTOP_PROPERTY, property))
+			indigo_define_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
+		if (indigo_property_match(X_START_ZEROING_PROPERTY, property))
+			indigo_define_property(device, X_START_ZEROING_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -382,6 +405,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_define_property(device, X_SELECT_SENSOR_PROPERTY, NULL);
 				indigo_define_property(device, X_STATUS_PROPERTY, NULL);
 				indigo_define_property(device, X_RESET_PROPERTY, NULL);
+				indigo_define_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
+				indigo_define_property(device, X_START_ZEROING_PROPERTY, NULL);
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
@@ -398,6 +423,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_delete_property(device, X_STATUS_PROPERTY, NULL);
 				indigo_delete_property(device, X_SELECT_SENSOR_PROPERTY, NULL);
 				indigo_delete_property(device, X_RESET_PROPERTY, NULL);
+				indigo_delete_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
+				indigo_delete_property(device, X_START_ZEROING_PROPERTY, NULL);
 				indigo_cancel_timer(device, &PRIVATE_DATA->timer);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
@@ -494,8 +521,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_SELECT_SENSOR_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
+	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			sprintf(command, "$BS SET LIMIT:%d", (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value);
+			if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+				FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_SENSOR
+	} else if (indigo_property_match(X_SELECT_SENSOR_PROPERTY, property)) {
 		indigo_property_copy_values(X_SELECT_SENSOR_PROPERTY, property, false);
 		X_SELECT_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
 		sprintf(command, "$BS SET TCOMP_SENSOR:%d", X_SELECT_SENSOR_0_ITEM->sw.value ? 0 : X_SELECT_SENSOR_1_ITEM->sw.value ? 1 : 2);
@@ -503,8 +541,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			X_SELECT_SENSOR_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_SELECT_SENSOR_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_RESET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RESET
+	} else if (indigo_property_match(X_RESET_PROPERTY, property)) {
 		indigo_property_copy_values(X_RESET_PROPERTY, property, false);
 		X_RESET_PROPERTY->state = INDIGO_OK_STATE;
 		if (X_RESET_ITEM->sw.value) {
@@ -522,6 +560,26 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		X_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_RESET_PROPERTY, NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- X_USE_ENDSTOP
+	} else if (indigo_property_match(X_USE_ENDSTOP_PROPERTY, property)) {
+		indigo_property_copy_values(X_USE_ENDSTOP_PROPERTY, property, false);
+		X_USE_ENDSTOP_PROPERTY->state = INDIGO_OK_STATE;
+		sprintf(command, "$BS SET USE_ENDSTOP:%d", X_USE_ENDSTOP_ENABLED_ITEM->sw.value ? 1 : 0);
+		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+			X_USE_ENDSTOP_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- X_START_ZEROING
+	} else if (indigo_property_match(X_START_ZEROING_PROPERTY, property)) {
+		indigo_property_copy_values(X_START_ZEROING_PROPERTY, property, false);
+		X_START_ZEROING_PROPERTY->state = INDIGO_OK_STATE;
+		if (X_START_ZEROING_ITEM->sw.value) {
+			X_START_ZEROING_ITEM->sw.value = false;
+			if (!steeldrive2_command(device, "$BS ZEROING", response, sizeof(response)) && !strcmp(response, "$BS OK"))
+				X_START_ZEROING_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, X_START_ZEROING_PROPERTY, NULL);
+		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
@@ -531,6 +589,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_SAVED_VALUES_PROPERTY);
+	indigo_release_property(X_STATUS_PROPERTY);
+	indigo_release_property(X_SELECT_SENSOR_PROPERTY);
+	indigo_release_property(X_RESET_PROPERTY);
+	indigo_release_property(X_USE_ENDSTOP_PROPERTY);
+	indigo_release_property(X_START_ZEROING_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
