@@ -71,6 +71,13 @@
 #define DSD_COILS_MODE_ALWAYS_ON_ITEM_NAME   "ALWAYS_ON"
 #define DSD_COILS_MODE_TIMEOUT_ITEM_NAME     "TIMEOUT_OFF"
 
+#define DSD_CURRENT_CONTROL_PROPERTY         (PRIVATE_DATA->current_control_property)
+#define DSD_CURRENT_CONTROL_MOVE_ITEM        (DSD_CURRENT_CONTROL_PROPERTY->items+0)
+#define DSD_CURRENT_CONTROL_HOLD_ITEM        (DSD_CURRENT_CONTROL_PROPERTY->items+1)
+
+#define DSD_CURRENT_CONTROL_PROPERTY_NAME    "DSD_CURRENT_CONTROL"
+#define DSD_CURRENT_CONTROL_MOVE_ITEM_NAME   "MOVE_CURRENT"
+#define DSD_CURRENT_CONTROL_HOLD_ITEM_NAME   "HOLD_CURRENT"
 
 
 // gp_bits is used as boolean
@@ -83,7 +90,7 @@ typedef struct {
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
-	indigo_property *step_mode_property, *coils_mode_property;
+	indigo_property *step_mode_property, *coils_mode_property, *current_control_property;
 } dsd_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
@@ -328,6 +335,7 @@ static bool dsd_get_move_current(indigo_device *device, uint32_t *current) {
 
 
 static bool dsd_set_move_current(indigo_device *device, uint32_t current) {
+	if (current > 100) return false;
 	return dsd_command_set_value(device, "[SCMV%d%%]", current);
 }
 
@@ -338,6 +346,7 @@ static bool dsd_get_hold_current(indigo_device *device, uint32_t *current) {
 
 
 static bool dsd_set_hold_current(indigo_device *device, uint32_t current) {
+	if (current > 100) return false;
 	return dsd_command_set_value(device, "[SCHD%d%%]", current);
 }
 
@@ -502,6 +511,8 @@ static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 		if (indigo_property_match(DSD_COILS_MODE_PROPERTY, property))
 			indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
+		if (indigo_property_match(DSD_CURRENT_CONTROL_PROPERTY, property))
+			indigo_define_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -563,6 +574,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(DSD_COILS_MODE_IDLE_OFF_ITEM, DSD_COILS_MODE_IDLE_OFF_ITEM_NAME, "OFF when idle", false);
 		indigo_init_switch_item(DSD_COILS_MODE_ALWAYS_ON_ITEM, DSD_COILS_MODE_ALWAYS_ON_ITEM_NAME, "Always ON", false);
 		indigo_init_switch_item(DSD_COILS_MODE_TIMEOUT_ITEM, DSD_COILS_MODE_TIMEOUT_ITEM_NAME, "OFF after timeout", false);
+		//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
+		DSD_CURRENT_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, DSD_CURRENT_CONTROL_PROPERTY_NAME, "Advanced", "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (DSD_CURRENT_CONTROL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(DSD_CURRENT_CONTROL_MOVE_ITEM, DSD_CURRENT_CONTROL_MOVE_ITEM_NAME, "Move current (%)", 10, 100, 1, 50);
+		indigo_init_number_item(DSD_CURRENT_CONTROL_HOLD_ITEM, DSD_CURRENT_CONTROL_HOLD_ITEM_NAME, "Hold current (%)", 10, 100, 1, 50);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -723,6 +740,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						update_coils_mode_switches(device);
 						indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
 
+						if (!dsd_get_move_current(device, &value)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
+						}
+						DSD_CURRENT_CONTROL_MOVE_ITEM->number.value = (double)value;
+						DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
+						if (!dsd_get_hold_current(device, &value)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle);
+						}
+						DSD_CURRENT_CONTROL_HOLD_ITEM->number.value = (double)value;
+						DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
+						indigo_define_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
+
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 
@@ -752,6 +781,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 				indigo_delete_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, DSD_COILS_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -934,6 +964,39 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		update_step_mode_switches(device);
 		indigo_update_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(DSD_CURRENT_CONTROL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSD_CURRENT_CONTROL_PROPERTY
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(DSD_CURRENT_CONTROL_PROPERTY, property, false);
+		DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+
+		if (!dsd_set_move_current(device, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_move_current(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target);
+			DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+
+		if (!dsd_set_hold_current(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
+			DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+
+		uint32_t value;
+		if (!dsd_get_move_current(device, &value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
+		} else {
+			DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
+		}
+
+		if (!dsd_get_hold_current(device, &value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle);
+			DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
+		}
+
+
+		indigo_update_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(DSD_COILS_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSD_COILS_MODE_PROPERTY
 		if (!IS_CONNECTED) return INDIGO_OK;
@@ -994,6 +1057,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(DSD_STEP_MODE_PROPERTY);
 	indigo_release_property(DSD_COILS_MODE_PROPERTY);
+	indigo_release_property(DSD_CURRENT_CONTROL_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
