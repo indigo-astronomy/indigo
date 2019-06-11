@@ -179,7 +179,7 @@ static bool dsd_command(indigo_device *device, const char *command, char *respon
 		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -206,7 +206,7 @@ static bool dsd_command_get_value(indigo_device *device, const char *command, ui
 	if (dsd_command(device, command, response, sizeof(response), 100)) {
 		int parsed = sscanf(response, "(%d)", value);
 		if (parsed != 1) return false;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %s = %d", command, response, *value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *value);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
