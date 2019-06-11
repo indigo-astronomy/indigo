@@ -61,6 +61,17 @@
 #define DSD_STEP_MODE_FOURTH_ITEM_NAME  "FOURTH"
 #define DSD_STEP_MODE_EIHTH_ITEM_NAME   "EIGTH"
 
+#define DSD_COILS_MODE_PROPERTY              (PRIVATE_DATA->coils_mode_property)
+#define DSD_COILS_MODE_IDLE_OFF_ITEM         (DSD_COILS_MODE_PROPERTY->items+0)
+#define DSD_COILS_MODE_ALWAYS_ON_ITEM        (DSD_COILS_MODE_PROPERTY->items+1)
+#define DSD_COILS_MODE_TIMEOUT_ITEM          (DSD_COILS_MODE_PROPERTY->items+2)
+
+#define DSD_COILS_MODE_PROPERTY_NAME         "DSD_COILS_MODE"
+#define DSD_COILS_MODE_IDLE_OFF_ITEM_NAME    "OFF_WHEN_IDLE"
+#define DSD_COILS_MODE_ALWAYS_ON_ITEM_NAME   "ALWAYS_ON"
+#define DSD_COILS_MODE_TIMEOUT_ITEM_NAME     "TIMEOUT_OFF"
+
+
 
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
@@ -72,7 +83,7 @@ typedef struct {
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
-	indigo_property *step_mode_property;
+	indigo_property *step_mode_property, *coils_mode_property;
 } dsd_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
@@ -84,7 +95,7 @@ static void compensate_focus(indigo_device *device, double new_temp);
 typedef enum {
 	COILS_MODE_IDLE_OFF = 0,
 	COILS_MODE_ALWAYS_ON = 1,
-	COILS_MODE_IDLE_COILS_TIMEOUT = 2
+	COILS_MODE_IDLE_TIMEOUT = 2
 } coilsmode_t;
 
 typedef enum {
@@ -489,6 +500,8 @@ static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(DSD_STEP_MODE_PROPERTY, property))
 			indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
+		if (indigo_property_match(DSD_COILS_MODE_PROPERTY, property))
+			indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -542,6 +555,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(DSD_STEP_MODE_HALF_ITEM, DSD_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
 		indigo_init_switch_item(DSD_STEP_MODE_FOURTH_ITEM, DSD_STEP_MODE_FOURTH_ITEM_NAME, "1/4 step", false);
 		indigo_init_switch_item(DSD_STEP_MODE_EIHTH_ITEM, DSD_STEP_MODE_EIHTH_ITEM_NAME, "1/8 step", false);
+		// -------------------------------------------------------------------------- COILS_MODE_PROPERTY
+		DSD_COILS_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_COILS_MODE_PROPERTY_NAME, "Advanced", "Coils Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (DSD_COILS_MODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		DSD_COILS_MODE_PROPERTY->hidden = false;
+		indigo_init_switch_item(DSD_COILS_MODE_IDLE_OFF_ITEM, DSD_COILS_MODE_IDLE_OFF_ITEM_NAME, "OFF when idle", false);
+		indigo_init_switch_item(DSD_COILS_MODE_ALWAYS_ON_ITEM, DSD_COILS_MODE_ALWAYS_ON_ITEM_NAME, "Always ON", false);
+		indigo_init_switch_item(DSD_COILS_MODE_TIMEOUT_ITEM, DSD_COILS_MODE_TIMEOUT_ITEM_NAME, "OFF after timeout", false);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -574,6 +595,31 @@ static void update_step_mode_switches(indigo_device * device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
 	}
 }
+
+
+static void update_coils_mode_switches(indigo_device * device) {
+	coilsmode_t value;
+
+	if (!dsd_get_coils_mode(device, &value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) failed", PRIVATE_DATA->handle);
+		return;
+	}
+
+	switch (value) {
+	case COILS_MODE_IDLE_OFF:
+		indigo_set_switch(DSD_COILS_MODE_PROPERTY, DSD_COILS_MODE_IDLE_OFF_ITEM, true);
+		break;
+	case COILS_MODE_ALWAYS_ON:
+		indigo_set_switch(DSD_COILS_MODE_PROPERTY, DSD_COILS_MODE_ALWAYS_ON_ITEM, true);
+		break;
+	case COILS_MODE_IDLE_TIMEOUT:
+		indigo_set_switch(DSD_COILS_MODE_PROPERTY, DSD_COILS_MODE_TIMEOUT_ITEM, true);
+		break;
+	default:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
+	}
+}
+
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -674,6 +720,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						update_step_mode_switches(device);
 						indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 
+						update_coils_mode_switches(device);
+						indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
+
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 
@@ -702,6 +751,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				}
 				indigo_delete_property(device, DSD_STEP_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, DSD_COILS_MODE_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -879,10 +929,30 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		if (!dsd_set_step_mode(device, mode)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			DSD_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		update_step_mode_switches(device);
 		indigo_update_property(device, DSD_STEP_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DSD_COILS_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSD_COILS_MODE_PROPERTY
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(DSD_COILS_MODE_PROPERTY, property, false);
+		DSD_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		coilsmode_t mode;
+		if(DSD_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
+			mode = COILS_MODE_IDLE_OFF;
+		} else if(DSD_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {
+			mode = COILS_MODE_ALWAYS_ON;
+		} else if(DSD_COILS_MODE_TIMEOUT_ITEM->sw.value) {
+			mode = COILS_MODE_IDLE_TIMEOUT;
+		}
+		if (!dsd_set_coils_mode(device, mode)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_coils_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
+			DSD_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		update_coils_mode_switches(device);
+		indigo_update_property(device, DSD_COILS_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
@@ -923,6 +993,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(DSD_STEP_MODE_PROPERTY);
+	indigo_release_property(DSD_COILS_MODE_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
