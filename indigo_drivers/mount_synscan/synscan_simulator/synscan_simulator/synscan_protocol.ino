@@ -601,9 +601,49 @@ char *process_command(const char *cmd) {
         uint32_t command = get_u24(cmd);
         switch (command) {
           case START_PPEC_TRAINING_CMD:
+            if (cmd[2] == '1') {
+              ra_features = ra_features | IN_PPEC_TRAINING;
+              send_byte('=');
+            } else if (cmd[2] == '2') {
+              de_features = de_features | IN_PPEC_TRAINING;
+              send_byte('=');
+            } else {
+              goto cant_do;
+            }
+            break;
           case STOP_PPEC_TRAINING_CMD:
+            if (cmd[2] == '1') {
+              ra_features = ra_features & ~IN_PPEC_TRAINING;
+              send_byte('=');
+            } else if (cmd[2] == '2') {
+              de_features = de_features & ~IN_PPEC_TRAINING;
+              send_byte('=');
+            } else {
+              goto cant_do;
+            }
+            break;
           case TURN_PPEC_ON_CMD:
+            if (cmd[2] == '1') {
+              ra_features = ra_features | IN_PPEC;
+              send_byte('=');
+            } else if (cmd[2] == '2') {
+              de_features = de_features | IN_PPEC;
+              send_byte('=');
+            } else {
+              goto cant_do;
+            }
+            break;
           case TURN_PPEC_OFF_CMD:
+            if (cmd[2] == '1') {
+              ra_features = ra_features & ~IN_PPEC;
+              send_byte('=');
+            } else if (cmd[2] == '2') {
+              de_features = de_features & ~IN_PPEC;
+              send_byte('=');
+            } else {
+              goto cant_do;
+            }
+            break;
           case ENCODER_ON_CMD:
           case ENCODER_OFF_CMD:
           case DISABLE_FULL_CURRENT_LOW_SPEED_CMD:
