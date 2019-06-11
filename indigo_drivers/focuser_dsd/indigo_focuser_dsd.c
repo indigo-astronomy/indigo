@@ -50,16 +50,16 @@
 #define PRIVATE_DATA                    ((dsd_private_data *)device->private_data)
 
 #define DSD_STEP_MODE_PROPERTY          (PRIVATE_DATA->step_mode_property)
-#define DSD_STEP_MODE_1_ITEM            (DSD_STEP_MODE_PROPERTY->items+0)
-#define DSD_STEP_MODE_2_ITEM            (DSD_STEP_MODE_PROPERTY->items+1)
-#define DSD_STEP_MODE_4_ITEM            (DSD_STEP_MODE_PROPERTY->items+2)
-#define DSD_STEP_MODE_8_ITEM            (DSD_STEP_MODE_PROPERTY->items+3)
+#define DSD_STEP_MODE_FULL_ITEM         (DSD_STEP_MODE_PROPERTY->items+0)
+#define DSD_STEP_MODE_HALF_ITEM         (DSD_STEP_MODE_PROPERTY->items+1)
+#define DSD_STEP_MODE_FOURTH_ITEM       (DSD_STEP_MODE_PROPERTY->items+2)
+#define DSD_STEP_MODE_EIHTH_ITEM        (DSD_STEP_MODE_PROPERTY->items+3)
 
-#define DSD_STEP_MODE_PROPERTY_NAME     "DSD_STEP_SIZE"
-#define DSD_STEP_MODE_1_ITEM_NAME       "STEP_1"
-#define DSD_STEP_MODE_2_ITEM_NAME       "STEP_2"
-#define DSD_STEP_MODE_4_ITEM_NAME       "STEP_4"
-#define DSD_STEP_MODE_8_ITEM_NAME       "STEP_8"
+#define DSD_STEP_MODE_PROPERTY_NAME     "DSD_STEP_MODE"
+#define DSD_STEP_MODE_FULL_ITEM_NAME    "FULL"
+#define DSD_STEP_MODE_HALF_ITEM_NAME    "HALF"
+#define DSD_STEP_MODE_FOURTH_ITEM_NAME  "FOURTH"
+#define DSD_STEP_MODE_EIHTH_ITEM_NAME   "EIGTH"
 
 
 // gp_bits is used as boolean
@@ -81,9 +81,18 @@ static void compensate_focus(indigo_device *device, double new_temp);
 
 #define DSD_CMD_LEN 100
 
-#define COILS_MODE_IDLE_OFF            0
-#define COILS_MODE_ALWAYS_ON           1
-#define COILS_MODE_IDLE_COILS_TIMEOUT  2
+typedef enum {
+	COILS_MODE_IDLE_OFF = 0,
+	COILS_MODE_ALWAYS_ON = 1,
+	COILS_MODE_IDLE_COILS_TIMEOUT = 2
+} coilsmode_t;
+
+typedef enum {
+	STEP_MODE_FULL = 1,
+	STEP_MODE_HALF = 2,
+	STEP_MODE_FOURTH = 4,
+	STEP_MODE_EIGTH = 8
+} stepmode_t;
 
 #define NO_TEMP_READING                (-127)
 
@@ -241,12 +250,12 @@ static bool dsd_goto_position(indigo_device *device, uint32_t position) {
 }
 
 
-static bool dsd_get_step_mode(indigo_device *device, uint32_t *mode) {
+static bool dsd_get_step_mode(indigo_device *device, stepmode_t *mode) {
 	return dsd_command_get_value(device, "[GSTP]", mode);
 }
 
 
-static bool dsd_set_step_mode(indigo_device *device, uint32_t mode) {
+static bool dsd_set_step_mode(indigo_device *device, stepmode_t mode) {
 	return dsd_command_set_value(device, "[SSTP%d]", mode);
 }
 
@@ -291,12 +300,12 @@ static bool dsd_set_coills_timeout(indigo_device *device, uint32_t to) {
 }
 
 
-static bool dsd_get_coils_mode(indigo_device *device, uint32_t *mode) {
+static bool dsd_get_coils_mode(indigo_device *device, coilsmode_t *mode) {
 	return dsd_command_get_value(device, "[GCLM]", mode);
 }
 
 
-static bool dsd_set_coils_mode(indigo_device *device, uint32_t mode) {
+static bool dsd_set_coils_mode(indigo_device *device, coilsmode_t mode) {
 	if (mode > 2) return false;
 	return dsd_command_set_value(device, "[SCLM%d]", mode);
 }
@@ -529,10 +538,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 		if (DSD_STEP_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DSD_STEP_MODE_PROPERTY->hidden = false;
-		indigo_init_switch_item(DSD_STEP_MODE_1_ITEM, DSD_STEP_MODE_1_ITEM_NAME, "Full step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_2_ITEM, DSD_STEP_MODE_2_ITEM_NAME, "1/2 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_4_ITEM, DSD_STEP_MODE_4_ITEM_NAME, "1/4 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_8_ITEM, DSD_STEP_MODE_8_ITEM_NAME, "1/8 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_FULL_ITEM, DSD_STEP_MODE_FULL_ITEM_NAME, "Full step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_HALF_ITEM, DSD_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_FOURTH_ITEM, DSD_STEP_MODE_FOURTH_ITEM_NAME, "1/4 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_EIHTH_ITEM, DSD_STEP_MODE_EIHTH_ITEM_NAME, "1/8 step", false);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -541,7 +550,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static void update_step_mode_switches(indigo_device * device) {
-	uint32_t value;
+	stepmode_t value;
 
 	if (!dsd_get_step_mode(device, &value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) failed", PRIVATE_DATA->handle);
@@ -549,17 +558,17 @@ static void update_step_mode_switches(indigo_device * device) {
 	}
 
 	switch (value) {
-	case 1:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_1_ITEM, true);
+	case STEP_MODE_FULL:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_FULL_ITEM, true);
 		break;
-	case 2:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_2_ITEM, true);
+	case STEP_MODE_HALF:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_HALF_ITEM, true);
 		break;
-	case 4:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_4_ITEM, true);
+	case STEP_MODE_FOURTH:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_FOURTH_ITEM, true);
 		break;
-	case 8:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_8_ITEM, true);
+	case STEP_MODE_EIGTH:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_EIHTH_ITEM, true);
 		break;
 	default:
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
@@ -858,15 +867,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(DSD_STEP_MODE_PROPERTY, property, false);
 		DSD_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		uint32_t mode;
-		if(DSD_STEP_MODE_1_ITEM->sw.value) {
-			mode = 1;
-		} else if(DSD_STEP_MODE_2_ITEM->sw.value) {
-			mode = 2;
-		} else if(DSD_STEP_MODE_4_ITEM->sw.value) {
-			mode = 4;
-		} else if(DSD_STEP_MODE_8_ITEM->sw.value) {
-			mode = 8;
+		stepmode_t mode;
+		if(DSD_STEP_MODE_FULL_ITEM->sw.value) {
+			mode = STEP_MODE_FULL;
+		} else if(DSD_STEP_MODE_HALF_ITEM->sw.value) {
+			mode = STEP_MODE_HALF;
+		} else if(DSD_STEP_MODE_FOURTH_ITEM->sw.value) {
+			mode = STEP_MODE_FOURTH;
+		} else if(DSD_STEP_MODE_EIHTH_ITEM->sw.value) {
+			mode = STEP_MODE_EIGTH;
 		}
 		if (!dsd_set_step_mode(device, mode)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
