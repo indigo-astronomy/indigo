@@ -966,17 +966,37 @@ void mount_handle_encoders(indigo_device *device) {
 }
 
 void mount_handle_use_ppec(indigo_device *device) {
-	synscan_ext_setting(device, kAxisRA,  MOUNT_PEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
-	synscan_ext_setting(device, kAxisDEC,  MOUNT_PEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff);
-	MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PEC_PROPERTY, "Updated PPEC usage");
+	if (!synscan_ext_setting(device, kAxisRA,  MOUNT_PEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff) || !synscan_ext_setting(device, kAxisDEC,  MOUNT_PEC_ENABLED_ITEM->sw.value ? kTurnPECCOn : kTurnPECCOff)) {
+		MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PEC_PROPERTY, "Failed to update PPEC state");
+	} else {
+		MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_PEC_PROPERTY, "Updated PPEC state");
+	}
+}
+
+static void mount_train_ppec_callback(indigo_device* device) {
+	if (!synscan_ext_inquiry(device, kAxisRA, kGetFeatures, &PRIVATE_DATA->raFeatures) || !synscan_ext_inquiry(device, kAxisDEC, kGetFeatures, &PRIVATE_DATA->decFeatures)) {
+		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Failed to read PPEC training state");
+	} else if ((PRIVATE_DATA->raFeatures & kInPPECTraining) || (PRIVATE_DATA->decFeatures & kInPPECTraining)) {
+		indigo_set_timer(device, 1, mount_train_ppec_callback);
+	} else {
+		indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Cleared PPEC training state");
+	}
 }
 
 void mount_handle_train_ppec(indigo_device *device) {
-	synscan_ext_setting(device, kAxisRA,  MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining);
-	synscan_ext_setting(device, kAxisDEC,  MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining);
-	MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Updated PPEC training state");
+	if (!synscan_ext_setting(device, kAxisRA,  MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining) || !synscan_ext_setting(device, kAxisDEC,  MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? kStarPECCTtraining : kStopPECCTtraining)) {
+		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Failed to update PPEC training state");
+	} else {
+		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Updated PPEC training state");
+	}
+	if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value || MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value)
+		indigo_set_timer(device, 1, mount_train_ppec_callback);
 }
 
 void mount_handle_autohome(indigo_device *device) {
