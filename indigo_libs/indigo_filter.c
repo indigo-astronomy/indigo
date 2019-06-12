@@ -186,7 +186,7 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 			FILTER_RELATED_GPS_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_RELATED_GPS_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No GPS", true);
 			// -------------------------------------------------------------------------------- Related joystick property
-			FILTER_RELATED_JOYSTICK_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_JOYSTICK_LIST_PROPERTY_NAME, "Main", "Related AUX #1 list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
+			FILTER_RELATED_JOYSTICK_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_JOYSTICK_LIST_PROPERTY_NAME, "Main", "Related joystick", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
 			if (FILTER_RELATED_JOYSTICK_LIST_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FILTER_RELATED_JOYSTICK_LIST_PROPERTY->hidden = true;
