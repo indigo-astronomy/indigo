@@ -104,6 +104,8 @@ void loop() {
     }
     *pnt = 0;
     response[0] = 0;
+    if (random(10) == 0)
+      Serial.println("$BS DEBUG: Initialization of temperature measurement failed for sensor #1");
     if (!strcmp(command, "$BS GET VERSION")) {
       strcpy(response, "$BS STATUS VERSION:0.700(Apr 5 2019)");
     } else if (!strcmp(command, "$BS CRC_ENABLE")) {

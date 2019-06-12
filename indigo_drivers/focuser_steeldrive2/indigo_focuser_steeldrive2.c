@@ -117,18 +117,20 @@ static bool steeldrive2_command(indigo_device *device, char *command, char *resp
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
 		}
-		if (strcmp(command, tmp)) {
-			continue;
+		if (!strcmp(command, tmp)) {
+			break;
 		}
-		if (strncmp("$BS", tmp, 3)) {
-			continue;
+	}
+	while (true) {
+		if (indigo_read_line(PRIVATE_DATA->handle, tmp, sizeof(tmp)) < 0) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
 		}
 		if (!strncmp("$BS DEBUG:", tmp, 10)) {
 			continue;
 		}
-		if (indigo_read_line(PRIVATE_DATA->handle, tmp, sizeof(tmp)) < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
+		if (strncmp("$BS", tmp, 3)) {
+			continue;
 		}
 		if ((crc = strchr(tmp, '*'))) {
 			*crc++ = 0;
