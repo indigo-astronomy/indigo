@@ -78,8 +78,8 @@ uninstall: status
 	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER)
 
 clean: status
-	cd externals/libapogee; make clean
-	cd externals/boost_regex/build; make clean
+#	cd externals/libapogee; make clean
+#	cd externals/boost_regex/build; make clean
 	rm -f *.o external/DDHidLib/*.o $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 clean-all:
