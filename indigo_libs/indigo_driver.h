@@ -296,14 +296,6 @@ extern indigo_result indigo_remove_properties(indigo_device *device);
  */
 extern void indigo_start_usb_event_handler(void);
 
-/** Convert sexagesimal string to double.
- */
-extern double indigo_stod(char *string);
-
-/** Convert double to sexagesimal string.
- */
-extern char* indigo_dtos(double value, char *format);
-
 /** get current utc. TO BE REMOVED!
  */
 /*

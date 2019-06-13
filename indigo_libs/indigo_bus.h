@@ -532,6 +532,14 @@ extern void indigo_trim_local_service(char *device_name);
  */
 extern bool indigo_async(void *fun(void *data), void *data);
 
+/** Convert sexagesimal string to double.
+ */
+extern double indigo_stod(char *string);
+
+/** Convert double to sexagesimal string.
+ */
+extern char* indigo_dtos(double value, char *format);
+
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
