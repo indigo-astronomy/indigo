@@ -603,59 +603,6 @@ void indigo_start_usb_event_handler() {
 	}
 }
 
-double indigo_stod(char *string) {
-	char copy[128];
-	strncpy(copy, string, 128);
-	string = copy;
-	double value = 0;
-	char *separator = strpbrk(string, ":*' \xdf");
-	if (separator == NULL) {
-		value = atof(string);
-	} else {
-		*separator++ = 0;
-		value = atof(string);
-		separator = strpbrk(string = separator, ":*' ");
-		if (separator == NULL) {
-			if (value < 0)
-				value -= atof(string)/60.0;
-			else
-				value += atof(string)/60.0;
-		} else {
-			*separator++ = 0;
-			if (value < 0)
-				value -= atof(string)/60.0 + atof(separator)/3600.0;
-			else
-				value += atof(string)/60.0 + atof(separator)/3600.0;
-		}
-	}
-	return value;
-}
-
-char* indigo_dtos(double value, char *format) { // circular use of 4 static buffers!
-	double d = fabs(value);
-	double m = 60.0 * (d - floor(d));
-	double s = 60.0 * (m - floor(m));
-	if (value < 0)
-		d = -d;
-	static char string_1[128], string_2[128], string_3[128], string_4[128];
-	static char *string = string_4;
-	if (string == string_1)
-		string = string_2;
-	else if (string == string_2)
-		string = string_3;
-	else if (string == string_3)
-		string = string_4;
-	else if (string == string_4)
-		string = string_1;
-	if (format == NULL)
-		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, s);
-	else if (format[strlen(format) - 1] == 'd')
-		snprintf(string, 128, format, (int)d, (int)m, (int)s);
-	else
-		snprintf(string, 128, format, (int)d, (int)m, s);
-	return string;
-}
-
 /* TO BE REMOVED!
 time_t indigo_utc(time_t *ltime) {
 	struct tm tm_now;
