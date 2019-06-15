@@ -19,20 +19,20 @@
 				</button>
 				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
 					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html">
+						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
 							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
 						</a>
-						<a class="nav-link pr-0" href="ctrl.html">
+						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
 							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
 						</a>
 						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html">
+							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
 								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="mount.html">
+							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
 								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="guider.html">
+							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
 								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
 						</template>
@@ -82,6 +82,7 @@
 					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() })
 				}
 			}
+			$('[data-toggle="tooltip"]').tooltip()
 		}
 	
 		function onDefineProperty(property) {

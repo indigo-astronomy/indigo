@@ -19,21 +19,25 @@
 					<span class="navbar-toggler-icon"></span>
 				</button>
 				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<a class="nav-link pr-0 ml-auto" href="mng.html">
-						<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="ctrl.html">
-						<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="imager.html">
-						<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="mount.html">
-						<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="guider.html">
-						<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-					</a>
+					<template v-if="findProperty('Server', 'FEATURES') != null">
+						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
+							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						</a>
+						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
+							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						</a>
+						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
+							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
+								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							</a>
+							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
+								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							</a>
+							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
+								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							</a>
+						</template>
+					</template>
 				</div>
 			</nav>
 			<div class="container-fluid">
@@ -60,42 +64,42 @@
 							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-block d-flex flex-wrap">
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]"></indigo-edit-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_DEC'" :icon="'px/s δ'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'BACKLASH'" :icon="'b-lash'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'ANGLE'" :icon="'angle'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'FRAME'" :icon="'frame'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_RA'" :icon="'err α'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_DEC'" :icon="'err δ'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_RA'" :icon="'drft α'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_DEC'" :icon="'drft δ'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_RA'" :icon="'cor α'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_DEC'" :icon="'cor δ'"></indigo-show-number>
+										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]" :tooltip="'Exposure Time'"></indigo-edit-number>
+										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'"></indigo-edit-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_DEC'" :icon="'px/s δ'" :tooltip="'Declination Speed'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'BACKLASH'" :icon="'b-lash'" :tooltip="'Backlash'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'ANGLE'" :icon="'angle'" :tooltip="'Angle'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'" :tooltip="'Calibration Phase'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'FRAME'" :icon="'frame'" :tooltip="'Frame Count'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_RA'" :icon="'err α'" :tooltip="'Right Ascension RMSE'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_DEC'" :icon="'err δ'" :tooltip="'Declination RMSE'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_RA'" :icon="'drft α'" :tooltip="'Right Ascension Drift'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_DEC'" :icon="'drft δ'" :tooltip="'Declination Drift'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_RA'" :icon="'cor α'" :tooltip="'Right Ascension Correction'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_DEC'" :icon="'cor δ'" :tooltip="'Declination Correction'"></indigo-show-number>
 										<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
-											<button class="btn btn-svg idle-state mr-2" onclick="load()">
+											<button class="btn btn-svg idle-state mr-2" onclick="load()" data-toggle="tooltip" title="Load configuration">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M9.62946,11.41876l5.55682-7.77954a1,1,0,0,1,1.62744,0l5.55682,7.77954A1,1,0,0,1,21.55682,13H19v6a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V13H10.44318A1,1,0,0,1,9.62946,11.41876ZM27,22H5a1,1,0,0,0-1,1v4a1,1,0,0,0,1,1H27a1,1,0,0,0,1-1V23A1,1,0,0,0,27,22Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state mr-2" onclick="save()">
+											<button class="btn btn-svg idle-state mr-2" onclick="save()" data-toggle="tooltip" title="Save configuration">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M28,23v4a1,1,0,0,1-1,1H5a1,1,0,0,1-1-1V23a1,1,0,0,1,1-1H27A1,1,0,0,1,28,23ZM15.18628,19.36078a1,1,0,0,0,1.62744,0l5.55682-7.77954A1,1,0,0,0,21.55682,10H19V4a1,1,0,0,0-1-1H14a1,1,0,0,0-1,1v6H10.44318a1,1,0,0,0-.81372,1.58124Z"/>
 												</svg>
 											</button>
-											<button id="calibrate_button" class="btn btn-svg idle-state mr-2" onclick="calibrate()">
+											<button id="calibrate_button" class="btn btn-svg idle-state mr-2" onclick="calibrate()" data-toggle="tooltip" title="Calibrate">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M7,12V9A1,1,0,0,1,8,8H9v5H8A1,1,0,0,1,7,12Zm5,3.92065a1,1,0,0,0-1.57349-.81927L3.88464,19.68073a1,1,0,0,0,0,1.63848l6.54187,4.57935A1,1,0,0,0,12,25.07928V23h5V18H12ZM13,8H11v5h2ZM24,18H23v5h1a1,1,0,0,0,1-1V19A1,1,0,0,0,24,18Zm4.11536-8.31927L21.57349,5.10138A1,1,0,0,0,20,5.92065V8H15v5h5v2.07928a1,1,0,0,0,1.57349.81928l6.54187-4.57935A1,1,0,0,0,28.11536,9.68073ZM19,23h2V18H19Z"/>
 												</svg>
 											</button>
-											<button id="guide_button" class="btn btn-svg idle-state mr-auto" onclick="guide()">
+											<button id="guide_button" class="btn btn-svg idle-state mr-auto" onclick="guide()" data-toggle="tooltip" title="Guide">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M28,19v1a1,1,0,0,1-1,1H22.50018a1.5002,1.5002,0,0,1-1.47674-1.23633L19.95215,13.7666,17.47363,26.78076a1.49992,1.49992,0,0,1-1.40625,1.21778c-.02246.001-.04492.00146-.06836.00146a1.50033,1.50033,0,0,1-1.4414-1.08789L12,17.96l-.55756,1.95191A1.50018,1.50018,0,0,1,10,21H5a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.86816l1.68946-5.91211a1.50014,1.50014,0,0,1,2.88476,0l2.26563,7.9292L18.52637,5.21924a1.5,1.5,0,0,1,2.95019.01709L23.75586,18H27A1,1,0,0,1,28,19Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state" onclick="stop()">
+											<button class="btn btn-svg idle-state" onclick="stop()" data-toggle="tooltip" title="Stop">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 												</svg>
@@ -108,12 +112,12 @@
 						<div class="col-md-8">
 							<div class="card p-1 m-1 bg-light">
 								<div class="card-blockd-flex">
-									<canvas id="graph_drift" class="card p-0 m-0"></canvas>
+									<canvas id="graph_drift" class="card p-0 m-0" data-toggle="tooltip" title="Drift"></canvas>
 								</div>
 							</div>
 							<div class="card p-1 m-1 mt-2 bg-light">
 								<div class="card-blockd-flex">
-									<canvas id="graph_corr" class="card p-0 m-0"></canvas>
+									<canvas id="graph_corr" class="card p-0 m-0" data-toggle="tooltip" title="Corrections"></canvas>
 								</div>
 							</div>
 						</div>
@@ -163,6 +167,7 @@
 					}
 				}
 			}
+			$('[data-toggle="tooltip"]').tooltip()
 		}
 	
 		var targetExposureTime = 0;

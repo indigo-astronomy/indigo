@@ -19,21 +19,25 @@
 					<span class="navbar-toggler-icon"></span>
 				</button>
 				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<a class="nav-link pr-0 ml-auto" href="mng.html">
-						<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="ctrl.html">
-						<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="imager.html">
-						<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="mount.html">
-						<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-					</a>
-					<a class="nav-link pr-0" href="guider.html">
-						<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-					</a>
+					<template v-if="findProperty('Server', 'FEATURES') != null">
+						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
+							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						</a>
+						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
+							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						</a>
+						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
+							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
+								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							</a>
+							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
+								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							</a>
+							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
+								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							</a>
+						</template>
+					</template>
 				</div>
 			</nav>
 			<div class="container-fluid">
@@ -47,8 +51,8 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE')"></indigo-select-item>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'"></indigo-edit-number-60>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'" :tooltip="'Latitude'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'" :tooltip="'Longitude'"></indigo-edit-number-60>
 									</div>
 								</div>
 							</template>
@@ -56,59 +60,59 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_MOUNT_LIST')"></indigo-select-item>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :ident="'RA'"></indigo-edit-number-60>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :ident="'DEC'"></indigo-edit-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'Ε'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'"></indigo-show-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :ident="'RA'" :tooltip="'Right Ascension'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :ident="'DEC'" :tooltip="'Declination'"></indigo-edit-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :tooltip="'Right Ascension'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :tooltip="'Declination'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'Ε'" :tooltip="'Altitude'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'" :tooltip="'Azimuth'"></indigo-show-number-60>
 										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="d-flex p-1 w-100">
-											<button id="goto_button" class="btn btn-svg idle-state mr-2" onclick="goto()">
+											<button id="goto_button" class="btn btn-svg idle-state mr-2" onclick="goto()" data-toggle="tooltip" title="Slew">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
 												</svg>
 											</button>
-											<button id="sync_button" class="btn btn-svg idle-state mr-2" onclick="sync()">
+											<button id="sync_button" class="btn btn-svg idle-state mr-2" onclick="sync()" data-toggle="tooltip" title="Sync">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M28.28717,17.1308l-5.76758,1.05835a.5.5,0,0,0-.2633.84533l.94043.94043L21.999,21.17236A3.6605,3.6605,0,0,1,20,22H18V11.44366a4.00005,4.00005,0,1,0-4,0V22H12a3.66355,3.66355,0,0,1-2-.82812L8.80316,19.975l.94055-.94056a.5.5,0,0,0-.2633-.84533L3.71283,17.1308a.5.5,0,0,0-.582.582l1.05835,5.76758a.5.5,0,0,0,.84533.2633l.94043-.94043,1.196,1.19623A7.49326,7.49326,0,0,0,12,26h1.6l2.00958,2.512a.5.5,0,0,0,.78088,0L18.4,26H20a7.49066,7.49066,0,0,0,4.82812-2L26.025,22.80316l.94056.94055a.5.5,0,0,0,.84533-.2633l1.05835-5.76758A.5.5,0,0,0,28.28717,17.1308ZM16,9a1,1,0,1,1,1-1A1.001,1.001,0,0,1,16,9Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state mr-auto" onclick="stop()">
+											<button class="btn btn-svg idle-state mr-auto" onclick="stop()" data-toggle="tooltip" title="Stop">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 												</svg>
 											</button>
-											<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg ok-state" onclick="park()">
+											<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg ok-state" onclick="park()" data-toggle="tooltip" title="Park">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
 												</svg>
 											</button>
-											<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg busy-state" onclick="park()">
+											<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg busy-state" onclick="park()" data-toggle="tooltip" title="Park">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
 												</svg>
 											</button>
-											<button v-else class="btn btn-svg idle-state" onclick="park()">
+											<button v-else class="btn btn-svg idle-state" onclick="park()" data-toggle="tooltip" title="Park">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
 												</svg>
 											</button>
-											<button v-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Busy' && findProperty('Mount Agent', 'AGENT_LX200_SERVER').item('STARTED').value" class="btn btn-svg busy-state ml-2" onclick="stopLX200Server()">
+											<button v-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Busy' && findProperty('Mount Agent', 'AGENT_LX200_SERVER').item('STARTED').value" class="btn btn-svg busy-state ml-2" onclick="stopLX200Server()" data-toggle="tooltip" title="LX200 Server">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
 												</svg>
 											</button>
-											<button v-else-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Ok' && findProperty('Mount Agent', 'AGENT_LX200_SERVER').item('STARTED').value" class="btn btn-svg ok-state ml-2" onclick="stopLX200Server()">
+											<button v-else-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Ok' && findProperty('Mount Agent', 'AGENT_LX200_SERVER').item('STARTED').value" class="btn btn-svg ok-state ml-2" onclick="stopLX200Server()" data-toggle="tooltip" title="LX200 Server">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
 												</svg>
 											</button>
-											<button v-else-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Alert'" class="btn btn-svg alert-state ml-2" onclick="startLX200Server()">
+											<button v-else-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Alert'" class="btn btn-svg alert-state ml-2" onclick="startLX200Server()" data-toggle="tooltip" title="LX200 Server">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
 												</svg>
 											</button>
-											<button v-else class="btn btn-svg idle-state ml-2" onclick="startLX200Server()">
+											<button v-else class="btn btn-svg idle-state ml-2" onclick="startLX200Server()" data-toggle="tooltip" title="LX200 Server">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
 												</svg>
@@ -117,37 +121,37 @@
 										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_SLEW_RATE')" :cls="'w-50'"></indigo-select-item>
 										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_TRACK_RATE')" :cls="'w-50'"></indigo-select-item>
 										<div v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null" class="d-flex p-1 w-100">
-											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveWest($event)" @mouseup.stop="stopWest($event)">
+											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveWest($event)" @mouseup.stop="stopWest($event)" data-toggle="tooltip" title="Move west">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M27,14v4a1,1,0,0,1-1,1H16v3.47937a1,1,0,0,1-1.57349.81921L5.17035,16.81921a.99994.99994,0,0,1,0-1.63842l9.25616-6.47937A1,1,0,0,1,16,9.52063V13H26A1,1,0,0,1,27,14Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveEast($event)" @mouseup.stop="stopEast($event)">
+											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveEast($event)" @mouseup.stop="stopEast($event)" data-toggle="tooltip" title="Move east">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M26.82965,16.81921l-9.25622,6.47937A1,1,0,0,1,16,22.47937V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H16V9.52063a1,1,0,0,1,1.57343-.81921l9.25622,6.47937A.99994.99994,0,0,1,26.82965,16.81921Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveNorth($event)" @mouseup.stop="stopNorth($event)">
+											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveNorth($event)" @mouseup.stop="stopNorth($event)" data-toggle="tooltip" title="Move north">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M22.47937,16H19V26a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V16H9.52063a1,1,0,0,1-.81921-1.57349l6.47937-9.25616a.99994.99994,0,0,1,1.63842,0l6.47937,9.25616A1,1,0,0,1,22.47937,16Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state mr-auto" @mousedown.stop="moveSouth($event)" @mouseup.stop="stopSouth($event)">
+											<button class="btn btn-svg idle-state mr-auto" @mousedown.stop="moveSouth($event)" @mouseup.stop="stopSouth($event)" data-toggle="tooltip" title="Move south">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M23.29858,17.57349l-6.47937,9.25616a.99994.99994,0,0,1-1.63842,0L8.70142,17.57349A1,1,0,0,1,9.52063,16H13V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1V16h3.47937A1,1,0,0,1,23.29858,17.57349Z"/>
 												</svg>
 											</button>
-											<button v-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('ON').value" class="btn btn-svg ok-state" onclick="trackingOff()">
+											<button v-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('ON').value" class="btn btn-svg ok-state" onclick="trackingOff()" data-toggle="tooltip" title="Tracking">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M16,4A12,12,0,1,0,28,16,12.01312,12.01312,0,0,0,16,4Zm4.16022,12.82178-5.66541,3.22583A1,1,0,0,1,13,19.17871v-6.4519a1.00005,1.00005,0,0,1,1.49481-.869l5.66541,3.226A1,1,0,0,1,20.16022,16.82178Z"/>
 												</svg>
 											</button>
-											<button v-else-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('OFF').value" class="btn btn-svg idle-state" onclick="trackingOn()">
+											<button v-else-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('OFF').value" class="btn btn-svg idle-state" onclick="trackingOn()" data-toggle="tooltip" title="Tracking">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M16,4A12,12,0,1,0,28,16,12.01312,12.01312,0,0,0,16,4Zm4.16022,12.82178-5.66541,3.22583A1,1,0,0,1,13,19.17871v-6.4519a1.00005,1.00005,0,0,1,1.49481-.869l5.66541,3.226A1,1,0,0,1,20.16022,16.82178Z"/>
 												</svg>
 											</button>
-											<button v-else class="btn btn-svg alert-state" onclick="trackingOff()">
+											<button v-else class="btn btn-svg alert-state" onclick="trackingOff()" data-toggle="tooltip" title="Tracking">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M16,4A12,12,0,1,0,28,16,12.01312,12.01312,0,0,0,16,4Zm4.16022,12.82178-5.66541,3.22583A1,1,0,0,1,13,19.17871v-6.4519a1.00005,1.00005,0,0,1,1.49481-.869l5.66541,3.226A1,1,0,0,1,20.16022,16.82178Z"/>
 												</svg>
@@ -167,9 +171,9 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_DOME_LIST')"></indigo-select-item>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :tooltip="'Right Ascension'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :tooltip="'Declination'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'" :tooltip="'Azimuth'"></indigo-show-number-60>
 									</div>
 								</div>
 							</template>
@@ -177,9 +181,9 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_GPS_LIST')"></indigo-select-item>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'"></indigo-show-number-60>
-										<indigo-show-number :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'ELEVATION'" :icon="'↑'"></indigo-show-number>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'" :tooltip="'Latitude'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'" :tooltip="'Longitude'"></indigo-show-number-60>
+										<indigo-show-number :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'ELEVATION'" :icon="'↑'" :tooltip="'Elevation'"></indigo-show-number>
 									</div>
 								</div>
 							</template>
@@ -195,17 +199,17 @@
 							<div class="card p-1 m-1 bg-light" style="min-height: 10rem">
 								<div id="map" class="position-relative" style="overflow: scroll;"></div>
 								<div v-if="$('#map').children().length > 0" class="position-absolute d-flex">
-									<button class="btn btn-svg idle-state m-1" onclick="zoomIn()">
+									<button class="btn btn-svg idle-state m-1" onclick="zoomIn()" data-toggle="tooltip" title="Zoom In">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M27,14v4a1,1,0,0,1-1,1H19v7a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1h7V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v7h7A1,1,0,0,1,27,14Z"/>
 										</svg>
 									</button>
-									<button class="btn btn-svg idle-state m-1" onclick="zoomOut()">
+									<button class="btn btn-svg idle-state m-1" onclick="zoomOut()" data-toggle="tooltip" title="Zoom Out">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M26,14v4a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H25A1,1,0,0,1,26,14Z"/>
 										</svg>
 									</button>
-									<button class="btn btn-svg idle-state m-1" onclick="followMarker()">
+									<button class="btn btn-svg idle-state m-1" onclick="followMarker()" data-toggle="tooltip" title="Center at marker">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M16,4a8.9999,8.9999,0,0,0-9,9c0,6,6.7583,13.07764,8.16156,14.63135a1.13778,1.13778,0,0,0,1.67688,0C18.2417,26.07764,25,19,25,13A8.9999,8.9999,0,0,0,16,4Zm0,14a5,5,0,1,1,5-5A5.00013,5.00013,0,0,1,16,18Z"/>
 										</svg>
@@ -318,6 +322,7 @@
 					}
 				}
 			}
+			$('[data-toggle="tooltip"]').tooltip()
 		}
 	
 		window.onresize = function() {
