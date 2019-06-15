@@ -146,12 +146,10 @@ indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_
 			if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property))
 				indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
-				FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 				indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		} else {
 			if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
-				FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
 				indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		}
