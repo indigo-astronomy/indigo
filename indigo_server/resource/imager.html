@@ -10,7 +10,7 @@
 	<title>INDIGO Imager</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-md navbar-light bg-secondary">
+			<nav class="navbar navbar-expand-md navbar-light">
 				<a class="navbar-brand text-white " href="#">
 					<img src="imager.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">INDIGO Imager</h4>
@@ -159,7 +159,7 @@
 						<div class="col-md-8">
 							<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
 								<div class="card-block">
-									<div class="card p-0">
+									<div class="card p-0 border-0" style="display: none">
 										<img id="image" class="img-fluid"/>
 									</div>
 								</div>
@@ -176,6 +176,11 @@
 				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
 					{{ state }}
 				</div>
+				<div class="alert alert-info show m-1" role="alert">
+					Copyright &copy; 2019, The INDIGO Initiative. All rights reserved.
+					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
+					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
+				</div>
 			</div>
 		</div>
 	</body>
@@ -188,9 +193,9 @@
 	<script language="javascript" type="text/javascript">
 		
 		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
-
+		guiSetup();
 		window.addEventListener("load", init, false);
-		
+
 		function checkState() {
 			var server = INDIGO.devices["Server"];
 			if (server == null) {
@@ -211,7 +216,6 @@
 					}
 				}
 			}
-			$('[data-toggle="tooltip"]').tooltip()
 		}
 	
 		var targetExposureTime = 0;
@@ -227,6 +231,7 @@
 					changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
 				}
 			}
+			guiSetup();
 		}
 	
 		function onUpdateProperty(property) {
@@ -237,7 +242,7 @@
 					if (property.state == "Ok") {
 						var value = property.item("IMAGE").value;
 						if (value != null) {
-							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime());
+							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
 						}
 					}
 				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
@@ -332,9 +337,11 @@
 					$("#focuser_position_button").addClass("idle-state");
 				}
 			}
+			guiSetup();
 		}
 	
 		function onDeleteProperty(property) {
+			guiSetup();
 		}
 	
 		function preview1() {

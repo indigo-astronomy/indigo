@@ -9,7 +9,7 @@
 	<title>INDIGO Server Manager</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-sm navbar-light bg-secondary">
+			<nav class="navbar navbar-expand-sm navbar-light">
 				<a class="navbar-brand text-white" href="#">
 					<img src="mng.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">Server Manager</h4>
@@ -83,6 +83,11 @@
 				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
 					{{ state }}
 				</div>
+				<div class="alert alert-info show m-1" role="alert">
+					Copyright &copy; 2019, The INDIGO Initiative. All rights reserved.
+					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
+					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
+				</div>
 			</div>
 		</div>
 	</body>
@@ -95,9 +100,9 @@
 	<script language="javascript" type="text/javascript">
 		
 		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
-
+		guiSetup();
 		window.addEventListener("load", init, false);
-		
+
 		function checkState() {
 			if (INDIGO.devices["Server"] == null) {
 				console.log("No 'Server' device.");
@@ -117,16 +122,18 @@
 					}
 				}
 			}
-			$('[data-toggle="tooltip"]').tooltip()
 		}
 	
 		function onDefineProperty(property) {
+			guiSetup();
 		}
 	
 		function onUpdateProperty(property) {
+			guiSetup();
 		}
 	
 		function onDeleteProperty(property) {
+			guiSetup();
 		}
 	
 	</script>

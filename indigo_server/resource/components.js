@@ -500,7 +500,7 @@ Vue.component('indigo-ctrl', {
 	},
 	template: `
 		<div class="accordion p-1 w-100">
-			<div class="card" v-for="(device,deviceName) in devices">
+			<div class="card bg-transparent" v-for="(device,deviceName) in devices">
 				<div class="input-group d-flex card-header p-0" :class="state(device)">
 					<div class="input-group-prepend flex-grow-1">
 								<button :id="'H_' + deviceName.hashCode()" class="btn p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left;border:none;background:transparent;"><span class="icon-indicator"></span>{{deviceName}}</button>
@@ -512,8 +512,8 @@ Vue.component('indigo-ctrl', {
 						<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;" data-toggle="tooltip" title="Expand items">▽</button>
 					</div>
 				</div>
-				<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2">
-					<div class="card" v-for="(group,groupName) in groups(device)">
+					<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2 bg-transparent">
+					<div class="card bg-transparent"  v-for="(group,groupName) in groups(device)">
 						<div class="input-group d-flex card-header p-0">
 							<div class="input-group-prepend flex-grow-1">
 								<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn btn-outline-secondary p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
@@ -711,7 +711,7 @@ Vue.component('indigo-query-db', {
 				<input type="text" class="form-control" @change="onChange">			
 			</div>
 			<div v-if="this.result != null && this.result.length > 0" class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
-				<a v-for="object in this.result" href="#" class="list-group-item list-group-item-action" @click="setTarget(object)">{{object.name}}</a>
+				<a v-for="object in this.result" href="#" class="list-group-item list-group-item-action bg-transparent" :class="INDIGO.dark ? 'text-light' : 'text-dark'" @click="setTarget(object)">{{object.name}}</a>
 			</div>
 		<div>
 		`
@@ -871,3 +871,46 @@ Vue.component('indigo-shutdown', {
 		</div>
 		`
 });
+
+function guiSetup() {
+	$('[data-toggle="tooltip"]').tooltip();
+	localStorage.name = "indigo";
+	if (localStorage.getItem("dark_mode")) {
+		INDIGO.dark = true;
+		$('body').removeClass("bg-secondary").addClass("bg-dark");
+		$('input').removeClass("bg-light").addClass("bg-dark");
+		$('input').removeClass("text-dark").addClass("text-light");
+		$('div.bg-light').removeClass("bg-light").addClass("bg-secondary");
+		$('canvas.bg-light').removeClass("bg-light").addClass("bg-secondary");
+		if (typeof config !== 'undefined') {
+			config.stars.style.fill = "#FFF";
+			if (celestialVisible) {
+				updateMap();
+			}
+		}
+	} else {
+		INDIGO.dark = false;
+		$('body').removeClass("bg-dark").addClass("bg-secondary");
+		$('input').removeClass("bg-dark").addClass("bg-light");
+		$('input').removeClass("text-light").addClass("text-dark");
+		$('div.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
+		$('canvas.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
+		if (typeof config !== 'undefined') {
+			config.stars.style.fill = "#000";
+			if (celestialVisible) {
+				updateMap();
+			}
+		}
+	}
+}
+
+function setDarkMode() {
+	localStorage.setItem("dark_mode", true);
+	guiSetup();
+}
+
+function setLightMode() {
+	localStorage.removeItem("dark_mode");
+	guiSetup();
+}
+
