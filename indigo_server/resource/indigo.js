@@ -155,6 +155,7 @@ function processDefineProperty(property) {
 		Vue.set(properties, name, property);
 	}
 	onDefineProperty(property);
+	$('[data-toggle="tooltip"]').tooltip()
 }
 
 function processUpdateProperty(property) {
@@ -190,6 +191,7 @@ function processUpdateProperty(property) {
 			onUpdateProperty(savedProperty);
 		}
 	}
+	$('[data-toggle="tooltip"]').tooltip()
 }
 
 function processDeleteProperty(property) {
@@ -204,6 +206,7 @@ function processDeleteProperty(property) {
 		onDeleteProperty(properties[name]);
 		Vue.delete(properties, name);
 	}
+	$('[data-toggle="tooltip"]').tooltip()
 }
 
 function dtos(value) {

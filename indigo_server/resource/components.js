@@ -49,7 +49,8 @@ Vue.component('indigo-edit-number', {
 		values: Array,
 		cls: String,
 		ident: String,
-		use_value: Boolean
+		use_value: Boolean,
+		tooltip: String
 	},
 	methods: {
 		change: function(value) {
@@ -114,7 +115,7 @@ Vue.component('indigo-edit-number', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-toggle="tooltip" :title="tooltip">
 			<a class="input-group-prepend">
 				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
 				<span v-else class="input-group-text" :class="state()">{{icon}}</span>
@@ -142,7 +143,8 @@ Vue.component('indigo-edit-number-60', {
 		name: String,
 		icon: String,
 		cls: String,
-		ident: String
+		ident: String,
+		tooltip: String
 	},
 	methods: {
 		change: function(value) {
@@ -183,7 +185,7 @@ Vue.component('indigo-edit-number-60', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-toggle="tooltip" :title="tooltip">
 			<a class="input-group-prepend">
 				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
 				<div v-else class="input-group-text input-label" :class="state()">{{icon}}</div>
@@ -205,7 +207,8 @@ Vue.component('indigo-show-number', {
 		enabler: Object,
 		name: String,
 		icon: String,
-		cls: String
+		cls: String,
+		tooltip: String
 	},
 	methods: {
 		state: function() {
@@ -227,7 +230,7 @@ Vue.component('indigo-show-number', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')">
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-toggle="tooltip" :title="tooltip">
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
 				<small v-if="icon.startsWith('glyphicons-')" class="glyphicons" :class="icon"/>
 				<small v-else class="ml-1 p-1">{{icon}}</small>
@@ -241,7 +244,8 @@ Vue.component('indigo-show-number-60', {
 		property: Object,
 		name: String,
 		icon: String,
-		cls: String
+		cls: String,
+		tooltip: String
 	},
 	methods: {
 		state: function() {
@@ -259,7 +263,7 @@ Vue.component('indigo-show-number-60', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')">
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-toggle="tooltip" :title="tooltip">
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
 				<small v-if="icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
 				<small v-else class="ml-1 p-1">{{icon}}</small>
@@ -273,7 +277,8 @@ Vue.component('indigo-show-text', {
 		property: Object,
 		name: String,
 		icon: String,
-		cls: String
+		cls: String,
+		tooltip: String
 	},
 	methods: {
 		state: function() {
@@ -291,7 +296,7 @@ Vue.component('indigo-show-text', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')">
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-toggle="tooltip" :title="tooltip">
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
 				<small v-if="icon != null && icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
 				<small v-else-if="icon != null" class="ml-1 p-1">{{icon}}</small>
@@ -306,7 +311,8 @@ Vue.component('indigo-edit-text', {
 		property: Object,
 		name: String,
 		icon: String,
-		cls: String
+		cls: String,
+		tooltip: String
 	},
 	methods: {
 		onChange: function(e) {
@@ -327,7 +333,7 @@ Vue.component('indigo-edit-text', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-100')">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-100')" data-toggle="tooltip" :title="tooltip">
 		<div class="input-group-prepend">
 			<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
 			<span v-else class="input-group-text" :class="state()">{{icon}}</span>
@@ -343,7 +349,8 @@ Vue.component('indigo-stepper', {
 		direction: Object,
 		direction_left: String,
 		direction_right: String,
-		cls: String
+		cls: String,
+		tooltip: String
 	},
 	methods: {
 		left: function(value) {
@@ -377,7 +384,7 @@ Vue.component('indigo-stepper', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-toggle="tooltip" :title="tooltip">
 			<div class="input-group-prepend">
 				<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="left($($event.target).parent().next().val())" type="button"></button>
 			</div>
@@ -499,10 +506,10 @@ Vue.component('indigo-ctrl', {
 								<button :id="'H_' + deviceName.hashCode()" class="btn p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left;border:none;background:transparent;"><span class="icon-indicator"></span>{{deviceName}}</button>
 					</div>
 					<div class="input-group-append">
-						<button class="btn" @click.stop="closeAll(deviceName.hashCode())" style="border:none;background:transparent;">△</button>
+						<button class="btn" @click.stop="closeAll(deviceName.hashCode())" style="border:none;background:transparent;" data-toggle="tooltip" title="Collapse items">△</button>
 					</div>
 					<div class="input-group-append">
-						<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;">▽</button>
+						<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;" data-toggle="tooltip" title="Expand items">▽</button>
 					</div>
 				</div>
 				<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2">
@@ -598,7 +605,8 @@ Vue.component('indigo-select-multi-item', {
 	props: {
 		property: Object,
 		label: String,
-		prefix: String
+		prefix: String,
+		tooltip: String
 	},
 	methods: {
 		items: function() {
@@ -627,7 +635,7 @@ Vue.component('indigo-select-multi-item', {
 		}
 	},
 	template: `
-		<div class="input-group p-1">
+		<div class="input-group p-1" data-toggle="tooltip" :title="tooltip">
 			<div class="input-group-prepend">
 				<span class="input-group-text" id="inputGroup-sizing-default" style="width: 10em;" :class="state()">{{label}}</span>
 			</div>

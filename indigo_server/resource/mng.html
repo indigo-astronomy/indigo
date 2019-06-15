@@ -19,20 +19,20 @@
 				</button>
 				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
 					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html">
+						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
 							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
 						</a>
-						<a class="nav-link pr-0" href="ctrl.html">
+						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
 							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
 						</a>
 						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html">
+							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
 								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="mount.html">
+							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
 								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="guider.html">
+							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
 								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
 						</template>
@@ -48,17 +48,17 @@
 						<div class="col-sm-12">
 							<div class="card p-1 m-1 bg-light">
 								<div class="card-block d-flex flex-wrap">
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Camera drivers'" :prefix="'indigo_ccd'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Wheel drivers'" :prefix="'indigo_wheel'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Focuser drivers'" :prefix="'indigo_focuser'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Guider drivers'" :prefix="'indigo_guider'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AO drivers'" :prefix="'indigo_ao'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Mount drivers'" :prefix="'indigo_mount'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'GPS drivers'" :prefix="'indigo_gps'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AUX drivers'" :prefix="'indigo_aux'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Dome drivers'" :prefix="'indigo_dome'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'System drivers'" :prefix="'indigo_system'"></indigo-select-multi-item>
-									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Agents'" :prefix="'indigo_agent'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Camera drivers'" :prefix="'indigo_ccd'" :tooltip="'Select camera drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Wheel drivers'" :prefix="'indigo_wheel'" :tooltip="'Select filter wheel drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Focuser drivers'" :prefix="'indigo_focuser'" :tooltip="'Select focuser drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Guider drivers'" :prefix="'indigo_guider'" :tooltip="'Select guider drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AO drivers'" :prefix="'indigo_ao'" :tooltip="'Select AO drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Mount drivers'" :prefix="'indigo_mount'" :tooltip="'Select mount drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'GPS drivers'" :prefix="'indigo_gps'" :tooltip="'Select GPS drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'AUX drivers'" :prefix="'indigo_aux'" :tooltip="'Select auxiliary device drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Dome drivers'" :prefix="'indigo_dome'" :tooltip="'Select dome drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'System drivers'" :prefix="'indigo_system'" :tooltip="'Select system drivers'"></indigo-select-multi-item>
+									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Agents'" :prefix="'indigo_agent'" :tooltip="'Select agents'"></indigo-select-multi-item>
 								</div>
 							</div>
 							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'WIFI_AP') != null && findProperty('Server', 'WIFI_INFRASTRUCTURE') != null">
@@ -117,6 +117,7 @@
 					}
 				}
 			}
+			$('[data-toggle="tooltip"]').tooltip()
 		}
 	
 		function onDefineProperty(property) {
