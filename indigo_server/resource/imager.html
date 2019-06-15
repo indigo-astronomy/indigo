@@ -107,8 +107,51 @@
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST')"></indigo-select-item>
-										<indigo-edit-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'glyphicons-ruler'" :use_value="true" :tooltip="'Absolute position'"></indigo-edit-number>
-										<indigo-stepper :property="findProperty('Imager Agent', 'FOCUSER_STEPS')" :name="'STEPS'" :direction="findProperty('Imager Agent', 'FOCUSER_DIRECTION')" :direction_left="'MOVE_INWARD'" :direction_right="'MOVE_OUTWARD'" :tooltip="'Relative move'"></indigo-stepper>
+										<template v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS') || findProperty('Imager Agent', 'FOCUSER_MODE')">
+											<div v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS')" class="input-group p-1" :class="findProperty('Imager Agent', 'FOCUSER_SPEED') ? 'w-50' : 'w-100'" data-toggle="tooltip" title="Position or Step Count">
+												<a class="input-group-prepend">
+													<span class="input-group-text glyphicons glyphicons-ruler ok-state"></span>
+												</a>
+												<input id="steps" type="text" value="0" class="form-control input-right">
+											</div>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'FOCUSER_SPEED')" :name="'SPEED'" :icon="'glyphicons-signal'" :tooltip="'Focuser Speed'"></indigo-edit-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_SPEED')" :name="'SPEED'" :icon="'glyphicons-signal'" :tooltip="'Speed'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'glyphicons-play'" :tooltip="'Absolute position'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :tooltip="'Temperature'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_COMPENSATION')" :name="'COMPENSATION'" :icon="'glyphicons-temperature-settings'" :tooltip="'Temperature Compensation'"></indigo-show-number>
+											<div class="d-flex p-1 w-100">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg idle-state mr-2" onclick="focuser_position()" data-toggle="tooltip" title="Move to absolute position">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
+													</svg>
+												</button>
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg idle-state mr-2" onclick="focuser_in()" data-toggle="tooltip" title="Move in">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
+													</svg>
+												</button>
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_out_button" class="btn btn-svg idle-state mr-auto" onclick="focuser_out()" data-toggle="tooltip" title="Move out">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
+													</svg>
+												</button>
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state mr-2" onclick="focuser_auto_on()" data-toggle="tooltip" title="Compensation state">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
+													</svg>
+												</button>
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('AUTOMATIC').value" id="focuser_mode_button" class="btn btn-svg ok-state mr-2" onclick="focuser_auto_off()" data-toggle="tooltip" title="Compensation state">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
+													</svg>
+												</button>
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_ABORT_MOTION')" class="btn btn-svg idle-state" onclick="focuser_stop()" data-toggle="tooltip" title="Stop">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
+													</svg>
+												</button>
+											</div>
+										</template>
 									</div>
 								</div>
 							</template>
@@ -251,6 +294,43 @@
 					$("#capture_button").removeClass("busy-state");
 					$("#capture_button").addClass("idle-state");
 				}
+			} else if (property.name == "FOCUSER_STEPS") {
+				if (property.state == "Alert") {
+					$("#focuser_in_button").removeClass("idle-state");
+					$("#focuser_in_button").removeClass("busy-state");
+					$("#focuser_in_button").addClass("alert-state");
+					$("#focuser_out_button").removeClass("idle-state");
+					$("#focuser_out_button").removeClass("busy-state");
+					$("#focuser_out_button").addClass("alert-state");
+				} else if (property.state == "Busy") {
+					$("#focuser_in_button").removeClass("idle-state");
+					$("#focuser_in_button").removeClass("alert-state");
+					$("#focuser_in_button").addClass("busy-state");
+					$("#focuser_out_button").removeClass("idle-state");
+					$("#focuser_out_button").removeClass("alert-state");
+					$("#focuser_out_button").addClass("busy-state");
+				} else {
+					$("#focuser_in_button").removeClass("alert-state");
+					$("#focuser_in_button").removeClass("busy-state");
+					$("#focuser_in_button").addClass("idle-state");
+					$("#focuser_out_button").removeClass("alert-state");
+					$("#focuser_out_button").removeClass("busy-state");
+					$("#focuser_out_button").addClass("idle-state");
+				}
+			} else if (property.name == "FOCUSER_POSITION") {
+				if (property.state == "Alert") {
+					$("#focuser_position_button").removeClass("idle-state");
+					$("#focuser_position_button").removeClass("busy-state");
+					$("#focuser_position_button").addClass("alert-state");
+				} else if (property.state == "Busy") {
+					$("#focuser_position_button").removeClass("idle-state");
+					$("#focuser_position_button").removeClass("alert-state");
+					$("#focuser_position_button").addClass("busy-state");
+				} else {
+					$("#focuser_position_button").removeClass("alert-state");
+					$("#focuser_position_button").removeClass("busy-state");
+					$("#focuser_position_button").addClass("idle-state");
+				}
 			}
 		}
 	
@@ -299,12 +379,43 @@
 			$("#download_button").addClass("idle-state");
 		}
 	}
+	
+	function stop() {
+		repeatExposure = false;
+		changeProperty("Imager Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
+	}
 
+	function focuser_position() {
+		var position = parseInt($("#steps").val());
+		changeProperty("Imager Agent", "FOCUSER_ON_POSITION_SET", { "GOTO" : true });
+		changeProperty("Imager Agent", "FOCUSER_POSITION", { "POSITION" : position });
+	}
+
+	function focuser_in() {
+		var steps = parseInt($("#steps").val());
+		changeProperty("Imager Agent", "FOCUSER_ON_POSITION_SET", { "GOTO" : true });
+		changeProperty("Imager Agent", "FOCUSER_DIRECTION", { "MOVE_INWARD" : true });
+		changeProperty("Imager Agent", "FOCUSER_STEPS", { "STEPS" : steps });
+	}
 	
-		function stop() {
-			repeatExposure = false;
-			changeProperty("Imager Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
-		}
+	function focuser_out() {
+		var steps = parseInt($("#steps").val());
+		changeProperty("Imager Agent", "FOCUSER_ON_POSITION_SET", { "GOTO" : true });
+		changeProperty("Imager Agent", "FOCUSER_DIRECTION", { "MOVE_OUTWARD" : true });
+		changeProperty("Imager Agent", "FOCUSER_STEPS", { "STEPS" : steps });
+	}
 	
+	function focuser_auto_on() {
+		changeProperty("Imager Agent", "FOCUSER_MODE", { "AUTOMATIC" : true });
+	}
+	
+	function focuser_auto_off() {
+		changeProperty("Imager Agent", "FOCUSER_MODE", { "MANUAL" : true });
+	}
+	
+	function focuser_stop() {
+		changeProperty("Imager Agent", "FOCUSER_ABORT_MOTION", { "ABORT_MOTION" : true });
+	}
+
 	</script>
 </html>
