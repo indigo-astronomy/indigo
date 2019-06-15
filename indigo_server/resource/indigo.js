@@ -9,8 +9,9 @@ var INDIGO = new Vue({
 		state: 'Connecting...',
 		host: '',
 		devices: { },
-		db: []
-		},
+		db: [],
+	  dark: false,
+	},
 	methods: {
 		findProperty: function(device, name) {
 			if (INDIGO == null)
@@ -20,7 +21,7 @@ var INDIGO = new Vue({
 				return null;
 			return properties[name];
 		},
-	}
+  }
 });
 
 function init() {
@@ -155,7 +156,6 @@ function processDefineProperty(property) {
 		Vue.set(properties, name, property);
 	}
 	onDefineProperty(property);
-	$('[data-toggle="tooltip"]').tooltip()
 }
 
 function processUpdateProperty(property) {
@@ -191,7 +191,6 @@ function processUpdateProperty(property) {
 			onUpdateProperty(savedProperty);
 		}
 	}
-	$('[data-toggle="tooltip"]').tooltip()
 }
 
 function processDeleteProperty(property) {
@@ -206,7 +205,6 @@ function processDeleteProperty(property) {
 		onDeleteProperty(properties[name]);
 		Vue.delete(properties, name);
 	}
-	$('[data-toggle="tooltip"]').tooltip()
 }
 
 function dtos(value) {

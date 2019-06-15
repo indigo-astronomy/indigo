@@ -10,7 +10,7 @@
 	<title>INDIGO Mount</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-sm navbar-light bg-secondary">
+			<nav class="navbar navbar-expand-sm navbar-light">
 				<a class="navbar-brand text-white " href="#">
 					<img src="mount.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">INDIGO Mount</h4>
@@ -228,6 +228,11 @@
 				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
 					{{ state }}
 				</div>
+				<div class="alert alert-info show m-1" role="alert">
+					Copyright &copy; 2019, The INDIGO Initiative. All rights reserved.
+					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
+					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
+				</div>
 			</div>
 		</div>
 	</body>
@@ -242,6 +247,7 @@
 	<script language="javascript" type="text/javascript">
 		
 		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+
 		//indigoURL = new URL("ws://localhost:7624");
 		var targetExposureTime = 0;
 		var repeatExposure = false
@@ -299,7 +305,8 @@
 				style: { fill:"#996", opacity: 0.1 }
 			}
 		};
-
+	
+		guiSetup();
 		window.addEventListener("load", init, false);
 		
 		function checkState() {
@@ -322,7 +329,6 @@
 					}
 				}
 			}
-			$('[data-toggle="tooltip"]').tooltip()
 		}
 	
 		window.onresize = function() {
@@ -570,7 +576,8 @@
 					changeProperty(property.device, property.name, values);
 				}
 			}
-		}
+			guiSetup();
+	}
 	
 		function onUpdateProperty(property) {
 			if (property.device == "Mount Agent") {
@@ -584,9 +591,11 @@
 					updateMap();
 				}
 			}
+			guiSetup();
 		}
 	
 		function onDeleteProperty(property) {
+			guiSetup();
 		}
 	
 		function setCoordinates() {
