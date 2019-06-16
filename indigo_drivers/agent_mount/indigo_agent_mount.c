@@ -82,6 +82,7 @@ typedef struct {
 	double mount_ra, mount_dec;
 	double mount_target_ra, mount_target_dec;
 	int server_socket;
+	bool dome_unparked;
 	pthread_mutex_t config_mutex;
 } agent_private_data;
 
@@ -90,6 +91,7 @@ static void save_config(indigo_device *device) {
 	indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
+	indigo_save_property(device, NULL, AGENT_LIMITS_PROPERTY);
 	if (DEVICE_CONTEXT->property_save_file_handle) {
 		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		close(DEVICE_CONTEXT->property_save_file_handle);
@@ -106,6 +108,16 @@ static indigo_property *cached_remote_mount_property(indigo_device *device, char
 	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
 	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
 		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]) && !strcmp(cache[j]->name, name)) {
+			return cache[j];
+		}
+	}
+	return NULL;
+}
+
+static indigo_property *cached_remote_dome_property(indigo_device *device, char *name) {
+	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
+	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
+		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) && !strcmp(cache[j]->name, name)) {
 			return cache[j];
 		}
 	}
@@ -665,18 +677,13 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					CLIENT_PRIVATE_DATA->mount_dec = property->items[i].number.value;
 			}
 			if (property->state != INDIGO_ALERT_STATE) {
-				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
+				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && CLIENT_PRIVATE_DATA->dome_unparked) {
 					indigo_property *eq_property = indigo_init_number_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-					for (int i = 0; i < property->count; i++) {
-						if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
-							indigo_init_number_item(eq_property->items + 0, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
-						else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
-							indigo_init_number_item(eq_property->items + 1, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
-					}
+					indigo_init_number_item(eq_property->items + 0, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0,  CLIENT_PRIVATE_DATA->mount_ra);
+					indigo_init_number_item(eq_property->items + 1, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0,  CLIENT_PRIVATE_DATA->mount_dec);
 					indigo_change_property(FILTER_CLIENT_CONTEXT->client, eq_property);
 					indigo_release_property(eq_property);
 				}
-
 			}
 		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
@@ -763,6 +770,16 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				}
 				if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[2].sw.value)
 					set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+			}
+		} else if (!strcmp(property->name, DOME_PARK_PROPERTY_NAME)) {
+			CLIENT_PRIVATE_DATA->dome_unparked = false;
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					if (!strcmp(property->items[i].name, DOME_PARK_UNPARKED_ITEM_NAME)) {
+						CLIENT_PRIVATE_DATA->dome_unparked = property->items[i].sw.value;
+						break;
+					}
+				}
 			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_GPS_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_GPS_INDEX])) {
