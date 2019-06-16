@@ -23,7 +23,7 @@
  \file indigo_dome_simulator.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_dome_simulator"
 
 #include <stdlib.h>
@@ -95,6 +95,8 @@ static indigo_result dome_attach(indigo_device *device) {
 	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_ITEM->number.value = 1;
+		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RO_PERM;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
