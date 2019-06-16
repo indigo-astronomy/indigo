@@ -81,7 +81,6 @@ typedef struct {
 	double gps_latitude, gps_longitude, gps_elevation;
 	double mount_ra, mount_dec;
 	double mount_target_ra, mount_target_dec;
-	bool do_sync;
 	int server_socket;
 } agent_private_data;
 
@@ -660,35 +659,39 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
 					CLIENT_PRIVATE_DATA->mount_dec = property->items[i].number.value;
 			}
-		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state != INDIGO_ALERT_STATE) {
-			if (CLIENT_PRIVATE_DATA->do_sync && *FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
-				indigo_property *eq_property = indigo_init_number_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-				for (int i = 0; i < property->count; i++) {
-					if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
-						indigo_init_number_item(eq_property->items + 0, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
-					else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
-						indigo_init_number_item(eq_property->items + 1, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
-				}
-				indigo_change_property(FILTER_CLIENT_CONTEXT->client, eq_property);
-				indigo_release_property(eq_property);
-			}
-		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-			if (CLIENT_PRIVATE_DATA->do_sync && *FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
-				indigo_property *park_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-				indigo_property *shutter_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_SHUTTER_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-				for (int i = 0; i < property->count; i++) {
-					if (!strcmp(property->items[i].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
-						indigo_init_switch_item(park_property->items + 0, DOME_PARK_PARKED_ITEM_NAME, NULL, property->items[i].sw.value);
-						indigo_init_switch_item(shutter_property->items + 0, DOME_SHUTTER_CLOSED_ITEM_NAME, NULL, property->items[i].sw.value);
-					} else if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
-						indigo_init_switch_item(park_property->items + 1, DOME_PARK_UNPARKED_ITEM_NAME, NULL, property->items[i].sw.value);
-						indigo_init_switch_item(shutter_property->items + 1, DOME_SHUTTER_OPENED_ITEM_NAME, NULL, property->items[i].sw.value);
+			if (property->state != INDIGO_ALERT_STATE) {
+				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
+					indigo_property *eq_property = indigo_init_number_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+					for (int i = 0; i < property->count; i++) {
+						if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
+							indigo_init_number_item(eq_property->items + 0, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
+						else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
+							indigo_init_number_item(eq_property->items + 1, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0,  property->items[i].number.value);
 					}
+					indigo_change_property(FILTER_CLIENT_CONTEXT->client, eq_property);
+					indigo_release_property(eq_property);
 				}
-				indigo_change_property(FILTER_CLIENT_CONTEXT->client, park_property);
-				indigo_change_property(FILTER_CLIENT_CONTEXT->client, shutter_property);
-				indigo_release_property(park_property);
-				indigo_release_property(shutter_property);
+
+			}
+		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
+				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
+					indigo_property *park_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+					indigo_property *shutter_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_SHUTTER_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+					for (int i = 0; i < property->count; i++) {
+						if (!strcmp(property->items[i].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
+							indigo_init_switch_item(park_property->items + 0, DOME_PARK_PARKED_ITEM_NAME, NULL, property->items[i].sw.value);
+							indigo_init_switch_item(shutter_property->items + 0, DOME_SHUTTER_CLOSED_ITEM_NAME, NULL, property->items[i].sw.value);
+						} else if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
+							indigo_init_switch_item(park_property->items + 1, DOME_PARK_UNPARKED_ITEM_NAME, NULL, property->items[i].sw.value);
+							indigo_init_switch_item(shutter_property->items + 1, DOME_SHUTTER_OPENED_ITEM_NAME, NULL, property->items[i].sw.value);
+						}
+					}
+					indigo_change_property(FILTER_CLIENT_CONTEXT->client, park_property);
+					indigo_change_property(FILTER_CLIENT_CONTEXT->client, shutter_property);
+					indigo_release_property(park_property);
+					indigo_release_property(shutter_property);
+				}
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
@@ -739,37 +742,38 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])) {
-		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
-		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->dome_latitude = property->items[i].number.value;
-				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->dome_longitude = property->items[i].number.value;
-				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->dome_elevation = property->items[i].number.value;
-			}
-			if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[2].sw.value)
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
 				set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
-		} else if (!strcmp(property->name, DOME_AUTO_SYNC_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, DOME_AUTO_SYNC_ENABLE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->do_sync = property->items[i].sw.value;
+			}
+		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
+						CLIENT_PRIVATE_DATA->dome_latitude = property->items[i].number.value;
+					else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
+						CLIENT_PRIVATE_DATA->dome_longitude = property->items[i].number.value;
+					else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME))
+						CLIENT_PRIVATE_DATA->dome_elevation = property->items[i].number.value;
+				}
+				if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[2].sw.value)
+					set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
 			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_GPS_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_GPS_INDEX])) {
-		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->gps_latitude = property->items[i].number.value;
-				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->gps_longitude = property->items[i].number.value;
-				else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->gps_elevation = property->items[i].number.value;
+		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
+						CLIENT_PRIVATE_DATA->gps_latitude = property->items[i].number.value;
+					else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
+						CLIENT_PRIVATE_DATA->gps_longitude = property->items[i].number.value;
+					else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME))
+						CLIENT_PRIVATE_DATA->gps_elevation = property->items[i].number.value;
+				}
+				if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[3].sw.value)
+					set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
 			}
-			if (CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[3].sw.value)
-				set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX])) {
 		if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && property->state == INDIGO_OK_STATE && (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) || !strcmp(property->name, MOUNT_SLEW_RATE_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_DEC_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_RA_PROPERTY_NAME) || !strcmp(property->name, MOUNT_ABORT_MOTION_PROPERTY_NAME) || !strcmp(property->name, MOUNT_TRACKING_PROPERTY_NAME))) {
@@ -811,11 +815,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_GPS_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_GPS_INDEX])) {
-		if (!strcmp(property->name, DOME_AUTO_SYNC_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-			CLIENT_PRIVATE_DATA->do_sync = false;
-		}
-	}
 	return indigo_filter_delete_property(client, device, property, message);
 }
 
