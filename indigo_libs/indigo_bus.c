@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
