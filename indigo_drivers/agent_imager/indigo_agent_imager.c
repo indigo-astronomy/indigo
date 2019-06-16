@@ -82,11 +82,13 @@ typedef struct {
 	int focuser_position;
 	double site_lat, site_long;
 	double mount_ra, mount_dec;
+	pthread_mutex_t config_mutex;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
 static void save_config(indigo_device *device) {
+	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->config_mutex);
 	indigo_save_property(device, NULL, AGENT_IMAGER_BATCH_PROPERTY);
 	if (DEVICE_CONTEXT->property_save_file_handle) {
 		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
@@ -97,6 +99,7 @@ static void save_config(indigo_device *device) {
 	}
 	CONFIG_SAVE_ITEM->sw.value = false;
 	indigo_update_property(device, CONFIG_PROPERTY, NULL);
+	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->config_mutex);
 }
 
 static void set_headers(indigo_device *device) {
@@ -357,6 +360,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		*DEVICE_PRIVATE_DATA->filter_name = 0;
+		pthread_mutex_init(&DEVICE_PRIVATE_DATA->config_mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -553,6 +557,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_IMAGER_DOWNLOAD_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
+	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->config_mutex);
 	return indigo_filter_device_detach(device);
 }
 
