@@ -423,3 +423,5 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | MOUNT | yes | Use mount controller coordinates | 
 |  |  |  |  | DOME | yes | Use dome controller coordinates | 
 |  |  |  |  | GPS | yes | Use GPS coordinates | 
+| AGENT_LIMITS | number | no | yes | HA_TRACKING | yes | HA limit for tracking; park when reached; use 24:00:00 to turn it off | 
+|  |  |  |  | LOCAL_TIME | yes | Time limit for tracking; park when reached; use 12:00:00 to turn it off  | 
