@@ -38,10 +38,14 @@
 #include "indigo_agent.h"
 #include "indigo_novas.h"
 
-#define SYNC_INTERAL 30.0  /* in seconds */
+#define SYNC_INTERAL 15.0  /* in seconds */
+
+static indigo_client dummy_client = { "Client", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
 static void sync_timer_callback(indigo_device *device) {
-	device->change_property(device, NULL, DOME_EQUATORIAL_COORDINATES_PROPERTY);
+	if (!DOME_PARK_PARKED_ITEM->sw.value) {
+		device->change_property(device, &dummy_client, DOME_EQUATORIAL_COORDINATES_PROPERTY);
+	}
 	indigo_reschedule_timer(device, SYNC_INTERAL, &DOME_CONTEXT->sync_timer);
 }
 
