@@ -65,12 +65,17 @@
 #define AGENT_LX200_CONFIGURATION_PROPERTY						(DEVICE_PRIVATE_DATA->agent_lx200_configuration_property)
 #define AGENT_LX200_CONFIGURATION_PORT_ITEM						(AGENT_LX200_CONFIGURATION_PROPERTY->items+0)
 
+#define AGENT_LIMITS_PROPERTY													(DEVICE_PRIVATE_DATA->agent_limits_property)
+#define AGENT_HA_TRACKING_LIMIT_ITEM									(AGENT_LIMITS_PROPERTY->items+0)
+#define AGENT_LOCAL_TIME_LIMIT_ITEM										(AGENT_LIMITS_PROPERTY->items+1)
+
 
 typedef struct {
 	indigo_property *agent_geographic_property;
 	indigo_property *agent_site_data_source_property;
 	indigo_property *agent_lx200_server_property;
 	indigo_property *agent_lx200_configuration_property;
+	indigo_property *agent_limits_property;
 	double mount_latitude, mount_longitude, mount_elevation;
 	double dome_latitude, dome_longitude, dome_elevation;
 	double gps_latitude, gps_longitude, gps_elevation;
@@ -93,6 +98,16 @@ static void save_config(indigo_device *device) {
 	}
 	CONFIG_SAVE_ITEM->sw.value = false;
 	indigo_update_property(device, CONFIG_PROPERTY, NULL);
+}
+
+static indigo_property *cached_remote_mount_property(indigo_device *device, char *name) {
+	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
+	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
+		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]) && !strcmp(cache[j]->name, name)) {
+			return cache[j];
+		}
+	}
+	return NULL;
 }
 
 static void forward_property_update(indigo_client *client, indigo_property *property, char *device_name) {
@@ -182,7 +197,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_DOME_LIST_PROPERTY->hidden = false;
 		FILTER_GPS_LIST_PROPERTY->hidden = false;
 		FILTER_JOYSTICK_LIST_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- AGENT_GEOGRAPHIC_COORDINATES
+		// -------------------------------------------------------------------------------- GEOGRAPHIC_COORDINATES
 		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, "Agent", "Location", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
 		return INDIGO_FAILED;
@@ -197,7 +212,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_MOUNT_ITEM, AGENT_SITE_DATA_SOURCE_MOUNT_ITEM_NAME, "Use mount coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_DOME_ITEM, AGENT_SITE_DATA_SOURCE_DOME_ITEM_NAME, "Use dome coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "Use GPS coordinates", false);
-		// -------------------------------------------------------------------------------- LX200_SERVER
+		// -------------------------------------------------------------------------------- AGENT_LX200_SERVER
 		AGENT_LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_LX200_SERVER_PROPERTY_NAME, "Agent", "LX200 Server state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_LX200_SERVER_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -209,6 +224,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		AGENT_LX200_CONFIGURATION_PROPERTY->hidden = true;
 		indigo_init_number_item(AGENT_LX200_CONFIGURATION_PORT_ITEM, AGENT_LX200_CONFIGURATION_PORT_ITEM_NAME, "Server port", 0, 0xFFFF, 0, 4030);
+		// -------------------------------------------------------------------------------- AGENT_LIMITS
+		AGENT_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LIMITS_PROPERTY_NAME, "Agent", "Limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (AGENT_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_sexagesimal_number_item(AGENT_HA_TRACKING_LIMIT_ITEM, AGENT_HA_TRACKING_LIMIT_ITEM_NAME, "HA tracking limit (0 to 24)", 0, 24, 0, 24);
+		indigo_init_sexagesimal_number_item(AGENT_LOCAL_TIME_LIMIT_ITEM, AGENT_LOCAL_TIME_LIMIT_ITEM_NAME, "Time limit (0 to 24)", 0, 24, 0, 12);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		indigo_load_properties(device, false);
@@ -229,6 +250,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property))
 		indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_LIMITS_PROPERTY, property))
+		indigo_define_property(device, AGENT_LIMITS_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -586,6 +609,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_LIMITS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_LIMITS
+		indigo_property_copy_values(AGENT_LIMITS_PROPERTY, property, false);
+		AGENT_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_LIMITS_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -602,6 +632,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_release_property(AGENT_LX200_SERVER_PROPERTY);
 	indigo_release_property(AGENT_LX200_CONFIGURATION_PROPERTY);
+	indigo_release_property(AGENT_LIMITS_PROPERTY);
 	return indigo_filter_device_detach(device);
 }
 
@@ -658,6 +689,53 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				indigo_change_property(FILTER_CLIENT_CONTEXT->client, shutter_property);
 				indigo_release_property(park_property);
 				indigo_release_property(shutter_property);
+			}
+		}
+	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_LST_TIME_ITEM_NAME)) {
+				double lst = property->items[i].number.value;
+				double ha = fmod(lst - CLIENT_PRIVATE_DATA->mount_ra + 24, 24);
+				time_t timer;
+				time(&timer);
+				struct tm *info = localtime(&timer);
+				double now = info->tm_hour + info->tm_min / 60.0 + info->tm_sec / 3600.0;
+				CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.value = ha;
+				CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.value = now;
+				indigo_update_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_limits_property, NULL);
+				if (property->state == INDIGO_OK_STATE) {
+					indigo_property *cached_park_property = cached_remote_mount_property(FILTER_CLIENT_CONTEXT->device, MOUNT_PARK_PROPERTY_NAME);
+					if (cached_park_property && cached_park_property->state == INDIGO_OK_STATE) {
+						for (int j = 0; j < cached_park_property->count; j++) {
+							if (!strcmp(cached_park_property->items[j].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
+								if (cached_park_property->items[j].sw.value) {
+									bool park = false;
+									if (ha > CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target) {
+										park = true;
+										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
+									}
+									double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
+									if (now < 12 && target < 12 && now > target) {
+										park = true;
+										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+									}
+									if (now > 12 && target > 12 && now > target) {
+										park = true;
+										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+									}
+									if (park) {
+										indigo_property *park_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+										indigo_init_switch_item(park_property->items, MOUNT_PARK_PARKED_ITEM_NAME, NULL, true);
+										indigo_change_property(FILTER_CLIENT_CONTEXT->client, park_property);
+										indigo_release_property(park_property);
+									}
+									break;
+								}
+							}
+						}
+					}
+				}
+				break;
 			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])) {
