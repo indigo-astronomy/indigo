@@ -131,10 +131,12 @@ bool synscan_configure(indigo_device* device) {
 		if (!synscan_high_speed_ratio(device, kAxisDEC, &PRIVATE_DATA->decHighSpeedFactor))
 			return false;
 		
-		if (!synscan_ext_inquiry(device, kAxisRA, kGetFeatures, &PRIVATE_DATA->raFeatures))
-			return false;
-		if (!synscan_ext_inquiry(device, kAxisDEC, kGetFeatures, &PRIVATE_DATA->decFeatures))
-			return false;
+		if (!synscan_ext_inquiry(device, kAxisRA, kGetFeatures, &PRIVATE_DATA->raFeatures)) {
+			PRIVATE_DATA->raFeatures = 0;
+		}
+		if (!synscan_ext_inquiry(device, kAxisDEC, kGetFeatures, &PRIVATE_DATA->decFeatures)) {
+			PRIVATE_DATA->decFeatures = 0;
+		}
 
 		MOUNT_OPERATING_MODE_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kIsAZEQ) || (PRIVATE_DATA->decFeatures & kIsAZEQ));
 		MOUNT_USE_ENCODERS_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasEncoder) || (PRIVATE_DATA->decFeatures & kHasEncoder));
