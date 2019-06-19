@@ -107,6 +107,7 @@
 #include "agent_guider/indigo_agent_guider.h"
 #include "system_ascol/indigo_system_ascol.h"
 #include "focuser_steeldrive2/indigo_focuser_steeldrive2.h"
+#include "agent_auxiliary/indigo_agent_auxiliary.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -133,6 +134,7 @@
 driver_entry_point static_drivers[] = {
 #ifdef STATIC_DRIVERS
 	indigo_agent_alignment,
+	indigo_agent_auxiliary,
 	indigo_agent_guider,
 	indigo_agent_imager,
 	indigo_agent_lx200_server,

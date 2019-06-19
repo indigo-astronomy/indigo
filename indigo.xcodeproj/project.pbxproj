@@ -375,6 +375,8 @@
 		9DBC34671DCB267700588DB9 /* indigo_wheel_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DBC34641DCB267700588DB9 /* indigo_wheel_asi.h */; };
 		9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
 		9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
+		9DC4968822BA7B810052AB3E /* indigo_agent_auxiliary.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DC4967D22BA7B810052AB3E /* indigo_agent_auxiliary.h */; };
+		9DC4968922BA7B810052AB3E /* indigo_agent_auxiliary.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4967F22BA7B810052AB3E /* indigo_agent_auxiliary.c */; };
 		9DC7830721A7072C009859FD /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 9DC7830621A7072B009859FD /* Makefile */; };
 		9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
@@ -4259,6 +4261,9 @@
 		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
 		9DC4736C21A4596500EE561A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9DC4967D22BA7B810052AB3E /* indigo_agent_auxiliary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_auxiliary.h; sourceTree = "<group>"; };
+		9DC4967E22BA7B810052AB3E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DC4967F22BA7B810052AB3E /* indigo_agent_auxiliary.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_auxiliary.c; sourceTree = "<group>"; };
 		9DC782F421A6D919009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_ascol.c; sourceTree = "<group>"; };
 		9DC782F821A6FCC7009859FD /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -8195,6 +8200,7 @@
 			isa = PBXGroup;
 			children = (
 				9D85FAE021E38E3900ECDF82 /* agent_alignment */,
+				9DC4967C22BA7B810052AB3E /* agent_auxiliary */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				5911B6D522633DBE00D6B9EC /* agent_guider */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
@@ -11915,6 +11921,17 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		9DC4967C22BA7B810052AB3E /* agent_auxiliary */ = {
+			isa = PBXGroup;
+			children = (
+				9DC4967E22BA7B810052AB3E /* README.md */,
+				9DC4967D22BA7B810052AB3E /* indigo_agent_auxiliary.h */,
+				9DC4967F22BA7B810052AB3E /* indigo_agent_auxiliary.c */,
+			);
+			name = agent_auxiliary;
+			path = indigo_drivers/agent_auxiliary;
+			sourceTree = SOURCE_ROOT;
+		};
 		9DC782F521A6FCC7009859FD /* system_ascol */ = {
 			isa = PBXGroup;
 			children = (
@@ -12001,6 +12018,7 @@
 				9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */,
 				595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */,
 				9D59D63420D3F829009EA8FF /* versionNo.h in Headers */,
+				9DC4968822BA7B810052AB3E /* indigo_agent_auxiliary.h in Headers */,
 				9D59D61720D3F829009EA8FF /* ApogeeFilterWheel.h in Headers */,
 				9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */,
 				595F291B211E211100380EF4 /* DDHidKeyboard.h in Headers */,
@@ -12510,6 +12528,7 @@
 				9DAD522321246C18002FCC79 /* indigo_mount_synscan_protocol.c in Sources */,
 				9D59D63920D3F829009EA8FF /* ApogeeCam.cpp in Sources */,
 				9D59D60320D3F829009EA8FF /* FilterWheelIo.cpp in Sources */,
+				9DC4968922BA7B810052AB3E /* indigo_agent_auxiliary.c in Sources */,
 				595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */,
 				9DB9180A1DFEA71C00678721 /* indigo_mount_nexstar.c in Sources */,
 				9D59D62920D3F829009EA8FF /* AscentData.cpp in Sources */,
