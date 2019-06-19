@@ -157,6 +157,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				properties.nPixelsX = 3326;
 				properties.nPixelsY = 2504;
 			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Firmware: %d.%d", properties.Protocol >> 8, properties.Protocol & 0xff);
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = properties.nPixelsX;
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = properties.nPixelsY;
 			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(properties.PixelMicronsX * 100)/100;
@@ -484,7 +485,7 @@ static void guider_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->guider_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
-	
+
 	ArtemisGuidePort(PRIVATE_DATA->handle, 0);
 	if (PRIVATE_DATA->relay_mask & (ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
@@ -605,7 +606,7 @@ static indigo_result guider_detach(indigo_device *device) {
 static void wheel_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
-	
+
 	int num_filters, moving, current_pos, target_pos;
 	if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
 		WHEEL_SLOT_ITEM->number.value = current_pos;
@@ -870,14 +871,14 @@ static libusb_hotplug_callback_handle callback_handle1, callback_handle2;
 
 indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *info) {
 	ArtemisSetDebugCallback(debug_log);
-	
+
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	
+
 	SET_DRIVER_INFO(info, "Atik Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -891,7 +892,7 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 				rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID2, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-			
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle1);
@@ -920,10 +921,10 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 			}
 			ArtemisShutdown();
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }
