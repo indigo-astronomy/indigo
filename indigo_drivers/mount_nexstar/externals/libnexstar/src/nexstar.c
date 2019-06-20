@@ -210,7 +210,7 @@ int _tc_goto_azalt(int dev, double az, double alt, char precise) {
 }
 
 int _tc_sync_rade(int dev, double ra, double de, char precise) {
-	char nex[18];
+	char nex[20];
 	char reply;
 
 	if (VENDOR(VNDR_SKYWATCHER)) {
