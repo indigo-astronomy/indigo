@@ -607,7 +607,7 @@ static void process_plug_event(indigo_device *unusued) {
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	char dev_name[DSI_NAME_LEN];
+	char dev_name[DSI_NAME_LEN + 1];
 	dsi_camera_t *dsi;
 	dsi = dsi_open_camera(sid);
 	if(dsi == NULL) {
