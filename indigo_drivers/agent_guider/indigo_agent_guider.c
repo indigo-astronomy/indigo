@@ -184,7 +184,7 @@ static indigo_property_state capture_frame(indigo_device *device) {
 			}
 			while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
 				if (time > 1) {
-					usleep(1000000);
+					sleep(1);
 					time -= 1;
 				} else {
 					usleep(10000);
