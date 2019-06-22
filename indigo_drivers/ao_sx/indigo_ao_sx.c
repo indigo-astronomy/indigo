@@ -77,6 +77,7 @@ static bool sx_command(indigo_device *device, char *command, char *response, int
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
+	*response = 0;
 	// flush
 	while (true) {
 		fd_set readout;
