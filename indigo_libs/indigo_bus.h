@@ -29,7 +29,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
-#include <sys/types.h>
 
 #include "indigo_config.h"
 
@@ -543,7 +542,7 @@ extern char* indigo_dtos(double value, char *format);
 
 /** Sleeps for specified number of microseconds.
  */
-extern void indigo_usleep(useconds_t delay);
+extern void indigo_usleep(unsigned int delay);
 	
 #define ONE_SECOND_DELAY	1000000
 	
