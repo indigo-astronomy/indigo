@@ -142,7 +142,7 @@ static void ssag_firmware(libusb_device *dev) {
 		rc = rc < 0 ? rc : ssag_upload(handle, bootloader);
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x00);
 		if (rc >=0)
-			sleep(1);
+			  indigo_usleep(ONE_SECOND_DELAY);
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
 		rc = rc < 0 ? rc : ssag_upload(handle, firmware);
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
@@ -310,7 +310,7 @@ static void exposure_timer_callback(indigo_device *device) {
 //		} else {
 //			ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
 //			if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
-//				usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
+//				indigo_usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
 //				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
 //			} else
 //				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);
@@ -388,7 +388,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.target < 0.1) {
-			usleep(CCD_EXPOSURE_ITEM->number.target * 1000000);
+			indigo_usleep(CCD_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, exposure_timer_callback);
 		} else
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
@@ -409,7 +409,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 //		}
 //		ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
 //		if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
-//			usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
+//			indigo_usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
 //			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
 //		} else
 //			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);

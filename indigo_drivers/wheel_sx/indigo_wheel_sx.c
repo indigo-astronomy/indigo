@@ -65,7 +65,7 @@ static bool sx_message(indigo_device *device, int a, int b) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_write( { %02x, %02x }) ->  %d", buf[0], buf[1], rc);
 	if (rc != 2)
 		return false;
-	usleep(100);
+	indigo_usleep(100);
 	rc = hid_read(PRIVATE_DATA->handle, buf, 2);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_read() ->  %d, { %02x, %02x }", rc, buf[0], buf[1]);
 	PRIVATE_DATA->current_slot = buf[0];

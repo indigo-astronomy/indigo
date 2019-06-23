@@ -740,7 +740,7 @@ static void *poll(indigo_device *device) {
 				if (errno == EBADF) {
 					joy_fd = 0;
 				} else {
-					usleep(100000);
+					indigo_usleep(100000);
 				}
 			}
 		}
@@ -820,7 +820,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	[DDHidJoystickWrapper rescan];
 #endif
 #ifdef INDIGO_LINUX
-	usleep(500000);
+	indigo_usleep(500000);
 	rescan();
 #endif
 	return 0;

@@ -889,7 +889,7 @@ static struct info {
             unsigned int value = ptpReadUnsignedInt(&bytes);
             if (value == 0) {
               [self sendPTPRequest:PTPRequestCodeNikonStartLiveView];
-              usleep(100000);
+              indigo_usleep(100000);
             } else {
               NSMutableString *text = [NSMutableString stringWithFormat:@"LiveViewProhibitCondition 0x%08x", value];
               if (value & 0x80000000)
@@ -944,7 +944,7 @@ static struct info {
     }
     case PTPRequestCodeNikonDeviceReady: {
       if (response.responseCode == PTPResponseCodeDeviceBusy) {
-        usleep(100000);
+        indigo_usleep(100000);
         [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
       }
       break;
@@ -1043,7 +1043,7 @@ static struct info {
         }
       } else if (response.responseCode == PTPResponseCodeDeviceBusy) {
         [self.delegate debug:[NSString stringWithFormat:@"PTPResponseCodeDeviceBusy"]];
-        usleep(100000);
+        indigo_usleep(100000);
         [self getPreviewImage];
       } else {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No data received (0x%04x = %@)", response.responseCode, response]];

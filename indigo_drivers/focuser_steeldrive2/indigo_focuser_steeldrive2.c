@@ -329,7 +329,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						success = true;
 						break;
 					}
-					usleep(100000);
+					indigo_usleep(100000);
 				}
 				if (!success) {
 					close(PRIVATE_DATA->handle);

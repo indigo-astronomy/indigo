@@ -1415,7 +1415,7 @@ static void *thread_capture(void *user_data)
 	/* Bulb capture. */
 	if (PRIVATE_DATA->shutterspeed_bulb)
 		while (CCD_EXPOSURE_ITEM->number.value)
-			usleep(TIMER_COUNTER_STEP_SEC * 1000000UL);
+			indigo_usleep(TIMER_COUNTER_STEP_SEC * 1000000UL);
 
 	/* Function will release the shutter. */
 	rc = gp_camera_capture(PRIVATE_DATA->camera, GP_CAPTURE_IMAGE,

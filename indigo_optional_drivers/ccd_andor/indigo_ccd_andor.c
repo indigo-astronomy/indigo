@@ -615,7 +615,7 @@ static bool andor_read_pixels(indigo_device *device) {
 	do {
 		GetStatus(&status);
 		if (status != DRV_ACQUIRING) break;
-		usleep(10000);
+		indigo_usleep(10000);
 		wait_cycles--;
 	} while (wait_cycles);
 

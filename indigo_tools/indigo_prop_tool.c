@@ -830,7 +830,7 @@ int main(int argc, const char * argv[]) {
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
 	indigo_connect_server(hostname, hostname, port, &server);
-	sleep(time_to_wait);
+	 indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
 	indigo_stop();
 	indigo_disconnect_server(server);
 	return 0;

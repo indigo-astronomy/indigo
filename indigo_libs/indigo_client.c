@@ -227,7 +227,7 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			free(subprocess->protocol_adapter);
 		}
 		if (subprocess->pid >= 0) {
-			sleep(sleep_interval);
+			 indigo_usleep(sleep_interval * 1000000);
 			if (sleep_interval < 60)
 				sleep_interval *= 2;
 		} else {
@@ -391,12 +391,7 @@ static void *server_thread(indigo_server_entry *server) {
 			indigo_send_message(server->protocol_adapter, "disconnected");
 #endif
     } else if (server->socket == 0) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-      sleep(5);
-#endif
-#if defined(INDIGO_WINDOWS)
-      Sleep(5000);
-#endif
+       indigo_usleep(5 * ONE_SECOND_DELAY);
     }
   }
   server->thread_started = false;

@@ -298,7 +298,7 @@ static bool fli_read_pixels(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = FLIGetExposureStatus(id, &timeleft);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (timeleft) usleep((useconds_t)timeleft);
+		if (timeleft) indigo_usleep((useconds_t)timeleft);
 	} while (timeleft*1000);
 
 	do {
@@ -308,7 +308,7 @@ static bool fli_read_pixels(indigo_device *device) {
 		if((dev_status != FLI_CAMERA_STATUS_UNKNOWN) && ((dev_status & FLI_CAMERA_DATA_READY) != 0)) {
 			break;
 		}
-		usleep(10000);
+		indigo_usleep(10000);
 		wait_cycles--;
 	} while (wait_cycles);
 

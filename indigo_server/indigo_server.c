@@ -418,7 +418,7 @@ static void check_versions(indigo_device *device) {
 		if (redefine)
 			indigo_define_property(device, install_property, NULL);
 		pthread_mutex_unlock(&install_property_mutex);
-		sleep(10 * 60);
+		 indigo_usleep(10 * 60 * ONE_SECOND_DELAY);
 	}
 }
 
@@ -1184,7 +1184,7 @@ int main(int argc, const char * argv[]) {
 				use_sigkill = false;
 				if (keep_server_running) {
 					INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
-					sleep(2);
+					  indigo_usleep(2 * ONE_SECOND_DELAY);
 				}
 			}
 		}

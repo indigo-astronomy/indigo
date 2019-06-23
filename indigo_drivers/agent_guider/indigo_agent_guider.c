@@ -176,7 +176,7 @@ static indigo_property_state capture_frame(indigo_device *device) {
 			local_exposure_property->items[0].number.value = time;
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_exposure_property);
 			for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000 && AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE; i++)
-				usleep(1000);
+				indigo_usleep(1000);
 			if (remote_exposure_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
 				indigo_release_property(local_exposure_property);
@@ -184,10 +184,10 @@ static indigo_property_state capture_frame(indigo_device *device) {
 			}
 			while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
 				if (time > 1) {
-					sleep(1);
+					  indigo_usleep(ONE_SECOND_DELAY);
 					time -= 1;
 				} else {
-					usleep(10000);
+					indigo_usleep(10000);
 					time -= 0.01;
 				}
 			}
@@ -313,7 +313,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 				}
 				indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_guide_property);
 				while (remote_guide_property->state == INDIGO_BUSY_STATE) {
-					usleep(50000);
+					indigo_usleep(50000);
 				}
 				indigo_release_property(local_guide_property);
 			}
@@ -340,7 +340,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 				}
 				indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_guide_property);
 				while (remote_guide_property->state == INDIGO_BUSY_STATE) {
-					usleep(50000);
+					indigo_usleep(50000);
 				}
 				indigo_release_property(local_guide_property);
 			}

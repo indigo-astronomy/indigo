@@ -155,19 +155,19 @@ static void exposure_batch(indigo_device *device) {
 					local_exposure_property->items[0].number.value = time;
 					indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_exposure_property);
 					for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000; i++)
-						usleep(1000);
+						indigo_usleep(1000);
 					if (remote_exposure_property->state != INDIGO_BUSY_STATE) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
 						break;
 					}
 					while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
 						if (time > 1) {
-							sleep(1);
+							  indigo_usleep(ONE_SECOND_DELAY);
 							time -= 1;
 							AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = time;
 							indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 						} else {
-							usleep(10000);
+							indigo_usleep(10000);
 							time -= 0.01;
 						}
 					}
@@ -179,12 +179,12 @@ static void exposure_batch(indigo_device *device) {
 						indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 						while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && time > 0) {
 							if (time > 1) {
-								sleep(1);
+								  indigo_usleep(ONE_SECOND_DELAY);
 								time -= 1;
 								AGENT_IMAGER_BATCH_DELAY_ITEM->number.value = time;
 								indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 							} else {
-								usleep(10000);
+								indigo_usleep(10000);
 								time -= 0.01;
 							}
 						}
@@ -252,7 +252,7 @@ static void streaming_batch(indigo_device *device) {
 				local_streaming_property->items[count_index].number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 				indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_streaming_property);
 				for (int i = 0; remote_streaming_property->state != INDIGO_BUSY_STATE && i < 1000; i++)
-					usleep(1000);
+					indigo_usleep(1000);
 				if (remote_streaming_property->state != INDIGO_BUSY_STATE) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_STREAMING_PROPERTY didn't become busy in 1 second");
 					break;
@@ -263,9 +263,9 @@ static void streaming_batch(indigo_device *device) {
 						AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = time;
 						AGENT_IMAGER_BATCH_COUNT_ITEM->number.value = remote_streaming_property->items[count_index].number.value;
 						indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-						sleep(1);
+						  indigo_usleep(ONE_SECOND_DELAY);
 					} else {
-						usleep(10000);
+						indigo_usleep(10000);
 					}
 				}
 				AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = 0;

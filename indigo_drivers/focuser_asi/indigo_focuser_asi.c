@@ -761,7 +761,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
-		sleep(1);
+		  indigo_usleep(ONE_SECOND_DELAY);
 	}
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);

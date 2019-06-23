@@ -71,7 +71,7 @@ static void quantum_query(indigo_device *device) {
 				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			}
 		}
-		usleep(500000);
+		indigo_usleep(500000);
 	}
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);

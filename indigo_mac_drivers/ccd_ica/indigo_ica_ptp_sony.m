@@ -483,7 +483,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
           if (response.responseCode == PTPResponseCodeAccessDenied) {
             if (retryCount < 100) {
               retryCount++;
-              usleep(100000);
+              indigo_usleep(100000);
               [self getPreviewImage];
             } else {
               liveView = false;
@@ -636,7 +636,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
       for (wait = 0; wait < MAX_WAIT; wait++) {
         [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
-        usleep(MAX_DELAY);
+        indigo_usleep(MAX_DELAY);
         property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
         if (property.value.intValue == map[i + 1]) {
           break;
@@ -650,7 +650,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"-1"];
       for (wait = 0; wait < MAX_WAIT; wait++) {
         [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
-        usleep(MAX_DELAY);
+        indigo_usleep(MAX_DELAY);
         property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
         if (property.value.intValue == map[i - 1]) {
           break;
