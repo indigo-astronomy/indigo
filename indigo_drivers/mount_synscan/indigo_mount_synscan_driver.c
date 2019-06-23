@@ -928,16 +928,16 @@ void synscan_save_position(indigo_device *device) {
 bool synscan_restore_position(indigo_device *device, enum AxisID axis, bool remove) {
 	long ra_pos = 0, dec_pos = 0;
 	char path[INDIGO_VALUE_SIZE];
-	char buffer[INDIGO_VALUE_SIZE];
+	char buffer[INDIGO_VALUE_SIZE] = "";
 	snprintf(path, INDIGO_VALUE_SIZE, "%s/.indigo/synscan-%s.park", getenv("HOME"), MOUNT_INFO_MODEL_ITEM->text.value);
 	int handle = open(path, O_RDONLY, 0);
-	if (handle) {
+	if (handle > 0) {
 		if (!(read(handle, buffer, INDIGO_VALUE_SIZE) > 0 && sscanf(buffer, "%lx %lx", &ra_pos, &dec_pos) == 2)) {
 			ra_pos = RA_HOME_POSITION;
 			dec_pos = DEC_HOME_POSITION;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position restored: %s", buffer);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse saved position: %s (%s)", buffer, strerror(errno));
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse saved position %s (%s)", buffer, strerror(errno));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position restored: %s", buffer);
 		}
 		close(handle);
 		if (remove) {
