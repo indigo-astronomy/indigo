@@ -1098,7 +1098,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	return string;
 }
 
-void indigo_usleep(useconds_t delay) {
+void indigo_usleep(unsigned int delay) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	unsigned int s = delay / 1000000;
 	unsigned int us = delay % 1000000;
