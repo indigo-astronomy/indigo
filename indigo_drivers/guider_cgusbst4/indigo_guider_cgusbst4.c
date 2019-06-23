@@ -91,7 +91,7 @@ static bool cgusbst4_command(indigo_device *device, char *command, char *respons
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (sleep > 0)
-		usleep(sleep);
+		indigo_usleep(sleep);
 	// read response
 	if (response != NULL) {
 		int index = 0;

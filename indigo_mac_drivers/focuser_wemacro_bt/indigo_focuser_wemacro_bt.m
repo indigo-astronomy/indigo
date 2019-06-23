@@ -226,7 +226,7 @@ static indigo_result focuser_detach(indigo_device *device);
 			[self cmd:0x40 a:0 b:0 c:0 d:0];
 			[self cmd:0x20 a:0 b:0 c:0 d:0];
 			[self cmd:0x40 a:0 b:0 c:0 d:0];
-			usleep(100000);
+			indigo_usleep(100000);
 			[self cmd:0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0) a:FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0 b:0 c:0 d:0];
 		}
 	}
@@ -419,7 +419,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
 		indigo_property_copy_values(X_RAIL_EXECUTE_PROPERTY, property, false);
 		[delegate cmd:0x80 a:FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0 b:0 c:0 d:(uint32_t)X_RAIL_EXECUTE_LENGTH_ITEM->number.value];
-		usleep(100000);
+		indigo_usleep(100000);
 		[delegate cmd:0x10 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0) a:(uint8_t)X_RAIL_EXECUTE_SETTLE_TIME_ITEM->number.value b:(uint8_t)X_RAIL_EXECUTE_PER_STEP_ITEM->number.value c:(uint8_t)X_RAIL_EXECUTE_INTERVAL_ITEM->number.value d:(uint32_t)X_RAIL_EXECUTE_COUNT_ITEM->number.value - 1];
 		X_RAIL_EXECUTE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);

@@ -332,7 +332,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		usleep(2000);
+		indigo_usleep(2000);
 	}
 	if (status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -344,7 +344,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
 		if (PRIVATE_DATA->is_asi120)
-			usleep(150000);
+			indigo_usleep(150000);
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);

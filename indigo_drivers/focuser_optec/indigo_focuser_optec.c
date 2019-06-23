@@ -254,7 +254,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 					break;
 				}
-				sleep(1);
+				  indigo_usleep(ONE_SECOND_DELAY);
 			}
 		}
 		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);

@@ -435,7 +435,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetImagingStatus(): %s (%s)", device->name, text.c_str());
 			break;
 		}
-		usleep(2000);
+		indigo_usleep(2000);
 	}
 	std::vector<uint16_t> image_data(PRIVATE_DATA->buffer_size);
 	if (status == Apg::Status_ImageReady) {
@@ -477,7 +477,7 @@ static void abort_exposure_callback(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetImagingStatus(): %s (%s)", device->name, text.c_str());
 			break;
 		}
-		usleep(20000);
+		indigo_usleep(20000);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
@@ -1182,7 +1182,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 	pthread_mutex_lock(&ethernet_mutex);
 	if (network == NULL) { // NULL - Remove devices
 		// if the camera is just added it is not removed. we need some small waing time.
-		sleep(1);
+		  indigo_usleep(ONE_SECOND_DELAY);
 		msg = std::string("");
 	} else {
 		try {

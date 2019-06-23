@@ -102,7 +102,7 @@ static void xagyl_query(indigo_device *device) {
 				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			}
-			usleep(500000);
+			indigo_usleep(500000);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read position");
 			break;

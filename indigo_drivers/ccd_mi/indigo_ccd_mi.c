@@ -89,7 +89,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		bool ready = false;
 		state = gxccd_image_ready(PRIVATE_DATA->camera, &ready);
 		while (state != -1 && !ready) {
-			usleep(200);
+			indigo_usleep(200);
 			state = gxccd_image_ready(PRIVATE_DATA->camera, &ready);
 		}
 		if (state != -1)

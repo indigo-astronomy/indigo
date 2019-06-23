@@ -183,7 +183,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			bool ready = false;
 			cam.get_ImageReady(&ready);
 			while (!ready) {
-				usleep(5000);
+				indigo_usleep(5000);
 				cam.get_ImageReady(&ready);
 			}
 			long width, height;
@@ -479,7 +479,7 @@ static void process_plug_event(indigo_device *unused) {
 	char desc[INDIGO_NAME_SIZE];
 	int count;
 	pthread_mutex_lock(&device_mutex);
-	sleep(3);
+	  indigo_usleep(3 * ONE_SECOND_DELAY);
 	try {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {
@@ -531,7 +531,7 @@ static void process_unplug_event(indigo_device *unused) {
 	char serial[INDIGO_NAME_SIZE];
 	int count;
 	pthread_mutex_lock(&device_mutex);
-	sleep(3);
+	  indigo_usleep(3 * ONE_SECOND_DELAY);
 	try {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {

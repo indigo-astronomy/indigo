@@ -141,7 +141,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (X_CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
 			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			libdsusb_focus(PRIVATE_DATA->device_context);
-			usleep(100000);
+			indigo_usleep(100000);
 			libdsusb_start(PRIVATE_DATA->device_context);
 			PRIVATE_DATA->timer_callback = indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 		}

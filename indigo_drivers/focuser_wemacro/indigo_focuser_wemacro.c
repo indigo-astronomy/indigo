@@ -323,7 +323,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
 		indigo_property_copy_values(X_RAIL_EXECUTE_PROPERTY, property, false);
 		wemacro_write(device, 0x80, FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, (uint32_t)X_RAIL_EXECUTE_LENGTH_ITEM->number.value);
-		usleep(100000);
+		indigo_usleep(100000);
 		wemacro_write(device, 0x10 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), (uint8_t)X_RAIL_EXECUTE_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_EXECUTE_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_EXECUTE_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_EXECUTE_COUNT_ITEM->number.value - 1);
 		X_RAIL_EXECUTE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);

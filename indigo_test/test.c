@@ -140,12 +140,7 @@ int main(int argc, const char * argv[]) {
 	indigo_attach_client(&test);
 	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
 	while (count > 0) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		sleep(1);
-#endif
-#if defined(INDIGO_WINDOWS)
-		Sleep(1000);
-#endif
+		  indigo_usleep(ONE_SECOND_DELAY);
 	}
 	indigo_disconnect_server(server);
 	indigo_detach_client(&test);

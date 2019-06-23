@@ -588,7 +588,7 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 				indigo_detach_device(mount);
 			}
 			while (private_data->timer_count)
-				usleep(100000);
+				indigo_usleep(100000);
 			if (mount_guider != NULL) {
 				free(mount_guider);
 				mount_guider = NULL;

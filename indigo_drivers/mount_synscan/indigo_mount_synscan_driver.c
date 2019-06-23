@@ -741,7 +741,7 @@ void synscan_stop_and_wait_for_axis(indigo_device* device, enum AxisID axis) {
 			}
 
 			//  Delay a little
-			usleep(100000);
+			indigo_usleep(100000);
 		}
 	}
 }
@@ -892,7 +892,7 @@ void synscan_wait_for_axis_stopped(indigo_device* device, enum AxisID axis, bool
 		if ((axisStatus & kStatusActiveMask) == 0) {
 			break;
 		}
-		usleep(100000);
+		indigo_usleep(100000);
 	}
 }
 

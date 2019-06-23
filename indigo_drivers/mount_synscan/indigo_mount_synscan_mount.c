@@ -194,7 +194,7 @@ static bool synscan_open(indigo_device *device) {
 				for (int i = 0; i < 3; i++) {
 					static char buffer[32];
 					sendto(handle, ":e1\r", 4, 0, (const struct sockaddr *) &addr, sizeof(addr));
-					usleep(100000);
+					indigo_usleep(100000);
 					if (recvfrom(handle, buffer, sizeof(buffer), MSG_WAITALL, (struct sockaddr *) &addr, &len) && *buffer == '=') {
 						strcpy(name + 10, inet_ntoa(addr.sin_addr));
 						indigo_update_property(device, DEVICE_PORT_PROPERTY, "mount detected at %s", name);
@@ -412,7 +412,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 		}
 
 		//  Brief delay
-		usleep(100000);
+		indigo_usleep(100000);
 	}
 
 	//**  Wait for DEC slew to complete
@@ -546,7 +546,7 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 //		}
 //
 //		//  Brief delay
-//		usleep(100000);
+//		indigo_usleep(100000);
 //	}
 
 	//**  Wait for DEC slew to complete

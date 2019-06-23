@@ -171,7 +171,7 @@ static void fli_focuser_connect(indigo_device *device) {
 
 		long value;
 		//do {
-		//	usleep(100000);
+		//	indigo_usleep(100000);
 		//	res = FLIGetStepsRemaining(id, &value);
 		//	if (res) {
 		//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetDeviceStatus(%d) = %d", id, res);
@@ -180,7 +180,7 @@ static void fli_focuser_connect(indigo_device *device) {
 		//} while (value != 0);  /* wait while finding home position */
 
 		do {
-			usleep(100000);
+			indigo_usleep(100000);
 			res = FLIGetDeviceStatus(id, &value);
 			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetDeviceStatus(%d) = %d", id, res);

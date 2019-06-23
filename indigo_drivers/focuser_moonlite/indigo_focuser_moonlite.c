@@ -230,7 +230,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						break;
 					} else if (i < 5) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from MoonLite focuser - retrying");
-						sleep(2);
+						  indigo_usleep(2 * ONE_SECOND_DELAY);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "MoonLite focuser not detected");
 						close(PRIVATE_DATA->handle);
@@ -245,7 +245,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				moonlite_command(device, ":SF#", NULL, 0);
 				moonlite_command(device, ":-#", NULL, 0);
 				moonlite_command(device, ":SD02#", NULL, 0);
-				usleep(750000);
+				indigo_usleep(750000);
 				if (moonlite_command(device, ":GT#", response, sizeof(response))) {
 					FOCUSER_TEMPERATURE_ITEM->number.value = ((int)strtol(response, NULL, 16)) / 2.0;
 				}

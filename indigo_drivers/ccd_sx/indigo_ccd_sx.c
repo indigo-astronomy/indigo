@@ -213,7 +213,7 @@ static bool sx_open(indigo_device *device) {
 		setup_data[REQ_LENGTH_H] = 0;
 		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %lu bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
-		usleep(1000);
+		indigo_usleep(1000);
 	}
 	if (rc >= 0) { // read camera model
 		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAIN;

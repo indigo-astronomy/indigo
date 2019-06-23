@@ -179,7 +179,7 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "\r\n");
 								indigo_printf(socket, "BLOB not found!\r\n");
 								shutdown(socket,SHUT_RDWR);
-								sleep(1);
+								  indigo_usleep(ONE_SECOND_DELAY);
 								close(socket);
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								break;
@@ -197,7 +197,7 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "\r\n");
 								indigo_printf(socket, "%s not found!\r\n", path);
 								shutdown(socket,SHUT_RDWR);
-								sleep(1);
+								  indigo_usleep(ONE_SECOND_DELAY);
 								close(socket);
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								break;
@@ -217,7 +217,7 @@ static void start_worker_thread(int *client_socket) {
 						}
 						if (!keep_alive) {
 							shutdown(socket, SHUT_RDWR);
-							sleep(1);
+							 indigo_usleep(ONE_SECOND_DELAY);
 							close(socket);
 							break;
 						}
@@ -226,7 +226,7 @@ static void start_worker_thread(int *client_socket) {
 			}
 			if (res < 0) { /* Client cosed the connection */
 				shutdown(socket, SHUT_RDWR);
-				sleep(1);
+				 indigo_usleep(ONE_SECOND_DELAY);
 				close(socket);
 			}
 		} else {

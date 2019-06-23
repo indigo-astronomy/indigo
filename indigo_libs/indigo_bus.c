@@ -1097,3 +1097,18 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 		snprintf(string, 128, format, (int)d, (int)m, s);
 	return string;
 }
+
+void indigo_usleep(useconds_t delay) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	unsigned int s = delay / 1000000;
+	unsigned int us = delay % 1000000;
+	if (s)
+		sleep(s);
+	if (us)
+		usleep(us);
+#endif
+#if defined(INDIGO_WINDOWS)
+	unsigned int s = delay / 1000;
+	Sleep(delay);
+#endif
+}

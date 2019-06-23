@@ -446,7 +446,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			temma_command(device, TEMMA_SLEW_STOP, false);
 			temma_command(device, TEMMA_GOTO_STOP, false);
 			for (int i = 0; i < 16; i++) {
-				usleep(250000);
+				indigo_usleep(250000);
 				temma_command(device, TEMMA_GET_GOTO_STATE, true);
 				if (!PRIVATE_DATA->isBusy)
 					break;
@@ -620,10 +620,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 			temma_command(device, TEMMA_SLEW_SLOW_NORTH, false);
-			usleep(1000 * GUIDER_GUIDE_NORTH_ITEM->number.value);
+			indigo_usleep(1000 * GUIDER_GUIDE_NORTH_ITEM->number.value);
 		} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
 			temma_command(device, TEMMA_SLEW_SLOW_SOUTH, false);
-			usleep(1000 * GUIDER_GUIDE_SOUTH_ITEM->number.value);
+			indigo_usleep(1000 * GUIDER_GUIDE_SOUTH_ITEM->number.value);
 		}
 		temma_command(device, TEMMA_SLEW_STOP, false);
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -637,10 +637,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 			temma_command(device, TEMMA_SLEW_SLOW_WEST, false);
-			usleep(1000 * GUIDER_GUIDE_WEST_ITEM->number.value);
+			indigo_usleep(1000 * GUIDER_GUIDE_WEST_ITEM->number.value);
 		} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 			temma_command(device, TEMMA_SLEW_SLOW_EAST, false);
-			usleep(1000 * GUIDER_GUIDE_EAST_ITEM->number.value);
+			indigo_usleep(1000 * GUIDER_GUIDE_EAST_ITEM->number.value);
 		}
 		temma_command(device, TEMMA_SLEW_STOP, false);
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;

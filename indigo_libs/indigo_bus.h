@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <sys/types.h>
 
 #include "indigo_config.h"
 
@@ -540,7 +541,12 @@ extern double indigo_stod(char *string);
  */
 extern char* indigo_dtos(double value, char *format);
 
-
+/** Sleeps for specified number of microseconds.
+ */
+extern void indigo_usleep(useconds_t delay);
+	
+#define ONE_SECOND_DELAY	1000000
+	
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
 extern indigo_property INDIGO_ALL_PROPERTIES;

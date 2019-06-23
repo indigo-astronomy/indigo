@@ -96,10 +96,10 @@ static void exposure_timer_callback(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);
 	if (remaining > 0)
-		usleep(remaining * 1000000);
+		indigo_usleep(remaining * ONE_SECOND_DELAY);
 	while (!ArtemisImageReady(PRIVATE_DATA->handle)) {
 		do_log = false;
-		usleep(1000);
+		indigo_usleep(1000);
 	}
 	do_log = true;
 	int left, top, width, height, binx, biny;
@@ -401,7 +401,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				break;
 			} else if (state == CAMERA_FLUSHING) {
-				usleep(1000);
+				indigo_usleep(1000);
 				do_log = false;
 			} else {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
