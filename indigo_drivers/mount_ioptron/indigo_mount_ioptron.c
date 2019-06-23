@@ -63,7 +63,7 @@ typedef struct {
 } ioptron_private_data;
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
-	*resumt = 0;
+	*response = 0;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
