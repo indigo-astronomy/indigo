@@ -919,6 +919,9 @@ void synscan_save_position(indigo_device *device) {
 		snprintf(buffer, INDIGO_VALUE_SIZE, "%06lx %06lx\n", ra_pos, dec_pos);
 		write(handle, buffer, strlen(buffer)+1);
 		close(handle);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position saved: %s", buffer);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't access %s (%s)", buffer, strerror(errno));
 	}
 }
 
@@ -932,11 +935,16 @@ bool synscan_restore_position(indigo_device *device, enum AxisID axis, bool remo
 		if (!(read(handle, buffer, INDIGO_VALUE_SIZE) > 0 && sscanf(buffer, "%lx %lx", &ra_pos, &dec_pos) == 2)) {
 			ra_pos = RA_HOME_POSITION;
 			dec_pos = DEC_HOME_POSITION;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position restored: %s", buffer);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse saved position %s (%s)", buffer, strerror(errno));
 		}
 		close(handle);
 		if (remove) {
 			unlink(path);
 		}
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No saved position (%s)", strerror(errno));
 	}
 	return synscan_init_axis_position(device, axis, axis == kAxisRA ? ra_pos : dec_pos);
 }
