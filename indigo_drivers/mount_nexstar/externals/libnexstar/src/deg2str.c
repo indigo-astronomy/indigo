@@ -18,7 +18,7 @@ int a2dd(double *dd, const char *a)
 {  
 	int i;
 	double 	deg,min,sec,sign=1;
-	char *buff,*b1,format[30];
+	char *buff,*b1,format[30], *pnt;
 	
 	buff=(char*)a;                     //clear the spaces
 	while (isspace(buff[0])) buff++;
@@ -29,15 +29,15 @@ int a2dd(double *dd, const char *a)
 	if (buff[0]=='-') { sign=-1; buff++; }
 	if (buff[0]=='+') buff++;
 	
-	if ((buff=(char*)strtok(buff,":"))==NULL) return Err_INVSTR;
+	if ((buff=(char*)strtok_r(buff,":", &pnt))==NULL) return Err_INVSTR;
 	deg=(double)strtoul(buff,&b1,10);
 	if((buff[0]=='\0')||(b1[0]!='\0')) return Err_INVSTR;
 	
- 	if ((buff=(char*)strtok(NULL,":"))==NULL) return Err_INVSTR;
+ 	if ((buff=(char*)strtok_r(NULL,":", &pnt))==NULL) return Err_INVSTR;
 	min=(double)strtoul(buff,&b1,10);
 	if((buff[0]=='\0')||(b1[0]!='\0')) return Err_INVSTR;
 	
- 	if ((buff=(char*)strtok(NULL,"\0"))==NULL) return Err_INVSTR;
+ 	if ((buff=(char*)strtok_r(NULL,"\0", &pnt))==NULL) return Err_INVSTR;
 	sec=(double)strtod(buff,&b1);
 	if((buff[0]=='\0')||(b1[0]!='\0')) return Err_INVSTR;
 	
@@ -106,7 +106,7 @@ int a2dh(double *dh, const char *a)
 {  
 	int i;
 	double 	hour,min,sec;
-	char *buff,*b1;
+	char *buff,*b1, *pnt;
 	
 	buff=(char*)a;                     //clear the spaces
 	while (isspace(buff[0])) buff++;
@@ -114,15 +114,15 @@ int a2dh(double *dh, const char *a)
 	while (isspace(buff[i])) i--;
 	buff[i+1]='\0';
 	
-	if ((buff=(char*)strtok(buff,":"))==NULL) return Err_INVSTR;
+	if ((buff=(char*)strtok_r(buff,":", &pnt))==NULL) return Err_INVSTR;
 	hour=(double)strtoul(buff,&b1,10);
 	if((buff[0]=='\0')||(b1[0]!='\0')) return Err_INVSTR;
 	
- 	if ((buff=(char*)strtok(NULL,":"))==NULL) return Err_INVSTR;
+ 	if ((buff=(char*)strtok_r(NULL,":", &pnt))==NULL) return Err_INVSTR;
 	min=(double)strtoul(buff,&b1,10);
 	if((buff[0]=='\0')||(b1[0]!='\0')) return Err_INVSTR;
 	
- 	if ((buff=(char*)strtok(NULL,"\0"))==NULL) return Err_INVSTR;
+ 	if ((buff=(char*)strtok_r(NULL,"\0", &pnt))==NULL) return Err_INVSTR;
 	sec=(double)strtod(buff,&b1);
 	if((buff[0]=='\0')||(b1[0]!='\0')) return Err_INVSTR;
 	

@@ -165,9 +165,9 @@ static bool steeldrive2_command(indigo_device *device, char *command, char *resp
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
 static void timer_callback(indigo_device *device) {
-	char response[256], *token, *value;
+	char response[256], *value;
 	if (steeldrive2_command(device, "$BS SUMMARY", response, sizeof(response))) {
-		token = strtok(response, ";");
+		char *pnt, *token = strtok_r(response, ";", &pnt);
 		while (token) {
 			if ((value = strchr(token, ':'))) {
 				*value++ = 0;
@@ -191,7 +191,7 @@ static void timer_callback(indigo_device *device) {
 					FOCUSER_TEMPERATURE_ITEM->number.value = atof(value);
 				}
 			}
-			token = strtok(NULL, ";");
+			token = strtok_r(NULL, ";", &pnt);
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);

@@ -194,50 +194,50 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateHub = false;
 	bool updateUSBPorts = false;
 	if (upb_command(device, "PA", response, sizeof(response))) {
-		char *token = strtok(response, ":");
-		if ((token = strtok(NULL, ":"))) { // Voltage
+		char *pnt, *token = strtok_r(response, ":", &pnt);
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 			double value = atof(token);
 			if (X_AUX_VOLTAGE_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_VOLTAGE_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Current
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Current
 			double value = atof(token);
 			if (X_AUX_CURRENT_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_CURRENT_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Power
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Power
 			double value = atof(token);
 			if (X_AUX_POWER_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_POWER_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Temp
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
 			double value = atof(token);
 			if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != value) {
 				updateWeather = true;
 				AUX_WEATHER_TEMPERATURE_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Humidity
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
 			double value = atof(token);
 			if (AUX_WEATHER_HUMIDITY_ITEM->number.value != value) {
 				updateWeather = true;
 				AUX_WEATHER_HUMIDITY_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Dewpoint
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
 			double value = atof(token);
 			if (AUX_WEATHER_DEWPOINT_ITEM->number.value != value) {
 				updateWeather = true;
 				AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // portstatus
+		if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
 			bool state = token[0] == '1';
 			if (AUX_POWER_OUTLET_1_ITEM->sw.value != state) {
 				AUX_POWER_OUTLET_1_ITEM->sw.value = state;
@@ -259,70 +259,70 @@ static void aux_timer_callback(indigo_device *device) {
 				updatePowerOutletState = true;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // USB Hub
+		if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
 			bool state = token[0] == '0';
 			if (X_AUX_HUB_ENABLED_ITEM->sw.value != state) {
 				indigo_set_switch(X_AUX_HUB_PROPERTY, state ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
 				updateAutoHeater = true;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Dew1
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
 			double value = round(atof(token) * 100.0 / 255.0);
 			if (AUX_HEATER_OUTLET_1_ITEM->number.value != value) {
 				updateHeaterOutlet = true;
 				AUX_HEATER_OUTLET_1_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Dew2
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
 			double value = round(atof(token) * 100.0 / 255.0);
 			if (AUX_HEATER_OUTLET_2_ITEM->number.value != value) {
 				updateHeaterOutlet = true;
 				AUX_HEATER_OUTLET_2_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Current_port1
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
 			double value = atof(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Current_port2
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
 			double value = atof(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Current_port2
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
 			double value = atof(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Current_port2
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
 			double value = atof(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Current_dew1
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
 			double value = atof(token) / 400.0;
 			if (AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value != value) {
 				updateHeaterOutletCurrent = true;
 				AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Current_dew2
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
 			double value = atof(token) / 400.0;
 			if (AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value != value) {
 				updateHeaterOutletCurrent = true;
 				AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = value;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Overcurrent
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Overcurrent
 			indigo_property_state state = token[0] == '1' ? INDIGO_ALERT_STATE : AUX_POWER_OUTLET_1_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 			if (AUX_POWER_OUTLET_STATE_1_ITEM->light.value != state) {
 				AUX_POWER_OUTLET_STATE_1_ITEM->light.value = state;
@@ -354,7 +354,7 @@ static void aux_timer_callback(indigo_device *device) {
 				updateHeaterOutletState = true;
 			}
 		}
-		if ((token = strtok(NULL, ":"))) { // Autodew
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
 			bool state = token[0] == '1';
 			if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != state) {
 				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
@@ -363,7 +363,7 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 	}
 	if (upb_command(device, "PC", response, sizeof(response))) {
-		char *token = strtok(response, ":");
+		char *pnt, *token = strtok_r(response, ":", &pnt);
 		if (token) {
 			double value = atof(token);
 			if (X_AUX_AVERAGE_ITEM->number.value != value) {
@@ -371,7 +371,7 @@ static void aux_timer_callback(indigo_device *device) {
 				X_AUX_AVERAGE_ITEM->number.value = value;
 			}
 		}
-		token = strtok(NULL, ":");
+		token = strtok_r(NULL, ":", &pnt);
 		if (token) {
 			double value = atof(token);
 			if (X_AUX_AMP_HOUR_ITEM->number.value != value) {
@@ -379,7 +379,7 @@ static void aux_timer_callback(indigo_device *device) {
 				X_AUX_AMP_HOUR_ITEM->number.value = value;
 			}
 		}
-		token = strtok(NULL, ":");
+		token = strtok_r(NULL, ":", &pnt);
 		if (token) {
 			double value = atof(token);
 			if (X_AUX_WATT_HOUR_ITEM->number.value != value) {
@@ -659,59 +659,59 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
-					char *token = strtok(response, ":");
-					if ((token = strtok(NULL, ":"))) { // Voltage
+					char *pnt, *token = strtok_r(response, ":", &pnt);
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 						X_AUX_VOLTAGE_ITEM->number.value = atof(token);
 					}
-					if ((token = strtok(NULL, ":"))) { // Current
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current
 						X_AUX_CURRENT_ITEM->number.value = atof(token);
 					}
-					if ((token = strtok(NULL, ":"))) { // Power
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Power
 						X_AUX_POWER_ITEM->number.value = atoi(token);
 					}
-					if ((token = strtok(NULL, ":"))) { // Temp
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
 						AUX_WEATHER_TEMPERATURE_ITEM->number.value = atof(token);
 					}
-					if ((token = strtok(NULL, ":"))) { // Humidity
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
 						AUX_WEATHER_HUMIDITY_ITEM->number.value = atof(token);
 					}
-					if ((token = strtok(NULL, ":"))) { // Dewpoint
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
 						AUX_WEATHER_DEWPOINT_ITEM->number.value = atof(token);
 					}
-					if ((token = strtok(NULL, ":"))) { // portstatus
+					if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
 						AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';
 						AUX_POWER_OUTLET_2_ITEM->sw.value = token[1] == '1';
 						AUX_POWER_OUTLET_3_ITEM->sw.value = token[2] == '1';
 						AUX_POWER_OUTLET_4_ITEM->sw.value = token[3] == '1';
 					}
-					if ((token = strtok(NULL, ":"))) { // USB Hub
+					if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
 						indigo_set_switch(X_AUX_HUB_PROPERTY, atoi(token) == 0 ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
 					}
-					if ((token = strtok(NULL, ":"))) { // Dew1
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
 						AUX_HEATER_OUTLET_1_ITEM->number.value = round(atof(token) * 100.0 / 255.0);
 					}
-					if ((token = strtok(NULL, ":"))) { // Dew2
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
 						AUX_HEATER_OUTLET_2_ITEM->number.value = round(atof(token) * 100.0 / 255.0);
 					}
-					if ((token = strtok(NULL, ":"))) { // Current_port1
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
 						AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / 400.0;
 					}
-					if ((token = strtok(NULL, ":"))) { // Current_port2
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
 						AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / 400.0;
 					}
-					if ((token = strtok(NULL, ":"))) { // Current_port2
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
 						AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = atoi(token) / 400.0;
 					}
-					if ((token = strtok(NULL, ":"))) { // Current_port2
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
 						AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = atoi(token) / 400.0;
 					}
-					if ((token = strtok(NULL, ":"))) { // Current_dew1
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
 						AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / 400.0;
 					}
-					if ((token = strtok(NULL, ":"))) { // Current_dew2
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
 						AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / 400.0;
 					}
-					if ((token = strtok(NULL, ":"))) { // Overcurrent
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Overcurrent
 						AUX_POWER_OUTLET_STATE_1_ITEM->light.value = token[0] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 						AUX_POWER_OUTLET_STATE_2_ITEM->light.value = token[1] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 						AUX_POWER_OUTLET_STATE_3_ITEM->light.value = token[2] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
@@ -719,7 +719,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = token[4] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 						AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = token[5] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 					}
-					if ((token = strtok(NULL, ":"))) { // Autodew
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
 						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 1 ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
@@ -1148,17 +1148,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				if (upb_command(device, "SA", response, sizeof(response))) {
-					char *token = strtok(response, ":");
+					char *pnt, *token = strtok_r(response, ":", &pnt);
 					if (token) { // Stepper position
 						FOCUSER_POSITION_ITEM->number.value = atol(token);
 					}
-					if ((token = strtok(NULL, ":"))) { // Motor is running
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Motor is running
 						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					}
-					if ((token = strtok(NULL, ":"))) { // Motor Invert
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Motor Invert
 						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 					}
-					if ((token = strtok(NULL, ":"))) { // Backlash Steps
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Backlash Steps
 						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
