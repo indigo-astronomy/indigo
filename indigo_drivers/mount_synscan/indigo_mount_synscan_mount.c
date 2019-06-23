@@ -643,7 +643,7 @@ void mount_handle_tracking_rate(indigo_device* device) {
 
 static void mount_tracking_timer_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
-	char* message;
+	char* message = "";
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		//  Start tracking at the configured rate
 		double axisRate = synscan_tracking_rate(device);

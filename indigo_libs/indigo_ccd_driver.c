@@ -1336,7 +1336,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
-		char *suffix;
+		char *suffix = "";
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			suffix = ".fits";
 		} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {

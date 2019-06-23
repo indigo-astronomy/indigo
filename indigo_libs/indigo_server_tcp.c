@@ -262,7 +262,7 @@ void indigo_server_remove_resource(const char *path) {
 	struct resource *prev = NULL;
 	while (resource) {
 		if (!strcmp(resource->path, path)) {
-				if (prev != NULL)
+				if (prev == NULL)
 					resources = resource->next;
 				else
 					prev->next = resource->next;
