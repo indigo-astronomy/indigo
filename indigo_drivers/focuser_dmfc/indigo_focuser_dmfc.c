@@ -227,41 +227,41 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				if (dmfc_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
-					char *token = strtok(response, ":");
+					char *pnt, *token = strtok_r(response, ":", &pnt);
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
-					token = strtok(NULL, ":"); // status
+					token = strtok_r(NULL, ":", &pnt); // status
 					if (token) { // version
 						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // motor
 						indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, *token == '1' ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // temperature
 						FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = atof(token);
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // position
 						FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // moving status
 						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // led status
 						indigo_set_switch(X_FOCUSER_LED_PROPERTY, *token == '1' ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // reverse
 						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // encoder
 						indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, *token == '1' ? X_FOCUSER_ENCODER_DISABLED_ITEM: X_FOCUSER_ENCODER_ENABLED_ITEM, true);
 					}
-					token = strtok(NULL, ":");
+					token = strtok_r(NULL, ":", &pnt);
 					if (token) { // backlash
 						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 					} else {

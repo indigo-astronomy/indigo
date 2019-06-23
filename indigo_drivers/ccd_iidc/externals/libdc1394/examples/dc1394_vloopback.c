@@ -501,7 +501,7 @@ int v4l_open(char *device)
     int pipe = -1;
     FILE *vloopbacks;
     char pipepath[255];
-    char buffer[255];
+    char buffer[255], *pnt;
     char *loop;
     char *input;
     char *istatus;
@@ -524,11 +524,11 @@ int v4l_open(char *device)
         while (fgets(buffer, 255, vloopbacks)) {
             if (strlen(buffer)>1) {
                 buffer[strlen(buffer)-1]=0;
-                loop=strtok(buffer, "\t");
-                input=strtok(NULL, "\t");
-                istatus=strtok(NULL, "\t");
-                output=strtok(NULL, "\t");
-                ostatus=strtok(NULL, "\t");
+                loop=strtok_r(buffer, "\t", &pnt);
+                input=strtok_r(NULL, "\t", &pnt);
+                istatus=strtok_r(NULL, "\t", &pnt);
+                output=strtok_r(NULL, "\t", &pnt);
+                ostatus=strtok_r(NULL, "\t", &pnt);
                 if (istatus[0]=='-') {
                     sprintf(pipepath, "/dev/%s", input);
                     pipe=open(pipepath, O_RDWR);

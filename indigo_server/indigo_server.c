@@ -392,9 +392,9 @@ static void check_versions(indigo_device *device) {
 		install_property->count = 0;
 		char *line = execute_query("s_rpi_ctrl.sh --list-available-versions");
 		if (line) {
-			char *versions[10] = { strtok(line, " ") };
+			char *pnt, *versions[10] = { strtok_r(line, " ", &pnt) };
 			int count = 1;
-			while ((versions[count] = strtok(NULL, " "))) {
+			while ((versions[count] = strtok_r(NULL, " ", &pnt))) {
 				if (count == 9)
 					count = 1;
 				else
@@ -475,10 +475,10 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
 		if (line) {
-			char *token = strtok(line, " ");
+			char *pnt, *token = strtok_r(line, " ", &pnt);
 			if (token)
 				strncpy(wifi_ap_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
-			token = strtok(NULL, " ");
+			token = strtok_r(NULL, " ", &pnt);
 			if (token)
 				strncpy(wifi_ap_property->items[1].text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
@@ -488,7 +488,7 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
 		if (line) {
-			char *token = strtok(line, " ");
+			char *pnt, *token = strtok_r(line, " ", &pnt);
 			if (token)
 				strncpy(wifi_infrastructure_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
@@ -503,9 +503,9 @@ static indigo_result attach(indigo_device *device) {
 		install_property->count = 0;
 		line = execute_query("s_rpi_ctrl.sh --list-available-versions");
 		if (line) {
-			char *versions[10] = { strtok(line, " ") };
+			char *pnt, *versions[10] = { strtok_r(line, " ", &pnt) };
 			int count = 1;
-			while ((versions[count] = strtok(NULL, " "))) {
+			while ((versions[count] = strtok_r(NULL, " ", &pnt))) {
 				if (count == 9)
 					count = 1;
 				else
@@ -791,7 +791,7 @@ static void add_drivers(const char *folder) {
 				FILE *list = fopen(path, "r");
 				if (list) {
 					while (getline(&line, &len, list) > 0 && dynamic_drivers_count < INDIGO_MAX_DRIVERS) {
-						char *token = strtok(line, ",");
+						char *pnt, *token = strtok_r(line, ",", &pnt);
 						if (token && (token = strchr(token, '"'))) {
 							char *end = strchr(++token, '"');
 							if (end) {
@@ -817,7 +817,7 @@ static void add_drivers(const char *folder) {
 								}
 							}
 						}
-						token = strtok(NULL, ",");
+						token = strtok_r(NULL, ",", &pnt);
 						if (token && (token = strchr(token, '"'))) {
 							char *end = strchr(token + 1, '"');
 							if (end) {
