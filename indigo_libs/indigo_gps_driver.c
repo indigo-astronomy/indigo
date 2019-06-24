@@ -70,14 +70,14 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 			indigo_init_text_item(GPS_UTC_ITEM, UTC_TIME_ITEM_NAME, "UTC Time", "0000-00-00T00:00:00");
 			indigo_init_text_item(GPS_UTC_OFFEST_ITEM, UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */
 			// -------------------------------------------------------------------------------- GPS_ADVANCED
-			GPS_ADVANCED_PROPERTY = indigo_init_switch_property(NULL, device->name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_GROUP, "Advanced Status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			GPS_ADVANCED_PROPERTY = indigo_init_switch_property(NULL, device->name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_GROUP, "Show advanced status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (GPS_ADVANCED_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			GPS_ADVANCED_PROPERTY->hidden = true;
 			indigo_init_switch_item(GPS_ADVANCED_ENABLED_ITEM, GPS_ADVANCED_ENABLED_ITEM_NAME, "Enable", false);
 			indigo_init_switch_item(GPS_ADVANCED_DISABLED_ITEM, GPS_ADVANCED_DISABLED_ITEM_NAME, "Disable", true);
 			// -------------------------------------------------------------------------------- GPS_ADVANCED_STATUS
-			GPS_ADVANCED_STATUS_PROPERTY = indigo_init_number_property(NULL, device->name, GPS_ADVANCED_STATUS_PROPERTY_MANE, GPS_ADVANCED_GROUP, "Advanced Status", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+			GPS_ADVANCED_STATUS_PROPERTY = indigo_init_number_property(NULL, device->name, GPS_ADVANCED_STATUS_PROPERTY_MANE, GPS_ADVANCED_GROUP, "Advanced status", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 			if (GPS_ADVANCED_STATUS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			GPS_ADVANCED_STATUS_PROPERTY->hidden = true;
