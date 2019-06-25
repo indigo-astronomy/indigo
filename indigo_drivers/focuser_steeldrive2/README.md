@@ -21,3 +21,4 @@ indigo_server indigo_focuser_steeldrive2
 
 ## Status: Under development
 
+Tested with physical device.
