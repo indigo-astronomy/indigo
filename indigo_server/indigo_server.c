@@ -108,6 +108,7 @@
 #include "system_ascol/indigo_system_ascol.h"
 #include "focuser_steeldrive2/indigo_focuser_steeldrive2.h"
 #include "agent_auxiliary/indigo_agent_auxiliary.h"
+#include "aux_sqm/indigo_aux_sqm.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -144,6 +145,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_dsusb,
 	indigo_aux_joystick,
 	indigo_aux_rts,
+	indigo_aux_sqm,
 	indigo_aux_upb,
 	indigo_ccd_altair,
 	indigo_ccd_apogee,
