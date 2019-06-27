@@ -442,7 +442,7 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
 	indigo_available_servers[empty_slot].thread_started = true;
 	if (empty_slot == used_server_slots)
 		used_server_slots++;
-		pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&mutex);
 	if (server != NULL)
 		*server = &indigo_available_servers[empty_slot];
 	return INDIGO_OK;
