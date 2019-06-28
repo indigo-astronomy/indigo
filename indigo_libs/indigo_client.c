@@ -310,8 +310,6 @@ void indigo_service_name(const char *host, int port, char *name) {
 }
 
 static void reset_socket(indigo_server_entry *server, int new_socket) {
-	//static pthread_mutex_t rw_lock = PTHREAD_MUTEX_INITIALIZER;
-	//pthread_mutex_lock(&rw_lock);
 	if (server->socket > 0) {
 #if defined(INDIGO_WINDOWS)
 		closesocket(server->socket);
@@ -321,7 +319,6 @@ static void reset_socket(indigo_server_entry *server, int new_socket) {
 	}
 	if (server->socket != -1)
 		server->socket = new_socket;
-	//pthread_mutex_unlock(&rw_lock);
 }
 
 
