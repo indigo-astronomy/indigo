@@ -71,7 +71,8 @@ typedef enum {
 	INDIGO_INTERFACE_AUX       = (1 << 15),    							///< Auxiliary interface
 	INDIGO_INTERFACE_AUX_JOYSTICK  = (1 << 15) | (1 << 16),	///< Joystick AUX interface
 	INDIGO_INTERFACE_AUX_SHUTTER   = (1 << 15) | (1 << 17),	///< Shutter AUX interface
-	INDIGO_INTERFACE_AUX_POWERBOX  = (1 << 15) | (1 << 18)	///< Powerbox AUX interface
+	INDIGO_INTERFACE_AUX_POWERBOX  = (1 << 15) | (1 << 18),	///< Powerbox AUX interface
+	INDIGO_INTERFACE_AUX_SQM  		 = (1 << 15) | (1 << 19)	///< SQM AUX interface
 } indigo_device_interface;
 
 /** Property, device or client version.
