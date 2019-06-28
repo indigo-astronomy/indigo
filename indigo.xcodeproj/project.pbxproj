@@ -3578,7 +3578,6 @@
 		9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher_motor_controller_command_set.pdf; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
-		9D23CC5B22A7B4ED00F354CD /* SteelDrive_Technical_Documentation_733.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = SteelDrive_Technical_Documentation_733.pdf; sourceTree = "<group>"; };
 		9D2696E422A56BD8008BE82C /* steeldrive2_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = steeldrive2_simulator.ino; sourceTree = "<group>"; };
 		9D2696E522A56BD8008BE82C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D38D13821F09CDE00549B67 /* indigo.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = indigo.css; sourceTree = "<group>"; };
@@ -4294,6 +4293,7 @@
 		9DDEFC0421EE35C000657C8F /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		9DDEFC1D21EE39B300657C8F /* libnovas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnovas.a; path = build/lib/libnovas.a; sourceTree = "<group>"; };
 		9DE0E78F22C6294100289234 /* sqm_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = sqm_simulator.ino; sourceTree = "<group>"; };
+		9DE0E79822C6374900289234 /* SteelDrive_Technical_Documentation_770.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = SteelDrive_Technical_Documentation_770.pdf; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -10885,7 +10885,7 @@
 				59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */,
 				59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */,
 				59A242F222A5B45E001C38F8 /* indigo_focuser_steeldrive2_main.c */,
-				9D23CC5B22A7B4ED00F354CD /* SteelDrive_Technical_Documentation_733.pdf */,
+				9DE0E79822C6374900289234 /* SteelDrive_Technical_Documentation_770.pdf */,
 				9D2696E322A56BD8008BE82C /* steeldrive2_simulator */,
 			);
 			path = focuser_steeldrive2;
