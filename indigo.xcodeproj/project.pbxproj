@@ -396,6 +396,9 @@
 		9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 59292E5620D4224F0042E939 /* libcurl.tbd */; };
 		9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0421EE35C000657C8F /* libc++.tbd */; };
 		9DDEFC0621EE360900657C8F /* libnexstar.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59DEC8CC21ADE04D00BF7958 /* libnexstar.a */; };
+		9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B322C6465500289234 /* indigo_focuser_dsd.c */; };
+		9DE0E7C422C6465500289234 /* indigo_focuser_dsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */; };
+		9DE0E7C622C6465500289234 /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B822C6465500289234 /* Makefile.inc */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
 		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
 /* End PBXBuildFile section */
@@ -4294,6 +4297,11 @@
 		9DDEFC1D21EE39B300657C8F /* libnovas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnovas.a; path = build/lib/libnovas.a; sourceTree = "<group>"; };
 		9DE0E78F22C6294100289234 /* sqm_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = sqm_simulator.ino; sourceTree = "<group>"; };
 		9DE0E79822C6374900289234 /* SteelDrive_Technical_Documentation_770.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = SteelDrive_Technical_Documentation_770.pdf; sourceTree = "<group>"; };
+		9DE0E7B322C6465500289234 /* indigo_focuser_dsd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dsd.c; sourceTree = "<group>"; };
+		9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dsd_main.c; sourceTree = "<group>"; };
+		9DE0E7B522C6465500289234 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
+		9DE0E7B822C6465500289234 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -8239,13 +8247,14 @@
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
 				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
+				9DFE1863213586AB00149BDE /* focuser_dmfc */,
+				9DE0E7B222C6465500289234 /* focuser_dsd */,
 				59FE347D2188699F004FB5D4 /* focuser_lakeside */,
 				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
 				9D4F473B215A4440006110FD /* focuser_moonlite */,
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
 				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
 				59399D882177D316002886CA /* focuser_optec */,
-				9DFE1863213586AB00149BDE /* focuser_dmfc */,
 				591FAB761E391AFA0076BD6E /* focuser_fli */,
 				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
 				9D2696E222A56BD8008BE82C /* focuser_steeldrive2 */,
@@ -11997,6 +12006,18 @@
 			path = sqm_simulator;
 			sourceTree = "<group>";
 		};
+		9DE0E7B222C6465500289234 /* focuser_dsd */ = {
+			isa = PBXGroup;
+			children = (
+				9DE0E7B522C6465500289234 /* README.md */,
+				9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */,
+				9DE0E7B322C6465500289234 /* indigo_focuser_dsd.c */,
+				9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */,
+				9DE0E7B822C6465500289234 /* Makefile.inc */,
+			);
+			path = focuser_dsd;
+			sourceTree = "<group>";
+		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
 			isa = PBXGroup;
 			children = (
@@ -12147,6 +12168,7 @@
 				9D59D62120D3F829009EA8FF /* Aspen.h in Headers */,
 				9D59D5FB20D3F829009EA8FF /* CcdAcqParams.h in Headers */,
 				9D59D66020D3F82A009EA8FF /* apgHelper.h in Headers */,
+				9DE0E7C422C6465500289234 /* indigo_focuser_dsd.h in Headers */,
 				9D59D65120D3F829009EA8FF /* CamGen2ModeFsm.h in Headers */,
 				9D59D64E20D3F829009EA8FF /* ApgTimer.h in Headers */,
 				59A321B521D691D600EC0F4A /* indigo_mount_synscan_mount.h in Headers */,
@@ -12441,6 +12463,7 @@
 				9D73E60621FF36C4003CEC15 /* indigo_ccd_uvc_main.c in Sources */,
 				9D73E61E21FF37F9003CEC15 /* libuvc_stream.c in Sources */,
 				9D59D63820D3F829009EA8FF /* CameraStatusRegs.cpp in Sources */,
+				9DE0E7C622C6465500289234 /* Makefile.inc in Sources */,
 				9D59D63D20D3F829009EA8FF /* linuxHelpers.cpp in Sources */,
 				9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */,
 				59DD69C91FC1CF8D00AEF0DF /* indigo_gps_nmea.c in Sources */,
@@ -12612,6 +12635,7 @@
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
 				9D59D64120D3F829009EA8FF /* GenOneLinuxUSB.cpp in Sources */,
 				9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */,
+				9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */,
 				59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */,
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 				9D73E61821FF37F9003CEC15 /* libuvc_frame.c in Sources */,
