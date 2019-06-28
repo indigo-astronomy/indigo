@@ -86,6 +86,8 @@ This is the list of requirements taken into the consideration:
 57. ASCOL driver
 58. ASI Focuser driver
 59. DeepSky Dad AF1 and AF2 focuser driver
+60. Baader Planetarium SteelDrive II focuser driver
+61. Unihedron SQM driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
