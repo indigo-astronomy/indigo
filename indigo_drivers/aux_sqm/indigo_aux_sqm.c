@@ -61,11 +61,22 @@ typedef struct {
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
-	char buffer[58];
+	char buffer[60], *pnt;
+	memset(buffer, 0, sizeof(buffer));
 	indigo_printf(PRIVATE_DATA->handle, "rx");
-	indigo_read(PRIVATE_DATA->handle, buffer, 57);
-	
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->timer_callback);
+	indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+	if (*strtok_r(buffer, ",", &pnt) != 'r') {
+		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		X_AUX_SKY_BRIGHTNESS_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_FREQUENCY_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_COUNTS_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_PERIOD_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
+		X_AUX_SKY_TEMPERATURE_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
+		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->timer_callback);
 }
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -75,14 +86,14 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_VERSION, 0) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- INFO
-		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
+		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(X_AUX_SKY_BRIGHTNESS_ITEM, "X_AUX_SKY_BRIGHTNESS", "Quality [mag/arcsec^2]", -20, 30, 0, 0);
 		indigo_init_number_item(X_AUX_SENSOR_FREQUENCY_ITEM, "X_AUX_SENSOR_FREQUENCY", "Frequence [Hz]", 0, 100000, 0, 0);
 		indigo_init_number_item(X_AUX_SENSOR_COUNTS_ITEM, "X_AUX_SENSOR_COUNTS", "Period", 0, 100000, 0, 0);
 		indigo_init_number_item(X_AUX_SENSOR_PERIOD_ITEM, "X_AUX_SENSOR_PERIOD", "Period [s]", 0, 100000, 0, 0);
-		indigo_init_number_item(X_AUX_SKY_TEMPERATURE_ITEM, "X_AUX_SKY_TEMPERATURE", "Temperature [X]", -100, 100, 0, 0);
+		indigo_init_number_item(X_AUX_SKY_TEMPERATURE_ITEM, "X_AUX_SKY_TEMPERATURE", "Temperature [C]", -100, 100, 0, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -123,12 +134,20 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				
-					// TBD
-				
+				char buffer[60];
+				indigo_printf(PRIVATE_DATA->handle, "ix");
+				indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+				if (*buffer == 'i') {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unit info: %s", buffer);
+				} else {
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
+			}
+			if (PRIVATE_DATA->handle > 0) {
 				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				PRIVATE_DATA->timer_callback = indigo_set_timer(device, 1, aux_timer_callback);
+				PRIVATE_DATA->timer_callback = indigo_set_timer(device, 0, aux_timer_callback);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;

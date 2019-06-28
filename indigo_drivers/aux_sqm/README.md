@@ -21,4 +21,6 @@ indigo_server indigo_aux_sqm
 
 ## Comments
 
-## Status: Under development
+## Status: Utested
+
+With simulator only!
