@@ -4293,6 +4293,7 @@
 		9DDEFC0121EE35A000657C8F /* libhidapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhidapi.a; path = build/lib/libhidapi.a; sourceTree = "<group>"; };
 		9DDEFC0421EE35C000657C8F /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		9DDEFC1D21EE39B300657C8F /* libnovas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnovas.a; path = build/lib/libnovas.a; sourceTree = "<group>"; };
+		9DE0E78F22C6294100289234 /* sqm_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = sqm_simulator.ino; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -11948,6 +11949,7 @@
 				9DC4969A22C39A170052AB3E /* indigo_aux_sqm.c */,
 				9DC4969922C39A170052AB3E /* indigo_aux_sqm_main.c */,
 				9DC496A622C39AC80052AB3E /* SQM-LU-DL_Users_manual.pdf */,
+				9DE0E78E22C6294100289234 /* sqm_simulator */,
 			);
 			path = aux_sqm;
 			sourceTree = "<group>";
@@ -11985,6 +11987,14 @@
 				9DC7830021A6FCC7009859FD /* ascol_simulator.pl */,
 			);
 			path = ascol_simulator;
+			sourceTree = "<group>";
+		};
+		9DE0E78E22C6294100289234 /* sqm_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DE0E78F22C6294100289234 /* sqm_simulator.ino */,
+			);
+			path = sqm_simulator;
 			sourceTree = "<group>";
 		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
