@@ -84,16 +84,16 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, 0) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- INFO
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_AUX_SKY_BRIGHTNESS_ITEM, "X_AUX_SKY_BRIGHTNESS", "Quality [mag/arcsec^2]", -20, 30, 0, 0);
-		indigo_init_number_item(X_AUX_SENSOR_FREQUENCY_ITEM, "X_AUX_SENSOR_FREQUENCY", "Frequence [Hz]", 0, 100000, 0, 0);
-		indigo_init_number_item(X_AUX_SENSOR_COUNTS_ITEM, "X_AUX_SENSOR_COUNTS", "Period", 0, 100000, 0, 0);
-		indigo_init_number_item(X_AUX_SENSOR_PERIOD_ITEM, "X_AUX_SENSOR_PERIOD", "Period [s]", 0, 100000, 0, 0);
-		indigo_init_number_item(X_AUX_SKY_TEMPERATURE_ITEM, "X_AUX_SKY_TEMPERATURE", "Temperature [C]", -100, 100, 0, 0);
+		indigo_init_number_item(X_AUX_SKY_BRIGHTNESS_ITEM, "X_AUX_SKY_BRIGHTNESS", "Sky quality [mag/arcsec^2]", -20, 30, 0, 0);
+		indigo_init_number_item(X_AUX_SENSOR_FREQUENCY_ITEM, "X_AUX_SENSOR_FREQUENCY", "SQM sensor frequence [Hz]", 0, 100000, 0, 0);
+		indigo_init_number_item(X_AUX_SENSOR_COUNTS_ITEM, "X_AUX_SENSOR_COUNTS", "SQM sensor period", 0, 100000, 0, 0);
+		indigo_init_number_item(X_AUX_SENSOR_PERIOD_ITEM, "X_AUX_SENSOR_PERIOD", "SQM sensor period [s]", 0, 100000, 0, 0);
+		indigo_init_number_item(X_AUX_SKY_TEMPERATURE_ITEM, "X_AUX_SKY_TEMPERATURE", "Sky temperature [C]", -100, 100, 0, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
