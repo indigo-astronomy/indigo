@@ -109,6 +109,7 @@
 #include "focuser_steeldrive2/indigo_focuser_steeldrive2.h"
 #include "agent_auxiliary/indigo_agent_auxiliary.h"
 #include "aux_sqm/indigo_aux_sqm.h"
+#include "focuser_dsd/indigo_focuser_dsd.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -174,6 +175,7 @@ driver_entry_point static_drivers[] = {
 	indigo_dome_simulator,
 	indigo_focuser_asi,
 	indigo_focuser_dmfc,
+	indigo_focuser_dsd,
 	indigo_focuser_fcusb,
 	indigo_focuser_fli,
 	indigo_focuser_lakeside,
