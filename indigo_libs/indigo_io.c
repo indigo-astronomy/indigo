@@ -96,7 +96,6 @@ static sbaud_rate br[] = {
 	BR(       "", 0),
 };
 
-
 /* map string to actual baudrate value */
 static int map_str_baudrate(const char *baudrate) {
 	sbaud_rate *brp = br;
@@ -104,18 +103,18 @@ static int map_str_baudrate(const char *baudrate) {
 		if (brp->str[0]=='\0') return -1;
 		brp++;
 	}
-
 	return brp->value;
 }
 
-
 static int configure_tty_options(struct termios *options, const char *baudrate) {
-	int cbits=CS8, cpar=0, ipar=IGNPAR, bstop=0;
-	int baudr=0;
+	int cbits = CS8, cpar = 0, ipar = IGNPAR, bstop = 0;
+	int baudr = 0;
 	char *mode;
+	char copy[32];
+	strncpy(copy, baudrate, sizeof(copy));
 
 	/* firmat is 9600-8N1, so split baudrate from the rest */
-	mode = strchr(baudrate, '-');
+	mode = strchr(copy, '-');
 	if (mode == NULL) {
 		errno = EINVAL;
 		return -1;
@@ -123,18 +122,18 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 	*mode = '\0';
 	++mode;
 
-	baudr = map_str_baudrate(baudrate);
+	baudr = map_str_baudrate(copy);
 	if (baudr == -1) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if(strlen(mode) != 3) {
+	if (strlen(mode) != 3) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	switch(mode[0]) {
+	switch (mode[0]) {
 		case '8': cbits = CS8; break;
 		case '7': cbits = CS7; break;
 		case '6': cbits = CS6; break;
@@ -145,7 +144,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 			break;
 	}
 
-	switch(mode[1]) {
+	switch (mode[1]) {
 		case 'N':
 		case 'n':
 			cpar = 0;
@@ -167,7 +166,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 			break;
 	}
 
-	switch(mode[2]) {
+	switch (mode[2]) {
 		case '1': bstop = 0; break;
 		case '2': bstop = CSTOPB; break;
 		default :
@@ -215,19 +214,9 @@ static int open_tty(const char *tty_name, const struct termios *options, struct 
 	return tty_fd;
 }
 
-
-static void close_tty(int tty_fd, struct termios *old_options) {
-	int status;
-
-	if(old_options) tcsetattr(tty_fd, TCSANOW, old_options);
-	close(tty_fd);
-}
-
-
 int indigo_open_serial(const char *dev_file) {
 	return indigo_open_serial_with_speed(dev_file, 9600);
 }
-
 
 int indigo_open_serial_with_speed(const char *dev_file, int speed) {
 	char baud_str[32];
@@ -236,19 +225,18 @@ int indigo_open_serial_with_speed(const char *dev_file, int speed) {
 	return indigo_open_serial_with_config(dev_file, baud_str);
 }
 
-
 /* baudconfig is in form "9600-8N1" */
 int indigo_open_serial_with_config(const char *dev_file, const char *baudconfig) {
 	struct termios to;
 
 	int res = configure_tty_options(&to, baudconfig);
-	if (res == -1) return res;
+	if (res == -1)
+		return res;
 
 	return open_tty(dev_file, &to, NULL);
 }
 
 #endif /* Linux and Mac */
-
 
 int indigo_open_tcp(const char *host, int port) {
 	struct sockaddr_in srv_info;
@@ -257,7 +245,7 @@ int indigo_open_tcp(const char *host, int port) {
 	struct timeval timeout;
 	timeout.tv_sec = 5;
 	timeout.tv_usec = 0;
-	if ((he = gethostbyname(host))==NULL) {
+	if ((he = gethostbyname(host)) == NULL) {
 		return -1;
 	}
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0))== -1) {
@@ -288,7 +276,7 @@ int indigo_open_udp(const char *host, int port) {
 	struct timeval timeout;
 	timeout.tv_sec = 5;
 	timeout.tv_usec = 0;
-	if ((he = gethostbyname(host))==NULL) {
+	if ((he = gethostbyname(host)) == NULL) {
 		return -1;
 	}
 	if ((sock = socket(AF_INET, SOCK_DGRAM, 0))== -1) {
@@ -354,8 +342,6 @@ int indigo_close(int handle) {
 }
 #endif
 
-
-
 int indigo_read_line(int handle, char *buffer, int length) {
 	char c = '\0';
 	long total_bytes = 0;
@@ -414,7 +400,6 @@ bool indigo_printf(int handle, const char *format, ...) {
 	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
 	return indigo_write(handle, buffer, length);
 }
-
 
 int indigo_scanf(int handle, const char *format, ...) {
 	char buffer[1024];
