@@ -43,7 +43,6 @@
 
 typedef struct {
 	int handle;
-	int count_open;
 	pthread_mutex_t serial_mutex;
 } nmea_private_data;
 
@@ -51,46 +50,37 @@ typedef struct {
 
 static bool gps_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if (PRIVATE_DATA->count_open == 0) {
-		char *name = DEVICE_PORT_ITEM->text.value;
-		if (strncmp(name, "gps://", 6)) {
-			PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
+	char *name = DEVICE_PORT_ITEM->text.value;
+	if (strncmp(name, "gps://", 6)) {
+		PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
+	} else {
+		char *host = name + 8;
+		char *colon = strchr(host, ':');
+		if (colon == NULL) {
+			PRIVATE_DATA->handle = indigo_open_tcp(host, 9999);
 		} else {
-			char *host = name + 8;
-			char *colon = strchr(host, ':');
-			if (colon == NULL) {
-				PRIVATE_DATA->handle = indigo_open_tcp(host, 9999);
-			} else {
-				char host_name[INDIGO_NAME_SIZE];
-				strncpy(host_name, host, colon - host);
-				int port = atoi(colon + 1);
-				PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-			}
-		}
-		if (PRIVATE_DATA->handle >= 0) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			PRIVATE_DATA->count_open++;
-			return true;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			return false;
+			char host_name[INDIGO_NAME_SIZE];
+			strncpy(host_name, host, colon - host);
+			int port = atoi(colon + 1);
+			PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
 		}
 	}
-	PRIVATE_DATA->count_open++;
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	return true;
+	if (PRIVATE_DATA->handle >= 0) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		return true;
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		return false;
+	}
 }
-
 
 static void gps_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if (--PRIVATE_DATA->count_open == 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = -1;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
-	}
+	close(PRIVATE_DATA->handle);
+	PRIVATE_DATA->handle = -1;
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 }
 
@@ -126,7 +116,7 @@ static void gps_refresh_callback(indigo_device *device) {
 	char buffer[128];
 	char **tokens;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader started");
-	while (PRIVATE_DATA->handle > 0) {
+	while (IS_CONNECTED && PRIVATE_DATA->handle > 0) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		if (indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0 && (tokens = parse(buffer))) {
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
@@ -251,7 +241,6 @@ static void gps_refresh_callback(indigo_device *device) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader finished");
 }
 
-
 static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -310,7 +299,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	return indigo_gps_change_property(device, client, property);
 }
 
-
 static indigo_result gps_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
@@ -348,7 +336,6 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		private_data = malloc(sizeof(nmea_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(nmea_private_data));
-		private_data->count_open = 0;
 		private_data->handle = -1;
 		gps = malloc(sizeof(indigo_device));
 		assert(gps != NULL);
