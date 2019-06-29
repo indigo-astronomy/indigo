@@ -155,6 +155,10 @@ extern "C" {
 */
 #define FILTER_RELATED_AUX_4_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_AUX_4_INDEX])
 
+/** Related agent list switch property.
+ */
+#define FILTER_RELATED_AGENT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property)
+	
 /** Filter device context structure.
  */
 typedef struct {
@@ -164,6 +168,7 @@ typedef struct {
 	char device_name[INDIGO_FILTER_LIST_COUNT][INDIGO_NAME_SIZE];
 	indigo_property *filter_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_related_device_list_properties[INDIGO_FILTER_LIST_COUNT];
+	indigo_property *filter_related_agent_list_property;
 	indigo_property *device_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 } indigo_filter_context;
