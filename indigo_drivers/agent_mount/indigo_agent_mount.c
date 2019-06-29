@@ -59,8 +59,8 @@
 #define AGENT_SITE_DATA_SOURCE_GPS_ITEM  							(AGENT_SITE_DATA_SOURCE_PROPERTY->items+3)
 
 #define AGENT_LX200_SERVER_PROPERTY										(DEVICE_PRIVATE_DATA->agent_lx200_server_property)
-#define AGENT_LX200_SERVER_STARTED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+0)
-#define AGENT_LX200_SERVER_STOPPED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+1)
+#define AGENT_LX200_SERVER_STOPPED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+0)
+#define AGENT_LX200_SERVER_STARTED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+1)
 
 #define AGENT_LX200_CONFIGURATION_PROPERTY						(DEVICE_PRIVATE_DATA->agent_lx200_configuration_property)
 #define AGENT_LX200_CONFIGURATION_PORT_ITEM						(AGENT_LX200_CONFIGURATION_PROPERTY->items+0)
@@ -68,7 +68,6 @@
 #define AGENT_LIMITS_PROPERTY													(DEVICE_PRIVATE_DATA->agent_limits_property)
 #define AGENT_HA_TRACKING_LIMIT_ITEM									(AGENT_LIMITS_PROPERTY->items+0)
 #define AGENT_LOCAL_TIME_LIMIT_ITEM										(AGENT_LIMITS_PROPERTY->items+1)
-
 
 typedef struct {
 	indigo_property *agent_geographic_property;
@@ -211,6 +210,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_DOME_LIST_PROPERTY->hidden = false;
 		FILTER_GPS_LIST_PROPERTY->hidden = false;
 		FILTER_JOYSTICK_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- GEOGRAPHIC_COORDINATES
 		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, "Agent", "Location", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)

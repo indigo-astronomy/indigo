@@ -213,13 +213,19 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 			FILTER_RELATED_AUX_3_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AUX_3_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_RELATED_AUX_3_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No AUX device #3", true);
-				// -------------------------------------------------------------------------------- Related AUX #4 property
+			// -------------------------------------------------------------------------------- Related AUX #4 property
 			FILTER_RELATED_AUX_4_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_AUX_4_LIST_PROPERTY_NAME, "Main", "Related AUX #4 list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
 			if (FILTER_RELATED_AUX_4_LIST_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FILTER_RELATED_AUX_4_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AUX_4_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_RELATED_AUX_4_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No AUX device #4", true);
+			// -------------------------------------------------------------------------------- Related agents property
+			FILTER_RELATED_AGENT_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, "Main", "Related agent list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
+			if (FILTER_RELATED_AGENT_LIST_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = true;
+			FILTER_RELATED_AGENT_LIST_PROPERTY->count = 0;
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -230,11 +236,16 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
-	for (int i = 0; i < 2 * INDIGO_FILTER_LIST_COUNT; i++) {
+	for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 		indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_device_list_properties[i];
 		if (indigo_property_match(device_list, property))
 			indigo_define_property(device, device_list, NULL);
+		device_list = FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i];
+		if (indigo_property_match(device_list, property))
+			indigo_define_property(device, device_list, NULL);
 	}
+	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
+		indigo_define_property(device, FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, NULL);
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		indigo_property *cached_property = FILTER_DEVICE_CONTEXT->agent_property_cache[i];
 		if (cached_property && indigo_property_match(cached_property, property))
@@ -292,6 +303,22 @@ static indigo_result update_related_device_list(indigo_device *device, indigo_pr
 	return INDIGO_OK;
 }
 
+static indigo_result update_related_agent_list(indigo_device *device, indigo_property *property) {
+	indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	indigo_property_copy_values(device_list, property, false);
+	for (int i = 0; i < device_list->count; i++) {
+		if (device_list->items[i].sw.value) {
+			device_list->state = INDIGO_OK_STATE;
+			indigo_property all_properties;
+			memset(&all_properties, 0, sizeof(all_properties));
+			strcpy(all_properties.device, device_list->items[i].name);
+			indigo_enumerate_properties(FILTER_DEVICE_CONTEXT->client, &all_properties);
+		}
+	}
+	indigo_update_property(device, device_list, NULL);
+	return INDIGO_OK;
+}
+
 indigo_result indigo_filter_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -304,6 +331,8 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 		if (indigo_property_match(device_list, property))
 			return update_related_device_list(device, device_list, property);
 	}
+	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
+		return update_related_agent_list(device, property);
 	indigo_property **agent_cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		if (agent_cache[i] && indigo_property_match(agent_cache[i], property)) {
@@ -326,6 +355,7 @@ indigo_result indigo_filter_device_detach(indigo_device *device) {
 		indigo_release_property(FILTER_DEVICE_CONTEXT->filter_device_list_properties[i]);
 		indigo_release_property(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i]);
 	}
+	indigo_release_property(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property);
 	return indigo_device_detach(device);
 }
 
@@ -347,7 +377,7 @@ indigo_result indigo_filter_client_attach(indigo_client *client) {
 
 static bool device_in_list(indigo_property *device_list, indigo_property *property) {
 	int count = device_list->count;
-	for (int i = 1; i < count; i++) {
+	for (int i = 0; i < count; i++) {
 		if (!strcmp(property->device, device_list->items[i].name)) {
 			return true;
 		}
@@ -385,6 +415,11 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 					if (!tmp->hidden && !device_in_list(tmp, property))
 						add_to_list(device, tmp, property);
 				}
+			}
+			if (mask == 0) {
+				tmp = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
+				if (!tmp->hidden && !device_in_list(tmp, property))
+					add_to_list(device, tmp, property);
 			}
 			return INDIGO_OK;
 		}
@@ -546,6 +581,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_device_list_properties[i], property, FILTER_CLIENT_CONTEXT->device_name[i]);
 			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i], property, NULL);
+			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, property, NULL);
 		}
 	}
 	return INDIGO_OK;
