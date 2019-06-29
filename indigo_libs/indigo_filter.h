@@ -109,51 +109,51 @@ extern "C" {
 
 /** CCD list switch property.
  */
-#define FILTER_RELATED_CCD_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_CCD_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_CCD_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_CCD_INDEX])
 	
 /** Related wheel list switch property.
 */
-#define FILTER_RELATED_WHEEL_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_WHEEL_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_WHEEL_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_WHEEL_INDEX])
 
 /** Related focuser list switch property.
 */
-#define FILTER_RELATED_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_FOCUSER_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_FOCUSER_INDEX])
 
 /** Related mount list switch property.
 */
-#define FILTER_RELATED_MOUNT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_MOUNT_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_MOUNT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_MOUNT_INDEX])
 
 /** Related guider list switch property.
 */
-#define FILTER_RELATED_GUIDER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GUIDER_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_GUIDER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_GUIDER_INDEX])
 
 /** Related dome list switch property.
 */
-#define FILTER_RELATED_DOME_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_DOME_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_DOME_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_DOME_INDEX])
 
 /** Related GPS list switch property.
 */
-#define FILTER_RELATED_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_GPS_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_GPS_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_GPS_INDEX])
 
 /** Related joystick list switch property.
  */
-#define FILTER_RELATED_JOYSTICK_LIST_PROPERTY	(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_JOYSTICK_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_JOYSTICK_LIST_PROPERTY	(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_JOYSTICK_INDEX])
 	
 /** Related AUX #1 list switch property.
 */
-#define FILTER_RELATED_AUX_1_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_1_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_AUX_1_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_AUX_1_INDEX])
 
 /** Related AUX #2 list switch property.
 */
-#define FILTER_RELATED_AUX_2_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_2_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_AUX_2_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_AUX_2_INDEX])
 
 /** Related AUX #3 list switch property.
 */
-#define FILTER_RELATED_AUX_3_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_3_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_AUX_3_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_AUX_3_INDEX])
 
 /** Related AUX #4 list switch property.
 */
-#define FILTER_RELATED_AUX_4_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_AUX_4_INDEX + INDIGO_FILTER_LIST_COUNT])
+#define FILTER_RELATED_AUX_4_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_AUX_4_INDEX])
 
 /** Filter device context structure.
  */
@@ -161,8 +161,9 @@ typedef struct {
 	indigo_device_context device_context;       ///< device context base
 	indigo_device *device;
 	indigo_client *client;
-	char device_name[2 * INDIGO_FILTER_LIST_COUNT][INDIGO_NAME_SIZE];
-	indigo_property *filter_device_list_properties[2 * INDIGO_FILTER_LIST_COUNT];
+	char device_name[INDIGO_FILTER_LIST_COUNT][INDIGO_NAME_SIZE];
+	indigo_property *filter_device_list_properties[INDIGO_FILTER_LIST_COUNT];
+	indigo_property *filter_related_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *device_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 } indigo_filter_context;
