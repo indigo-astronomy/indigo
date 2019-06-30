@@ -172,6 +172,19 @@ static void set_eq_coordinates(indigo_device *device) {
 	}
 }
 
+static void abort_guiding(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
+			indigo_property *property = indigo_init_switch_property(NULL, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(property->items + 0, AGENT_ABORT_PROCESS_ITEM_NAME, NULL, true);
+			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+			indigo_release_property(property);
+		}
+	}
+}
+
 static void set_site_coordinates(indigo_device *device) {
 	double latitude = 0, longitude = 0, elevation = 0;
 	if (AGENT_SITE_DATA_SOURCE_HOST_ITEM->sw.value) {
@@ -695,6 +708,8 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 			}
 			if (property->state == INDIGO_OK_STATE) {
 				set_eq_coordinates(FILTER_CLIENT_CONTEXT->device);
+			} else {
+				abort_guiding(FILTER_CLIENT_CONTEXT->device);
 			}
 		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
@@ -716,6 +731,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					indigo_release_property(shutter_property);
 				}
 			}
+			abort_guiding(FILTER_CLIENT_CONTEXT->device);
 		}
 	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
