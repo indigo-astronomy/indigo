@@ -78,10 +78,7 @@ typedef struct {
 	indigo_property *agent_wheel_filter_property;
 	char current_folder[INDIGO_VALUE_SIZE], current_type[16];
 	void *image_buffer;
-	char filter_name[INDIGO_NAME_SIZE];
 	int focuser_position;
-	double site_lat, site_long;
-	double mount_ra, mount_dec;
 	pthread_mutex_t config_mutex;
 } agent_private_data;
 
@@ -103,29 +100,23 @@ static void save_config(indigo_device *device) {
 }
 
 static void set_headers(indigo_device *device) {
-	char item_1[INDIGO_NAME_SIZE], item_2[INDIGO_NAME_SIZE], item_3[INDIGO_NAME_SIZE], item_4[INDIGO_NAME_SIZE], item_5[INDIGO_NAME_SIZE], item_6[INDIGO_NAME_SIZE];
-	char *items[] = { item_1, item_2, item_3, item_4, item_5, item_6 };
-	char value_1[INDIGO_NAME_SIZE], value_2[INDIGO_NAME_SIZE], value_3[INDIGO_NAME_SIZE], value_4[INDIGO_NAME_SIZE], value_5[INDIGO_NAME_SIZE], value_6[INDIGO_NAME_SIZE];
-	char *values[] = { value_1, value_2, value_3, value_4, value_5, value_6 };
-	for (int i = 0; i < 6; i++) {
-		sprintf(items[i], CCD_FITS_HEADER_ITEM_NAME, i + 5);
-		*values[i] = 0;
-	}
-	if (DEVICE_PRIVATE_DATA->site_lat != 0 || DEVICE_PRIVATE_DATA->site_long != 0) {
-		sprintf(values[0], "SITELAT='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_lat), ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_lat) * 3600)) % 60);
-		sprintf(values[1], "SITELONG='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->site_long), ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->site_long) * 3600)) % 60);
-	}
-	if (DEVICE_PRIVATE_DATA->mount_ra != 0 || DEVICE_PRIVATE_DATA->mount_dec != 0) {
-		sprintf(values[2], "OBJCTRA='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
-		sprintf(values[3], "OBJCTDEC='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
-	}
-	if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && *DEVICE_PRIVATE_DATA->filter_name) {
-		sprintf(values[4], "FILTER='%s'", DEVICE_PRIVATE_DATA->filter_name);
+	indigo_property *property = indigo_init_text_property(NULL, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_FITS_HEADERS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	indigo_init_text_item(property->items + 0, "HEADER_9", NULL, "");
+	if (!AGENT_WHEEL_FILTER_PROPERTY->hidden) {
+		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
+			indigo_item *item = AGENT_WHEEL_FILTER_PROPERTY->items + i;
+			if (item->sw.value) {
+				indigo_init_text_item(property->items + 0, "HEADER_9", NULL, "FILTER='%s'", item->label);
+			}
+		}
 	}
 	if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) {
-		sprintf(values[5], "FOCUSPOS=%d", DEVICE_PRIVATE_DATA->focuser_position);
+		indigo_init_text_item(property->items + 1, "HEADER_10", NULL, "FOCUSPOS=%d", DEVICE_PRIVATE_DATA->focuser_position);
+	} else {
+		indigo_init_text_item(property->items + 1, "HEADER_10", NULL, "");
 	}
-	indigo_change_text_property(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_FITS_HEADERS_PROPERTY_NAME, 6, (const char **)items, (const char **)values);
+	indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+	indigo_release_property(property);
 }
 
 static void exposure_batch(indigo_device *device) {
@@ -310,8 +301,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_WHEEL_LIST_PROPERTY->hidden = false;
 		FILTER_FOCUSER_LIST_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- Related decvices properties
-		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Batch properties
 		AGENT_IMAGER_BATCH_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, "Agent", "Batch settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_IMAGER_BATCH_PROPERTY == NULL)
@@ -355,7 +344,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_WHEEL_FILTER_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
-		*DEVICE_PRIVATE_DATA->filter_name = 0;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->config_mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -427,21 +415,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match(FILTER_RELATED_AGENT_LIST_PROPERTY, property)) {
-		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
-			for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
-				indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
-				if (item->sw.value && !strncmp("Mount Agent", item->name, 11)) {
-					return INDIGO_OK;
-				}
-			}
-		}
-		DEVICE_PRIVATE_DATA->site_lat = 0;
-		DEVICE_PRIVATE_DATA->site_long = 0;
-		DEVICE_PRIVATE_DATA->mount_ra = 0;
-		DEVICE_PRIVATE_DATA->mount_dec = 0;
-		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property)) {
+	if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_IMAGER_BATCH
 		indigo_property_copy_values(AGENT_IMAGER_BATCH_PROPERTY, property, false);
 		AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_OK_STATE;
@@ -573,17 +547,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-static bool is_related_mount_agent(indigo_client *client, char *name) {
-	indigo_property *list = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
-	for (int i = 0; i < list->count; i++) {
-		indigo_item *item = list->items + i;
-		if (item->sw.value && !strcmp(name, item->name)) {
-			return true;
-		}
-	}
-	return false;
-}
-
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
@@ -634,24 +597,6 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
-	} else if (is_related_mount_agent(client, property->device)) {
-		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->site_lat = item->number.value;
-				else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->site_long = item->number.value;
-			}
-		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->mount_ra = item->number.value;
-				else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->mount_dec = item->number.value;
-			}
-		}
 	}
 	return indigo_filter_define_property(client, device, property, message);
 }
@@ -732,24 +677,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
-	} else if (is_related_mount_agent(client, property->device)) {
-		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->site_lat = item->number.value;
-				else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->site_long = item->number.value;
-			}
-		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->mount_ra = item->number.value;
-				else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME))
-					CLIENT_PRIVATE_DATA->mount_dec = item->number.value;
-			}
-		}
 	}
 	return indigo_filter_update_property(client, device, property, message);
 }
@@ -762,14 +689,6 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 		CLIENT_PRIVATE_DATA->agent_imager_download_image_property->hidden = true;
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_wheel_filter_property, NULL);
-	} else if (is_related_mount_agent(client, property->device)) {
-		if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
-			CLIENT_PRIVATE_DATA->site_lat = 0;
-			CLIENT_PRIVATE_DATA->site_long = 0;
-		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
-			CLIENT_PRIVATE_DATA->mount_ra = 0;
-			CLIENT_PRIVATE_DATA->mount_dec = 0;
-		}
 	}
 	return indigo_filter_delete_property(client, device, property, message);
 }

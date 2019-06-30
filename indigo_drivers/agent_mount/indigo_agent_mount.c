@@ -144,57 +144,65 @@ static void set_site_coordinates2(indigo_device *device, int index, double latit
 	}
 }
 
+static void set_site_coordinates3(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Imager Agent", item->name, 12)) {
+			indigo_property *property = indigo_init_text_property(NULL, item->name, CCD_FITS_HEADERS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			indigo_init_text_item(property->items + 0, "HEADER_5", NULL, "SITELAT='%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 3600)) % 60);
+			indigo_init_text_item(property->items + 1, "HEADER_6", NULL,  "SITELONG='%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 3600)) % 60);
+			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+			indigo_release_property(property);
+		}
+	}
+}
+
+static void set_eq_coordinates(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Imager Agent", item->name, 12)) {
+			indigo_property *property = indigo_init_text_property(NULL, item->name, CCD_FITS_HEADERS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			indigo_init_text_item(property->items + 0, "HEADER_7", NULL, "OBJCTRA='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
+			indigo_init_text_item(property->items + 1, "HEADER_8", NULL,  "OBJCTDEC='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
+			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+			indigo_release_property(property);
+		}
+	}
+}
+
 static void set_site_coordinates(indigo_device *device) {
+	double latitude = 0, longitude = 0, elevation = 0;
 	if (AGENT_SITE_DATA_SOURCE_HOST_ITEM->sw.value) {
-		double latitude = AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target;
-		double longitude = AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
-		double elevation = AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.target;
-		AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-		AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-		AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elevation;
-		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		latitude = AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target;
+		longitude = AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
+		elevation = AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.target;
 		set_site_coordinates2(device, INDIGO_FILTER_MOUNT_INDEX, latitude, longitude, elevation);
 		set_site_coordinates2(device, INDIGO_FILTER_DOME_INDEX, latitude, longitude, elevation);
-		return;
-	}
-	if (AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value) {
-		double latitude = DEVICE_PRIVATE_DATA->mount_latitude;
-		double longitude = DEVICE_PRIVATE_DATA->mount_longitude;
-		double elevation = DEVICE_PRIVATE_DATA->mount_elevation;
-		AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-		AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-		AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elevation;
-		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+	} else if (AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value) {
+		latitude = DEVICE_PRIVATE_DATA->mount_latitude;
+		longitude = DEVICE_PRIVATE_DATA->mount_longitude;
+		elevation = DEVICE_PRIVATE_DATA->mount_elevation;
 		set_site_coordinates2(device, INDIGO_FILTER_DOME_INDEX, latitude, longitude, elevation);
-		return;
-	}
-	if (AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value) {
-		double latitude = DEVICE_PRIVATE_DATA->dome_latitude;
-		double longitude = DEVICE_PRIVATE_DATA->dome_longitude;
-		double elevation = DEVICE_PRIVATE_DATA->dome_elevation;
-		AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-		AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-		AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elevation;
-		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+	} else if (AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value) {
+		latitude = DEVICE_PRIVATE_DATA->dome_latitude;
+		longitude = DEVICE_PRIVATE_DATA->dome_longitude;
+		elevation = DEVICE_PRIVATE_DATA->dome_elevation;
 		set_site_coordinates2(device, INDIGO_FILTER_MOUNT_INDEX, latitude, longitude, elevation);
-		return;
-	}
-	if (AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value) {
-		double latitude = DEVICE_PRIVATE_DATA->gps_latitude;
-		double longitude = DEVICE_PRIVATE_DATA->gps_longitude;
-		double elevation = DEVICE_PRIVATE_DATA->gps_elevation;
-		AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-		AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-		AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elevation;
-		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+	} else if (AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value) {
+		latitude = DEVICE_PRIVATE_DATA->gps_latitude;
+		longitude = DEVICE_PRIVATE_DATA->gps_longitude;
+		elevation = DEVICE_PRIVATE_DATA->gps_elevation;
 		set_site_coordinates2(device, INDIGO_FILTER_MOUNT_INDEX, latitude, longitude, elevation);
 		set_site_coordinates2(device, INDIGO_FILTER_DOME_INDEX, latitude, longitude, elevation);
-		return;
 	}
+	AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
+	AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+	AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elevation;
+	AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+	set_site_coordinates3(device);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -685,6 +693,9 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					indigo_release_property(eq_property);
 				}
 			}
+			if (property->state == INDIGO_OK_STATE) {
+				set_eq_coordinates(FILTER_CLIENT_CONTEXT->device);
+			}
 		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
 				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
@@ -805,7 +816,11 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 }
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	process_snooping(client, device, property);
+	if (!strncmp(property->device, "Imager Agent", 12) && !strcmp(property->name, CCD_FITS_HEADERS_PROPERTY_NAME)) {
+		set_site_coordinates3(FILTER_CLIENT_CONTEXT->device);
+	} else {
+		process_snooping(client, device, property);
+	}
 	return indigo_filter_define_property(client, device, property, message);
 }
 
