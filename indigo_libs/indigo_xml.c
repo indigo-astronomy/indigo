@@ -1124,8 +1124,8 @@ static void *message_handler(parser_state state, parser_context *context, char *
 				snprintf(message, INDIGO_NAME_SIZE, "%s %s: ", value, context->device->name);
 			else
 				snprintf(message, INDIGO_NAME_SIZE, "%s: ", value);
-		} else if (!strcat(name, "message")) {
-			strncpy(message, value, INDIGO_VALUE_SIZE);
+		} else if (!strcmp(name, "message")) {
+			strcat(message, value);
 		}
 	} else if (state == END_TAG) {
 		indigo_send_message(device, *message ? message : NULL);
