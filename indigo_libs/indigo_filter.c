@@ -407,7 +407,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 			int mask = atoi(interface->text.value);
 			indigo_property *tmp;
 			for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
-				if (mask & interface_mask[i]) {
+				if ((mask & interface_mask[i]) == interface_mask[i]) {
 					tmp = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
 					if (!tmp->hidden && !device_in_list(tmp, property))
 						add_to_list(device, tmp, property);
