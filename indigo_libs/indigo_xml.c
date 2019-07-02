@@ -1077,7 +1077,7 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 	indigo_device *device = context->device;
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: del_property_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
-		if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
+		if (!strncmp(name, "device", INDIGO_NAME_SIZE)) {
 			if (indigo_use_host_suffix)
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
 			else
@@ -1119,7 +1119,12 @@ static void *message_handler(parser_state state, parser_context *context, char *
 	indigo_device *device = context->device;
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: message_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
-		if (!strcmp(name, "message")) {
+		if (!strncmp(name, "device", INDIGO_NAME_SIZE)) {
+			if (indigo_use_host_suffix)
+				snprintf(message, INDIGO_NAME_SIZE, "%s %s: ", value, context->device->name);
+			else
+				snprintf(message, INDIGO_NAME_SIZE, "%s: ", value);
+		} else if (!strcat(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == END_TAG) {
