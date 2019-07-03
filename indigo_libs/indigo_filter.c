@@ -227,6 +227,8 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 			FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->count = 0;
 			// --------------------------------------------------------------------------------
+			CONFIG_PROPERTY->hidden = true;
+			PROFILE_PROPERTY->hidden = true;
 			return INDIGO_OK;
 		}
 	}
