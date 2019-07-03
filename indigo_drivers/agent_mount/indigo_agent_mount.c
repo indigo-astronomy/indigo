@@ -860,6 +860,15 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				AGENT_LX200_CONFIGURATION_PROPERTY->hidden = false;
 				indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 			}
+			indigo_property *selection = cached_remote_mount_property(FILTER_CLIENT_CONTEXT->device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
+			if (selection) {
+				for (int i = 0; i < selection->count; i++) {
+					if (selection->items[i].sw.value) {
+						indigo_send_message(FILTER_CLIENT_CONTEXT->device, "There are active saved alignment points. Make sure you you want to use them.");
+						break;
+					}
+				}
+			}
 		}
 	} else {
 		process_snooping(client, device, property);
