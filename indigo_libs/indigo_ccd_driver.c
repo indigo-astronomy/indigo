@@ -617,9 +617,9 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (!CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
-				CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
 				if (IS_CONNECTED)
 					indigo_delete_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+				CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
 			}
 		}
 		CCD_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
