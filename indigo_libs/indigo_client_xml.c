@@ -161,7 +161,7 @@ static indigo_result xml_client_parser_enable_blob(indigo_device *device, indigo
 	char *mode_text = "Also";
 	if (mode == INDIGO_ENABLE_BLOB_NEVER)
 		mode_text = "Never";
-	else if (mode == INDIGO_ENABLE_BLOB_URL)
+	else if (mode == INDIGO_ENABLE_BLOB_URL && device->version >= INDIGO_VERSION_2_0)
 		mode_text = "URL";
 	if (*property->name)
 		indigo_printf(handle, "<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), mode_text);
