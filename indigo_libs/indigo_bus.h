@@ -154,6 +154,8 @@ typedef enum {
 	INDIGO_ENABLE_BLOB_URL
 } indigo_enable_blob_mode;
 
+#define INDIGO_ENABLE_BLOB INDIGO_ENABLE_BLOB_URL
+	
 /** Enable BLOB mode record
  */
 
