@@ -931,12 +931,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, "No CCD is selected");
 		}
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			save_config(device);
-			return INDIGO_OK;
-		}
 	}
 	return indigo_filter_change_property(device, client, property);
 }
