@@ -652,7 +652,7 @@ static void calibrate_process(indigo_device *device) {
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		guide_process(device);
+		indigo_set_timer(device, 0, guide_process);
 	}
 }
 
@@ -951,10 +951,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	return indigo_filter_define_property(client, device, property, message);
-}
-
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, GUIDER_AGENT_NAME) && (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME) || !strcmp(property->name, FILTER_GUIDER_LIST_PROPERTY_NAME))) {
 		if (FILTER_CCD_LIST_PROPERTY->items->sw.value || FILTER_GUIDER_LIST_PROPERTY->items->sw.value) {
@@ -975,9 +971,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	return indigo_filter_update_property(client, device, property, message);
 }
 
-static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	return indigo_filter_delete_property(client, device, property, message);
-}
 // -------------------------------------------------------------------------------- Initialization
 
 static agent_private_data *private_data = NULL;
@@ -998,9 +991,9 @@ indigo_result indigo_agent_guider(indigo_driver_action action, indigo_driver_inf
 	static indigo_client agent_client_template = {
 		GUIDER_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		indigo_filter_client_attach,
-		agent_define_property,
+		indigo_filter_define_property,
 		agent_update_property,
-		agent_delete_property,
+		indigo_filter_delete_property,
 		NULL,
 		indigo_filter_client_detach
 	};
