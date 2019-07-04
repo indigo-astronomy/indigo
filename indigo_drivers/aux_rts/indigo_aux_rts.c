@@ -122,7 +122,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		X_CCD_EXPOSURE_ITEM->number.value--;
 		if (X_CCD_EXPOSURE_ITEM->number.value <= 0) {
@@ -138,7 +138,7 @@ static void aux_timer_callback(indigo_device *device) {
 }
 
 static void aux_connection_handler(indigo_device *device) {
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 		if (PRIVATE_DATA->handle > 0) {
