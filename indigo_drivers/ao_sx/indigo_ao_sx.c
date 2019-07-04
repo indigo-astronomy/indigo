@@ -148,6 +148,7 @@ static indigo_result ao_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ao_enumerate_properties(device, NULL, NULL);
 	}
@@ -271,6 +272,7 @@ static indigo_result ao_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		ao_connection_handler(device);
 	}
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ao_detach(device);
 }
@@ -413,7 +415,6 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			private_data = malloc(sizeof(sx_private_data));
 			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(sx_private_data));
-			pthread_mutex_init(&private_data->mutex, NULL);
 			ao = malloc(sizeof(indigo_device));
 			assert(ao != NULL);
 			memcpy(ao, &ao_template, sizeof(indigo_device));
@@ -428,18 +429,17 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
-			if (ao != NULL) {
-				indigo_detach_device(ao);
-				free(ao);
-				ao = NULL;
-			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
 				free(guider);
 				guider = NULL;
 			}
+			if (ao != NULL) {
+				indigo_detach_device(ao);
+				free(ao);
+				ao = NULL;
+			}
 			if (private_data != NULL) {
-				pthread_mutex_destroy(&private_data->mutex);
 				free(private_data);
 				private_data = NULL;
 			}
