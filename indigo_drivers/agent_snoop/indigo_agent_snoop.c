@@ -23,7 +23,7 @@
  \file indigo_agent_snoop.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_agent_snoop"
 
 #include <stdlib.h>
@@ -247,15 +247,18 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	rule *r = DEVICE_PRIVATE_DATA->rules;
+	DEVICE_PRIVATE_DATA->rules = NULL;
+	while (r) {
+		rule *rr = r->next;
+		free(r);
+		r = rr;
+	}
 	indigo_release_property(SNOOP_ADD_RULE_PROPERTY);
 	indigo_release_property(SNOOP_REMOVE_RULE_PROPERTY);
 	indigo_release_property(SNOOP_RULES_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_agent_detach(device);
-}
-
-static indigo_result agent_client_attach(indigo_client *client) {
-	return INDIGO_OK;
 }
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
@@ -344,16 +347,6 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 	return INDIGO_OK;
 }
 
-static indigo_result agent_client_detach(indigo_client *client) {
-	rule *r = CLIENT_PRIVATE_DATA->rules;
-	while (r) {
-		rule *rr = r->next;
-		free(r);
-		r = rr;
-	}
-	return INDIGO_OK;
-}
-
 // --------------------------------------------------------------------------------
 
 static agent_private_data *private_data = NULL;
@@ -373,12 +366,12 @@ indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info
 
 	static indigo_client agent_client_template = {
 		SNOOP_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
-		agent_client_attach,
+		NULL,
 		agent_define_property,
 		agent_update_property,
 		agent_delete_property,
 		NULL,
-		agent_client_detach
+		NULL
 	};
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -400,7 +393,6 @@ indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info
 			memcpy(agent_device, &agent_device_template, sizeof(indigo_device));
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
-
 			agent_client = malloc(sizeof(indigo_client));
 			assert(agent_client != NULL);
 			private_data->client = agent_client;
