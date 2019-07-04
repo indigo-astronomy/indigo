@@ -23,8 +23,8 @@
  \file indigo_aux_dsusb.c
  */
 
-#define DRIVER_VERSION 0x0002
-#define DRIVER_NAME "indigo_ccd_dsusb"
+#define DRIVER_VERSION 0x0003
+#define DRIVER_NAME "indigo_aux_dsusb"
 
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +41,7 @@
 #include "indigo_driver_xml.h"
 #include "indigo_aux_dsusb.h"
 
-#define PRIVATE_DATA													((dsusb_private_data *)device->private_data)
+#define PRIVATE_DATA												((dsusb_private_data *)device->private_data)
 
 #define X_CCD_EXPOSURE_PROPERTY							(PRIVATE_DATA->exposure_property)
 #define X_CCD_EXPOSURE_ITEM									(X_CCD_EXPOSURE_PROPERTY->items+0)
@@ -55,26 +55,10 @@ typedef struct {
 	indigo_property *exposure_property;
 	indigo_property *abort_exposure_property;
 	indigo_timer *timer_callback;
+	pthread_mutex_t mutex;
 } dsusb_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
-
-static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
-		return;
-	if (X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		X_CCD_EXPOSURE_ITEM->number.value--;
-		if (X_CCD_EXPOSURE_ITEM->number.value <= 0) {
-			X_CCD_EXPOSURE_ITEM->number.value = 0;
-			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			libdsusb_stop(PRIVATE_DATA->device_context);
-		}
-		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
-		if (X_CCD_EXPOSURE_ITEM->number.value > 0)
-			indigo_reschedule_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->timer_callback);
-	}
-}
-
 
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -93,6 +77,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(X_CCD_ABORT_EXPOSURE_ITEM, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort exposure", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return indigo_aux_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -108,6 +93,77 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
 
+static void aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED)
+		return;
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		X_CCD_EXPOSURE_ITEM->number.value--;
+		if (X_CCD_EXPOSURE_ITEM->number.value <= 0) {
+			X_CCD_EXPOSURE_ITEM->number.value = 0;
+			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			libdsusb_stop(PRIVATE_DATA->device_context);
+		}
+		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+		if (X_CCD_EXPOSURE_ITEM->number.value > 0)
+			indigo_reschedule_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->timer_callback);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_handle_connection(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (libdsusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
+			indigo_define_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_define_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_delete_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+		indigo_delete_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
+		libdsusb_stop(PRIVATE_DATA->device_context);
+		libdsusb_close(PRIVATE_DATA->device_context);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_handle_exposure(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (X_CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
+		X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		libdsusb_focus(PRIVATE_DATA->device_context);
+		indigo_usleep(100000);
+		libdsusb_start(PRIVATE_DATA->device_context);
+		PRIVATE_DATA->timer_callback = indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+	}
+	indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_handle_abort(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (X_CCD_ABORT_EXPOSURE_ITEM->sw.value && X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
+		libdsusb_stop(PRIVATE_DATA->device_context);
+		X_CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+	}
+	X_CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+	X_CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -115,50 +171,17 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (libdsusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				indigo_define_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
-				indigo_define_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			indigo_delete_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_delete_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
-			libdsusb_stop(PRIVATE_DATA->device_context);
-			libdsusb_close(PRIVATE_DATA->device_context);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_set_timer(device, 0, aux_handle_connection);
 		// -------------------------------------------------------------------------------- X_CCD_EXPOSURE
 	} else if (indigo_property_match(X_CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_EXPOSURE_PROPERTY, property, false);
-		if (X_CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
-			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			libdsusb_focus(PRIVATE_DATA->device_context);
-			indigo_usleep(100000);
-			libdsusb_start(PRIVATE_DATA->device_context);
-			PRIVATE_DATA->timer_callback = indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
-		}
-		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_handle_exposure);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(X_CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-		if (X_CCD_ABORT_EXPOSURE_ITEM->sw.value && X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
-			libdsusb_stop(PRIVATE_DATA->device_context);
-			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
-		}
-		X_CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-		X_CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_handle_abort);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -171,6 +194,7 @@ static indigo_result aux_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_CCD_EXPOSURE_PROPERTY);
 	indigo_release_property(X_CCD_ABORT_EXPOSURE_PROPERTY);
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }
@@ -215,22 +239,20 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			dsusb_private_data *private_data = NULL;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] != NULL) {
 					indigo_device *device = devices[j];
 					if (PRIVATE_DATA->dev == dev) {
-						private_data = PRIVATE_DATA;
+						if (PRIVATE_DATA != NULL) {
+							libusb_unref_device(dev);
+							free(PRIVATE_DATA);
+						}
 						indigo_detach_device(device);
 						free(device);
 						devices[j] = NULL;
 						break;
 					}
 				}
-			}
-			if (private_data != NULL) {
-				libusb_unref_device(dev);
-				free(private_data);
 			}
 			break;
 		}
@@ -243,6 +265,8 @@ static libusb_hotplug_callback_handle callback_handle;
 static void debug(const char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libdsusb: %s\n", message);
 }
+
+// -------------------------------------------------------------------------------- INDIGO driver implementation
 
 indigo_result indigo_aux_dsusb(indigo_driver_action action, indigo_driver_info *info) {
 	libdsusb_debug = &debug;
