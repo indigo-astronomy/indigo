@@ -569,17 +569,6 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	return INDIGO_OK;
 }
 
-static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == CLIENT_PRIVATE_DATA->device)
-		return INDIGO_OK;
-
-	return INDIGO_OK;
-}
-
-static indigo_result agent_client_detach(indigo_client *client) {
-	return INDIGO_OK;
-}
-
 // --------------------------------------------------------------------------------
 
 static agent_private_data *private_data = NULL;
@@ -602,9 +591,9 @@ indigo_result indigo_agent_lx200_server(indigo_driver_action action, indigo_driv
 		agent_client_attach,
 		agent_define_property,
 		agent_update_property,
-		agent_delete_property,
 		NULL,
-		agent_client_detach
+		NULL,
+		NULL
 	};
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
