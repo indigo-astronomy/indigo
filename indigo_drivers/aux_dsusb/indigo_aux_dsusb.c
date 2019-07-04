@@ -111,7 +111,7 @@ static void aux_timer_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void aux_handle_connection(indigo_device *device) {
+static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (libdsusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
@@ -137,7 +137,7 @@ static void aux_handle_connection(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void aux_handle_exposure(indigo_device *device) {
+static void aux_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (X_CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
 		X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -150,7 +150,7 @@ static void aux_handle_exposure(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void aux_handle_abort(indigo_device *device) {
+static void aux_abort_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (X_CCD_ABORT_EXPOSURE_ITEM->sw.value && X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
@@ -172,16 +172,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_set_timer(device, 0, aux_handle_connection);
+		indigo_set_timer(device, 0, aux_connection_handler);
 		// -------------------------------------------------------------------------------- X_CCD_EXPOSURE
 	} else if (indigo_property_match(X_CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_EXPOSURE_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_handle_exposure);
+		indigo_set_timer(device, 0, aux_exposure_handler);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(X_CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_handle_abort);
+		indigo_set_timer(device, 0, aux_abort_handler);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -192,7 +192,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		aux_handle_connection(device);
+		aux_connection_handler(device);
 	}
 	indigo_release_property(X_CCD_EXPOSURE_PROPERTY);
 	indigo_release_property(X_CCD_ABORT_EXPOSURE_PROPERTY);
