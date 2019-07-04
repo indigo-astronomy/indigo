@@ -523,11 +523,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			save_config(device);
-		}
 	}
 	return indigo_filter_change_property(device, client, property);
 }
