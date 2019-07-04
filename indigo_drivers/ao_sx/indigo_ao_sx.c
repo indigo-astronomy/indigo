@@ -439,6 +439,7 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 				guider = NULL;
 			}
 			if (private_data != NULL) {
+				pthread_mutex_destroy(&private_data->mutex);
 				free(private_data);
 				private_data = NULL;
 			}
