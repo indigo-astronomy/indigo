@@ -23,8 +23,8 @@
  \file indigo_aux_sqm.c
  */
 
-#define DRIVER_VERSION 0x0001
-#define DRIVER_NAME "indigo_ccd_sqm"
+#define DRIVER_VERSION 0x0002
+#define DRIVER_NAME "indigo_aux_sqm"
 
 #include <stdlib.h>
 #include <string.h>
@@ -53,31 +53,11 @@ typedef struct {
 	int handle;
 	indigo_property *info_property;
 	indigo_timer *timer_callback;
+	pthread_mutex_t mutex;
 } sqm_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
 
-
-static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
-		return;
-	char buffer[60], *pnt;
-	memset(buffer, 0, sizeof(buffer));
-	indigo_printf(PRIVATE_DATA->handle, "rx");
-	indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
-	if (*strtok_r(buffer, ",", &pnt) != 'r') {
-		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		X_AUX_SKY_BRIGHTNESS_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
-		X_AUX_SENSOR_FREQUENCY_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
-		X_AUX_SENSOR_COUNTS_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
-		X_AUX_SENSOR_PERIOD_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
-		X_AUX_SKY_TEMPERATURE_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
-		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
-	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->timer_callback);
-}
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
@@ -109,6 +89,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usb_aux");
 #endif
 		// --------------------------------------------------------------------------------
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
 	}
@@ -123,6 +104,67 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
 
+static void aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED)
+		return;
+	char buffer[60], *pnt;
+	memset(buffer, 0, sizeof(buffer));
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	indigo_printf(PRIVATE_DATA->handle, "rx");
+	indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+	if (*strtok_r(buffer, ",", &pnt) != 'r') {
+		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		X_AUX_SKY_BRIGHTNESS_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_FREQUENCY_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_COUNTS_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_PERIOD_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
+		X_AUX_SKY_TEMPERATURE_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
+		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->timer_callback);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_connection_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
+		if (PRIVATE_DATA->handle > 0) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
+			char buffer[60];
+			indigo_printf(PRIVATE_DATA->handle, "ix");
+			indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+			if (*buffer == 'i') {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unit info: %s", buffer);
+			} else {
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = 0;
+			}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->timer_callback = indigo_set_timer(device, 0, aux_timer_callback);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
+		close(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -130,37 +172,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
-			if (PRIVATE_DATA->handle > 0) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				char buffer[60];
-				indigo_printf(PRIVATE_DATA->handle, "ix");
-				indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
-				if (*buffer == 'i') {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unit info: %s", buffer);
-				} else {
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
-				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				PRIVATE_DATA->timer_callback = indigo_set_timer(device, 0, aux_timer_callback);
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_set_timer(device, 0, aux_connection_handler);
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_aux_change_property(device, client, property);
@@ -168,14 +181,17 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		aux_connection_handler(device);
+	}
 	indigo_release_property(AUX_INFO_PROPERTY);
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }
 
-// -------------------------------------------------------------------------------- hot-plug support
+// -------------------------------------------------------------------------------- INDIGO driver implementation
 
 indigo_result indigo_aux_sqm(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
