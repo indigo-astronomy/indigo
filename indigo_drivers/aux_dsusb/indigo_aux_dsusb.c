@@ -190,8 +190,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		aux_handle_connection(device);
+	}
 	indigo_release_property(X_CCD_EXPOSURE_PROPERTY);
 	indigo_release_property(X_CCD_ABORT_EXPOSURE_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
@@ -243,11 +245,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				if (devices[j] != NULL) {
 					indigo_device *device = devices[j];
 					if (PRIVATE_DATA->dev == dev) {
+						indigo_detach_device(device);
 						if (PRIVATE_DATA != NULL) {
 							libusb_unref_device(dev);
 							free(PRIVATE_DATA);
 						}
-						indigo_detach_device(device);
 						free(device);
 						devices[j] = NULL;
 						break;
