@@ -1036,6 +1036,8 @@
 		5992F7BA1E1EC9390035242E /* indigo_wheel_fli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_fli.h; sourceTree = "<group>"; };
 		5992F7BB1E1EC9580035242E /* indigo_wheel_fli_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_fli_main.c; sourceTree = "<group>"; };
 		5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		5996614522CE69F500330652 /* Handbook.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Handbook.pdf; sourceTree = "<group>"; };
+		5996614F22CE6A5F00330652 /* ao_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ao_simulator.ino; sourceTree = "<group>"; };
 		5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sx.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sx.h; sourceTree = "<group>"; };
 		5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx_main.c; sourceTree = "<group>"; };
@@ -4420,6 +4422,8 @@
 				590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */,
 				590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */,
 				590BF1AE21EBCF7500C24DBA /* indigo_ao_sx_main.c */,
+				5996614522CE69F500330652 /* Handbook.pdf */,
+				5996614E22CE6A5F00330652 /* ao_simulator */,
 			);
 			path = ao_sx;
 			sourceTree = "<group>";
@@ -5502,6 +5506,14 @@
 				598C57E121A75B1A001CA8C0 /* libnexstar */,
 			);
 			path = externals;
+			sourceTree = "<group>";
+		};
+		5996614E22CE6A5F00330652 /* ao_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5996614F22CE6A5F00330652 /* ao_simulator.ino */,
+			);
+			path = ao_simulator;
 			sourceTree = "<group>";
 		};
 		5999FB651DA40B380084BBF8 /* ccd_sx */ = {
