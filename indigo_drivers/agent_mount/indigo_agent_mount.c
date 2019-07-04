@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -107,16 +107,6 @@ static indigo_property *cached_remote_mount_property(indigo_device *device, char
 	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
 	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
 		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]) && !strcmp(cache[j]->name, name)) {
-			return cache[j];
-		}
-	}
-	return NULL;
-}
-
-static indigo_property *cached_remote_dome_property(indigo_device *device, char *name) {
-	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
-	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) && !strcmp(cache[j]->name, name)) {
 			return cache[j];
 		}
 	}
@@ -870,10 +860,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	return indigo_filter_update_property(client, device, property, message);
 }
 
-static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	return indigo_filter_delete_property(client, device, property, message);
-}
-
 // -------------------------------------------------------------------------------- Initialization
 
 static agent_private_data *private_data = NULL;
@@ -896,7 +882,7 @@ indigo_result indigo_agent_mount(indigo_driver_action action, indigo_driver_info
 		indigo_filter_client_attach,
 		agent_define_property,
 		agent_update_property,
-		agent_delete_property,
+		indigo_filter_delete_property,
 		NULL,
 		indigo_filter_client_detach
 	};
