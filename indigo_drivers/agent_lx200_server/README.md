@@ -18,5 +18,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_lx200_server
 
-## Status: Stable
+## Status: Deprecated
+
+Use indigo_agent_mount instead.
 
