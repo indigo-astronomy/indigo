@@ -74,7 +74,6 @@ static bool dmfc_command(indigo_device *device, char *command, char *response, i
 	indigo_write(PRIVATE_DATA->handle, "\n", 1);
 	if (response != NULL) {
 		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
 			return false;
 		}

@@ -107,7 +107,6 @@ static bool ppb_command(indigo_device *device, char *command, char *response, in
 	indigo_write(PRIVATE_DATA->handle, "\n", 1);
 	if (response != NULL) {
 		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == -1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
 			return false;
 		}
