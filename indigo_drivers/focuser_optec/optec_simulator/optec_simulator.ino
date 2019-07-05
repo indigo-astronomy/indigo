@@ -55,11 +55,10 @@ void loop() {
       mode_a = false;
       mode_b = true;
     } else if (command.startsWith("FQUIT0")) {
-      quiet = true;
+      quiet = false;
       Serial.println("DONE");
     } else if (command.startsWith("FQUIT1")) {
-      mode_a = false;
-      mode_b = false;
+      quiet = true;
       Serial.println("DONE");
     } else if (command.startsWith("FSLEEP")) {
       Serial.println("ZZZ");
@@ -107,23 +106,22 @@ void loop() {
   }
   unsigned long m = millis();
   static unsigned long last_m = m;
-  if (mode_a || mode_b) {
-    bool report = false;
-    if (quiet)
-      report = m / 1000 > last_m / 1000;
-    else
-      report = m / 10 > last_m / 10;
-    if (report) {
-      sprintf(buffer, "P=%04u", position);
-      Serial.println(buffer);
-      Serial.println("T=+24.5");
-    }
-  } else if (target != position) {
+  if (target != position) {
     if (m / 10 > last_m / 10) {
       if (target < position)
         position--;
       else if (target > position)
         position++;
+    }
+  }
+  if (mode_a || mode_b) {
+    bool report = false;
+    if (!quiet)
+      report = m / 10 > last_m / 10;
+    if (report) {
+      sprintf(buffer, "P=%04u", position);
+      Serial.println(buffer);
+      Serial.println("T=+24.5");
     }
   }
   last_m = m;
