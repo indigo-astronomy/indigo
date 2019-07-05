@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-/** Register SteelDriveII focuser hot-plug callback
+/** Register SteelDriveII focuser driver
  */
 
 extern indigo_result indigo_focuser_steeldrive2(indigo_driver_action action, indigo_driver_info *info);

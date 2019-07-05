@@ -47,7 +47,7 @@ const uint8_t crc_array[256] = {
 
 bool use_crc = false;
 bool boot = true;
-char name[64] = "BP_SD_01";
+char name[16] = "BP_SD_01";
 int bklgt = 50;
 int use_endstop = 0;
 int pos = 1000;
@@ -57,14 +57,22 @@ int jogstep = 50;
 int singlestep = 1;
 double temp0 = 22.45;
 double temp1 = 21.78;
+double temp0_ofs = 0;
+double temp1_ofs = 0;
 int tcomp = 0;
 double tcomp_factor = 2.5;
 int tcomp_period = 1000;
 double tcomp_delta = 0.5;
 int tcomp_sensor = 1000;
-int pwm = 100;
+int pwm = 50;
 int target = 0;
 bool moving = false;
+int pid_ctrl = 0;
+double pid_target;
+int pid_sensor = 0;
+int ambient_sensor = 0;
+double pid_dew_ofs = 0;
+int auto_dew = 0;
 
 void setup() {
   Serial.begin(19200);
@@ -100,6 +108,8 @@ void loop() {
         continue;
       if (ch == '\n')
         break;
+      if (ch == '*')
+         ch = 0;
       *pnt++ = ch;
     }
     *pnt = 0;
@@ -224,6 +234,67 @@ void loop() {
     } else if (!strcmp(command, "$BS STOP")) {
       moving = false;
       strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TCOMP0")) {
+      char str[6];
+      dtostrf(temp0, 4, 2, str);
+      sprintf(response, "$BS STATUS TCOMP0:%s", str);      
+    } else if (!strcmp(command, "$BS GET TCOMP1")) {
+      char str[6];
+      dtostrf(temp1, 4, 2, str);
+      sprintf(response, "$BS STATUS TCOMP1:%s", str);      
+    } else if (!strncmp(command, "$BS SET TEMP0_OFS:", 18)) {
+      temp0_ofs = atof(command + 18);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TEMP0_OFS")) {
+      char str[6];
+      dtostrf(temp0_ofs, 5, 2, str);
+      sprintf(response, "$BS STATUS TEMP0_OFS:%s", str);
+    } else if (!strncmp(command, "$BS SET TEMP1_OFS:", 18)) {
+      temp1_ofs = atof(command + 18);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET TEMP1_OFS")) {
+      char str[6];
+      dtostrf(temp1_ofs, 5, 2, str);
+      sprintf(response, "$BS STATUS TEMP1_OFS:%s", str);
+    } else if (!strncmp(command, "$BS SET PID_CTRL:", 17)) {
+      pid_ctrl = atoi(command + 17);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET PID_CTRL")) {
+      sprintf(response, "$BS STATUS PID_CTRL:%d", pid_ctrl);
+    } else if (!strncmp(command, "$BS SET PID_TARGET:", 19)) {
+      pid_target = atof(command + 19);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET PID_TARGET")) {
+      char str[6];
+      dtostrf(pid_target, 5, 2, str);
+      sprintf(response, "$BS STATUS PID_TARGET:%s", str);
+    } else if (!strncmp(command, "$BS SET PID_SENSOR:", 19)) {
+      pid_sensor = atoi(command + 19);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET PID_SENSOR")) {
+      sprintf(response, "$BS STATUS PID_SENSOR:%d", pid_sensor);
+    } else if (!strncmp(command, "$BS SET PWM:", 12)) {
+      pwm = atoi(command + 12);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET PWM")) {
+      sprintf(response, "$BS STATUS PWM:%d", pwm);
+    } else if (!strncmp(command, "$BS SET AMBIENT_SENSOR:", 23)) {
+      ambient_sensor = atoi(command + 23);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET AMBIENT_SENSOR")) {
+      sprintf(response, "$BS STATUS AMBIENT_SENSOR:%d", ambient_sensor);
+    } else if (!strncmp(command, "$BS SET PID_DEW_OFS:", 20)) {
+      pid_dew_ofs = atof(command + 19);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET PID_DEW_OFS")) {
+      char str[6];
+      dtostrf(pid_dew_ofs, 5, 2, str);
+      sprintf(response, "$BS STATUS PID_DEW_OFS:%s", str);
+    } else if (!strncmp(command, "$BS SET AUTO_DEW:", 18)) {
+      auto_dew = atoi(command + 18);
+      strcpy(response, "$BS OK");
+    } else if (!strcmp(command, "$BS GET AUTO_DEW")) {
+      sprintf(response, "$BS STATUS AUTO_DEW:%d", auto_dew);
     } else {
 			strcpy(response, "$BS ERROR: Unknown command!");
     }
