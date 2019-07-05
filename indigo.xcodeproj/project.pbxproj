@@ -1045,6 +1045,7 @@
 		5996615422CF3E0F00330652 /* indigo_aux_ppb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_ppb.h; sourceTree = "<group>"; };
 		5996615622CF3E0F00330652 /* ppb_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ppb_simulator.ino; sourceTree = "<group>"; };
 		5996615722CF3E0F00330652 /* 99-indigo_aux_ppb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_ppb.rules"; sourceTree = "<group>"; };
+		5996615922CF55E800330652 /* .editorconfig */ = {isa = PBXFileReference; lastKnownFileType = text; path = .editorconfig; sourceTree = "<group>"; };
 		5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sx.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sx.h; sourceTree = "<group>"; };
 		5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx_main.c; sourceTree = "<group>"; };
@@ -5155,6 +5156,7 @@
 				9D5D16D0212D93C9001A849C /* PROPERTIES.md */,
 				9D57C18F22452587009C187D /* DEVELOPMENT.md */,
 				9DC7830921AC565B009859FD /* .travis.yml */,
+				5996615922CF55E800330652 /* .editorconfig */,
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,
 				9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */,
