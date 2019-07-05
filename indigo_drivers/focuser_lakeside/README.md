@@ -21,3 +21,4 @@ indigo_server indigo_focuser_lakeside
 
 ## Status: Untested
 
+Tested with simulator only

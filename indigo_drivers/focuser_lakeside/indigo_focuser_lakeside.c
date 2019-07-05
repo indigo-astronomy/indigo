@@ -23,11 +23,11 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO LakesideASTRO focuser driver
- \file indigo_ccd_sx.c
+ \file indigo_focuser_lakeside.c
  */
 
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_lakeside"
 
 #include <stdlib.h>
@@ -56,13 +56,14 @@
 
 typedef struct {
 	int handle;
-	pthread_mutex_t port_mutex;
 	indigo_timer *timer;
 	indigo_property *active_slope_property;
+	pthread_mutex_t mutex;
 } lakeside_private_data;
 
+// -------------------------------------------------------------------------------- Low level communication routines
+
 static bool lakeside_command(indigo_device *device, char *command, char *response, int timeout) {
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
 	tv.tv_sec = timeout / 1000000;
@@ -83,7 +84,6 @@ static bool lakeside_command(indigo_device *device, char *command, char *respons
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
 			if (c < 0 || c == '#')
@@ -92,45 +92,11 @@ static bool lakeside_command(indigo_device *device, char *command, char *respons
 		}
 		response[index] = 0;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command '%s' -> '%s'", command, response != NULL ? response : "NULL");
 	return true;
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
-
-static void timer_callback(indigo_device *device) {
-	char response[16];
-	if (!IS_CONNECTED)
-		return;
-	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-		while (lakeside_command(device, NULL, response, 10000)) {
-			if (!strcmp(response, "DONE")) {
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				break;
-			} else if (response[0] == 'P') {
-				FOCUSER_POSITION_ITEM->number.value = atol(response + 1);
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			}
-		}
-	} else {
-		if (lakeside_command(device, "?T#", response, 1000000) && *response == 'T') {
-			FOCUSER_TEMPERATURE_ITEM->number.value = atol(response + 1) / 2.0;
-			if (FOCUSER_TEMPERATURE_ITEM->number.target != FOCUSER_TEMPERATURE_ITEM->number.value) {
-				FOCUSER_TEMPERATURE_ITEM->number.target = FOCUSER_TEMPERATURE_ITEM->number.value;
-				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			}
-		} else if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_ALERT_STATE) {
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-		}
-	}
-	indigo_reschedule_timer(device, 1.0, &PRIVATE_DATA->timer);
-}
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -171,7 +137,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
@@ -186,257 +152,336 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
+static void focuser_timer_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[16];
+	if (!IS_CONNECTED)
+		return;
+	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		while (lakeside_command(device, NULL, response, 10000)) {
+			if (!strcmp(response, "DONE")) {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				break;
+			} else if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+				if (lakeside_command(device, "CH#", NULL, 0)) {
+					FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				} else {
+					FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+				break;
+			} else if (response[0] == 'P') {
+				FOCUSER_POSITION_ITEM->number.value = atol(response + 1);
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
+		}
+	} else {
+		if (lakeside_command(device, "?T#", response, 1000000) && *response == 'T') {
+			FOCUSER_TEMPERATURE_ITEM->number.value = atol(response + 1) / 2.0;
+			if (FOCUSER_TEMPERATURE_ITEM->number.target != FOCUSER_TEMPERATURE_ITEM->number.value) {
+				FOCUSER_TEMPERATURE_ITEM->number.target = FOCUSER_TEMPERATURE_ITEM->number.value;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			}
+		} else if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_ALERT_STATE) {
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+		}
+	}
+	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->timer);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_connection_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[16];
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
+		if (PRIVATE_DATA->handle > 0) {
+			if (lakeside_command(device, "??#", response, 1000000) && !strcmp("OK", response)) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Lakeside focuser detected");
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lakeside focuser not detected");
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = 0;
+			}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			lakeside_command(device, "CTF#", NULL, 0);
+			lakeside_command(device, "CRg1#", response, 1000000);
+			if (lakeside_command(device, "?P#", response, 1000000) && *response == 'P') {
+				FOCUSER_POSITION_ITEM->number.value = atol(response + 1);
+			} else {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?B#", response, 1000000) && *response == 'B') {
+				FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = atol(response + 1);
+			} else {
+				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?D#", response, 1000000) && *response == 'D') {
+				if (atol(response + 1)) {
+					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				} else {
+					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_REVERSE_MOTION_ENABLED_ITEM, true);
+				}
+			} else {
+				FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?T#", response, 1000000) && *response == 'T') {
+				FOCUSER_TEMPERATURE_ITEM->number.target = FOCUSER_TEMPERATURE_ITEM->number.value = atol(response + 1) / 2.0;
+			} else {
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?1#", response, 100000) && *response == '1') {
+				FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = atol(response + 1);
+			} else {
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?a#", response, 100000) && *response == 'a') {
+				if (atol(response + 1)) {
+					FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
+				}
+			} else {
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?c#", response, 100000) && *response == 'c') {
+				X_FOCUSER_DEADBAND_ITEM->number.target =X_FOCUSER_DEADBAND_ITEM->number.value = atol(response + 1);
+			} else {
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?e#", response, 100000) && *response == 'e') {
+				X_FOCUSER_PERIOD_ITEM->number.target =X_FOCUSER_PERIOD_ITEM->number.value = atol(response + 1);
+			} else {
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_define_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->timer = indigo_set_timer(device, 0, focuser_timer_callback);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_delete_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_steps_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16];
+	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+		sprintf(command, "CI%d#", (unsigned)FOCUSER_STEPS_ITEM->number.value);
+	} else {
+		sprintf(command, "CO%d#", (unsigned)FOCUSER_STEPS_ITEM->number.value);
+	}
+	if (lakeside_command(device, command, NULL, 0)) {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_mode_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (lakeside_command(device, FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? "CTN#" : "CTF#", NULL, 0)) {
+		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_backlash_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16], response[16];
+	if (IS_CONNECTED) {
+		sprintf(command, "CRB%d#", (int)FOCUSER_BACKLASH_ITEM->number.value);
+		if (lakeside_command(device, command, response, 100000) && !strcmp(response, "OK")) {
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_compensation_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16], response[16];
+	if (IS_CONNECTED) {
+		bool result;
+		if (X_FOCUSER_ACTIVE_SLOPE_1_ITEM->sw.value) {
+			sprintf(command, "CR1%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
+			result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			if (result) {
+				sprintf(command, "CRa%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
+				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			}
+			if (result) {
+				sprintf(command, "CRc%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
+				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			}
+			if (result) {
+				sprintf(command, "CRe%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
+				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			}
+		} else {
+			sprintf(command, "CR2%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
+			result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			if (result) {
+				sprintf(command, "CRb%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
+				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			}
+			if (result) {
+				sprintf(command, "CRd%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
+				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			}
+			if (result) {
+				sprintf(command, "CRf%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
+				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
+			}
+		}
+		if (result) {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_active_slope_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[16];
+	if (X_FOCUSER_ACTIVE_SLOPE_1_ITEM->sw.value) {
+		if (lakeside_command(device, "CRg1#", response, 100000) && !strcmp(response, "OK")) {
+			X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+			if (lakeside_command(device, "?1#", response, 100000) && *response == '1') {
+				FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = atol(response + 1);
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?a#", response, 100000) && *response == 'a') {
+				if (atol(response + 1)) {
+					FOCUSER_COMPENSATION_ITEM->number.target = FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
+				}
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?c#", response, 100000) && *response == 'c') {
+				X_FOCUSER_DEADBAND_ITEM->number.target =X_FOCUSER_DEADBAND_ITEM->number.value = atol(response + 1);
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?e#", response, 100000) && *response == 'e') {
+				X_FOCUSER_PERIOD_ITEM->number.target =X_FOCUSER_PERIOD_ITEM->number.value = atol(response + 1);
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+	} else {
+		if (lakeside_command(device, "CRg2#", response, 100000) && !strcmp(response, "OK")) {
+			X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+			if (lakeside_command(device, "?2#", response, 100000) && *response == '2') {
+				FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = atol(response + 1);
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?b#", response, 100000) && *response == 'b') {
+				if (atol(response + 1)) {
+					FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
+				}
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?d#", response, 100000) && *response == 'd') {
+				X_FOCUSER_DEADBAND_ITEM->number.target =X_FOCUSER_DEADBAND_ITEM->number.value = atol(response + 1);
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (lakeside_command(device, "?f#", response, 100000) && *response == 'f') {
+				X_FOCUSER_PERIOD_ITEM->number.target =X_FOCUSER_PERIOD_ITEM->number.value = atol(response + 1);
+			} else {
+				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+	}
+	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+	indigo_update_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	char command[16], response[16];
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
-			if (PRIVATE_DATA->handle > 0) {
-				if (lakeside_command(device, "??#", response, 1000000) && !strcmp("OK", response)) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Lakeside focuser detected");
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lakeside focuser not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
-				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				lakeside_command(device, "CTF#", NULL, 0);
-				lakeside_command(device, "CRg1#", response, 1000000);
-				if (lakeside_command(device, "?P#", response, 1000000) && *response == 'P') {
-					FOCUSER_POSITION_ITEM->number.value = atol(response + 1);
-				} else {
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?B#", response, 1000000) && *response == 'B') {
-					FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = atol(response + 1);
-				} else {
-					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?D#", response, 1000000) && *response == 'D') {
-					if (atol(response + 1)) {
-						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-					} else {
-						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, FOCUSER_REVERSE_MOTION_ENABLED_ITEM, true);
-					}
-				} else {
-					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?T#", response, 1000000) && *response == 'T') {
-					FOCUSER_TEMPERATURE_ITEM->number.target = FOCUSER_TEMPERATURE_ITEM->number.value = atol(response + 1) / 2.0;
-				} else {
-					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?1#", response, 100000) && *response == '1') {
-					FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = atol(response + 1);
-				} else {
-					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?a#", response, 100000) && *response == 'a') {
-					if (atol(response + 1)) {
-						FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
-					}
-				} else {
-					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?c#", response, 100000) && *response == 'c') {
-					X_FOCUSER_DEADBAND_ITEM->number.target =X_FOCUSER_DEADBAND_ITEM->number.value = atol(response + 1);
-				} else {
-					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?e#", response, 100000) && *response == 'e') {
-					X_FOCUSER_PERIOD_ITEM->number.target =X_FOCUSER_PERIOD_ITEM->number.value = atol(response + 1);
-				} else {
-					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_define_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-				PRIVATE_DATA->timer = indigo_set_timer(device, 0, timer_callback);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->timer);
-				indigo_delete_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_set_timer(device, 0, focuser_connection_handler);
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			sprintf(command, "CI%d#", (unsigned)FOCUSER_STEPS_ITEM->number.value);
-		} else {
-			sprintf(command, "CO%d#", (unsigned)FOCUSER_STEPS_ITEM->number.value);
-		}
-		if (lakeside_command(device, command, NULL, 0)) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-			if (lakeside_command(device, "CH#", NULL, 0)) {
-				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			} else {
-				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		}
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-		if (lakeside_command(device, FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? "CTN#" : "CTF#", NULL, 0)) {
-			FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_mode_handler);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-			sprintf(command, "CRB%d#", (int)FOCUSER_BACKLASH_ITEM->number.value);
-			if (lakeside_command(device, command, response, 100000) && !strcmp(response, "OK")) {
-				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-		}
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		indigo_set_timer(device, 0, focuser_backlash_handler);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-			bool result;
-			if (X_FOCUSER_ACTIVE_SLOPE_1_ITEM->sw.value) {
-				sprintf(command, "CR1%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
-				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				if (result) {
-					sprintf(command, "CRa%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
-					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				}
-				if (result) {
-					sprintf(command, "CRc%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
-					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				}
-				if (result) {
-					sprintf(command, "CRe%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
-					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				}
-			} else {
-				sprintf(command, "CR2%d#", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value));
-				result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				if (result) {
-					sprintf(command, "CRb%d#", FOCUSER_COMPENSATION_ITEM->number.value > 0 ? 0 : 1);
-					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				}
-				if (result) {
-					sprintf(command, "CRd%d#", (int)X_FOCUSER_DEADBAND_ITEM->number.value);
-					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				}
-				if (result) {
-					sprintf(command, "CRf%d#", (int)X_FOCUSER_PERIOD_ITEM->number.value);
-					result = lakeside_command(device, command, response, 100000) && !strcmp(response, "OK");
-				}
-			}
-			if (result) {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-			return INDIGO_OK;
-		}
+		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+		indigo_set_timer(device, 0, focuser_compensation_handler);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_FOCUSER_ACTIVE_SLOPE
 	} else if (indigo_property_match(X_FOCUSER_ACTIVE_SLOPE_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_ACTIVE_SLOPE_PROPERTY, property, false);
-		if (X_FOCUSER_ACTIVE_SLOPE_1_ITEM->sw.value) {
-			if (lakeside_command(device, "CRg1#", response, 100000) && !strcmp(response, "OK")) {
-				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-				if (lakeside_command(device, "?1#", response, 100000) && *response == '1') {
-					FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = atol(response + 1);
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?a#", response, 100000) && *response == 'a') {
-					if (atol(response + 1)) {
-						FOCUSER_COMPENSATION_ITEM->number.target = FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
-					}
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?c#", response, 100000) && *response == 'c') {
-					X_FOCUSER_DEADBAND_ITEM->number.target =X_FOCUSER_DEADBAND_ITEM->number.value = atol(response + 1);
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?e#", response, 100000) && *response == 'e') {
-					X_FOCUSER_PERIOD_ITEM->number.target =X_FOCUSER_PERIOD_ITEM->number.value = atol(response + 1);
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-			}
-		} else {
-			if (lakeside_command(device, "CRg2#", response, 100000) && !strcmp(response, "OK")) {
-				X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-				if (lakeside_command(device, "?2#", response, 100000) && *response == '2') {
-					FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = atol(response + 1);
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?b#", response, 100000) && *response == 'b') {
-					if (atol(response + 1)) {
-						FOCUSER_COMPENSATION_ITEM->number.target =FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
-					}
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?d#", response, 100000) && *response == 'd') {
-					X_FOCUSER_DEADBAND_ITEM->number.target =X_FOCUSER_DEADBAND_ITEM->number.value = atol(response + 1);
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (lakeside_command(device, "?f#", response, 100000) && *response == 'f') {
-					X_FOCUSER_PERIOD_ITEM->number.target =X_FOCUSER_PERIOD_ITEM->number.value = atol(response + 1);
-				} else {
-					X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-			}
-		}
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		indigo_update_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_active_slope_handler);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -444,12 +489,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connection_handler(device);
+	}
 	indigo_release_property(X_FOCUSER_ACTIVE_SLOPE_PROPERTY);
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
+
+// -------------------------------------------------------------------------------- INDIGO driver implementation
 
 indigo_result indigo_focuser_lakeside(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
