@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-/** Register nFOCUS focuser hot-plug callback
+/** Register nFOCUS focuser driver
  */
 
 extern indigo_result indigo_focuser_nfocus(indigo_driver_action action, indigo_driver_info *info);
