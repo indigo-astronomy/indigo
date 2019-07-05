@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-/** Register MoonLite focuser hot-plug callback
+/** Register MoonLite focuser driver
  */
 
 extern indigo_result indigo_focuser_moonlite(indigo_driver_action action, indigo_driver_info *info);

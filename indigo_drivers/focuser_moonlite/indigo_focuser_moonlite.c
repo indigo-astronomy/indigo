@@ -20,10 +20,10 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO MoonLite focuser driver
- \file indigo_ccd_sx.c
+ \file indigo_focuser_moonlite.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_moonlite"
 
 #include <stdlib.h>
@@ -49,13 +49,12 @@
 
 typedef struct {
 	int handle;
-	pthread_mutex_t port_mutex;
 	indigo_timer *timer;
 	indigo_property *stepping_mode_property;
+	pthread_mutex_t mutex;
 } moonlite_private_data;
 
 static bool moonlite_command(indigo_device *device, char *command, char *response, int max) {
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
 	tv.tv_sec = 0;
@@ -73,7 +72,6 @@ static bool moonlite_command(indigo_device *device, char *command, char *respons
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
 			if (c < 0)
@@ -84,59 +82,11 @@ static bool moonlite_command(indigo_device *device, char *command, char *respons
 		}
 		response[index] = 0;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command '%s' -> '%s'", command, response != NULL ? response : "NULL");
 	return true;
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
-
-static void timer_callback(indigo_device *device) {
-	static bool read_temperature = false;
-	char response[16];
-	if (read_temperature) {
-		if (moonlite_command(device, ":GT#", response, sizeof(response))) {
-			double temp = ((int)strtol(response, NULL, 16)) / 2.0;
-			if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
-				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			}
-		}
-		read_temperature = false;
-	} else {
-		moonlite_command(device, ":C#", NULL, 0);
-		read_temperature = true;
-	}
-	bool update = false;
-	if (moonlite_command(device, ":GP#", response, sizeof(response))) {
-		long pos = strtol(response, NULL, 16);
-		if (FOCUSER_POSITION_ITEM->number.value != pos) {
-			FOCUSER_POSITION_ITEM->number.value = pos;
-			update = true;
-		}
-	}
-	if (moonlite_command(device, ":GI#", response, sizeof(response))) {
-		if (strcmp(response, "00") == 0) {
-			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				update = true;
-			}
-		} else {
-			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-				update = true;
-			}
-		}
-	}
-	if (update) {
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-	}
-	indigo_reschedule_timer(device, FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE ? 0.2 : 1.0, &PRIVATE_DATA->timer);
-}
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -196,7 +146,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 1;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 0xFFFF;
 		// --------------------------------------------------------------------------------
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
@@ -211,176 +161,281 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
+static void focuser_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED)
+		return;
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	static bool read_temperature = false;
+	char response[16];
+	if (read_temperature) {
+		if (moonlite_command(device, ":GT#", response, sizeof(response))) {
+			double temp = ((int)strtol(response, NULL, 16)) / 2.0;
+			if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			}
+		}
+		read_temperature = false;
+	} else {
+		moonlite_command(device, ":C#", NULL, 0);
+		read_temperature = true;
+	}
+	bool update = false;
+	if (moonlite_command(device, ":GP#", response, sizeof(response))) {
+		long pos = strtol(response, NULL, 16);
+		if (FOCUSER_POSITION_ITEM->number.value != pos) {
+			FOCUSER_POSITION_ITEM->number.value = pos;
+			update = true;
+		}
+	}
+	if (moonlite_command(device, ":GI#", response, sizeof(response))) {
+		if (strcmp(response, "00") == 0) {
+			if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				update = true;
+			}
+		} else {
+			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+				update = true;
+			}
+		}
+	}
+	if (update) {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	}
+	indigo_reschedule_timer(device, FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE ? 0.2 : 1.0, &PRIVATE_DATA->timer);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_connection_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[64];
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
+		if (PRIVATE_DATA->handle > 0) {
+			for (int i = 0; true; i++) {
+				if (moonlite_command(device, ":GV#", response, sizeof(response)) && strlen(response) == 2) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "MoonLite focuser %c.%c", response[0], response[1]);
+					break;
+				} else if (i < 5) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from MoonLite focuser - retrying");
+					indigo_usleep(2 * ONE_SECOND_DELAY);
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "MoonLite focuser not detected");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+					break;
+				}
+			}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			moonlite_command(device, ":C#", NULL, 0);
+			moonlite_command(device, ":FQ#", NULL, 0);
+			moonlite_command(device, ":SF#", NULL, 0);
+			moonlite_command(device, ":-#", NULL, 0);
+			moonlite_command(device, ":SD02#", NULL, 0);
+			indigo_usleep(750000);
+			if (moonlite_command(device, ":GT#", response, sizeof(response))) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = ((int)strtol(response, NULL, 16)) / 2.0;
+			}
+			if (moonlite_command(device, ":GP#", response, sizeof(response))) {
+				FOCUSER_POSITION_ITEM->number.value = strtol(response, NULL, 16);
+			}
+			if (moonlite_command(device, ":GC#", response, sizeof(response))) {
+				FOCUSER_COMPENSATION_ITEM->number.value = (char)strtol(response, NULL, 16);
+			}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->timer = indigo_set_timer(device, 0, focuser_timer_callback);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_speed_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16];
+	if (IS_CONNECTED) {
+		snprintf(command, sizeof(command), ":SD%02X#", 0x01 << (int)FOCUSER_SPEED_ITEM->number.value);
+		if (moonlite_command(device, command, NULL, 0)) {
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_steps_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16];
+	int position = FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1) * (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1);
+	if (position < 0)
+		position = 0;
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	if (position > 0xFFFF)
+		position = 0xFFFF;
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	snprintf(command, sizeof(command), ":SN%04X#:FG#", position);
+	if (moonlite_command(device, command, NULL, 0)) {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_position_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16];
+	int position = (int)FOCUSER_POSITION_ITEM->number.value;
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+	snprintf(command, sizeof(command), ":SN%04X#:FG#", position);
+	if (moonlite_command(device, command, NULL, 0)) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_abort_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		if (moonlite_command(device, ":FQ#", NULL, 0)) {
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		} else {
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_mode_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (moonlite_command(device, FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? ":+#" : ":-#", NULL, 0)) {
+		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_compensation_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16];
+	if (IS_CONNECTED) {
+		sprintf(command, ":SC%02X#", ((char)FOCUSER_COMPENSATION_ITEM->number.value) & 0xFF);
+		if (moonlite_command(device, command, NULL, 0)) {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_stepping_mode_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (moonlite_command(device, X_FOCUSER_STEPPING_MODE_FULL_ITEM->sw.value ? ":SF#" : ":SH#", NULL, 0)) {
+		X_FOCUSER_STEPPING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		X_FOCUSER_STEPPING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	char command[16], response[64];
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
-			if (PRIVATE_DATA->handle > 0) {
-				for (int i = 0; true; i++) {
-					if (moonlite_command(device, ":GV#", response, sizeof(response)) && strlen(response) == 2) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "MoonLite focuser %c.%c", response[0], response[1]);
-						break;
-					} else if (i < 5) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from MoonLite focuser - retrying");
-						  indigo_usleep(2 * ONE_SECOND_DELAY);
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "MoonLite focuser not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-						break;
-					}
-				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				moonlite_command(device, ":C#", NULL, 0);
-				moonlite_command(device, ":FQ#", NULL, 0);
-				moonlite_command(device, ":SF#", NULL, 0);
-				moonlite_command(device, ":-#", NULL, 0);
-				moonlite_command(device, ":SD02#", NULL, 0);
-				indigo_usleep(750000);
-				if (moonlite_command(device, ":GT#", response, sizeof(response))) {
-					FOCUSER_TEMPERATURE_ITEM->number.value = ((int)strtol(response, NULL, 16)) / 2.0;
-				}
-				if (moonlite_command(device, ":GP#", response, sizeof(response))) {
-					FOCUSER_POSITION_ITEM->number.value = strtol(response, NULL, 16);
-				}
-				if (moonlite_command(device, ":GC#", response, sizeof(response))) {
-					FOCUSER_COMPENSATION_ITEM->number.value = (char)strtol(response, NULL, 16);
-				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-				PRIVATE_DATA->timer = indigo_set_timer(device, 0, timer_callback);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->timer);
-				indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_set_timer(device, 0, focuser_connection_handler);
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-			snprintf(command, sizeof(command), ":SD%02X#", 0x01 << (int)FOCUSER_SPEED_ITEM->number.value);
-			if (moonlite_command(device, command, NULL, 0)) {
-				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-		}
+		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+		indigo_set_timer(device, 0, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		int position = FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1) * (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1);
-		if (position < 0)
-			position = 0;
-		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
-			position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-		if (position > 0xFFFF)
-			position = 0xFFFF;
-		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
-			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
-		snprintf(command, sizeof(command), ":SN%04X#:FG#", position);
-		if (moonlite_command(device, command, NULL, 0)) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		int position = (int)FOCUSER_POSITION_ITEM->number.value;
-		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
-			position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
-			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-		snprintf(command, sizeof(command), ":SN%04X#:FG#", position);
-		if (moonlite_command(device, command, NULL, 0)) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-			if (moonlite_command(device, ":FQ#", NULL, 0)) {
-				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			} else {
-				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		}
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_abort_handler);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-		if (moonlite_command(device, FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? ":+#" : ":-#", NULL, 0)) {
-			FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_mode_handler);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-			sprintf(command, ":SC%02X#", ((char)FOCUSER_COMPENSATION_ITEM->number.value) & 0xFF);
-			if (moonlite_command(device, command, NULL, 0)) {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		}
+		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+		indigo_set_timer(device, 0, focuser_compensation_handler);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_FOCUSER_STEPPING_MODE
 	} else if (indigo_property_match(X_FOCUSER_STEPPING_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_STEPPING_MODE_PROPERTY, property, false);
-		if (moonlite_command(device, X_FOCUSER_STEPPING_MODE_FULL_ITEM->sw.value ? ":SF#" : ":SH#", NULL, 0)) {
-			X_FOCUSER_STEPPING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			X_FOCUSER_STEPPING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_stepping_mode_handler);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -388,12 +443,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connection_handler(device);
+	}
 	indigo_release_property(X_FOCUSER_STEPPING_MODE_PROPERTY);
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
+
+// -------------------------------------------------------------------------------- INDIGO driver implementation
 
 indigo_result indigo_focuser_moonlite(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
