@@ -36,7 +36,7 @@
 extern "C" {
 #endif
 
-/** Register Lakeside focuser hot-plug callback
+/** Register Lakeside driver
  */
 
 extern indigo_result indigo_focuser_lakeside(indigo_driver_action action, indigo_driver_info *info);
