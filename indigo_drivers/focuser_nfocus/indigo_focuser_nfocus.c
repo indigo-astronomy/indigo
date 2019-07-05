@@ -108,7 +108,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static void timer_callback(indigo_device *device) {
+static void focuser_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED)
+		return;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[8];
 	if (!FOCUSER_TEMPERATURE_PROPERTY->hidden) {
@@ -175,7 +177,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			nfocus_command(device, ":CS001#", NULL, 0);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->timer = indigo_set_timer(device, 0, timer_callback);
+			PRIVATE_DATA->timer = indigo_set_timer(device, 0, focuser_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
@@ -208,7 +210,6 @@ static void focuser_speed_handler(indigo_device *device) {
 		}
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 	}
-
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
