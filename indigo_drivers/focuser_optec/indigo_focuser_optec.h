@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-/** Register Optec TCF-S focuser hot-plug callback
+/** Register Optec TCF-S focuser driver
  */
 
 extern indigo_result indigo_focuser_optec(indigo_driver_action action, indigo_driver_info *info);
