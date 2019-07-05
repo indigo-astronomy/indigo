@@ -80,6 +80,7 @@
 		595F7486228224900091B366 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 592662B01D9590630021746A /* test.c */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
+		5996615822CF44D500330652 /* indigo_aux_ppb.c in Sources */ = {isa = PBXBuildFile; fileRef = 5996615122CF3E0F00330652 /* indigo_aux_ppb.c */; };
 		59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */; };
 		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		599A63A71DE8BD1700ABC827 /* indigo_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63A51DE8BD1700ABC827 /* indigo_json.c */; };
@@ -1038,6 +1039,12 @@
 		5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5996614522CE69F500330652 /* Handbook.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Handbook.pdf; sourceTree = "<group>"; };
 		5996614F22CE6A5F00330652 /* ao_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ao_simulator.ino; sourceTree = "<group>"; };
+		5996615122CF3E0F00330652 /* indigo_aux_ppb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_ppb.c; sourceTree = "<group>"; };
+		5996615222CF3E0F00330652 /* indigo_aux_ppb_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_ppb_main.c; sourceTree = "<group>"; };
+		5996615322CF3E0F00330652 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5996615422CF3E0F00330652 /* indigo_aux_ppb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_ppb.h; sourceTree = "<group>"; };
+		5996615622CF3E0F00330652 /* ppb_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ppb_simulator.ino; sourceTree = "<group>"; };
+		5996615722CF3E0F00330652 /* 99-indigo_aux_ppb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_ppb.rules"; sourceTree = "<group>"; };
 		5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sx.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sx.h; sourceTree = "<group>"; };
 		5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx_main.c; sourceTree = "<group>"; };
@@ -1084,7 +1091,6 @@
 		59A321B221D691D600EC0F4A /* indigo_mount_synscan_guider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_synscan_guider.h; sourceTree = "<group>"; };
 		59A321B321D691D600EC0F4A /* indigo_mount_synscan_mount.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_synscan_mount.c; sourceTree = "<group>"; };
 		59A321B421D691D600EC0F4A /* indigo_mount_synscan_guider.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_synscan_guider.c; sourceTree = "<group>"; };
-		59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indi_go_upb.xml; sourceTree = "<group>"; };
 		59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "51-sbig-debian.rules"; sourceTree = "<group>"; };
 		59A52D2F21A330FB000B6F27 /* sbigucam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigucam.hex; sourceTree = "<group>"; };
 		59A52D3021A330FB000B6F27 /* sbigpcam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigpcam.hex; sourceTree = "<group>"; };
@@ -5516,6 +5522,27 @@
 			path = ao_simulator;
 			sourceTree = "<group>";
 		};
+		5996615022CF3E0F00330652 /* aux_ppb */ = {
+			isa = PBXGroup;
+			children = (
+				5996615322CF3E0F00330652 /* README.md */,
+				5996615422CF3E0F00330652 /* indigo_aux_ppb.h */,
+				5996615122CF3E0F00330652 /* indigo_aux_ppb.c */,
+				5996615222CF3E0F00330652 /* indigo_aux_ppb_main.c */,
+				5996615722CF3E0F00330652 /* 99-indigo_aux_ppb.rules */,
+				5996615522CF3E0F00330652 /* ppb_simulator */,
+			);
+			path = aux_ppb;
+			sourceTree = "<group>";
+		};
+		5996615522CF3E0F00330652 /* ppb_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5996615622CF3E0F00330652 /* ppb_simulator.ino */,
+			);
+			path = ppb_simulator;
+			sourceTree = "<group>";
+		};
 		5999FB651DA40B380084BBF8 /* ccd_sx */ = {
 			isa = PBXGroup;
 			children = (
@@ -8237,6 +8264,7 @@
 				590BF1AD21EBCF7500C24DBA /* ao_sx */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
+				5996615022CF3E0F00330652 /* aux_ppb */,
 				59BBD189218246C8008199D6 /* aux_rts */,
 				9DC4969622C39A170052AB3E /* aux_sqm */,
 				9D6940822180B9F600AB112C /* aux_upb */,
@@ -11677,7 +11705,6 @@
 				9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */,
 				9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */,
 				59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */,
-				59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */,
 				9D69408C2180BA1800AB112C /* upb_simulator */,
 			);
 			path = aux_upb;
@@ -12529,6 +12556,7 @@
 				595F291F211E211100380EF4 /* DDHidJoystick.m in Sources */,
 				9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */,
 				9D59D66C20D3F82A009EA8FF /* ModeFsm.cpp in Sources */,
+				5996615822CF44D500330652 /* indigo_aux_ppb.c in Sources */,
 				595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */,
 				9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */,
 				5911F7B41F02E1400053F3CA /* libdsi.c in Sources */,
