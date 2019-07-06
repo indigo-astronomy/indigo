@@ -23,7 +23,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -38,56 +38,47 @@
 #include <sys/time.h>
 #include <sys/termios.h>
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
 #include "indigo_aux_ppb.h"
 
-#define PRIVATE_DATA												((ppb_private_data *)device->private_data)
+#define PRIVATE_DATA	((ppb_private_data *)device->private_data)
 
-#define AUX_OUTLET_NAMES_PROPERTY						(PRIVATE_DATA->outlet_names_property)
-#define AUX_POWER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 1)
-#define AUX_HEATER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 2)
-#define AUX_HEATER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 3)
+#define AUX_OUTLET_NAMES_PROPERTY	(PRIVATE_DATA->outlet_names_property)
+#define AUX_POWER_OUTLET_NAME_1_ITEM	(AUX_OUTLET_NAMES_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_NAME_2_ITEM	(AUX_OUTLET_NAMES_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_NAME_1_ITEM	(AUX_OUTLET_NAMES_PROPERTY->items + 2)
+#define AUX_HEATER_OUTLET_NAME_2_ITEM	(AUX_OUTLET_NAMES_PROPERTY->items + 3)
 
-#define AUX_POWER_OUTLET_PROPERTY						(PRIVATE_DATA->power_outlet_property)
-#define AUX_POWER_OUTLET_1_ITEM							(AUX_POWER_OUTLET_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_2_ITEM							(AUX_POWER_OUTLET_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_PROPERTY	(PRIVATE_DATA->power_outlet_property)
+#define AUX_POWER_OUTLET_1_ITEM		(AUX_POWER_OUTLET_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_2_ITEM		(AUX_POWER_OUTLET_PROPERTY->items + 1)
 
-#define AUX_HEATER_OUTLET_PROPERTY					(PRIVATE_DATA->heater_outlet_property)
-#define AUX_HEATER_OUTLET_1_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 0)
-#define AUX_HEATER_OUTLET_2_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_PROPERTY	(PRIVATE_DATA->heater_outlet_property)
+#define AUX_HEATER_OUTLET_1_ITEM	(AUX_HEATER_OUTLET_PROPERTY->items + 0)
+#define AUX_HEATER_OUTLET_2_ITEM	(AUX_HEATER_OUTLET_PROPERTY->items + 1)
 
-#define AUX_WEATHER_PROPERTY								(PRIVATE_DATA->weather_property)
-#define AUX_WEATHER_TEMPERATURE_ITEM				(AUX_WEATHER_PROPERTY->items + 0)
-#define AUX_WEATHER_HUMIDITY_ITEM						(AUX_WEATHER_PROPERTY->items + 1)
-#define AUX_WEATHER_DEWPOINT_ITEM						(AUX_WEATHER_PROPERTY->items + 2)
+#define AUX_WEATHER_PROPERTY		(PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_TEMPERATURE_ITEM	(AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_HUMIDITY_ITEM	(AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_DEWPOINT_ITEM	(AUX_WEATHER_PROPERTY->items + 2)
 
-#define AUX_DEW_CONTROL_PROPERTY						(PRIVATE_DATA->heating_mode_property)
-#define AUX_DEW_CONTROL_MANUAL_ITEM					(AUX_DEW_CONTROL_PROPERTY->items + 0)
-#define AUX_DEW_CONTROL_AUTOMATIC_ITEM			(AUX_DEW_CONTROL_PROPERTY->items + 1)
+#define AUX_DEW_CONTROL_PROPERTY	(PRIVATE_DATA->heating_mode_property)
+#define AUX_DEW_CONTROL_MANUAL_ITEM	(AUX_DEW_CONTROL_PROPERTY->items + 0)
+#define AUX_DEW_CONTROL_AUTOMATIC_ITEM	(AUX_DEW_CONTROL_PROPERTY->items + 1)
 
-#define AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
-#define X_AUX_VOLTAGE_ITEM									(AUX_INFO_PROPERTY->items + 0)
-#define X_AUX_CURRENT_ITEM									(AUX_INFO_PROPERTY->items + 1)
+#define AUX_INFO_PROPERTY	(PRIVATE_DATA->info_property)
+#define X_AUX_VOLTAGE_ITEM	(AUX_INFO_PROPERTY->items + 0)
+#define X_AUX_CURRENT_ITEM	(AUX_INFO_PROPERTY->items + 1)
 
-#define X_AUX_REBOOT_PROPERTY								(PRIVATE_DATA->reboot_property)
-#define X_AUX_REBOOT_ITEM										(X_AUX_REBOOT_PROPERTY->items + 0)
+#define X_AUX_REBOOT_PROPERTY	(PRIVATE_DATA->reboot_property)
+#define X_AUX_REBOOT_ITEM	(X_AUX_REBOOT_PROPERTY->items + 0)
 
-#define AUX_GROUP															"Powerbox"
+#define AUX_GROUP	"Powerbox"
 
 typedef struct {
 	int handle;
 	indigo_timer *aux_timer;
-	indigo_timer *focuser_timer;
 	indigo_property *outlet_names_property;
 	indigo_property *power_outlet_property;
 	indigo_property *heater_outlet_property;
