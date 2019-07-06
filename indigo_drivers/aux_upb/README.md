@@ -3,7 +3,7 @@
 https://pegasusastro.com/products/ultimate-powerbox/
 
 ## Supported devices
-* PegasusAstro Ultimate Powebox
+* PegasusAstro Ultimate Powerbox
 
 Single device is present on startup (no hot-plug support).
 
