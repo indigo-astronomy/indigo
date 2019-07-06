@@ -23,7 +23,7 @@
  \file indigo_focuser_steeldrive2.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_steeldrive2"
 
 #include <stdlib.h>
@@ -528,6 +528,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->count = 0;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -599,6 +600,7 @@ static void focuser_abort_handler(indigo_device *device) {
 		else
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -866,7 +868,6 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(X_PID_SETTINGS_OFS_ITEM, "PID_DEW_OFS", "PID offset", -50, 50, 1, 0);
 		indigo_init_number_item(X_PID_SETTINGS_TARGET_ITEM, "PID TARGET", "PID target", -50, 50, 1, 0);
-		
 		// -------------------------------------------------------------------------------- X_SELECT_PID_SENSOR
 		X_SELECT_PID_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_SELECT_PID_SENSOR", "Heating", "PID sensor selection", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_SELECT_PID_SENSOR_PROPERTY == NULL)
@@ -984,6 +985,7 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->count = 0;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -1064,6 +1066,22 @@ static void aux_use_pid_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
+static void aux_pid_settings_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET PID_TARGET:%.2f", X_PID_SETTINGS_TARGET_ITEM->number.value);
+	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {
+		sprintf(command, "$BS SET PID_DEV_OFSL:%.2f",  X_PID_SETTINGS_OFS_ITEM->number.value);
+		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+			X_PID_SETTINGS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		X_PID_SETTINGS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, X_PID_SETTINGS_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static void aux_select_pid_sensor_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
@@ -1110,6 +1128,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(X_USE_PID_PROPERTY, property)) {
 		indigo_property_copy_values(X_USE_PID_PROPERTY, property, false);
 		indigo_set_timer(device, 0, aux_use_pid_handler);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- X_PID_SETTINGS
+	} else if (indigo_property_match(X_PID_SETTINGS_PROPERTY, property)) {
+		indigo_property_copy_values(X_PID_SETTINGS_PROPERTY, property, false);
+		indigo_set_timer(device, 0, aux_pid_settings_handler);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_PID_SENSOR
 	} else if (indigo_property_match(X_SELECT_PID_SENSOR_PROPERTY, property)) {

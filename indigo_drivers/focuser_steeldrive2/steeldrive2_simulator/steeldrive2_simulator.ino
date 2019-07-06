@@ -21,7 +21,8 @@
 // Based on SteelDrive II Focuser Technical documentation v0.733 by Baader Planetarium
 
 #ifdef ARDUINO_SAM_DUE
-//#define Serial SerialUSB
+#include <avr/dtostrf.h>
+#define Serial SerialUSB
 #endif
 
 const char to_hex[] = "0123456789ABCDEF";

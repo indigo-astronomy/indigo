@@ -2150,6 +2150,7 @@
 		59C8E7F81DBBDF7400AA3F0A /* indigo_wheel_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_sx_main.c; sourceTree = "<group>"; };
 		59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_sx.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59C8E7FA1DBBDF7400AA3F0A /* indigo_wheel_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_sx.h; sourceTree = "<group>"; };
+		59CB37BB22D0C3AE009CF506 /* Pocket_Powerbox_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		59CBD4771FAF6C19000DAFDB /* indigo_gps_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_driver.h; sourceTree = "<group>"; };
 		59CBD4781FAF6C19000DAFDB /* indigo_gps_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_driver.c; sourceTree = "<group>"; };
 		59CBD47B1FAF6C80000DAFDB /* indigo_gps_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_simulator.c; sourceTree = "<group>"; };
@@ -5532,6 +5533,7 @@
 				5996615122CF3E0F00330652 /* indigo_aux_ppb.c */,
 				5996615222CF3E0F00330652 /* indigo_aux_ppb_main.c */,
 				5996615722CF3E0F00330652 /* 99-indigo_aux_ppb.rules */,
+				59CB37BB22D0C3AE009CF506 /* Pocket_Powerbox_Serial_Command_Table.pdf */,
 				5996615522CF3E0F00330652 /* ppb_simulator */,
 			);
 			path = aux_ppb;
