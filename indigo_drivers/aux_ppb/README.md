@@ -19,6 +19,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_ppb
 
-## Status: Untested
+## Status: Stable
 
-Tested with simulator only
+Tested with physical device.
