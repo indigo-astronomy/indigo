@@ -23,7 +23,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -222,7 +222,7 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-			double value = atof(token);
+			double value = atof(token) / 600.0;
 			if (X_AUX_CURRENT_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_CURRENT_ITEM->number.value = value;
@@ -451,9 +451,9 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (IS_CONNECTED) {
-		sprintf(command, "P5:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
+		sprintf(command, "P3:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
 		ppb_command(device, command, response, sizeof(response));
-		sprintf(command, "P6:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
+		sprintf(command, "P4:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
 		ppb_command(device, command, response, sizeof(response));
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
