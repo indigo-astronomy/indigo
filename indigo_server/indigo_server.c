@@ -477,7 +477,7 @@ static indigo_result attach(indigo_device *device) {
 	if (use_rpi_management) {
 		char *line;
 		wifi_ap_property = indigo_init_text_property(NULL, server_device.name, "WIFI_AP", MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "SSID", "");
+		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "Network name", "");
 		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
 		if (line) {
