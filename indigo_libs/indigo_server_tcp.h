@@ -52,6 +52,10 @@ extern void indigo_server_add_resource(const char *path, unsigned char *data, un
  */
 extern void indigo_server_remove_resource(const char *path);
 	
+/** Add file document.
+ */
+extern void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type);
+	
 /** Start network server (function will block until server is active).
  */
 extern indigo_result indigo_server_start(indigo_server_tcp_callback callback);
