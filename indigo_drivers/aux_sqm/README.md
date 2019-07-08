@@ -21,6 +21,6 @@ indigo_server indigo_aux_sqm
 
 ## Comments
 
-## Status: Utested
+## Status: Stable
 
-With simulator only!
+Tested with a physical device.
