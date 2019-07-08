@@ -895,22 +895,28 @@ function guiSetup() {
 		$('input').removeClass("text-light").addClass("text-dark");
 		$('div.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
 		$('canvas.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
-		if (typeof config !== 'undefined') {
-			config.stars.style.fill = "#000";
-			if (celestialVisible) {
-				updateMap();
-			}
-		}
 	}
 }
 
 function setDarkMode() {
 	localStorage.setItem("dark_mode", true);
 	guiSetup();
+	if (typeof config !== 'undefined') {
+		config.stars.style.fill = "#000";
+		if (celestialVisible) {
+			updateMap();
+		}
+	}
 }
 
 function setLightMode() {
 	localStorage.removeItem("dark_mode");
 	guiSetup();
+	if (typeof config !== 'undefined') {
+		config.stars.style.fill = "#000";
+		if (celestialVisible) {
+			updateMap();
+		}
+	}
 }
 
