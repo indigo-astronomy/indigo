@@ -256,7 +256,12 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyGPS");
+		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
+			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "ttyGPS")) {
+				strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
+				break;
+			}
+		}
 #endif
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_gps_enumerate_properties(device, NULL, NULL);
