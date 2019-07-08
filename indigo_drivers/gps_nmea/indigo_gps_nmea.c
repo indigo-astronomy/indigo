@@ -255,6 +255,9 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
+#ifdef INDIGO_LINUX
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyGPS");
+#endif
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_gps_enumerate_properties(device, NULL, NULL);
 	}
