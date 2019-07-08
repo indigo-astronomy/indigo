@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 
 #ifdef INDIGO_LINUX
@@ -70,9 +71,10 @@ int indigo_server_tcp_port = 7624;
 bool indigo_is_ephemeral_port = false;
 
 static struct resource {
-	char *path;
+	const char *path;
 	unsigned char *data;
 	unsigned length;
+	const char *file_name;
 	char *content_type;
 	struct resource *next;
 } *resources = NULL;
@@ -185,39 +187,64 @@ static void start_worker_thread(int *client_socket) {
 								break;
 							}
 						} else {
+							keep_alive = false;
 							struct resource *resource = resources;
 							while (resource != NULL)
 								if (!strcmp(resource->path, path))
 									break;
 								else
 									resource = resource->next;
-							if (resource == NULL) {
-								indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
-								indigo_printf(socket, "Content-Type: text/plain\r\n");
-								indigo_printf(socket, "\r\n");
-								indigo_printf(socket, "%s not found!\r\n", path);
-								shutdown(socket,SHUT_RDWR);
-								  indigo_usleep(ONE_SECOND_DELAY);
-								close(socket);
-								INDIGO_LOG(indigo_log("%s -> Failed", request));
-								break;
-							} else {
-								keep_alive = false;
+							if (resource && resource->data) {
 								indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
 								indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-								if (keep_alive)
-									indigo_printf(socket, "Connection: keep-alive\r\n");
 								indigo_printf(socket, "Content-Type: %s\r\n", resource->content_type);
 								indigo_printf(socket, "Content-Length: %d\r\n", resource->length);
 								indigo_printf(socket, "Content-Encoding: gzip\r\n");
 								indigo_printf(socket, "\r\n");
 								indigo_write(socket, (const char *)resource->data, resource->length);
 								INDIGO_LOG(indigo_log("%s -> OK (%d bytes)", request, resource->length));
+							} else if (resource && resource->file_name) {
+								char file_name[256];
+								struct stat file_stat;
+								int handle;
+								sprintf(file_name, "%s/%s", getenv("HOME"), resource->file_name);
+								if (stat(file_name, &file_stat) < 0 || (handle = open(file_name, O_RDONLY)) < 0) {
+									indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
+									indigo_printf(socket, "Content-Type: text/plain\r\n");
+									indigo_printf(socket, "\r\n");
+									indigo_printf(socket, "%s not found (%s)\r\n", file_name, strerror(errno));
+									INDIGO_LOG(indigo_log("%s -> Failed to stat/open file (%s, %s)", request, file_name, strerror(errno)));
+								} else {
+									indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
+									indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+									indigo_printf(socket, "Content-Type: %s\r\n", resource->content_type);
+									indigo_printf(socket, "Content-Length: %d\r\n", file_stat.st_size);
+									indigo_printf(socket, "\r\n");
+									long remaining = file_stat.st_size;
+									char buffer[128 * 1024];
+									while (remaining > 0) {
+										long count = read(handle, buffer, remaining < sizeof(buffer) ? remaining : sizeof(buffer));
+										if (count < 0) {
+											INDIGO_LOG(indigo_log("%s -> Failed to read file (%s)", request, strerror(errno)));
+											break;
+										}
+										indigo_write(socket, buffer, count);
+										remaining -= count;
+									}
+									close(handle);
+								}
+							} else {
+								indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
+								indigo_printf(socket, "Content-Type: text/plain\r\n");
+								indigo_printf(socket, "\r\n");
+								indigo_printf(socket, "%s not found!\r\n", path);
+								INDIGO_LOG(indigo_log("%s -> Failed", request));
+								break;
 							}
 						}
 						if (!keep_alive) {
 							shutdown(socket, SHUT_RDWR);
-							 indigo_usleep(ONE_SECOND_DELAY);
+							indigo_usleep(ONE_SECOND_DELAY);
 							close(socket);
 							break;
 						}
@@ -226,7 +253,7 @@ static void start_worker_thread(int *client_socket) {
 			}
 			if (res < 0) { /* Client cosed the connection */
 				shutdown(socket, SHUT_RDWR);
-				 indigo_usleep(ONE_SECOND_DELAY);
+				indigo_usleep(ONE_SECOND_DELAY);
 				close(socket);
 			}
 		} else {
@@ -248,13 +275,25 @@ void indigo_server_shutdown() {
 
 void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
 	struct resource *resource = malloc(sizeof(struct resource));
-	resource->path = (char *)path;
+	memset(resource, 0, sizeof(struct resource));
+	resource->path = path;
 	resource->data = data;
 	resource->length = length;
 	resource->content_type = (char *)content_type;
 	resource->next = resources;
 	resources = resource;
 	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
+}
+
+void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type) {
+	struct resource *resource = malloc(sizeof(struct resource));
+	memset(resource, 0, sizeof(struct resource));
+	resource->path = path;
+	resource->file_name = file_name;
+	resource->content_type = (char *)content_type;
+	resource->next = resources;
+	resources = resource;
+	INDIGO_LOG(indigo_log("Resource %s (%s, %s) added", path, file_name, content_type));
 }
 
 void indigo_server_remove_resource(const char *path) {

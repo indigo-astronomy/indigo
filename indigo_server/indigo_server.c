@@ -1028,6 +1028,8 @@ static void server_main() {
 		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
 	}
 
+	indigo_server_add_file_resource("/log", "indigo.log", "text/plain; charset=UTF-8");
+	
 	if (!command_line_drivers) {
 		for (static_drivers_count = 0; static_drivers[static_drivers_count]; static_drivers_count++) {
 			indigo_add_driver(static_drivers[static_drivers_count], false, NULL);
