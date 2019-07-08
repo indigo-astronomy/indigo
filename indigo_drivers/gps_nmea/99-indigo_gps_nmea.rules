@@ -1,0 +1,1 @@
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1546", ATTRS{product}=="*u-blox*", SYMLINK+="ttyGPS",  MODE="0666"
