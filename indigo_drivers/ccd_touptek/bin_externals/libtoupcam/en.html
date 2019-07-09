@@ -2,14 +2,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>ToupCam API Manual</title>
+<title>Toupcam API Manual</title>
 </head>
 <body>
-<h1 align="center">ToupCam API Manual</h1>
+<h1 align="center">Toupcam API Manual</h1>
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 37.14643.2019.0511</li></ul>
+<ul><li>Version: 38.15031.2019.0706</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -39,7 +39,7 @@
 <hr/>
 <h1><font color="#0000FF">2. Introduction</font></h1>
 <hr/>
-<p>ToupCam cameras support various kinds of APIs (Application Program Interface), namely
+<p>Toupcam cameras support various kinds of APIs (Application Program Interface), namely
  Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/dd375454(v=vs.85).aspx">DirectShow</a>, <a href="http://twain.org/">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
 <ul><li>inc</li></ul>
@@ -82,7 +82,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		DLL files for WinRT / UWP (Universal Windows Platform) / Windows Store App.<br/>
 		These dll files are compatible with Windows Runtime, and can be consumed from a Universal Windows Platform app.<br/>
 		If use C# to develop the UWP, toupcam.cs wrapper class can be used to P/Invoke into toupcam.dll.<br/>
-		Please pay attation to DeviceCapability of uwp, see: <a href="https://msdn.microsoft.com/en-us/library/windows/hardware/dn303351(v=vs.85).aspx">How to add USB device capabilities to the app manifest</a>. (It seems that microsoft limits the number of Device items to 100)<br/>
+		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://msdn.microsoft.com/en-us/library/windows/hardware/dn303351(v=vs.85).aspx">How to add USB device capabilities to the app manifest</a>. (It seems that microsoft limits the number of Device items to 100)</blockquote>
 		demouwp.zip is a simple demo, before build and run this demo, please change the value of vidpid in file Package.appxmanifest<br/>
 		</blockquote>
 	</li>
@@ -243,7 +243,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <h2><font color="#0000FF">e. <a id="trigger">Trigger Mode</a></font></h2>
 <p>1. What is Trigger Mode</p>
 	<blockquote>
-		ToupCam camera has two working modes: video mode and trigger mode. When in trigger mode, no images will be available until the trigger conditions are met. Cameras have 2 types for triggering according to the types of trigger source, including software trigger mode, external trigger mode and simulated trigger mode.
+		Toupcam camera has two working modes: video mode and trigger mode. When in trigger mode, no images will be available until the trigger conditions are met. Cameras have 2 types for triggering according to the types of trigger source, including software trigger mode, external trigger mode and simulated trigger mode.
 	</blockquote>
 <p>2. The Difference between Trigger and Snap</p>
 	<blockquote>
@@ -267,15 +267,15 @@ The SDK zip file contains all of the necessary resources and information:</p>
 			<blockquote><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define TOUPCAM_FLAG_TRIGGER_SOFTWARE   0x00080000  /* support software trigger */
 #define TOUPCAM_FLAG_TRIGGER_EXTERNAL   0x00100000  /* support external trigger */
 #define TOUPCAM_FLAG_TRIGGER_SINGLE     0x00200000  /* only support trigger single: one trigger, one image */</pre></td></tr></table></blockquote>
-		Function Toupcam_put_Option(HToupCam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign TOUPCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
+		Function Toupcam_put_Option(HToupcam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign TOUPCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
 			<blockquote>
 <table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define TOUPCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, default value =  0 */</pre></td></tr></table>
 			</blockquote>
-		Function Toupcam_get_Option(HToupCam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
+		Function Toupcam_get_Option(HToupcam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
 	</blockquote>
 <p>7. How to Trigger the camera</p>
 	<blockquote>
-		Function Toupcam_Trigger(HToupCam h, unsigned short nNumber) could be used to trigger the camera. Assigning different value to nNumber means different:
+		Function Toupcam_Trigger(HToupcam h, unsigned short nNumber) could be used to trigger the camera. Assigning different value to nNumber means different:
 			<blockquote>
 			nNumber = 0 means stop the trigger.<br/>
 			nNumber = 0xFFFF means trigger continuously, the same as video mode;<br/>
@@ -344,6 +344,11 @@ The SDK zip file contains all of the necessary resources and information:</p>
         <td>Called in wrong thread</td>
 		<td>0x8001010E</td>
 	  </tr>
+	  <tr>
+        <td>E_GEN_FAILURE</td>
+        <td>Device not functioning</td>
+		<td>0x8007001F</td>
+	  </tr>
     </table>
   </div><br/>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
@@ -363,6 +368,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
 <p>Functions with coordinate parameters, such as Toupcam_put_Roi, Toupcam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROIed, or combination of the previous operations.</p>
+<p>If the image is upsize down (see <a href="#upsizedown">here</a>), the coordinate must be also upsize down.</p> 
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_EnumV2</font></h2>
     <p><strong>Return value:</strong> non-negative integer, enumerated camera number</p>
@@ -370,7 +376,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
     	<blockquote>
     		<p>ToupcamInstV2 pti[TOUPCAM_MAX]: ToupcamInstV2 buffer</p>
     	</blockquote>
-    <p><strong>Remarks:</strong> call this function to enumerate ToupCam cameras that are currently connected to computer and when it is returned, ToupcamInstV2 buffer contains the information of each camera instance enumerated.<strong>If we don't care about that multiple cameras connect to the computer simultaneously, it's optional to call this function to enumerate the camera instances</strong>.</p>
+    <p><strong>Remarks:</strong> call this function to enumerate Toupcam cameras that are currently connected to computer and when it is returned, ToupcamInstV2 buffer contains the information of each camera instance enumerated.<strong>If we don't care about that multiple cameras connect to the computer simultaneously, it's optional to call this function to enumerate the camera instances</strong>.</p>
     <p>The code snippet shows as below:<br/></p>
 <table width="100%" border="0" bgcolor="#B0D0B0">
   <tr><td><pre>ToupcamInstV2 arr[TOUPCAM_MAX];
@@ -595,10 +601,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_Open</font></h2>
-  <p><strong>Return value:</strong> HToupCam handle. Return NULL when fails (Such as the device has been pulled out).</p>
+  <p><strong>Return value:</strong> HToupcam handle. Return NULL when fails (Such as the device has been pulled out).</p>
   <p><strong>Parameters:</strong></p>
   	<blockquote>
-  		<p>id: ToupCam camera instance, enumerated by Toupcam_EnumV2. <strong>If id is NULL, Toupcam_Open will open the first camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Toupcam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
+  		<p>id: Toupcam camera instance, enumerated by Toupcam_EnumV2. <strong>If id is NULL, Toupcam_Open will open the first camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Toupcam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
   	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
 </li></ul>
@@ -606,15 +612,15 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> void</p>
     <p><strong>Parameters:</strong></p>
 		<blockquote>
-			<p>HToupCam h: camera instance handle</p>
+			<p>HToupcam h: camera instance handle</p>
 		</blockquote>
-    <p><strong>Remarks:</strong> close the camera instance. After it is closed, never use the HToupCam handle any more.</p>
+    <p><strong>Remarks:</strong> close the camera instance. After it is closed, never use the HToupcam handle any more.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_StartPullModeWithWndMsg, Toupcam_StartPullModeWithCallback</font></h2>
     <p><strong>Return value:</strong> HRESULT type means "success / failure"</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: instance handle opened by Toupcam_Open</p>
+      <p>HToupcam h: instance handle opened by Toupcam_Open</p>
       <p>HWND hWnd: event occurs, message will be posted in this window</p>
       <p>UINT nMsg: Windows custom message type. Its WPARAM parameter means event type TOUPCAM_EVENT_xxxx, LPARAM is useless (always zero)</p>
       <p>PTOUPCAM_EVENT_CALLBACK pEventCallback, void* pCallbackContext: callback function specified by user's application and callback context parameter.</p>
@@ -632,7 +638,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means "success/ failure". Return E_FAIL when there isn't image ready for pull.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
-    <p>HToupCam h: instance handle opened by Toupcam_Open</p>
+    <p>HToupcam h: instance handle opened by Toupcam_Open</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must >= rowPitch * nHeight.</p>
     <p>int bits: 24, 32, 48, 8, 16, means RGB24, RGB32, RGB48, 8 bits gray or 16 bits gray images. This parameter is ignored in RAW mode.</p>
     <p>int rowPitch: the distance from one row to the next row. rowPitch = 0 means using the default row pitch.</p>
@@ -687,7 +693,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: instance handle opened by Toupcam.</p>
+      <p>HToupcam h: instance handle opened by Toupcam.</p>
       <p>PTOUPCAM_DATA_CALLBACK_V3 pDataCallback, void* pDataCallbackCtx: the callback function and callback context parameters that are specified by the user's program. Toupcam.dll gets image data from the camera, then calls back this function.</p>
     </blockquote>
   <blockquote>
@@ -709,7 +715,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     	<blockquote>
-    		<p>HToupCam handle</p>
+    		<p>HToupcam handle</p>
     	</blockquote>
     <p><strong>Remarks:</strong> stop the camera instance. After stopped, it can be restart again. For example, switching the video resolution:   </p>
     <blockquote>
@@ -722,7 +728,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     	<blockquote>
-    		<p>HToupCam h: camera instance handle</p>
+    		<p>HToupcam h: camera instance handle</p>
     	</blockquote>
     <p><strong>Remarks:</strong> pause/continue camera instance.</p>
 </li></ul>
@@ -730,7 +736,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned nResolutionIndex: resolution index.</p>
 	<p><a id="snapn">unsigned nNum: the number to be snapped.</a></p>
   </blockquote>
@@ -749,7 +755,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned short nNumber: 0xffff(trigger continuously), 0(stop / cancel trigger), others(number of images to be triggered)</p>
   </blockquote>
   <p><strong>Remarks:</strong> in trigger mode, call this function to trigger an image:</p>
@@ -762,7 +768,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>unsigned nResolutionIndex: current/present resolution index</p>
       <p>int nWidth, int nHeight: width and height of current resolution index</p>
     </blockquote>
@@ -780,7 +786,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>unsigned xOffset: x offset, must be even number</p>
       <p>unsigned yOffset: y offset, must be even number</p>
       <p>unsigned xWidth: width, must be even number and must not be less than 16</p>
@@ -797,7 +803,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>unsigned nResolutionIndex: resolution index</p>
       <p>int* pWidth, int* pHeight: width/height</p>
     </blockquote>
@@ -810,7 +816,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned* nFourCC: raw format, see the table below</p>
     <p>unsigned* bitdepth: Bit Depth, such as 8, 12, 14, 16</p>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
@@ -858,7 +864,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned iOption: see the table</p>
     <p>int iValue: see the table</p>
   <div align="center">
@@ -870,27 +876,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     	<td width="20%">The value can be changed after Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushModeV3?<br/>
 					<b>The value can be changed on-the-fly?</b></td>
 	</tr>
-      <tr>
-        <td>TOUPCAM_OPTION_NOFRAME_TIMEOUT</td>
-        <td>Report error if cannot grab frame in a certain time.<br/>
-          1 = enable this feature;<br/>0 = disable this feature.</td>
-        <td>0</td>
-        <td>Yes</td>
-      </tr>
-      <tr>
-        <td>TOUPCAM_OPTION_THREAD_PRIORITY</td>
-        <td>set the priority of the internal thread which grab data from the usb device.<br/>
-          0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms686277(v=vs.85).aspx">SetThreadPriority</a><br/>This option is not available at Linux and macOS.</td>
-        <td>1</td>
-        <td>Yes</td>
-      </tr>
-      <tr>
-        <td>TOUPCAM_OPTION_PROCESSMODE</td>
-        <td>0 = better image quality, more cpu usage.<br/>
-          1 = lower image quality, less cpu usage.</td>
-        <td>0</td>
-        <td>Yes</td>
-      </tr>
       <tr>
         <td><a id="rawo">TOUPCAM_OPTION_RAW</a></td>
         <td>0 means RGB mode.<br/>
@@ -904,7 +889,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.<br/>
       	  0 = use 8 bits depth.<br/>1 = use the maximum bits depth of this camera.</td>
       	<td>NA</td>
-      	<td>Yes</td>
+      	<td>Yes.<br/>But not recommended to modify frequently after starting the camera, it is best to set it up before starting.</td>
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_FAN</td>
@@ -940,6 +925,23 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	  (The return value is E_UNEXPECTED when set this option after the camera is started)</td>
       </tr>
       <tr>
+      	<td><a id="bgr">TOUPCAM_OPTION_BYTEORDER</a></td>
+      	<td>Byte order:<br/>
+			1: BGR<br/>
+			0: RGB</td>
+      	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
+      	<td>Yes.<br/>But not recommended to modify frequently after starting the camera, it is best to set it up before starting.</td>
+      </tr>
+      <tr>
+      	<td><a id="upsizedown">TOUPCAM_OPTION_UPSIDE_DOWN</a></td>
+      	<td>Upside down:<br/>
+			1: yes<br/>
+			0: no<br/>
+			Please distinguish it from Toupcam_put_VFlip, which requires the CPU to perform data moving work on each frame of data</td>
+      	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
       	<td>TOUPCAM_OPTION_TECTARGET</td>
       	<td>get or set the target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃</td>
       	<td>NA</td>
@@ -947,12 +949,12 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
       	<td><a id="aepolicy">TOUPCAM_OPTION_AUTOEXP_POLICY</a></td>
-      	<td>Auto Exposure Policy:<br/>0: Exposure Only<br/>1: Exposure Preferred<br/>2: Analog Gain Only<br/>3: Analog Gain Preferred</td>
+      	<td>Auto Exposure Policy:<br/>0: Exposure Only<br/>1: Exposure Preferred<br/>2: Gain Only<br/>3: Gain Preferred</td>
       	<td>1</td>
       	<td>Yes</td>
       </tr>
       <tr>
-      	<td><a id="aepolicy">TOUPCAM_OPTION_AUTOEXP_THRESHOLD</a></td>
+      	<td>TOUPCAM_OPTION_AUTOEXP_THRESHOLD</td>
       	<td>threshold of auto exposure, range: [5~15]</td>
       	<td>5</td>
       	<td>Yes</td>
@@ -962,37 +964,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>limit the frame rate, range=[0, 63].<br/>frame rate control is disabled automatically in trigger mode.</td>
       	<td>0<br/>(means no limit)</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option after the camera is started)</td>
-      </tr>
-      <tr>
-      	<td width="28%"><a id="demosaic">TOUPCAM_OPTION_DEMOSAIC</a></td>
-      	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
-      			0 = BILINEAR<br/>
-      			1 = VNG(Variable Number of Gradients interpolation)<br/>
-      			2 = PPG(Patterned Pixel Grouping interpolation)<br/>
-      			3 = AHD(Adaptive Homogeneity-Directed interpolation)<br/>
-      			Always return E_NOTIMPL for monochromatic camera.</td>
-      	<td>0</td>
-      	<td>Yes</td>
-      </tr>
-      <tr>
-      	<td>TOUPCAM_OPTION_DEMOSAIC_VIDEO</td>
-      	<td>Demosaic mothod for video</td>
-      	<td>0</td>
-      	<td>Yes</td>
-      </tr>
-      <tr>
-      	<td>TOUPCAM_OPTION_DEMOSAIC_STILL</td>
-      	<td>Demosaic mothod for still image<br/>
-      			Always return E_NOTIMPL for camera that don't support sill image capture.</td>
-      	<td>0</td>
-      	<td>Yes</td>
-      </tr>
-      <tr>
-      	<td><a id="blacklevel">TOUPCAM_OPTION_BLACKLEVEL</a></td>
-      	<td>Black Level<br/>
-      			Always return E_NOTIMPL for camera that don't support black level.</td>
-      	<td>0</td>
-      	<td>Yes</td>
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_MULTITHREAD</td>
@@ -1021,14 +992,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Yes</td>
       </tr>
       <tr>
-      	<td>TOUPCAM_OPTION_UPSIDE_DOWN</td>
-      	<td>Upside down:<br/>
-			1: yes<br/>
-			0: no</td>
-      	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
-      	<td>No</td>
-      </tr>
-      <tr>
       	<td>TOUPCAM_OPTION_CG</td>
       	<td>Conversion Gain:<br/>
 			0: LCG<br/>
@@ -1041,7 +1004,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>TOUPCAM_OPTION_PIXEL_FORMAT</td>
       	<td>pixel format</td>
       	<td>NA</td>
-      	<td>Yes</td>
+      	<td>Yes.<br/>But not recommended to modify frequently after starting the camera, it is best to set it up before starting.</td>
       </tr>
       <tr>
       	<td><a id="ddrdepth">TOUPCAM_OPTION_DDR_DEPTH</a></td>
@@ -1150,6 +1113,27 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Yes</td>
       </tr>
 	  <tr>
+        <td>TOUPCAM_OPTION_NOFRAME_TIMEOUT</td>
+        <td>Report error if cannot grab frame in a certain time.<br/>
+          1 = enable this feature;<br/>0 = disable this feature.</td>
+        <td>0</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_THREAD_PRIORITY</td>
+        <td>set the priority of the internal thread which grab data from the usb device.<br/>
+          0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms686277(v=vs.85).aspx">SetThreadPriority</a><br/>This option is not available at Linux and macOS.</td>
+        <td>1</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_PROCESSMODE</td>
+        <td>0 = better image quality, more cpu usage.<br/>
+          1 = lower image quality, less cpu usage.</td>
+        <td>0</td>
+        <td>Yes</td>
+      </tr>
+	  <tr>
       	<td>TOUPCAM_OPTION_LINEAR</td>
       	<td>0 = turn off the builtin linear tone mapping<br/>
       	  1 = turn on the builtin linear tone mapping</td>
@@ -1178,6 +1162,37 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>1</td>
       	<td>Yes</td>
       </tr>
+	  <tr>
+      	<td width="28%"><a id="demosaic">TOUPCAM_OPTION_DEMOSAIC</a></td>
+      	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
+      			0 = BILINEAR<br/>
+      			1 = VNG(Variable Number of Gradients interpolation)<br/>
+      			2 = PPG(Patterned Pixel Grouping interpolation)<br/>
+      			3 = AHD(Adaptive Homogeneity-Directed interpolation)<br/>
+      			Always return E_NOTIMPL for monochromatic camera.</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_DEMOSAIC_VIDEO</td>
+      	<td>Demosaic mothod for video</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_DEMOSAIC_STILL</td>
+      	<td>Demosaic mothod for still image<br/>
+      			Always return E_NOTIMPL for camera that don't support sill image capture.</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td><a id="blacklevel">TOUPCAM_OPTION_BLACKLEVEL</a></td>
+      	<td>Black Level<br/>
+      			Always return E_NOTIMPL for camera that don't support black level.</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
     </table>
   </div>
   </blockquote>
@@ -1192,7 +1207,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>int bEnable: TRUE or FALSE</p>
     </blockquote>
     <p><strong>Remarks:</strong> If you set RealTime mode as TRUE, then you get shorter frame delay but lower frame rate which damages fluency. The default value is FALSE.</p>
@@ -1201,19 +1216,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>int bAutoExposure: TRUE or FALSE</p>
       <p>unsigned short Target: auto-exposure target</p>
-      <p>unsigned maxTime, unsigned short maxAGain: the maximum time and maximum analog gain of auto exposure. The default values are 350ms and 500.</p>
-	  <p>unsigned minTime, unsigned short minAGain: the minimal time and minimal analog gain of auto exposure. The default values are 0 and 100.</p>
+      <p>unsigned maxTime, unsigned short maxAGain: the maximum time and maximum gain of auto exposure. The default values are 350ms and 500.</p>
+	  <p>unsigned minTime, unsigned short minAGain: the minimal time and minimal gain of auto exposure. The default values are 0 and 100.</p>
     </blockquote>
-    <p><strong>Remarks:</strong> If auto exposure is enabled, the exposure time and analog gain are controlled by software to make the average brightness of the target rectangle as close as possible to the auto exposure target. The auto exposure target value is the target brightness of the target rectangle (see Toupcam_put_AEAuxRect, Toupcam_get_AEAuxRect).</p>
+    <p><strong>Remarks:</strong> If auto exposure is enabled, the exposure time and gain are controlled by software to make the average brightness of the target rectangle as close as possible to the auto exposure target. The auto exposure target value is the target brightness of the target rectangle (see Toupcam_put_AEAuxRect, Toupcam_get_AEAuxRect).</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_get_ExpoTime, Toupcam_put_ExpoTime, Toupcam_get_ExpTimeRange, Toupcam_get_RealExpoTime</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>unsigned Time: exposure time, unit: microsecond</p>
       <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
     </blockquote>
@@ -1223,17 +1238,17 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
-      <p>unsigned short AGain: analog gain, shown in percentage, eg, 200 means the analog gain is 200%</p>
-      <p>unsigned short* nMin, unsigned short* nMax, unsigned short* nDef: the minimum, maximum and default value of analog gain.</p>
+      <p>HToupcam h: camera instance handle</p>
+      <p>unsigned short AGain: gain, shown in percentage, eg, 200 means the gain is 200%</p>
+      <p>unsigned short* nMin, unsigned short* nMax, unsigned short* nDef: the minimum, maximum and default value of gain.</p>
     </blockquote>
-  <p><strong>Remarks:</strong> analog gain related.</p>
+  <p><strong>Remarks:</strong> gain related.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_put_Hue, Toupcam_get_Hue, Toupcam_put_Saturation, Toupcam_get_Saturation, Toupcam_put_Brightness, Toupcam_get_Brightness, Toupcam_get_Contrast, Toupcam_put_Contrast, Toupcam_get_Gamma, Toupcam_put_Gamma</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HToupCam h: camera instance handle</p>
+    	<p>HToupcam h: camera instance handle</p>
     </blockquote>
     <p><strong>Remarks:</strong> set or get hue, saturation, brightness, contrast and gamma.</p>
 </li></ul>
@@ -1241,21 +1256,21 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>int bChrome: TRUE or FALSE</p>
     </blockquote>
     <p><strong>Remarks:</strong> color or gray mode</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_get_VFlip, Toupcam_put_VFlip, Toupcam_get_HFlip, Toupcam_put_HFlip</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
-      <p><strong>Parameters:</strong> HToupCam h: camera instance handle</p>
+      <p><strong>Parameters:</strong> HToupcam h: camera instance handle</p>
       <p><strong>Remarks:</strong> vertical/horizontal flip.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_put_Speed, Toupcam_get_Speed, Toupcam_get_MaxSpeed</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>unsigned short nSpeed: frame rate level</p>
     </blockquote>
     <p><strong>Remarks:</strong> the minimum frame rate level is "0", the maximum one can be achieved through Function "Toupcam_get_MaxSpeed" which equals to maxspeed in ToupcamModelV2.</p>
@@ -1264,7 +1279,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>int nHZ: 0: 60Hz alternating current, 1: 50Hz alternating current, 2: direct current</p>
     </blockquote>
     <p><strong>Remarks:</strong> set the light source power frequency</p>
@@ -1273,7 +1288,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure, E_NOTIMPL means not supporting get or set the temperature</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃).</p>
     </blockquote>
     <p><strong>Remarks:</strong> get the temperature of the sensor. see TOUPCAM_FLAG_GETTEMPERATURE.</p>
@@ -1283,7 +1298,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>int bSkip: Bin mode or Skip mode.</p>
   </blockquote>
   <p><strong>Remarks:</strong> set Bin mode or Skip mode. Cameras with higher resolution can support two sampling modes, one is Bin mode (Neighborhood averaging), the other is Skip (sampling extraction). In comparison, the former is with better image effect but decreasing frame rate while the latter is just the reverse.</p>
@@ -1292,7 +1307,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HToupCam h: camera instance handle</p>
+    	<p>HToupcam h: camera instance handle</p>
     	<p>int nTemp, int nTint: color temperature and Tint</p>
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
@@ -1301,7 +1316,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>PITOUPCAM_TEMPTINT_CALLBACK fnTTProc, void* pTTCtx: callback function and callback context when the automatic white balance completes.</p>
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in Temp/Tint Mode. When the "auto white balance" completes, TOUPCAM_EVENT_TEMPTINT event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
@@ -1310,7 +1325,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HToupCam h: camera instance handle</p>
+    	<p>HToupcam h: camera instance handle</p>
     	<p>int aGain[3]: RGB Gain</p>
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the RGB gain parameters of white balance (RGB Gain Mode, please see <a href="#wb">here</a>).</p>
@@ -1319,7 +1334,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>PITOUPCAM_WHITEBALANCE_CALLBACK fnWBProc, void* pWBCtx: callback function and callback context when the automatic white balance completes.</p>
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, TOUPCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
@@ -1328,7 +1343,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>PITOUPCAM_BLACKBALANCE_CALLBACK fnBBProc, void* pBBCtx: callback function and callback context when the automatic black balance completes.</p>
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto black balance". When the "auto black balance" completes, TOUPCAM_EVENT_BLACK event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
@@ -1337,7 +1352,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HToupCam h: camera instance handle</p>
+    	<p>HToupcam h: camera instance handle</p>
     	<p>unsigned short aSub[3]: RGB Offset</p>
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the RGB offset parameters of black balance.</p>
@@ -1346,7 +1361,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
-      	<p>HToupCam h: camera instance handle</p>
+      	<p>HToupcam h: camera instance handle</p>
       </blockquote>
       <p><strong>Remarks:</strong> set/get the rectangle of automatic white balance and auto-exposure and automatic black balance. The default Rectangle is in the center of the image, its width is 20% image with, its height is 20% image height.</p>
 	  <p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
@@ -1356,15 +1371,15 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> S_OK means mono mode, S_FALSE means color mode</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>ToupCam h: camera instance handle</p>
+    	<p>Toupcam h: camera instance handle</p>
     </blockquote>
-    <p><strong>Remarks:</strong> gray camera or not, find the flag in ToupCamModelV2: TOUPCAM_FLAG_MONO</p>
+    <p><strong>Remarks:</strong> gray camera or not, find the flag in ToupcamModelV2: TOUPCAM_FLAG_MONO</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_get_MaxBitDepth</font></h2>
     <p><strong>Return value:</strong> the maximum bit depth this camera supports.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HToupCam h: camera instance handle</p>
+    	<p>HToupcam h: camera instance handle</p>
     </blockquote>
     <p><strong>Remarks:</strong> Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.</p>
 </li></ul>
@@ -1373,7 +1388,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>unsigned nResolutionIndex: resolution index</p>
       <p>int* pWidth, int* pHeight: width/height</p>
     </blockquote>
@@ -1384,7 +1399,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>char sn[32]: buffer to the serial number, such as: TP110826145730ABCD1234FEDC56787</p>
     <p>char fwver[16]: buffer to the firmware version, such as: 3.2.1.20140922</p>
     <p>char hwver[16]: buffer to the hardware version, such as: 3.12</p>
@@ -1398,7 +1413,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned nResolutionIndex: resolution index</p>
     <p>float* x, float* y: physical pixel size(µm)</p>
   </blockquote>
@@ -1408,7 +1423,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned short iLed: the index of LED light</p>
     <p>unsigned short iState: LED status, 1 -&gt; Ever bright; 2 -&gt; Flashing; other -&gt; Off</p>
     <p>unsigned short iPeriod: Flashing Period (&gt;= 500ms)</p>
@@ -1419,7 +1434,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value:</strong> HRESULT type means failure or byte(s) transferred</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned addr: EEPROM address</p>
     <p>const unsigned char* pBuffer: data buffer to be written</p>
     <p>unsigned char* pBuffer: read EEPROM to buffer</p>
@@ -1431,7 +1446,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>unsigned index: IO port index</p>
     <p>unsigned nType: type of control</p>
     <p>int outVal: output control value</p>
@@ -1594,7 +1609,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value:</strong> HRESULT type means failure or byte(s) transferred</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>const unsigned char* pBuffer: data buffer to be written</p>
     <p>unsigned char* pBuffer: read buffer</p>
     <p>unsigned nBufferLen: buffer length</p>
@@ -1605,21 +1620,21 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_DfcOnePush</font></h2>
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_put_ExpoCallback</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>PITOUPCAM_EXPOSURE_CALLBACK fnExpoProc, void* pExpoCtx: exposure callback function and callback context. If we set fnExpoProc as NULL, then it means stop calling back.</p>
   </blockquote>
   <p><strong>Remarks:</strong> Once we set non-NULL callback function, then callback happens whenever the exposure time changes.</p>
@@ -1628,7 +1643,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>PITOUPCAM_CHROME_CALLBACK fnChromeProc, void* pChromeCtx: color/gray switches callback function and callback context. If we set fnChromeProc as NULL, then it means stop calling back.</p>
   </blockquote>
   <p><strong>Remarks:</strong> once we set non-NULL callback function, then callback happens whenever the color/gray switches, eg, call Toupcam_put_Chrome</p>
@@ -1637,7 +1652,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
-      	<p>HToupCam h: camera instance handle</p>
+      	<p>HToupcam h: camera instance handle</p>
       </blockquote>
       <p><strong>Remarks:</strong> auto Level Range.</p>
 </li></ul>
@@ -1645,7 +1660,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HToupCam h: camera instance handle</p>
+      <p>HToupcam h: camera instance handle</p>
       <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Gray. RGB is only available for color image, and gray is only available for gray image.</p>
     </blockquote>
     <p><strong>Remarks:</strong> level range related.</p>
@@ -1654,58 +1669,12 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HToupCam h: camera instance handle</p>
+    <p>HToupcam h: camera instance handle</p>
     <p>PITOUPCAM_HISTOGRAM_CALLBACK fnHistogramProc, void* pHistogramCtx: callback function and callback context of histogram data.</p>
   </blockquote>
   <p><strong>Remarks:</strong> get histogram data.</p>
 </li></ul>
-<hr/>
-<h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1>
-<hr/>
-<p>Toupcam does support .NET development environment (C# and VB.NET).</p>
-<p>toupcam.cs use P/Invoke to call into toupcam.dll. Copy toupcam.cs to your C# project, please reference demowinformcs1, demowinformcs2 and demowinformcs3 in the samples directory.</p>
-<p>Please pay attation to that <strong>the object of the C# class ToupTek.ToupCam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new ToupTek.ToupCam</strong> (The constructor is private on purpose).</p>
-<p>Most properties and methods of the ToupCam class P/Invoke into the corresponding Toupcam_xxxx functions of toupcam.dll/so. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding C# properties or methods. For example, the C# Snap method call the function Toupcam_Snap, the descriptions of the Toupcam_Snap function is applicable for C# Snap method:</p>
-<table width="100%" border="0" bgcolor="#B0D0B0">
-<tr><td><pre>[DllImport(&quot;toupcam.dll&quot;, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
-private static extern int Toupcam_Snap(SafeHToupCamHandle h, uint nResolutionIndex);
-
-public bool Snap(uint nResolutionIndex)
-{
-    if (_handle == null || _handle.IsInvalid || _handle.IsClosed)
-        return false;
-    return (Toupcam_Snap(_handle, nResolutionIndex) &gt;= 0);
-}</pre></td></tr></table>
-<p>VB.NET is similar with C#, not otherwise specified.</p>
-<hr/>
-<h1><font color="#0000FF"><a id="python">6. Python</a></font></h1>
-<hr/>
-<p>Toupcam does support Python (version 3.0 or above), please import toupcam to use toupcam.py and reference the sample code simplest.py and qt.py.</p>
-<p>Please pay attation to that <strong>the object of the python class toupcam.ToupCam must be obtained by classmethod Open or OpenByIndex, it cannot be obtained by obj = toupcam.ToupCam()</strong></p>
-<p>Most methods of the ToupCam class use ctypes to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding python methods.</p>
-<p>Please reference __errcheck in toupcam.py, the original HRESULT return code is mapped to HRESULTException exception (in win32 it's inherited from OSError).</p>
-<p>Please make sure the toupcam dll/so/dylib library file is in the same directory with toupcam.py.</p>
-<h1><font color="#0000FF"><a id="java">7. Java</a></font></h1>
-<hr/>
-<p>Toupcam does support Java, toupcam.java use <a href="https://github.com/java-native-access/jna">JNA (https://github.com/java-native-access/jna)</a> to call into toupcam.dll/so/dylib. Copy toupcam.java to your java project, please reference the sample code simplest.java (Console), javafx.java, swing.java.</p>
-<p>Please pay attation to that <strong>the object of the java class toupcam must be obtained by static method Open or OpenByIndex, it cannot be obtained by obj = new toupcam()</strong>(The constructor is private on purpose).</p>
-<p>Most methods of the toupcam class use <a href="https://github.com/java-native-access/jna">JNA</a> to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding java methods.</p>
-<p>Please reference errcheck in toupcam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
-<p>Remark: (1) Download jna-*.jar from github; (2) Make sure toupcam.dll/so/dylib is placed in the correct directory.</p>
-<hr/>
-<h1><font color="#0000FF">8. Misc</font></h1>
-<hr/>
-<ul>
-  <li>Byte order (BGR vs RGB)
-    <blockquote>
-      <p>Windows: BGR</p>
-      <p>macOS, Linux, Android: RGB</p>
-    </blockquote>
-  </li>
-</ul>
-<ul>
-  <li>Ranges and default value of some parameters</li>
-</ul>
+<ul><li><h2><font color="#0000FF">Ranges and default value of some parameters</font></h2>
 <blockquote>
 <div align="center">
  <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
@@ -1827,7 +1796,7 @@ public bool Snap(uint nResolutionIndex)
     <td width="14%" rowspan="2">&nbsp;</td>
   </tr>
   <tr>
-    <td width="10%">Analog Gain</td>
+    <td width="10%">Gain</td>
     <td width="15%">&nbsp;</td>
     <td width="8%">500</td>
     </tr>
@@ -1841,16 +1810,51 @@ public bool Snap(uint nResolutionIndex)
     <td rowspan="2">&nbsp;</td>
   </tr>
   <tr>
-    <td>Analog Gain</td>
+    <td>Gain</td>
 	<td>&nbsp;</td>
 	<td>100</td>
     </tr>
  </table>
 </div>
 </blockquote>
+</li></ul>
 <hr/>
-<h1><font color="#0000FF">7. Changelog</font></h1>
+<h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1>
 <hr/>
+<p>Toupcam does support .NET development environment (C# and VB.NET).</p>
+<p>toupcam.cs use P/Invoke to call into toupcam.dll. Copy toupcam.cs to your C# project, please reference demowinformcs1, demowinformcs2 and demowinformcs3 in the samples directory.</p>
+<p>Please pay attation to that <strong>the object of the C# class ToupTek. Toupcam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new ToupTek.Toupcam</strong> (The constructor is private on purpose).</p>
+<p>Most properties and methods of the Toupcam class P/Invoke into the corresponding Toupcam_xxxx functions of toupcam.dll/so. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding C# properties or methods. For example, the C# Snap method call the function Toupcam_Snap, the descriptions of the Toupcam_Snap function is applicable for C# Snap method:</p>
+<table width="100%" border="0" bgcolor="#B0D0B0">
+<tr><td><pre>[DllImport(&quot;toupcam.dll&quot;, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+private static extern int Toupcam_Snap(SafeHToupcamHandle h, uint nResolutionIndex);
+
+public bool Snap(uint nResolutionIndex)
+{
+    if (_handle == null || _handle.IsInvalid || _handle.IsClosed)
+        return false;
+    return (Toupcam_Snap(_handle, nResolutionIndex) &gt;= 0);
+}</pre></td></tr></table>
+<p>VB.NET is similar with C#, not otherwise specified.</p>
+<hr/>
+<h1><font color="#0000FF"><a id="python">6. Python</a></font></h1>
+<hr/>
+<p>Toupcam does support Python (version 3.0 or above), please import toupcam to use toupcam.py and reference the sample code simplest.py and qt.py.</p>
+<p>Please pay attation to that <strong>the object of the python class toupcam.Toupcam must be obtained by classmethod Open or OpenByIndex, it cannot be obtained by obj = toupcam.Toupcam()</strong></p>
+<p>Most methods of the Toupcam class use ctypes to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding python methods.</p>
+<p>Please reference __errcheck in toupcam.py, the original HRESULT return code is mapped to HRESULTException exception (in win32 it's inherited from OSError).</p>
+<p>Please make sure the toupcam dll/so/dylib library file is in the same directory with toupcam.py.</p>
+<h1><font color="#0000FF"><a id="java">7. Java</a></font></h1>
+<hr/>
+<p>Toupcam does support Java, toupcam.java use <a href="https://github.com/java-native-access/jna">JNA (https://github.com/java-native-access/jna)</a> to call into toupcam.dll/so/dylib. Copy toupcam.java to your java project, please reference the sample code simplest.java (Console), javafx.java, swing.java.</p>
+<p>Please pay attation to that <strong>the object of the java class toupcam must be obtained by static method Open or OpenByIndex, it cannot be obtained by obj = new toupcam()</strong>(The constructor is private on purpose).</p>
+<p>Most methods of the toupcam class use <a href="https://github.com/java-native-access/jna">JNA</a> to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding java methods.</p>
+<p>Please reference errcheck in toupcam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
+<p>Remark: (1) Download jna-*.jar from github; (2) Make sure toupcam.dll/so/dylib is placed in the correct directory.</p>
+<hr/>
+<h1><font color="#0000FF">8. Changelog</font></h1>
+<hr/>
+<p>v38: Add support to byte order, change BGR/RGB. Please see <a href="#bgr">here</a></p>
 <p>v37: Add Android support<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Toupcam_StartPushModeV3 (Toupcam_StartPushModeV2 and Toupcam_StartPushMode are obsoleted)</p>
 <p>v36: Add Java support. Please see <a href="#java">here</a></p>
 <p>v35: Add Python support. Please see <a href="#python">here</a></p>
@@ -1892,7 +1896,7 @@ public bool Snap(uint nResolutionIndex)
 <p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
 <p>v1: initial release</p>
 <hr/>
-<h1><font color="#0000FF">8. Contact</font></h1>
+<h1><font color="#0000FF">9. Contact</font></h1>
 <hr/>
 <p>If you have any problems in using this SDK, please use the following information to contact us.<br/>
  www: <a href="http://www.touptek.com">www.touptek.com</a><br/>
