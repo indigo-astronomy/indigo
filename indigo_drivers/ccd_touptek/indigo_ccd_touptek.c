@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_touptek"
 
 #include <stdlib.h>
@@ -155,21 +155,13 @@ static void setup_exposure(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Stop() -> %08x", result);
 				result = Toupcam_put_eSize(PRIVATE_DATA->handle, resolution_index);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_eSize(%d) -> %08x", resolution_index, result);
-				if (strncmp(item->name, "MON08", 5) == 0) {
-					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 0);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 0) -> %08x", result);
-					PRIVATE_DATA->bits = 8;
-				} else if (strncmp(item->name, "MON", 3) == 0) {
-					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 1);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 1) -> %08x", result);
-					PRIVATE_DATA->bits = atoi(item->name + 3); // FIXME: should be 16 according documentation, but it doesn't work
-				} else if (strncmp(item->name, "RAW08", 5) == 0) {
+				if (strncmp(item->name, "RAW08", 5) == 0 || strncmp(item->name, "MON08", 5) == 0) {
 					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 1) -> %08x", result);
 					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 0);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 0) -> %08x", result);
 					PRIVATE_DATA->bits = 8;
-				} else if (strncmp(item->name, "RAW", 3) == 0) {
+				} else if (strncmp(item->name, "RAW", 3) == 0 || strncmp(item->name, "MON", 3) == 0) {
 					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 1) -> %08x", result);
 					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 1);
