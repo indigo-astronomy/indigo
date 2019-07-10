@@ -884,9 +884,6 @@ function guiSetup() {
 		$('canvas.bg-light').removeClass("bg-light").addClass("bg-secondary");
 		if (typeof config !== 'undefined') {
 			config.stars.style.fill = "#FFF";
-			if (celestialVisible) {
-				updateMap();
-			}
 		}
 	} else {
 		INDIGO.dark = false;
