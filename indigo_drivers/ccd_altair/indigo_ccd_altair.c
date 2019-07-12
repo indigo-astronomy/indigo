@@ -23,7 +23,7 @@
  \file indigo_ccd_altair.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_altair"
 
 #include <stdlib.h>
@@ -58,7 +58,7 @@
 
 typedef struct {
 	AltaircamInstV2 cam;
-	HAltairCam handle;
+	HAltaircam handle;
 	bool present;
 	indigo_device *camera;
 	indigo_device *guider;
