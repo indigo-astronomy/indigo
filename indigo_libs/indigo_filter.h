@@ -202,7 +202,12 @@ extern indigo_result indigo_filter_delete_property(indigo_client *client, indigo
 /** Client attach callback function.
  */
 extern indigo_result indigo_filter_client_detach(indigo_client *client);
-
+/** Find remote cached property.
+ */
+extern indigo_property *indigo_filter_cached_property(indigo_device *device, int index, char *name);
+/** Forward property change to a different device.
+ */
+extern indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name);
 #ifdef __cplusplus
 }
 #endif
