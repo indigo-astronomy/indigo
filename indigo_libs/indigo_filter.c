@@ -597,3 +597,25 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 	}
 	return INDIGO_OK;
 }
+
+indigo_property *indigo_filter_cached_property(indigo_device *device, int index, char *name) {
+	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
+	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
+		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(cache[j]->name, name)) {
+			return cache[j];
+		}
+	}
+	return NULL;
+}
+
+indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name) {
+	int size = sizeof(indigo_property) + property->count * (sizeof(indigo_item));
+	indigo_property *local_property = malloc(size);
+	memcpy(local_property, property, size);
+	strcpy(local_property->device, device_name);
+	property->perm = INDIGO_RW_PERM;
+	indigo_result result = indigo_change_property(client, local_property);
+	free(local_property);
+	return result;
+}
+

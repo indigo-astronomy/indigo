@@ -103,26 +103,6 @@ static void save_config(indigo_device *device) {
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->config_mutex);
 }
 
-static indigo_property *cached_remote_mount_property(indigo_device *device, char *name) {
-	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
-	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]) && !strcmp(cache[j]->name, name)) {
-			return cache[j];
-		}
-	}
-	return NULL;
-}
-
-static void forward_property_update(indigo_client *client, indigo_property *property, char *device_name) {
-	int size = sizeof(indigo_property) + property->count * (sizeof(indigo_item));
-	indigo_property *local_property = malloc(size);
-	memcpy(local_property, property, size);
-	strcpy(local_property->device, device_name);
-	property->perm = INDIGO_RW_PERM;
-	indigo_change_property(client, local_property);
-	free(local_property);
-}
-
 static void set_site_coordinates2(indigo_device *device, int index, double latitude, double longitude, double elevation) {
 	if (*FILTER_DEVICE_CONTEXT->device_name[index]) {
 		indigo_property *property = indigo_init_number_property(NULL, FILTER_DEVICE_CONTEXT->device_name[index], GEOGRAPHIC_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
@@ -730,7 +710,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.value = now;
 				indigo_update_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_limits_property, NULL);
 				if (property->state == INDIGO_OK_STATE) {
-					indigo_property *cached_park_property = cached_remote_mount_property(FILTER_CLIENT_CONTEXT->device, MOUNT_PARK_PROPERTY_NAME);
+					indigo_property *cached_park_property = indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_PARK_PROPERTY_NAME);
 					if (cached_park_property && cached_park_property->state == INDIGO_OK_STATE) {
 						for (int j = 0; j < cached_park_property->count; j++) {
 							if (!strcmp(cached_park_property->items[j].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
@@ -810,7 +790,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX])) {
 		if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && property->state == INDIGO_OK_STATE && (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) || !strcmp(property->name, MOUNT_SLEW_RATE_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_DEC_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_RA_PROPERTY_NAME) || !strcmp(property->name, MOUNT_ABORT_MOTION_PROPERTY_NAME) || !strcmp(property->name, MOUNT_TRACKING_PROPERTY_NAME))) {
-			forward_property_update(client, property, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
+			indigo_filter_forward_change_property(client, property, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
 		}
 	}
 }
@@ -844,7 +824,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				AGENT_LX200_CONFIGURATION_PROPERTY->hidden = false;
 				indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 			}
-			indigo_property *selection = cached_remote_mount_property(FILTER_CLIENT_CONTEXT->device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
+			indigo_property *selection = indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
 			if (selection) {
 				for (int i = 0; i < selection->count; i++) {
 					if (selection->items[i].sw.value) {

@@ -140,24 +140,14 @@ static void save_config(indigo_device *device) {
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->config_mutex);
 }
 
-static indigo_property *cached_remote_ccd_property(indigo_device *device, char *name) {
-	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
-	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(cache[j]->name, name)) {
-			return cache[j];
-		}
-	}
-	return NULL;
-}
-
 static indigo_property_state capture_frame(indigo_device *device) {
-	indigo_property *remote_exposure_property = cached_remote_ccd_property(device, CCD_EXPOSURE_PROPERTY_NAME);
-	indigo_property *remote_image_property = cached_remote_ccd_property(device, CCD_IMAGE_PROPERTY_NAME);
+	indigo_property *remote_exposure_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_EXPOSURE_PROPERTY_NAME);
+	indigo_property *remote_image_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_PROPERTY_NAME);
 	if (remote_exposure_property == NULL || remote_image_property == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY or CCD_IMAGE_PROPERTY not found");
 		return INDIGO_ALERT_STATE;
 	} else {
-		indigo_property *remote_format_property = cached_remote_ccd_property(device, CCD_IMAGE_FORMAT_PROPERTY_NAME);
+		indigo_property *remote_format_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 		for (int i = 0; i < remote_format_property->count; i++) {
 			indigo_item *item = remote_format_property->items + i;
 			if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_RAW_ITEM_NAME)) {
@@ -281,19 +271,9 @@ static indigo_property_state capture_frame(indigo_device *device) {
 	}
 }
 
-static indigo_property *cached_remote_guider_property(indigo_device *device, char *name) {
-	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
-	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]) && !strcmp(cache[j]->name, name)) {
-			return cache[j];
-		}
-	}
-	return NULL;
-}
-
 static indigo_property_state pulse_guide(indigo_device *device, double ra, double dec) {
 	if (ra) {
-		indigo_property *remote_guide_property = cached_remote_guider_property(device, GUIDER_GUIDE_RA_PROPERTY_NAME);
+		indigo_property *remote_guide_property = indigo_filter_cached_property(device, INDIGO_FILTER_GUIDER_INDEX, GUIDER_GUIDE_RA_PROPERTY_NAME);
 		if (remote_guide_property == NULL) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GUIDER_GUIDE_RA_PROPERTY not found");
 			return INDIGO_ALERT_STATE;
@@ -320,7 +300,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 		}
 	}
 	if (dec) {
-		indigo_property *remote_guide_property = cached_remote_guider_property(device, GUIDER_GUIDE_DEC_PROPERTY_NAME);
+		indigo_property *remote_guide_property = indigo_filter_cached_property(device, INDIGO_FILTER_GUIDER_INDEX, GUIDER_GUIDE_DEC_PROPERTY_NAME);
 		if (remote_guide_property == NULL) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GUIDER_GUIDE_DEC_PROPERTY not found");
 			return INDIGO_ALERT_STATE;
