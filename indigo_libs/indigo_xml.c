@@ -50,7 +50,6 @@
 #include "indigo_xml.h"
 #include "indigo_io.h"
 #include "indigo_version.h"
-#include "indigo_driver_xml.h"
 #include "indigo_names.h"
 
 #define BUFFER_SIZE 524288  /* BUFFER_SIZE % 4 == 0, inportant for base64 */
