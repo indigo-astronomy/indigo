@@ -98,7 +98,7 @@ bool synscan_set_polarscope_brightness(indigo_device* device, unsigned char brig
 bool synscan_set_st4_guide_rate(indigo_device* device, enum AxisID axis, enum GuideRate rate);
 bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration_ms, long track_rate);
 bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID direction, long guide_rate, int duration_ms);
-
+bool synscan_set_goto_target(indigo_device* device, enum AxisID axis, long target);
 bool synscan_ext_inquiry(indigo_device* device, enum AxisID axis, enum ExtInquiry inquiry, long *v);
 bool synscan_ext_setting(indigo_device* device, enum AxisID axis, enum ExtSetting setting);
 

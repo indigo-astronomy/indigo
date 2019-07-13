@@ -539,6 +539,13 @@ bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID directi
 	return ok;
 }
 
+bool synscan_set_goto_target(indigo_device* device, enum AxisID axis, long target) {
+	char buffer[11];
+	sprintf(buffer, ":S%c%s", axis, longToHex(target));
+	return synscan_command(device, buffer, NULL);
+}
+
+
 bool synscan_ext_inquiry(indigo_device* device, enum AxisID axis, enum ExtInquiry inquiry, long *v) {
 	char buffer[11];
 	sprintf(buffer, ":q%c%s", axis, longToHex(inquiry));
