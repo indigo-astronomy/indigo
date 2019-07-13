@@ -1042,16 +1042,8 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_slew_axis(device, kAxisRA);
 	synscan_slew_axis(device, kAxisDEC);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
-	while (true) {
-		synscan_motor_status(device, kAxisRA, &value);
-		if (value)
-			continue;
-		synscan_motor_status(device, kAxisDEC, &value);
-		if (value)
-			continue;
-		indigo_usleep(ONE_SECOND_DELAY / 10);
-		break;
-	}
+	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Check home index status");
 	synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
 	bool index_changed_ra = !((value == 0) || (value = 0xFFFFFF));
@@ -1089,16 +1081,8 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		synscan_slew_axis(device, kAxisDEC);
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
-	while (true) {
-		synscan_motor_status(device, kAxisRA, &value);
-		if (value)
-			continue;
-		synscan_motor_status(device, kAxisDEC, &value);
-		if (value)
-			continue;
-		indigo_usleep(ONE_SECOND_DELAY / 10);
-		break;
-	}
+	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset home position index if needed");
 	if (index_changed_ra) {
 		synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
@@ -1131,13 +1115,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop RA slewing");
 		synscan_stop_axis(device, kAxisRA);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until RA stops");
-		while (true) {
-			synscan_motor_status(device, kAxisRA, &value);
-			if (value)
-				continue;
-			indigo_usleep(ONE_SECOND_DELAY / 10);
-			break;
-		}
+		synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset RA home position index");
 		synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
 		slewing_up_ra = true;
@@ -1160,13 +1138,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop DEC slewing");
 		synscan_stop_axis(device, kAxisDEC);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until DEC stops");
-		while (true) {
-			synscan_motor_status(device, kAxisDEC, &value);
-			if (value)
-				continue;
-			indigo_usleep(ONE_SECOND_DELAY / 10);
-			break;
-		}
+		synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset DEC home position index");
 		synscan_ext_setting(device, kAxisDEC, kResetHomeIndexer);
 		slewing_up_dec = true;
@@ -1201,16 +1173,8 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		}
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
-	while (true) {
-		synscan_motor_status(device, kAxisRA, &value);
-		if (value)
-			continue;
-		synscan_motor_status(device, kAxisDEC, &value);
-		if (value)
-			continue;
-		indigo_usleep(ONE_SECOND_DELAY / 10);
-		break;
-	}
+	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Move back");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
@@ -1227,16 +1191,8 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_slew_axis(device, kAxisRA);
 	synscan_slew_axis(device, kAxisDEC);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
-	while (true) {
-		synscan_motor_status(device, kAxisRA, &value);
-		if (value)
-			continue;
-		synscan_motor_status(device, kAxisDEC, &value);
-		if (value)
-			continue;
-		indigo_usleep(ONE_SECOND_DELAY / 10);
-		break;
-	}
+	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Goto home position");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
@@ -1249,16 +1205,8 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_slew_axis(device, kAxisRA);
 	synscan_slew_axis(device, kAxisDEC);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
-	while (true) {
-		synscan_motor_status(device, kAxisRA, &value);
-		if (value)
-			continue;
-		synscan_motor_status(device, kAxisDEC, &value);
-		if (value)
-			continue;
-		indigo_usleep(ONE_SECOND_DELAY / 10);
-		break;
-	}
+	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Reset mount positions");
 	synscan_init_axis_position(device, kAxisRA, 0);
