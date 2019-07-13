@@ -57,6 +57,7 @@ typedef struct {
 	indigo_property *use_ppec_property;
 	indigo_property *train_ppec_property;
 	indigo_property *autohome_property;
+	indigo_property *autohome_settings_property;
 
 	bool mountConfigured;
 
@@ -136,5 +137,11 @@ typedef struct {
 
 #define MOUNT_AUTOHOME_PROPERTY_NAME		    			"MOUNT_AUTOHOME"
 #define MOUNT_AUTOHOME_ITEM_NAME            			"AUTOHOME"
+
+#define MOUNT_AUTOHOME_SETTINGS_PROPERTY					(PRIVATE_DATA->autohome_settings_property)
+#define MOUNT_AUTOHOME_DEC_OFFSET_ITEM		        (MOUNT_AUTOHOME_SETTINGS_PROPERTY->items+0)
+
+#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME		  "MOUNT_AUTOHOME_SETTINGS"
+#define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME       "DEC_OFFSET"
 
 #endif /* indigo_mount_synscan_private_h */
