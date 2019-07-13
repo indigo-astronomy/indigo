@@ -255,6 +255,7 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 			//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
 			indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 
@@ -305,6 +306,7 @@ void synscan_mount_connect(indigo_device* device) {
 				indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 				synscan_close(device);
 			}
 		}
@@ -1212,7 +1214,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Reset mount positions");
 	synscan_init_axis_position(device, kAxisRA, 0x800000);
-	synscan_init_axis_position(device, kAxisDEC, 0x800000);
+	synscan_init_axis_position(device, kAxisDEC, 0x800000 + MOUNT_AUTOHOME_DEC_OFFSET_ITEM->number.target / 360.0 *  PRIVATE_DATA->decTotalSteps);
 	
 	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	MOUNT_AUTOHOME_PROPERTY->state = INDIGO_OK_STATE;
