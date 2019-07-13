@@ -1156,7 +1156,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_slew_axis(device, kAxisDEC);
 	index_changed_ra = index_changed_dec = false;
 	long home_position_ra = 0, home_position_dec = 0;
-	while (index_changed_ra && index_changed_dec) {
+	while (!index_changed_ra || !index_changed_dec) {
 		if (!index_changed_ra) {
 			synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
 			if (value != 0) {
