@@ -1223,12 +1223,12 @@ void mount_handle_autohome(indigo_device *device) {
 		MOUNT_AUTOHOME_ITEM->sw.value = false;
 		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 			MOUNT_AUTOHOME_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Starting auto home procedure...");
+			indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Starting auto home procedure...");
 			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
 			indigo_set_timer(device, 0, mount_autohome_timer_callback);
 		} else {
 			MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Auto home not started - mount is busy.");
+			indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Auto home not started - mount is busy.");
 		}
 	}
 }
