@@ -999,13 +999,288 @@ void mount_handle_train_ppec(indigo_device *device) {
 		indigo_set_timer(device, 1, mount_train_ppec_callback);
 }
 
+// Code based on: https://stargazerslounge.com/topic/238364-eq8-tools-autohome-without-handset/
+
+static void mount_autohome_timer_callback(indigo_device* device) {
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	long value, position_ra, position_dec;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StepsPerRevolution %06lx %06lx", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turn encoders off");
+	MOUNT_USE_RA_ENCODER_ITEM->sw.value = MOUNT_USE_DEC_ENCODER_ITEM->sw.value = false;
+	mount_handle_encoders(device);
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Try to get reliable home index signal");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset home position index");
+	synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
+	synscan_ext_setting(device, kAxisDEC, kResetHomeIndexer);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Read home position index data");
+	synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+	bool slewing_up_ra = value == 0;
+	synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+	bool slewing_up_dec = value == 0;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d", slewing_up_ra, slewing_up_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Make sure axes are stopped");
+	synscan_stop_axis(device, kAxisRA);
+	synscan_stop_axis(device, kAxisDEC);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
+	synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+	synscan_set_axis_gearing(device, kAxisDEC, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Aquire current position");
+	synscan_axis_position(device, kAxisRA, &position_ra);
+	synscan_axis_position(device, kAxisDEC, &position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
+	value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
+	position_ra = position_ra + (slewing_up_ra ? -value : value);
+	value = 5.0 / 360.0 *  PRIVATE_DATA->decTotalSteps;
+	position_dec = position_dec + (slewing_up_dec ? -value : value);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx %06lx", position_ra, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
+	synscan_set_goto_target(device, kAxisRA, position_ra);
+	synscan_set_goto_target(device, kAxisDEC, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew away from current position");
+	synscan_slew_axis(device, kAxisRA);
+	synscan_slew_axis(device, kAxisDEC);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
+	while (true) {
+		synscan_motor_status(device, kAxisRA, &value);
+		if (value)
+			continue;
+		synscan_motor_status(device, kAxisDEC, &value);
+		if (value)
+			continue;
+		indigo_usleep(ONE_SECOND_DELAY / 10);
+		break;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Check home index status");
+	synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+	bool index_changed_ra = !((value == 0) || (value = 0xFFFFFF));
+	synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+	bool index_changed_dec = !((value == 0) || (value = 0xFFFFFF));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d", index_changed_ra, index_changed_dec);
+	if (index_changed_ra) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Make extra movement RA");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
+		synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Aquire current position");
+		synscan_axis_position(device, kAxisRA, &position_ra);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
+		value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
+		position_ra = position_ra + (slewing_up_ra ? -value : value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx", position_ra);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
+		synscan_set_goto_target(device, kAxisRA, position_ra);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew away from current position");
+		synscan_slew_axis(device, kAxisRA);
+	}
+	if (index_changed_dec) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Make extra movement DEC");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
+		synscan_set_axis_gearing(device, kAxisDEC, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Aquire current position");
+		synscan_axis_position(device, kAxisDEC, &position_dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
+		value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
+		position_dec = position_dec + (slewing_up_dec ? -value : value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx", position_dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
+		synscan_set_goto_target(device, kAxisDEC, position_dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew 5 deg away from current position");
+		synscan_slew_axis(device, kAxisDEC);
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
+	while (true) {
+		synscan_motor_status(device, kAxisRA, &value);
+		if (value)
+			continue;
+		synscan_motor_status(device, kAxisDEC, &value);
+		if (value)
+			continue;
+		indigo_usleep(ONE_SECOND_DELAY / 10);
+		break;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset home position index if needed");
+	if (index_changed_ra) {
+		synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
+		synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+		slewing_up_ra = value == 0;
+	}
+	if (index_changed_dec) {
+		synscan_ext_setting(device, kAxisDEC, kResetHomeIndexer);
+		synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+		slewing_up_dec = value == 0;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d", slewing_up_ra, slewing_up_dec);
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Move the axis to negative position");
+	if (!slewing_up_ra) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set RA slewing mode");
+		synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionRev, kAxisSpeedHigh);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set RA slewing speed");
+		synscan_set_axis_slew_rate(device, kAxisRA, 0x60000);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Start RA slewing");
+		synscan_slew_axis(device, kAxisRA);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait RA home position index change");
+		while (true) {
+			synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+			if (value != 0xFFFFFF)
+				break;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait 3s");
+		indigo_usleep(3 * ONE_SECOND_DELAY);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop RA slewing");
+		synscan_stop_axis(device, kAxisRA);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until RA stops");
+		while (true) {
+			synscan_motor_status(device, kAxisRA, &value);
+			if (value)
+				continue;
+			indigo_usleep(ONE_SECOND_DELAY / 10);
+			break;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset RA home position index");
+		synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
+		slewing_up_ra = true;
+	}
+	if (!slewing_up_dec) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set DEC slewing mode");
+		synscan_set_axis_gearing(device, kAxisDEC, kAxisDirectionRev, kAxisSpeedHigh);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set DEC slewing speed");
+		synscan_set_axis_slew_rate(device, kAxisDEC, 0x60000);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Start DEC slewing");
+		synscan_slew_axis(device, kAxisDEC);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait DEC home position index change");
+		while (true) {
+			synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+			if (value != 0xFFFFFF)
+				break;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait 3s");
+		indigo_usleep(3 * ONE_SECOND_DELAY);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop DEC slewing");
+		synscan_stop_axis(device, kAxisDEC);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until DEC stops");
+		while (true) {
+			synscan_motor_status(device, kAxisDEC, &value);
+			if (value)
+				continue;
+			indigo_usleep(ONE_SECOND_DELAY / 10);
+			break;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset DEC home position index");
+		synscan_ext_setting(device, kAxisDEC, kResetHomeIndexer);
+		slewing_up_dec = true;
+	}
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Find the home position index");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
+	synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionRev, kAxisSpeedHigh);
+	synscan_set_axis_gearing(device, kAxisDEC, kAxisDirectionRev, kAxisSpeedHigh);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing speed");
+	synscan_set_axis_slew_rate(device, kAxisRA, 0x60000);
+	synscan_set_axis_slew_rate(device, kAxisDEC, 0x60000);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Start slewing");
+	synscan_slew_axis(device, kAxisRA);
+	synscan_slew_axis(device, kAxisDEC);
+	index_changed_ra = index_changed_dec = false;
+	long home_position_ra = 0, home_position_dec = 0;
+	while (index_changed_ra && index_changed_dec) {
+		if (!index_changed_ra) {
+			synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+			if (value != 0) {
+				position_ra = home_position_ra = value;
+				index_changed_ra = true;
+				synscan_stop_axis(device, kAxisRA);
+			}
+			synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+			if (value != 0) {
+				position_dec = home_position_dec = value;
+				index_changed_dec = true;
+				synscan_stop_axis(device, kAxisDEC);
+			}
+		}
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
+	while (true) {
+		synscan_motor_status(device, kAxisRA, &value);
+		if (value)
+			continue;
+		synscan_motor_status(device, kAxisDEC, &value);
+		if (value)
+			continue;
+		indigo_usleep(ONE_SECOND_DELAY / 10);
+		break;
+	}
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Move back");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
+	synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+	synscan_set_axis_gearing(device, kAxisDEC, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
+	position_ra -= 10.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
+	position_dec -= 10.0 / 360.0 *  PRIVATE_DATA->decTotalSteps;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx %06lx", position_ra, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
+	synscan_set_goto_target(device, kAxisRA, position_ra);
+	synscan_set_goto_target(device, kAxisDEC, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew 10deg away from current position");
+	synscan_slew_axis(device, kAxisRA);
+	synscan_slew_axis(device, kAxisDEC);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
+	while (true) {
+		synscan_motor_status(device, kAxisRA, &value);
+		if (value)
+			continue;
+		synscan_motor_status(device, kAxisDEC, &value);
+		if (value)
+			continue;
+		indigo_usleep(ONE_SECOND_DELAY / 10);
+		break;
+	}
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Goto home position");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
+	synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+	synscan_set_axis_gearing(device, kAxisDEC, kAxisDirectionFwd, kAxisSpeedAbsSlew);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
+	synscan_set_goto_target(device, kAxisRA, home_position_ra);
+	synscan_set_goto_target(device, kAxisDEC, home_position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew 10deg away from current position");
+	synscan_slew_axis(device, kAxisRA);
+	synscan_slew_axis(device, kAxisDEC);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
+	while (true) {
+		synscan_motor_status(device, kAxisRA, &value);
+		if (value)
+			continue;
+		synscan_motor_status(device, kAxisDEC, &value);
+		if (value)
+			continue;
+		indigo_usleep(ONE_SECOND_DELAY / 10);
+		break;
+	}
+	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Reset mount positions");
+	synscan_init_axis_position(device, kAxisRA, 0);
+	synscan_init_axis_position(device, kAxisDEC, PRIVATE_DATA->decTotalSteps / 4 + 0x800000);
+	
+	PRIVATE_DATA->globalMode = kGlobalModeIdle;
+	MOUNT_AUTOHOME_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
+}
+
 void mount_handle_autohome(indigo_device *device) {
 	if (MOUNT_AUTOHOME_ITEM->sw.value) {
 		MOUNT_AUTOHOME_ITEM->sw.value = false;
-		
-		// TBD like this: https://stargazerslounge.com/topic/238364-eq8-tools-autohome-without-handset/
-		
-		MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Not implemented yet!");
+		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+			MOUNT_AUTOHOME_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Starting auto home procedure...");
+			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
+			indigo_set_timer(device, 0, mount_autohome_timer_callback);
+		} else {
+			MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Auto home not started - mount is busy.");
+		}
 	}
 }
