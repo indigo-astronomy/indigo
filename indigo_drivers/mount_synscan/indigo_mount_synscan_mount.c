@@ -28,12 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
-#include "indigo_io.h"
 #include "indigo_novas.h"
 #include "indigo_mount_synscan_mount.h"
 #include "indigo_mount_synscan_private.h"
@@ -170,109 +165,35 @@ static void position_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->timer_count--;
 }
 
-static bool synscan_open(indigo_device *device) {
-	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!strncmp(name, "synscan://", 10)) {
-		char *host = name + 10;
-		char *colon = strchr(host, ':');
-		if (*host == 0) {
-			struct sockaddr_in addr;
-			memset(&addr, 0, sizeof(addr));
-			addr.sin_family = AF_INET;
-			addr.sin_port = htons(11880);
-			addr.sin_addr.s_addr = INADDR_BROADCAST;
-			socklen_t len = sizeof(addr);
-			int handle;
-			handle = socket(AF_INET, SOCK_DGRAM, 0);
-			if (handle > 0) {
-				int broadcast = 1;
-				setsockopt(handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof broadcast);
-				struct timeval timeout;
-				timeout.tv_sec = 3;
-				timeout.tv_usec = 0;
-				setsockopt(handle, SOL_SOCKET, SO_RCVTIMEO, &timeout ,sizeof timeout);
-				for (int i = 0; i < 3; i++) {
-					static char buffer[32];
-					sendto(handle, ":e1\r", 4, 0, (const struct sockaddr *) &addr, sizeof(addr));
-					indigo_usleep(100000);
-					if (recvfrom(handle, buffer, sizeof(buffer), MSG_WAITALL, (struct sockaddr *) &addr, &len) && *buffer == '=') {
-						strcpy(name + 10, inet_ntoa(addr.sin_addr));
-						indigo_update_property(device, DEVICE_PORT_PROPERTY, "mount detected at %s", name);
-						break;
-					}
-				}
-			}
-		}
-		if (*host == 0) {
-			PRIVATE_DATA->handle = 0;
-		} else if (colon == NULL) {
-			PRIVATE_DATA->handle = indigo_open_udp(host, 11880);
-		} else {
-			char host_name[INDIGO_NAME_SIZE];
-			strncpy(host_name, host, colon - host);
-			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
-		}
-		PRIVATE_DATA->udp = true;
-	} else {
-		PRIVATE_DATA->handle = indigo_open_serial(name);
-		PRIVATE_DATA->udp = false;
-	}
-	if (PRIVATE_DATA->handle > 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
-		return true;
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
-		return false;
-	}
-}
-
-static void synscan_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
-	}
-}
-
 static void synscan_connect_timer_callback(indigo_device* device) {
 	//  Lock the driver
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
-
-	//assert(CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE);
-
+	bool result = true;
 	//  Open and configure the mount
-	//  FIXME - master device
-	bool result = synscan_open(device->master_device) && synscan_configure(device->master_device);
+	if (PRIVATE_DATA->device_count == 0) {
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		result = synscan_open(device) && synscan_configure(device);
+	}
 	if (result) {
 		PRIVATE_DATA->device_count++;
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (device == device->master_device) { // For mount device only
-			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-			indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
-			//  Here I need to invoke the code in indigo_mount_driver.c on lines 270-334 to define the properties that should now be present.
-			indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
-
-			//  Start position timer
-			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
-		} else {
-			indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-		}
-		indigo_update_property(device, CONNECTION_PROPERTY, "connected to mount!");
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+		indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
+		indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+		//  Start position timer
+		PRIVATE_DATA->position_timer = indigo_set_timer(device, 1, position_timer_callback);
 	} else {
+		synscan_close(device);
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_update_property(device, CONNECTION_PROPERTY, "Failed to connect to mount");
 	}
-
-	//  Need to define and delete the 2 custom properties on connect/disconnect
-
 	//  Unlock the driver
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
@@ -285,30 +206,20 @@ void synscan_mount_connect(indigo_device* device) {
 	//  Handle connect/disconnect commands
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//  CONNECT to the mount
-		if (PRIVATE_DATA->device_count == 0) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			//  No need to store the timer as this is a one-shot
-			indigo_set_timer(device, 0, &synscan_connect_timer_callback);
-			return;
-		}
-		else
-			PRIVATE_DATA->device_count++;
-	}
-	else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
+		indigo_set_timer(device, 0, &synscan_connect_timer_callback);
+		return;
+	} else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
 		//  DISCONNECT from mount
-		if (PRIVATE_DATA->device_count > 0) {
-			PRIVATE_DATA->device_count--;
-			if (PRIVATE_DATA->device_count == 0) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-				indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
-				synscan_close(device);
-			}
+		indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+		indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
+		if (--PRIVATE_DATA->device_count == 0) {
+			synscan_close(device);
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
