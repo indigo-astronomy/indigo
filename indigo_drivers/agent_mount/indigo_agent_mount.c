@@ -90,7 +90,13 @@ static void save_config(indigo_device *device) {
 	indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
+	double tmp_ha_tracking_limit = AGENT_HA_TRACKING_LIMIT_ITEM->number.value;
+	AGENT_HA_TRACKING_LIMIT_ITEM->number.value = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
+	double tmp_local_time_limit = AGENT_LOCAL_TIME_LIMIT_ITEM->number.value;
+	AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = AGENT_LOCAL_TIME_LIMIT_ITEM->number.target;
 	indigo_save_property(device, NULL, AGENT_LIMITS_PROPERTY);
+	AGENT_HA_TRACKING_LIMIT_ITEM->number.value = tmp_ha_tracking_limit;
+	 AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = tmp_local_time_limit;
 	if (DEVICE_CONTEXT->property_save_file_handle) {
 		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		close(DEVICE_CONTEXT->property_save_file_handle);
