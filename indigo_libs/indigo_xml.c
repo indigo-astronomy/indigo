@@ -1632,7 +1632,7 @@ exit_loop:
 	free(buffer);
 	free(value_buffer);
 	close(handle);
-	indigo_log("XML Parser: parser finished");
+	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: parser finished"));
 }
 
 char *indigo_xml_escape(char *string) {
