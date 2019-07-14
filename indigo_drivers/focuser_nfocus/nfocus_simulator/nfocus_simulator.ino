@@ -19,6 +19,10 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
+
 char cs_value[3] = { '0', '0', '3' };
 char co_value[3] = { '0', '0', '3' };
 

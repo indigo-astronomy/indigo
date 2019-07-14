@@ -19,6 +19,9 @@
 // Code is based on Skywatcher protocol simulator for INDI driver
 // Copyright 2012 Geehalel (geehalel AT gmail DOT com)
 
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
 
 #include "synscan_protocol.h"
 

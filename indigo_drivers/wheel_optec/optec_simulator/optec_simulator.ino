@@ -18,6 +18,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
 
 bool is_ready = false;
 bool goto_err = false;
