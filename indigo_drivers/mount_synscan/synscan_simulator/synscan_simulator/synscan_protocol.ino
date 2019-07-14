@@ -19,6 +19,10 @@
 // Code is based on Skywatcher protocol simulator for INDI driver
 // Copyright 2012 Geehalel (geehalel AT gmail DOT com)
 
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
+
 enum MOTOR_STATUS {
   RUNNING                           = 0x0001,
   SLEWMODE                          = 0X0010,

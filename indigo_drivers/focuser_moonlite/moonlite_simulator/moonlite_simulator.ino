@@ -21,7 +21,7 @@
 #define LCD
 
 #ifdef ARDUINO_SAM_DUE
-//#define Serial SerialUSB
+#define Serial SerialUSB
 #endif
 
 #ifdef LCD

@@ -19,6 +19,10 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
+
 unsigned position = 5000;
 unsigned target = 5000;
 unsigned slope_a = 86;
