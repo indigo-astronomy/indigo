@@ -146,3 +146,49 @@ void guider_timer_callback_dec(indigo_device *device) {
 	}
 	PRIVATE_DATA->timer_count--;
 }
+
+static void synscan_connect_timer_callback(indigo_device* device) {
+	//  Lock the driver
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	//  Open and configure the mount
+	bool result = true;
+	if (PRIVATE_DATA->device_count == 0) {
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		result = synscan_open(device) && synscan_configure(device);
+	}
+	if (result) {
+		PRIVATE_DATA->device_count++;
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+		//  Start RA/DEC timer threads
+		PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, &guider_timer_callback_ra);
+		PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, &guider_timer_callback_dec);
+	} else {
+		synscan_close(device);
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		indigo_update_property(device, CONNECTION_PROPERTY, "Failed to connect to mount");
+	}
+	
+	//  Unlock the driver
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
+}
+
+void synscan_guider_connect(indigo_device* device) {
+	//  Ignore if we are already processing a connection change
+	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
+		return;
+	//  Handle connect/disconnect commands
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		//  CONNECT to the mount
+		indigo_set_timer(device, 0, &synscan_connect_timer_callback);
+		return;
+	} else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
+		//  DISCONNECT from mount
+		PRIVATE_DATA->guiding_thread_exit = false;
+		if (--PRIVATE_DATA->device_count == 0) {
+			synscan_close(device);
+		}
+	}
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+}

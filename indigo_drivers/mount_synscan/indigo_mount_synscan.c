@@ -36,6 +36,7 @@
 #include "indigo_io.h"
 #include "indigo_novas.h"
 #include "indigo_mount_synscan.h"
+#include "indigo_mount_synscan.h"
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_mount.h"
 #include "indigo_mount_synscan_guider.h"
@@ -414,10 +415,6 @@ static indigo_result guider_attach(indigo_device *device) {
 		PRIVATE_DATA->guiding_thread_exit = false;
 		PRIVATE_DATA->ha_pulse_ms = PRIVATE_DATA->dec_pulse_ms = 0;
 
-		//  Start RA/DEC timer threads
-		PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, &guider_timer_callback_ra);
-		PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, &guider_timer_callback_dec);
-
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -436,7 +433,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		synscan_mount_connect(device);
+		synscan_guider_connect(device);
 	}
 	else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA

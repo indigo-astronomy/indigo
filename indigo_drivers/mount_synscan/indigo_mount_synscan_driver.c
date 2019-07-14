@@ -10,7 +10,14 @@
 #include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "indigo_driver.h"
+#include "indigo_io.h"
 #include "indigo_novas.h"
 #include "indigo_mount_driver.h"
 #include "indigo_mount_synscan_private.h"
@@ -35,6 +42,70 @@ static const AxisPosition DEC_HOME_POSITION = 0x800000;
 #define GET_REVISION(v)				(int)(((v) >> 8) & 0xFF)
 #define GET_MODEL(v)				(int)(((v) >> 16) & 0xFF)
 
+bool synscan_open(indigo_device *device) {
+	char *name = DEVICE_PORT_ITEM->text.value;
+	if (!strncmp(name, "synscan://", 10)) {
+		char *host = name + 10;
+		char *colon = strchr(host, ':');
+		if (*host == 0) {
+			struct sockaddr_in addr;
+			memset(&addr, 0, sizeof(addr));
+			addr.sin_family = AF_INET;
+			addr.sin_port = htons(11880);
+			addr.sin_addr.s_addr = INADDR_BROADCAST;
+			socklen_t len = sizeof(addr);
+			int handle;
+			handle = socket(AF_INET, SOCK_DGRAM, 0);
+			if (handle > 0) {
+				int broadcast = 1;
+				setsockopt(handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof broadcast);
+				struct timeval timeout;
+				timeout.tv_sec = 3;
+				timeout.tv_usec = 0;
+				setsockopt(handle, SOL_SOCKET, SO_RCVTIMEO, &timeout ,sizeof timeout);
+				for (int i = 0; i < 3; i++) {
+					static char buffer[32];
+					sendto(handle, ":e1\r", 4, 0, (const struct sockaddr *) &addr, sizeof(addr));
+					indigo_usleep(100000);
+					if (recvfrom(handle, buffer, sizeof(buffer), MSG_WAITALL, (struct sockaddr *) &addr, &len) && *buffer == '=') {
+						strcpy(name + 10, inet_ntoa(addr.sin_addr));
+						indigo_update_property(device, DEVICE_PORT_PROPERTY, "mount detected at %s", name);
+						break;
+					}
+				}
+			}
+		}
+		if (*host == 0) {
+			PRIVATE_DATA->handle = 0;
+		} else if (colon == NULL) {
+			PRIVATE_DATA->handle = indigo_open_udp(host, 11880);
+		} else {
+			char host_name[INDIGO_NAME_SIZE];
+			strncpy(host_name, host, colon - host);
+			int port = atoi(colon + 1);
+			PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
+		}
+		PRIVATE_DATA->udp = true;
+	} else {
+		PRIVATE_DATA->handle = indigo_open_serial(name);
+		PRIVATE_DATA->udp = false;
+	}
+	if (PRIVATE_DATA->handle > 0) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		return true;
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		return false;
+	}
+}
+
+void synscan_close(indigo_device *device) {
+	if (PRIVATE_DATA->handle > 0) {
+		close(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+	}
+}
 
 bool synscan_configure(indigo_device* device) {
 	//  Start with an assumption about each axis
@@ -926,7 +997,7 @@ void synscan_save_position(indigo_device *device) {
 }
 
 bool synscan_restore_position(indigo_device *device, enum AxisID axis, bool remove) {
-	long ra_pos = 0, dec_pos = 0;
+	long ra_pos = RA_HOME_POSITION, dec_pos = DEC_HOME_POSITION;
 	char path[INDIGO_VALUE_SIZE];
 	char buffer[INDIGO_VALUE_SIZE] = "";
 	snprintf(path, INDIGO_VALUE_SIZE, "%s/.indigo/synscan-%s.park", getenv("HOME"), MOUNT_INFO_MODEL_ITEM->text.value);
