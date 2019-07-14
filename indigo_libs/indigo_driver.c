@@ -415,12 +415,16 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 				if (DEVICE_PORTS_PROPERTY->items[i].sw.value) {
 					strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
-					DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 					DEVICE_PORTS_PROPERTY->items[i].sw.value = false;
 				}
 			}
 		}
+		if (*DEVICE_PORT_ITEM->text.value == '/' && access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
 	} else if (indigo_property_match(AUTHENTICATION_PROPERTY, property)) {
