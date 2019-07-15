@@ -917,37 +917,42 @@ void mount_handle_train_ppec(indigo_device *device) {
 static void mount_autohome_timer_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
 	long value, position_ra, position_dec;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StepsPerRevolution %06lx %06lx", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Auto home procedure started");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Steps/Revolution RA = %06lx, DEC = %06lx", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
 	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turn encoders off");
 	MOUNT_USE_RA_ENCODER_ITEM->sw.value = MOUNT_USE_DEC_ENCODER_ITEM->sw.value = false;
 	mount_handle_encoders(device);
-	
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Make sure axes are stopped");
+	synscan_stop_axis(device, kAxisRA);
+	synscan_stop_axis(device, kAxisDEC);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
+	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
+	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Try to get reliable home index signal");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset home position index");
 	synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
 	synscan_ext_setting(device, kAxisDEC, kResetHomeIndexer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Read home position index data");
-	synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+	synscan_ext_inquiry(device, kAxisRA, kGetHomeIndex, &value);
 	bool slewing_up_ra = value == 0;
-	synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+	synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
 	bool slewing_up_dec = value == 0;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d", slewing_up_ra, slewing_up_dec);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Make sure axes are stopped");
-	synscan_stop_axis(device, kAxisRA);
-	synscan_stop_axis(device, kAxisDEC);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slewing up RA = %d, DEC = %d", slewing_up_ra, slewing_up_dec);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
 	synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionFwd, kAxisSpeedAbsSlew);
 	synscan_set_axis_gearing(device, kAxisDEC, kAxisDirectionFwd, kAxisSpeedAbsSlew);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Aquire current position");
 	synscan_axis_position(device, kAxisRA, &position_ra);
 	synscan_axis_position(device, kAxisDEC, &position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx, DEC = %06lx", position_ra, position_dec);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
 	value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
 	position_ra = position_ra + (slewing_up_ra ? -value : value);
 	value = 5.0 / 360.0 *  PRIVATE_DATA->decTotalSteps;
 	position_dec = position_dec + (slewing_up_dec ? -value : value);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx %06lx", position_ra, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx, DEC = %06lx", position_ra, position_dec);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 	synscan_set_goto_target(device, kAxisRA, position_ra);
 	synscan_set_goto_target(device, kAxisDEC, position_dec);
@@ -958,21 +963,22 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
 	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Check home index status");
-	synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+	synscan_ext_inquiry(device, kAxisRA, kGetHomeIndex, &value);
 	bool index_changed_ra = !((value == 0) || (value == 0xFFFFFF));
-	synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+	synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
 	bool index_changed_dec = !((value == 0) || (value == 0xFFFFFF));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d", index_changed_ra, index_changed_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA changed = %d, DEC changed = %d", index_changed_ra, index_changed_dec);
 	if (index_changed_ra) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Make extra movement RA");
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set slewing mode");
 		synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionFwd, kAxisSpeedAbsSlew);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Aquire current position");
 		synscan_axis_position(device, kAxisRA, &position_ra);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx", position_ra);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
 		value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
 		position_ra = position_ra + (slewing_up_ra ? -value : value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx", position_ra);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx", position_ra);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 		synscan_set_goto_target(device, kAxisRA, position_ra);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew away from current position");
@@ -987,7 +993,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
 		value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
 		position_dec = position_dec + (slewing_up_dec ? -value : value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx", position_dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC = %06lx", position_dec);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 		synscan_set_goto_target(device, kAxisDEC, position_dec);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew 5 deg away from current position");
@@ -999,15 +1005,15 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset home position index if needed");
 	if (index_changed_ra) {
 		synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
-		synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+		synscan_ext_inquiry(device, kAxisRA, kGetHomeIndex, &value);
 		slewing_up_ra = value == 0;
 	}
 	if (index_changed_dec) {
 		synscan_ext_setting(device, kAxisDEC, kResetHomeIndexer);
-		synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+		synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
 		slewing_up_dec = value == 0;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d", slewing_up_ra, slewing_up_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slewing up RA = %d, DEC = %d", slewing_up_ra, slewing_up_dec);
 	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Move the axis to negative position");
 	if (!slewing_up_ra) {
@@ -1019,7 +1025,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		synscan_slew_axis(device, kAxisRA);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait RA home position index change");
 		while (true) {
-			synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+			synscan_ext_inquiry(device, kAxisRA, kGetHomeIndex, &value);
 			if (value != 0xFFFFFF)
 				break;
 		}
@@ -1042,7 +1048,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		synscan_slew_axis(device, kAxisDEC);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait DEC home position index change");
 		while (true) {
-			synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+			synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
 			if (value != 0xFFFFFF)
 				break;
 		}
@@ -1071,14 +1077,14 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	long home_position_ra = 0, home_position_dec = 0;
 	while (!index_changed_ra || !index_changed_dec) {
 		if (!index_changed_ra) {
-			synscan_ext_inquiry(device, kAxisRA, kGetIndexr, &value);
+			synscan_ext_inquiry(device, kAxisRA, kGetHomeIndex, &value);
 			if (value != 0) {
 				position_ra = home_position_ra = value;
 				index_changed_ra = true;
 				synscan_stop_axis(device, kAxisRA);
 			}
 			if (!index_changed_dec) {
-				synscan_ext_inquiry(device, kAxisDEC, kGetIndexr, &value);
+				synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
 				if (value != 0) {
 					position_dec = home_position_dec = value;
 					index_changed_dec = true;

@@ -3,6 +3,9 @@
 // Copyright (c) 2019 CloudMakers, s. r. o.
 // All rights reserved.
 //
+// Code is based on Skywatcher protocol simulator for INDI driver
+// Copyright 2012 Geehalel (geehalel AT gmail DOT com)
+//
 // The Skywatcher Protocol INDI driver is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -15,9 +18,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with the Skywatcher Protocol INDI driver.  If not, see <http://www.gnu.org/licenses/>.
-//
-// Code is based on Skywatcher protocol simulator for INDI driver
-// Copyright 2012 Geehalel (geehalel AT gmail DOT com)
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
@@ -412,19 +412,11 @@ char *process_command(const char *cmd) {
       if ((cmd[2] != '1') && (cmd[2] != '2') && (cmd[2] != '3')) {
         goto cant_do;
       }
-      //init_pwm();
-      //init_timers();
       if ((cmd[2] == '1') || (cmd[2] == '3')) {
-        //SETRAPWMA(pwm_table[ra_pwm_index]); SETRAPWMB(pwm_table[MICROSTEPS - 1 - ra_pwm_index]);
-        //SETRAPHIA(ra_microstep); SETRAPHIB(ra_microstep);
         SETMOTORPROPERTY(ra_status, INITIALIZED);
-        //RAENABLE = 1;
       }
       if ((cmd[2] == '2') || (cmd[2] == '3')) {
-        //SETDEPWMA(pwm_table[de_pwm_index]); SETDEPWMB(pwm_table[MICROSTEPS - 1 - de_pwm_index]);
-        //SETDEPHIA(de_microstep); SETDEPHIB(de_microstep);
         SETMOTORPROPERTY(de_status, INITIALIZED);
-        //DEENABLE = 1;
       }
       send_byte('=');
       break;
