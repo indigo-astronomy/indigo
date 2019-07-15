@@ -22,7 +22,7 @@
 #define Serial SerialUSB
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 #define TMR_FREQ              10 
 #define HIGHSPEED_STEPS       2
@@ -202,33 +202,33 @@ static char *process_command(char *buffer) {
       switch (parse_24(buffer + 3)) {      
         case START_PPEC_TRAINING_CMD:
           //TBD
-          return return "=";
-        case STOP_PPEC_TRAINING_CMD
+          return "=";
+        case STOP_PPEC_TRAINING_CMD:
           //TBD
-          return return "=";
-        case TURN_PPEC_ON_CMD
+          return "=";
+        case TURN_PPEC_ON_CMD:
           //TBD
-          return return "=";
-        case TURN_PPEC_OFF_CMD
+          return "=";
+        case TURN_PPEC_OFF_CMD:
           //TBD
-          return return "=";
-        case ENCODER_ON_CMD
+          return "=";
+        case ENCODER_ON_CMD:
           //TBD
-          return return "=";
-        case ENCODER_OFF_CMD
+          return "=";
+        case ENCODER_OFF_CMD:
           //TBD
-          return return "=";
-        case DISABLE_FULL_CURRENT_LOW_SPEED_CMD
+          return "=";
+        case DISABLE_FULL_CURRENT_LOW_SPEED_CMD:
           //TBD
-          return return "=";
-        case ENABLE_FULL_CURRENT_LOW_SPEED_CMD
+          return "=";
+        case ENABLE_FULL_CURRENT_LOW_SPEED_CMD:
           //TBD
-          return return "=";
-        case RESET_HOME_INDEXER_CMD
+          return "=";
+        case RESET_HOME_INDEXER_CMD:
           //TBD
-          return return "=";
+          return "=";
       }
-      return return "!0";
+      return "!0";
     }
     case 'a':
       return reply_24(STEPS_PER_REVOLUTION);

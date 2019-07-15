@@ -4197,6 +4197,7 @@
 		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_alignment.c; sourceTree = "<group>"; };
+		9D89442022DCD297002DFE13 /* eq8_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = eq8_simulator.ino; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_iidc.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
@@ -11767,6 +11768,14 @@
 			path = agent_alignment;
 			sourceTree = "<group>";
 		};
+		9D89441F22DCD297002DFE13 /* eq8_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9D89442022DCD297002DFE13 /* eq8_simulator.ino */,
+			);
+			path = eq8_simulator;
+			sourceTree = "<group>";
+		};
 		9D976FD21DD0C46E00782B32 /* ccd_iidc */ = {
 			isa = PBXGroup;
 			children = (
@@ -11830,6 +11839,7 @@
 				59A321B221D691D600EC0F4A /* indigo_mount_synscan_guider.h */,
 				59A321B421D691D600EC0F4A /* indigo_mount_synscan_guider.c */,
 				9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */,
+				9D89441F22DCD297002DFE13 /* eq8_simulator */,
 				590EE1AE22ABA01C00828030 /* synscan_simulator */,
 			);
 			path = mount_synscan;
