@@ -124,9 +124,9 @@ static uint8_t parse_8(const char *buffer) {
 static char *process_command(char *buffer) {
   if (buffer[0] != ':')
     return "!3";
-  if (buffer[2] != '0' && buffer[2] != '1')
+  if (buffer[2] != '1' && buffer[2] != '2')
     return "!0";
-  int axis = buffer[2] - '0';
+  int axis = buffer[2] - '1';
   switch (buffer[1]) {
     case 'B':
       axis_status[axis] = 0;
