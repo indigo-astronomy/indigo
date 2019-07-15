@@ -50,7 +50,7 @@ enum GuideRate {
 };
 
 enum ExtInquiry {
-	kGetIndexr = 0x0000,
+	kGetHomeIndex = 0x0000,
 	kGetFeatures = 0x0001
 };
 

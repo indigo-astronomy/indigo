@@ -3,6 +3,9 @@
 // Copyright (c) 2019 CloudMakers, s. r. o.
 // All rights reserved.
 //
+// Code is based on Skywatcher protocol simulator for INDI driver
+// Copyright 2012 Geehalel (geehalel AT gmail DOT com)
+//
 // The Skywatcher Protocol INDI driver is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -15,9 +18,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with the Skywatcher Protocol INDI driver.  If not, see <http://www.gnu.org/licenses/>.
-//
-// Code is based on Skywatcher protocol simulator for INDI driver
-// Copyright 2012 Geehalel (geehalel AT gmail DOT com)
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
