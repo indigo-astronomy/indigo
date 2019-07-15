@@ -23,12 +23,18 @@
 #endif
 
 //#define DEBUG
+#define LCD
 
-#define TMR_FREQ              10 
-#define HIGHSPEED_STEPS       2
-#define WORM_STEPS            435
-#define STEPS_PER_REVOLUTION  5568000
-#define FEATURES              HAS_ENCODER | HAS_PPEC | HAS_HOME_INDEXER | HAS_POLAR_LED
+#ifdef LCD
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+#endif
+
+#define TMR_FREQ              1 
+#define HIGHSPEED_STEPS       16
+#define WORM_STEPS            61866
+#define STEPS_PER_REVOLUTION  11136000
+#define FEATURES              HAS_ENCODER | HAS_PPEC | HAS_HOME_INDEXER | HAS_COMMON_SLEW_START | HAS_COMMON_SLEW_START
 
 #define HEX(c)                (((c) < 'A') ? ((c) - '0') : ((c) - 'A') + 10)
 
@@ -74,7 +80,7 @@ enum EXT_SETTING_CMD {
 static char hexa[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 static uint32_t axis_timer[2] = { 0, 0 };
-static uint32_t axis_t1[2] = { 100, 100 };
+static uint32_t axis_t1[2] = { 1, 1 };
 static uint16_t axis_status[2] = { 0, 0 };
 static uint32_t axis_position[2] = { 0x800000, 0x800000 };
 static uint32_t axis_target[2] = { 0, 0 };
@@ -168,6 +174,7 @@ static char *process_command(char *buffer) {
       axis_status[axis] |= INITIALIZED;
       return "=";
     case 'H':
+      axis_t1[axis] = 1;
       axis_target[axis] = axis_position[axis] + parse_24(buffer + 3);
       return "=";
     case 'I':
@@ -178,9 +185,10 @@ static char *process_command(char *buffer) {
       return "=";
     case 'K':
     case 'L':
-      axis_status[axis] |= RUNNING;
+      axis_status[axis] &= ~RUNNING;
       return "=";
     case 'M':
+      axis_t1[axis] = 1;
       axis_target[axis] = axis_target[axis] + parse_24(buffer + 3);
       return "=";
     case 'O':
@@ -275,7 +283,7 @@ static void process_axis_timer(uint8_t axis) {
     axis_timer[axis] = 0;
     uint8_t status = axis_status[axis];
     if (status & RUNNING) {
-      uint32_t steps = status & HIGHSPEED ? HIGHSPEED_STEPS : 1;
+      uint32_t steps = 128 * (status & HIGHSPEED ? HIGHSPEED_STEPS : 1);
       if (status & TRACKING) {
         if (status & BACKWARD)
           axis_position[axis] += steps;
@@ -283,11 +291,11 @@ static void process_axis_timer(uint8_t axis) {
           axis_position[axis] -= steps;
       } else {
         if (axis_position[axis] > axis_target[axis]) {
-          axis_position[axis] -= steps;
+          axis_position[axis] -= 128 * HIGHSPEED_STEPS;
           if (axis_position[axis] <= axis_target[axis])
             axis_position[axis] = axis_target[axis];
         } else if (axis_position[axis] < axis_target[axis]) {
-          axis_position[axis] += steps;
+          axis_position[axis] += 128 * HIGHSPEED_STEPS;
           if (axis_position[axis] >= axis_target[axis])
             axis_position[axis] = axis_target[axis];
         } else {
@@ -295,12 +303,25 @@ static void process_axis_timer(uint8_t axis) {
         }
       }
     }
+#ifdef LCD
+    char buffer[17];
+    sprintf(buffer, "%06x %06x %02x", axis_position[axis], axis_target[axis], status & 0xFF);
+    lcd.setCursor(0, axis);
+    lcd.print(buffer);
+#endif
   }
 }
 
 void setup() {
   Serial.begin(9600);
   Serial.setTimeout(1000);
+#ifdef LCD
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("EQ8 simulator");
+  lcd.setCursor(0, 1);
+  lcd.print("Not connected");
+#endif
   while (!Serial)
     ;
 }
