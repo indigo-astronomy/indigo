@@ -305,7 +305,8 @@ bool synscan_configure(indigo_device* device) {
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR OK %06X", decMotorStatus);
 	}
-
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+	
 	//  Configure the mount modes
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
