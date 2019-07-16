@@ -100,68 +100,70 @@ sla_de2h(double ha, double dec, double phi, double* az, double* el) {
 static void position_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->timer_count++;
 	if (PRIVATE_DATA->handle > 0) {
-		//  Longitude needed for LST
-		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-		double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * M_PI / 180.0;
+		if (MOUNT_AUTOHOME_PROPERTY->state != INDIGO_BUSY_STATE) {
+			//  Longitude needed for LST
+			double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+			double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * M_PI / 180.0;
 
-		//  Get the raw coords
-		synscan_get_coords(device);
+			//  Get the raw coords
+			synscan_get_coords(device);
 
-		//  Get the LST as quickly as we can after the HA
-		double lst = indigo_lst(NULL, lng);
+			//  Get the LST as quickly as we can after the HA
+			double lst = indigo_lst(NULL, lng);
 
-		//  Convert Encoder position to Raw HA/DEC/SideOfPier
-		double raw_ha, raw_dec;
-		int raw_sop;
-		coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &raw_ha, &raw_dec, &raw_sop);
-		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RAW ENCODER:    HA %g, DEC: %g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
+			//  Convert Encoder position to Raw HA/DEC/SideOfPier
+			double raw_ha, raw_dec;
+			int raw_sop;
+			coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &raw_ha, &raw_dec, &raw_sop);
+			//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RAW ENCODER:    HA %g, DEC: %g", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
 
-		//  Add in LST to get RA
-		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - (raw_ha * 12.0 / M_PI));
-		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec * 180.0 / M_PI;
-		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
-			MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
-		if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
-			MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
-		if (raw_sop == MOUNT_SIDE_EAST)
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-		else
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			//  Add in LST to get RA
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - (raw_ha * 12.0 / M_PI));
+			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec * 180.0 / M_PI;
+			if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
+				MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
+			if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
+				MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
+			if (raw_sop == MOUNT_SIDE_EAST)
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+			else
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 
-		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst, ha, (lst-(ha*12.0 / M_PI)), dec);
-		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
-		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst, ha, (lst-(ha*12.0 / M_PI)), dec);
+			indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 
-		indigo_raw_to_translated_with_lst(device, lst, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, raw_sop, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+			indigo_raw_to_translated_with_lst(device, lst, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, raw_sop, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 
-		//  In here we want to transform from observed to mean coordinates
+			//  In here we want to transform from observed to mean coordinates
 
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
-		//  Note that this code normally belongs in indigo_update_coordinates(), but that routine causes numerical
-		//  instability in derived quantities due to not having a way to use a fixed LST value for derived values.
-		if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-			double az, alt;
-			double aligned_ha = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-			double aligned_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * M_PI / 180.0;
+			//  Note that this code normally belongs in indigo_update_coordinates(), but that routine causes numerical
+			//  instability in derived quantities due to not having a way to use a fixed LST value for derived values.
+			if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+				double az, alt;
+				double aligned_ha = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+				double aligned_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * M_PI / 180.0;
 
-//			if (aligned_ha < 0.0)
-//				aligned_ha += 24.0;
-//			if (aligned_ha >= 24.0)
-//				aligned_ha -= 24.0;
-			aligned_ha = aligned_ha * M_PI / 12.0;
+	//			if (aligned_ha < 0.0)
+	//				aligned_ha += 24.0;
+	//			if (aligned_ha >= 24.0)
+	//				aligned_ha -= 24.0;
+				aligned_ha = aligned_ha * M_PI / 12.0;
 
-			sla_de2h(aligned_ha, aligned_dec, lat, &az, &alt);
+				sla_de2h(aligned_ha, aligned_dec, lat, &az, &alt);
 
-			MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
-			MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
-			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
-			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			MOUNT_LST_TIME_ITEM->number.value = lst;
-			indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+				MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
+				MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
+				MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+				indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				MOUNT_LST_TIME_ITEM->number.value = lst;
+				indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+			}
 		}
+		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
 	}
-	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
 	PRIVATE_DATA->timer_count--;
 }
 
@@ -930,6 +932,10 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
 	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset coordinates");
+	synscan_init_axis_position(device, kAxisRA, 0x800000);
+	synscan_init_axis_position(device, kAxisDEC, 0x800000);
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Try to get reliable home index signal");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset home position index");
 	synscan_ext_setting(device, kAxisRA, kResetHomeIndexer);
@@ -1083,13 +1089,13 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 				index_changed_ra = true;
 				synscan_stop_axis(device, kAxisRA);
 			}
-			if (!index_changed_dec) {
-				synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
-				if (value != 0) {
-					position_dec = home_position_dec = value;
-					index_changed_dec = true;
-					synscan_stop_axis(device, kAxisDEC);
-				}
+		}
+		if (!index_changed_dec) {
+			synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
+			if (value != 0) {
+				position_dec = home_position_dec = value;
+				index_changed_dec = true;
+				synscan_stop_axis(device, kAxisDEC);
 			}
 		}
 	}
