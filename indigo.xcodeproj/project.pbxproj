@@ -1092,6 +1092,7 @@
 		59A321B221D691D600EC0F4A /* indigo_mount_synscan_guider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_synscan_guider.h; sourceTree = "<group>"; };
 		59A321B321D691D600EC0F4A /* indigo_mount_synscan_mount.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_synscan_mount.c; sourceTree = "<group>"; };
 		59A321B421D691D600EC0F4A /* indigo_mount_synscan_guider.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_synscan_guider.c; sourceTree = "<group>"; };
+		59A4ED5B22DD888E00384056 /* LOGS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOGS.md; sourceTree = "<group>"; };
 		59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "51-sbig-debian.rules"; sourceTree = "<group>"; };
 		59A52D2F21A330FB000B6F27 /* sbigucam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigucam.hex; sourceTree = "<group>"; };
 		59A52D3021A330FB000B6F27 /* sbigpcam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigpcam.hex; sourceTree = "<group>"; };
@@ -11772,6 +11773,7 @@
 			isa = PBXGroup;
 			children = (
 				9D89442022DCD297002DFE13 /* eq8_simulator.ino */,
+				59A4ED5B22DD888E00384056 /* LOGS.md */,
 			);
 			path = eq8_simulator;
 			sourceTree = "<group>";
