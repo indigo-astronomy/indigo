@@ -31,8 +31,8 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
 #define TMR_FREQ              1 
-#define HIGHSPEED_STEPS       1
-#define WORM_STEPS            (16 * 3600)
+#define HIGHSPEED_STEPS       128
+#define WORM_STEPS            4 * 3600
 #define STEPS_PER_REVOLUTION  (60 * WORM_STEPS)
 #define FEATURES              HAS_ENCODER | HAS_PPEC | HAS_HOME_INDEXER | HAS_COMMON_SLEW_START | HAS_HALF_CURRENT_TRACKING
 
@@ -80,7 +80,7 @@ enum EXT_SETTING_CMD {
 static char hexa[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 static uint32_t axis_timer[2] = { 0, 0 };
-static uint32_t axis_t1[2] = { 1, 1 };
+static uint32_t axis_t1[2] = { 25, 25 };
 static uint16_t axis_status[2] = { 0, 0 };
 static uint32_t axis_position[2] = { 0x800000, 0x800000 };
 static uint32_t axis_target[2] = { 0, 0 };
@@ -175,7 +175,10 @@ static char *process_command(char *buffer) {
       return "=";
     case 'H':
       axis_t1[axis] = 1;
-      axis_target[axis] = axis_position[axis] + parse_24(buffer + 3);
+      if (axis_status[axis] & BACKWARD)
+        axis_target[axis] = axis_position[axis] - parse_24(buffer + 3);
+      else
+        axis_target[axis] = axis_position[axis] + parse_24(buffer + 3);
       return "=";
     case 'I':
       axis_t1[axis] = parse_24(buffer + 3);
@@ -281,19 +284,19 @@ static void process_axis_timer(uint8_t axis) {
     axis_timer[axis] = 0;
     uint8_t status = axis_status[axis];
     if (status & RUNNING) {
-      uint32_t steps = 128 * (status & HIGHSPEED ? HIGHSPEED_STEPS : 1);
+      uint32_t steps = status & HIGHSPEED ? HIGHSPEED_STEPS : 1;
       if (status & TRACKING) {
         if (status & BACKWARD)
-          axis_position[axis] += steps;
-        else
           axis_position[axis] -= steps;
+        else
+          axis_position[axis] += steps;
       } else {
         if (axis_position[axis] > axis_target[axis]) {
-          axis_position[axis] -= 128 * HIGHSPEED_STEPS;
+          axis_position[axis] -= HIGHSPEED_STEPS;
           if (axis_position[axis] <= axis_target[axis])
             axis_position[axis] = axis_target[axis];
         } else if (axis_position[axis] < axis_target[axis]) {
-          axis_position[axis] += 128 * HIGHSPEED_STEPS;
+          axis_position[axis] += HIGHSPEED_STEPS;
           if (axis_position[axis] >= axis_target[axis])
             axis_position[axis] = axis_target[axis];
         } else {
@@ -342,7 +345,7 @@ void loop() {
     Serial.write(process_command(buffer));
 #ifdef DEBUG
     Serial.write('\n');
-#else
+#else    
     Serial.write('\r');
 #endif
   }
