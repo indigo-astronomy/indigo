@@ -18,6 +18,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// For use with Arduino DUE with 2x16 LCD Shield
+
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
 #endif
@@ -30,7 +32,6 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-#define TMR_FREQ              1 
 #define HIGHSPEED_STEPS       128
 #define WORM_STEPS            4 * 3600
 #define STEPS_PER_REVOLUTION  (60 * WORM_STEPS)
@@ -84,7 +85,10 @@ static uint32_t axis_t1[2] = { 25, 25 };
 static uint16_t axis_status[2] = { 0, 0 };
 static uint32_t axis_position[2] = { 0x800000, 0x800000 };
 static uint32_t axis_target[2] = { 0, 0 };
-static uint32_t axis_home_index[2] = { 0, 0 };
+static uint32_t axis_brake[2] = { 0, 0 };
+static uint32_t axis_features[2] = { FEATURES, FEATURES };
+static int32_t axis_abs_position[2] = { 0, 0 };
+static int32_t axis_home_index[2] = { 0, 0 };
 
 static char *reply_8(uint8_t n) {
   static char buffer[8] = "=00";
@@ -137,8 +141,8 @@ static char *process_command(char *buffer) {
     case 'B':
       axis_status[axis] = 0;
       return "=";
-//    case 'D':
-//      return reply_24(...);
+    case 'D':
+      return reply_24(100);
     case 'E':
       axis_position[axis] = parse_24(buffer + 3);
       return "=";
@@ -191,50 +195,51 @@ static char *process_command(char *buffer) {
       axis_status[axis] &= ~RUNNING;
       return "=";
     case 'M':
+      if (axis_status[axis] & BACKWARD)
+        axis_brake[axis] = axis_position[axis] - parse_24(buffer + 3);
+      else
+        axis_brake[axis] = axis_position[axis] + parse_24(buffer + 3);
       return "=";
     case 'O':
       return "=";
-//    case 'P':
-//      return "=";
+    case 'P':
+      return "=";
     case 'S':
       if (axis_status[axis] & RUNNING)
         return "!2";
       axis_target[axis] = parse_24(buffer + 3);
       return "=";
-//    case 'T':
-//      return "=";
-//    case 'U':
-//      return "=";
+    case 'T':
+      return "=";
+    case 'U':
+      axis_brake[axis] = parse_24(buffer + 3);
+      return "=";
     case 'V':
       return "=";
     case 'W': {
       switch (parse_24(buffer + 3)) {      
         case START_PPEC_TRAINING_CMD:
-          //TBD
+          axis_features[axis] |= IN_PPEC_TRAINING;
           return "=";
         case STOP_PPEC_TRAINING_CMD:
-          //TBD
+          axis_features[axis] &= ~IN_PPEC_TRAINING;
           return "=";
         case TURN_PPEC_ON_CMD:
-          //TBD
+          axis_features[axis] |= IN_PPEC;
           return "=";
         case TURN_PPEC_OFF_CMD:
-          //TBD
+          axis_features[axis] &= ~IN_PPEC;
           return "=";
         case ENCODER_ON_CMD:
-          //TBD
           return "=";
         case ENCODER_OFF_CMD:
-          //TBD
           return "=";
         case DISABLE_FULL_CURRENT_LOW_SPEED_CMD:
-          //TBD
           return "=";
         case ENABLE_FULL_CURRENT_LOW_SPEED_CMD:
-          //TBD
           return "=";
         case RESET_HOME_INDEXER_CMD:
-          //TBD
+          axis_home_index[axis] = axis_abs_position[axis] >= 0 ? 0 : -1;
           return "=";
       }
       return "!0";
@@ -242,9 +247,9 @@ static char *process_command(char *buffer) {
     case 'a':
       return reply_24(STEPS_PER_REVOLUTION);
     case 'b':
-      return reply_24(1000 / TMR_FREQ);
-//    case 'c':
-//      return reply_24(...);
+      return reply_24(1000);
+    case 'c':
+      return reply_24(axis_brake[axis]);
 //    case 'd':
 //      return reply_24(...);
     case 'e':
@@ -253,23 +258,24 @@ static char *process_command(char *buffer) {
       return reply_12(axis_status[axis]);
     case 'g':
       return reply_8(HIGHSPEED_STEPS);
-//    case 'h':
-//      return reply_24(...);
-//    case 'i':
-//      return reply_24(...);
+    case 'h':
+      return reply_24(axis_target[axis]);
+    case 'i':
+      return reply_24(axis_t1[axis]);
     case 'j':
       return reply_24(axis_position[axis]);
-//    case 'k':
-//      return reply_24(...);
-//    case 'm':
-//      return reply_24(...);
+    case 'k':
+      axis_target[axis] = axis_position[axis];
+      return "=";
+    case 'm':
+      return reply_24(axis_brake[axis]);
     case 'q': {
       uint32_t id = parse_24(buffer + 3);
       switch (id) {
         case GET_INDEXER_CMD:
           return reply_24(axis_home_index[axis]);
         case GET_FEATURES_CMD:
-          return reply_24(FEATURES);
+          return reply_24(axis_features[axis]);
       }
       return "!0";
     }
@@ -279,26 +285,47 @@ static char *process_command(char *buffer) {
   return "!0";
 }
 
+static void process_home_index(uint8_t axis, int32_t steps) {
+  axis_home_index[axis] += steps;
+  if (axis_position[axis] < 0 && axis_position[axis] + steps > 0) {
+    axis_home_index[axis] = axis_position[axis] + steps;
+  } else if (axis_position[axis] > 0 && axis_position[axis] + steps < 0) {
+    axis_home_index[axis] = axis_position[axis] + steps;
+  }
+  axis_abs_position[axis] += steps;
+}
+
 static void process_axis_timer(uint8_t axis) {
-  if (++axis_timer[axis] > axis_t1[axis]) {
+  if (++axis_timer[axis] >= axis_t1[axis]) {
     axis_timer[axis] = 0;
-    uint8_t status = axis_status[axis];
+    uint16_t status = axis_status[axis];
     if (status & RUNNING) {
       uint32_t steps = status & HIGHSPEED ? HIGHSPEED_STEPS : 1;
       if (status & TRACKING) {
-        if (status & BACKWARD)
+        if (status & BACKWARD) {
+          process_home_index(axis, -steps);
           axis_position[axis] -= steps;
-        else
+        } else {
+          process_home_index(axis, steps);
           axis_position[axis] += steps;
+        }
       } else {
         if (axis_position[axis] > axis_target[axis]) {
-          axis_position[axis] -= HIGHSPEED_STEPS;
-          if (axis_position[axis] <= axis_target[axis])
+          if (axis_position[axis] - HIGHSPEED_STEPS <= axis_target[axis]) {
+            process_home_index(axis, -(axis_target[axis] - axis_position[axis]));
             axis_position[axis] = axis_target[axis];
+          } else {
+            process_home_index(axis, -HIGHSPEED_STEPS);
+            axis_position[axis] -= HIGHSPEED_STEPS;
+          }
         } else if (axis_position[axis] < axis_target[axis]) {
-          axis_position[axis] += HIGHSPEED_STEPS;
-          if (axis_position[axis] >= axis_target[axis])
+          if (axis_position[axis] + HIGHSPEED_STEPS >= axis_target[axis]) {
+            process_home_index(axis, axis_target[axis] - axis_position[axis]);
             axis_position[axis] = axis_target[axis];
+          } else {
+            process_home_index(axis, HIGHSPEED_STEPS);
+            axis_position[axis] += HIGHSPEED_STEPS;
+          }
         } else {
           axis_status[axis] &= ~RUNNING;
         }
@@ -306,7 +333,12 @@ static void process_axis_timer(uint8_t axis) {
     }
 #ifdef LCD
     char buffer[17];
-    sprintf(buffer, "%06x %06x %02x", axis_position[axis], axis_target[axis], status & 0xFF);
+    if (!analogRead(0))
+      sprintf(buffer, "%06x %06x    ", axis_abs_position[axis] & 0xFFFFFF, axis_home_index[axis] & 0xFFFFFF);
+    else if (status & INITIALIZED)
+      sprintf(buffer, "%06x %06x %02x", axis_position[axis] & 0xFFFFFF, axis_target[axis] & 0xFFFFFF, status & 0xFF);
+    else
+      strcpy(buffer, "Power off       ");
     lcd.setCursor(0, axis);
     lcd.print(buffer);
 #endif
@@ -330,7 +362,7 @@ void setup() {
 void loop() {
   static uint32_t last_millis = 0;
   uint32_t current_millis = millis();
-  if (current_millis - last_millis > TMR_FREQ) {
+  if (current_millis - last_millis > 0) {
     process_axis_timer(0);
     process_axis_timer(1);
   }  
