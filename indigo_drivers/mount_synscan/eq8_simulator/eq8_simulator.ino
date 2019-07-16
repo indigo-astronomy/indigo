@@ -359,7 +359,7 @@ static void process_axis_timer(uint8_t axis) {
 #ifdef LCD
     char buffer[17];
     if (!analogRead(0))
-      sprintf(buffer, "%06X %06X    ", axis_abs_position[axis] & 0xFFFFFF, axis_home_index[axis] & 0xFFFFFF);
+      sprintf(buffer, "%06X %06X %02d", axis_abs_position[axis] & 0xFFFFFF, axis_home_index[axis] & 0xFFFFFF, axis_t1[axis]);
     else if (status & INITIALIZED) {
       char mode = ' ';
       uint32_t value = axis_target[axis];
