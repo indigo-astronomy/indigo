@@ -89,6 +89,7 @@ static uint32_t axis_brake[2] = { 0, 0 };
 static uint32_t axis_features[2] = { FEATURES, FEATURES };
 static int32_t axis_abs_position[2] = { 0, 0 };
 static int32_t axis_home_index[2] = { 0, 0 };
+static bool axis_home_index_hit[2] = { 0, 0 };
 
 static char *reply_8(uint8_t n) {
   static char buffer[8] = "=00";
@@ -239,7 +240,8 @@ static char *process_command(char *buffer) {
         case ENABLE_FULL_CURRENT_LOW_SPEED_CMD:
           return "=";
         case RESET_HOME_INDEXER_CMD:
-          axis_home_index[axis] = axis_abs_position[axis] >= 0 ? 0 : -1;
+          axis_home_index[axis] = axis_abs_position[axis] >= 0 ? -1 : 0;
+          axis_home_index_hit[axis] = 0;
           return "=";
       }
       return "!0";
@@ -285,12 +287,13 @@ static char *process_command(char *buffer) {
   return "!0";
 }
 
-static void process_home_index(uint8_t axis, int32_t steps) {
-  axis_home_index[axis] += steps;
-  if (axis_position[axis] < 0 && axis_position[axis] + steps > 0) {
-    axis_home_index[axis] = axis_position[axis] + steps;
-  } else if (axis_position[axis] > 0 && axis_position[axis] + steps < 0) {
-    axis_home_index[axis] = axis_position[axis] + steps;
+static void process_home_index(uint8_t axis, int32_t steps) {  
+  if (axis_abs_position[axis] < 0 && axis_abs_position[axis] + steps >= 0) {
+    axis_home_index_hit[axis] = 1;
+    axis_home_index[axis] = axis_position[axis] - axis_abs_position[axis];
+  } else if (axis_abs_position[axis] >= 0 && axis_abs_position[axis] + steps < 0) {
+    axis_home_index_hit[axis] = 1;
+    axis_home_index[axis] = axis_position[axis] - axis_abs_position[axis];
   }
   axis_abs_position[axis] += steps;
 }
@@ -312,16 +315,18 @@ static void process_axis_timer(uint8_t axis) {
       } else {
         if (axis_position[axis] > axis_target[axis]) {
           if (axis_position[axis] - HIGHSPEED_STEPS <= axis_target[axis]) {
-            process_home_index(axis, -(axis_target[axis] - axis_position[axis]));
-            axis_position[axis] = axis_target[axis];
+            int32_t diff = axis_position[axis] - axis_target[axis];
+            process_home_index(axis, -diff);
+            axis_position[axis] -= diff;
           } else {
             process_home_index(axis, -HIGHSPEED_STEPS);
             axis_position[axis] -= HIGHSPEED_STEPS;
           }
         } else if (axis_position[axis] < axis_target[axis]) {
           if (axis_position[axis] + HIGHSPEED_STEPS >= axis_target[axis]) {
-            process_home_index(axis, axis_target[axis] - axis_position[axis]);
-            axis_position[axis] = axis_target[axis];
+            int32_t diff = axis_target[axis] - axis_position[axis];
+            process_home_index(axis, diff);
+            axis_position[axis] += diff;
           } else {
             process_home_index(axis, HIGHSPEED_STEPS);
             axis_position[axis] += HIGHSPEED_STEPS;
@@ -336,7 +341,7 @@ static void process_axis_timer(uint8_t axis) {
     if (!analogRead(0))
       sprintf(buffer, "%06x %06x    ", axis_abs_position[axis] & 0xFFFFFF, axis_home_index[axis] & 0xFFFFFF);
     else if (status & INITIALIZED)
-      sprintf(buffer, "%06x %06x %02x", axis_position[axis] & 0xFFFFFF, axis_target[axis] & 0xFFFFFF, status & 0xFF);
+      sprintf(buffer, "%06x %06x%c%02x", axis_position[axis] & 0xFFFFFF, axis_target[axis] & 0xFFFFFF, axis_home_index_hit[axis] ? '*' : ' ', status & 0xFF);
     else
       strcpy(buffer, "Power off       ");
     lcd.setCursor(0, axis);
