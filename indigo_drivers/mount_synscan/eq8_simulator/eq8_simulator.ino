@@ -84,7 +84,10 @@ static uint32_t axis_timer[2] = { 0, 0 };
 static uint32_t axis_t1[2] = { 25, 25 };
 static uint16_t axis_status[2] = { 0, 0 };
 static uint32_t axis_position[2] = { 0x800000, 0x800000 };
+static uint32_t axis_increment[2] = { 0, 0 };
 static uint32_t axis_target[2] = { 0, 0 };
+static bool axis_increment_set[2] = { 0, 0 };
+static bool axis_target_set[2] = { 0, 0 };
 static uint32_t axis_brake[2] = { 0, 0 };
 static uint32_t axis_features[2] = { FEATURES, FEATURES };
 static int32_t axis_abs_position[2] = { 0, 0 };
@@ -147,6 +150,9 @@ static char *process_command(char *buffer) {
     case 'E':
       axis_position[axis] = parse_24(buffer + 3);
       return "=";
+    case 'F':
+      axis_status[axis] |= INITIALIZED;
+      return "=";
     case 'G': {
       if (axis_status[axis] & RUNNING)
         return "!2";
@@ -175,21 +181,31 @@ static char *process_command(char *buffer) {
       }
       return "=";
     }
-    case 'F':
-      axis_status[axis] |= INITIALIZED;
-      return "=";
     case 'H':
       axis_t1[axis] = 1;
-      if (axis_status[axis] & BACKWARD)
-        axis_target[axis] = axis_position[axis] - parse_24(buffer + 3);
-      else
-        axis_target[axis] = axis_position[axis] + parse_24(buffer + 3);
+      axis_increment[axis] = parse_24(buffer + 3);
+      axis_increment_set[axis] = 1;
+      axis_target_set[axis] = 0;
       return "=";
     case 'I':
       axis_t1[axis] = parse_24(buffer + 3);
       return "=";
     case 'J':
-      axis_status[axis] |= RUNNING;
+      if (!(axis_status[axis] & TRACKING)) {
+        if (axis_increment_set[axis]) {
+          if (axis_status[axis] & BACKWARD)
+            axis_target[axis] = axis_position[axis] - axis_increment[axis];
+          else
+            axis_target[axis] = axis_position[axis] + axis_increment[axis];
+          axis_increment_set[axis] = 0;
+          axis_status[axis] |= RUNNING;
+        } else if (axis_target_set[axis]) {
+          axis_target_set[axis] = 0;
+          axis_status[axis] |= RUNNING;
+        }
+      } else {
+        axis_status[axis] |= RUNNING;
+      }
       return "=";
     case 'K':
     case 'L':
@@ -208,7 +224,10 @@ static char *process_command(char *buffer) {
     case 'S':
       if (axis_status[axis] & RUNNING)
         return "!2";
+      axis_t1[axis] = 1;
       axis_target[axis] = parse_24(buffer + 3);
+      axis_increment_set[axis] = 0;
+      axis_target_set[axis] = 1;
       return "=";
     case 'T':
       return "=";
@@ -267,7 +286,8 @@ static char *process_command(char *buffer) {
     case 'j':
       return reply_24(axis_position[axis]);
     case 'k':
-      axis_target[axis] = axis_position[axis];
+      if (buffer[3] == '1')
+        axis_increment[axis] = 0;
       return "=";
     case 'm':
       return reply_24(axis_brake[axis]);
@@ -339,11 +359,23 @@ static void process_axis_timer(uint8_t axis) {
 #ifdef LCD
     char buffer[17];
     if (!analogRead(0))
-      sprintf(buffer, "%06x %06x    ", axis_abs_position[axis] & 0xFFFFFF, axis_home_index[axis] & 0xFFFFFF);
-    else if (status & INITIALIZED)
-      sprintf(buffer, "%06x %06x%c%02x", axis_position[axis] & 0xFFFFFF, axis_target[axis] & 0xFFFFFF, axis_home_index_hit[axis] ? '*' : ' ', status & 0xFF);
-    else
+      sprintf(buffer, "%06X %06X    ", axis_abs_position[axis] & 0xFFFFFF, axis_home_index[axis] & 0xFFFFFF);
+    else if (status & INITIALIZED) {
+      char mode = ' ';
+      uint32_t value = axis_target[axis];
+      if (axis_target_set[axis]) {
+        mode = '=';
+      } else if (axis_increment_set[axis]) {
+        if (status & BACKWARD)
+          mode = '-';
+        else
+          mode = '+';
+        value = axis_increment[axis];
+      }
+      sprintf(buffer, "%06X%c%06X%c%02x", axis_position[axis] & 0xFFFFFF, mode, value & 0xFFFFFF, axis_home_index_hit[axis] ? '*' : ' ', status & 0xFF);
+    } else {
       strcpy(buffer, "Power off       ");
+    }
     lcd.setCursor(0, axis);
     lcd.print(buffer);
 #endif
