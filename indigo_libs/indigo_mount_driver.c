@@ -41,11 +41,7 @@
 
 
 static double indigo_range24(double ha) {
-	if (ha < 0.0)
-		ha += 24.0;
-	if (ha >= 24.0)
-		ha -= 24.0;
-	return ha;
+	return fmod(ha + (24000), 24);
 }
 
 indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
