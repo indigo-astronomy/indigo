@@ -31,10 +31,10 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
 #define TMR_FREQ              1 
-#define HIGHSPEED_STEPS       16
-#define WORM_STEPS            61866
-#define STEPS_PER_REVOLUTION  11136000
-#define FEATURES              HAS_ENCODER | HAS_PPEC | HAS_HOME_INDEXER | HAS_COMMON_SLEW_START | HAS_COMMON_SLEW_START
+#define HIGHSPEED_STEPS       1
+#define WORM_STEPS            (16 * 3600)
+#define STEPS_PER_REVOLUTION  (60 * WORM_STEPS)
+#define FEATURES              HAS_ENCODER | HAS_PPEC | HAS_HOME_INDEXER | HAS_COMMON_SLEW_START | HAS_HALF_CURRENT_TRACKING
 
 #define HEX(c)                (((c) < 'A') ? ((c) - '0') : ((c) - 'A') + 10)
 
@@ -188,8 +188,6 @@ static char *process_command(char *buffer) {
       axis_status[axis] &= ~RUNNING;
       return "=";
     case 'M':
-      axis_t1[axis] = 1;
-      axis_target[axis] = axis_target[axis] + parse_24(buffer + 3);
       return "=";
     case 'O':
       return "=";
@@ -299,7 +297,7 @@ static void process_axis_timer(uint8_t axis) {
           if (axis_position[axis] >= axis_target[axis])
             axis_position[axis] = axis_target[axis];
         } else {
-          status &= ~RUNNING;
+          axis_status[axis] &= ~RUNNING;
         }
       }
     }

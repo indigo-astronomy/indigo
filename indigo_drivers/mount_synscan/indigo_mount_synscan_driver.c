@@ -214,11 +214,6 @@ bool synscan_configure(indigo_device* device) {
 		MOUNT_PEC_PROPERTY->hidden = MOUNT_PEC_TRAINING_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasPPEC) || (PRIVATE_DATA->decFeatures & kHasPPEC));
 		MOUNT_AUTOHOME_PROPERTY->hidden = MOUNT_AUTOHOME_SETTINGS_PROPERTY->hidden = !((PRIVATE_DATA->raFeatures & kHasHomeIndexer) || (PRIVATE_DATA->decFeatures & kHasHomeIndexer));
 
-//		PRIVATE_DATA->raTotalSteps = PRIVATE_DATA->decTotalSteps = 9024000;
-//		PRIVATE_DATA->raWormSteps = PRIVATE_DATA->decWormSteps = 50133;
-//		PRIVATE_DATA->raTimerFreq = PRIVATE_DATA->decTimerFreq = 64935;
-//		PRIVATE_DATA->raHighSpeedFactor = PRIVATE_DATA->decHighSpeedFactor = 16;
-
 		//  Check if mount understands polarscope LED brightness
 		unsigned char brightness = 0;
 		if (synscan_set_polarscope_brightness(device, brightness)) {
