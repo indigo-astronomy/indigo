@@ -918,7 +918,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
 	long value, position_ra, position_dec;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Auto home procedure started");
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Steps/Revolution RA = %06lx, DEC = %06lx", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Steps/Revolution RA = %06lx, DEC = %06lx", PRIVATE_DATA->raTotalSteps & 0xFFFFFF, PRIVATE_DATA->decTotalSteps & 0xFFFFFF);
 	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turn encoders off");
 	MOUNT_USE_RA_ENCODER_ITEM->sw.value = MOUNT_USE_DEC_ENCODER_ITEM->sw.value = false;
@@ -946,13 +946,13 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Aquire current position");
 	synscan_axis_position(device, kAxisRA, &position_ra);
 	synscan_axis_position(device, kAxisDEC, &position_dec);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx, DEC = %06lx", position_ra, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx, DEC = %06lx", position_ra & 0xFFFFFF, position_dec & 0xFFFFFF);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
 	value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
 	position_ra = position_ra + (slewing_up_ra ? -value : value);
 	value = 5.0 / 360.0 *  PRIVATE_DATA->decTotalSteps;
 	position_dec = position_dec + (slewing_up_dec ? -value : value);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx, DEC = %06lx", position_ra, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx, DEC = %06lx", position_ra & 0xFFFFFF, position_dec & 0xFFFFFF);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 	synscan_set_goto_target(device, kAxisRA, position_ra);
 	synscan_set_goto_target(device, kAxisDEC, position_dec);
@@ -974,11 +974,11 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		synscan_set_axis_gearing(device, kAxisRA, kAxisDirectionFwd, kAxisSpeedAbsSlew);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Aquire current position");
 		synscan_axis_position(device, kAxisRA, &position_ra);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx", position_ra);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx", position_ra & 0xFFFFFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
 		value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
 		position_ra = position_ra + (slewing_up_ra ? -value : value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx", position_ra);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA = %06lx", position_ra & 0xFFFFFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 		synscan_set_goto_target(device, kAxisRA, position_ra);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew away from current position");
@@ -993,7 +993,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
 		value = 5.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
 		position_dec = position_dec + (slewing_up_dec ? -value : value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC = %06lx", position_dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC = %06lx", position_dec & 0xFFFFFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 		synscan_set_goto_target(device, kAxisDEC, position_dec);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew 5 deg away from current position");
@@ -1104,7 +1104,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calculate target position");
 	position_ra -= 10.0 / 360.0 *  PRIVATE_DATA->raTotalSteps;
 	position_dec -= 10.0 / 360.0 *  PRIVATE_DATA->decTotalSteps;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx %06lx", position_ra, position_dec);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%06lx %06lx", position_ra & 0xFFFFFF, position_dec & 0xFFFFFF);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 	synscan_set_goto_target(device, kAxisRA, position_ra);
 	synscan_set_goto_target(device, kAxisDEC, position_dec);
@@ -1122,7 +1122,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set target position");
 	synscan_set_goto_target(device, kAxisRA, home_position_ra);
 	synscan_set_goto_target(device, kAxisDEC, home_position_dec);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew 10deg away from current position");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slew home");
 	synscan_slew_axis(device, kAxisRA);
 	synscan_slew_axis(device, kAxisDEC);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until both axis stops");
