@@ -23,7 +23,7 @@
  \file indigo_aux_sqm.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_sqm"
 
 #include <stdlib.h>
@@ -69,11 +69,13 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_AUX_SKY_BRIGHTNESS_ITEM, "X_AUX_SKY_BRIGHTNESS", "Sky quality [mag/arcsec^2]", -20, 30, 0, 0);
-		indigo_init_number_item(X_AUX_SENSOR_FREQUENCY_ITEM, "X_AUX_SENSOR_FREQUENCY", "SQM sensor frequence [Hz]", 0, 100000, 0, 0);
-		indigo_init_number_item(X_AUX_SENSOR_COUNTS_ITEM, "X_AUX_SENSOR_COUNTS", "SQM sensor period", 0, 100000, 0, 0);
-		indigo_init_number_item(X_AUX_SENSOR_PERIOD_ITEM, "X_AUX_SENSOR_PERIOD", "SQM sensor period [s]", 0, 100000, 0, 0);
-		indigo_init_number_item(X_AUX_SKY_TEMPERATURE_ITEM, "X_AUX_SKY_TEMPERATURE", "Sky temperature [C]", -100, 100, 0, 0);
+		indigo_init_number_item(X_AUX_SKY_BRIGHTNESS_ITEM, "X_AUX_SKY_BRIGHTNESS", "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
+		indigo_init_number_item(X_AUX_SENSOR_FREQUENCY_ITEM, "X_AUX_SENSOR_FREQUENCY", "SQM sensor frequency [Hz]", 0, 1000000000, 0, 0);
+		strcpy(X_AUX_SENSOR_FREQUENCY_ITEM->number.format, "%.0f");
+		indigo_init_number_item(X_AUX_SENSOR_COUNTS_ITEM, "X_AUX_SENSOR_COUNTS", "SQM sensor period [counts]", 0, 1000000000, 0, 0);
+		strcpy(X_AUX_SENSOR_COUNTS_ITEM->number.format, "%.0f");
+		indigo_init_number_item(X_AUX_SENSOR_PERIOD_ITEM, "X_AUX_SENSOR_PERIOD", "SQM sensor period [sec]", 0, 1000000000, 0, 0);
+		indigo_init_number_item(X_AUX_SKY_TEMPERATURE_ITEM, "X_AUX_SKY_TEMPERATURE", "Sky temperature [\u00B0C]", -100, 100, 0, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -86,7 +88,12 @@ static indigo_result aux_attach(indigo_device *device) {
 		}
 #endif
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usb_aux");
+	if (DEVICE_PORTS_PROPERTY->count > 1) {
+		/* 0 is refresh button */
+		strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name, INDIGO_VALUE_SIZE);
+	} else {
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
+	}
 #endif
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
@@ -112,6 +119,7 @@ static void aux_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	indigo_printf(PRIVATE_DATA->handle, "rx");
 	indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
 	if (*strtok_r(buffer, ",", &pnt) != 'r') {
 		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -197,7 +205,7 @@ indigo_result indigo_aux_sqm(indigo_driver_action action, indigo_driver_info *in
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static sqm_private_data *private_data = NULL;
 	static indigo_device *aux = NULL;
-	
+
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
 		"Unihedron SQM",
 		aux_attach,
@@ -206,12 +214,12 @@ indigo_result indigo_aux_sqm(indigo_driver_action action, indigo_driver_info *in
 		NULL,
 		aux_detach
 		);
-	
+
 	SET_DRIVER_INFO(info, "Unihedron SQM", __FUNCTION__, DRIVER_VERSION, false, last_action);
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -224,7 +232,7 @@ indigo_result indigo_aux_sqm(indigo_driver_action action, indigo_driver_info *in
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
-			
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
 			if (aux != NULL) {
@@ -237,10 +245,10 @@ indigo_result indigo_aux_sqm(indigo_driver_action action, indigo_driver_info *in
 				private_data = NULL;
 			}
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }

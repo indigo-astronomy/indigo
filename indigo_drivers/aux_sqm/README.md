@@ -1,6 +1,6 @@
 # Unihedron SQM sky quality meter driver
 
-https://www.cloudynights.com/topic/457536-usb-corded-shutter-control-for-nikon/
+http://www.unihedron.com
 
 ## Supported devices
 * Unihedron SQM device with USB or serial connection
@@ -23,4 +23,5 @@ indigo_server indigo_aux_sqm
 
 ## Status: Stable
 
-Tested with a physical device.
+Tested with a physical device:
+* SQM-LU
