@@ -258,6 +258,7 @@ static void meade_get_utc(indigo_device *device) {
 }
 
 static void meade_get_observatory(indigo_device *device) {
+	char response[128];
 	if (meade_command(device, ":Gt#", response, sizeof(response), 0))
 		MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
 	if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
