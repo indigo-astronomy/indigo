@@ -87,6 +87,7 @@ typedef struct {
 	indigo_property *alignment_mode_property;
 	indigo_property *mount_type_property;
 	indigo_timer *focuser_timer;
+	bool use_dst_commands;
 } lx200_private_data;
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
@@ -408,6 +409,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
+					if (meade_command(device, ":GH#", response, sizeof(response), 0)) {
+						PRIVATE_DATA->use_dst_commands = *response != 0;
+					}
 				} else if (MOUNT_TYPE_EQMAC_ITEM->sw.value) {
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 					MOUNT_UTC_TIME_PROPERTY->hidden = true;
@@ -854,6 +858,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
+						if (PRIVATE_DATA->use_dst_commands) {
+							sprintf(command, ":SH%d#", tm.tm_isdst);
+							meade_command(device, command, NULL, 0, 0);
+						}
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -880,14 +888,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-					sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+				sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					sprintf(command, ":SG%02ld#", tm.tm_gmtoff / 3600);
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
-						sprintf(command, ":SG%02ld#", tm.tm_gmtoff / 3600);
-						if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-							MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-						} else {
+						if (PRIVATE_DATA->use_dst_commands) {
+							sprintf(command, ":SH%d#", tm.tm_isdst);
+							meade_command(device, command, NULL, 0, 0);
+						}
 						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 					}
 				}
