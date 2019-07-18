@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -257,6 +257,17 @@ static void meade_get_utc(indigo_device *device) {
 	}
 }
 
+static void meade_get_observatory(indigo_device *device) {
+	if (meade_command(device, ":Gt#", response, sizeof(response), 0))
+		MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
+	if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
+		double longitude = indigo_stod(response);
+		if (longitude < 0)
+			longitude += 360;
+		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 360 - longitude;
+	}
+}
+
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
@@ -393,14 +404,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						}
 						indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 					}
-					if (meade_command(device, ":Gt#", response, sizeof(response), 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
-						double longitude = indigo_stod(response);
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
+					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
 				} else if (MOUNT_TYPE_EQMAC_ITEM->sw.value) {
@@ -437,14 +441,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 							PRIVATE_DATA->parked = true;
 						}
 					}
-					if (meade_command(device, ":Gt#", response, sizeof(response), 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
-						double longitude = indigo_stod(response);
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
+					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
 				} else if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
@@ -466,14 +463,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 							PRIVATE_DATA->parked = true;
 						}
 					}
-					if (meade_command(device, ":Gt#", response, sizeof(response), 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
-						double longitude = indigo_stod(response);
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
+					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
 				} else if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
@@ -495,14 +485,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 							PRIVATE_DATA->parked = true;
 						}
 					}
-					if (meade_command(device, ":Gt#", response, sizeof(response), 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
-						double longitude = indigo_stod(response);
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
+					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
 				} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
@@ -517,14 +500,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					meade_command(device, ":U#", NULL, 0, 0);
 					meade_command(device, ":Br 00:00:00#", NULL, 0, 0);
-					if (meade_command(device, ":Gt#", response, sizeof(response), 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
-						double longitude = indigo_stod(response);
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
+					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
 				} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
@@ -555,16 +531,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						}
 						indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 					}
-					if (meade_command(device, ":Gt#", response, sizeof(response), 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
-						double longitude = indigo_stod(response);
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
 					if (meade_command(device, ":$QZ?", response, sizeof(response), 0))
 						indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
+					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
 				} else {
