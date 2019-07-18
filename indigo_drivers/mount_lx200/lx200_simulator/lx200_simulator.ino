@@ -33,11 +33,11 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-bool is_meade = false;
+bool is_meade = true;
 bool is_10micron = false;
 bool is_gemini = false;
 bool is_avalon = false;
-bool is_onestep = true;
+bool is_onestep = false;
 
 int date_day = 1;
 int date_month = 1;
@@ -47,6 +47,7 @@ int time_hour = 22;
 int time_minute = 15;
 int time_second = 30;
 int time_offset = 2;
+int time_dst = 1;
 
 char latitude[] = "+48*08";
 char longitude[] = "+17*06";
@@ -192,6 +193,11 @@ void loop() {
 				Serial.print("1");
       } else if (!strcmp(buffer, "GG")) {
         sprintf(buffer, "%+03d#", time_offset);
+        Serial.print(buffer);
+      } else if (!strncmp(buffer, "SH", 2)) {
+        time_dst = atoi(buffer + 2);
+      } else if (!strcmp(buffer, "GH")) {
+        sprintf(buffer, "%d#", time_dst);
         Serial.print(buffer);
       } else if (!strncmp(buffer, "SL", 2)) {
 				time_hour = atoi(buffer + 2);
