@@ -115,6 +115,9 @@
 				</template>
 				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
 					{{ state }}
+					<span v-if="findProperty('Server', 'INFO')" class="float-right">
+						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
+					</span>
 				</div>
 				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
 					{{ state }}

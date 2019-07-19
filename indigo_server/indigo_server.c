@@ -234,6 +234,7 @@ static int static_drivers_count = 0;
 static int dynamic_drivers_count = 0;
 static bool command_line_drivers = false;
 
+static indigo_property *info_property;
 static indigo_property *drivers_property;
 static indigo_property *servers_property;
 static indigo_property *load_property;
@@ -308,17 +309,18 @@ static indigo_device server_device = INDIGO_DEVICE_INITIALIZER(
 
 static void server_callback(int count) {
 	if (server_startup) {
+		char hostname[INDIGO_NAME_SIZE];
+		gethostname(hostname, sizeof(hostname));
 		if (use_bonjour) {
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
 			if (*indigo_local_service_name == 0) {
-				char hostname[INDIGO_NAME_SIZE];
-				gethostname(hostname, sizeof(hostname));
 				indigo_service_name(hostname, indigo_server_tcp_port, indigo_local_service_name);
 			}
 			DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 			DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		}
+		strcpy(info_property->items[1].text.value, hostname);
 		server_startup = false;
 	} else {
 		INDIGO_LOG(indigo_log("%d clients", count));
@@ -432,6 +434,9 @@ static void check_versions(indigo_device *device) {
 
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
+	info_property = indigo_init_text_property(NULL, server_device.name, "INFO", MAIN_GROUP, "Server info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+	indigo_init_text_item(info_property->items + 0, "VERSION", "INDIGO version", "%d.%d-%d", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
+	indigo_init_text_item(info_property->items + 1, "SERVICE", "INDIGO service", "");
 	drivers_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", MAIN_GROUP, "Available drivers", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
 	drivers_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
@@ -558,6 +563,7 @@ static indigo_result attach(indigo_device *device) {
 
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
+	indigo_define_property(device, info_property, NULL);
 	indigo_define_property(device, drivers_property, NULL);
 	if (servers_property->count > 0)
 		indigo_define_property(device, servers_property, NULL);
@@ -757,6 +763,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 
 static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_delete_property(device, info_property, NULL);
 	indigo_delete_property(device, drivers_property, NULL);
 	if (servers_property->count > 0)
 		indigo_delete_property(device, servers_property, NULL);
