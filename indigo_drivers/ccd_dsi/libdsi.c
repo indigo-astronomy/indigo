@@ -1959,7 +1959,7 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 			}
 			if (dsi->log_commands)
 				fprintf(stderr, "sleeping for %.4fs\n", ticks_left / 10000.0);
-			indigo_usleep(100 * ticks_left);
+			usleep(100 * ticks_left);
 			ticks_left = dsicmd_get_exposure_time_left(dsi);
 		}
 		/*    if (ticks_left < 0) {
