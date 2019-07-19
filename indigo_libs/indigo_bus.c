@@ -1114,6 +1114,6 @@ void indigo_usleep(unsigned int delay) {
 #endif
 #if defined(INDIGO_WINDOWS)
 	unsigned int s = delay / 1000;
-	Sleep(delay);
+	Sleep(s);
 #endif
 }
