@@ -64,6 +64,10 @@ input {
 	border-color: #d08d2e!important;
 }
 
+.alert {
+	padding: 0.75rem!important;
+}
+
 .alert-state {
 	color: white!important;
 	background-color: #d9534f!important;
