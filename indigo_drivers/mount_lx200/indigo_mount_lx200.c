@@ -247,6 +247,7 @@ static void meade_get_utc(indigo_device *device) {
 				tm.tm_mon -= 1;
 				if (meade_command(device, ":GG#", response, sizeof(response), 0)) {
 					tm.tm_gmtoff = atoi(response) * 3600;
+					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", atof(response));
 					if (PRIVATE_DATA->use_dst_commands) {
 						if (meade_command(device, ":GH#", response, sizeof(response), 0)) {
 							tm.tm_isdst = atoi(response);
@@ -256,7 +257,6 @@ static void meade_get_utc(indigo_device *device) {
 					}
 					time_t secs = mktime(&tm);
 					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", atof(response));
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
