@@ -151,7 +151,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->handle) {
 		struct ARTEMISPROPERTIES properties;
-		int temperature, flags, level, min_level, max_level, set_point;
+		int temperature, flags, level, min_level, max_level, set_point, max_x_bin, max_y_bin;
 		if (ArtemisProperties(PRIVATE_DATA->handle, &properties) == ARTEMIS_OK) {
 			if (properties.nPixelsX == 3354 && properties.nPixelsY == 2529) {
 				properties.nPixelsX = 3326;
@@ -162,15 +162,19 @@ static void ccd_connect_callback(indigo_device *device) {
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = properties.nPixelsY;
 			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(properties.PixelMicronsX * 100)/100;
 			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(properties.PixelMicronsX * 100) / 100;
+			ArtemisGetMaxBin(PRIVATE_DATA->handle, &max_x_bin, &max_y_bin);
+			CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_x_bin;
+			CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_y_bin;
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_MODE_PROPERTY->count = 3;
-			char name[32];
-			sprintf(name, "RAW 16 %dx%d", properties.nPixelsX, properties.nPixelsY);
-			indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-			sprintf(name, "RAW 16 %dx%d", properties.nPixelsX / 2, properties.nPixelsY / 2);
-			indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-			sprintf(name, "RAW 16 %dx%d", properties.nPixelsX / 4, properties.nPixelsY / 4);
-			indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+			CCD_MODE_PROPERTY->count = log2(max_x_bin) + 1;
+			char name[32], label[32];
+			int pw = 1;
+			for (int i = 1; i <= CCD_MODE_PROPERTY->count; i++) {
+				sprintf(name, "BIN_%dx%d", pw, pw);
+				sprintf(label, "RAW 16 %dx%d", properties.nPixelsX / pw, properties.nPixelsY / pw);
+				indigo_init_switch_item(CCD_MODE_ITEM + (i - 1), name, label, i == 1);
+				pw *= 2;
+			}
 			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 			assert(PRIVATE_DATA->buffer != NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -188,9 +192,10 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_TEMPERATURE_ITEM->number.target = round(set_point / 10.0) / 10.0;
-				double diff = CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target;
+				if (CCD_TEMPERATURE_ITEM->number.target > 100)
+					CCD_TEMPERATURE_ITEM->number.target = CCD_TEMPERATURE_ITEM->number.value;
 				if (CCD_COOLER_ON_ITEM->sw.value)
-					CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					CCD_TEMPERATURE_PROPERTY->state = fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				else
 					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 				CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
@@ -419,18 +424,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PRIVATE_DATA->can_check_temperature = true;
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
-		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int v = CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
-		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4) || CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value) {
-			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
-			CCD_BIN_VERTICAL_ITEM->number.value = v;
-			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			if (IS_CONNECTED) {
-				indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-			}
-			return INDIGO_OK;
+		char name[32];
+		sprintf(name, "BIN_%dx%d", (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			CCD_MODE_PROPERTY->items[i].sw.value = !strcmp(name, CCD_MODE_PROPERTY->items[i].name);
 		}
+		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
