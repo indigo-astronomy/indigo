@@ -23,7 +23,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -222,7 +222,7 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-			double value = atof(token) / 600.0;
+			double value = atof(token) / 65.0;
 			if (X_AUX_CURRENT_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_CURRENT_ITEM->number.value = value;
