@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -246,8 +246,52 @@ static void meade_get_utc(indigo_device *device) {
 				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 				tm.tm_mon -= 1;
 				if (meade_command(device, ":GG#", response, sizeof(response), 0)) {
-					tm.tm_gmtoff = atoi(response) * 3600;
-					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", atof(response));
+					if (MOUNT_TYPE_AP_ITEM->sw.value && response[0] == ':') {
+						if (response[1] == 'A') {
+							switch (response[2]) {
+								case '1':
+									strcpy(response, "-05");
+									break;
+								case '2':
+									strcpy(response, "-04");
+									break;
+								case '3':
+									strcpy(response, "-03");
+									break;
+								case '4':
+									strcpy(response, "-02");
+									break;
+								case '5':
+									strcpy(response, "-01");
+									break;
+							}
+						} else if (response[1] == '@') {
+							switch (response[2]) {
+								case '4':
+									strcpy(response, "-12");
+									break;
+								case '5':
+									strcpy(response, "-11");
+									break;
+								case '6':
+									strcpy(response, "-10");
+									break;
+								case '7':
+									strcpy(response, "-09");
+									break;
+								case '8':
+									strcpy(response, "-08");
+									break;
+								case '9':
+									strcpy(response, "-07");
+									break;
+							}
+						} else if (response[1] == '0') {
+							strcpy(response, "-06");
+						}
+					}
+					tm.tm_gmtoff = -atoi(response) * 3600;
+					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", -atof(response));
 					if (PRIVATE_DATA->use_dst_commands) {
 						if (meade_command(device, ":GH#", response, sizeof(response), 0)) {
 							tm.tm_isdst = atoi(response);
@@ -852,22 +896,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 			time_t secs = time(NULL);
 			struct tm tm = *localtime(&secs);
-			sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
 			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+				if (PRIVATE_DATA->use_dst_commands) {
+					sprintf(command, ":SH%d#", tm.tm_isdst);
+					meade_command(device, command, NULL, 0, 0);
+				}
+				sprintf(command, ":SG%+03ld#", -(tm.tm_gmtoff - tm.tm_isdst)/ 3600);
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":SG%02ld#", tm.tm_gmtoff / 3600);
+					sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
-						if (PRIVATE_DATA->use_dst_commands) {
-							sprintf(command, ":SH%d#", tm.tm_isdst);
-							meade_command(device, command, NULL, 0, 0);
-						}
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -898,7 +942,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":SG%02ld#", tm.tm_gmtoff / 3600);
+					sprintf(command, ":SG%02ld#", -tm.tm_gmtoff / 3600);
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
