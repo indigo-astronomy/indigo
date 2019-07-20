@@ -88,8 +88,13 @@ else
 			DEBIAN_ARCH = i386
 		endif
 		ifeq ($(ARCH_DETECTED),x86_64)
-			ARCH_DETECTED = x64
-			DEBIAN_ARCH = amd64
+			ifneq ($(wildcard /lib/i386-linux-gnu/),)
+				ARCH_DETECTED = x86
+				DEBIAN_ARCH = i386
+			else
+				ARCH_DETECTED = x64
+				DEBIAN_ARCH = amd64
+			endif
 		endif
 		CC = gcc
 		AR = ar
