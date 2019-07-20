@@ -33,7 +33,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	ifeq ($(ARCH_DETECTED),arm)
-		CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -Ilinux -I../boost_regex -std=gnu++11 -pthread -march=armv6 -mfpu=vfp -mfloat-abi=hard
+		CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -Ilinux -I../boost_regex -std=gnu++11 -pthread -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork
 	else
 		CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -Ilinux -I../boost_regex -std=gnu++11 -pthread
 	endif
