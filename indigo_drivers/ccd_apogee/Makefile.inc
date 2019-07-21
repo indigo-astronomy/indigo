@@ -22,7 +22,11 @@
 
 LDFLAGS += -lstdc++ -lcurl
 INSTALL_SDK = install_sdk
+ifeq ($(OS_DETECTED),Linux)
+SDK_INCLUDE = -I bin_externals -I bin_externals/boost_regex
+else
 SDK_INCLUDE = -I bin_externals
+endif
 
 install_sdk:
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
