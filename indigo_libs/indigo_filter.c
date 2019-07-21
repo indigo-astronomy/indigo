@@ -595,9 +595,13 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 
 indigo_property *indigo_filter_cached_property(indigo_device *device, int index, char *name) {
 	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
+	char *device_name = FILTER_DEVICE_CONTEXT->device_name[index];
+	indigo_property *property;
 	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if (cache[j] && !strcmp(cache[j]->device, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && !strcmp(cache[j]->name, name)) {
-			return cache[j];
+		if ((property = cache[j])) {
+			if (!strcmp(property->device, device_name) && !strcmp(property->name, name)) {
+				return cache[j];
+			}
 		}
 	}
 	return NULL;
