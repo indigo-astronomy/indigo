@@ -10,10 +10,10 @@
 **/*.la
 **/.deps
 **/*.log
-build/
 *.deb
 Dockerfile
 /externals/
+/build/
 indigo_private_drivers/
 indigo.xcodeproj/project.xcworkspace/
 indigo.xcodeproj/xcuserdata/
