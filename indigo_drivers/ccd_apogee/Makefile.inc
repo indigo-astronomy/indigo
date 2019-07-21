@@ -29,6 +29,4 @@ SDK_INCLUDE = -I bin_externals
 endif
 
 install_sdk:
-	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
-	install -m 0755 $(DRIVER_EXECUTABLE) $(INSTALL_BIN)
 	cd bin_externals/libapogee; make install-config CONFIG_PREFIX=$(INSTALL_ETC)/apogee RULES_PREFIX=$(INSTALL_RULES)
