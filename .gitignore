@@ -11,6 +11,8 @@
 **/.deps
 **/*.log
 build/
+*.deb
+Dockerfile
 /externals/
 indigo_private_drivers/
 indigo.xcodeproj/project.xcworkspace/

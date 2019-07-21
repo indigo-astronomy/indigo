@@ -308,7 +308,7 @@ Makefile.inc: Makefile
 	@cat Makefile.inc
 	@echo ---------------------------------------------------------------------
 
-remote:
+debs-remote:
 	ssh ubuntu32.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
 	scp ubuntu32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb .
 	ssh ubuntu64.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
@@ -317,6 +317,12 @@ remote:
 	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
 	ssh raspi64.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
+
+debs-docker:
+	sh tools/build_debs.sh "i386/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb"
+	sh tools/build_debs.sh "amd64/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb"
+	sh tools/build_debs.sh "arm32v7/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb"
+	sh tools/build_debs.sh "arm64v8/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb"
 
 init-repo:
 	aptly repo create -distribution=indigo -component=main indigo-release

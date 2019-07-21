@@ -925,6 +925,7 @@
 		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
 		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
 		5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Gemini-5-2.1.pdf"; sourceTree = "<group>"; };
+		598000F922E44A0B00021D67 /* build_debs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_debs.sh; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
 		598C57E321A75B1A001CA8C0 /* libnexstar.man */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.man; sourceTree = "<group>"; };
 		598C57E521A75B1A001CA8C0 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
@@ -5112,6 +5113,7 @@
 		599A240C1DBEC5820020BF8F /* tools */ = {
 			isa = PBXGroup;
 			children = (
+				598000F922E44A0B00021D67 /* build_debs.sh */,
 				590EE1AF22ABD56600828030 /* rpi_ctrl_fix.sh */,
 				590EE1A322AAFE3500828030 /* rpi_ctrl.sh */,
 				9D7D59191DF6B21B003D2B59 /* rjsmin.py */,
