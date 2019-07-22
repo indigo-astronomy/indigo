@@ -631,7 +631,7 @@ int tc_set_time(char dev, time_t ttime, int tz, int dst) {
 
 	/* If the mount has RTC set date/time to RTC too */
 	/* I only know CGE(5) and AdvancedVX(20) to have RTC */
-	if ((model = 5) || (model = 20)) {
+	if ((model == 5) || (model == 20)) {
 		gmtime_r(&ttime, &tms);
 
 		/* set year */
