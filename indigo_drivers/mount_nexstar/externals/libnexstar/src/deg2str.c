@@ -54,7 +54,7 @@ char *dd2a(double a, int plus)
 	int sign=1;
 	int min,deg;
 	double sec;
-	static char str[30];
+	static char str[30], *fc;
 	
 	if(a<0) { a*=-1; sign=-1; }
 	
@@ -98,7 +98,8 @@ char *dd2a(double a, int plus)
 		sprintf(str,"+%d:%02d:%02d",deg,min,(int)sec);
 		else sprintf(str,"%d:%02d:%02d",deg,min,(int)sec);
 #endif
-
+	if ((fc = strchr(command, ',')))
+		*fc = '.';	
 	return str;
 }
 
