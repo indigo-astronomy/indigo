@@ -154,7 +154,7 @@ static void ieq_get_utc(indigo_device *device) {
 					tm.tm_gmtoff = atoi(response) * 60;
 					time_t secs = mktime(&tm);
 					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", atof(response));
+					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", atoi(response));
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
