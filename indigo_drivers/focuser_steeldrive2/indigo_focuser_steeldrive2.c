@@ -377,13 +377,13 @@ static void focuser_timer_callback(indigo_device *device) {
 						indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 					}
 				} else if (!strcmp(token, "TEMP0")) {
-					double tmp = atof(value);
+					double tmp = indigo_atod(value);
 					if (X_STATUS_SENSOR_0_ITEM->number.value != tmp) {
 						X_STATUS_SENSOR_0_ITEM->number.value = tmp;
 						status_update = true;
 					}
 				} else if (!strcmp(token, "TEMP1")) {
-					double tmp = atof(value);
+					double tmp = indigo_atod(value);
 					if (X_STATUS_SENSOR_1_ITEM->number.value != tmp) {
 						X_STATUS_SENSOR_1_ITEM->number.value = tmp;
 						status_update = true;
@@ -391,13 +391,13 @@ static void focuser_timer_callback(indigo_device *device) {
 				} else if (!strcmp(token, "PWM")) {
 					indigo_device *aux = PRIVATE_DATA->focuser;
 					indigo_device *device = aux;
-					double tmp = atof(value);
+					double tmp = indigo_atod(value);
 					if (AUX_HEATER_OUTLET_1_ITEM->number.value != tmp) {
 						AUX_HEATER_OUTLET_1_ITEM->number.value = tmp;
 						indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 					}
 				} else if (!strcmp(token, "TEMP_AVG")) {
-					double tmp = atof(value);
+					double tmp = indigo_atod(value);
 					if (FOCUSER_TEMPERATURE_ITEM->number.value != tmp) {
 						FOCUSER_TEMPERATURE_ITEM->number.value = tmp;
 						indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
@@ -650,15 +650,19 @@ static void focuser_mode_handler(indigo_device *device) {
 
 static void focuser_compensation_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[64], response[256];
+	char command[64], response[256], *fc;
 	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 	sprintf(command, "$BS SET TCOMP_FACTOR:%.2f", FOCUSER_COMPENSATION_ITEM->number.value);
+	if ((fc = strchr(command, ',')))
+		*fc = '.';
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 	sprintf(command, "$BS SET TCOMP_PERIOD:%d", (int)(FOCUSER_COMPENSATION_PERIOD_ITEM->number.value * 1000));
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 	sprintf(command, "$BS SET TCOMP_DELTA:%.1f", FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
+	if ((fc = strchr(command, ',')))
+		*fc = '.';
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -1068,11 +1072,15 @@ static void aux_use_pid_handler(indigo_device *device) {
 
 static void aux_pid_settings_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[64], response[256];
+	char command[64], response[256], *fc;
 	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
 	sprintf(command, "$BS SET PID_TARGET:%.2f", X_PID_SETTINGS_TARGET_ITEM->number.value);
+	if ((fc = strchr(command, ',')))
+		*fc = '.';
 	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {
 		sprintf(command, "$BS SET PID_DEV_OFSL:%.2f",  X_PID_SETTINGS_OFS_ITEM->number.value);
+		if ((fc = strchr(command, ',')))
+			*fc = '.';
 		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 			X_PID_SETTINGS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
