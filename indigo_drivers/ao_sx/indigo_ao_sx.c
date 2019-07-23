@@ -187,10 +187,10 @@ static void ao_guide_dec_handler(indigo_device *device) {
 	char response[2], command[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
-		sprintf(command, "GN%05.0f", AO_GUIDE_NORTH_ITEM->number.value);
+		sprintf(command, "GN%05d", (int)AO_GUIDE_NORTH_ITEM->number.value);
 		sx_command(device, command, response, 1);
 	} else if (AO_GUIDE_SOUTH_ITEM->number.value > 0) {
-		sprintf(command, "GS%05.0f", AO_GUIDE_SOUTH_ITEM->number.value);
+		sprintf(command, "GS%05d", (int)AO_GUIDE_SOUTH_ITEM->number.value);
 		sx_command(device, command, response, 1);
 	}
 	AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -203,10 +203,10 @@ static void ao_guide_ra_handler(indigo_device *device) {
 	char response[2], command[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
-		sprintf(command, "GW%05.0f", AO_GUIDE_WEST_ITEM->number.value);
+		sprintf(command, "GW%05d", (int)AO_GUIDE_WEST_ITEM->number.value);
 		sx_command(device, command, response, 1);
 	} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
-		sprintf(command, "GT%05.0f", AO_GUIDE_EAST_ITEM->number.value);
+		sprintf(command, "GT%05d", (int)AO_GUIDE_EAST_ITEM->number.value);
 		sx_command(device, command, response, 1);
 	}
 	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
@@ -315,10 +315,10 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	char response[2], command[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-		sprintf(command, "MN%05.0f", GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
+		sprintf(command, "MN%05d", (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
 		sx_command(device, command, response, 1);
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-		sprintf(command, "MS%05.0f", GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
+		sprintf(command, "MS%05d", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
 		sx_command(device, command, response, 1);
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -331,10 +331,10 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	char response[2], command[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-		sprintf(command, "MW%05.0f", GUIDER_GUIDE_WEST_ITEM->number.value / 10);
+		sprintf(command, "MW%05d", (int)GUIDER_GUIDE_WEST_ITEM->number.value / 10);
 		sx_command(device, command, response, 1);
 	} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-		sprintf(command, "MT%05.0f", GUIDER_GUIDE_EAST_ITEM->number.value / 10);
+		sprintf(command, "MT%05d", (int)GUIDER_GUIDE_EAST_ITEM->number.value / 10);
 		sx_command(device, command, response, 1);
 	}
 	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
