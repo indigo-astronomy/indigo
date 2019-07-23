@@ -292,7 +292,7 @@ static void *new_one_number_vector_handler(parser_state state, parser_context *c
 			indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
 		}
 	} else if (state == TEXT) {
-		property->items[property->count-1].number.value = atof(value);
+		property->items[property->count-1].number.value = indigo_atod(value);
 	} else if (state == END_TAG) {
 		return new_number_vector_handler;
 	}
@@ -506,18 +506,18 @@ static void *set_one_number_vector_handler(parser_state state, parser_context *c
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		} else if (!strcmp(name, "target")) {
-			property->items[property->count-1].number.target = atof(value);
+			property->items[property->count-1].number.target = indigo_atod(value);
 		} else if (!strcmp(name, "min")) {
-			property->items[property->count-1].number.min = atof(value);
+			property->items[property->count-1].number.min = indigo_atod(value);
 		} else if (!strcmp(name, "max")) {
-			property->items[property->count-1].number.max = atof(value);
+			property->items[property->count-1].number.max = indigo_atod(value);
 		} else if (!strcmp(name, "step")) {
-			property->items[property->count-1].number.step = atof(value);
+			property->items[property->count-1].number.step = indigo_atod(value);
 		} else if (!strcmp(name, "format")) {
 			strncpy(property->items[property->count-1].number.format, value, INDIGO_NAME_SIZE);
 		}
 	} else if (state == TEXT) {
-		property->items[property->count-1].number.value = atof(value);
+		property->items[property->count-1].number.value = indigo_atod(value);
 	} else if (state == END_TAG) {
 		return set_number_vector_handler;
 	}
@@ -831,22 +831,22 @@ static void *def_number_handler(parser_state state, parser_context *context, cha
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		} else if (!strcmp(name, "target")) {
-			property->items[property->count-1].number.target = atof(value);
+			property->items[property->count-1].number.target = indigo_atod(value);
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "hints")) {
 			strncpy(property->items[property->count-1].hints, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "min")) {
-			property->items[property->count-1].number.min = atof(value);
+			property->items[property->count-1].number.min = indigo_atod(value);
 		} else if (!strcmp(name, "max")) {
-			property->items[property->count-1].number.max = atof(value);
+			property->items[property->count-1].number.max = indigo_atod(value);
 		} else if (!strcmp(name, "step")) {
-			property->items[property->count-1].number.step = atof(value);
+			property->items[property->count-1].number.step = indigo_atod(value);
 		} else if (!strcmp(name, "format")) {
 			strncpy(property->items[property->count-1].number.format, value, INDIGO_NAME_SIZE);
 		}
 	} else if (state == TEXT) {
-		property->items[property->count-1].number.value = atof(value);
+		property->items[property->count-1].number.value = indigo_atod(value);
 	} else if (state == END_TAG) {
 		return def_number_vector_handler;
 	}

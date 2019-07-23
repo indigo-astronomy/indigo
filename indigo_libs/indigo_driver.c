@@ -525,9 +525,10 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 }
 
 indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property) {
-	if (property == NULL) return INDIGO_FAILED;
-
+	if (property == NULL)
+		return INDIGO_FAILED;
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
+		char b1[32];
 		if (file_handle == NULL)
 			file_handle = &DEVICE_CONTEXT->property_save_file_handle;
 		int handle = *file_handle;
@@ -557,7 +558,7 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 			indigo_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number.value);
+				indigo_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
 			}
 			indigo_printf(handle, "</newNumberVector>\n");
 			break;

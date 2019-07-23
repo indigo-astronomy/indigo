@@ -96,6 +96,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	char output_buffer[JSON_BUFFER_SIZE];
 	char *pnt = output_buffer;
 	int size;
+	char b1[32], b2[32], b3[32], b4[32], b5[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
 			size = sprintf(pnt, "{ \"defTextVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
@@ -135,7 +136,6 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				char b1[32], b2[32], b3[32], b4[32], b5[32];
 				if (property->perm != INDIGO_RO_PERM)
 					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %s, \"max\": %s, \"step\": %s, \"format\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, escape(item->label), indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), item->number.format, indigo_dtoa(item->number.target, b4), indigo_dtoa(item->number.value, b5));
 				else
@@ -240,6 +240,7 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 	char output_buffer[JSON_BUFFER_SIZE];
 	char *pnt = output_buffer;
 	int size;
+	char b1[32], b2[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
 			size = sprintf(pnt, "{ \"setTextVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
@@ -271,7 +272,6 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				char b1[32], b2[32];
 				if (property->perm != INDIGO_RO_PERM)
 					size = sprintf(pnt, "%s { \"name\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
 				else

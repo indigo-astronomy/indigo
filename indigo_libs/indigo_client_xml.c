@@ -98,6 +98,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
+	char b1[32];
 	strncpy(device_name, property->device, INDIGO_NAME_SIZE);
 	if (indigo_use_host_suffix) {
 		char *at = strrchr(device_name, '@');
@@ -120,7 +121,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 		indigo_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), indigo_property_state_text[property->state]);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", indigo_item_name(device->version, property, item), item->number.value);
+			indigo_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", indigo_item_name(device->version, property, item), indigo_dtoa(item->number.value, b1));
 		}
 		indigo_printf(handle, "</newNumberVector>\n");
 		break;

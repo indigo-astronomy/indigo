@@ -294,10 +294,11 @@ void indigo_mount_save_alignment_points(indigo_device *device) {
 	int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".alignment");
 	if (handle > 0) {
 		int count = MOUNT_CONTEXT->alignment_point_count;
+		char b1[32], b2[32], b3[32], b4[32], b5[32];
 		indigo_printf(handle, "%d\n", count);
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-			indigo_printf(handle, "%d %g %g %g %g %g %d\n", point->used, point->ra, point->dec, point->raw_ra, point->raw_dec, point->lst, point->side_of_pier);
+			indigo_printf(handle, "%d %s %s %s %s %s %d\n", point->used, indigo_dtoa(point->ra, b1), indigo_dtoa(point->dec, b2), indigo_dtoa(point->raw_ra, b3), indigo_dtoa(point->raw_dec, b4), indigo_dtoa(point->lst, b5), point->side_of_pier);
 		}
 		close(handle);
 	}

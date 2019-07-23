@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <time.h>
 #include <math.h>
 #include <assert.h>
@@ -1058,22 +1057,22 @@ double indigo_stod(char *string) {
 	double value = 0;
 	char *separator = strpbrk(string, ":*' \xdf");
 	if (separator == NULL) {
-		value = atof(string);
+		value = indigo_atod(string);
 	} else {
 		*separator++ = 0;
-		value = atof(string);
+		value = indigo_atod(string);
 		separator = strpbrk(string = separator, ":*' ");
 		if (separator == NULL) {
 			if (value < 0)
-				value -= atof(string)/60.0;
+				value -= indigo_atod(string)/60.0;
 			else
-				value += atof(string)/60.0;
+				value += indigo_atod(string)/60.0;
 		} else {
 			*separator++ = 0;
 			if (value < 0)
-				value -= atof(string)/60.0 + atof(separator)/3600.0;
+				value -= indigo_atod(string)/60.0 + indigo_atod(separator)/3600.0;
 			else
-				value += atof(string)/60.0 + atof(separator)/3600.0;
+				value += indigo_atod(string)/60.0 + indigo_atod(separator)/3600.0;
 		}
 	}
 	return value;
@@ -1119,30 +1118,41 @@ void indigo_usleep(unsigned int delay) {
 #endif
 }
 
+#define isdigit(c) (c >= '0' && c <= '9')
+#define isspace(c) (c == ' ')
+
 double indigo_atod(const char *str) {
 	double value = 0;
 	int sign = 1;
 	while (*str && isspace(*str))
-		++str;
+		str++;
 	if (*str == '+')
-		++str;
-	if (*str == '-') {
+		str++;
+	else if (*str == '-') {
 		sign = -1;
-		++str;
+		str++;
 	}
 	for (value = 0; *str && isdigit(*str); ++str)
 		value = value * 10 + (*str - '0');
-	if (*str == '.') {
+	if (*str == '.' || *str == ',') {
 		++str;
 		double dec;
 		for (dec = 0.1; *str && isdigit(*str); ++str, dec /= 10)
 			value += dec * (*str - '0');
-	}	
+	}
+	if (*str == 'E' || *str == 'e') {
+		if (value == 0)
+			value = 1;
+		int ex = atoi(++str);
+		value *= pow(10, ex);
+	}
 	return sign * value;
 }
 
 char *indigo_dtoa(double value, char *str) {
-	unsigned long fraction = (unsigned long)(fabs(value - ((long)value)) * 1e6);
-	sprintf(str, "%lu.%6.6lu", (unsigned long)value, fraction);
+	sprintf(str, "%g", value);
+	char *c = strchr(str, ',');
+	if (c)
+		*c = '.';
 	return str;
 }
