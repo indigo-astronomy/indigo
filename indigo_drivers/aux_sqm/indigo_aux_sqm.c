@@ -123,11 +123,11 @@ static void aux_timer_callback(indigo_device *device) {
 	if (*strtok_r(buffer, ",", &pnt) != 'r') {
 		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		X_AUX_SKY_BRIGHTNESS_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
-		X_AUX_SENSOR_FREQUENCY_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
-		X_AUX_SENSOR_COUNTS_ITEM->number.value = atol(strtok_r(NULL, ",", &pnt));
-		X_AUX_SENSOR_PERIOD_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
-		X_AUX_SKY_TEMPERATURE_ITEM->number.value = atof(strtok_r(NULL, ",", &pnt));
+		X_AUX_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_FREQUENCY_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_COUNTS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+		X_AUX_SENSOR_PERIOD_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+		X_AUX_SKY_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
