@@ -681,7 +681,7 @@ static double parse_shutterspeed(const char *s)
 	str = strdup(s);
 	token = strtok_r(str, delim, &saveptr);
 	while (token != NULL) {
-		nom_denom[cnt++ % 2] = atof(token);
+		nom_denom[cnt++ % 2] = indigo_atod(token);
 		token = strtok_r(NULL, delim, &saveptr);
 	}
 
