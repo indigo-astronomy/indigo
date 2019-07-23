@@ -931,7 +931,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(clock_t start = clock());
 		time_t timer;
 		struct tm* tm_info;
-		char date_time_end[20], *fc;
+		char date_time_end[20];
 		time(&timer);
 		tm_info = gmtime(&timer);
 		strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
@@ -976,22 +976,18 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		if (CCD_INFO_PIXEL_WIDTH_ITEM->number.value > 0 && CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) {
 			t = sprintf(header += 80, "XPIXSZ  = %20.2f / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin);
-			if ((fc = strchr(header - 80, ',')))
-				*fc = '.';
+			indigo_fix_locale(header - 80);
 			header[t] = ' ';
 			t = sprintf(header += 80, "YPIXSZ  = %20.2f / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
-			if ((fc = strchr(header - 80, ',')))
-				*fc = '.';
+			indigo_fix_locale(header - 80);
 			header[t] = ' ';
 		}
 		t = sprintf(header += 80, "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
-		if ((fc = strchr(header - 80, ',')))
-			*fc = '.';
+		indigo_fix_locale(header - 80);
 		header[t] = ' ';
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			t = sprintf(header += 80, "CCD-TEMP= %20.2f / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
-			if ((fc = strchr(header - 80, ',')))
-				*fc = '.';
+			indigo_fix_locale(header - 80);
 			header[t] = ' ';
 		}
 		if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
@@ -1005,20 +1001,17 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		if (!CCD_GAIN_PROPERTY->hidden) {
 			t = sprintf(header += 80, "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
-			if ((fc = strchr(header - 80, ',')))
-				*fc = '.';
+			indigo_fix_locale(header - 80);
 			header[t] = ' ';
 		}
 		if (!CCD_OFFSET_PROPERTY->hidden) {
 			t = sprintf(header += 80, "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
-			if ((fc = strchr(header - 80, ',')))
-				*fc = '.';
+			indigo_fix_locale(header - 80);
 			header[t] = ' ';
 		}
 		if (!CCD_GAMMA_PROPERTY->hidden) {
 			t = sprintf(header += 80, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
-			if ((fc = strchr(header - 80, ',')))
-				*fc = '.';
+			indigo_fix_locale(header - 80);
 			header[t] = ' ';
 		}
 		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
@@ -1030,8 +1023,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				switch (keywords->type) {
 					case INDIGO_FITS_NUMBER:
 						t = sprintf(header += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
-					if ((fc = strchr(header - 80, ',')))
-						*fc = '.';
+						indigo_fix_locale(header - 80);
 						break;
 					case INDIGO_FITS_STRING:
 						t = sprintf(header += 80, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
