@@ -368,42 +368,42 @@ static void aux_timer_callback(indigo_device *device) {
 	if (upb_command(device, "PA", response, sizeof(response))) {
 		char *pnt, *token = strtok_r(response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (X_AUX_VOLTAGE_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_VOLTAGE_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (X_AUX_CURRENT_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_CURRENT_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Power
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (X_AUX_POWER_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_POWER_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != value) {
 				updateWeather = true;
 				AUX_WEATHER_TEMPERATURE_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (AUX_WEATHER_HUMIDITY_ITEM->number.value != value) {
 				updateWeather = true;
 				AUX_WEATHER_HUMIDITY_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (AUX_WEATHER_DEWPOINT_ITEM->number.value != value) {
 				updateWeather = true;
 				AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
@@ -439,56 +439,56 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
-			double value = round(atof(token) * 100.0 / 255.0);
+			double value = round(indigo_atod(token) * 100.0 / 255.0);
 			if (AUX_HEATER_OUTLET_1_ITEM->number.value != value) {
 				updateHeaterOutlet = true;
 				AUX_HEATER_OUTLET_1_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
-			double value = round(atof(token) * 100.0 / 255.0);
+			double value = round(indigo_atod(token) * 100.0 / 255.0);
 			if (AUX_HEATER_OUTLET_2_ITEM->number.value != value) {
 				updateHeaterOutlet = true;
 				AUX_HEATER_OUTLET_2_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
-			double value = atof(token) / 400.0;
+			double value = indigo_atod(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-			double value = atof(token) / 400.0;
+			double value = indigo_atod(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-			double value = atof(token) / 400.0;
+			double value = indigo_atod(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-			double value = atof(token) / 400.0;
+			double value = indigo_atod(token) / 400.0;
 			if (AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
-			double value = atof(token) / 400.0;
+			double value = indigo_atod(token) / 400.0;
 			if (AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value != value) {
 				updateHeaterOutletCurrent = true;
 				AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
-			double value = atof(token) / 400.0;
+			double value = indigo_atod(token) / 400.0;
 			if (AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value != value) {
 				updateHeaterOutletCurrent = true;
 				AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = value;
@@ -537,7 +537,7 @@ static void aux_timer_callback(indigo_device *device) {
 	if (upb_command(device, "PC", response, sizeof(response))) {
 		char *pnt, *token = strtok_r(response, ":", &pnt);
 		if (token) {
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (X_AUX_AVERAGE_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_AVERAGE_ITEM->number.value = value;
@@ -545,7 +545,7 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 		token = strtok_r(NULL, ":", &pnt);
 		if (token) {
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (X_AUX_AMP_HOUR_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_AMP_HOUR_ITEM->number.value = value;
@@ -553,7 +553,7 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 		token = strtok_r(NULL, ":", &pnt);
 		if (token) {
-			double value = atof(token);
+			double value = indigo_atod(token);
 			if (X_AUX_WATT_HOUR_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_WATT_HOUR_ITEM->number.value = value;
@@ -659,22 +659,22 @@ static void aux_connection_handler(indigo_device *device) {
 			if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
-					X_AUX_VOLTAGE_ITEM->number.value = atof(token);
+					X_AUX_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-					X_AUX_CURRENT_ITEM->number.value = atof(token);
+					X_AUX_CURRENT_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Power
 					X_AUX_POWER_ITEM->number.value = atoi(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
-					AUX_WEATHER_TEMPERATURE_ITEM->number.value = atof(token);
+					AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
-					AUX_WEATHER_HUMIDITY_ITEM->number.value = atof(token);
+					AUX_WEATHER_HUMIDITY_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
-					AUX_WEATHER_DEWPOINT_ITEM->number.value = atof(token);
+					AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
 					AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';
@@ -686,10 +686,10 @@ static void aux_connection_handler(indigo_device *device) {
 					indigo_set_switch(X_AUX_HUB_PROPERTY, atoi(token) == 0 ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
-					AUX_HEATER_OUTLET_1_ITEM->number.value = round(atof(token) * 100.0 / 255.0);
+					AUX_HEATER_OUTLET_1_ITEM->number.value = round(indigo_atod(token) * 100.0 / 255.0);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
-					AUX_HEATER_OUTLET_2_ITEM->number.value = round(atof(token) * 100.0 / 255.0);
+					AUX_HEATER_OUTLET_2_ITEM->number.value = round(indigo_atod(token) * 100.0 / 255.0);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
 					AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / 400.0;
@@ -1144,7 +1144,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (upb_command(device, "ST", response, sizeof(response))) {
-		double temp = atof(response);
+		double temp = indigo_atod(response);
 		if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
