@@ -475,7 +475,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 
 	/* temperature difference if more than 1 degree so compensation needed */
-	if ((fabs(temp_difference) >= 1.0) && (abs(temp_difference) < 100)) {
+	if ((fabs(temp_difference) >= 1.0) && (fabs(temp_difference) < 100)) {
 		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.1f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
 	} else {
