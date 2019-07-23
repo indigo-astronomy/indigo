@@ -556,6 +556,8 @@ extern double indigo_atod(const char *str);
 /** Locale independent dtoa()
  */
 extern char *indigo_dtoa(double value, char *str);
+	
+#define indigo_fix_locale(s) { char *fc = strchr(s, ','); if (fc) *fc = '.'; }
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */

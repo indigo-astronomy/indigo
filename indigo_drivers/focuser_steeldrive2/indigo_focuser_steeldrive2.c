@@ -650,19 +650,17 @@ static void focuser_mode_handler(indigo_device *device) {
 
 static void focuser_compensation_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[64], response[256], *fc;
+	char command[64], response[256];
 	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 	sprintf(command, "$BS SET TCOMP_FACTOR:%.2f", FOCUSER_COMPENSATION_ITEM->number.value);
-	if ((fc = strchr(command, ',')))
-		*fc = '.';
+	indigo_fix_locale(command);
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 	sprintf(command, "$BS SET TCOMP_PERIOD:%d", (int)(FOCUSER_COMPENSATION_PERIOD_ITEM->number.value * 1000));
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 	sprintf(command, "$BS SET TCOMP_DELTA:%.1f", FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
-	if ((fc = strchr(command, ',')))
-		*fc = '.';
+	indigo_fix_locale(command);
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -1072,15 +1070,13 @@ static void aux_use_pid_handler(indigo_device *device) {
 
 static void aux_pid_settings_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[64], response[256], *fc;
+	char command[64], response[256];
 	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
 	sprintf(command, "$BS SET PID_TARGET:%.2f", X_PID_SETTINGS_TARGET_ITEM->number.value);
-	if ((fc = strchr(command, ',')))
-		*fc = '.';
+	indigo_fix_locale(command);
 	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {
 		sprintf(command, "$BS SET PID_DEV_OFSL:%.2f",  X_PID_SETTINGS_OFS_ITEM->number.value);
-		if ((fc = strchr(command, ',')))
-			*fc = '.';
+		indigo_fix_locale(command);
 		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 			X_PID_SETTINGS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
