@@ -1034,6 +1034,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		char b1[32];
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!DEVICE_CONNECTED) {
@@ -1075,7 +1076,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].pixelHeight);
 						CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 
-						sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->imager_ccd_basic_info.firmwareVersion));
+						sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%s", indigo_dtoa(bcd2double(PRIVATE_DATA->imager_ccd_basic_info.firmwareVersion), b1));
 						sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->imager_ccd_basic_info.name);
 
 						cip.request = CCD_INFO_EXTENDED; /* imaging CCD */
@@ -1190,7 +1191,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->guider_ccd_basic_info.readoutInfo[0].pixelHeight);
 						CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 
-						sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->guider_ccd_basic_info.firmwareVersion));
+						sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%s", indigo_dtoa(bcd2double(PRIVATE_DATA->guider_ccd_basic_info.firmwareVersion), b1));
 						sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->guider_ccd_basic_info.name);
 
 						indigo_update_property(device, INFO_PROPERTY, NULL);
