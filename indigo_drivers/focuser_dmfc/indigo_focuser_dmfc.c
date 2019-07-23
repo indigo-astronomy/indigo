@@ -169,7 +169,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	char response[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (dmfc_command(device, "T", response, sizeof(response))) {
-		double temp = atof(response);
+		double temp = indigo_atod(response);
 		if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -237,7 +237,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // temperature
-					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = atof(token);
+					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = indigo_atod(token);
 				}
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // position
