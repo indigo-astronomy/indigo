@@ -909,7 +909,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s Target Temperature = %.2f", device->name, PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- OFFSET
