@@ -1143,6 +1143,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
 		header += strlen(header);
 		char *frame_type = "Light";
+		char b1[32], b2[32];
 		if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
 			frame_type ="Flat";
 		else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
@@ -1165,16 +1166,16 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header += strlen(header);
 		sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
 		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%.5f'/>", CCD_EXPOSURE_ITEM->number.target);
+		sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%s'/>", indigo_dtoa(CCD_EXPOSURE_ITEM->number.target, b1));
 		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%.2f'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+		sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
 		header += strlen(header);
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%.2f'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%.2f'/>", CCD_TEMPERATURE_ITEM->number.value, CCD_TEMPERATURE_ITEM->number.target);
+			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
 		}
 		header += strlen(header);
 		if (!CCD_GAIN_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%g'/>", CCD_GAIN_ITEM->number.value);
+			sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAIN_ITEM->number.value, b1));
 			header += strlen(header);
 		}
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {

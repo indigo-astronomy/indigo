@@ -69,7 +69,7 @@ static bool is_pre_vista() {
 		dwBufLen = MAX_PATH;
 		lret = RegQueryValueEx(hKey, "CurrentVersion", reservedNULL, NULL, (BYTE*)buffer, &dwBufLen);
 		if (lret == ERROR_SUCCESS) {
-			if (atof(buffer) < 6.0) // Vista is 6.0
+			if (indigo_atod(buffer) < 6.0) // Vista is 6.0
 				bRet = true;
 		}
 		RegCloseKey(hKey);

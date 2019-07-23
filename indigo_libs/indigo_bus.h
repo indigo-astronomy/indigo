@@ -549,11 +549,11 @@ extern void indigo_usleep(unsigned int delay);
 	
 #define ONE_SECOND_DELAY	1000000
 	
-/** Locale independent atof()
+/** Locale independent atod()
  */
 extern double indigo_atod(const char *str);
 	
-/** Locale independent ftoa()
+/** Locale independent dtoa()
  */
 extern char *indigo_dtoa(double value, char *str);
 
