@@ -549,6 +549,14 @@ extern void indigo_usleep(unsigned int delay);
 	
 #define ONE_SECOND_DELAY	1000000
 	
+/** Locale independent atof()
+ */
+extern double indigo_atod(const char *str);
+	
+/** Locale independent ftoa()
+ */
+extern char *indigo_dtoa(double value, char *str);
+
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
 extern indigo_property INDIGO_ALL_PROPERTIES;
