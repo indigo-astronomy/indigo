@@ -125,12 +125,12 @@ static void gps_refresh_callback(indigo_device *device) {
 				sprintf(GPS_UTC_ITEM->text.value, "20%02d-%02d-%02dT%02d:%02d:%02d", date % 100, (date / 100) % 100, date / 10000, time / 10000, (time / 100) % 100, time % 100);
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-				double lat = atof(tokens[3]);
+				double lat = indigo_atod(tokens[3]);
 				lat = floor(lat / 100) + fmod(lat, 100) / 60;
 				if (!strcmp(tokens[4], "S"))
 					lat = -lat;
 				lat = round(lat * 10000) / 10000;
-				double lon = atof(tokens[5]);
+				double lon = indigo_atod(tokens[5]);
 				lon = floor(lon / 100) + fmod(lon, 100) / 60;
 				if (!strcmp(tokens[6], "W"))
 					lon = -lon;
@@ -142,17 +142,17 @@ static void gps_refresh_callback(indigo_device *device) {
 					indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 				}
 			} else if (!strcmp(tokens[0], "GGA")) { // Global Positioning System Fix Data
-				double lat = atof(tokens[2]);
+				double lat = indigo_atod(tokens[2]);
 				lat = floor(lat / 100) + fmod(lat, 100) / 60;
 				if (!strcmp(tokens[3], "S"))
 					lat = -lat;
 				lat = round(lat * 10000) / 10000;
-				double lon = atof(tokens[4]);
+				double lon = indigo_atod(tokens[4]);
 				lon = floor(lon / 100) + fmod(lon, 100) / 60;
 				if (!strcmp(tokens[5], "W"))
 					lon = -lon;
 				lon = round(lon * 10000) / 10000;
-				double elv = round(atof(tokens[9]));
+				double elv = round(indigo_atod(tokens[9]));
 				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat || GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value != elv) {
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
 					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
@@ -222,9 +222,9 @@ static void gps_refresh_callback(indigo_device *device) {
 					}
 					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 				}
-				double pdop = atof(tokens[15]);
-				double hdop = atof(tokens[16]);
-				double vdop = atof(tokens[17]);
+				double pdop = indigo_atod(tokens[15]);
+				double hdop = indigo_atod(tokens[16]);
+				double vdop = indigo_atod(tokens[17]);
 				if (GPS_ADVANCED_STATUS_PDOP_ITEM->number.value != pdop || GPS_ADVANCED_STATUS_HDOP_ITEM->number.value != hdop || GPS_ADVANCED_STATUS_VDOP_ITEM->number.value != vdop) {
 					GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = pdop;
 					GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = hdop;
