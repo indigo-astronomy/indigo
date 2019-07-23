@@ -146,3 +146,4 @@ Driver is developed and tested with:
 
 ## Issues:
 Bulb exposures currently work only with EOS cameras.
+Driver is not locale safe, will not work with decimal "," instead of ".".
