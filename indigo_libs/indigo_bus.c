@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include <math.h>
 #include <assert.h>
@@ -1116,4 +1117,32 @@ void indigo_usleep(unsigned int delay) {
 	unsigned int s = delay / 1000;
 	Sleep(s);
 #endif
+}
+
+double indigo_atod(const char *str) {
+	double value = 0;
+	int sign = 1;
+	while (*str && isspace(*str))
+		++str;
+	if (*str == '+')
+		++str;
+	if (*str == '-') {
+		sign = -1;
+		++str;
+	}
+	for (value = 0; *str && isdigit(*str); ++str)
+		value = value * 10 + (*str - '0');
+	if (*str == '.') {
+		++str;
+		double dec;
+		for (dec = 0.1; *str && isdigit(*str); ++str, dec /= 10)
+			value += dec * (*str - '0');
+	}	
+	return sign * value;
+}
+
+char *indigo_dtoa(double value, char *str) {
+	unsigned long fraction = (unsigned long)(fabs(value - ((long)value)) * 1e6);
+	sprintf(str, "%lu.%6.6lu", (unsigned long)value, fraction);
+	return str;
 }

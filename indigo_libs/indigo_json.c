@@ -170,7 +170,7 @@ static void *one_number_handler(parser_state state, char *name, char *value, ind
 	} else if (state == TEXT_VALUE && !strcmp(name, "name")) {
 		strncpy(property->items[property->count].name, value, INDIGO_NAME_SIZE);
 	} else if (state == NUMBER_VALUE && !strcmp(name, "value")) {
-		property->items[property->count].number.value = atof(value);
+		property->items[property->count].number.value = indigo_atod(value);
 	}
 	return one_number_handler;
 }
