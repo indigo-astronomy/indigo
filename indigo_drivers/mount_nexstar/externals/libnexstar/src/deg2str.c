@@ -98,7 +98,7 @@ char *dd2a(double a, int plus)
 		sprintf(str,"+%d:%02d:%02d",deg,min,(int)sec);
 		else sprintf(str,"%d:%02d:%02d",deg,min,(int)sec);
 #endif
-	if ((fc = strchr(command, ',')))
+	if ((fc = strchr(str, ',')))
 		*fc = '.';	
 	return str;
 }
