@@ -291,7 +291,7 @@ static void meade_get_utc(indigo_device *device) {
 						}
 					}
 					tm.tm_gmtoff = -atoi(response) * 3600;
-					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%g", -atof(response));
+					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", -atoi(response));
 					if (PRIVATE_DATA->use_dst_commands) {
 						if (meade_command(device, ":GH#", response, sizeof(response), 0)) {
 							tm.tm_isdst = atoi(response);
@@ -1114,18 +1114,18 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		char command[128];
 		if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-				sprintf(command, ":Mn%3.0f#", GUIDER_GUIDE_NORTH_ITEM->number.value);
+				sprintf(command, ":Mn%3d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-				sprintf(command, ":Ms%3.0f#", GUIDER_GUIDE_SOUTH_ITEM->number.value);
+				sprintf(command, ":Ms%3d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			}
 		} else {
 			if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-				sprintf(command, ":Mgn%4.0f#", GUIDER_GUIDE_NORTH_ITEM->number.value);
+				sprintf(command, ":Mgn%4d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-				sprintf(command, ":Mgs%4.0f#", GUIDER_GUIDE_SOUTH_ITEM->number.value);
+				sprintf(command, ":Mgs%4d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			}
 		}
@@ -1139,18 +1139,18 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		char command[128];
 		if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-				sprintf(command, ":Mw%3.0f#", GUIDER_GUIDE_WEST_ITEM->number.value);
+				sprintf(command, ":Mw%3d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-				sprintf(command, ":Me%3.0f#", GUIDER_GUIDE_EAST_ITEM->number.value);
+				sprintf(command, ":Me%3d#", (int)GUIDER_GUIDE_EAST_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			}
 		} else {
 			if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-				sprintf(command, ":Mgw%4.0f#", GUIDER_GUIDE_WEST_ITEM->number.value);
+				sprintf(command, ":Mgw%4d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-				sprintf(command, ":Mge%4.0f#", GUIDER_GUIDE_EAST_ITEM->number.value);
+				sprintf(command, ":Mge%4d#", (int)GUIDER_GUIDE_EAST_ITEM->number.value);
 				meade_command(device, command, NULL, 0, 0);
 			}
 		}
