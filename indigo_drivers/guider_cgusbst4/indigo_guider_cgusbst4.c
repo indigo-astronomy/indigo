@@ -178,10 +178,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		char command[128];
 		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-			sprintf(command, ":Mgn%4.0f#", GUIDER_GUIDE_NORTH_ITEM->number.value);
+			sprintf(command, ":Mgn%4d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 			cgusbst4_command(device, command, NULL, 0, 0);
 		} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-			sprintf(command, ":Mgs%4.0f#", GUIDER_GUIDE_SOUTH_ITEM->number.value);
+			sprintf(command, ":Mgs%4d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 			cgusbst4_command(device, command, NULL, 0, 0);
 		}
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -193,10 +193,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		char command[128];
 		if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-			sprintf(command, ":Mgw%4.0f#", GUIDER_GUIDE_WEST_ITEM->number.value);
+			sprintf(command, ":Mgw%4d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 			cgusbst4_command(device, command, NULL, 0, 0);
 		} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-			sprintf(command, ":Mge%4.0f#", GUIDER_GUIDE_EAST_ITEM->number.value);
+			sprintf(command, ":Mge%4d#", (int)GUIDER_GUIDE_EAST_ITEM->number.value);
 			cgusbst4_command(device, command, NULL, 0, 0);
 		}
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
