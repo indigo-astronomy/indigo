@@ -46,6 +46,8 @@ const uint8_t crc_array[256] = {
   0x74, 0x2a, 0xc8, 0x96, 0x15, 0x4b, 0xa9, 0xf7, 0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35,
 };
 
+const char PROGMEM ok_reply[] = "$BS OK";
+
 bool use_crc = false;
 bool boot = true;
 char name[16] = "BP_SD_01";
@@ -86,7 +88,7 @@ void loop() {
   char command[64], response[64], *pnt;
   unsigned char crc = 0;
   if (boot) {
-    Serial.println("$BS Hello World!");
+    Serial.println(F("$BS Hello World!"));
     boot = false;
   }
   if (moving) {
@@ -116,20 +118,20 @@ void loop() {
     *pnt = 0;
     response[0] = 0;
     if (random(10) == 0)
-      Serial.println("$BS DEBUG: Initialization of temperature measurement failed for sensor #1");
-    if (!strcmp(command, "$BS GET VERSION")) {
-      strcpy(response, "$BS STATUS VERSION:0.700(Apr 5 2019)");
-    } else if (!strcmp(command, "$BS CRC_ENABLE")) {
+      Serial.println(F("$BS DEBUG: Initialization of temperature measurement failed for sensor #1"));
+    if (!strcmp_PF(command, F("$BS GET VERSION"))) {
+      strcpy_PF(response, F("$BS STATUS VERSION:0.700(Apr 5 2019)"));
+    } else if (!strcmp_PF(command, F("$BS CRC_ENABLE"))) {
       use_crc = true;
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS CRC_DISABLE")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS CRC_DISABLE"))) {
       use_crc = false;
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS REBOOT")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS REBOOT"))) {
       delay(1000);
       boot = true;
       return;
-    } else if (!strcmp(command, "$BS RESET")) {
+    } else if (!strcmp_PF(command, F("$BS RESET"))) {
       use_crc = false;
       boot = true;
       strcpy(name, "BP_SD_01");
@@ -138,28 +140,28 @@ void loop() {
       focus = 1234;
       jogstep = 50;
       singlestep = 1;
-      Serial.println("$BS OK");
-      Serial.println("$BS DEBUG:FACTORY RESET...");
-      Serial.println("$BS DEBUG: LOADING DEFAULTS...");
+      Serial.println(ok_reply);
+      Serial.println(F("$BS DEBUG:FACTORY RESET..."));
+      Serial.println(F("$BS DEBUG: LOADING DEFAULTS..."));
       return;
-    } else if (!strncmp(command, "$BS SET NAME:", 13)) {
+    } else if (!strncmp_PF(command, F("$BS SET NAME:"), 13)) {
       strncpy(name, command + 13, sizeof(name));
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET NAME")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET NAME"))) {
       sprintf(response, "$BS STATUS NAME:%s", name);
-    } else if (!strncmp(command, "$BS SET BKLGT:", 14)) {
+    } else if (!strncmp_PF(command, F("$BS SET BKLGT:"), 14)) {
       bklgt = atoi(command + 14);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET BKLGT")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET BKLGT"))) {
       sprintf(response, "$BS STATUS BKLGT:%d", bklgt);
-    } else if (!strncmp(command, "$BS SET USE_ENDSTOP:", 20)) {
+    } else if (!strncmp_PF(command, F("$BS SET USE_ENDSTOP:"), 20)) {
       use_endstop = atoi(command + 20);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET USE_ENDSTOP")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET USE_ENDSTOP"))) {
       sprintf(response, "$BS STATUS USE_ENDSTOP:%d", use_endstop);
-    } else if (!strcmp(command, "$BS INFO")) {
+    } else if (!strcmp_PF(command, F("$BS INFO"))) {
 			sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d", name, pos, moving ? (target > pos ? "GOING_UP" : "GOING_DOWN") : "STOPPED", limit);
-    } else if (!strcmp(command, "$BS SUMMARY")) {
+    } else if (!strcmp_PF(command, F("$BS SUMMARY"))) {
       char temp0_str[6];
       char temp1_str[6];
       char temp_avg_str[6];
@@ -167,137 +169,137 @@ void loop() {
       dtostrf(temp1, 4, 2, temp1_str);
       dtostrf((temp0 + temp1) / 2, 4, 2, temp_avg_str);
       sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d;FOCUS:%d;TEMP0:%s;TEMP1:%s;TEMP_AVG:%s;TCOMP:%d;PWM:%d", name, pos, moving ? (target > pos ? "GOING_UP" : "GOING_DOWN") : "STOPPED", limit, focus, temp0_str, temp1_str, temp_avg_str, tcomp, pwm);
-    } else if (!strcmp(command, "$BS ZEROING")) {
+    } else if (!strcmp_PF(command, F("$BS ZEROING"))) {
       pos = 0;
-      strcpy(response, "$BS OK");
-    } else if (!strncmp(command, "$BS SET POS:", 12)) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strncmp_PF(command, F("$BS SET POS:"), 12)) {
       pos = atoi(command + 12);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET POS")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET POS"))) {
       sprintf(response, "$BS STATUS POS:%d", pos);
-    } else if (!strncmp(command, "$BS SET LIMIT:", 14)) {
+    } else if (!strncmp_PF(command, F("$BS SET LIMIT:"), 14)) {
       limit = atoi(command + 14);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET LIMIT")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET LIMIT"))) {
       sprintf(response, "$BS STATUS LIMIT:%d", limit);
-    } else if (!strncmp(command, "$BS SET FOCUS:", 14)) {
+    } else if (!strncmp_PF(command, F("$BS SET FOCUS:"), 14)) {
       focus = atoi(command + 14);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET FOCUS")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET FOCUS"))) {
       sprintf(response, "$BS STATUS FOCUS:%d", focus);
-    } else if (!strncmp(command, "$BS SET JOGSTEPS:", 17)) {
+    } else if (!strncmp_PF(command, F("$BS SET JOGSTEPS:"), 17)) {
       jogstep = atoi(command + 17);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET JOGSTEPS")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET JOGSTEPS"))) {
       sprintf(response, "$BS STATUS JOGSTEPS:%d", jogstep);
-    } else if (!strncmp(command, "$BS SET SINGLESTEPS:", 22)) {
-      singlestep = atoi(command + 22);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET SINGLESTEPS")) {
+    } else if (!strncmp_PF(command, F("$BS SET SINGLESTEPS:"), 21)) {
+      singlestep = atoi(command + 21);
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET SINGLESTEPS"))) {
       sprintf(response, "$BS STATUS SINGLESTEPS:%d", singlestep);
-    } else if (!strncmp(command, "$BS SET TCOMP:", 14)) {
+    } else if (!strncmp_PF(command, F("$BS SET TCOMP:"), 14)) {
       tcomp = atoi(command + 14);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TCOMP")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TCOMP"))) {
       sprintf(response, "$BS STATUS TCOMP:%d", tcomp);
-    } else if (!strncmp(command, "$BS SET TCOMP_FACTOR:", 22)) {
-      tcomp_factor = atof(command + 22);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TCOMP_FACTOR")) {
+    } else if (!strncmp_PF(command, F("$BS SET TCOMP_FACTOR:"), 21)) {
+      tcomp_factor = atof(command + 21);
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TCOMP_FACTOR"))) {
       char str[6];
       dtostrf(tcomp_factor, 5, 2, str);
       sprintf(response, "$BS STATUS TCOMP_FACTOR:%s", str);
-    } else if (!strncmp(command, "$BS SET TCOMP_PERIOD:", 22)) {
-      tcomp_period = atof(command + 22);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TCOMP_PERIOD")) {
+    } else if (!strncmp_PF(command, F("$BS SET TCOMP_PERIOD:"), 21)) {
+      tcomp_period = atof(command + 21);
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TCOMP_PERIOD"))) {
       sprintf(response, "$BS STATUS TCOMP_PERIOD:%d", tcomp_period);      
-    } else if (!strncmp(command, "$BS SET TCOMP_DELTA:", 21)) {
+    } else if (!strncmp_PF(command, F("$BS SET TCOMP_DELTA:"), 21)) {
       tcomp_delta = atoi(command + 21);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TCOMP_DELTA")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TCOMP_DELTA"))) {
       char str[6];
       dtostrf(tcomp_delta, 5, 2, str);
       sprintf(response, "$BS STATUS TCOMP_DELTA:%s", str);      
-    } else if (!strncmp(command, "$BS SET TCOMP_SENSOR:", 21)) {
+    } else if (!strncmp_PF(command, F("$BS SET TCOMP_SENSOR:"), 21)) {
       tcomp_sensor = atoi(command + 21);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TCOMP_SENSOR")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TCOMP_SENSOR"))) {
       sprintf(response, "$BS STATUS TCOMP_SENSOR:%d", tcomp_sensor);      
-    } else if (!strncmp(command, "$BS GO ", 7)) {
+    } else if (!strncmp_PF(command, F("$BS GO "), 7)) {
       target = atoi(command + 7);
       if (target < 0)
         target = 0;
       else if (target > limit)
         target = limit;
       moving = true;
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS STOP")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS STOP"))) {
       moving = false;
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TCOMP0")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TCOMP0"))) {
       char str[6];
       dtostrf(temp0, 4, 2, str);
       sprintf(response, "$BS STATUS TCOMP0:%s", str);      
-    } else if (!strcmp(command, "$BS GET TCOMP1")) {
+    } else if (!strcmp_PF(command, F("$BS GET TCOMP1"))) {
       char str[6];
       dtostrf(temp1, 4, 2, str);
       sprintf(response, "$BS STATUS TCOMP1:%s", str);      
-    } else if (!strncmp(command, "$BS SET TEMP0_OFS:", 18)) {
+    } else if (!strncmp_PF(command, F("$BS SET TEMP0_OFS:"), 18)) {
       temp0_ofs = atof(command + 18);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TEMP0_OFS")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TEMP0_OFS"))) {
       char str[6];
       dtostrf(temp0_ofs, 5, 2, str);
       sprintf(response, "$BS STATUS TEMP0_OFS:%s", str);
-    } else if (!strncmp(command, "$BS SET TEMP1_OFS:", 18)) {
+    } else if (!strncmp_PF(command, F("$BS SET TEMP1_OFS:"), 18)) {
       temp1_ofs = atof(command + 18);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET TEMP1_OFS")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET TEMP1_OFS"))) {
       char str[6];
       dtostrf(temp1_ofs, 5, 2, str);
       sprintf(response, "$BS STATUS TEMP1_OFS:%s", str);
-    } else if (!strncmp(command, "$BS SET PID_CTRL:", 17)) {
+    } else if (!strncmp_PF(command, F("$BS SET PID_CTRL:"), 17)) {
       pid_ctrl = atoi(command + 17);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET PID_CTRL")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET PID_CTRL"))) {
       sprintf(response, "$BS STATUS PID_CTRL:%d", pid_ctrl);
-    } else if (!strncmp(command, "$BS SET PID_TARGET:", 19)) {
+    } else if (!strncmp_PF(command, F("$BS SET PID_TARGET:"), 19)) {
       pid_target = atof(command + 19);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET PID_TARGET")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET PID_TARGET"))) {
       char str[6];
       dtostrf(pid_target, 5, 2, str);
       sprintf(response, "$BS STATUS PID_TARGET:%s", str);
-    } else if (!strncmp(command, "$BS SET PID_SENSOR:", 19)) {
+    } else if (!strncmp_PF(command, F("$BS SET PID_SENSOR:"), 19)) {
       pid_sensor = atoi(command + 19);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET PID_SENSOR")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET PID_SENSOR"))) {
       sprintf(response, "$BS STATUS PID_SENSOR:%d", pid_sensor);
-    } else if (!strncmp(command, "$BS SET PWM:", 12)) {
+    } else if (!strncmp_PF(command, F("$BS SET PWM:"), 12)) {
       pwm = atoi(command + 12);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET PWM")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET PWM"))) {
       sprintf(response, "$BS STATUS PWM:%d", pwm);
-    } else if (!strncmp(command, "$BS SET AMBIENT_SENSOR:", 23)) {
+    } else if (!strncmp_PF(command, F("$BS SET AMBIENT_SENSOR:"), 23)) {
       ambient_sensor = atoi(command + 23);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET AMBIENT_SENSOR")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET AMBIENT_SENSOR"))) {
       sprintf(response, "$BS STATUS AMBIENT_SENSOR:%d", ambient_sensor);
-    } else if (!strncmp(command, "$BS SET PID_DEW_OFS:", 20)) {
+    } else if (!strncmp_PF(command, F("$BS SET PID_DEW_OFS:"), 20)) {
       pid_dew_ofs = atof(command + 19);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET PID_DEW_OFS")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET PID_DEW_OFS"))) {
       char str[6];
       dtostrf(pid_dew_ofs, 5, 2, str);
       sprintf(response, "$BS STATUS PID_DEW_OFS:%s", str);
-    } else if (!strncmp(command, "$BS SET AUTO_DEW:", 18)) {
+    } else if (!strncmp_PF(command, F("$BS SET AUTO_DEW:"), 18)) {
       auto_dew = atoi(command + 18);
-      strcpy(response, "$BS OK");
-    } else if (!strcmp(command, "$BS GET AUTO_DEW")) {
+      strcpy_PF(response, ok_reply);
+    } else if (!strcmp_PF(command, F("$BS GET AUTO_DEW"))) {
       sprintf(response, "$BS STATUS AUTO_DEW:%d", auto_dew);
     } else {
-			strcpy(response, "$BS ERROR: Unknown command!");
+			strcpy_PF(response, F("$BS ERROR: Unknown command!"));
     }
 
     if (use_crc) {
