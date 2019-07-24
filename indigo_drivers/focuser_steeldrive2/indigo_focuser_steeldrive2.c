@@ -23,7 +23,7 @@
  \file indigo_focuser_steeldrive2.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_steeldrive2"
 
 #include <stdlib.h>
@@ -309,6 +309,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_STEPS_ITEM->number.min = 0;
 		FOCUSER_STEPS_ITEM->number.max = 0xFFFF;
 		FOCUSER_STEPS_ITEM->number.step = 1;
+			// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		FOCUSER_POSITION_ITEM->number.min = 0;
+		FOCUSER_POSITION_ITEM->number.max = 0xFFFF;
+		FOCUSER_POSITION_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
