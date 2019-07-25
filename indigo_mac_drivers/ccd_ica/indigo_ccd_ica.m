@@ -29,8 +29,8 @@
 #import <Cocoa/Cocoa.h>
 #import <ImageCaptureCore/ImageCaptureCore.h>
 
-#include "indigo_ccd_driver.h"
-#include "indigo_focuser_driver.h"
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_focuser_driver.h>
 
 #import "indigo_ccd_ica.h"
 #import "indigo_ica_ptp.h"

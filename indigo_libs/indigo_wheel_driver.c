@@ -34,7 +34,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_wheel_driver.h"
+#include <indigo/indigo_wheel_driver.h>
 
 indigo_result indigo_wheel_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);

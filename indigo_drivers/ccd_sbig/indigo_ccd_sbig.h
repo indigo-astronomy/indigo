@@ -26,11 +26,11 @@
 #ifndef __ccd_sbig_h
 #define __ccd_sbig_h
 
-#include "indigo_driver.h"
-#include "indigo_ccd_driver.h"
-#include "indigo_guider_driver.h"
-#include "indigo_wheel_driver.h"
-#include "indigo_ao_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_wheel_driver.h>
+#include <indigo/indigo_ao_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

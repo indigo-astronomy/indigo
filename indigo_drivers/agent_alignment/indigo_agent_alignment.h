@@ -26,7 +26,7 @@
 #ifndef agent_alignment_h
 #define agent_alignment_h
 
-#include "indigo_agent.h"
+#include <indigo/indigo_agent.h>
 
 #ifdef __cplusplus
 extern "C" {

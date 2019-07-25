@@ -26,7 +26,7 @@
 #ifndef agent_imager_h
 #define agent_imager_h
 
-#include "indigo_agent.h"
+#include <indigo/indigo_agent.h>
 
 #ifdef __cplusplus
 extern "C" {

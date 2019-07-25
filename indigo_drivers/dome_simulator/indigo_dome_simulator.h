@@ -26,8 +26,8 @@
 #ifndef dome_simulator_h
 #define dome_simulator_h
 
-#include "indigo_driver.h"
-#include "indigo_dome_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_dome_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -36,8 +36,8 @@
 #include <sys/time.h>
 #include <sys/ioctl.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_io.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_io.h>
 #include "indigo_aux_rts.h"
 
 #define PRIVATE_DATA												((rts_private_data *)device->private_data)

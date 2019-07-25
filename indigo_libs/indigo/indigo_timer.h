@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {

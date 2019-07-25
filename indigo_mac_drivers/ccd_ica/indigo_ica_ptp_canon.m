@@ -6,7 +6,7 @@
 //  Copyright © 2017 CloudMakers, s. r. o. All rights reserved.
 //
 
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 
 #import "indigo_ica_ptp_canon.h"
 

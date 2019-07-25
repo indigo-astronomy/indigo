@@ -42,7 +42,8 @@
 
 #include <libatik.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_wheel_atik.h"
 
 // -------------------------------------------------------------------------------- ATIK USB interface implementation

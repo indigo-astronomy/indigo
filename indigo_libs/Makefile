@@ -52,6 +52,8 @@ install: status libindigo
 ifeq ($(OS_DETECTED),Darwin)
 	cp $(LIBUSB) $(INSTALL_LIB)
 endif
+	install -d $(INSTALL_INCLUDE)
+	cp indigo/*.h $(INSTALL_INCLUDE)/indigo
 
 uninstall: status
 	rm -f $(INSTALL_LIB)/libindigo.$(SOEXT)
@@ -87,8 +89,8 @@ $(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c))) $(
 version: indigo_config.h
 
 indigo_config.h:	../Makefile.inc
-	cp indigo_config.h indigo_config.h.orig
-	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo_config.h.orig >indigo_config.h
+	cp indigo/indigo_config.h indigo/indigo_config.h.orig
+	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo/indigo_config.h.orig >indigo/indigo_config.h
 
 #---------------------------------------------------------------------
 #

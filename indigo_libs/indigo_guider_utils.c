@@ -13,9 +13,9 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "indigo_bus.h"
-#include "indigo_ccd_driver.h"
-#include "indigo_guider_utils.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_guider_utils.h>
 
 #define RE (0)
 #define IM (1)

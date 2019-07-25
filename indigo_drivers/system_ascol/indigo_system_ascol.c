@@ -34,10 +34,10 @@
 #include <math.h>
 #include <assert.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 
-#include "libascol/libascol.h"
 #include "indigo_system_ascol.h"
+#include "libascol/libascol.h"
 
 #define h2d(h) (h * 15.0)
 #define d2h(d) (d / 15.0)

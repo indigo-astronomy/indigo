@@ -41,9 +41,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <EAF_focuser.h>
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_focuser_asi.h"
+#include <EAF_focuser.h>
 
 #define ASI_VENDOR_ID                   0x03c3
 

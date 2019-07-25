@@ -34,7 +34,8 @@
 #include <math.h>
 #include <assert.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_gps_simulator.h"
 
 /* Sumulator uses coordinates of AO Belogradchik */

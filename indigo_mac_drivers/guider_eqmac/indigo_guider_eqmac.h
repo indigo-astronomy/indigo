@@ -27,8 +27,8 @@
 #ifndef guider_eqmac_h
 #define guider_eqmac_h
 
-#include "indigo_driver.h"
-#include "indigo_guider_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_guider_driver.h>
 
 #define EQMAC_GUIDER_NAME       "EQMac (guider)"
 

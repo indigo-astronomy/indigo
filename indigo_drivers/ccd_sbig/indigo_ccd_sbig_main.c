@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 #include "indigo_ccd_sbig.h"
 
 int main(int argc, const char * argv[]) {

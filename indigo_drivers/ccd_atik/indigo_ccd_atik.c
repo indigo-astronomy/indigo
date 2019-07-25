@@ -40,12 +40,11 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "AtikCameras.h"
-
-#include "indigo_usb_utils.h"
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_driver_xml.h>
 
 #include "indigo_ccd_atik.h"
+#include "AtikCameras.h"
 
 #define PRIVATE_DATA        ((atik_private_data *)device->private_data)
 

@@ -26,8 +26,8 @@
 #ifndef guider_gpusb_h
 #define guider_gpusb_h
 
-#include "indigo_driver.h"
-#include "indigo_guider_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_guider_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

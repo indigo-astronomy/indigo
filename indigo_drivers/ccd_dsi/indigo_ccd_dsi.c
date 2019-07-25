@@ -53,9 +53,10 @@
 
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
-#include "libdsi.h"
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_ccd_dsi.h"
+#include "libdsi.h"
 
 #define DSI_VENDOR_ID              0x156c
 

@@ -34,9 +34,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_dome_driver.h"
-#include "indigo_agent.h"
-#include "indigo_novas.h"
+#include <indigo/indigo_dome_driver.h>
+#include <indigo/indigo_agent.h>
+#include <indigo/indigo_novas.h>
 
 #define SYNC_INTERAL 15.0  /* in seconds */
 

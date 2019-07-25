@@ -29,12 +29,12 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#include "indigo_driver.h"
+#include <indigo/indigo_driver.h>
 #else
-#include "indigo_names.h"
+#include <indigo/indigo_names.h>
 #endif
 
 #ifdef __cplusplus

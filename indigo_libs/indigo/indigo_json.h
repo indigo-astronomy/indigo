@@ -19,27 +19,36 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO JSON wire protocol client side adapter
- \file indigo_driver_json.h
+/** INDIGO JSON wire protocol parser
+ \file indigo_json.h
  */
 
-#ifndef indigo_driver_json_h
-#define indigo_driver_json_h
+#ifndef indigo_json_h
+#define indigo_json_h
 
 #include <stdio.h>
-#include "indigo_json.h"
+#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Create initialized instance of JSON wire protocol device side adapter.
+#define JSON_BUFFER_SIZE	(64 * 1024)
+
+#ifndef htonll
+#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#endif
+
+#ifndef ntohll
+#define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+#endif
+
+/** JSON wire protocol parser.
  */
-extern indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket);
-extern void indigo_release_json_device_adapter(indigo_client *client);
+extern void indigo_json_parse(indigo_device *device, indigo_client *client);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_driver_json_h */
+#endif /* indigo_json_h */

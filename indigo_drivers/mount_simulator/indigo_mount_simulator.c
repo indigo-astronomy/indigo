@@ -33,8 +33,9 @@
 #include <math.h>
 #include <assert.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_novas.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_novas.h>
+
 #include "indigo_mount_simulator.h"
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)

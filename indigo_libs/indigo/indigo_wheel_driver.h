@@ -26,8 +26,8 @@
 #ifndef indigo_wheel_h
 #define indigo_wheel_h
 
-#include "indigo_bus.h"
-#include "indigo_driver.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

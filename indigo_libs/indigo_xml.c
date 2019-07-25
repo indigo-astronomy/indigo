@@ -46,11 +46,11 @@
 #pragma warning(disable:4996)
 #endif
 
-#include "indigo_base64.h"
-#include "indigo_xml.h"
-#include "indigo_io.h"
-#include "indigo_version.h"
-#include "indigo_names.h"
+#include <indigo/indigo_base64.h>
+#include <indigo/indigo_xml.h>
+#include <indigo/indigo_io.h>
+#include <indigo/indigo_version.h>
+#include <indigo/indigo_names.h>
 
 #define BUFFER_SIZE 524288  /* BUFFER_SIZE % 4 == 0, inportant for base64 */
 

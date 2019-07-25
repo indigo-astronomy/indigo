@@ -44,9 +44,9 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "qsiapi.h"
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 #include "indigo_ccd_qsi.h"
+#include "qsiapi.h"
 
 #define QSI_VENDOR_ID             0x0403
 #define QSI_PRODUCT_ID						0xEB48

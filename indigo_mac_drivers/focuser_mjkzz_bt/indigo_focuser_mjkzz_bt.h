@@ -26,8 +26,8 @@
 #ifndef focuser_mjkzz_bt_h
 #define focuser_mjkzz_bt_h
 
-#include "indigo_driver.h"
-#include "indigo_focuser_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_focuser_driver.h>
 
 #define FOCUSER_MJKZZ_BT_NAME              "MJKZZ Rail (bluetooth)"
 

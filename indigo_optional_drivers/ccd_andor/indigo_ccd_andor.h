@@ -26,8 +26,8 @@
 #ifndef ccd_andor_h
 #define ccd_andor_h
 
-#include "indigo_driver.h"
-#include "indigo_ccd_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_ccd_driver.h>
 #include "atmcdLXd.h"
 
 #ifdef __cplusplus

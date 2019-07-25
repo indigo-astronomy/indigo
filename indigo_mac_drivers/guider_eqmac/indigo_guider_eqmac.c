@@ -38,13 +38,14 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <sys/time.h>
 
 #include <CoreServices/CoreServices.h>
 
-#include <stdbool.h>
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_guider_eqmac.h"
-#include "indigo_driver_xml.h"
 
 AppleEvent E6Return;
 AppleEvent E6Event;

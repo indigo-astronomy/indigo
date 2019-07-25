@@ -26,8 +26,8 @@
 #ifndef gps_simulator_h
 #define gps_simulator_h
 
-#include "indigo_driver.h"
-#include "indigo_gps_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_gps_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -27,7 +27,7 @@
 #include <string.h>
 
 #include "indigo_guider_asi.h"
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;

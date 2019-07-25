@@ -36,8 +36,8 @@
 #include <sys/stat.h>
 #include <jpeglib.h>
 
-#include "indigo_ccd_driver.h"
-#include "indigo_io.h"
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_io.h>
 
 static void countdown_timer_callback(indigo_device *device) {
 	if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
+// Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,27 +19,40 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO XML wire protocol client side adapter
- \file indigo_driver_xml.h
+/** INDIGO Filter aux Driver base
+ \file indigo_aux_driver.h
  */
 
-#ifndef indigo_device_xml_h
-#define indigo_device_xml_h
+#ifndef indigo_aux_h
+#define indigo_aux_h
 
-#include "indigo_bus.h"
-#include "indigo_xml.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Create initialized instance of XML wire protocol client side adapter.
+/** Main aux group name string.
  */
-extern indigo_client *indigo_xml_device_adapter(int input, int ouput);
+#define AUX_MAIN_GROUP                "AUX"
+
+/** Attach callback function.
+ */
+extern indigo_result indigo_aux_attach(indigo_device *device, unsigned version, int interface);
+/** Enumerate properties callback function.
+ */
+extern indigo_result indigo_aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+/** Change property callback function.
+ */
+extern indigo_result indigo_aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+/** Detach callback function.
+ */
+extern indigo_result indigo_aux_detach(indigo_device *device);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_device_xml_h */
+#endif /* indigo_aux_h */
 

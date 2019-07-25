@@ -26,8 +26,8 @@
 #ifndef aux_dsusb_h
 #define aux_dsusb_h
 
-#include "indigo_driver.h"
-#include "indigo_aux_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_aux_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

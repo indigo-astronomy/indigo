@@ -27,8 +27,8 @@
 #ifndef guider_asi_h
 #define guider_asi_h
 
-#include "indigo_driver.h"
-#include "indigo_guider_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_guider_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

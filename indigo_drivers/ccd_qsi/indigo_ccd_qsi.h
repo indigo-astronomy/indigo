@@ -26,9 +26,9 @@
 #ifndef __ccd_qsi_h
 #define __ccd_qsi_h
 
-#include "indigo_driver.h"
-#include "indigo_ccd_driver.h"
-#include "indigo_wheel_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_wheel_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

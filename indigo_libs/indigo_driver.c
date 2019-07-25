@@ -62,10 +62,10 @@
 #define DEFAULT_TTY "/dev/tty"
 #endif
 
-#include "indigo_driver.h"
-#include "indigo_xml.h"
-#include "indigo_names.h"
-#include "indigo_io.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_xml.h>
+#include <indigo/indigo_names.h>
+#include <indigo/indigo_io.h>
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
 	if (indigo_is_sandboxed)

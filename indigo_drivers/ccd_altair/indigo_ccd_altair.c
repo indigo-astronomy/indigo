@@ -36,8 +36,8 @@
 
 #include <altaircam.h>
 
-#include "indigo_usb_utils.h"
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_driver_xml.h>
 
 #include "indigo_ccd_altair.h"
 

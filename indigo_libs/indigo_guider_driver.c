@@ -34,7 +34,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_guider_driver.h"
+#include <indigo/indigo_guider_driver.h>
 
 indigo_result indigo_guider_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);

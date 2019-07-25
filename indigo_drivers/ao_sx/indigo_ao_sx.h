@@ -26,9 +26,9 @@
 #ifndef ao_sx_h
 #define ao_sx_h
 
-#include "indigo_driver.h"
-#include "indigo_ao_driver.h"
-#include "indigo_guider_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_ao_driver.h>
+#include <indigo/indigo_guider_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

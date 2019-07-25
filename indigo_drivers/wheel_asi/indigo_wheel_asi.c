@@ -41,9 +41,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <EFW_filter.h>
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_wheel_asi.h"
+#include <EFW_filter.h>
 
 #define ASI_VENDOR_ID                   0x03c3
 

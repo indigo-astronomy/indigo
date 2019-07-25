@@ -33,7 +33,8 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_ccd_andor.h"
 
 /* Make it work with older SDK */

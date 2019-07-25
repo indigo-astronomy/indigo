@@ -25,7 +25,7 @@
 
 #include <stdio.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 
 #include "indigo_dome_simulator.h"
 

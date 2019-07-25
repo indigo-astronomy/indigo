@@ -45,13 +45,13 @@
 #include <netinet/tcp.h>
 #endif
 
-#include "indigo_bus.h"
-#include "indigo_server_tcp.h"
-#include "indigo_driver_xml.h"
-#include "indigo_driver_json.h"
-#include "indigo_client_xml.h"
-#include "indigo_base64.h"
-#include "indigo_io.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_server_tcp.h>
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_driver_json.h>
+#include <indigo/indigo_client_xml.h>
+#include <indigo/indigo_base64.h>
+#include <indigo/indigo_io.h>
 
 #define SHA1_SIZE 20
 #if _MSC_VER

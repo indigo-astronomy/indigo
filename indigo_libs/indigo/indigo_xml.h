@@ -1,4 +1,4 @@
-// Copyright (c) 2018 CloudMakers, s. r. o.
+// Copyright (c) 2016 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,33 +19,36 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO USB Utilities
- \file indigo_usb_utils.h
+/** INDIGO XML wire protocol parser
+ \file indigo_xml.h
  */
 
-#ifndef indigo_usb_utils_h
-#define indigo_usb_utils_h
+#ifndef indigo_xml_h
+#define indigo_xml_h
 
 #include <stdio.h>
-
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
-	
+/** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
+ */
+
+extern bool indigo_use_blob_urls;
+
+/** XML wire protocol parser.
+ */
+extern void indigo_xml_parse(indigo_device *device, indigo_client *client);
+
+/** Escape XML string.
+ */
+extern char *indigo_xml_escape(char *string);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_usb_utils_h */
+#endif /* indigo_xml_h */
+

@@ -21,8 +21,8 @@
 
 #include <ctype.h>
 #include <stdint.h>
-#include "indigo_base64.h"
-#include "indigo_base64_luts.h"
+#include <indigo/indigo_base64.h>
+#include <indigo/indigo_base64_luts.h>
 #include <stdio.h>
 
 /* out size should be at least 4*inlen/3 + 4.

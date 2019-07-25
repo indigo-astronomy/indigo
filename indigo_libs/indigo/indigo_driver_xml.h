@@ -19,36 +19,27 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO XML wire protocol parser
- \file indigo_xml.h
+/** INDIGO XML wire protocol client side adapter
+ \file indigo_driver_xml.h
  */
 
-#ifndef indigo_xml_h
-#define indigo_xml_h
+#ifndef indigo_device_xml_h
+#define indigo_device_xml_h
 
-#include <stdio.h>
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_xml.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
+/** Create initialized instance of XML wire protocol client side adapter.
  */
-
-extern bool indigo_use_blob_urls;
-
-/** XML wire protocol parser.
- */
-extern void indigo_xml_parse(indigo_device *device, indigo_client *client);
-
-/** Escape XML string.
- */
-extern char *indigo_xml_escape(char *string);
+extern indigo_client *indigo_xml_device_adapter(int input, int ouput);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_xml_h */
+#endif /* indigo_device_xml_h */
 

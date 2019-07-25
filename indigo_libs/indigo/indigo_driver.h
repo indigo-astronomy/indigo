@@ -29,9 +29,9 @@
 #include <stdint.h>
 #include <pthread.h>
 
-#include "indigo_bus.h"
-#include "indigo_names.h"
-#include "indigo_timer.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_names.h>
+#include <indigo/indigo_timer.h>
 
 #ifdef __cplusplus
 extern "C" {

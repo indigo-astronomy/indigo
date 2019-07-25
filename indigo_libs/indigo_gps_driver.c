@@ -34,8 +34,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_gps_driver.h"
-#include "indigo_io.h"
+#include <indigo/indigo_gps_driver.h>
+#include <indigo/indigo_io.h>
 
 indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);

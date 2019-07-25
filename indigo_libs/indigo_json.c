@@ -34,8 +34,8 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
-#include "indigo_json.h"
-#include "indigo_io.h"
+#include <indigo/indigo_json.h>
+#include <indigo/indigo_io.h>
 
 //#undef INDIGO_TRACE_PARSER
 //#define INDIGO_TRACE_PARSER(c) c

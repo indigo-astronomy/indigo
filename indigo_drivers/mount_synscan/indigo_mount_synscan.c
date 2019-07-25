@@ -32,9 +32,10 @@
 #include <math.h>
 #include <assert.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_io.h"
-#include "indigo_novas.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_io.h>
+#include <indigo/indigo_novas.h>
+
 #include "indigo_mount_synscan.h"
 #include "indigo_mount_synscan.h"
 #include "indigo_mount_synscan_private.h"

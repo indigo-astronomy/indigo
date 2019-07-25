@@ -49,9 +49,9 @@
 
 #include <libfli.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_focuser_fli.h"
+#include <indigo/indigo_driver_xml.h>
 
+#include "indigo_focuser_fli.h"
 
 #define PRIVATE_DATA		((fli_private_data *)device->private_data)
 

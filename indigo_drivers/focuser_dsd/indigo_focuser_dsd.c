@@ -42,9 +42,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 
-#include "indigo_io.h"
+#include <indigo/indigo_io.h>
+
 #include "indigo_focuser_dsd.h"
 
 #define PRIVATE_DATA                    ((dsd_private_data *)device->private_data)

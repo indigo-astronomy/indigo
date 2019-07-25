@@ -34,10 +34,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_mount_driver.h"
-#include "indigo_io.h"
-#include "indigo_novas.h"
-#include "indigo_agent.h"
+#include <indigo/indigo_mount_driver.h>
+#include <indigo/indigo_io.h>
+#include <indigo/indigo_novas.h>
+#include <indigo/indigo_agent.h>
 
 
 static double indigo_range24(double ha) {

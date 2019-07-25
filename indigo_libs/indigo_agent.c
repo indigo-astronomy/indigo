@@ -34,7 +34,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_agent.h"
+#include <indigo/indigo_agent.h>
 
 indigo_result indigo_agent_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
