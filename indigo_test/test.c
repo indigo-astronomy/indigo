@@ -30,7 +30,7 @@
 #pragma warning(disable:4996)
 #endif
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_client.h>"
+#include <indigo/indigo_client.h>
 
 #define CCD_SIMULATOR "CCD Imager Simulator @ indigosky"
 
