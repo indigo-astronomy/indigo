@@ -27,8 +27,8 @@
 #include <novas.h>
 #include <eph_manager.h>
 
-#include "indigo_bus.h"
-#include "indigo_novas.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_novas.h>
 
 #define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
 static double DELTA_T = 34+32.184+0.477677;

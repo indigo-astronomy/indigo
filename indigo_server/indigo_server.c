@@ -42,11 +42,11 @@
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
-#include "indigo_bus.h"
-#include "indigo_server_tcp.h"
-#include "indigo_driver.h"
-#include "indigo_client.h"
-#include "indigo_xml.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_server_tcp.h>
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_client.h>"
+#include <indigo/indigo_xml.h>"
 
 #include "indigo_cat_data.h"
 

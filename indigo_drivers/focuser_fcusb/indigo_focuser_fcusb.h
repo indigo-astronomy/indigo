@@ -26,8 +26,8 @@
 #ifndef focuser_fcusb_h
 #define focuser_fcusb_h
 
-#include "indigo_driver.h"
-#include "indigo_focuser_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_focuser_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

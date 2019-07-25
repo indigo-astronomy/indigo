@@ -26,8 +26,8 @@
 #ifndef wheel_asi_h
 #define wheel_asi_h
 
-#include "indigo_driver.h"
-#include "indigo_wheel_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_wheel_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

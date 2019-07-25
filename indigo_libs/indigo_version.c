@@ -25,8 +25,8 @@
 
 #include <string.h>
 
-#include "indigo_version.h"
-#include "indigo_names.h"
+#include <indigo/indigo_version.h>
+#include <indigo/indigo_names.h>
 
 #if defined(INDIGO_WINDOWS)
 #pragma warning(disable:4996)

@@ -42,9 +42,11 @@
 #endif
 
 #define MAX_PATH 255
-#include <libfli.h>
-#include "indigo_driver_xml.h"
+
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_wheel_fli.h"
+#include <libfli.h>
 
 #define FLI_VENDOR_ID                   0x0f18
 

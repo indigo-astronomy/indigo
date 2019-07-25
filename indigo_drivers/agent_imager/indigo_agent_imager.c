@@ -38,9 +38,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_filter.h"
-#include "indigo_io.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_filter.h>
+#include <indigo/indigo_io.h>
+
 #include "indigo_agent_imager.h"
 
 #define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)

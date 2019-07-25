@@ -26,9 +26,9 @@
 #ifndef indigo_dome_h
 #define indigo_dome_h
 
-#include "indigo_bus.h"
-#include "indigo_driver.h"
-#include "indigo_dome_azimuth.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_dome_azimuth.h>
 
 #ifdef __cplusplus
 extern "C" {

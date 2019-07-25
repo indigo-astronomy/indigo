@@ -26,8 +26,8 @@
 #ifndef __focuser_fli_h
 #define __focuser_fli_h
 
-#include "indigo_driver.h"
-#include "indigo_focuser_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_focuser_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

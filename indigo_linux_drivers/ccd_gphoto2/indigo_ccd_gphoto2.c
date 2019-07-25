@@ -43,6 +43,7 @@
 #include <gphoto2/gphoto2-list.h>
 #include <libusb-1.0/libusb.h>
 #include <libraw/libraw.h>
+
 #include "indigo_ccd_gphoto2.h"
 #include "dslr_model_info.h"
 

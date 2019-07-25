@@ -26,9 +26,9 @@
 #ifndef focuser_steeldrive2_h
 #define focuser_steeldrive2_h
 
-#include "indigo_driver.h"
-#include "indigo_focuser_driver.h"
-#include "indigo_aux_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_aux_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

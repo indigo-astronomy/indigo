@@ -45,9 +45,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "ASICamera2.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_ccd_asi.h"
-#include "indigo_driver_xml.h"
+#include "ASICamera2.h"
 
 #define ASI_MAX_FORMATS            4
 

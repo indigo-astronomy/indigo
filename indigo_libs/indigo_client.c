@@ -49,8 +49,8 @@
 #pragma warning(disable:4996)
 #endif
 
-#include "indigo_client_xml.h"
-#include "indigo_client.h"
+#include <indigo/indigo_client_xml.h>
+#include <indigo/indigo_client.h>
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 

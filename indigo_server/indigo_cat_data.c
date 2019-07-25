@@ -29,8 +29,8 @@
 #include <zlib.h>
 #include <stdarg.h>
 
-#include "indigo_server_tcp.h"
-#include "indigo_novas.h"
+#include <indigo/indigo_server_tcp.h>
+#include <indigo/indigo_novas.h>
 #include "indigo_cat_data.h"
 
 indigo_star_entry indigo_star_data[] = {

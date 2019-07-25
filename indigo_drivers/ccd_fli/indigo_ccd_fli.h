@@ -26,8 +26,8 @@
 #ifndef __ccd_fli_h
 #define __ccd_fli_h
 
-#include "indigo_driver.h"
-#include "indigo_ccd_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_ccd_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

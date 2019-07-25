@@ -9,8 +9,8 @@
 #ifndef indigo_mount_synscan_guider_h
 #define indigo_mount_synscan_guider_h
 
-#include "indigo_driver.h"
-#include "indigo_guider_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_guider_driver.h>
 
 void synscan_guider_connect(indigo_device* device);
 

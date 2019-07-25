@@ -26,7 +26,7 @@
 #ifndef ccd_ica_h
 #define ccd_ica_h
 
-#include "indigo_driver.h"
+#include <indigo/indigo_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

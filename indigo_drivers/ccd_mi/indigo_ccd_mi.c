@@ -41,12 +41,11 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <gxccd.h>
-
-#include "indigo_usb_utils.h"
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_driver_xml.h>
 
 #include "indigo_ccd_mi.h"
+#include <gxccd.h>
 
 #define MI_VID				0x1347
 #define PRIVATE_DATA		((mi_private_data *)device->private_data)

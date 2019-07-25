@@ -15,8 +15,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "indigo_driver.h"
-#include "indigo_io.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_io.h>
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_protocol.h"
 

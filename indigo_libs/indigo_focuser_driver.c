@@ -34,7 +34,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_focuser_driver.h"
+#include <indigo/indigo_focuser_driver.h>
 
 indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);

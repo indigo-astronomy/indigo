@@ -34,6 +34,7 @@ BUILD_SHARE = $(BUILD_ROOT)/share
 INSTALL_ROOT = /
 INSTALL_BIN = $(INSTALL_ROOT)/usr/local/bin
 INSTALL_LIB = $(INSTALL_ROOT)/usr/local/lib
+INSTALL_INCLUDE = $(INSTALL_ROOT)/usr/local/include
 INSTALL_ETC = $(INSTALL_ROOT)/etc
 INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
 INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
@@ -61,9 +62,9 @@ else
 		ARCH_DETECTED = x64
 		CC = clang
 		AR = ar
-		CFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
-		CXXFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
-		MFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
+		CFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
+		CXXFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
+		MFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
 		LDFLAGS = -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L$(BUILD_LIB) -lusb-1.0
 		ARFLAGS = -rv
 		SOEXT = dylib
@@ -102,8 +103,8 @@ else
 			CFLAGS = $(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT
 			CXXFLAGS = $(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 		else
-			CFLAGS = $(DEBUG_BUILD) -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-			CXXFLAGS = $(DEBUG_BUILD) -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+			CFLAGS = $(DEBUG_BUILD) -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+			CXXFLAGS = $(DEBUG_BUILD) -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 		endif
 		LDFLAGS = -lm -lrt -lusb-1.0 -pthread -L$(BUILD_LIB) -Wl,-rpath=\\\$$\$$ORIGIN/../lib,-rpath=\\\$$\$$ORIGIN/../drivers,-rpath=.
 		ARFLAGS = -rv
@@ -126,7 +127,7 @@ endif
 	@$(MAKE)	-C indigo_server all
 	@$(MAKE)	-C indigo_tools all
 
-$(BUILD_LIB)/libindigo.$(SOEXT): $(filter-out $(INDIGO_ROOT)/indigo_libs/indigo_config.h, $(wildcard $(INDIGO_ROOT)/indigo_libs/*.h))
+$(BUILD_LIB)/libindigo.$(SOEXT): $(filter-out $(INDIGO_ROOT)/indigo_libs/indigo/indigo_config.h, $(wildcard $(INDIGO_ROOT)/indigo_libs/indigo/*.h))
 	@echo --------------------------------------------------------------------- Forced clean - framework headers are changed
 	@$(MAKE) clean
 
@@ -147,6 +148,7 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_ROOT)
 	install -d -m 0755 $(INSTALL_BIN)
 	install -d -m 0755 $(INSTALL_LIB)
+	install -d -m 0755 $(INSTALL_INCLUDE)
 	install -d -m 0755 $(INSTALL_ETC)
 	install -d -m 0755 $(INSTALL_SHARE)
 	install -d -m 0755 $(INSTALL_SHARE)/indigo
@@ -188,6 +190,7 @@ ifeq ($(OS_DETECTED),Linux)
 package: INSTALL_ROOT = $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 package: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
 package: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
+package: INSTALL_INCLUDE = $(INSTALL_ROOT)/usr/include
 package: INSTALL_ETC = $(INSTALL_ROOT)/etc
 package: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
 package: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
@@ -295,6 +298,7 @@ Makefile.inc: Makefile
 	@printf "INSTALL_ROOT = $(INSTALL_ROOT)\n" >> Makefile.inc
 	@printf "INSTALL_BIN = $(INSTALL_BIN)\n" >> Makefile.inc
 	@printf "INSTALL_LIB = $(INSTALL_LIB)\n" >> Makefile.inc
+	@printf "INSTALL_INCLUDE = $(INSTALL_INCLUDE)\n" >> Makefile.inc
 	@printf "INSTALL_ETC = $(INSTALL_ETC)\n" >> Makefile.inc
 	@printf "INSTALL_SHARE = $(INSTALL_SHARE)\n" >> Makefile.inc
 	@printf "INSTALL_RULES = $(INSTALL_RULES)\n" >> Makefile.inc

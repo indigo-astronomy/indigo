@@ -26,7 +26,7 @@
 #ifndef agent_guider_h
 #define agent_guider_h
 
-#include "indigo_agent.h"
+#include <indigo/indigo_agent.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -59,8 +59,9 @@
 
 #endif
 
-#include "indigo_driver_xml.h"
-#include "indigo_usb_utils.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
+
 #include "indigo_aux_joystick.h"
 
 #define JOYSTICK_CONFIG_GROUP	"Joystick configuration"

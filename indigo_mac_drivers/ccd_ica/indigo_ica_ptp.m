@@ -68,7 +68,7 @@
 //
 //------------------------------------------------------------------------------------------------------------------------------
 
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 
 #import "indigo_ica_ptp.h"
 #import "indigo_ica_ptp_nikon.h"

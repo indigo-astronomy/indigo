@@ -45,10 +45,11 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "indigo_usb_utils.h"
-#include "indigo_driver_xml.h"
-#include "indigo_ccd_ssag_firmware.h"
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_ccd_ssag.h"
+#include "indigo_ccd_ssag_firmware.h"
 
 #define PRIVATE_DATA        ((ssag_private_data *)device->private_data)
 

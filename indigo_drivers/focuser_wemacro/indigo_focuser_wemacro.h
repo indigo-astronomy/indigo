@@ -26,8 +26,8 @@
 #ifndef focuser_wemacro_h
 #define focuser_wemacro_h
 
-#include "indigo_driver.h"
-#include "indigo_focuser_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_focuser_driver.h>
 
 #define FOCUSER_WEMACRO_NAME              "WeMacro Rail"
 

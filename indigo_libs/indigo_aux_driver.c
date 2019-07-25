@@ -34,7 +34,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "indigo_aux_driver.h"
+#include <indigo/indigo_aux_driver.h>
 
 indigo_result indigo_aux_attach(indigo_device *device, unsigned version, int interface) {
 	assert(device != NULL);

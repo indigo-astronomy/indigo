@@ -33,7 +33,8 @@
 #include <assert.h>
 #include <sys/time.h>
 
-#include "indigo_io.h"
+#include <indigo/indigo_io.h>
+
 #include "indigo_wheel_optec.h"
 
 // -------------------------------------------------------------------------------- interface implementation

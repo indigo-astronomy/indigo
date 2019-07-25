@@ -32,9 +32,9 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#include "indigo_bus.h"
-#include "indigo_client.h"
-#include "indigo_xml.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_client.h>"
+#include <indigo/indigo_xml.h>"
 
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048

@@ -26,10 +26,10 @@
 #ifndef ccd_atik_h
 #define ccd_atik_h
 
-#include "indigo_driver.h"
-#include "indigo_ccd_driver.h"
-#include "indigo_guider_driver.h"
-#include "indigo_wheel_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_wheel_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

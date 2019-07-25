@@ -37,8 +37,9 @@
 
 #include <sys/time.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_io.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_io.h>
+
 #include "indigo_focuser_steeldrive2.h"
 
 #define PRIVATE_DATA									((steeldrive2_private_data *)device->private_data)

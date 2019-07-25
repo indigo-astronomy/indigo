@@ -26,7 +26,7 @@
 #ifndef indigo_server_tcp_h
 #define indigo_server_tcp_h
 
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {

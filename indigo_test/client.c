@@ -28,7 +28,7 @@
 #include <signal.h>
 #include <fcntl.h>
 
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 #include "indigo_client_xml.h"
 #include "ccd_simulator/indigo_ccd_simulator.h"
 

@@ -59,7 +59,8 @@
 #include <libapogee/CamHelpers.h>
 #include <libapogee/versionNo.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_ccd_apogee.h"
 
 #define MAXCAMERAS               32

@@ -40,11 +40,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <dc1394/dc1394.h>
-
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 
 #include "indigo_ccd_iidc.h"
+#include <dc1394/dc1394.h>
 
 #define PRIVATE_DATA        ((iidc_private_data *)device->private_data)
 

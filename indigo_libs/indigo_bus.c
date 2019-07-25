@@ -42,9 +42,9 @@
 #pragma warning(disable:4996)
 #endif
 
-#include "indigo_bus.h"
-#include "indigo_names.h"
-#include "indigo_io.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_names.h>
+#include <indigo/indigo_io.h>
 
 #define MAX_DEVICES 256
 #define MAX_CLIENTS 256

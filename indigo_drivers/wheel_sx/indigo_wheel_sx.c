@@ -42,8 +42,9 @@
 
 #include <hidapi/hidapi.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_usb_utils.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
+
 #include "indigo_wheel_sx.h"
 
 // -------------------------------------------------------------------------------- SX USB interface implementation

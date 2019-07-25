@@ -26,8 +26,8 @@
 #ifndef joystick_h
 #define joystick_h
 
-#include "indigo_driver.h"
-#include "indigo_aux_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_aux_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

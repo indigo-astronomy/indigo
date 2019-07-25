@@ -37,9 +37,9 @@
 
 #import <CoreBluetooth/CoreBluetooth.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_focuser_mjkzz_bt.h"
+#include <indigo/indigo_driver_xml.h>
 
+#include "indigo_focuser_mjkzz_bt.h"
 #include "focuser_mjkzz/mjkzz_def.h"
 
 #define PRIVATE_DATA													((mjkzz_private_data *)device->private_data)

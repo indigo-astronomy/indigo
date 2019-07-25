@@ -45,11 +45,11 @@
 #include <pthread.h>
 #include <assert.h>
 
-#include "indigo_xml.h"
-#include "indigo_io.h"
-#include "indigo_base64.h"
-#include "indigo_version.h"
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_xml.h>
+#include <indigo/indigo_io.h>
+#include <indigo/indigo_base64.h>
+#include <indigo/indigo_version.h>
+#include <indigo/indigo_driver_xml.h>
 
 #define RAW_BUF_SIZE 98304
 #define BASE64_BUF_SIZE 131072  /* BASE64_BUF_SIZE >= (RAW_BUF_SIZE + 2) / 3 * 4 */

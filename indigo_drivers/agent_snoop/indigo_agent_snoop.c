@@ -33,7 +33,8 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_agent_snoop.h"
 
 #define DEVICE_PRIVATE_DATA											((agent_private_data *)device->private_data)

@@ -33,10 +33,11 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include "indigo_driver_xml.h"
-#include "indigo_filter.h"
-#include "indigo_ccd_driver.h"
-#include "indigo_guider_utils.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_filter.h>
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_guider_utils.h>
+
 #include "indigo_agent_guider.h"
 
 #define PI (3.14159265358979)

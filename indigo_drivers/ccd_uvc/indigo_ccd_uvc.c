@@ -44,11 +44,10 @@
 
 #include "libuvc.h"
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ccd_uvc.h"
-#include "indigo_usb_utils.h"
-
 
 #define PRIVATE_DATA        ((uvc_private_data *)device->private_data)
 

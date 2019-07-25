@@ -25,8 +25,8 @@
 
 #include <string.h>
 
-#include "indigo_bus.h"
-#include "indigo_usb_utils.h"
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_usb_utils.h>
 
 indigo_result indigo_get_usb_path(libusb_device* handle, char *path) {
 	uint8_t data[10];

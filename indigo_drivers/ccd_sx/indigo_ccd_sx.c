@@ -42,10 +42,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ccd_sx.h"
-#include "indigo_usb_utils.h"
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
 

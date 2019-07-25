@@ -29,7 +29,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "indigo_novas.h"
+#include <indigo/indigo_novas.h>
 #include "indigo_mount_synscan_mount.h"
 #include "indigo_mount_synscan_private.h"
 

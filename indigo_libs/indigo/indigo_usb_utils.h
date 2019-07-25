@@ -1,4 +1,4 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
+// Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,38 +19,33 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Version mapping
- \file indigo_version.h
+/** INDIGO USB Utilities
+ \file indigo_usb_utils.h
  */
 
-#ifndef indigo_version_h
-#define indigo_version_h
+#ifndef indigo_usb_utils_h
+#define indigo_usb_utils_h
 
-#include "indigo_bus.h"
+#include <stdio.h>
+
+#if defined(INDIGO_MACOS)
+#include <libusb-1.0/libusb.h>
+#elif defined(INDIGO_FREEBSD)
+#include <libusb.h>
+#else
+#include <libusb-1.0/libusb.h>
+#endif
+
+#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Copy name into property definition, translate if version doesn't match.
- */
-extern void indigo_copy_property_name(indigo_version version, indigo_property *property, const char *name);
-
-/** Copy name into item definition, translate if version doesn't match.
- */
-extern void indigo_copy_item_name(indigo_version version, indigo_property *property, indigo_item *item, const char *name);
-
-/** Get property name, translate if version doesn't match.
- */
-extern const char *indigo_property_name(indigo_version version, indigo_property *property);
-
-/** Get item name, translate if version doesn't match.
- */
-extern const char *indigo_item_name(indigo_version version, indigo_property *property, indigo_item *item);
-
+extern indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
+	
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_version_h */
-
+#endif /* indigo_usb_utils_h */

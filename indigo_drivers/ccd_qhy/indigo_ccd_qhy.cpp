@@ -44,11 +44,12 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
+
+#include "indigo_ccd_qhy.h"
 #include "qhyccd.h"
 #include "log4z.h"
-#include "indigo_ccd_qhy.h"
-#include "indigo_driver_xml.h"
-#include "indigo_usb_utils.h"
 
 #define MAX_SID_LEN                255
 #define QHY_MAX_FORMATS            4

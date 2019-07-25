@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-#include "indigo_config.h"
+#include <indigo/indigo_config.h>
 
 #ifdef __cplusplus
 extern "C" {

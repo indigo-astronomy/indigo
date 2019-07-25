@@ -34,10 +34,10 @@
 #include <math.h>
 #include <assert.h>
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
 
-#include "nexstar.h"
 #include "indigo_mount_nexstar.h"
+#include "nexstar.h"
 
 #define h2d(h) (h * 15.0)
 #define d2h(d) (d / 15.0)

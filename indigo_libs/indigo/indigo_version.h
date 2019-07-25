@@ -19,28 +19,38 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO XML wire protocol driver side adapter
- \file indigo_client_xml.h
+/** INDIGO Version mapping
+ \file indigo_version.h
  */
 
-#ifndef indigo_client_xml_h
-#define indigo_client_xml_h
+#ifndef indigo_version_h
+#define indigo_version_h
 
-#include "indigo_bus.h"
-#include "indigo_xml.h"
+#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Create initialized instance of XML wire protocol driver side adapter.
+/** Copy name into property definition, translate if version doesn't match.
  */
-extern indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input, int output);
-extern void indigo_release_xml_device_adapter(indigo_client *client);
+extern void indigo_copy_property_name(indigo_version version, indigo_property *property, const char *name);
+
+/** Copy name into item definition, translate if version doesn't match.
+ */
+extern void indigo_copy_item_name(indigo_version version, indigo_property *property, indigo_item *item, const char *name);
+
+/** Get property name, translate if version doesn't match.
+ */
+extern const char *indigo_property_name(indigo_version version, indigo_property *property);
+
+/** Get item name, translate if version doesn't match.
+ */
+extern const char *indigo_item_name(indigo_version version, indigo_property *property, indigo_item *item);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_client_xml_h */
+#endif /* indigo_version_h */
 

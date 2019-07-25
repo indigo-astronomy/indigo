@@ -33,6 +33,7 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <sys/time.h>
 
 #if defined(INDIGO_MACOS)
@@ -43,10 +44,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <stdbool.h>
-#include "USB2ST4_Conv.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_guider_asi.h"
-#include "indigo_driver_xml.h"
+#include "USB2ST4_Conv.h"
 
 #define ASI_VENDOR_ID              0x03c3
 

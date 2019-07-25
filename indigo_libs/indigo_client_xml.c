@@ -44,10 +44,10 @@
 #pragma warning(disable:4996)
 #endif
 
-#include "indigo_xml.h"
-#include "indigo_io.h"
-#include "indigo_version.h"
-#include "indigo_client_xml.h"
+#include <indigo/indigo_xml.h>
+#include <indigo/indigo_io.h>
+#include <indigo/indigo_version.h>
+#include <indigo/indigo_client_xml.h>
 
 static pthread_mutex_t xml_mutex = PTHREAD_MUTEX_INITIALIZER;
 

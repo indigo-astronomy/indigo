@@ -39,8 +39,10 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include "indigo_driver_xml.h"
-#include "indigo_io.h"
+
+#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_io.h>
+
 #include "indigo_guider_cgusbst4.h"
 
 #define PRIVATE_DATA        ((cgusbst4_private_data *)device->private_data)

@@ -29,9 +29,9 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include "indigo_timer.h"
+#include <indigo/indigo_timer.h>
 
-#include "indigo_driver.h"
+#include <indigo/indigo_driver.h>
 
 
 #ifdef __MACH__ /* Mac OSX prior Sierra is missing clock_gettime() */

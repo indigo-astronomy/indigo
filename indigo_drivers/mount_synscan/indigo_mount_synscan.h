@@ -26,9 +26,9 @@
 #ifndef mount_synscan_h
 #define mount_synscan_h
 
-#include "indigo_driver.h"
-#include "indigo_mount_driver.h"
-#include "indigo_guider_driver.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_mount_driver.h>
+#include <indigo/indigo_guider_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

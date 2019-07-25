@@ -73,7 +73,8 @@
 #define TEMP_THRESHOLD      0.5
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
-#include "indigo_driver_xml.h"
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_ccd_sbig.h"
 
 #define SBIG_VENDOR_ID             0x0d97
