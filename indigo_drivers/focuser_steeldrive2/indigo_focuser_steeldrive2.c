@@ -23,7 +23,7 @@
  \file indigo_focuser_steeldrive2.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_focuser_steeldrive2"
 
 #include <stdlib.h>
@@ -45,6 +45,9 @@
 #define PRIVATE_DATA									((steeldrive2_private_data *)device->private_data)
 
 #define USE_CRC
+
+#define X_NAME_PROPERTY								(PRIVATE_DATA->x_name_property)
+#define X_NAME_ITEM										(X_NAME_PROPERTY->items + 0)
 
 #define X_SAVED_VALUES_PROPERTY				(PRIVATE_DATA->x_saved_values_property)
 #define X_SAVED_FOCUS_ITEM						(X_SAVED_VALUES_PROPERTY->items + 0)
@@ -74,7 +77,6 @@
 #define X_START_ZEROING_PROPERTY			(PRIVATE_DATA->x_start_zeroing_property)
 #define X_START_ZEROING_ITEM					(X_START_ZEROING_PROPERTY->items + 0)
 
-
 #define AUX_HEATER_OUTLET_PROPERTY		(PRIVATE_DATA->heater_outlet_property)
 #define AUX_HEATER_OUTLET_1_ITEM			(AUX_HEATER_OUTLET_PROPERTY->items + 0)
 
@@ -101,6 +103,7 @@
 
 typedef struct {
 	int handle;
+	indigo_property *x_name_property;
 	indigo_property *x_saved_values_property;
 	indigo_property *x_status_property;
 	indigo_property *x_select_tc_sensor_property;
@@ -260,6 +263,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_LINUX
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 #endif
+		// -------------------------------------------------------------------------------- X_NAME
+		X_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, "X_NAME", "Advanced", "Device name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_NAME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(X_NAME_ITEM, "NAME", "Name", "");
 		// -------------------------------------------------------------------------------- X_SAVED_VALUES
 		X_SAVED_VALUES_PROPERTY = indigo_init_number_property(NULL, device->name, "X_SAVED_VALUES", "Advanced", "Saved values", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
 		if (X_SAVED_VALUES_PROPERTY == NULL)
@@ -335,6 +343,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
+		if (indigo_property_match(X_NAME_PROPERTY, property))
+			indigo_define_property(device, X_NAME_PROPERTY, NULL);
 		if (indigo_property_match(X_SAVED_VALUES_PROPERTY, property))
 			indigo_define_property(device, X_SAVED_VALUES_PROPERTY, NULL);
 		if (indigo_property_match(X_STATUS_PROPERTY, property))
@@ -438,6 +448,12 @@ static void focuser_connection_handler(indigo_device *device) {
 			steeldrive2_connect(device);
 		if (PRIVATE_DATA->handle > 0) {
 			int value;
+			if (steeldrive2_command(device, "$BS GET NAME", response, sizeof(response)) && sscanf(response, "$BS STATUS NAME:%s", X_NAME_ITEM->text.value) == 1) {
+				X_NAME_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_define_property(device, X_NAME_PROPERTY, NULL);
 			X_SAVED_VALUES_PROPERTY->state = INDIGO_OK_STATE;
 			if (steeldrive2_command(device, "$BS GET FOCUS", response, sizeof(response)) && sscanf(response, "$BS STATUS FOCUS:%lg", &X_SAVED_FOCUS_ITEM->number.value) == 1) {
 				X_SAVED_FOCUS_ITEM->number.target = X_SAVED_FOCUS_ITEM->number.value;
@@ -539,6 +555,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
+			indigo_delete_property(device, X_NAME_PROPERTY, NULL);
 			indigo_delete_property(device, X_SAVED_VALUES_PROPERTY, NULL);
 			indigo_delete_property(device, X_STATUS_PROPERTY, NULL);
 			indigo_delete_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
@@ -612,6 +629,20 @@ static void focuser_abort_handler(indigo_device *device) {
 		}
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	}
+}
+
+static void focuser_name_handler(indigo_device *device) {
+	if (IS_CONNECTED) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		char command[64], response[256];
+		sprintf(command, "$BS SET NAME:%s", X_NAME_ITEM->text.value);
+		if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+			X_NAME_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_NAME_PROPERTY, NULL);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	}
 }
@@ -790,8 +821,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		indigo_set_timer(device, 0, focuser_abort_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match(X_NAME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_NAME
+		indigo_property_copy_values(X_NAME_PROPERTY, property, false);
+		indigo_set_timer(device, 0, focuser_name_handler);
+		return INDIGO_OK;
 	} else if (indigo_property_match(X_SAVED_VALUES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_SAVED_VALUES
+			// -------------------------------------------------------------------------------- X_SAVED_VALUES
 		indigo_property_copy_values(X_SAVED_VALUES_PROPERTY, property, false);
 		indigo_set_timer(device, 0, focuser_saved_values_handler);
 		return INDIGO_OK;
@@ -840,6 +876,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connection_handler(device);
 	}
+	indigo_release_property(X_NAME_PROPERTY);
 	indigo_release_property(X_SAVED_VALUES_PROPERTY);
 	indigo_release_property(X_STATUS_PROPERTY);
 	indigo_release_property(X_SELECT_TC_SENSOR_PROPERTY);
