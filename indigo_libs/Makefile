@@ -52,7 +52,7 @@ install: status libindigo
 ifeq ($(OS_DETECTED),Darwin)
 	cp $(LIBUSB) $(INSTALL_LIB)
 endif
-	install -d $(INSTALL_INCLUDE)
+	install -d $(INSTALL_INCLUDE)/indigo
 	cp indigo/*.h $(INSTALL_INCLUDE)/indigo
 
 uninstall: status
