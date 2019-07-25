@@ -153,15 +153,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\indigo_libs\indigo_base64.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_base64_luts.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_bus.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_client.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_client_xml.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_config.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_io.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_version.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo_xml.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_base64.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_base64_luts.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_bus.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_client.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_client_xml.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_config.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_io.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_version.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h" />
     <ClInclude Include="externals\pthreads4w\include\pthread.h" />
     <ClInclude Include="externals\pthreads4w\include\sched.h" />
     <ClInclude Include="externals\pthreads4w\include\semaphore.h" />
