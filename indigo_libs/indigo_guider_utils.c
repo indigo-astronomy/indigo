@@ -133,6 +133,12 @@ static int next_power_2(const int n) {
 	return k;
 }
 
+indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, double x, double y, const int radius, const int width, const int height, double *fwhm, double *hfd, double *peak) {
+	// TBD PSF computation
+	*fwhm = *hfd = *peak = 1;
+	return INDIGO_OK;
+}
+
 indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *c) {
 	if ((width <= 2 * radius) || (height <= 2 * radius))
 		return INDIGO_FAILED;

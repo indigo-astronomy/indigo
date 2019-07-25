@@ -141,7 +141,7 @@ static void save_config(indigo_device *device) {
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->config_mutex);
 }
 
-static indigo_property_state capture_frame(indigo_device *device) {
+static indigo_property_state capture_raw_frame(indigo_device *device) {
 	indigo_property *remote_exposure_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_EXPOSURE_PROPERTY_NAME);
 	indigo_property *remote_image_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_PROPERTY_NAME);
 	if (remote_exposure_property == NULL || remote_image_property == NULL) {
@@ -341,7 +341,7 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = 0;
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (capture_frame(device) != INDIGO_OK_STATE) {
+		if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			break;
 		}
@@ -384,7 +384,7 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 	if (pulse_guide(device, ra, dec) != INDIGO_OK_STATE) {
 		return false;
 	}
-	if (capture_frame(device) != INDIGO_OK_STATE) {
+	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 		return false;
 	}
 	return true;
@@ -430,7 +430,7 @@ static void calibrate_process(indigo_device *device) {
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				if (capture_frame(device) != INDIGO_OK_STATE) {
+				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
@@ -457,7 +457,7 @@ static void calibrate_process(indigo_device *device) {
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				if (capture_frame(device) != INDIGO_OK_STATE) {
+				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
@@ -485,7 +485,7 @@ static void calibrate_process(indigo_device *device) {
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				if (capture_frame(device) != INDIGO_OK_STATE) {
+				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
@@ -519,7 +519,7 @@ static void calibrate_process(indigo_device *device) {
 			}
 			case MOVE_SOUTH: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				if (capture_frame(device) != INDIGO_OK_STATE) {
+				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
@@ -545,7 +545,7 @@ static void calibrate_process(indigo_device *device) {
 			}
 			case MOVE_WEST: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				if (capture_frame(device) != INDIGO_OK_STATE) {
+				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
@@ -589,7 +589,7 @@ static void calibrate_process(indigo_device *device) {
 			}
 			case MOVE_EAST: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
-				if (capture_frame(device) != INDIGO_OK_STATE) {
+				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
 				}
@@ -650,11 +650,11 @@ static void guide_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
 	indigo_send_message(device, "Guiding started");
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	if (capture_frame(device) != INDIGO_OK_STATE) {
+	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	}
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (capture_frame(device) != INDIGO_OK_STATE) {
+		if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			break;
 		}
