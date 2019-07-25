@@ -60,6 +60,7 @@ uninstall: status
 ifeq ($(OS_DETECTED),Darwin)
 	rm -f $(INSTALL_LIB)/libusb-1.0.dylib
 endif
+	rm -rf $(INSTALL_INCLUDE)/indigo
 
 clean: status
 	rm -f *.o *.orig $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libusb-1.0.dylib $(LIBHIDAPI) $(BUILD_LIB)/libftd2xx.a
