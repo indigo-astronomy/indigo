@@ -4,10 +4,10 @@ dist: xenial
 
 matrix:
   include:
-    - os: windows
-      env:
-        - MSBUILD_PATH="c:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin"
-
+#    - os: windows
+#      env:
+#        - MSBUILD_PATH="c:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin"
+#
     - os: osx
       osx_image: xcode10
 
@@ -51,6 +51,6 @@ before_install:
 
 script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]] || [[ "$TRAVIS_OS_NAME" == "osx" ]]; then make ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then export PATH=$MSBUILD_PATH:$PATH && cd indigo_windows && MSBuild.exe "./indigo_windows.sln" /property:Platform="x86" ; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then export PATH=$MSBUILD_PATH:$PATH && cd indigo_windows && MSBuild.exe "./indigo_windows.sln" /property:Platform="x86" ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make package && sudo dpkg --install indigo*.deb && sudo ldconfig ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]] || [[ "$TRAVIS_OS_NAME" == "osx" ]]; then indigo_test/test_suite.sh --driver-test --format-test indigo_ccd_simulator --capture-test indigo_ccd_simulator ; fi
