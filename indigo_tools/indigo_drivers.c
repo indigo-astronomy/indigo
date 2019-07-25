@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <indigo/indigo_client.h>"
+#include <indigo/indigo_client.h>
 
 int main(int argc, char **argv) {
 	char state[32] = "stable";
