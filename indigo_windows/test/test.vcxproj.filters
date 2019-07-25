@@ -39,33 +39,6 @@
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\_ptw32.h">
       <Filter>indigo</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_base64.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_base64_luts.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_bus.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_client.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_client_xml.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_config.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_io.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_version.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\indigo_libs\indigo_xml.h">
-      <Filter>indigo</Filter>
-    </ClInclude>
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\pthread.h">
       <Filter>indigo</Filter>
     </ClInclude>
@@ -75,6 +48,15 @@
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\semaphore.h">
       <Filter>indigo</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_base64.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_base64_luts.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_bus.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_client.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_client_xml.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_config.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_io.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_version.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="..\indigo_client\externals\pthreads4w\lib\x86\libpthreadVC3.lib">

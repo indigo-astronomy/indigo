@@ -38,7 +38,7 @@ static bool connected = false;
 static int count = 10;
 
 static indigo_result test_attach(indigo_client *client) {
-	indigo_log("attached to INDI bus...");
+	indigo_log("attached to INDIGO bus...");
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
 }
