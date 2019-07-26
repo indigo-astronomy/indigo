@@ -22,14 +22,26 @@
 #define Serial SerialUSB
 #endif
 
+//#define V2
+
 bool power1 = true;
 bool power2 = true;
 bool power3 = true;
 bool power4 = true;
 byte power5 = 0;
 byte power6 = 0;
+#ifdef V2
+byte power7 = 0;
+byte power8 = 12;
+#endif
+bool usb1 = true;
+bool usb2 = true;
+bool usb3 = true;
+bool usb4 = true;
+bool usb5 = true;
+bool usb6 = true;
 bool hub = true;
-bool autodev = true;
+byte autodev = 0;
 bool led = false;
 
 float temperature = 22.4;
@@ -61,13 +73,27 @@ void loop() {
   }
   String command = Serial.readStringUntil('\n');
   if (command.equals("P#")) {
+#ifdef V2
+    Serial.println("UPB2_OK");
+#else
     Serial.println("UPB_OK");
+#endif
   } else if (command.startsWith("PE:")) {
     power1 = command.charAt(3) == '1';
     power2 = command.charAt(4) == '1';
     power3 = command.charAt(5) == '1';
     power4 = command.charAt(6) == '1';
     Serial.println("PE:1");
+#ifdef V2
+	} else if (command.startsWith("PS")) {
+		Serial.print("PS:");
+		Serial.print(power1 ? "1" : "0");
+		Serial.print(power2 ? "1" : "0");
+		Serial.print(power3 ? "1" : "0");
+		Serial.print(power4 ? "1" : "0");
+		Serial.print(":");
+		Serial.println((int)power8);
+#endif
   } else if (command.startsWith("P1:")) {
     power1 = command.charAt(3) == '1';
     Serial.println(command);
@@ -86,24 +112,67 @@ void loop() {
   } else if (command.startsWith("P6:")) {
     power6 = command.substring(3).toInt();
     Serial.println(command);
+#ifdef V2
+	} else if (command.startsWith("P7:")) {
+		power7 = command.substring(3).toInt();
+		Serial.println(command);
+	} else if (command.startsWith("P8:")) {
+		power8 = command.substring(3).toInt();
+		Serial.println(command);
+  } else if (command.startsWith("U1:")) {
+    usb1 = command.charAt(3) == '1';
+    Serial.println(command);
+  } else if (command.startsWith("U2:")) {
+    usb2 = command.charAt(3) == '1';
+    Serial.println(command);
+  } else if (command.startsWith("U3:")) {
+    usb3 = command.charAt(3) == '1';
+    Serial.println(command);
+  } else if (command.startsWith("U4:")) {
+    usb4 = command.charAt(3) == '1';
+    Serial.println(command);
+  } else if (command.startsWith("U5:")) {
+    usb5 = command.charAt(3) == '1';
+    Serial.println(command);
+  } else if (command.startsWith("U6:")) {
+    usb6 = command.charAt(3) == '1';
+    Serial.println(command);
+#endif
   } else if (command.startsWith("PU:")) {
     hub = command.charAt(3) == '1';
     Serial.println(command);
   } else if (command.startsWith("PF")) {
     Serial.println("RBT");
   } else if (command.startsWith("PA")) {
+#ifdef V2
+    Serial.print("UPB2:12.2:0.0:0:23.2:59:14.7:");
+#else
     Serial.print("UPB:12.2:0.0:0:23.2:59:14.7:");
+#endif
     Serial.print(power1 ? '1' : '0');
     Serial.print(power2 ? '1' : '0');
     Serial.print(power3 ? '1' : '0');
     Serial.print(power4 ? '1' : '0');
     Serial.print(':');
-		Serial.print(hub ? '0' : '1');
+#ifdef V2
+    Serial.print(usb1 ? '1' : '0');
+    Serial.print(usb2 ? '1' : '0');
+    Serial.print(usb3 ? '1' : '0');
+    Serial.print(usb4 ? '1' : '0');
+    Serial.print(usb5 ? '1' : '0');
+    Serial.print(usb6 ? '1' : '0');
+#else
+    Serial.print(hub ? '0' : '1');
+#endif    
 		Serial.print(':');
     Serial.print(power5);
     Serial.print(':');
     Serial.print(power6);
     Serial.print(':');
+#ifdef V2
+    Serial.print(power7);
+    Serial.print(':');
+#endif    
     Serial.print(power1 ? 200 : 0);
     Serial.print(':');
     Serial.print(power2 ? 200 : 0);
@@ -114,13 +183,19 @@ void loop() {
     Serial.print(':');
     Serial.print(power5 ? 300 : 0);
     Serial.print(':');
-    Serial.print(power6 ? 400 : 0);
+    Serial.print(power6 ? 300 : 0);
+#ifdef V2
+    Serial.print(':');
+    Serial.print(power7 ? 600 : 0);
+    Serial.print(":0000010:");
+#else
     Serial.print(":000001:");
-    Serial.println(autodev ? '1' : '0');
+#endif
+    Serial.println(autodev);
   } else if (command.startsWith("PC")) {
     Serial.println("2.1:12:46");
   } else if (command.startsWith("PD:")) {
-    autodev = command.charAt(3) == '1';
+    autodev = command.charAt(3);
     Serial.println(command);
   } else if (command.equals("PV")) {
     Serial.println("1.0");
