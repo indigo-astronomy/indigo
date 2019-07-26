@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -54,18 +54,19 @@
 #define PRIVATE_DATA												((upb_private_data *)device->private_data)
 
 #define AUX_OUTLET_NAMES_PROPERTY						(PRIVATE_DATA->outlet_names_property)
-#define AUX_POWER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 1)
-#define AUX_POWER_OUTLET_NAME_3_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 2)
-#define AUX_POWER_OUTLET_NAME_4_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 3)
-#define AUX_HEATER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 4)
-#define AUX_HEATER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 5)
-#define AUX_USB_PORT_NAME_1_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 6)
-#define AUX_USB_PORT_NAME_2_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 7)
-#define AUX_USB_PORT_NAME_3_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 8)
-#define AUX_USB_PORT_NAME_4_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 9)
-#define AUX_USB_PORT_NAME_5_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 10)
-#define AUX_USB_PORT_NAME_6_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 11)
+#define AUX_USB_PORT_NAME_1_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 0)
+#define AUX_USB_PORT_NAME_2_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 1)
+#define AUX_USB_PORT_NAME_3_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 2)
+#define AUX_USB_PORT_NAME_4_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 3)
+#define AUX_USB_PORT_NAME_5_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 4)
+#define AUX_USB_PORT_NAME_6_ITEM						(AUX_OUTLET_NAMES_PROPERTY->items + 5)
+#define AUX_POWER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 6)
+#define AUX_POWER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 7)
+#define AUX_POWER_OUTLET_NAME_3_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 8)
+#define AUX_POWER_OUTLET_NAME_4_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 9)
+#define AUX_HEATER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 10)
+#define AUX_HEATER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 11)
+#define AUX_HEATER_OUTLET_NAME_3_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 12)
 
 #define AUX_POWER_OUTLET_PROPERTY						(PRIVATE_DATA->power_outlet_property)
 #define AUX_POWER_OUTLET_1_ITEM							(AUX_POWER_OUTLET_PROPERTY->items + 0)
@@ -88,14 +89,17 @@
 #define AUX_HEATER_OUTLET_PROPERTY					(PRIVATE_DATA->heater_outlet_property)
 #define AUX_HEATER_OUTLET_1_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 0)
 #define AUX_HEATER_OUTLET_2_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_3_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 2)
 
 #define AUX_HEATER_OUTLET_STATE_PROPERTY		(PRIVATE_DATA->heater_outlet_state_property)
 #define AUX_HEATER_OUTLET_STATE_1_ITEM			(AUX_HEATER_OUTLET_STATE_PROPERTY->items + 0)
 #define AUX_HEATER_OUTLET_STATE_2_ITEM			(AUX_HEATER_OUTLET_STATE_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_STATE_3_ITEM			(AUX_HEATER_OUTLET_STATE_PROPERTY->items + 2)
 
 #define AUX_HEATER_OUTLET_CURRENT_PROPERTY	(PRIVATE_DATA->heater_outlet_current_property)
 #define AUX_HEATER_OUTLET_CURRENT_1_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 0)
 #define AUX_HEATER_OUTLET_CURRENT_2_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_CURRENT_3_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 2)
 
 #define AUX_USB_PORT_PROPERTY								(PRIVATE_DATA->usb_port_property)
 #define AUX_USB_PORT_1_ITEM									(AUX_USB_PORT_PROPERTY->items + 0)
@@ -137,6 +141,9 @@
 #define X_AUX_REBOOT_PROPERTY								(PRIVATE_DATA->reboot_property)
 #define X_AUX_REBOOT_ITEM										(X_AUX_REBOOT_PROPERTY->items + 0)
 
+#define X_AUX_VARIABLE_POWER_OUTLET_PROPERTY	(PRIVATE_DATA->variable_power_outlet_property)
+#define X_AUX_VARIABLE_POWER_OUTLET_1_ITEM		(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 0)
+
 #define AUX_GROUP															"Powerbox"
 
 typedef struct {
@@ -157,7 +164,9 @@ typedef struct {
 	indigo_property *info_property;
 	indigo_property *hub_property;
 	indigo_property *reboot_property;
+	indigo_property *variable_power_outlet_property;
 	int count;
+	int version;
 	libusb_device_handle *smart_hub;
 	pthread_mutex_t mutex;
 } upb_private_data;
@@ -190,21 +199,22 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- OUTLET_NAMES
-		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "X_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
+		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "X_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 13);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(AUX_POWER_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "Outlet #1", "Outlet #1");
-		indigo_init_text_item(AUX_POWER_OUTLET_NAME_2_ITEM, AUX_POWER_OUTLET_NAME_2_ITEM_NAME, "Outlet #2", "Outlet #2");
-		indigo_init_text_item(AUX_POWER_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "Outlet #3", "Outlet #3");
-		indigo_init_text_item(AUX_POWER_OUTLET_NAME_4_ITEM, AUX_POWER_OUTLET_NAME_4_ITEM_NAME, "Outlet #4", "Outlet #4");
-		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_1_ITEM, AUX_HEATER_OUTLET_NAME_1_ITEM_NAME, "Heater #1", "Heater #1");
-		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_2_ITEM, AUX_HEATER_OUTLET_NAME_2_ITEM_NAME, "Heater #2", "Heater #2");
 		indigo_init_text_item(AUX_USB_PORT_NAME_1_ITEM, AUX_USB_PORT_NAME_1_ITEM_NAME, "Port #1", "Port #1");
 		indigo_init_text_item(AUX_USB_PORT_NAME_2_ITEM, AUX_USB_PORT_NAME_2_ITEM_NAME, "Port #2", "Port #2");
 		indigo_init_text_item(AUX_USB_PORT_NAME_3_ITEM, AUX_USB_PORT_NAME_3_ITEM_NAME, "Port #3", "Port #3");
 		indigo_init_text_item(AUX_USB_PORT_NAME_4_ITEM, AUX_USB_PORT_NAME_4_ITEM_NAME, "Port #4", "Port #4");
 		indigo_init_text_item(AUX_USB_PORT_NAME_5_ITEM, AUX_USB_PORT_NAME_5_ITEM_NAME, "Port #5", "Port #5");
 		indigo_init_text_item(AUX_USB_PORT_NAME_6_ITEM, AUX_USB_PORT_NAME_6_ITEM_NAME, "Port #6", "Port #6");
+		indigo_init_text_item(AUX_POWER_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "Outlet #1", "Outlet #1");
+		indigo_init_text_item(AUX_POWER_OUTLET_NAME_2_ITEM, AUX_POWER_OUTLET_NAME_2_ITEM_NAME, "Outlet #2", "Outlet #2");
+		indigo_init_text_item(AUX_POWER_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "Outlet #3", "Outlet #3");
+		indigo_init_text_item(AUX_POWER_OUTLET_NAME_4_ITEM, AUX_POWER_OUTLET_NAME_4_ITEM_NAME, "Outlet #4", "Outlet #4");
+		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_1_ITEM, AUX_HEATER_OUTLET_NAME_1_ITEM_NAME, "Heater #1", "Heater #1");
+		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_2_ITEM, AUX_HEATER_OUTLET_NAME_2_ITEM_NAME, "Heater #2", "Heater #2");
+		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_3_ITEM, AUX_HEATER_OUTLET_NAME_3_ITEM_NAME, "Heater #3", "Heater #3");
 		// -------------------------------------------------------------------------------- POWER OUTLETS
 		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 		if (AUX_POWER_OUTLET_PROPERTY == NULL)
@@ -228,21 +238,24 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_3_ITEM, AUX_POWER_OUTLET_CURRENT_3_ITEM_NAME, "Outlet #3 current [A]", 0, 3, 0, 0);
 		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_4_ITEM, AUX_POWER_OUTLET_CURRENT_4_ITEM_NAME, "Outlet #4 current [A]", 0, 3, 0, 0);
 		// -------------------------------------------------------------------------------- HEATER OUTLETS
-		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_HEATER_OUTLET_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_HEATER_OUTLET_1_ITEM, AUX_HEATER_OUTLET_1_ITEM_NAME, "Heater #1 [%]", 0, 100, 5, 0);
 		indigo_init_number_item(AUX_HEATER_OUTLET_2_ITEM, AUX_HEATER_OUTLET_2_ITEM_NAME, "Heater #2 [%]", 0, 100, 5, 0);
-		AUX_HEATER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_HEATER_OUTLET_STATE_PROPERTY_NAME, AUX_GROUP, "Heater outlets state", INDIGO_OK_STATE, 2);
+		indigo_init_number_item(AUX_HEATER_OUTLET_3_ITEM, AUX_HEATER_OUTLET_3_ITEM_NAME, "Heater #3 [%]", 0, 100, 5, 0);
+		AUX_HEATER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_HEATER_OUTLET_STATE_PROPERTY_NAME, AUX_GROUP, "Heater outlets state", INDIGO_OK_STATE, 3);
 		if (AUX_HEATER_OUTLET_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_1_ITEM, AUX_HEATER_OUTLET_STATE_1_ITEM_NAME, "Heater #1 state", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_2_ITEM, AUX_HEATER_OUTLET_STATE_2_ITEM_NAME, "Heater #2 state", INDIGO_OK_STATE);
-		AUX_HEATER_OUTLET_CURRENT_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_CURRENT_PROPERTY_NAME, AUX_GROUP, "Heater outlets current", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_3_ITEM, AUX_HEATER_OUTLET_STATE_3_ITEM_NAME, "Heater #3 state", INDIGO_OK_STATE);
+		AUX_HEATER_OUTLET_CURRENT_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_CURRENT_PROPERTY_NAME, AUX_GROUP, "Heater outlets current", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_HEATER_OUTLET_CURRENT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_HEATER_OUTLET_CURRENT_1_ITEM, AUX_HEATER_OUTLET_CURRENT_1_ITEM_NAME, "Heater #1 current [A]", 0, 3, 0, 0);
 		indigo_init_number_item(AUX_HEATER_OUTLET_CURRENT_2_ITEM, AUX_HEATER_OUTLET_CURRENT_2_ITEM_NAME, "Heater #2 current [A]", 0, 3, 0, 0);
+		indigo_init_number_item(AUX_HEATER_OUTLET_CURRENT_3_ITEM, AUX_HEATER_OUTLET_CURRENT_3_ITEM_NAME, "Heater #3 current [A]", 0, 3, 0, 0);
 		AUX_DEW_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_DEW_CONTROL_PROPERTY_NAME, AUX_GROUP, "Dew control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_DEW_CONTROL_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -251,7 +264,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- USB PORTS
 		AUX_USB_PORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_USB_PORT_PROPERTY_NAME, AUX_GROUP, "USB ports", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 6);
 		if (AUX_USB_PORT_PROPERTY == NULL)
-		return INDIGO_FAILED;
+			return INDIGO_FAILED;
+		AUX_USB_PORT_PROPERTY->hidden = true;
 		indigo_init_switch_item(AUX_USB_PORT_1_ITEM, AUX_USB_PORT_1_ITEM_NAME, "Port #1", true);
 		indigo_init_switch_item(AUX_USB_PORT_2_ITEM, AUX_USB_PORT_2_ITEM_NAME, "Port #2", true);
 		indigo_init_switch_item(AUX_USB_PORT_3_ITEM, AUX_USB_PORT_3_ITEM_NAME, "Port #3", true);
@@ -260,7 +274,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_USB_PORT_6_ITEM, AUX_USB_PORT_6_ITEM_NAME, "Port #6", true);
 		AUX_USB_PORT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_USB_PORT_STATE_PROPERTY_NAME, AUX_GROUP, "USB ports state", INDIGO_OK_STATE, 6);
 		if (AUX_USB_PORT_STATE_PROPERTY == NULL)
-		return INDIGO_FAILED;
+			return INDIGO_FAILED;
+		AUX_USB_PORT_STATE_PROPERTY->hidden = true;
 		indigo_init_light_item(AUX_USB_PORT_STATE_1_ITEM, AUX_USB_PORT_STATE_1_ITEM_NAME, "Port #1 state", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_USB_PORT_STATE_2_ITEM, AUX_USB_PORT_STATE_2_ITEM_NAME, "Port #2 state", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_USB_PORT_STATE_3_ITEM, AUX_USB_PORT_STATE_3_ITEM_NAME, "Port #3 state", INDIGO_OK_STATE);
@@ -284,16 +299,22 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(X_AUX_VOLTAGE_ITEM, "X_AUX_VOLTAGE", "Voltage [V]", 0, 15, 0, 0);
 		indigo_init_number_item(X_AUX_CURRENT_ITEM, "X_AUX_CURRENT", "Current [A]", 0, 20, 0, 0);
 		indigo_init_number_item(X_AUX_POWER_ITEM, "X_AUX_POWER_OUTLET", "Power [W]", 0, 200, 0, 0);
-		// -------------------------------------------------------------------------------- UPB SPECIFIC
+		// -------------------------------------------------------------------------------- Device specific
 		X_AUX_HUB_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_HUB", AUX_GROUP, "USB hub", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (X_AUX_HUB_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		X_AUX_HUB_PROPERTY->hidden = true;
 		indigo_init_switch_item(X_AUX_HUB_ENABLED_ITEM, "ENABLED", "Enabled", true);
 		indigo_init_switch_item(X_AUX_HUB_DISABLED_ITEM, "DISABLED", "Disabled", false);
 		X_AUX_REBOOT_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_REBOOT", AUX_GROUP, "Reboot", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_AUX_REBOOT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_AUX_REBOOT_ITEM, "REBOOT", "Reboot", false);
+		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, "X_AUX_VARIABLE_POWER_OUTLET", AUX_GROUP, "Variable voltage power outlet", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_AUX_VARIABLE_POWER_OUTLET_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
+		indigo_init_number_item(X_AUX_VARIABLE_POWER_OUTLET_1_ITEM, "OUTLET_1", "Variable voltage power outlet ", 3, 12, 1, 12);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -344,6 +365,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
 		if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property))
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+		if (indigo_property_match(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property))
+			indigo_define_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 	}
 	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -432,11 +455,47 @@ static void aux_timer_callback(indigo_device *device) {
 				updatePowerOutletState = true;
 			}
 		}
-		if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
-			bool state = token[0] == '0';
-			if (X_AUX_HUB_ENABLED_ITEM->sw.value != state) {
-				indigo_set_switch(X_AUX_HUB_PROPERTY, state ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
-				updateAutoHeater = true;
+		if (PRIVATE_DATA->version == 1) {
+			if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
+				bool state = token[0] == '0';
+				if (X_AUX_HUB_ENABLED_ITEM->sw.value != state) {
+					indigo_set_switch(X_AUX_HUB_PROPERTY, state ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
+					updateAutoHeater = true;
+				}
+			}
+		}
+		if (PRIVATE_DATA->version == 2) {
+			if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+				bool state = token[0] == '1';
+				if (AUX_USB_PORT_1_ITEM->sw.value != state) {
+					AUX_USB_PORT_1_ITEM->sw.value = state;
+					updateUSBPorts = true;
+				}
+				state = token[1] == '1';
+				if (AUX_USB_PORT_2_ITEM->sw.value != state) {
+					AUX_USB_PORT_2_ITEM->sw.value = state;
+					updateUSBPorts = true;
+				}
+				state = token[2] == '1';
+				if (AUX_USB_PORT_3_ITEM->sw.value != state) {
+					AUX_USB_PORT_3_ITEM->sw.value = state;
+					updateUSBPorts = true;
+				}
+				state = token[3] == '1';
+				if (AUX_USB_PORT_4_ITEM->sw.value != state) {
+					AUX_USB_PORT_4_ITEM->sw.value = state;
+					updateUSBPorts = true;
+				}
+				state = token[4] == '1';
+				if (AUX_USB_PORT_5_ITEM->sw.value != state) {
+					AUX_USB_PORT_5_ITEM->sw.value = state;
+					updateUSBPorts = true;
+				}
+				state = token[5] == '1';
+				if (AUX_USB_PORT_6_ITEM->sw.value != state) {
+					AUX_USB_PORT_6_ITEM->sw.value = state;
+					updateUSBPorts = true;
+				}
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
@@ -453,46 +512,68 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_HEATER_OUTLET_2_ITEM->number.value = value;
 			}
 		}
+		if (PRIVATE_DATA->version == 2) {
+			if ((token = strtok_r(NULL, ":", &pnt))) { // Dew3
+				double value = round(indigo_atod(token) * 100.0 / 255.0);
+				if (AUX_HEATER_OUTLET_3_ITEM->number.value != value) {
+					updateHeaterOutlet = true;
+					AUX_HEATER_OUTLET_3_ITEM->number.value = value;
+				}
+			}
+		}
+		double div_by = 400.0;
+		if (PRIVATE_DATA->version == 2) {
+			div_by = 300.0;
+		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
-			double value = indigo_atod(token) / 400.0;
+			double value = indigo_atod(token) / div_by;
 			if (AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-			double value = indigo_atod(token) / 400.0;
+			double value = indigo_atod(token) / div_by;
 			if (AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-			double value = indigo_atod(token) / 400.0;
+			double value = indigo_atod(token) / div_by;
 			if (AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-			double value = indigo_atod(token) / 400.0;
+			double value = indigo_atod(token) / div_by;
 			if (AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value != value) {
 				updatePowerOutletCurrent = true;
 				AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
-			double value = indigo_atod(token) / 400.0;
+			double value = indigo_atod(token) / div_by;
 			if (AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value != value) {
 				updateHeaterOutletCurrent = true;
 				AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
-			double value = indigo_atod(token) / 400.0;
+			double value = indigo_atod(token) / div_by;
 			if (AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value != value) {
 				updateHeaterOutletCurrent = true;
 				AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = value;
+			}
+		}
+		if (PRIVATE_DATA->version == 2) {
+			if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew3
+				double value = indigo_atod(token) / 600.0;
+				if (AUX_HEATER_OUTLET_CURRENT_3_ITEM->number.value != value) {
+					updateHeaterOutletCurrent = true;
+					AUX_HEATER_OUTLET_CURRENT_3_ITEM->number.value = value;
+				}
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Overcurrent
@@ -525,6 +606,13 @@ static void aux_timer_callback(indigo_device *device) {
 			if (AUX_HEATER_OUTLET_STATE_2_ITEM->light.value != state) {
 				AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = state;
 				updateHeaterOutletState = true;
+			}
+			if (PRIVATE_DATA->version == 2) {
+				state = token[6] == '1' ? INDIGO_ALERT_STATE : AUX_HEATER_OUTLET_3_ITEM->number.value > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				if (AUX_HEATER_OUTLET_STATE_3_ITEM->light.value != state) {
+					AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = state;
+					updateHeaterOutletState = true;
+				}
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
@@ -561,30 +649,32 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 	}
-	if (PRIVATE_DATA->smart_hub) {
-		for (int i = 1; i < 7; i++) {
-			uint32_t port_state;
-			int rc;
-			if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
-				bool is_enabled = port_state & 0x00000100;
-				indigo_property_state state = INDIGO_IDLE_STATE;
-				if (port_state & 0x00000015) {
-					state = INDIGO_BUSY_STATE;
+	if (PRIVATE_DATA->version == 1) {
+		if (PRIVATE_DATA->smart_hub) {
+			for (int i = 1; i < 7; i++) {
+				uint32_t port_state;
+				int rc;
+				if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+					bool is_enabled = port_state & 0x00000100;
+					indigo_property_state state = INDIGO_IDLE_STATE;
+					if (port_state & 0x00000015) {
+						state = INDIGO_BUSY_STATE;
+					}
+					if (port_state & 0x00000002) {
+						state = INDIGO_OK_STATE;
+					}
+					if (port_state & 0x00000008) {
+						state = INDIGO_ALERT_STATE;
+					}
+					if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled || AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
+						AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = is_enabled;
+						AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+						updateUSBPorts = true;
+					}
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+					break;
 				}
-				if (port_state & 0x00000002) {
-					state = INDIGO_OK_STATE;
-				}
-				if (port_state & 0x00000008) {
-					state = INDIGO_ALERT_STATE;
-				}
-				if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled || AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
-					AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = is_enabled;
-					AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
-					updateUSBPorts = true;
-				}
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
-				break;
 			}
 		}
 	}
@@ -647,8 +737,28 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->count++ == 0) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
-				if (upb_command(device, "P#", response, sizeof(response)) && !strcmp(response, "UPB_OK")) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+				if (upb_command(device, "P#", response, sizeof(response))) {
+					if (!strcmp(response, "UPB_OK")) {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
+						PRIVATE_DATA->version = 1;
+						AUX_HEATER_OUTLET_PROPERTY->count = 2;
+						AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
+						AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
+						X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
+					} else if (!strcmp(response, "UPB2_OK")) {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
+						PRIVATE_DATA->version = 2;
+						AUX_HEATER_OUTLET_PROPERTY->count = 3;
+						AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
+						AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
+						X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
+						AUX_USB_PORT_PROPERTY->hidden = false;
+						AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
+						close(PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = 0;
+					}
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
 					close(PRIVATE_DATA->handle);
@@ -683,32 +793,58 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_POWER_OUTLET_3_ITEM->sw.value = token[2] == '1';
 					AUX_POWER_OUTLET_4_ITEM->sw.value = token[3] == '1';
 				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
-					indigo_set_switch(X_AUX_HUB_PROPERTY, atoi(token) == 0 ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
+				if (PRIVATE_DATA->version == 1) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
+						indigo_set_switch(X_AUX_HUB_PROPERTY, atoi(token) == 0 ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
+					}
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+						AUX_USB_PORT_1_ITEM->sw.value =  token[0] == '1';
+						AUX_USB_PORT_2_ITEM->sw.value =  token[1] == '1';
+						AUX_USB_PORT_3_ITEM->sw.value =  token[2] == '1';
+						AUX_USB_PORT_4_ITEM->sw.value =  token[3] == '1';
+						AUX_USB_PORT_5_ITEM->sw.value =  token[4] == '1';
+						AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
+					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
-					AUX_HEATER_OUTLET_1_ITEM->number.value = round(indigo_atod(token) * 100.0 / 255.0);
+					AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
-					AUX_HEATER_OUTLET_2_ITEM->number.value = round(indigo_atod(token) * 100.0 / 255.0);
+					AUX_HEATER_OUTLET_2_ITEM->number.value = AUX_HEATER_OUTLET_2_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Dew3
+						AUX_HEATER_OUTLET_3_ITEM->number.value = AUX_HEATER_OUTLET_3_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
+					}
+				}
+				double div_by = 400.0;
+				if (PRIVATE_DATA->version == 2) {
+					div_by = 300.0;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
-					AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / 400.0;
+					AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / div_by;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-					AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / 400.0;
+					AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / div_by;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-					AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = atoi(token) / 400.0;
+					AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = atoi(token) / div_by;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
-					AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = atoi(token) / 400.0;
+					AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = atoi(token) / div_by;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
-					AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / 400.0;
+					AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / div_by;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
-					AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / 400.0;
+					AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / div_by;
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew3
+						AUX_HEATER_OUTLET_CURRENT_3_ITEM->number.value = atoi(token) / 600.0;
+					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Overcurrent
 					AUX_POWER_OUTLET_STATE_1_ITEM->light.value = token[0] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
@@ -717,11 +853,14 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_POWER_OUTLET_STATE_4_ITEM->light.value = token[3] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 					AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = token[4] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 					AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = token[5] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					if (PRIVATE_DATA->version == 2) {
+						AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = token[6] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 1 ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 0 ? AUX_DEW_CONTROL_MANUAL_ITEM : AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
@@ -749,50 +888,63 @@ static void aux_connection_handler(indigo_device *device) {
 			upb_command(device, "PU:1", response, sizeof(response));
 			indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
 			indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
-			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);			
-			libusb_context *ctx = NULL;
-			libusb_device **usb_devices;
-			struct libusb_device_descriptor descriptor;
-			ssize_t total = libusb_get_device_list(ctx, &usb_devices);
-			AUX_USB_PORT_PROPERTY->hidden = true;
-			AUX_USB_PORT_STATE_PROPERTY->hidden = true;
-			for (int i = 0; i < total; i++) {
-				libusb_device *dev = usb_devices[i];
-				if (libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == 0x0424 && descriptor.idProduct == 0x2517) {
-					int rc;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB hub found");
-					if ((rc = libusb_open(dev, &PRIVATE_DATA->smart_hub)) == LIBUSB_SUCCESS) {
-						for (int i = 1; i < 7; i++) {
-							uint32_t port_state;
-							if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
-								indigo_property_state state = INDIGO_IDLE_STATE;
-								if (port_state & 0x00000015) {
-									state = INDIGO_BUSY_STATE;
+			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+			if (PRIVATE_DATA->version == 1) {
+				libusb_context *ctx = NULL;
+				libusb_device **usb_devices;
+				struct libusb_device_descriptor descriptor;
+				ssize_t total = libusb_get_device_list(ctx, &usb_devices);
+				AUX_USB_PORT_PROPERTY->hidden = true;
+				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+				for (int i = 0; i < total; i++) {
+					libusb_device *dev = usb_devices[i];
+					if (libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == 0x0424 && descriptor.idProduct == 0x2517) {
+						int rc;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB hub found");
+						if ((rc = libusb_open(dev, &PRIVATE_DATA->smart_hub)) == LIBUSB_SUCCESS) {
+							for (int i = 1; i < 7; i++) {
+								uint32_t port_state;
+								if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+									indigo_property_state state = INDIGO_IDLE_STATE;
+									if (port_state & 0x00000015) {
+										state = INDIGO_BUSY_STATE;
+									}
+									if (port_state & 0x00000002) {
+										state = INDIGO_OK_STATE;
+									}
+									if (port_state & 0x00000008) {
+										state = INDIGO_ALERT_STATE;
+									}
+									AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = port_state & 0x00000100;
+									AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+								} else {
+									INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+									break;
 								}
-								if (port_state & 0x00000002) {
-									state = INDIGO_OK_STATE;
-								}
-								if (port_state & 0x00000008) {
-									state = INDIGO_ALERT_STATE;
-								}
-								AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = port_state & 0x00000100;
-								AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
-							} else {
-								INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
-								break;
 							}
+							AUX_USB_PORT_PROPERTY->hidden = false;
+							AUX_USB_PORT_STATE_PROPERTY->hidden = false;
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to USB hub (%s)", libusb_strerror(rc));
 						}
-						AUX_USB_PORT_PROPERTY->hidden = false;
-						AUX_USB_PORT_STATE_PROPERTY->hidden = false;
-						indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
-						indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to USB hub (%s)", libusb_strerror(rc));
+						break;
 					}
-					break;
+				}
+				libusb_free_device_list(usb_devices, 1);
+			}
+			if (PRIVATE_DATA->version == 2) {
+				if (upb_command(device, "PS", response, sizeof(response)) && !strncmp(response, "PS", 2)) {
+					char *pnt, *token = strtok_r(response, ":", &pnt);
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Power-up state
+					}
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Variable voltage
+						X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.target = X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.value = atoi(token);
+					}
 				}
 			}
-			libusb_free_device_list(usb_devices, 1);
+			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
+			indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
+			indigo_define_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 			PRIVATE_DATA->aux_timer = indigo_set_timer(device, 0, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -867,18 +1019,21 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	snprintf(AUX_POWER_OUTLET_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_4_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_HEATER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_STATE_4_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_4_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_CURRENT_1_ITEM->label, INDIGO_NAME_SIZE, "%s current [A] ", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_CURRENT_2_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_CURRENT_3_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_CURRENT_4_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_POWER_OUTLET_NAME_4_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_CURRENT_1_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_CURRENT_2_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_HEATER_OUTLET_CURRENT_3_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
 	snprintf(AUX_USB_PORT_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_1_ITEM->text.value);
 	snprintf(AUX_USB_PORT_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_2_ITEM->text.value);
 	snprintf(AUX_USB_PORT_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_3_ITEM->text.value);
@@ -928,6 +1083,10 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 		upb_command(device, command, response, sizeof(response));
 		sprintf(command, "P6:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
 		upb_command(device, command, response, sizeof(response));
+		if (PRIVATE_DATA->version == 2) {
+			sprintf(command, "P7:%d", (int)(AUX_HEATER_OUTLET_3_ITEM->number.value * 255.0 / 100.0));
+			upb_command(device, command, response, sizeof(response));
+		}
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	}
@@ -948,35 +1107,45 @@ static void aux_dew_control_handler(indigo_device *device) {
 static void aux_usb_port_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (IS_CONNECTED) {
-		if (PRIVATE_DATA->smart_hub) {
-			AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			for (int i = 1; i < 7; i++) {
-				uint32_t port_state;
-				int rc;
-				if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
-					bool is_enabled = port_state & 0x00000100;
-					if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
-						if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value) {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d on", i);
-							rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
-						} else {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d off", i);
-							rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_CLEAR_FEATURE, 8, i, NULL, 0, 3000);
+		if (PRIVATE_DATA->version == 1) {
+			if (PRIVATE_DATA->smart_hub) {
+				AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
+				for (int i = 1; i < 7; i++) {
+					uint32_t port_state;
+					int rc;
+					if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+						bool is_enabled = port_state & 0x00000100;
+						if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
+							if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value) {
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d on", i);
+								rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
+							} else {
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d off", i);
+								rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_CLEAR_FEATURE, 8, i, NULL, 0, 3000);
+							}
+							if (rc < 0) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set USB port status (%s)", libusb_strerror(rc));
+								AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+								break;
+							}
 						}
-						if (rc < 0) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set USB port status (%s)", libusb_strerror(rc));
-							AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
-							break;
-						}
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+						AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
 					}
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
-					AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
-					break;
 				}
+			} else {
+				AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-		} else {
-			AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (PRIVATE_DATA->version == 2) {
+			char command[16], response[128];
+			for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+				sprintf(command, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
+				upb_command(device, command, response, sizeof(response));
+			}
+			AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 	}
@@ -1004,6 +1173,18 @@ static void aux_reboot_handler(indigo_device *device) {
 			X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_variable_power_outlet_handler(indigo_device *device) {
+	char command[16], response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (IS_CONNECTED) {
+		sprintf(command, "P8:%d", (int)X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.target);
+		upb_command(device, command, response, sizeof(response));
+		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1052,6 +1233,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
 		indigo_set_timer(device, 0, aux_reboot_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_AUX_VARIABLE_POWER_OUTLET
+		indigo_property_copy_values(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property, false);
+		indigo_set_timer(device, 0, aux_variable_power_outlet_handler);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -1080,6 +1266,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(X_AUX_HUB_PROPERTY);
 	indigo_release_property(X_AUX_REBOOT_PROPERTY);
+	indigo_release_property(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -1205,7 +1392,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			if (upb_command(device, "SA", response, sizeof(response))) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if (token) { // Stepper position
-					FOCUSER_POSITION_ITEM->number.value = atol(token);
+					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atol(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Motor is running
 					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
@@ -1233,7 +1420,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			if (upb_command(device, "SS", response, sizeof(response)) ) {
-				FOCUSER_SPEED_ITEM->number.value = atol(response);
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atol(response);
 			}
 			upb_command(device, "PL:1", response, sizeof(response));
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0, focuser_timer_callback);
