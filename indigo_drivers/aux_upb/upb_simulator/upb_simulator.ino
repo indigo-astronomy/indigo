@@ -22,7 +22,7 @@
 #define Serial SerialUSB
 #endif
 
-//#define V2
+#define V2
 
 bool power1 = true;
 bool power2 = true;
