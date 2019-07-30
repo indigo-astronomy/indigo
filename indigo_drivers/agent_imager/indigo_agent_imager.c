@@ -217,7 +217,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
 								AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_x) / 1000;
 								AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
-								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx, %.4g[x", DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx, %.4gpx", DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
 							}
 						} else {
 							indigo_release_property(local_exposure_property);
@@ -409,21 +409,80 @@ static void streaming_batch(indigo_device *device) {
 }
 
 static void autofocus(indigo_device *device) {
-	AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+	AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_property_state result;
+	double last_quality = 0;
+	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
+	double backlash = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
+	char *device_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
+	const char *inward_name = FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME;
+	const char *outward_name = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME;
+	const char *steps_name = FOCUSER_STEPS_ITEM_NAME;
+	bool true_value = true;
+	bool moving_out = true, first_move = true;
+	indigo_property *remote_steps_property = indigo_filter_cached_property(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_STEPS_PROPERTY_NAME);
+	indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &outward_name, &true_value);
 	while (true) {
-		result = capture_raw_frame(device);
-		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		if (result != INDIGO_OK_STATE) {
-			AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_ALERT_STATE;
-			break;
+		double quality = 0;
+		for (int i = 0; i < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
+			result = capture_raw_frame(device);
+			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+				goto finished;
+			}
+			if (result != INDIGO_OK_STATE) {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+				goto finished;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak = %g, HFD = %g,  FWHM = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value);
+			if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
+				indigo_send_message(device, "Invalid HFD or FWHM");
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+				goto finished;
+			}
+			quality += AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_FWHM_ITEM->number.value / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
 		}
-		// TBD autofocus
+		quality /= AGENT_IMAGER_FOCUS_STACK_ITEM->number.value;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality = %g", quality);
+		if (quality > last_quality) {
+			if (moving_out)
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving out %d steps", (int)steps);
+			else
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving in %d steps", (int)steps);
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &steps);
+		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value) {
+			indigo_send_message(device, "Automatic focusing is done");
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+			break;
+		} else {
+			moving_out = !moving_out;
+			if (!first_move) {
+				steps = round(steps / 2);
+				if (steps < 1)
+					steps = 1;
+			}
+			first_move = false;
+			if (moving_out) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving out %d + %d steps", (int)steps, (int)backlash);
+				indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &outward_name, &true_value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving in %d + %d steps", (int)steps, (int)backlash);
+				indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &inward_name, &true_value);
+			}
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &backlash);
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &steps);
+		}
+		indigo_usleep(500000);
+		while (remote_steps_property->state == INDIGO_BUSY_STATE) {
+			indigo_usleep(500000);
+		}
+		last_quality = quality;
 	}
-	indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+finished:
+	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
