@@ -416,7 +416,7 @@ static void autofocus(indigo_device *device) {
 	indigo_property_state result;
 	double last_quality = 0;
 	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
-	double backlash = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
+	double steps_with_backlash = steps + AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 	char *device_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
 	const char *inward_name = FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME;
 	const char *outward_name = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME;
@@ -425,7 +425,7 @@ static void autofocus(indigo_device *device) {
 	bool moving_out = true, first_move = true;
 	indigo_property *remote_steps_property = indigo_filter_cached_property(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_STEPS_PROPERTY_NAME);
 	indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &outward_name, &true_value);
-	while (true) {
+	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		double quality = 0;
 		for (int i = 0; i < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
 			result = capture_raw_frame(device);
@@ -454,6 +454,15 @@ static void autofocus(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving in %d steps", (int)steps);
 			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &steps);
 		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value) {
+			moving_out = !moving_out;
+			if (moving_out) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving out %d steps to final position", (int)steps_with_backlash);
+				indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &outward_name, &true_value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving in %d steps to final position", (int)steps_with_backlash);
+				indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &inward_name, &true_value);
+			}
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &steps_with_backlash);
 			indigo_send_message(device, "Automatic focusing is done");
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 			break;
@@ -463,17 +472,17 @@ static void autofocus(indigo_device *device) {
 				steps = round(steps / 2);
 				if (steps < 1)
 					steps = 1;
+				steps_with_backlash = steps + AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 			}
 			first_move = false;
 			if (moving_out) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving out %d + %d steps", (int)steps, (int)backlash);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving out %d steps", (int)steps_with_backlash);
 				indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &outward_name, &true_value);
 			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving in %d + %d steps", (int)steps, (int)backlash);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving in %d steps", (int)steps_with_backlash);
 				indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, 1, &inward_name, &true_value);
 			}
-			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &backlash);
-			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &steps);
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, 1, &steps_name, &steps_with_backlash);
 		}
 		indigo_usleep(500000);
 		while (remote_steps_property->state == INDIGO_BUSY_STATE) {
@@ -481,6 +490,7 @@ static void autofocus(indigo_device *device) {
 		}
 		last_quality = quality;
 	}
+	capture_raw_frame(device);
 finished:
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 }
