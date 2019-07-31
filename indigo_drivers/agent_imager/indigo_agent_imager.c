@@ -507,6 +507,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_WHEEL_LIST_PROPERTY->hidden = false;
 		FILTER_FOCUSER_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Batch properties
 		AGENT_IMAGER_BATCH_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, "Agent", "Batch settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_IMAGER_BATCH_PROPERTY == NULL)
