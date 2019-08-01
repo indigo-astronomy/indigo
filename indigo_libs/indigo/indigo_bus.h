@@ -511,13 +511,25 @@ extern void indigo_property_copy_targets(indigo_property *property, indigo_prope
  */
 extern indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
 
+/** Request text property change.
+ */
+extern indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *value);
+
 /** Request number property change.
  */
 extern indigo_result indigo_change_number_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const double *values);
 
+/** Request number property change.
+ */
+extern indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value);
+
 /** Request switch property change.
  */
 extern indigo_result indigo_change_switch_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const bool *values);
+
+/** Request switch property change.
+ */
+extern indigo_result indigo_change_switch_property_1(indigo_client *client, const char *device, const char *name, const char *item, const bool value);
 
 /** Send connect message.
  */
