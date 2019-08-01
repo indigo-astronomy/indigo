@@ -119,13 +119,13 @@ typedef struct {
 	enum { INIT = 1, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
 	double stack_x[5], stack_y[5];
 	int stack_size;
-	pthread_mutex_t config_mutex;
+	pthread_mutex_t mutex;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
 static void save_config(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->config_mutex);
+	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
@@ -138,7 +138,7 @@ static void save_config(indigo_device *device) {
 	}
 	CONFIG_SAVE_ITEM->sw.value = false;
 	indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->config_mutex);
+	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 }
 
 static indigo_property_state capture_raw_frame(indigo_device *device) {
@@ -813,7 +813,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_SNR_ITEM, AGENT_GUIDER_STATS_SNR_ITEM_NAME, "S/N", 0, 1000, 0, 0);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
-		pthread_mutex_init(&DEVICE_PRIVATE_DATA->config_mutex, NULL);
+		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -926,7 +926,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_STATS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DEC_MODE_PROPERTY);
 	indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
-	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->config_mutex);
+	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
 }
 
