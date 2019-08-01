@@ -359,8 +359,9 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count | 
 |  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) | 
 |  |  |  |  | DELAY | yes | Delay between exposures duration (in seconds) |
-| AGENT_IMAGER_DOWNLOAD | switch | no | yes | REFRESH | yes | Refresh the list of available files | 
-|  |  |  |  | file name | yes | Files to load into AGENT_IMAGER_DOWNLOAD_IMAGE property and remove on the host | 
+| AGENT_IMAGER_DOWNLOADFILE | text | no | yes | FILE | yes | Files to load into AGENT_IMAGER_DOWNLOAD_IMAGE property and remove on the host | 
+| AGENT_IMAGER_DOWNLOADFILES | switch | no | yes | REFRESH | yes | Refresh the list of available files | 
+|  |  |  |  | file name | yes | Set the file to AGENT_IMAGER_DOWNLOADFILE | 
 | AGENT_IMAGER_DOWNLOAD_IMAGE | blob | no | yes | IMAGE | yes |  |
 
 ### Guider agent

@@ -83,11 +83,11 @@ typedef struct {
 	double mount_target_ra, mount_target_dec;
 	int server_socket;
 	bool dome_unparked;
-	pthread_mutex_t config_mutex;
+	pthread_mutex_t mutex;
 } agent_private_data;
 
 static void save_config(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->config_mutex);
+	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
@@ -107,7 +107,7 @@ static void save_config(indigo_device *device) {
 	}
 	CONFIG_SAVE_ITEM->sw.value = false;
 	indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->config_mutex);
+	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 }
 
 static void set_site_coordinates2(indigo_device *device, int index, double latitude, double longitude, double elevation) {
@@ -244,7 +244,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_LOCAL_TIME_LIMIT_ITEM, AGENT_LOCAL_TIME_LIMIT_ITEM_NAME, "Time limit (0 to 24)", 0, 24, 0, 12);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
-		pthread_mutex_init(&DEVICE_PRIVATE_DATA->config_mutex, NULL);
+		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -640,7 +640,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_LX200_SERVER_PROPERTY);
 	indigo_release_property(AGENT_LX200_CONFIGURATION_PROPERTY);
 	indigo_release_property(AGENT_LIMITS_PROPERTY);
-	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->config_mutex);
+	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
 }
 
