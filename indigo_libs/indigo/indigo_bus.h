@@ -513,7 +513,7 @@ extern indigo_result indigo_change_text_property(indigo_client *client, const ch
 
 /** Request text property change.
  */
-extern indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *value);
+extern indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...);
 
 /** Request number property change.
  */
