@@ -79,7 +79,7 @@ $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c))) $(BUILD_LIB)/libnovas.a
-	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl -lusb-1.0
 
 #---------------------------------------------------------------------
 #
@@ -135,7 +135,7 @@ $(BUILD_LIB)/libusb-1.0.dylib:
 libhidapi: $(LIBHIDAPI)
 
 $(LIBHIDAPI):
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS) -lusb-1.0"; cd externals/hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
 
 #---------------------------------------------------------------------
 #
