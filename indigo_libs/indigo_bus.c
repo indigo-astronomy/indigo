@@ -999,7 +999,12 @@ indigo_result indigo_change_text_property(indigo_client *client, const char *dev
 	return result;
 }
 
-indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *value) {
+indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...) {
+	char value[INDIGO_VALUE_SIZE];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(value, INDIGO_VALUE_SIZE, format, args);
+	va_end(args);
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, 1);
 	indigo_init_text_item(property->items, item, NULL, value);
 	indigo_result result = indigo_change_property(client, property);
