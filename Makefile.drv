@@ -107,10 +107,10 @@ endif
 endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(SDK_LIB) -lindigo $(LDFLAGS)
+	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(SDK_LIB) -lindigo $(LDFLAGS) -lusb-1.0
 
 $(DRIVER_EXECUTABLE): $(DRIVER_MAIN_O) $(DRIVER_A)
-	$(CC) -o $@ $^ $(SDK_LIB) -lindigo $(LDFLAGS)
+	$(CC) -o $@ $^ $(SDK_LIB) -lindigo $(LDFLAGS) -lusb-1.0
 
 install: status $(INSTALL_SDK)
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)

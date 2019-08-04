@@ -70,10 +70,10 @@ $(DRIVER_A): indigo_aux_joystick.o
 endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -lindigo
+	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -lindigo -lusb-1.0
 
 $(DRIVER_EXECUTABLE): indigo_aux_joystick_main.o $(DRIVER_A)
-	$(CC) -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) -o $@ $^ $(LDFLAGS) -lindigo -lusb-1.0
 
 install: status
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
