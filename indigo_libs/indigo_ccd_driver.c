@@ -1359,21 +1359,26 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		char *message = NULL;
 		if (strlen(dir) + strlen(prefix) + strlen(suffix) < INDIGO_VALUE_SIZE) {
 			char file_name[INDIGO_VALUE_SIZE];
-			char *xxx = strstr(prefix, "XXX");
-			if (xxx == NULL) {
+			char *placeholder = strstr(prefix, "XXX");
+			if (placeholder == NULL) {
 				strncpy(file_name, dir, INDIGO_VALUE_SIZE);
 				strcat(file_name, prefix);
 				strcat(file_name, suffix);
 			} else {
 				char format[INDIGO_VALUE_SIZE];
 				strcpy(format, dir);
-				strncat(format, prefix, xxx - prefix);
-				strcat(format, "%03d");
-				strcat(format, xxx+3);
+				strncat(format, prefix, placeholder - prefix);
+				if (!strncmp(placeholder, "XXXX", 4)) {
+					strcat(format, "%04d");
+					strcat(format, placeholder + 4);
+				} else {
+					strcat(format, "%03d");
+					strcat(format, placeholder + 3);
+				}
 				strcat(format, suffix);
 				struct stat sb;
 				int i = 1;
-				while (true) {
+				while (i < 10000) {
 					snprintf(file_name, sizeof(file_name), format, i);
 					if (stat(file_name, &sb) == 0 && S_ISREG(sb.st_mode))
 						i++;
