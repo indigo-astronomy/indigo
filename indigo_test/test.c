@@ -94,8 +94,8 @@ static indigo_result test_update_property(indigo_client *client, indigo_device *
 		fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
 		fclose(f);
 		indigo_log("image saved to %s...", name);
-		free(item->blob.value);
-		item->blob.value = NULL;
+		free(property->items[0].blob.value);
+		property->items[0].blob.value = NULL;
 	}
 	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_BUSY_STATE) {
