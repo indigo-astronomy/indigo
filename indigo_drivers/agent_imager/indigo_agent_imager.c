@@ -437,7 +437,6 @@ static void autofocus(indigo_device *device) {
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps_with_backlash);
 			indigo_send_message(device, "Automatic focusing is done");
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-			break;
 		} else {
 			moving_out = !moving_out;
 			if (!first_move) {
