@@ -179,7 +179,7 @@ static void start_worker_thread(int *client_socket) {
 							indigo_printf(socket, "\r\n");
 							indigo_printf(socket, "BLOB not found!\r\n");
 							shutdown(socket,SHUT_RDWR);
-								indigo_usleep(ONE_SECOND_DELAY);
+							indigo_usleep(ONE_SECOND_DELAY);
 							close(socket);
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
 							keep_alive = false;

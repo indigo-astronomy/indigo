@@ -255,7 +255,7 @@ static void exposure_batch(indigo_device *device) {
 				}
 				while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
 					if (time > 1) {
-							indigo_usleep(ONE_SECOND_DELAY);
+						indigo_usleep(ONE_SECOND_DELAY);
 						time -= 1;
 						AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = time;
 						indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
@@ -272,7 +272,7 @@ static void exposure_batch(indigo_device *device) {
 					indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 					while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && time > 0) {
 						if (time > 1) {
-								indigo_usleep(ONE_SECOND_DELAY);
+							indigo_usleep(ONE_SECOND_DELAY);
 							time -= 1;
 							AGENT_IMAGER_BATCH_DELAY_ITEM->number.value = time;
 							indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
@@ -349,7 +349,7 @@ static void streaming_batch(indigo_device *device) {
 					AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = time;
 					AGENT_IMAGER_BATCH_COUNT_ITEM->number.value = remote_streaming_property->items[count_index].number.value;
 					indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-						indigo_usleep(ONE_SECOND_DELAY);
+					indigo_usleep(ONE_SECOND_DELAY);
 				} else {
 					indigo_usleep(10000);
 				}
