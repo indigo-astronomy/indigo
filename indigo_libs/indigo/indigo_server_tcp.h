@@ -48,13 +48,17 @@ extern bool indigo_is_ephemeral_port;
  */
 extern void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type);
 
-/** Remove static document.
- */
-extern void indigo_server_remove_resource(const char *path);
-	
 /** Add file document.
  */
 extern void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type);
+	
+/** Remove document.
+ */
+extern void indigo_server_remove_resource(const char *path);
+	
+/** Remove all documents.
+ */
+extern void indigo_server_remove_resources();
 	
 /** Start network server (function will block until server is active).
  */

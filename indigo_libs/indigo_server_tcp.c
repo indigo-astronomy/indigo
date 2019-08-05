@@ -311,6 +311,17 @@ void indigo_server_remove_resource(const char *path) {
 	}
 }
 
+void indigo_server_remove_resources() {
+	struct resource *resource = resources;
+	while (resource) {
+		struct resource *tmp = resource;
+		resource = resource->next;
+		INDIGO_LOG(indigo_log("Resource %s removed", tmp->path));
+		free(tmp);
+	}
+	resources = NULL;
+}
+
 indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	server_callback = callback;
 	int client_socket;

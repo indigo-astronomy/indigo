@@ -1113,6 +1113,7 @@ static void signal_handler(int signo) {
 			kill(server_pid, SIGINT);
 		use_sigkill = true;
 	}
+	indigo_server_remove_resources();
 	if (star_data)
 		free(star_data);
 	if (dso_data)
