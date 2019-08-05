@@ -319,6 +319,8 @@ void print_property_list(indigo_property *property, const char *message) {
 					snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
 					printf("%s.%s.%s = <%s => %s>\n", property->device, property->name, item->name, item->blob.url, filename);
 					save_blob(filename, item->blob.value, item->blob.size);
+					free(item->blob.value);
+					item->blob.value = NULL;
 				} else {
 					INDIGO_ERROR(indigo_error("Can not retrieve data from %s", item->blob.url));
 				}
@@ -398,6 +400,8 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 						snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
 						sprintf(value_string[items_found], "file://%s/%s", getcwd(NULL, 0), filename);
 						save_blob(filename, item->blob.value, item->blob.size);
+						free(item->blob.value);
+						item->blob.value = NULL;
 					} else {
 						INDIGO_ERROR(indigo_error("Can not retrieve data from %s", item->blob.url));
 					}
