@@ -761,6 +761,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	return INDIGO_OK;
 }
 
+
 static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_delete_property(device, info_property, NULL);
@@ -769,6 +770,7 @@ static indigo_result detach(indigo_device *device) {
 		indigo_delete_property(device, servers_property, NULL);
 	indigo_delete_property(device, load_property, NULL);
 	indigo_delete_property(device, unload_property, NULL);
+	indigo_delete_property(device, restart_property, NULL);
 	indigo_delete_property(device, log_level_property, NULL);
 	indigo_delete_property(device, server_features_property, NULL);
 #ifdef RPI_MANAGEMENT
@@ -1075,6 +1077,13 @@ static void server_main() {
 
 	indigo_detach_device(&server_device);
 	indigo_stop();
+	indigo_server_remove_resources();
+	if (star_data)
+		free(star_data);
+	if (dso_data)
+		free(dso_data);
+	if (constellation_data)
+		free(constellation_data);
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
 			indigo_remove_driver(&indigo_available_drivers[i]);
@@ -1113,13 +1122,6 @@ static void signal_handler(int signo) {
 			kill(server_pid, SIGINT);
 		use_sigkill = true;
 	}
-	indigo_server_remove_resources();
-	if (star_data)
-		free(star_data);
-	if (dso_data)
-		free(dso_data);
-	if (constellation_data)
-		free(constellation_data);
 }
 
 int main(int argc, const char * argv[]) {
