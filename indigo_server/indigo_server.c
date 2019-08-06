@@ -409,24 +409,30 @@ static void check_versions(indigo_device *device) {
 					count++;
 			}
 			for (int i = 0; i < count; i++) {
-				char *smallest = "XXXXX";
+				int smallest = 100000;
 				int ii = 0;
 				for (int j = 0; j < count; j++) {
-					if (versions[j] && strcmp(versions[j], smallest) < 0) {
-						smallest = versions[j];
+					if (versions[j] == NULL)
+						continue;
+					char *build = strchr(versions[j], '-');
+					if (build == NULL)
+						continue;
+					int build_number = atoi(build + 1);
+					if (build_number < smallest) {
+						smallest = build_number;
 						ii = j;
 					}
 				}
-				versions[ii] = NULL;
-				indigo_init_switch_item(install_property->items + i, smallest, smallest, smallest == line);
+				indigo_init_switch_item(install_property->items + i, versions[ii], versions[ii], versions[ii] == line);
 				install_property->count++;
+				versions[ii] = NULL;
 			}
 			free(line);
 		}
 		if (redefine)
 			indigo_define_property(device, install_property, NULL);
 		pthread_mutex_unlock(&install_property_mutex);
-		 indigo_usleep(10 * 60 * ONE_SECOND_DELAY);
+		indigo_usleep(10 * 60 * ONE_SECOND_DELAY);
 	}
 }
 
@@ -510,35 +516,8 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
 		reboot_property = indigo_init_switch_property(NULL, server_device.name, "REBOOT", MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
-		install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
-		install_property->count = 0;
-		line = execute_query("s_rpi_ctrl.sh --list-available-versions");
-		if (line) {
-			char *pnt, *versions[10] = { strtok_r(line, " ", &pnt) };
-			int count = 1;
-			while ((versions[count] = strtok_r(NULL, " ", &pnt))) {
-				if (count == 9)
-					count = 1;
-				else
-					count++;
-			}
-			for (int i = 0; i < count; i++) {
-				char *smallest = "XXXXX";
-				int ii = 0;
-				for (int j = 0; j < count; j++) {
-					if (versions[j] && strcmp(versions[j], smallest) < 0) {
-						smallest = versions[j];
-						ii = j;
-					}
-				}
-				versions[ii] = NULL;
-				indigo_init_switch_item(install_property->items + i, smallest, smallest, smallest == line);
-				install_property->count++;
-			}
-			free(line);
-		}
+		indigo_async((void *(*)(void *))check_versions, device);
 	}
-	indigo_async((void *(*)(void *))check_versions, device);
 #endif /* RPI_MANAGEMENT */
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
