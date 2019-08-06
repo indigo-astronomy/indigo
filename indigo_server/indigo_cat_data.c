@@ -41347,6 +41347,7 @@ void *indigo_add_star_json_resource(int max_mag) {
 	unsigned char *data = malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_compress("stars.json", buffer, size, &data, &data_size);
+	free(buffer);
 	indigo_server_add_resource("/data/stars.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;
 }
