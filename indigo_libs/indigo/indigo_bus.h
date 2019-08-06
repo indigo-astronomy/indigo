@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <pthread.h>
 
 #include <indigo/indigo_config.h>
 
@@ -320,6 +321,15 @@ typedef struct {
 	char url_prefix[INDIGO_NAME_SIZE];	///< server url prefix (for BLOB download)
 } indigo_adapter_context;
 
+/** BLOB entry type.
+ */
+typedef struct {
+	indigo_item *item;     							///< BLOB item
+	void *content;            					///< BLOB content
+	long size;              						///< BLOB size
+	char format[INDIGO_NAME_SIZE];  		///< BLOB format, known file type suffix like ".fits" or ".jpeg"
+	pthread_mutex_t mutext;							///< BLOB mutex
+} indigo_blob_entry;
 
 /** Last diagnostic messages.
  */
@@ -415,14 +425,6 @@ extern indigo_result indigo_change_property(indigo_client *client, indigo_proper
  */
 extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
 
-/** Register BLOB property.
- */
-extern void indigo_add_blob(indigo_property *property);
-
-	/** Unregister BLOB property.
-	 */
-extern void indigo_delete_blob(indigo_property *property);
-
 /** Stop bus operation.
  Call has no effect if bus is already stopped.
  */
@@ -454,7 +456,7 @@ extern void *indigo_alloc_blob_buffer(long size);
 extern void indigo_release_property(indigo_property *property);
 /** Validate address of item of registered BLOB property.
  */
-extern indigo_result indigo_validate_blob(indigo_item *item);
+extern indigo_blob_entry *indigo_validate_blob(indigo_item *item);
 
 /** Initialize text item.
  */
@@ -603,6 +605,9 @@ extern bool indigo_use_host_suffix;
  */
 extern bool indigo_is_sandboxed;
 
+/** Cache BLOB content
+ */
+extern bool indigo_use_blob_caching;
 #ifdef __cplusplus
 }
 #endif

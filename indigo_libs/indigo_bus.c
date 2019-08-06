@@ -54,9 +54,12 @@
 
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
-static indigo_property *blobs[MAX_BLOBS];
+static indigo_blob_entry *blobs[MAX_BLOBS];
+
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t blob_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static bool is_started = false;
 
 char *indigo_property_type_text[] = {
@@ -100,6 +103,7 @@ char indigo_local_service_name[INDIGO_NAME_SIZE] = "";
 bool indigo_reshare_remote_devices = false;
 bool indigo_use_host_suffix = true;
 bool indigo_is_sandboxed = false;
+bool indigo_use_blob_caching = false;
 
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
@@ -498,6 +502,38 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 			va_end(args);
 		}
+		if (indigo_use_blob_caching && property->type == INDIGO_BLOB_VECTOR && property->state == INDIGO_OK_STATE) {
+			pthread_mutex_lock(&blob_mutex);
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				indigo_blob_entry *entry = NULL;
+				int free_index = -1;
+				for (int j = 0; j < MAX_BLOBS; j++) {
+					entry = blobs[j];
+					if (entry && entry->item == item) {
+						break;
+					}
+					if (entry == NULL && free_index == -1)
+						free_index = j;
+					entry = NULL;
+				}
+				if (entry == NULL && free_index >= 0) {
+					blobs[free_index] = entry = malloc(sizeof(indigo_blob_entry));
+					memset(entry, 0, sizeof(indigo_blob_entry));
+					entry->item = item;
+					pthread_mutex_init(&entry->mutext, NULL);
+				}
+				if (entry) {
+					entry->content = realloc(entry->content, entry->size = item->blob.size);
+					memcpy(entry->content, item->blob.value, entry->size);
+					strcpy(entry->format, item->blob.format);
+				} else {
+					pthread_mutex_unlock(&blob_mutex);
+					return INDIGO_TOO_MANY_ELEMENTS;
+				}
+			}
+			pthread_mutex_unlock(&blob_mutex);
+		}
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->update_property != NULL)
@@ -671,7 +707,6 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	property->state = state;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
-	indigo_add_blob(property);
 	return property;
 }
 
@@ -688,40 +723,38 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 void indigo_release_property(indigo_property *property) {
 	if (property == NULL)
 		return;
-	indigo_delete_blob(property);
+	if (property->type == INDIGO_BLOB_VECTOR) {
+		pthread_mutex_lock(&blob_mutex);
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			for (int j = 0; j < MAX_BLOBS; j++) {
+				indigo_blob_entry *entry = blobs[j];
+				if (entry && entry->item == item) {
+					pthread_mutex_lock(&entry->mutext);
+					if (entry->content) {
+						free(entry->content);
+					}
+					pthread_mutex_unlock(&entry->mutext);
+					pthread_mutex_destroy(&entry->mutext);
+					free(entry);
+					blobs[j] = NULL;
+					break;
+				}
+			}
+		}
+		pthread_mutex_unlock(&blob_mutex);
+	}
 	free(property);
 }
 
-void indigo_add_blob(indigo_property *property) {
-	for (int i = 0; i < MAX_BLOBS; i++)
-	if (blobs[i] == NULL) {
-		blobs[i] = property;
-		break;
+indigo_blob_entry *indigo_validate_blob(indigo_item *item) {
+	for (int j = 0; j < MAX_BLOBS; j++) {
+		indigo_blob_entry *entry = blobs[j];
+		if (entry && entry->item == item)
+			return entry;
 	}
+	return NULL;
 }
-
-void indigo_delete_blob(indigo_property *property) {
-	for (int i = 0; i < MAX_BLOBS; i++)
-	if (blobs[i] == property) {
-		blobs[i] = NULL;
-		break;
-	}
-}
-
-
-indigo_result indigo_validate_blob(indigo_item *item) {
-	for (int i = 0; i < MAX_BLOBS; i++) {
-		indigo_property *property = blobs[i];
-		if (property != NULL) {
-			for (int j = 0; j < property->count; j++) {
-				if (item == &property->items[j])
-					return INDIGO_OK;
-			}
-		}
-	}
-	return INDIGO_FAILED;
-}
-
 
 void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...) {
 	assert(item != NULL);
