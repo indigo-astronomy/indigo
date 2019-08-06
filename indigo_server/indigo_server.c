@@ -783,6 +783,22 @@ static indigo_result detach(indigo_device *device) {
 		indigo_delete_property(device, install_property, NULL);
 	}
 #endif /* RPI_MANAGEMENT */
+	indigo_release_property(info_property);
+	indigo_release_property(drivers_property);
+	indigo_release_property(servers_property);
+	indigo_release_property(load_property);
+	indigo_release_property(unload_property);
+	indigo_release_property(restart_property);
+	indigo_release_property(log_level_property);
+	indigo_release_property(server_features_property);
+#ifdef RPI_MANAGEMENT
+	indigo_release_property(wifi_ap_property);
+	indigo_release_property(wifi_infrastructure_property);
+	indigo_release_property(host_time_property);
+	indigo_release_property(shutdown_property);
+	indigo_release_property(reboot_property);
+	indigo_release_property(install_property);
+#endif /* RPI_MANAGEMENT */
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }
