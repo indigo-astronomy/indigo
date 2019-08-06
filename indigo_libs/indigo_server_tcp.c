@@ -154,25 +154,28 @@ static void start_worker_thread(int *client_socket) {
 						keep_alive = false;
 					} else if (!strncmp(path, "/blob/", 6)) {
 						indigo_item *item;
-						if (sscanf(path, "/blob/%p.", &item) && indigo_validate_blob(item) == INDIGO_OK) {
+						indigo_blob_entry *entry;
+						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
 							indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
 							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							if (!strcmp(item->blob.format, ".jpeg")) {
+							if (!strcmp(entry->format, ".jpeg")) {
 								indigo_printf(socket, "Content-Type: image/jpeg\r\n");
 							} else {
 								indigo_printf(socket, "Content-Type: application/octet-stream\r\n");
-								indigo_printf(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, item->blob.format);
+								indigo_printf(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, entry->format);
 							}
 							if (keep_alive)
 								indigo_printf(socket, "Connection: keep-alive\r\n");
-							indigo_printf(socket, "Content-Length: %ld\r\n", item->blob.size);
+							indigo_printf(socket, "Content-Length: %ld\r\n", entry->size);
 							indigo_printf(socket, "\r\n");
-							if (indigo_write(socket, item->blob.value, item->blob.size)) {
-								INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, item->blob.size));
+							pthread_mutex_lock(&entry->mutext);
+							if (indigo_write(socket, entry->content, entry->size)) {
+								INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, entry->size));
 							} else {
 								INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
 								keep_alive = false;
 							}
+							pthread_mutex_unlock(&entry->mutext);
 						} else {
 							indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
 							indigo_printf(socket, "Content-Type: text/plain\r\n");
@@ -323,6 +326,7 @@ void indigo_server_remove_resources() {
 }
 
 indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
+	indigo_use_blob_caching = true;
 	server_callback = callback;
 	int client_socket;
 	server_socket = socket(PF_INET, SOCK_STREAM, 0);
