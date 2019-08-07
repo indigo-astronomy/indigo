@@ -476,7 +476,7 @@ static int
 sunos_fill_in_dev_info(di_node_t node, struct libusb_device *dev)
 {
 	int	proplen;
-	int	n, *addr, *port_prop;
+	int	*i, n, *addr, *port_prop;
 	char	*phypath;
 	uint8_t	*rdata;
 	struct libusb_device_descriptor	*descr;
@@ -546,13 +546,13 @@ sunos_fill_in_dev_info(di_node_t node, struct libusb_device *dev)
 	}
 
 	/* speed */
-	if (di_prop_exists(DDI_DEV_T_ANY, node, "low-speed") == 1) {
+	if (di_prop_lookup_ints(DDI_DEV_T_ANY, node, "low-speed", &i) >= 0) {
 		dev->speed = LIBUSB_SPEED_LOW;
-	} else if (di_prop_exists(DDI_DEV_T_ANY, node, "high-speed") == 1) {
+	} else if (di_prop_lookup_ints(DDI_DEV_T_ANY, node, "high-speed", &i) >= 0) {
 		dev->speed = LIBUSB_SPEED_HIGH;
-	} else if (di_prop_exists(DDI_DEV_T_ANY, node, "full-speed") == 1) {
+	} else if (di_prop_lookup_ints(DDI_DEV_T_ANY, node, "full-speed", &i) >= 0) {
 		dev->speed = LIBUSB_SPEED_FULL;
-	} else if (di_prop_exists(DDI_DEV_T_ANY, node, "super-speed") == 1) {
+	} else if (di_prop_lookup_ints(DDI_DEV_T_ANY, node, "super-speed", &i) >= 0) {
 		dev->speed = LIBUSB_SPEED_SUPER;
 	}
 
@@ -574,7 +574,7 @@ sunos_add_devices(di_devlink_t link, void *arg)
 	uint64_t		bdf = 0;
 	struct libusb_device	*dev;
 	sunos_dev_priv_t	*devpriv;
-	int			n;
+	int			n, *j;
 	int			i = 0;
 	int			*addr_prop;
 	uint8_t			bus_number = 0;
@@ -594,7 +594,7 @@ sunos_add_devices(di_devlink_t link, void *arg)
 
 	dn = myself;
 	/* find the root hub */
-	while (di_prop_exists(DDI_DEV_T_ANY, dn, "root-hub") != 1) {
+	while (di_prop_lookup_ints(DDI_DEV_T_ANY, dn, "root-hub", &j) != 0) {
 		usbi_dbg("find_root_hub:%s", di_devfs_path(dn));
 		n = di_prop_lookup_ints(DDI_DEV_T_ANY, dn,
 				"assigned-address", &addr_prop);
@@ -1196,26 +1196,32 @@ sunos_async_callback(union sigval arg)
 	int ret;
 	sunos_dev_handle_priv_t *hpriv;
 	uint8_t ep;
+	libusb_device_handle *dev_handle;
 
-	hpriv = (sunos_dev_handle_priv_t *)xfer->dev_handle->os_priv;
-	ep = sunos_usb_ep_index(xfer->endpoint);
+	dev_handle = xfer->dev_handle;
 
-	ret = aio_error(aiocb);
-	if (ret != 0) {
-		xfer->status = sunos_usb_get_status(hpriv->eps[ep].statfd);
-	} else {
-		xfer->actual_length =
-		    LIBUSB_TRANSFER_TO_USBI_TRANSFER(xfer)->transferred =
-		    aio_return(aiocb);
+	/* libusb can forcibly interrupt transfer in do_close() */
+	if (dev_handle != NULL) {
+		hpriv = (sunos_dev_handle_priv_t *)dev_handle->os_priv;
+		ep = sunos_usb_ep_index(xfer->endpoint);
+
+		ret = aio_error(aiocb);
+		if (ret != 0) {
+			xfer->status = sunos_usb_get_status(hpriv->eps[ep].statfd);
+		} else {
+			xfer->actual_length =
+			    LIBUSB_TRANSFER_TO_USBI_TRANSFER(xfer)->transferred =
+			    aio_return(aiocb);
+		}
+
+		usb_dump_data(xfer->buffer, xfer->actual_length);
+
+		usbi_dbg("ret=%d, len=%d, actual_len=%d", ret, xfer->length,
+		    xfer->actual_length);
+
+		/* async notification */
+		usbi_signal_transfer_completion(LIBUSB_TRANSFER_TO_USBI_TRANSFER(xfer));
 	}
-
-	usb_dump_data(xfer->buffer, xfer->actual_length);
-
-	usbi_dbg("ret=%d, len=%d, actual_len=%d", ret, xfer->length,
-	    xfer->actual_length);
-
-	/* async notification */
-	usbi_signal_transfer_completion(LIBUSB_TRANSFER_TO_USBI_TRANSFER(xfer));
 }
 
 static int
@@ -1360,9 +1366,15 @@ solaris_submit_ctrl_on_default(struct libusb_transfer *transfer)
 	}
 	usbi_dbg("Done: ctrl data bytes %d", ret);
 
-	/* sync transfer handling */
+	/**
+	 * Sync transfer handling.
+ 	 * We should release transfer lock here and later get it back
+	 * as usbi_handle_transfer_completion() takes its own transfer lock.
+	 */
+	usbi_mutex_unlock(&LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer)->lock);
 	ret = usbi_handle_transfer_completion(LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer),
 	    transfer->status);
+	usbi_mutex_lock(&LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer)->lock);
 
 	return (ret);
 }
@@ -1503,8 +1515,6 @@ sunos_handle_transfer_completion(struct usbi_transfer *itransfer)
 int
 sunos_clock_gettime(int clkid, struct timespec *tp)
 {
-	usbi_dbg("clock %d", clkid);
-
 	if (clkid == USBI_CLOCK_REALTIME)
 		return clock_gettime(CLOCK_REALTIME, tp);
 
@@ -1637,6 +1647,13 @@ sunos_usb_get_status(int fd)
 	return (status);
 }
 
+#ifdef USBI_TIMERFD_AVAILABLE
+static clockid_t op_get_timerfd_clockid(void)
+{
+       return CLOCK_MONOTONIC;
+}
+#endif
+
 const struct usbi_os_backend usbi_backend = {
         .name = "Solaris",
         .caps = 0,
@@ -1669,6 +1686,9 @@ const struct usbi_os_backend usbi_backend = {
         .clear_transfer_priv = sunos_clear_transfer_priv,
         .handle_transfer_completion = sunos_handle_transfer_completion,
         .clock_gettime = sunos_clock_gettime,
+#ifdef USBI_TIMERFD_AVAILABLE
+        .get_timerfd_clockid = op_get_timerfd_clockid,
+#endif
         .device_priv_size = sizeof(sunos_dev_priv_t),
         .device_handle_priv_size = sizeof(sunos_dev_handle_priv_t),
         .transfer_priv_size = sizeof(sunos_xfer_priv_t),
