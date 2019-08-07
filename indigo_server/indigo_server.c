@@ -111,6 +111,7 @@
 #include "agent_auxiliary/indigo_agent_auxiliary.h"
 #include "aux_sqm/indigo_aux_sqm.h"
 #include "focuser_dsd/indigo_focuser_dsd.h"
+#include "ccd_ptp/indigo_ccd_ptp.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -164,6 +165,7 @@ driver_entry_point static_drivers[] = {
 #endif
 	indigo_ccd_iidc,
 	indigo_ccd_mi,
+	indigo_ccd_ptp,
 	indigo_ccd_qhy,
 	indigo_ccd_qsi,
 #ifndef __aarch64__
