@@ -35,6 +35,7 @@
 #include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ptp.h"
+#include "indigo_ptp_canon.h"
 #include "indigo_ccd_ptp.h"
 
 #define MAX_DEVICES    	4
@@ -92,13 +93,18 @@ static void handle_connection(indigo_device *device) {
 	}
 	if (result) {
 		uint16_t code;
-//		unsigned char buffer[128];
-//		int length;
-//		PRIVATE_DATA->transaction_id = 0;
-//		PRIVATE_DATA->session_id = 0;
-//		if (ptp_request(device, PTP_REQ_GET_DEVICE_INFO, 0) && ptp_read(device, &buffer, sizeof(buffer), &length) && ptp_response(device, &code, 1, &PRIVATE_DATA->session_id) && code == PTP_RESP_OK)
+		void *buffer;
+		int length;
 		PRIVATE_DATA->transaction_id = 0;
-		if (ptp_request(device, ptp_request_opensession, 1, 1) && ptp_response(device, &code, 1, &PRIVATE_DATA->session_id) && code == ptp_response_ok)
+		PRIVATE_DATA->session_id = 0;
+		if (ptp_request(device, ptp_operation_GetDeviceInfo, 0) && ptp_read(device, &code, &buffer, &length) && ptp_response(device, &code, 1, &PRIVATE_DATA->session_id) && code == ptp_response_OK) {
+			ptp_device_info device_info;
+			ptp_copy_device_info(buffer, &device_info);
+			PTP_DUMP_DEVICE_INFO(&device_info);
+			free(buffer);
+		}
+		PRIVATE_DATA->transaction_id = 0;
+		if (ptp_request(device, ptp_operation_OpenSession, 1, 1) && ptp_response(device, &code, 1, &PRIVATE_DATA->session_id) && code == ptp_response_OK)
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -119,7 +125,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			// TBD
 			if (--PRIVATE_DATA->device_count == 0) {
-				ptp_request(device, ptp_request_closesession, 0);
+				ptp_request(device, ptp_operation_CloseSession, 0);
 				ptp_response(device, NULL, 0);
 				ptp_close(device);
 				indigo_global_unlock(device);
@@ -164,6 +170,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					assert(private_data != NULL);
 					memset(private_data, 0, sizeof(ptp_private_data));
 					private_data->dev = dev;
+					if (descriptor.idVendor == 0x04a9) {
+						private_data->operation_code_label = ptp_operation_canon_code_label;
+						private_data->response_code_label = ptp_response_canon_code_label;
+						private_data->event_code_label = ptp_event_canon_code_label;
+						private_data->property_code_label = ptp_property_canon_code_label;
+					} else {
+						private_data->operation_code_label = ptp_operation_code_label;
+						private_data->response_code_label = ptp_response_code_label;
+						private_data->event_code_label = ptp_event_code_label;
+						private_data->property_code_label = ptp_property_code_label;
+					}
 					libusb_ref_device(dev);
 					indigo_device *device = malloc(sizeof(indigo_device));
 					indigo_device *master_device = device;

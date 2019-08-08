@@ -34,8 +34,6 @@
 
 #define PTP_TIMEOUT							3000
 
-#define PTP_DUMP_CONTAINER(c) INDIGO_DEBUG(ptp_dump_container(__LINE__, __FUNCTION__, c))
-
 typedef enum {
 	ptp_container_command =	0x0001,
 	ptp_container_data = 0x0002,
@@ -44,104 +42,210 @@ typedef enum {
 } ptp_contaner_code;
 
 typedef enum {
-	ptp_request_undefined = 0x1000,
-	ptp_request_getdeviceinfo = 0x1001,
-	ptp_request_opensession = 0x1002,
-	ptp_request_closesession = 0x1003,
-	ptp_request_getstorageids = 0x1004,
-	ptp_request_getstorageinfo = 0x1005,
-	ptp_request_getnumobjects = 0x1006,
-	ptp_request_getobjecthandles = 0x1007,
-	ptp_request_getobjectinfo = 0x1008,
-	ptp_request_getobject = 0x1009,
-	ptp_request_getthumb = 0x100a,
-	ptp_request_deleteobject = 0x100b,
-	ptp_request_sendobjectinfo = 0x100c,
-	ptp_request_sendobject = 0x100d,
-	ptp_request_initiatecapture = 0x100e,
-	ptp_request_formatstore = 0x100f,
-	ptp_request_resetdevice = 0x1010,
-	ptp_request_selftest = 0x1011,
-	ptp_request_setobjectprotection = 0x1012,
-	ptp_request_powerdown = 0x1013,
-	ptp_request_getdevicepropdesc = 0x1014,
-	ptp_request_getdevicepropvalue = 0x1015,
-	ptp_request_setdevicepropvalue = 0x1016,
-	ptp_request_resetdevicepropvalue = 0x1017,
-	ptp_request_terminateopencapture = 0x1018,
-	ptp_request_moveobject = 0x1019,
-	ptp_request_copyobject = 0x101a,
-	ptp_request_getpartialobject = 0x101b,
-	ptp_request_initiateopencapture = 0x101c,
-	ptp_request_getnumdownloadableobjects = 0x9001,
-	ptp_request_getallobjectinfo = 0x9002,
-	ptp_request_getuserassigneddevicename = 0x9003,
-	ptp_request_mtpgetobjectpropssupported = 0x9801,
-	ptp_request_mtpgetobjectpropdesc = 0x9802,
-	ptp_request_mtpgetobjectpropvalue = 0x9803,
-	ptp_request_mtpsetobjectpropvalue = 0x9804,
-	ptp_request_mtpgetobjproplist = 0x9805,
-	ptp_request_mtpsetobjproplist = 0x9806,
-	ptp_request_mtpgetinterdependendpropdesc = 0x9807,
-	ptp_request_mtpsendobjectproplist = 0x9808,
-	ptp_request_mtpgetobjectreferences = 0x9810,
-	ptp_request_mtpsetobjectreferences = 0x9811,
-	ptp_request_mtpupdatedevicefirmware = 0x9812,
-	ptp_request_mtpskip = 0x9820,
-} ptp_request_code;
+	ptp_operation_Undefined = 0x1000,
+	ptp_operation_GetDeviceInfo = 0x1001,
+	ptp_operation_OpenSession = 0x1002,
+	ptp_operation_CloseSession = 0x1003,
+	ptp_operation_GetStorageIDs = 0x1004,
+	ptp_operation_GetStorageInfo = 0x1005,
+	ptp_operation_GetNumObjects = 0x1006,
+	ptp_operation_GetObjectHandles = 0x1007,
+	ptp_operation_GetObjectInfo = 0x1008,
+	ptp_operation_GetObject = 0x1009,
+	ptp_operation_GetThumb = 0x100A,
+	ptp_operation_DeleteObject = 0x100B,
+	ptp_operation_SendObjectInfo = 0x100C,
+	ptp_operation_SendObject = 0x100D,
+	ptp_operation_InitiateCapture = 0x100E,
+	ptp_operation_FormatStore = 0x100F,
+	ptp_operation_ResetDevice = 0x1010,
+	ptp_operation_SelfTest = 0x1011,
+	ptp_operation_SetObjectProtection = 0x1012,
+	ptp_operation_PowerDown = 0x1013,
+	ptp_operation_GetDevicePropDesc = 0x1014,
+	ptp_operation_GetDevicePropValue = 0x1015,
+	ptp_operation_SetDevicePropValue = 0x1016,
+	ptp_operation_ResetDevicePropValue = 0x1017,
+	ptp_operation_TerminateOpenCapture = 0x1018,
+	ptp_operation_MoveObject = 0x1019,
+	ptp_operation_CopyObject = 0x101A,
+	ptp_operation_GetPartialObject = 0x101B,
+	ptp_operation_InitiateOpenCapture = 0x101C,
+	ptp_operation_GetNumDownloadableObjects = 0x9001,
+	ptp_operation_GetAllObjectInfo = 0x9002,
+	ptp_operation_GetUserAssignedDeviceName = 0x9003,
+	ptp_operation_MTPGetObjectPropsSupported = 0x9801,
+	ptp_operation_MTPGetObjectPropDesc = 0x9802,
+	ptp_operation_MTPGetObjectPropValue = 0x9803,
+	ptp_operation_MTPSetObjectPropValue = 0x9804,
+	ptp_operation_MTPGetObjPropList = 0x9805,
+	ptp_operation_MTPSetObjPropList = 0x9806,
+	ptp_operation_MTPGetInterdependendPropdesc = 0x9807,
+	ptp_operation_MTPSendObjectPropList = 0x9808,
+	ptp_operation_MTPGetObjectReferences = 0x9810,
+	ptp_operation_MTPSetObjectReferences = 0x9811,
+	ptp_operation_MTPUpdateDeviceFirmware = 0x9812,
+	ptp_operation_MTPSkip = 0x9820
+} ptp_operation_code;
 
 typedef enum {
-	ptp_response_undefined = 0x2000,
-	ptp_response_ok = 0x2001,
-	ptp_response_generalerror = 0x2002,
-	ptp_response_sessionnotopen = 0x2003,
-	ptp_response_invalidtransactionid = 0x2004,
-	ptp_response_operationnotsupported = 0x2005,
-	ptp_response_parameternotsupported = 0x2006,
-	ptp_response_incompletetransfer = 0x2007,
-	ptp_response_invalidstorageid = 0x2008,
-	ptp_response_invalidobjecthandle = 0x2009,
-	ptp_response_devicepropnotsupported = 0x200a,
-	ptp_response_invalidobjectformatcode = 0x200b,
-	ptp_response_storefull = 0x200c,
-	ptp_response_objectwriteprotected = 0x200d,
-	ptp_response_storereadonly = 0x200e,
-	ptp_response_accessdenied = 0x200f,
-	ptp_response_nothumbnailpresent = 0x2010,
-	ptp_response_selftestfailed = 0x2011,
-	ptp_response_partialdeletion = 0x2012,
-	ptp_response_storenotavailable = 0x2013,
-	ptp_response_specificationbyformatunsupported = 0x2014,
-	ptp_response_novalidobjectinfo = 0x2015,
-	ptp_response_invalidcodeformat = 0x2016,
-	ptp_response_unknownvendorcode = 0x2017,
-	ptp_response_capturealreadyterminated = 0x2018,
-	ptp_response_devicebusy = 0x2019,
-	ptp_response_invalidparentobject = 0x201a,
-	ptp_response_invaliddevicepropformat = 0x201b,
-	ptp_response_invaliddevicepropvalue = 0x201c,
-	ptp_response_invalidparameter = 0x201d,
-	ptp_response_sessionalreadyopen = 0x201e,
-	ptp_response_transactioncancelled = 0x201f,
-	ptp_response_specificationofdestinationunsupported = 0x2020,
-	ptp_response_mtpundefined = 0xa800,
-	ptp_response_mtpinvalidobjectpropcode = 0xa801,
-	ptp_response_mtpinvalidobjectprop_format = 0xa802,
-	ptp_response_mtpinvalidobjectprop_value = 0xa803,
-	ptp_response_mtpinvalidobjectreference = 0xa804,
-	ptp_response_mtpinvaliddataset = 0xa806,
-	ptp_response_mtpspecificationbygroupunsupported = 0xa807,
-	ptp_response_mtpspecificationbydepthunsupported = 0xa808,
-	ptp_response_mtpobjecttoolarge = 0xa809,
-	ptp_response_mtpobjectpropnotsupported = 0xa80a,
+	ptp_response_Undefined = 0x2000,
+	ptp_response_OK = 0x2001,
+	ptp_response_GeneralError = 0x2002,
+	ptp_response_SessionNotOpen = 0x2003,
+	ptp_response_InvalidTransactionID = 0x2004,
+	ptp_response_OperationNotSupported = 0x2005,
+	ptp_response_ParameterNotSupported = 0x2006,
+	ptp_response_IncompleteTransfer = 0x2007,
+	ptp_response_InvalidStorageID = 0x2008,
+	ptp_response_InvalidObjectHandle = 0x2009,
+	ptp_response_DevicePropNotSupported = 0x200A,
+	ptp_response_InvalidObjectFormatCode = 0x200B,
+	ptp_response_StoreFull = 0x200C,
+	ptp_response_ObjectWriteProtected = 0x200D,
+	ptp_response_StoreReadOnly = 0x200E,
+	ptp_response_AccessDenied = 0x200F,
+	ptp_response_NoThumbnailPresent = 0x2010,
+	ptp_response_SelfTestFailed = 0x2011,
+	ptp_response_PartialDeletion = 0x2012,
+	ptp_response_StoreNotAvailable = 0x2013,
+	ptp_response_SpecificationByFormatUnsupported = 0x2014,
+	ptp_response_NoValidObjectInfo = 0x2015,
+	ptp_response_InvalidCodeFormat = 0x2016,
+	ptp_response_UnknownVendorCode = 0x2017,
+	ptp_response_CaptureAlreadyTerminated = 0x2018,
+	ptp_response_DeviceBusy = 0x2019,
+	ptp_response_InvalidParentObject = 0x201A,
+	ptp_response_InvalidDevicePropFormat = 0x201B,
+	ptp_response_InvalidDevicePropValue = 0x201C,
+	ptp_response_InvalidParameter = 0x201D,
+	ptp_response_SessionAlreadyOpen = 0x201E,
+	ptp_response_TransactionCancelled = 0x201F,
+	ptp_response_SpecificationOfDestinationUnsupported = 0x2020,
+	ptp_response_MTPUndefined = 0xA800,
+	ptp_response_MTPInvalidObjectPropCode = 0xA801,
+	ptp_response_MTPInvalidObjectProp_Format = 0xA802,
+	ptp_response_MTPInvalidObjectProp_Value = 0xA803,
+	ptp_response_MTPInvalidObjectReference = 0xA804,
+	ptp_response_MTPInvalidDataset = 0xA806,
+	ptp_response_MTPSpecificationByGroupUnsupported = 0xA807,
+	ptp_response_MTPSpecificationByDepthUnsupported = 0xA808,
+	ptp_response_MTPObjectTooLarge = 0xA809,
+	ptp_response_MTPObjectPropNotSupported = 0xA80A
 } ptp_response_code;
+
+typedef enum {
+	ptp_event_Undefined = 0x4000,
+	ptp_event_CancelTransaction = 0x4001,
+	ptp_event_ObjectAdded = 0x4002,
+	ptp_event_ObjectRemoved = 0x4003,
+	ptp_event_StoreAdded = 0x4004,
+	ptp_event_StoreRemoved = 0x4005,
+	ptp_event_DevicePropChanged = 0x4006,
+	ptp_event_ObjectInfoChanged = 0x4007,
+	ptp_event_DeviceInfoChanged = 0x4008,
+	ptp_event_RequestObjectTransfer = 0x4009,
+	ptp_event_StoreFull = 0x400A,
+	ptp_event_DeviceReset = 0x400B,
+	ptp_event_StorageInfoChanged = 0x400C,
+	ptp_event_CaptureComplete = 0x400D,
+	ptp_event_UnreportedStatus = 0x400E,
+	ptp_event_AppleDeviceUnlocked = 0xC001,
+	ptp_event_AppleUserAssignedNameChanged = 0xC002
+} ptp_event_code;
+
+typedef enum {
+	ptp_property_Undefined = 0x5000,
+	ptp_property_BatteryLevel = 0x5001,
+	ptp_property_FunctionalMode = 0x5002,
+	ptp_property_ImageSize = 0x5003,
+	ptp_property_CompressionSetting = 0x5004,
+	ptp_property_WhiteBalance = 0x5005,
+	ptp_property_RGBGain = 0x5006,
+	ptp_property_FNumber = 0x5007,
+	ptp_property_FocalLength = 0x5008,
+	ptp_property_FocusDistance = 0x5009,
+	ptp_property_FocusMode = 0x500A,
+	ptp_property_ExposureMeteringMode = 0x500B,
+	ptp_property_FlashMode = 0x500C,
+	ptp_property_ExposureTime = 0x500D,
+	ptp_property_ExposureProgramMode = 0x500E,
+	ptp_property_ExposureIndex = 0x500F,
+	ptp_property_ExposureBiasCompensation = 0x5010,
+	ptp_property_DateTime = 0x5011,
+	ptp_property_CaptureDelay = 0x5012,
+	ptp_property_StillCaptureMode = 0x5013,
+	ptp_property_Contrast = 0x5014,
+	ptp_property_Sharpness = 0x5015,
+	ptp_property_DigitalZoom = 0x5016,
+	ptp_property_EffectMode = 0x5017,
+	ptp_property_BurstNumber = 0x5018,
+	ptp_property_BurstInterval = 0x5019,
+	ptp_property_TimelapseNumber = 0x501A,
+	ptp_property_TimelapseInterval = 0x501B,
+	ptp_property_FocusMeteringMode = 0x501C,
+	ptp_property_UploadURL = 0x501D,
+	ptp_property_Artist = 0x501E,
+	ptp_property_CopyrightInfo = 0x501F,
+	ptp_property_SupportedStreams = 0x5020,
+	ptp_property_EnabledStreams = 0x5021,
+	ptp_property_VideoFormat = 0x5022,
+	ptp_property_VideoResolution = 0x5023,
+	ptp_property_VideoQuality = 0x5024,
+	ptp_property_VideoFrameRate = 0x5025,
+	ptp_property_VideoContrast = 0x5026,
+	ptp_property_VideoBrightness = 0x5027,
+	ptp_property_AudioFormat = 0x5028,
+	ptp_property_AudioBitrate = 0x5029,
+	ptp_property_AudioSamplingRate = 0x502A,
+	ptp_property_AudioBitPerSample = 0x502B,
+	ptp_property_AudioVolume = 0x502C,
+	ptp_property_MTPSynchronizationPartner = 0xD401,
+	ptp_property_MTPDeviceFriendlyName = 0xD402,
+	ptp_property_MTPVolumeLevel = 0xD403,
+	ptp_property_MTPDeviceIcon = 0xD405,
+	ptp_property_MTPSessionInitiatorInfo = 0xD406,
+	ptp_property_MTPPerceivedDeviceType = 0xD407,
+	ptp_property_MTPPlaybackRate = 0xD410,
+	ptp_property_MTPPlaybackObject = 0xD411,
+	ptp_property_MTPPlaybackContainerIndex = 0xD412,
+	ptp_property_MTPPlaybackPosition = 0xD413,
+} ptp_property_code;
+
+typedef enum {
+	ptp_vendor_eastman_kodak = 0x00000001,
+	ptp_vendor_seiko_epson = 0x00000002,
+	ptp_vendor_agilent = 0x00000003,
+	ptp_vendor_polaroid = 0x00000004,
+	ptp_vendor_agfa_gevaert = 0x00000005,
+	ptp_vendor_microsoft = 0x00000006,
+	ptp_vendor_equinox = 0x00000007,
+	ptp_vendor_viewquest = 0x00000008,
+	ptp_vendor_stmicroelectronics = 0x00000009,
+	ptp_vendor_nikon = 0x0000000a,
+	ptp_vendor_canon = 0x0000000b,
+	ptp_vendor_fotonation = 0x0000000c,
+	ptp_vendor_pentax = 0x0000000d,
+	ptp_vendor_fuji = 0x0000000e,
+	ptp_vendor_ndd_medical_technologies = 0x00000012,
+	ptp_vendor_samsung = 0x0000001a,
+	ptp_vendor_parrot = 0x0000001b,
+	ptp_vendor_panasonic = 0x0000001c,
+	ptp_vendor_sony = 0x00000011
+} ptp_vendor_extension_id;
+
+#define PTP_CONTAINER_HDR_SIZE 							((uint32_t)(2 * sizeof(uint16_t) + 2 * sizeof(uint32_t)))
+#define PTP_CONTAINER_COMMAND_SIZE(count) 	((uint32_t)(2 * sizeof(uint16_t) + (2 + count) * sizeof(uint32_t)))
 
 typedef struct {
 	uint32_t length;
 	uint16_t type;
 	uint16_t code;
 	uint32_t transaction_id;
-	uint32_t params[5];
+	union {
+		uint32_t params[5];
+		uint8_t data[512 - PTP_CONTAINER_HDR_SIZE];
+	} payload;
 } ptp_container;
 
 typedef struct {
@@ -152,6 +256,23 @@ typedef struct {
 } ptp_camera_model;
 
 typedef struct {
+	uint16_t standard_version;
+	uint32_t vendor_extension_id;
+	uint16_t vendor_extension_version;
+	char vendor_extension_desc[256];
+	uint16_t functional_mode;
+	uint16_t *operations_supported;
+	uint16_t *events_supported;
+	uint16_t *properties_supported;
+	uint16_t *capture_formats_supported;
+	uint16_t *image_formats_supported;
+	char manufacturer[256];
+	char model[256];
+	char device_version[256];
+	char serial_number[256];
+} ptp_device_info;
+
+typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;
 	int ep_in, ep_out, ep_int;
@@ -159,13 +280,35 @@ typedef struct {
 	pthread_mutex_t mutex;
 	uint32_t session_id;
 	uint32_t transaction_id;
+	char *(* operation_code_label)(uint16_t code);
+	char *(* response_code_label)(uint16_t code);
+	char *(* event_code_label)(uint16_t code);
+	char *(* property_code_label)(uint16_t code);
 } ptp_private_data;
 
-void ptp_dump_container(int line, const char *function, ptp_container *container);
-bool ptp_open(indigo_device *device);
-bool ptp_request(indigo_device *device, uint16_t code, int count, ...);
-bool ptp_read(indigo_device *device, void *data, int length, int *actual);
-bool ptp_response(indigo_device *device, uint16_t *code, int count, ...);
-void ptp_close(indigo_device *device);
+extern void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container);
+extern void ptp_dump_device_info(int line, const char *function, indigo_device *device, ptp_device_info *info);
+
+#define PTP_DUMP_CONTAINER(c) INDIGO_DEBUG(ptp_dump_container(__LINE__, __FUNCTION__, device, c))
+#define PTP_DUMP_DEVICE_INFO(c) INDIGO_DEBUG(ptp_dump_device_info(__LINE__, __FUNCTION__, device, c))
+
+extern char *ptp_operation_code_label(uint16_t code);
+extern char *ptp_response_code_label(uint16_t code);
+extern char *ptp_event_code_label(uint16_t code);
+extern char *ptp_property_code_label(uint16_t code);
+extern char *ptp_vendor_label(uint16_t code);
+
+extern uint8_t *ptp_copy_string(uint8_t *source, char *target);
+extern uint8_t *ptp_copy_uint8(uint8_t *source, uint8_t *target);
+extern uint8_t *ptp_copy_uint16(uint8_t *source, uint16_t *target);
+extern uint8_t *ptp_copy_uint32(uint8_t *source, uint32_t *target);
+extern uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t **target, uint32_t *count);
+extern uint8_t *ptp_copy_device_info(uint8_t *source, ptp_device_info *target);
+
+extern bool ptp_open(indigo_device *device);
+extern bool ptp_request(indigo_device *device, uint16_t code, int count, ...);
+extern bool ptp_read(indigo_device *device, uint16_t *code, void **data, int *size);
+extern bool ptp_response(indigo_device *device, uint16_t *code, int count, ...);
+extern void ptp_close(indigo_device *device);
 
 #endif /* indigo_ptp_h */
