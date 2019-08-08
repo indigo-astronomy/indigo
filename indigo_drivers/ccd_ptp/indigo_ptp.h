@@ -25,6 +25,9 @@
 #ifndef indigo_ptp_h
 #define indigo_ptp_h
 
+#define PTP_TIMEOUT							3000
+
+#define PTP_REQ_GET_DEVICE_INFO	0x1001
 #define PTP_REQ_OPEN_SESSION		0x1002
 #define PTP_REQ_CLOSE_SESSION		0x1003
 
