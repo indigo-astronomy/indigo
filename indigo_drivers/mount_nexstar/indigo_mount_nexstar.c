@@ -342,6 +342,8 @@ static bool mount_set_utc_from_host(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	/* set mount time to local time and UTC offset */
 	int res = tc_set_time(PRIVATE_DATA->dev_id, timenow, offset, 0);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tc_set_time: '%s', offset: %d, rc: %d",
+			    ctime(&timenow), offset, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
