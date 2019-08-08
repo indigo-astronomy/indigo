@@ -84,7 +84,7 @@ static bool do_log = true;
 
 static void debug_log(const char *message) {
 	if (do_log)
-		indigo_debug("%s: SDK - %s", DRIVER_NAME, message);
+		indigo_trace("%s: SDK - %s", DRIVER_NAME, message);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
