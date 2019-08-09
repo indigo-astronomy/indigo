@@ -209,30 +209,34 @@ typedef enum {
 	ptp_property_MTPPlaybackRate = 0xD410,
 	ptp_property_MTPPlaybackObject = 0xD411,
 	ptp_property_MTPPlaybackContainerIndex = 0xD412,
-	ptp_property_MTPPlaybackPosition = 0xD413,
+	ptp_property_MTPPlaybackPosition = 0xD413
 } ptp_property_code;
 
 typedef enum {
-	ptp_vendor_eastman_kodak = 0x00000001,
-	ptp_vendor_seiko_epson = 0x00000002,
-	ptp_vendor_agilent = 0x00000003,
-	ptp_vendor_polaroid = 0x00000004,
-	ptp_vendor_agfa_gevaert = 0x00000005,
-	ptp_vendor_microsoft = 0x00000006,
-	ptp_vendor_equinox = 0x00000007,
-	ptp_vendor_viewquest = 0x00000008,
-	ptp_vendor_stmicroelectronics = 0x00000009,
-	ptp_vendor_nikon = 0x0000000a,
-	ptp_vendor_canon = 0x0000000b,
-	ptp_vendor_fotonation = 0x0000000c,
-	ptp_vendor_pentax = 0x0000000d,
-	ptp_vendor_fuji = 0x0000000e,
-	ptp_vendor_ndd_medical_technologies = 0x00000012,
-	ptp_vendor_samsung = 0x0000001a,
-	ptp_vendor_parrot = 0x0000001b,
-	ptp_vendor_panasonic = 0x0000001c,
-	ptp_vendor_sony = 0x00000011
+	ptp_vendor_eastman_kodak = 0x0001,
+	ptp_vendor_seiko_epson = 0x00002,
+	ptp_vendor_agilent = 0x0003,
+	ptp_vendor_polaroid = 0x0004,
+	ptp_vendor_agfa_gevaert = 0x0005,
+	ptp_vendor_microsoft = 0x0006,
+	ptp_vendor_equinox = 0x0007,
+	ptp_vendor_viewquest = 0x0008,
+	ptp_vendor_stmicroelectronics = 0x0009,
+	ptp_vendor_nikon = 0x000a,
+	ptp_vendor_canon = 0x000b,
+	ptp_vendor_fotonation = 0x000c,
+	ptp_vendor_pentax = 0x000d,
+	ptp_vendor_fuji = 0x000e,
+	ptp_vendor_ndd_medical_technologies = 0x0012,
+	ptp_vendor_samsung = 0x001a,
+	ptp_vendor_parrot = 0x001b,
+	ptp_vendor_panasonic = 0x001c,
+	ptp_vendor_sony = 0x0011
 } ptp_vendor_extension_id;
+
+typedef enum {
+	ptp_flag_lv = 1
+} ptp_capbility_mask;
 
 #define PTP_CONTAINER_HDR_SIZE 							((uint32_t)(2 * sizeof(uint16_t) + 2 * sizeof(uint32_t)))
 #define PTP_CONTAINER_COMMAND_SIZE(count) 	((uint32_t)(2 * sizeof(uint16_t) + (2 + count) * sizeof(uint32_t)))
@@ -252,7 +256,10 @@ typedef struct {
 	int vendor;
 	int product;
 	const char *name;
-	indigo_device_interface iface;
+	uint32_t flags;
+	int width;
+	int height;
+	float pixel_size;
 } ptp_camera_model;
 
 typedef struct {
