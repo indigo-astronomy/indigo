@@ -283,7 +283,7 @@ void ptp_dump_container(int line, const char *function, indigo_device *device, p
 
 void ptp_dump_device_info(int line, const char *function, indigo_device *device, ptp_device_info *info) {
 	indigo_debug("%s[%d, %s]: device info", DRIVER_NAME, line, function);
-	indigo_debug("PTP %.2f + %s (%04x)", info->standard_version / 100.0, ptp_vendor_label(info->vendor_extension_id), info->vendor_extension_id);
+	indigo_debug("PTP %.2f + %s (%04x), %s %.2f", info->standard_version / 100.0, ptp_vendor_label(info->vendor_extension_id), info->vendor_extension_id, info->vendor_extension_desc, info->vendor_extension_version / 100.0);
 	indigo_debug("%s [%s], %s, #%s", info->model, info->device_version, info->manufacturer, info->serial_number);
 	indigo_debug("operations:");
 	for (uint16_t *operation = info->operations_supported; *operation; operation++) {
@@ -352,6 +352,25 @@ uint8_t *ptp_copy_device_info(uint8_t *source, ptp_device_info *target) {
 	source = ptp_copy_string(source, target->model);
 	source = ptp_copy_string(source, target->device_version);
 	source = ptp_copy_string(source, target->serial_number);
+	if (target->vendor_extension_id == ptp_vendor_microsoft) {
+		if (strstr(target->manufacturer, "Nikon")) {
+			target->vendor_extension_id = ptp_vendor_nikon;
+			target->vendor_extension_version = 100;
+			strcpy(target->vendor_extension_desc, "Nikon & Microsoft PTP Extensions");
+		} else if (strstr(target->manufacturer, "Canon")) {
+			target->vendor_extension_id = ptp_vendor_canon;
+			target->vendor_extension_version = 100;
+			strcpy(target->vendor_extension_desc, "Canon & Microsoft PTP Extensions");
+		}
+	} else if (strstr(target->manufacturer, "Nikon")) {
+		target->vendor_extension_id = ptp_vendor_nikon;
+		target->vendor_extension_version = 100;
+		strcpy(target->vendor_extension_desc, "Nikon Extension");
+	} else if (strstr(target->manufacturer, "Sony")) {
+		target->vendor_extension_id = ptp_vendor_nikon;
+		target->vendor_extension_version = 100;
+		strcpy(target->vendor_extension_desc, "Sony Extension");
+	}
 	return source;
 }
 

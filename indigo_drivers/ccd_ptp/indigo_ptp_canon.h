@@ -331,7 +331,7 @@ typedef enum {
 	ptp_property_canon_ExShutterAELockButton = 0x8701,
 	ptp_property_canon_ExSetButtonWhenShooting = 0x8704,
 	ptp_property_canon_ExLCDDisplayWhenPowerOn = 0x8811,
-	ptp_property_canon_ExAddOriginalDecisionData = 0x880F,
+	ptp_property_canon_ExAddOriginalDecisionData = 0x880F
 } ptp_property_canon_code;
 
 extern char *ptp_operation_canon_code_label(uint16_t code);
