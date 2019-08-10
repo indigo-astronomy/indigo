@@ -193,6 +193,9 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 		// --------------------------------------------------------------------------------
 		// TBD
 		// --------------------------------------------------------------------------------
+		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
+			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property))
+				indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }
@@ -210,22 +213,26 @@ static void handle_connection(indigo_device *device) {
 		}
 	}
 	if (result) {
-		uint16_t code;
-		void *buffer;
-		int length;
 		PRIVATE_DATA->transaction_id = 0;
 		PRIVATE_DATA->session_id = 0;
-		if (ptp_request(device, ptp_operation_GetDeviceInfo, 0) && ptp_read(device, &code, &buffer, &length) && ptp_response(device, &code, 1, &PRIVATE_DATA->session_id) && code == ptp_response_OK) {
-			ptp_device_info device_info;
-			ptp_copy_device_info(buffer, &device_info);
-			PTP_DUMP_DEVICE_INFO(&device_info);
-			free(buffer);
-		}
-		PRIVATE_DATA->transaction_id = 0;
-		if (ptp_request(device, ptp_operation_OpenSession, 1, 1) && ptp_response(device, &code, 1, &PRIVATE_DATA->session_id) && code == ptp_response_OK)
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (ptp_request(device, ptp_operation_OpenSession, 1, 1) && ptp_response(device, NULL, 1, &PRIVATE_DATA->session_id))
+			if (PRIVATE_DATA->initialise(device)) {
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				ptp_close(device);
+				indigo_global_unlock(device);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		else
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
+		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
+			indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
+	} else {
+		for (int i = 0; PRIVATE_DATA->properties[i].property; i++)
+			indigo_release_property(PRIVATE_DATA->properties[i].property);
+		memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -246,12 +253,19 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				ptp_request(device, ptp_operation_CloseSession, 0);
 				ptp_response(device, NULL, 0);
 				ptp_close(device);
+				for (int i = 0; PRIVATE_DATA->properties[i].property; i++) {
+					indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
+					indigo_release_property(PRIVATE_DATA->properties[i].property);
+				}
+				memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
 				indigo_global_unlock(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
+	// --------------------------------------------------------------------------------
 	// TBD
+	// --------------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
 }
 
@@ -288,26 +302,31 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					assert(private_data != NULL);
 					memset(private_data, 0, sizeof(ptp_private_data));
 					private_data->dev = dev;
+					private_data->model = CAMERA[i];
 					if (descriptor.idVendor == CANON_VID) {
 						private_data->operation_code_label = ptp_operation_canon_code_label;
 						private_data->response_code_label = ptp_response_canon_code_label;
 						private_data->event_code_label = ptp_event_canon_code_label;
 						private_data->property_code_label = ptp_property_canon_code_label;
+						private_data->initialise = ptp_canon_initialise;
 					} else if (descriptor.idVendor == NIKON_VID) {
 						private_data->operation_code_label = ptp_operation_nikon_code_label;
 						private_data->response_code_label = ptp_response_nikon_code_label;
 						private_data->event_code_label = ptp_event_nikon_code_label;
 						private_data->property_code_label = ptp_property_nikon_code_label;
+						private_data->initialise = ptp_nikon_initialise;
 					} else if (descriptor.idVendor == SONY_VID) {
 						private_data->operation_code_label = ptp_operation_sony_code_label;
 						private_data->response_code_label = ptp_response_code_label;
 						private_data->event_code_label = ptp_event_sony_code_label;
 						private_data->property_code_label = ptp_property_sony_code_label;
+						private_data->initialise = ptp_sony_initialise;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
 						private_data->event_code_label = ptp_event_code_label;
 						private_data->property_code_label = ptp_property_code_label;
+						private_data->initialise = ptp_initialise;
 					}
 					libusb_ref_device(dev);
 					indigo_device *device = malloc(sizeof(indigo_device));

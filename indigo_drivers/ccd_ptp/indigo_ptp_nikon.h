@@ -367,4 +367,6 @@ extern char *ptp_response_nikon_code_label(uint16_t code);
 extern char *ptp_event_nikon_code_label(uint16_t code);
 extern char *ptp_property_nikon_code_label(uint16_t code);
 
+extern bool ptp_nikon_initialise(indigo_device *device);
+
 #endif /* indigo_ptp_nikon_h */

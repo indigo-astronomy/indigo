@@ -350,3 +350,34 @@ char *ptp_property_canon_code_label(uint16_t code) {
 	}
 	return ptp_property_code_label(code);
 }
+
+bool ptp_canon_initialise(indigo_device *device) {
+	if (ptp_initialise(device)) {
+		void *buffer = NULL;
+		if (ptp_request(device, ptp_operation_canon_GetDeviceInfoEx, 0) && ptp_read(device, NULL, &buffer, NULL) && ptp_response(device, NULL, 0)) {
+			uint8_t *source = buffer + sizeof(uint32_t);
+			uint32_t events[PTP_MAX_ELEMENTS], properties[PTP_MAX_ELEMENTS];
+			source = ptp_copy_uint32_array(source, events, NULL);
+			ptp_append_uint16_32_array(PRIVATE_DATA->info_events_supported, events);
+			source = ptp_copy_uint32_array(source, properties, NULL);
+			ptp_append_uint16_32_array(PRIVATE_DATA->info_properties_supported, properties);
+			if (buffer)
+				free(buffer);
+			INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
+			INDIGO_LOG(indigo_log("events:"));
+			for (uint32_t *event = events; *event; event++) {
+				INDIGO_LOG(indigo_log("  %04x %s", *event, PRIVATE_DATA->event_code_label(*event)));
+			}
+			INDIGO_LOG(indigo_log("properties:"));
+			for (uint32_t *property = properties; *property; property++) {
+				INDIGO_LOG(indigo_log("  %04x %s", *property, PRIVATE_DATA->property_code_label(*property)));
+			}
+			return true;
+		}
+		if (buffer)
+			free(buffer);
+		return false;
+
+	}
+	return false;
+}

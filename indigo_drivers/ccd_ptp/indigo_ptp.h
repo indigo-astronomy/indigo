@@ -235,11 +235,44 @@ typedef enum {
 } ptp_vendor_extension_id;
 
 typedef enum {
+	ptp_undef_type = 0x0000,
+	ptp_int8_type = 0x0001,
+	ptp_uint8_type = 0x0002,
+	ptp_int16_type = 0x0003,
+	ptp_uint16_type = 0x0004,
+	ptp_int32_type = 0x0005,
+	ptp_uint32_type = 0x0006,
+	ptp_int64_type = 0x0007,
+	ptp_uint64_type = 0x0008,
+	ptp_int128_type = 0x0009,
+	ptp_uint128_type = 0x000A,
+	ptp_aint8_type = 0x4001,
+	ptp_auint8_type = 0x4002,
+	ptp_aint16_type = 0x4003,
+	ptp_auint16_type = 0x4004,
+	ptp_aint32_type = 0x4005,
+	ptp_auint32_type = 0x4006,
+	ptp_aint64_type = 0x4007,
+	ptp_auint64_type = 0x4008,
+	ptp_aint128_type = 0x4009,
+	ptp_auint128_type = 0x400A,
+	ptp_str_type = 0xFFFF
+} ptp_type;
+
+typedef enum {
+	ptp_none_form = 0x00,
+	ptp_range_form = 0x01,
+	ptp_enum_form = 0x02
+} ptp_form;
+
+typedef enum {
 	ptp_flag_lv = 1
 } ptp_capbility_mask;
 
 #define PTP_CONTAINER_HDR_SIZE 							((uint32_t)(2 * sizeof(uint16_t) + 2 * sizeof(uint32_t)))
 #define PTP_CONTAINER_COMMAND_SIZE(count) 	((uint32_t)(2 * sizeof(uint16_t) + (2 + count) * sizeof(uint32_t)))
+#define PTP_MAX_ELEMENTS										1024
+#define PTP_MAX_CHARS												256
 
 typedef struct {
 	uint32_t length;
@@ -263,41 +296,64 @@ typedef struct {
 } ptp_camera_model;
 
 typedef struct {
-	uint16_t standard_version;
-	uint32_t vendor_extension_id;
-	uint16_t vendor_extension_version;
-	char vendor_extension_desc[256];
-	uint16_t functional_mode;
-	uint16_t *operations_supported;
-	uint16_t *events_supported;
-	uint16_t *properties_supported;
-	uint16_t *capture_formats_supported;
-	uint16_t *image_formats_supported;
-	char manufacturer[256];
-	char model[256];
-	char device_version[256];
-	char serial_number[256];
-} ptp_device_info;
+	uint16_t code;
+	uint16_t type;
+	uint16_t count;
+	uint8_t writable;
+	union {
+		struct {
+			double value, min, max, step;
+		} number;
+		struct {
+			char value[PTP_MAX_CHARS];
+		} text;
+		struct {
+			double value;
+			double values[PTP_MAX_ELEMENTS];
+		} sw;
+	} value;
+	indigo_property *property;
+} ptp_property;
+
+#define DSLR_PROGRAM_PROPERTY	(PRIVATE_DATA->dslr_program)
 
 typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;
-	int ep_in, ep_out, ep_int;
+	uint8_t ep_in, ep_out, ep_int;
 	int device_count;
+	ptp_camera_model model;
 	pthread_mutex_t mutex;
 	uint32_t session_id;
 	uint32_t transaction_id;
+	uint16_t info_standard_version;
+	uint32_t info_vendor_extension_id;
+	uint16_t info_vendor_extension_version;
+	char info_vendor_extension_desc[PTP_MAX_CHARS];
+	char info_manufacturer[PTP_MAX_CHARS];
+	char info_model[PTP_MAX_CHARS];
+	char info_device_version[PTP_MAX_CHARS];
+	char info_serial_number[PTP_MAX_CHARS];
+	uint16_t info_functional_mode;
+	uint16_t info_operations_supported[PTP_MAX_ELEMENTS];
+	uint16_t info_events_supported[PTP_MAX_ELEMENTS];
+	uint16_t info_capture_formats_supported[PTP_MAX_ELEMENTS];
+	uint16_t info_image_formats_supported[PTP_MAX_ELEMENTS];
+	uint16_t info_properties_supported[PTP_MAX_ELEMENTS];
+	ptp_property properties[PTP_MAX_ELEMENTS];
 	char *(* operation_code_label)(uint16_t code);
 	char *(* response_code_label)(uint16_t code);
 	char *(* event_code_label)(uint16_t code);
 	char *(* property_code_label)(uint16_t code);
+	bool (* initialise)(indigo_device *device);
+	bool (* update_property)(indigo_device *device, uint16_t code);
 } ptp_private_data;
 
 extern void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container);
-extern void ptp_dump_device_info(int line, const char *function, indigo_device *device, ptp_device_info *info);
+extern void ptp_dump_device_info(int line, const char *function, indigo_device *device);
 
 #define PTP_DUMP_CONTAINER(c) INDIGO_DEBUG(ptp_dump_container(__LINE__, __FUNCTION__, device, c))
-#define PTP_DUMP_DEVICE_INFO(c) INDIGO_DEBUG(ptp_dump_device_info(__LINE__, __FUNCTION__, device, c))
+#define PTP_DUMP_DEVICE_INFO() INDIGO_LOG(ptp_dump_device_info(__LINE__, __FUNCTION__, device))
 
 extern char *ptp_operation_code_label(uint16_t code);
 extern char *ptp_response_code_label(uint16_t code);
@@ -309,8 +365,17 @@ extern uint8_t *ptp_copy_string(uint8_t *source, char *target);
 extern uint8_t *ptp_copy_uint8(uint8_t *source, uint8_t *target);
 extern uint8_t *ptp_copy_uint16(uint8_t *source, uint16_t *target);
 extern uint8_t *ptp_copy_uint32(uint8_t *source, uint32_t *target);
-extern uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t **target, uint32_t *count);
-extern uint8_t *ptp_copy_device_info(uint8_t *source, ptp_device_info *target);
+extern uint8_t *ptp_copy_uint64(uint8_t *source, char *target);
+extern uint8_t *ptp_copy_uint128(uint8_t *source, char *target);
+extern uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count);
+extern uint8_t *ptp_copy_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count);
+extern uint8_t *ptp_copy_device_info(uint8_t *source, indigo_device *device);
+extern uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property *target);
+
+extern void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source);
+
+extern bool ptp_initialise(indigo_device *device);
+extern bool ptp_update_property(indigo_device *device, ptp_property *property);
 
 extern bool ptp_open(indigo_device *device);
 extern bool ptp_request(indigo_device *device, uint16_t code, int count, ...);

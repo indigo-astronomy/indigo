@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <float.h>
 #include <libusb-1.0/libusb.h>
 
 #include "indigo_ptp.h"
@@ -80,7 +81,7 @@ char *ptp_operation_code_label(uint16_t code) {
 		case ptp_operation_MTPUpdateDeviceFirmware: return "MTPUpdateDeviceFirmware";
 		case ptp_operation_MTPSkip: return "MTPSkip";
 	}
-	return NULL;
+	return "???";
 }
 
 char *ptp_response_code_label(uint16_t code) {
@@ -129,7 +130,7 @@ char *ptp_response_code_label(uint16_t code) {
 		case ptp_response_MTPObjectTooLarge: return "MTPObjectTooLarge";
 		case ptp_response_MTPObjectPropNotSupported: return "MTPObjectPropNotSupported";
 	}
-	return NULL;
+	return "???";
 }
 
 char *ptp_event_code_label(uint16_t code) {
@@ -152,7 +153,7 @@ char *ptp_event_code_label(uint16_t code) {
 		case ptp_event_AppleDeviceUnlocked: return "AppleDeviceUnlocked";
 		case ptp_event_AppleUserAssignedNameChanged: return "AppleUserAssignedNameChanged";
 	}
-	return NULL;
+	return "???";
 }
 
 char *ptp_property_code_label(uint16_t code) {
@@ -211,8 +212,11 @@ char *ptp_property_code_label(uint16_t code) {
 		case ptp_property_MTPPlaybackRate: return "MTPPlaybackRate";
 		case ptp_property_MTPPlaybackObject: return "MTPPlaybackObject";
 		case ptp_property_MTPPlaybackContainerIndex: return "MTPPlaybackContainerIndex";
-		case ptp_property_MTPPlaybackPosition: return "MTPPlaybackPosition";	}
-	return NULL;
+		case ptp_property_MTPPlaybackPosition: return "MTPPlaybackPosition";
+	}
+	char name[INDIGO_NAME_SIZE];
+	sprintf(name, "%04x", code);
+	return name;
 }
 
 char *ptp_vendor_label(uint16_t code) {
@@ -237,11 +241,11 @@ char *ptp_vendor_label(uint16_t code) {
 		case ptp_vendor_panasonic: return "Panasonic";
 		case ptp_vendor_sony: return "Sony";
 	}
-	return NULL;
+	return "???";
 }
 
 void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container) {
-	char buffer[256];
+	char buffer[PTP_MAX_CHARS];
 	int offset = 0;
 	switch (container->type) {
 		case ptp_container_command:
@@ -281,21 +285,21 @@ void ptp_dump_container(int line, const char *function, indigo_device *device, p
 	indigo_debug("%s[%d, %s]: %s", DRIVER_NAME, line, function,  buffer);
 }
 
-void ptp_dump_device_info(int line, const char *function, indigo_device *device, ptp_device_info *info) {
-	indigo_debug("%s[%d, %s]: device info", DRIVER_NAME, line, function);
-	indigo_debug("PTP %.2f + %s (%04x), %s %.2f", info->standard_version / 100.0, ptp_vendor_label(info->vendor_extension_id), info->vendor_extension_id, info->vendor_extension_desc, info->vendor_extension_version / 100.0);
-	indigo_debug("%s [%s], %s, #%s", info->model, info->device_version, info->manufacturer, info->serial_number);
-	indigo_debug("operations:");
-	for (uint16_t *operation = info->operations_supported; *operation; operation++) {
-		indigo_debug("  %04x %s", *operation, PRIVATE_DATA->operation_code_label(*operation));
+void ptp_dump_device_info(int line, const char *function, indigo_device *device) {
+	indigo_log("%s[%d, %s]: device info", DRIVER_NAME, line, function);
+	indigo_log("PTP %.2f + %s (%04x), %s %.2f", PRIVATE_DATA->info_standard_version / 100.0, ptp_vendor_label(PRIVATE_DATA->info_vendor_extension_id), PRIVATE_DATA->info_vendor_extension_id, PRIVATE_DATA->info_vendor_extension_desc, PRIVATE_DATA->info_vendor_extension_version / 100.0);
+	indigo_log("%s [%s], %s, #%s", PRIVATE_DATA->info_model, PRIVATE_DATA->info_device_version, PRIVATE_DATA->info_manufacturer, PRIVATE_DATA->info_serial_number);
+	indigo_log("operations:");
+	for (uint16_t *operation = PRIVATE_DATA->info_operations_supported; *operation; operation++) {
+		indigo_log("  %04x %s", *operation, PRIVATE_DATA->operation_code_label(*operation));
 	}
-	indigo_debug("events:");
-	for (uint16_t *event = info->events_supported; *event; event++) {
+	indigo_log("events:");
+	for (uint16_t *event = PRIVATE_DATA->info_events_supported; *event; event++) {
 		indigo_debug("  %04x %s", *event, PRIVATE_DATA->event_code_label(*event));
 	}
-	indigo_debug("properties:");
-	for (uint16_t *property = info->properties_supported; *property; property++) {
-		indigo_debug("  %04x %s", *property, PRIVATE_DATA->property_code_label(*property));
+	indigo_log("properties:");
+	for (uint16_t *property = PRIVATE_DATA->info_properties_supported; *property; property++) {
+		indigo_log("  %04x %s", *property, PRIVATE_DATA->property_code_label(*property));
 	}
 }
 
@@ -323,54 +327,287 @@ uint8_t *ptp_copy_uint32(uint8_t *source, uint32_t *target) {
 	return source + sizeof(uint32_t);
 }
 
-uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t **target, uint32_t *count) {
+uint8_t *ptp_copy_uint64(uint8_t *source, char *target) {
+	uint32_t u32_1, u32_2;
+	source = ptp_copy_uint32(source, &u32_1);
+	source = ptp_copy_uint32(source, &u32_2);
+	sprintf(target, "%04x%04x", u32_2, u32_1);
+	return source;
+}
+
+uint8_t *ptp_copy_uint128(uint8_t *source, char *target) {
+	uint32_t u32_1, u32_2, u32_3, u32_4;
+	source = ptp_copy_uint32(source, &u32_1);
+	source = ptp_copy_uint32(source, &u32_2);
+	source = ptp_copy_uint32(source, &u32_3);
+	source = ptp_copy_uint32(source, &u32_4);
+	sprintf(target, "%04x%04x%04x%04x", u32_4, u32_3, u32_2, u32_1);
+	return source;
+}
+
+uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count) {
 	uint32_t length;
 	source = ptp_copy_uint32(source, &length);
-	uint16_t *buffer = malloc((length + 1) * sizeof(uint16_t));
-	*target = buffer;
+	assert(length < PTP_MAX_ELEMENTS);
 	for (int i = 0; i < length; i++) {
-		source = ptp_copy_uint16(source, buffer++);
+		source = ptp_copy_uint16(source, target++);
 	}
-	*buffer++ = 0;
+	*target = 0;
 	if (count)
 		*count = length;
 	return source;
 }
 
-uint8_t *ptp_copy_device_info(uint8_t *source, ptp_device_info *target) {
-	source = ptp_copy_uint16(source, &target->standard_version);
-	source = ptp_copy_uint32(source, &target->vendor_extension_id);
-	source = ptp_copy_uint16(source, &target->vendor_extension_version);
-	source = ptp_copy_string(source, target->vendor_extension_desc);
-	source = ptp_copy_uint16(source, &target->functional_mode);
-	source = ptp_copy_uint16_array(source, &target->operations_supported, NULL);
-	source = ptp_copy_uint16_array(source, &target->events_supported, NULL);
-	source = ptp_copy_uint16_array(source, &target->properties_supported, NULL);
-	source = ptp_copy_uint16_array(source, &target->capture_formats_supported, NULL);
-	source = ptp_copy_uint16_array(source, &target->image_formats_supported, NULL);
-	source = ptp_copy_string(source, target->manufacturer);
-	source = ptp_copy_string(source, target->model);
-	source = ptp_copy_string(source, target->device_version);
-	source = ptp_copy_string(source, target->serial_number);
-	if (target->vendor_extension_id == ptp_vendor_microsoft) {
-		if (strstr(target->manufacturer, "Nikon")) {
-			target->vendor_extension_id = ptp_vendor_nikon;
-			target->vendor_extension_version = 100;
-			strcpy(target->vendor_extension_desc, "Nikon & Microsoft PTP Extensions");
-		} else if (strstr(target->manufacturer, "Canon")) {
-			target->vendor_extension_id = ptp_vendor_canon;
-			target->vendor_extension_version = 100;
-			strcpy(target->vendor_extension_desc, "Canon & Microsoft PTP Extensions");
-		}
-	} else if (strstr(target->manufacturer, "Nikon")) {
-		target->vendor_extension_id = ptp_vendor_nikon;
-		target->vendor_extension_version = 100;
-		strcpy(target->vendor_extension_desc, "Nikon Extension");
-	} else if (strstr(target->manufacturer, "Sony")) {
-		target->vendor_extension_id = ptp_vendor_nikon;
-		target->vendor_extension_version = 100;
-		strcpy(target->vendor_extension_desc, "Sony Extension");
+uint8_t *ptp_copy_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count) {
+	uint32_t length;
+	source = ptp_copy_uint32(source, &length);
+	assert(length < PTP_MAX_ELEMENTS);
+	for (int i = 0; i < length; i++) {
+		source = ptp_copy_uint32(source, target++);
 	}
+	*target = 0;
+	if (count)
+		*count = length;
+	return source;
+}
+
+void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source) {
+	int index = 0;
+	for (index = 0; target[index]; index++)
+		;
+	for (int i = 0; source[i]; i++)
+		target[index++] = source[i];
+	target[index] = 0;
+}
+
+uint8_t *ptp_copy_device_info(uint8_t *source, indigo_device *device) {
+	source = ptp_copy_uint16(source, &PRIVATE_DATA->info_standard_version);
+	source = ptp_copy_uint32(source, &PRIVATE_DATA->info_vendor_extension_id);
+	source = ptp_copy_uint16(source, &PRIVATE_DATA->info_vendor_extension_version);
+	source = ptp_copy_string(source, PRIVATE_DATA->info_vendor_extension_desc);
+	source = ptp_copy_uint16(source, &PRIVATE_DATA->info_functional_mode);
+	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_operations_supported, NULL);
+	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_events_supported, NULL);
+	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_properties_supported, NULL);
+	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_capture_formats_supported, NULL);
+	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_image_formats_supported, NULL);
+	source = ptp_copy_string(source, PRIVATE_DATA->info_manufacturer);
+	source = ptp_copy_string(source, PRIVATE_DATA->info_model);
+	source = ptp_copy_string(source, PRIVATE_DATA->info_device_version);
+	source = ptp_copy_string(source, PRIVATE_DATA->info_serial_number);
+	if (PRIVATE_DATA->info_vendor_extension_id == ptp_vendor_microsoft) {
+		if (strstr(PRIVATE_DATA->info_manufacturer, "Nikon")) {
+			PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
+			PRIVATE_DATA->info_vendor_extension_version = 100;
+			strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Nikon & Microsoft PTP Extensions");
+		} else if (strstr(PRIVATE_DATA->info_manufacturer, "Canon")) {
+			PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_canon;
+			PRIVATE_DATA->info_vendor_extension_version = 100;
+			strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Canon & Microsoft PTP Extensions");
+		}
+	} else if (strstr(PRIVATE_DATA->info_manufacturer, "Nikon")) {
+		PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
+		PRIVATE_DATA->info_vendor_extension_version = 100;
+		strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Nikon Extension");
+	} else if (strstr(PRIVATE_DATA->info_manufacturer, "Sony")) {
+		PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
+		PRIVATE_DATA->info_vendor_extension_version = 100;
+		strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Sony Extension");
+	}
+	return source;
+}
+
+uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property *target) {
+	uint8_t form;
+	memset(target, 0, sizeof(ptp_property));
+	source = ptp_copy_uint16(source, &target->code);
+	source = ptp_copy_uint16(source, &target->type);
+	source = ptp_copy_uint8(source, &target->writable);
+	switch (target->type) {
+		case ptp_uint8_type: {
+			uint8_t value;
+			source = ptp_copy_uint8(source + sizeof(uint8_t), &value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_int8_type: {
+			int8_t value;
+			source = ptp_copy_uint8(source + sizeof(uint8_t), (uint8_t *)&value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_uint16_type: {
+			uint16_t value;
+			source = ptp_copy_uint16(source + sizeof(uint16_t), &value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_int16_type: {
+			int16_t value;
+			source = ptp_copy_uint16(source + sizeof(uint16_t), (uint16_t *)&value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_uint32_type: {
+			uint32_t value;
+			source = ptp_copy_uint32(source + sizeof(uint32_t), &value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_int32_type: {
+			int32_t value;
+			source = ptp_copy_uint32(source + sizeof(uint32_t), (uint32_t *)&value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_uint64_type:
+		case ptp_int64_type: {
+			source = ptp_copy_uint64(source + 2 * sizeof(uint32_t), target->value.text.value);
+			break;
+		}
+		case ptp_uint128_type:
+		case ptp_int128_type: {
+			source = ptp_copy_uint128(source + 4 * sizeof(uint32_t), target->value.text.value);
+			break;
+		}
+		case ptp_str_type: {
+			source += *source *2 + 1;
+			source = ptp_copy_string(source, target->value.text.value);
+			break;
+		}
+		default:
+			assert(false);
+	}
+	source = ptp_copy_uint8(source, &form);
+	switch (form) {
+		case ptp_none_form:
+			if (target->type <= ptp_uint32_type) {
+				target->value.number.min = DBL_MIN;
+				target->value.number.max = DBL_MAX;
+				target->value.number.step = 0;
+			}
+			break;
+		case ptp_range_form:
+			switch (target->type) {
+				case ptp_uint8_type: {
+					uint8_t min, max, step;
+					source = ptp_copy_uint8(source, &min);
+					source = ptp_copy_uint8(source, &max);
+					source = ptp_copy_uint8(source, &step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
+					break;
+				}
+				case ptp_int8_type: {
+					int8_t min, max, step;
+					source = ptp_copy_uint8(source, (uint8_t *)&min);
+					source = ptp_copy_uint8(source, (uint8_t *)&max);
+					source = ptp_copy_uint8(source, (uint8_t *)&step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
+					break;
+				}
+				case ptp_uint16_type: {
+					uint16_t min, max, step;
+					source = ptp_copy_uint16(source, &min);
+					source = ptp_copy_uint16(source, &max);
+					source = ptp_copy_uint16(source, &step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
+					break;
+				}
+				case ptp_int16_type: {
+					int16_t min, max, step;
+					source = ptp_copy_uint16(source, (uint16_t *)&min);
+					source = ptp_copy_uint16(source, (uint16_t *)&max);
+					source = ptp_copy_uint16(source, (uint16_t *)&step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
+					break;
+				}
+				case ptp_uint32_type: {
+					uint32_t min, max, step;
+					source = ptp_copy_uint32(source, &min);
+					source = ptp_copy_uint32(source, &max);
+					source = ptp_copy_uint32(source, &step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
+					break;
+				}
+				case ptp_int32_type: {
+					int32_t min, max, step;
+					source = ptp_copy_uint32(source, (uint32_t *)&min);
+					source = ptp_copy_uint32(source, (uint32_t *)&max);
+					source = ptp_copy_uint32(source, (uint32_t *)&step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
+					break;
+				}
+				case ptp_uint64_type:
+				case ptp_int64_type:
+					source += 3 * 2 * sizeof(uint32_t);
+					break;
+				case ptp_uint128_type:
+				case ptp_int128_type:
+					source += 3 * 4 * sizeof(uint32_t);
+					break;
+				default:
+					assert(false);
+			}
+			break;
+		case ptp_enum_form:
+			source = ptp_copy_uint16(source, &target->count);
+			for (int i = 0; i < target->count; i++) {
+				switch (target->type) {
+					case ptp_uint8_type: {
+						uint8_t value;
+						source = ptp_copy_uint8(source, &value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					case ptp_int8_type: {
+						int8_t value;
+						source = ptp_copy_uint8(source, (uint8_t *)&value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					case ptp_uint16_type: {
+						uint16_t value;
+						source = ptp_copy_uint16(source, &value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					case ptp_int16_type: {
+						int16_t value;
+						source = ptp_copy_uint16(source, (uint16_t *)&value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					case ptp_uint32_type: {
+						uint32_t value;
+						source = ptp_copy_uint32(source, &value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					case ptp_int32_type: {
+						int32_t value;
+						source = ptp_copy_uint32(source, (uint32_t *)&value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					default:
+						assert(false);
+				}
+			}
+			break;
+	}
+	ptp_update_property(device, target);
 	return source;
 }
 
@@ -408,6 +645,7 @@ bool ptp_open(indigo_device *device) {
 		if (interface)
 			break;
 		libusb_free_config_descriptor(config_descriptor);
+		config_descriptor = NULL;
 	}
 	if (rc >= 0 && config_descriptor) {
 		int configuration_value = config_descriptor->bConfigurationValue;
@@ -441,7 +679,6 @@ bool ptp_open(indigo_device *device) {
 			}
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PTP EP OUT = %02x IN = %02x INT = %02x", PRIVATE_DATA->ep_out, PRIVATE_DATA->ep_in, PRIVATE_DATA->ep_int);
-
 	}
 	if (config_descriptor)
 		libusb_free_config_descriptor(config_descriptor);
@@ -488,13 +725,19 @@ bool ptp_read(indigo_device *device, uint16_t *code, void **data, int *size) {
 		return false;
 	}
 	PTP_DUMP_CONTAINER(&header);
+	if (header.type != ptp_container_data) {
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ptp_read() failed -> %s", PRIVATE_DATA->response_code_label(header.code));
+		return false;
+	}
 	int total = header.length - PTP_CONTAINER_HDR_SIZE;
 	if (code)
 		*code = header.code;
 	if (size)
 		*size = total;
 	unsigned char *buffer = malloc(total);
-	memcpy(buffer, &header.payload, length);
+	assert(buffer != NULL);
+	memcpy(buffer, &header.payload, length - PTP_CONTAINER_HDR_SIZE);
 	int offset = length;
 	total -= length;
 	while (total > 0) {
@@ -537,7 +780,7 @@ bool ptp_response(indigo_device *device, uint16_t *code, int count, ...) {
 	for (int i = 0; i < count; i++)
 		*va_arg(argp, uint32_t *) = response.payload.params[i];
 	va_end(argp);
-	return true;
+	return response.code == ptp_response_OK;
 }
 
 void ptp_close(indigo_device *device) {
@@ -546,4 +789,97 @@ void ptp_close(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close()");
 	PRIVATE_DATA->handle = NULL;
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+bool ptp_initialise(indigo_device *device) {
+	void *buffer = NULL;
+	if (ptp_request(device, ptp_operation_GetDeviceInfo, 0) && ptp_read(device, NULL, &buffer, NULL) && ptp_response(device, NULL, 0)) {
+		ptp_copy_device_info(buffer, device);
+		PTP_DUMP_DEVICE_INFO();
+		if (buffer)
+			free(buffer);
+		buffer = NULL;
+		uint16_t *properties = PRIVATE_DATA->info_properties_supported;
+		for (int i = 0; properties[i]; i++) {
+			if (ptp_request(device, ptp_operation_GetDevicePropDesc, 1, properties[i]) && ptp_read(device, NULL, &buffer, NULL) && ptp_response(device, NULL, 0)) {
+				ptp_copy_property(buffer, device, PRIVATE_DATA->properties + i);
+				if (buffer)
+					free(buffer);
+				buffer = NULL;
+			}
+		}
+		return true;
+	}
+	if (buffer)
+		free(buffer);
+	return false;
+}
+
+bool ptp_update_property(indigo_device *device, ptp_property *property) {
+	bool define = false, delete = false;
+	if (property->property == NULL) {
+		define = true;
+		char name[INDIGO_NAME_SIZE], group[16];
+		strcpy(name, PRIVATE_DATA->property_code_label(property->code));
+		if (strncmp(name, "DSLR_", 5))
+			strcpy(group, "Advanced");
+		else
+			strcpy(group, "DSLR");
+		indigo_property_perm perm = property->writable ? INDIGO_RW_PERM : INDIGO_RO_PERM;
+		if (property->count == 0) {
+			if (property->type == ptp_str_type) {
+				property->property = indigo_init_text_property(NULL, device->name, name, group, name, INDIGO_OK_STATE, perm, 1);
+				indigo_init_text_item(property->property->items, "VALUE", "Value", property->value.text.value);
+			} else {
+				property->property = indigo_init_number_property(NULL, device->name, name, group, name, INDIGO_OK_STATE, perm, 1);
+				indigo_init_number_item(property->property->items, "VALUE", "Value", property->value.number.min, property->value.number.max, property->value.number.step, property->value.number.value);
+			}
+		} else {
+			indigo_init_switch_property(NULL, device->name, name, group, name, INDIGO_OK_STATE, perm, INDIGO_ONE_OF_MANY_RULE, property->count);
+			char str[INDIGO_VALUE_SIZE];
+			for (int i = 0; i < property->count; i++) {
+				sprintf(str, "%g", property->value.sw.values[i]);
+				indigo_init_switch_item(property->property->items + i, str, str, property->value.sw.value == property->value.sw.values[i]);
+			}
+		}
+	} else {
+		delete = true;
+		if (property->count == 0) {
+			if (property->type == ptp_str_type) {
+				strcpy(property->property->items->text.value, property->value.text.value);
+			} else if (property->value.number.min == property->property->items->number.min && property->value.number.max == property->property->items->number.max && property->value.number.step == property->property->items->number.step) {
+				property->property->items->number.value = property->value.number.value;
+			} else {
+				property->property->items->number.min = property->value.number.min;
+				property->property->items->number.max = property->value.number.max;
+				property->property->items->number.step = property->value.number.step;
+				property->property->items->number.value = property->value.number.value;
+				define = true;
+			}
+		} else {
+			if (property->property->count != property->count) {
+				property->property = indigo_resize_property(property->property, property->count);
+				define = true;
+			}
+			char str[INDIGO_VALUE_SIZE];
+			for (int i = 0; i < property->count; i++) {
+				sprintf(str, "%g", property->value.sw.values[i]);
+				if (strcmp(property->property->items[i].name, str)) {
+					strcpy(property->property->items[i].name, str);
+					define = true;
+				}
+				property->property->items[i].sw.value = (property->value.sw.value == property->value.sw.values[i]);
+			}
+		}
+	}
+	if (IS_CONNECTED) {
+		if (define) {
+			if (delete)
+				indigo_delete_property(device, property->property, NULL);
+			indigo_define_property(device, property->property, NULL);
+		} else {
+			indigo_update_property(device, property->property, NULL);
+		}
+	}
+	return true;
 }
