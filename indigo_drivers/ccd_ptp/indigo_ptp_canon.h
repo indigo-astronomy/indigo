@@ -339,4 +339,6 @@ extern char *ptp_response_canon_code_label(uint16_t code);
 extern char *ptp_event_canon_code_label(uint16_t code);
 extern char *ptp_property_canon_code_label(uint16_t code);
 
+extern bool ptp_canon_initialise(indigo_device *device);
+
 #endif /* indigo_ptp_canon_h */

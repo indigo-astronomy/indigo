@@ -70,4 +70,6 @@ extern char *ptp_operation_sony_code_label(uint16_t code);
 extern char *ptp_event_sony_code_label(uint16_t code);
 extern char *ptp_property_sony_code_label(uint16_t code);
 
+extern bool ptp_sony_initialise(indigo_device *device);
+
 #endif /* indigo_ptp_sony_h */
