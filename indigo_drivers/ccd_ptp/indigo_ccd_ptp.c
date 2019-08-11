@@ -215,7 +215,7 @@ static void handle_connection(indigo_device *device) {
 	if (result) {
 		PRIVATE_DATA->transaction_id = 0;
 		PRIVATE_DATA->session_id = 0;
-		if (ptp_request(device, ptp_operation_OpenSession, 1, 1) && ptp_response(device, NULL, 1, &PRIVATE_DATA->session_id))
+		if (ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id)) {
 			if (PRIVATE_DATA->initialise(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -223,8 +223,9 @@ static void handle_connection(indigo_device *device) {
 				indigo_global_unlock(device);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-		else
+		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
@@ -250,8 +251,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			// TBD
 			if (--PRIVATE_DATA->device_count == 0) {
-				ptp_request(device, ptp_operation_CloseSession, 0);
-				ptp_response(device, NULL, 0);
+				ptp_transaction_0_0(device, ptp_operation_CloseSession);
 				ptp_close(device);
 				for (int i = 0; PRIVATE_DATA->properties[i].property; i++) {
 					indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
