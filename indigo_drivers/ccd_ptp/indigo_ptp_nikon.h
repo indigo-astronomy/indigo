@@ -365,7 +365,9 @@ typedef enum {
 extern char *ptp_operation_nikon_code_label(uint16_t code);
 extern char *ptp_response_nikon_code_label(uint16_t code);
 extern char *ptp_event_nikon_code_label(uint16_t code);
+extern char *ptp_property_nikon_code_name(uint16_t code);
 extern char *ptp_property_nikon_code_label(uint16_t code);
+extern char *ptp_property_nikon_value_code_label(uint16_t property, uint64_t code);
 
 extern bool ptp_nikon_initialise(indigo_device *device);
 

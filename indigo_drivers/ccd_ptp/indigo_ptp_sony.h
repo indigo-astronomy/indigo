@@ -68,7 +68,9 @@ typedef enum {
 
 extern char *ptp_operation_sony_code_label(uint16_t code);
 extern char *ptp_event_sony_code_label(uint16_t code);
+extern char *ptp_property_sony_code_name(uint16_t code);
 extern char *ptp_property_sony_code_label(uint16_t code);
+extern char *ptp_property_sony_value_code_label(uint16_t property, uint64_t code);
 
 extern bool ptp_sony_initialise(indigo_device *device);
 

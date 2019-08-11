@@ -106,6 +106,12 @@ char *ptp_event_nikon_code_label(uint16_t code) {
 	return ptp_event_code_label(code);
 }
 
+char *ptp_property_nikon_code_name(uint16_t code) {
+	static char label[INDIGO_NAME_SIZE];
+	sprintf(label, "%04x", code);
+	return label;
+}
+
 char *ptp_property_nikon_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_property_nikon_ShootingBank: return "ShootingBank_Nikon";
@@ -378,6 +384,10 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_MovieNrHighISO: return "MovieNrHighISO_Nikon";
 	}
 	return ptp_property_code_label(code);
+}
+
+char *ptp_property_nikon_value_code_label(uint16_t property, uint64_t code) {
+	return ptp_property_value_code_label(property, code);
 }
 
 bool ptp_nikon_initialise(indigo_device *device) {

@@ -32,7 +32,7 @@
 #define DRIVER_VERSION 	0x0001
 #define DRIVER_NAME 		"indigo_ccd_ptp"
 
-#define PTP_TIMEOUT							3000
+#define PTP_TIMEOUT							10000
 
 typedef enum {
 	ptp_container_command =	0x0001,
@@ -298,18 +298,18 @@ typedef struct {
 typedef struct {
 	uint16_t code;
 	uint16_t type;
-	uint16_t count;
 	uint8_t writable;
+	int count;
 	union {
 		struct {
-			double value, min, max, step;
+			int64_t value, min, max, step;
 		} number;
 		struct {
 			char value[PTP_MAX_CHARS];
 		} text;
 		struct {
-			double value;
-			double values[PTP_MAX_ELEMENTS];
+			int64_t value;
+			int64_t values[PTP_MAX_ELEMENTS];
 		} sw;
 	} value;
 	indigo_property *property;
@@ -324,6 +324,7 @@ typedef struct {
 	int device_count;
 	ptp_camera_model model;
 	pthread_mutex_t mutex;
+	int mode;
 	uint32_t session_id;
 	uint32_t transaction_id;
 	uint16_t info_standard_version;
@@ -344,9 +345,12 @@ typedef struct {
 	char *(* operation_code_label)(uint16_t code);
 	char *(* response_code_label)(uint16_t code);
 	char *(* event_code_label)(uint16_t code);
+	char *(* property_code_name)(uint16_t code);
 	char *(* property_code_label)(uint16_t code);
+	char *(* property_value_code_label)(uint16_t property, uint64_t code);
 	bool (* initialise)(indigo_device *device);
 	bool (* update_property)(indigo_device *device, uint16_t code);
+	indigo_timer *event_checker;
 } ptp_private_data;
 
 extern void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container);
@@ -358,14 +362,16 @@ extern void ptp_dump_device_info(int line, const char *function, indigo_device *
 extern char *ptp_operation_code_label(uint16_t code);
 extern char *ptp_response_code_label(uint16_t code);
 extern char *ptp_event_code_label(uint16_t code);
+extern char *ptp_property_code_name(uint16_t code);
 extern char *ptp_property_code_label(uint16_t code);
+extern char *ptp_property_value_code_label(uint16_t property, uint64_t code);
 extern char *ptp_vendor_label(uint16_t code);
 
 extern uint8_t *ptp_copy_string(uint8_t *source, char *target);
 extern uint8_t *ptp_copy_uint8(uint8_t *source, uint8_t *target);
 extern uint8_t *ptp_copy_uint16(uint8_t *source, uint16_t *target);
 extern uint8_t *ptp_copy_uint32(uint8_t *source, uint32_t *target);
-extern uint8_t *ptp_copy_uint64(uint8_t *source, char *target);
+extern uint8_t *ptp_copy_uint64(uint8_t *source, uint64_t *target);
 extern uint8_t *ptp_copy_uint128(uint8_t *source, char *target);
 extern uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count);
 extern uint8_t *ptp_copy_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count);

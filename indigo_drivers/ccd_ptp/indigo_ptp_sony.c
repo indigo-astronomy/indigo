@@ -57,6 +57,13 @@ char *ptp_event_sony_code_label(uint16_t code) {
 	return ptp_event_code_label(code);
 }
 
+char *ptp_property_sony_code_name(uint16_t code) {
+	static char label[INDIGO_NAME_SIZE];
+	sprintf(label, "%04x", code);
+	return label;
+}
+
+
 char *ptp_property_sony_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_property_sony_DPCCompensation: return "DPCCompensation_Sony";
@@ -77,6 +84,10 @@ char *ptp_property_sony_code_label(uint16_t code) {
 		case ptp_property_sony_StillImage: return "StillImage_Sony";
 	}
 	return ptp_property_code_label(code);
+}
+
+char *ptp_property_sony_value_code_label(uint16_t property, uint64_t code) {
+	return ptp_property_value_code_label(property, code);
 }
 
 bool ptp_sony_initialise(indigo_device *device) {

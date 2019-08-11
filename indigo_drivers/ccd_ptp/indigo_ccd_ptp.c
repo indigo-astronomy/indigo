@@ -251,6 +251,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			// TBD
 			if (--PRIVATE_DATA->device_count == 0) {
+				indigo_cancel_timer(device, &PRIVATE_DATA->event_checker);
 				ptp_transaction_0_0(device, ptp_operation_CloseSession);
 				ptp_close(device);
 				for (int i = 0; PRIVATE_DATA->properties[i].property; i++) {
@@ -307,25 +308,33 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->operation_code_label = ptp_operation_canon_code_label;
 						private_data->response_code_label = ptp_response_canon_code_label;
 						private_data->event_code_label = ptp_event_canon_code_label;
+						private_data->property_code_name = ptp_property_canon_code_name;
 						private_data->property_code_label = ptp_property_canon_code_label;
+						private_data->property_value_code_label = ptp_property_canon_value_code_label;
 						private_data->initialise = ptp_canon_initialise;
 					} else if (descriptor.idVendor == NIKON_VID) {
 						private_data->operation_code_label = ptp_operation_nikon_code_label;
 						private_data->response_code_label = ptp_response_nikon_code_label;
 						private_data->event_code_label = ptp_event_nikon_code_label;
+						private_data->property_code_name = ptp_property_nikon_code_name;
 						private_data->property_code_label = ptp_property_nikon_code_label;
+						private_data->property_value_code_label = ptp_property_nikon_value_code_label;
 						private_data->initialise = ptp_nikon_initialise;
 					} else if (descriptor.idVendor == SONY_VID) {
 						private_data->operation_code_label = ptp_operation_sony_code_label;
 						private_data->response_code_label = ptp_response_code_label;
 						private_data->event_code_label = ptp_event_sony_code_label;
+						private_data->property_code_name = ptp_property_sony_code_name;
 						private_data->property_code_label = ptp_property_sony_code_label;
+						private_data->property_value_code_label = ptp_property_sony_value_code_label;
 						private_data->initialise = ptp_sony_initialise;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
 						private_data->event_code_label = ptp_event_code_label;
+						private_data->property_code_name = ptp_property_code_name;
 						private_data->property_code_label = ptp_property_code_label;
+						private_data->property_value_code_label = ptp_property_value_code_label;
 						private_data->initialise = ptp_initialise;
 					}
 					libusb_ref_device(dev);
