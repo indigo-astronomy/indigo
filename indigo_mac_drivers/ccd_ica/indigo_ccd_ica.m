@@ -104,7 +104,7 @@ struct dslr_properties {
   { PTPVendorExtensionNikon, PTPPropertyCodeNikonActivePicCtrlItem, DSLR_PICTURE_STYLE_PROPERTY_NAME, "Picture style" },
 
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonAutoExposureMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
-  { PTPVendorExtensionNikon, PTPPropertyCodeCanonDriveMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonDriveMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonAperture, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonShutterSpeed, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonImageFormat, CCD_MODE_PROPERTY_NAME, "Image size" },
