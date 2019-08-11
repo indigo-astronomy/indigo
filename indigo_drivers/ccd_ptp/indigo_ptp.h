@@ -378,9 +378,13 @@ extern bool ptp_initialise(indigo_device *device);
 extern bool ptp_update_property(indigo_device *device, ptp_property *property);
 
 extern bool ptp_open(indigo_device *device);
-extern bool ptp_request(indigo_device *device, uint16_t code, int count, ...);
-extern bool ptp_read(indigo_device *device, uint16_t *code, void **data, int *size);
-extern bool ptp_response(indigo_device *device, uint16_t *code, int count, ...);
+extern bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in);
 extern void ptp_close(indigo_device *device);
+
+#define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_0_0_i(device, code, data_in) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, data_in)
+#define ptp_transaction_1_0_i(device, code, out_1, data_in) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, data_in)
+#define ptp_transaction_1_1(device, code, out_1, in_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, in_1, NULL, NULL, NULL, NULL, NULL)
 
 #endif /* indigo_ptp_h */

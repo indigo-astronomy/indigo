@@ -214,7 +214,7 @@ char *ptp_property_code_label(uint16_t code) {
 		case ptp_property_MTPPlaybackContainerIndex: return "MTPPlaybackContainerIndex";
 		case ptp_property_MTPPlaybackPosition: return "MTPPlaybackPosition";
 	}
-	char name[INDIGO_NAME_SIZE];
+	static char name[INDIGO_NAME_SIZE];
 	sprintf(name, "%04x", code);
 	return name;
 }
@@ -686,101 +686,99 @@ bool ptp_open(indigo_device *device) {
 	return true;
 }
 
-bool ptp_request(indigo_device *device, uint16_t code, int count, ...) {
-	ptp_container request;
+bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	ptp_container request, response;
+	int length = 0;
+	memset(&request, 0, sizeof(request));
 	request.length = PTP_CONTAINER_COMMAND_SIZE(count);
 	request.type = ptp_container_command;
 	request.code = code;
 	request.transaction_id = PRIVATE_DATA->transaction_id++;
-	int length = 0;
-	va_list argp;
-	va_start(argp, count);
-	for (int i = 0; i < count; i++)
-		request.payload.params[i] = (va_arg(argp, uint32_t));
-	va_end(argp);
-	for (int i = count; i < 5; i++)
-		request.payload.params[i] = 0;
+	request.payload.params[0] = out_1;
+	request.payload.params[1] = out_2;
+	request.payload.params[2] = out_3;
+	request.payload.params[3] = out_4;
+	request.payload.params[4] = out_5;
 	PTP_DUMP_CONTAINER(&request);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc < 0) {
 		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	return rc >= 0;
-}
-
-bool ptp_read(indigo_device *device, uint16_t *code, void **data, int *size) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	ptp_container header;
-	int length = 0;
-	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&header, sizeof(header), &length, PTP_TIMEOUT);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to send request -> %s", libusb_error_name(rc));
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return false;
 	}
-	PTP_DUMP_CONTAINER(&header);
-	if (header.type != ptp_container_data) {
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ptp_read() failed -> %s", PRIVATE_DATA->response_code_label(header.code));
-		return false;
+	if (data_out) {
+		// TBD
 	}
-	int total = header.length - PTP_CONTAINER_HDR_SIZE;
-	if (code)
-		*code = header.code;
-	if (size)
-		*size = total;
-	unsigned char *buffer = malloc(total);
-	assert(buffer != NULL);
-	memcpy(buffer, &header.payload, length - PTP_CONTAINER_HDR_SIZE);
-	int offset = length;
-	total -= length;
-	while (total > 0) {
-		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total, &length, PTP_TIMEOUT);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		if (rc < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-			free(buffer);
-			return false;
-		}
-		offset += length;
-		total -= length;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	*data = buffer;
-	return true;
-}
-
-bool ptp_response(indigo_device *device, uint16_t *code, int count, ...) {
-	ptp_container response;
-	int length = 0;
-	memset(&response, 0, sizeof(response));
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PTP_TIMEOUT);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
-	if (rc < 0) {
-		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	while (true) {
+		memset(&response, 0, sizeof(response));
+		length = 0;
 		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PTP_TIMEOUT);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		if (rc < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			return false;
+		}
+		if (length == 0)
+			continue;
+		break;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	if (rc < 0)
-		return false;
 	PTP_DUMP_CONTAINER(&response);
-	if (code)
-		*code = response.code;
-	va_list argp;
-	va_start(argp, count);
-	for (int i = 0; i < count; i++)
-		*va_arg(argp, uint32_t *) = response.payload.params[i];
-	va_end(argp);
-	return response.code == ptp_response_OK;
+	if (response.type == ptp_container_data) {
+		int total = response.length - PTP_CONTAINER_HDR_SIZE;
+		unsigned char *buffer = malloc(total);
+		assert(buffer != NULL);
+		memcpy(buffer, &response.payload, length - PTP_CONTAINER_HDR_SIZE);
+		int offset = length;
+		total -= length;
+		while (total > 0) {
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total, &length, PTP_TIMEOUT);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				free(buffer);
+				return false;
+			}
+			offset += length;
+			total -= length;
+		}
+		if (data_in)
+			*data_in = buffer;
+		while (true) {
+			memset(&response, 0, sizeof(response));
+			length = 0;
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PTP_TIMEOUT);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				return false;
+			}
+			if (length == 0)
+				continue;
+			break;
+		}
+		PTP_DUMP_CONTAINER(&response);
+	}
+	if (in_1)
+		*in_1 = response.payload.params[0];
+	if (in_2)
+		*in_2 = response.payload.params[1];
+	if (in_3)
+		*in_3 = response.payload.params[2];
+	if (in_4)
+		*in_4 = response.payload.params[3];
+	if (in_5)
+		*in_5 = response.payload.params[4];
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	return rc >= 0;
 }
 
 void ptp_close(indigo_device *device) {
@@ -793,7 +791,7 @@ void ptp_close(indigo_device *device) {
 
 bool ptp_initialise(indigo_device *device) {
 	void *buffer = NULL;
-	if (ptp_request(device, ptp_operation_GetDeviceInfo, 0) && ptp_read(device, NULL, &buffer, NULL) && ptp_response(device, NULL, 0)) {
+	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer)) {
 		ptp_copy_device_info(buffer, device);
 		PTP_DUMP_DEVICE_INFO();
 		if (buffer)
@@ -801,7 +799,7 @@ bool ptp_initialise(indigo_device *device) {
 		buffer = NULL;
 		uint16_t *properties = PRIVATE_DATA->info_properties_supported;
 		for (int i = 0; properties[i]; i++) {
-			if (ptp_request(device, ptp_operation_GetDevicePropDesc, 1, properties[i]) && ptp_read(device, NULL, &buffer, NULL) && ptp_response(device, NULL, 0)) {
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer)) {
 				ptp_copy_property(buffer, device, PRIVATE_DATA->properties + i);
 				if (buffer)
 					free(buffer);

@@ -42,7 +42,7 @@ clean:
 clean-all: clean
 
 $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
-	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) -lindigo
+	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) $(BUILD_LIB)/libindigo.a
 
 $(BUILD_BIN)/indigo_drivers: indigo_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_drivers.o $(LDFLAGS) -lindigo

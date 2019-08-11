@@ -354,7 +354,7 @@ char *ptp_property_canon_code_label(uint16_t code) {
 bool ptp_canon_initialise(indigo_device *device) {
 	if (ptp_initialise(device)) {
 		void *buffer = NULL;
-		if (ptp_request(device, ptp_operation_canon_GetDeviceInfoEx, 0) && ptp_read(device, NULL, &buffer, NULL) && ptp_response(device, NULL, 0)) {
+		if (ptp_transaction_0_0_i(device, ptp_operation_canon_GetDeviceInfoEx, &buffer)) {
 			uint8_t *source = buffer + sizeof(uint32_t);
 			uint32_t events[PTP_MAX_ELEMENTS], properties[PTP_MAX_ELEMENTS];
 			source = ptp_copy_uint32_array(source, events, NULL);
