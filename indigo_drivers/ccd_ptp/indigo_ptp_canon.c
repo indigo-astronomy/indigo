@@ -727,17 +727,17 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 
 static uint8_t *ptp_copy_image_format(uint8_t *source, uint64_t *target) {
 	uint32_t count, size, format, quality, compression;
-	source = ptp_copy_uint32(source, &count);
-	source = ptp_copy_uint32(source, &size);
-	source = ptp_copy_uint32(source, &format);
-	source = ptp_copy_uint32(source, &quality);
-	source = ptp_copy_uint32(source, &compression);
+	source = ptp_decode_uint32(source, &count);
+	source = ptp_decode_uint32(source, &size);
+	source = ptp_decode_uint32(source, &format);
+	source = ptp_decode_uint32(source, &quality);
+	source = ptp_decode_uint32(source, &compression);
 	uint64_t value = size << 24 | format << 16 | quality << 8 | compression;
 	if (count == 2) {
-		source = ptp_copy_uint32(source, &size);
-		source = ptp_copy_uint32(source, &format);
-		source = ptp_copy_uint32(source, &quality);
-		source = ptp_copy_uint32(source, &compression);
+		source = ptp_decode_uint32(source, &size);
+		source = ptp_decode_uint32(source, &format);
+		source = ptp_decode_uint32(source, &quality);
+		source = ptp_decode_uint32(source, &compression);
 		value = value << 32 | size << 24 | format << 16 | quality << 8 | compression;
 	}
 	*target = value;
@@ -760,14 +760,14 @@ static void ptp_canon_get_event(indigo_device *device) {
 				break;
 			uint8_t *source = record;
 			uint32_t size, type;
-			source = ptp_copy_uint32(source, &size);
-			source = ptp_copy_uint32(source, &type);
+			source = ptp_decode_uint32(source, &size);
+			source = ptp_decode_uint32(source, &type);
 			if (size <= 8 || type == 0)
 				break;
 			switch (type) {
 				case ptp_event_canon_PropValueChanged: {
 					uint32_t code;
-					source = ptp_copy_uint32(source, &code);
+					source = ptp_decode_uint32(source, &code);
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "PropValueChanged %04x (%s)", code, PRIVATE_DATA->property_code_label(code));
 					ptp_property *property = NULL;
 					for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
@@ -922,31 +922,31 @@ static void ptp_canon_get_event(indigo_device *device) {
 					switch (property->type) {
 						case ptp_uint8_type: {
 							uint8_t value = 0;
-							source = ptp_copy_uint8(source, &value);
+							source = ptp_decode_uint8(source, &value);
 							property->value.number.value = value;
 							break;
 						}
 						case ptp_uint16_type: {
 							uint16_t value = 0;
-							source = ptp_copy_uint16(source, &value);
+							source = ptp_decode_uint16(source, &value);
 							property->value.number.value = value;
 							break;
 						}
 						case ptp_int16_type: {
 							int16_t value = 0;
-							source = ptp_copy_uint16(source, (uint16_t *)&value);
+							source = ptp_decode_uint16(source, (uint16_t *)&value);
 							property->value.number.value = value;
 							break;
 						}
 						case ptp_uint32_type: {
 							uint32_t value = 0;
-							source = ptp_copy_uint32(source, &value);
+							source = ptp_decode_uint32(source, &value);
 							property->value.number.value = value;
 							break;
 						}
 						case ptp_int32_type: {
 							int32_t value = 0;
-							source = ptp_copy_uint32(source, (uint32_t *)&value);
+							source = ptp_decode_uint32(source, (uint32_t *)&value);
 							property->value.number.value = value;
 							break;
 						}
@@ -973,7 +973,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 									unsigned int group_count = source_uint32[offset++];
 									assert(group_count <= 16);
 									for (int i = 0; i < group_count; i++) {
-										unsigned int group = source_uint32[offset++];
+										unsigned int group = source_uint32[offset++] - 1;
 										unsigned int group_size = source_uint32[offset++];
 										assert(group_size <= 1024);
 										CANON_PRIVATE_DATA->ex_func_group[group][0] = group_size + 12; // total size
@@ -981,8 +981,8 @@ static void ptp_canon_get_event(indigo_device *device) {
 										CANON_PRIVATE_DATA->ex_func_group[group][2] = group; // group
 										CANON_PRIVATE_DATA->ex_func_group[group][3] = group_size; // group size
 										memcpy(CANON_PRIVATE_DATA->ex_func_group[group] + 4, source_uint32 + offset, group_size - 4);
-										unsigned int itemCount = source_uint32[offset++];
-										for (int j = 0; j < itemCount; j++) {
+										unsigned int item_count = source_uint32[offset++];
+										for (int j = 0; j < item_count; j++) {
 											unsigned short item_code = source_uint32[offset++] | 0x8000;
 											unsigned int value_size = source_uint32[offset++];
 											int index = 0;
@@ -996,12 +996,11 @@ static void ptp_canon_get_event(indigo_device *device) {
 											}
 											ptp_property *ex_property = PRIVATE_DATA->properties + index;
 											ex_property->code = item_code;
-											ex_property->type = ptp_int16_type;
-											ex_property->count = value_size - 1;
+											ex_property->type = ptp_int32_type;
+											ex_property->count = 0;
 											ex_property->writable = true;
-											ex_property->value.sw.value = source_uint32[offset++];
-											for (int k = 0; k < ex_property->count; k++)
-												ex_property->value.sw.values[k] = source_uint32[offset++];
+											ex_property->value.sw.value = source_uint32[offset];
+											offset += value_size;
 											*next_updated++ = ex_property;
 											INDIGO_DRIVER_LOG(DRIVER_NAME, "PropValueChanged %04x (%s)", item_code, PRIVATE_DATA->property_code_label(item_code));
 										}
@@ -1040,7 +1039,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 				}
 				case ptp_event_canon_AvailListChanged: {
 					uint32_t code, type, count;
-					source = ptp_copy_uint32(source, &code);
+					source = ptp_decode_uint32(source, &code);
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "AvailListChanged %04x (%s)", code, PRIVATE_DATA->property_code_label(code));
 					ptp_property *property = NULL;
 					for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
@@ -1052,8 +1051,8 @@ static void ptp_canon_get_event(indigo_device *device) {
 					if (property == NULL)
 						break;
 					property->code = code;
-					source = ptp_copy_uint32(source, &type);
-					source = ptp_copy_uint32(source, &count);
+					source = ptp_decode_uint32(source, &type);
+					source = ptp_decode_uint32(source, &count);
 					if (count >= PTP_MAX_ELEMENTS) {
 						break;
 					}
@@ -1066,12 +1065,12 @@ static void ptp_canon_get_event(indigo_device *device) {
 							if (type == 1) {
 								for (int i = 0; i < count; i++) {
 									property->value.sw.values[i] = 0;
-									source = ptp_copy_uint16(source, (uint16_t *)&property->value.sw.values[i]);
+									source = ptp_decode_uint16(source, (uint16_t *)&property->value.sw.values[i]);
 								}
 							} else if (type == 3) {
 								for (int i = 0; i < count; i++) {
 									property->value.sw.values[i] = 0;
-									source = ptp_copy_uint32(source, (uint32_t *)&property->value.sw.values[i]);
+									source = ptp_decode_uint32(source, (uint32_t *)&property->value.sw.values[i]);
 								}
 							} else {
 								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unsupported type %04x", type);
@@ -1182,6 +1181,7 @@ static void ptp_canon_check_event(indigo_device *device) {
 
 bool ptp_canon_initialise(indigo_device *device) {
 	PRIVATE_DATA->vendor_private_data = malloc(sizeof(canon_private_data));
+	memset(CANON_PRIVATE_DATA, 0, sizeof(canon_private_data));
 	if (!ptp_initialise(device))
 		return false;
 	void *buffer = NULL;
@@ -1192,9 +1192,9 @@ bool ptp_canon_initialise(indigo_device *device) {
 	}
 	uint8_t *source = buffer + sizeof(uint32_t);
 	uint32_t events[PTP_MAX_ELEMENTS], properties[PTP_MAX_ELEMENTS];
-	source = ptp_copy_uint32_array(source, events, NULL);
+	source = ptp_decode_uint32_array(source, events, NULL);
 	ptp_append_uint16_32_array(PRIVATE_DATA->info_events_supported, events);
-	source = ptp_copy_uint32_array(source, properties, NULL);
+	source = ptp_decode_uint32_array(source, properties, NULL);
 	ptp_append_uint16_32_array(PRIVATE_DATA->info_properties_supported, properties);
 	if (buffer)
 		free(buffer);
@@ -1212,5 +1212,72 @@ bool ptp_canon_initialise(indigo_device *device) {
 	ptp_transaction_1_0(device, ptp_operation_canon_SetEventMode, 1);
 	ptp_canon_get_event(device);
 	PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_canon_check_event);
+	return true;
+}
+
+bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
+	uint8_t buffer[1024], *target = buffer + sizeof(uint32_t);
+	uint32_t code = property->code;
+	assert(property->property != NULL);
+	switch (property->property->type) {
+		case INDIGO_TEXT_VECTOR:
+			ptp_encode_string(property->property->items[0].text.value, buffer);
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			for (int i = 0; i < property->property->count; i++)
+				if (property->property->items->sw.value) {
+					property->value.sw.value = property->value.sw.values[i];
+					break;
+				}
+		case INDIGO_NUMBER_VECTOR:
+			if (property->code == ptp_property_canon_ImageFormat || property->code == ptp_property_canon_ImageFormatCF || property->code == ptp_property_canon_ImageFormatSD || property->code == ptp_property_canon_ImageFormatExtHD) {
+				uint64_t l = property->value.number.value;
+				uint64_t i1 = (l >> 32) & 0xFFFFFFFF;
+				uint64_t i2 = l & 0xFFFFFFFF;
+				int count = i1 == 0 ? 1 : 2;
+				target = ptp_encode_uint32((uint32_t)count, target);
+				if (count == 2) {
+					target = ptp_encode_uint32((uint32_t)((i1 >> 24) & 0xFF), target);
+					target = ptp_encode_uint32((uint32_t)((i1 >> 16) & 0xFF), target);
+					target = ptp_encode_uint32((uint32_t)((i1 >> 8) & 0xFF), target);
+					target = ptp_encode_uint32((uint32_t)(i1 & 0xFF), target);
+				}
+				target = ptp_encode_uint32((uint32_t)((i2 >> 24) & 0xFF), target);
+				target = ptp_encode_uint32((uint32_t)((i2 >> 16) & 0xFF), target);
+				target = ptp_encode_uint32((uint32_t)((i2 >> 8) & 0xFF), target);
+				target = ptp_encode_uint32((uint32_t)(i2 & 0xFF), target);
+			} else if ((property->code & 0xF000) == 0x8000) {
+				for (int i = 0; CANON_PRIVATE_DATA->ex_func_group[i][0]; i++) {
+					
+					int offset = 4;
+					unsigned int item_count = CANON_PRIVATE_DATA->ex_func_group[i][offset++];
+					for (int j = 0; j < item_count; j++) {
+						unsigned int item = CANON_PRIVATE_DATA->ex_func_group[i][offset++];
+						unsigned int value_size = CANON_PRIVATE_DATA->ex_func_group[i][offset++];
+						if ((item | 0x8000) == property->code) {
+							 CANON_PRIVATE_DATA->ex_func_group[i][offset++] = (uint32_t)property->value.sw.value;
+							memcpy(buffer + 8, CANON_PRIVATE_DATA->ex_func_group[i], CANON_PRIVATE_DATA->ex_func_group[i][0]);
+							code = ptp_property_canon_CustomFuncEx;
+							break;
+						} else {
+							offset += value_size;
+						}
+					}
+					if (code == ptp_property_canon_CustomFuncEx)
+						break;
+				}
+			} else if (property->type && property->type <= ptp_uint32_type) {
+				target = ptp_encode_uint32((uint32_t)property->value.number.value, target);
+			}
+		default:
+			assert(false);
+	}
+	*((uint32_t *)buffer) = (uint32_t)(target - buffer);
+	*((uint32_t *)buffer + 1) = code;
+	if (ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer))
+		property->property->state = INDIGO_OK_STATE;
+	else
+		property->property->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, property->property, NULL);
 	return true;
 }

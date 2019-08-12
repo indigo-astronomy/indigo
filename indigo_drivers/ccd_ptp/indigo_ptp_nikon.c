@@ -391,5 +391,9 @@ char *ptp_property_nikon_value_code_label(uint16_t property, uint64_t code) {
 }
 
 bool ptp_nikon_initialise(indigo_device *device) {
-	return ptp_initialise(device);
+	assert(0);
+}
+
+bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
+	assert(0);
 }

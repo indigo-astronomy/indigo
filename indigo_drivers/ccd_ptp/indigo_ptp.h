@@ -349,7 +349,7 @@ typedef struct {
 	char *(* property_code_label)(uint16_t code);
 	char *(* property_value_code_label)(uint16_t property, uint64_t code);
 	bool (* initialise)(indigo_device *device);
-	bool (* update_property)(indigo_device *device, uint16_t code);
+	bool (* set_property)(indigo_device *device, ptp_property *property);
 	indigo_timer *event_checker;
 } ptp_private_data;
 
@@ -367,30 +367,38 @@ extern char *ptp_property_code_label(uint16_t code);
 extern char *ptp_property_value_code_label(uint16_t property, uint64_t code);
 extern char *ptp_vendor_label(uint16_t code);
 
-extern uint8_t *ptp_copy_string(uint8_t *source, char *target);
-extern uint8_t *ptp_copy_uint8(uint8_t *source, uint8_t *target);
-extern uint8_t *ptp_copy_uint16(uint8_t *source, uint16_t *target);
-extern uint8_t *ptp_copy_uint32(uint8_t *source, uint32_t *target);
-extern uint8_t *ptp_copy_uint64(uint8_t *source, uint64_t *target);
-extern uint8_t *ptp_copy_uint128(uint8_t *source, char *target);
-extern uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count);
-extern uint8_t *ptp_copy_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count);
-extern uint8_t *ptp_copy_device_info(uint8_t *source, indigo_device *device);
-extern uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property *target);
+extern uint8_t *ptp_decode_string(uint8_t *source, char *target);
+extern uint8_t *ptp_decode_uint8(uint8_t *source, uint8_t *target);
+extern uint8_t *ptp_decode_uint16(uint8_t *source, uint16_t *target);
+extern uint8_t *ptp_decode_uint32(uint8_t *source, uint32_t *target);
+extern uint8_t *ptp_decode_uint64(uint8_t *source, uint64_t *target);
+extern uint8_t *ptp_decode_uint128(uint8_t *source, char *target);
+extern uint8_t *ptp_decode_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count);
+extern uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count);
+extern uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device);
+extern uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_property *target);
+
+extern uint8_t *ptp_encode_string(char *source, uint8_t *target);
+extern uint8_t *ptp_encode_uint8(uint8_t source, uint8_t *target);
+extern uint8_t *ptp_encode_uint16(uint16_t source, uint8_t *target);
+extern uint8_t *ptp_encode_uint32(uint32_t source, uint8_t *target);
+extern uint8_t *ptp_encode_uint64(uint64_t source, uint8_t *target);
 
 extern void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source);
-
-extern bool ptp_initialise(indigo_device *device);
-extern bool ptp_update_property(indigo_device *device, ptp_property *property);
 
 extern bool ptp_open(indigo_device *device);
 extern bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in);
 extern void ptp_close(indigo_device *device);
+extern bool ptp_update_property(indigo_device *device, ptp_property *property);
+
+extern bool ptp_initialise(indigo_device *device);
+extern bool ptp_set_property(indigo_device *device, ptp_property *property);
 
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_0_0_i(device, code, data_in) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, data_in)
 #define ptp_transaction_1_0_i(device, code, out_1, data_in) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, data_in)
 #define ptp_transaction_1_1(device, code, out_1, in_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, in_1, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_0_0_o(device, code, data_out) ptp_transaction(device, code, 1, 0, 0, 0, 0, 0, data_out, NULL, NULL, NULL, NULL, NULL, NULL)
 
 #endif /* indigo_ptp_h */

@@ -347,5 +347,6 @@ extern char *ptp_property_canon_code_label(uint16_t code);
 extern char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code);
 
 extern bool ptp_canon_initialise(indigo_device *device);
+extern bool ptp_canon_set_property(indigo_device *device, ptp_property *property);
 
 #endif /* indigo_ptp_canon_h */
