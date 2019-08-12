@@ -254,7 +254,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_cancel_timer(device, &PRIVATE_DATA->event_checker);
 				ptp_transaction_0_0(device, ptp_operation_CloseSession);
 				ptp_close(device);
-				for (int i = 0; PRIVATE_DATA->properties[i].property; i++) {
+				for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 					indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
 					indigo_release_property(PRIVATE_DATA->properties[i].property);
 				}
@@ -373,6 +373,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 			if (private_data != NULL) {
 				libusb_unref_device(dev);
+				if (private_data->vendor_private_data)
+					free(private_data->vendor_private_data);
 				free(private_data);
 			}
 			break;

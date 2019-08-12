@@ -318,13 +318,13 @@ typedef struct {
 #define DSLR_PROGRAM_PROPERTY	(PRIVATE_DATA->dslr_program)
 
 typedef struct {
+	void *vendor_private_data;
 	libusb_device *dev;
 	libusb_device_handle *handle;
 	uint8_t ep_in, ep_out, ep_int;
 	int device_count;
 	ptp_camera_model model;
 	pthread_mutex_t mutex;
-	int mode;
 	uint32_t session_id;
 	uint32_t transaction_id;
 	uint16_t info_standard_version;
