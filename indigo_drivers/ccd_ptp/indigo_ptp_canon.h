@@ -320,10 +320,10 @@ typedef enum {
 	ptp_property_canon_CADarkBright = 0xD1df,
 	ptp_property_canon_ExExposureLevelIncrements = 0x8101,
 	ptp_property_canon_ExISOExpansion = 0x8103,
-	ptp_property_canon_ExFlasgSyncSpeedInAvMode = 0x810F,
+	ptp_property_canon_ExFlasSyncSpeedInAvMode = 0x810F,
 	ptp_property_canon_ExLongExposureNoiseReduction = 0x8201,
 	ptp_property_canon_ExHighISONoiseReduction = 0x8202,
-	ptp_property_canon_ExHHighlightTonePriority = 0x8203,
+	ptp_property_canon_ExHighlightTonePriority = 0x8203,
 	ptp_property_canon_ExAutoLightingOptimizer = 0x8204,
 	ptp_property_canon_ExAFAssistBeamFiring = 0x850E,
 	ptp_property_canon_ExAFDuringLiveView = 0x8511,
@@ -333,6 +333,11 @@ typedef enum {
 	ptp_property_canon_ExLCDDisplayWhenPowerOn = 0x8811,
 	ptp_property_canon_ExAddOriginalDecisionData = 0x880F
 } ptp_property_canon_code;
+
+typedef struct {
+	int mode;
+	unsigned int ex_func_group[16][1024];
+} canon_private_data;
 
 extern char *ptp_operation_canon_code_label(uint16_t code);
 extern char *ptp_response_canon_code_label(uint16_t code);

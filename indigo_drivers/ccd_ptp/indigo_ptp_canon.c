@@ -42,6 +42,8 @@
 #include "indigo_ptp.h"
 #include "indigo_ptp_canon.h"
 
+#define CANON_PRIVATE_DATA	((canon_private_data *)(PRIVATE_DATA->vendor_private_data))
+
 char *ptp_operation_canon_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_operation_canon_GetStorageIDs: return "GetStorageIDs_Canon";
@@ -360,10 +362,10 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_CADarkBright: return "CADarkBright_Canon";
 		case ptp_property_canon_ExExposureLevelIncrements: return "ExExposureLevelIncrements_Canon";
 		case ptp_property_canon_ExISOExpansion: return "ExISOExpansion_Canon";
-		case ptp_property_canon_ExFlasgSyncSpeedInAvMode: return "ExFlasgSyncSpeedInAvMode_Canon";
+		case ptp_property_canon_ExFlasSyncSpeedInAvMode: return "ExFlasgSyncSpeedInAvMode_Canon";
 		case ptp_property_canon_ExLongExposureNoiseReduction: return "ExLongExposureNoiseReduction_Canon";
 		case ptp_property_canon_ExHighISONoiseReduction: return "ExHighISONoiseReduction_Canon";
-		case ptp_property_canon_ExHHighlightTonePriority: return "ExHHighlightTonePriority_Canon";
+		case ptp_property_canon_ExHighlightTonePriority: return "ExHHighlightTonePriority_Canon";
 		case ptp_property_canon_ExAutoLightingOptimizer: return "ExAutoLightingOptimizer_Canon";
 		case ptp_property_canon_ExAFAssistBeamFiring: return "ExAFAssistBeamFiring_Canon";
 		case ptp_property_canon_ExAFDuringLiveView: return "ExAFDuringLiveView_Canon";
@@ -603,9 +605,9 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 			}
 			break;
 		}
-		case ptp_property_canon_ExFlasgSyncSpeedInAvMode: {
+		case ptp_property_canon_ExFlasSyncSpeedInAvMode: {
 			switch (code) {
-				case 0x0: return "Auto"; case 0x1: return "1/200s";
+				case 0x0: return "Auto"; case 0x1: return "1/200s - 1/60s auto"; case 0x2: return "1/200s fixed";
 			}
 			break;
 		}
@@ -623,7 +625,7 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 		}
 		case ptp_property_canon_ExAFAssistBeamFiring: {
 			switch (code) {
-				case 0x0: return "Enable"; case 0x1: return "Disable"; case 0x2: return "Only external flash emits";
+				case 0x0: return "Enable"; case 0x1: return "Disable"; case 0x2: return "Enable external flash only"; case 0x3: return "AF assist beam only";
 			}
 			break;
 		}
@@ -641,13 +643,18 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 		}
 		case ptp_property_canon_ExSetButtonWhenShooting: {
 			switch (code) {
-				case 0x0: return "LCD monitor On/Off"; case 0x1: return "Change quality"; case 0x2: return "Flash exposure compensation"; case 0x3: return "Menu display"; case 0x4: return "Disable";
+				case 0x0: return "Normal (disabled)";
+				case 0x1: return "Image quality";
+				case 0x2: return "Flash exposure compensation";
+				case 0x3: return "LCD monitor On/Off";
+				case 0x4: return "Menu display";
+				case 0x5: return "ISO speed";
 			}
 			break;
 		}
 		case ptp_property_canon_ExLCDDisplayWhenPowerOn: {
 			switch (code) {
-				case 0x0: return "Display"; case 0x1: return "Retain power off status";
+				case 0x0: return "Display on"; case 0x1: return "Previous display status";
 			}
 			break;
 		}
@@ -669,30 +676,30 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 			}
 			break;
 		}
-		case ptp_property_canon_ExHHighlightTonePriority:
-		case ptp_property_canon_ExHighISONoiseReduction:
+		case ptp_property_canon_ExISOExpansion:
 		case ptp_property_canon_ExAddOriginalDecisionData: {
 			switch (code) {
 				case 0x0: return "Off"; case 0x1: return "On";
 			}
 			break;
 		}
-		case ptp_property_canon_ExISOExpansion:
 		case ptp_property_canon_ExAutoLightingOptimizer:
 		case ptp_property_canon_MirrorUpSetting:
-		case ptp_property_canon_StroboFiring:
-		case ptp_property_canon_ExMirrorLockup: {
+		case ptp_property_canon_StroboFiring: {
 			switch (code) {
 				case 0x0: return "Enable"; case 0x1: return "Disable";
 			}
 			break;
 		}
+		case ptp_property_canon_ExHighlightTonePriority:
+		case ptp_property_canon_ExMirrorLockup:
 		case ptp_property_canon_EVFMode: {
 			switch (code) {
 				case 0x0: return "Disable"; case 0x1: return "Enable";
 			}
 			break;
 		}
+		case ptp_property_canon_ExHighISONoiseReduction:
 		case ptp_property_canon_AloMode: {
 			switch (code) {
 				case 0x0: return "Standard"; case 0x1: return "Low"; case 0x2: return "Strong"; case 0x3: return "Disable";
@@ -943,18 +950,6 @@ static void ptp_canon_get_event(indigo_device *device) {
 							property->value.number.value = value;
 							break;
 						}
-						case ptp_uint64_type: {
-							uint64_t value = 0;
-							source = ptp_copy_uint64(source, &value);
-							property->value.number.value = value;
-							break;
-						}
-						case ptp_int64_type: {
-							int32_t value = 0;
-							source = ptp_copy_uint64(source, (uint64_t *)&value);
-							property->value.number.value = value;
-							break;
-						}
 						case ptp_str_type: {
 							strncpy((char *)property->value.text.value, (char *)source, PTP_MAX_CHARS);
 							break;
@@ -971,7 +966,46 @@ static void ptp_canon_get_event(indigo_device *device) {
 									break;
 								}
 								case ptp_property_canon_CustomFuncEx: {
-//								TBD
+									property = NULL;
+									source += sizeof(uint32_t);
+									unsigned int *source_uint32 = (unsigned int *)source;
+									int offset = 0;
+									unsigned int group_count = source_uint32[offset++];
+									assert(group_count <= 16);
+									for (int i = 0; i < group_count; i++) {
+										unsigned int group = source_uint32[offset++];
+										unsigned int group_size = source_uint32[offset++];
+										assert(group_size <= 1024);
+										CANON_PRIVATE_DATA->ex_func_group[group][0] = group_size + 12; // total size
+										CANON_PRIVATE_DATA->ex_func_group[group][1] = 1; // group count
+										CANON_PRIVATE_DATA->ex_func_group[group][2] = group; // group
+										CANON_PRIVATE_DATA->ex_func_group[group][3] = group_size; // group size
+										memcpy(CANON_PRIVATE_DATA->ex_func_group[group] + 4, source_uint32 + offset, group_size - 4);
+										unsigned int itemCount = source_uint32[offset++];
+										for (int j = 0; j < itemCount; j++) {
+											unsigned short item_code = source_uint32[offset++] | 0x8000;
+											unsigned int value_size = source_uint32[offset++];
+											int index = 0;
+											for (index = 0; PRIVATE_DATA->info_properties_supported[index]; index++) {
+												if (PRIVATE_DATA->info_properties_supported[index] == item_code)
+													break;
+											}
+											if (PRIVATE_DATA->info_properties_supported[index] == 0) {
+												PRIVATE_DATA->info_properties_supported[index] = item_code;
+												PRIVATE_DATA->info_properties_supported[index + 1] = 0;
+											}
+											ptp_property *ex_property = PRIVATE_DATA->properties + index;
+											ex_property->code = item_code;
+											ex_property->type = ptp_int16_type;
+											ex_property->count = value_size - 1;
+											ex_property->writable = true;
+											ex_property->value.sw.value = source_uint32[offset++];
+											for (int k = 0; k < ex_property->count; k++)
+												ex_property->value.sw.values[k] = source_uint32[offset++];
+											*next_updated++ = ex_property;
+											INDIGO_DRIVER_LOG(DRIVER_NAME, "PropValueChanged %04x (%s)", item_code, PRIVATE_DATA->property_code_label(item_code));
+										}
+									}
 									break;
 								}
 							}
@@ -979,7 +1013,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						}
 					}
 					if (code == ptp_property_canon_AutoExposureMode) {
-						PRIVATE_DATA->mode = (int)property->value.sw.value;
+						CANON_PRIVATE_DATA->mode = (int)property->value.sw.value;
 					}
 					if (code == ptp_property_canon_BatteryPower) {
 						switch (property->value.number.value) {
@@ -1000,7 +1034,8 @@ static void ptp_canon_get_event(indigo_device *device) {
 								break;
 						}
 					}
-					*next_updated++ = property;
+					if (property)
+						*next_updated++ = property;
 					break;
 				}
 				case ptp_event_canon_AvailListChanged: {
@@ -1063,15 +1098,15 @@ static void ptp_canon_get_event(indigo_device *device) {
 					break;
 				}
 				case ptp_property_canon_Aperture: {
-					if ((PRIVATE_DATA->mode != 2 && PRIVATE_DATA->mode != 3 && PRIVATE_DATA->mode != 4) || (*property)->value.sw.value == 0)
+					if ((CANON_PRIVATE_DATA->mode != 2 && CANON_PRIVATE_DATA->mode != 3 && CANON_PRIVATE_DATA->mode != 4) || (*property)->value.sw.value == 0)
 						(*property)->count = -1;
 					break;
 				}
 				case ptp_property_canon_ShutterSpeed: {
-					if (PRIVATE_DATA->mode == 4) {
+					if (CANON_PRIVATE_DATA->mode == 4) {
 						(*property)->count = 1;
 						(*property)->value.sw.value = (*property)->value.sw.values[0] = 0x0C; // BULB
-					} else  if (PRIVATE_DATA->mode != 1 && PRIVATE_DATA->mode != 3) {
+					} else  if (CANON_PRIVATE_DATA->mode != 1 && CANON_PRIVATE_DATA->mode != 3) {
 						(*property)->count = -1;
 					}
 					break;
@@ -1081,21 +1116,54 @@ static void ptp_canon_get_event(indigo_device *device) {
 				case ptp_property_canon_EVFWBMode:
 				case ptp_property_canon_WhiteBalance:
 				case ptp_property_canon_PictureStyle: {
-					if (PRIVATE_DATA->mode >= 8)
+					if (CANON_PRIVATE_DATA->mode >= 8)
 						(*property)->count = -1;
 					break;
 				}
 				case ptp_property_canon_FocusMode: {
-					if (PRIVATE_DATA->mode == 3) {
-						(*property)->count = 1;
-						(*property)->value.sw.value = (*property)->value.sw.values[0] = 3;
-					} else if (PRIVATE_DATA->mode >= 8)
+					if (CANON_PRIVATE_DATA->mode >= 8 || (*property)->value.sw.value == 3)
 						(*property)->count = -1;
+					else
+						(*property)->count = 3; // AvailListChanged is not sent again
 					break;
 				}
 				case ptp_property_canon_ExpCompensation: {
-					if (PRIVATE_DATA->mode >= 8 || PRIVATE_DATA->mode == 3)
+					if (CANON_PRIVATE_DATA->mode >= 8 || CANON_PRIVATE_DATA->mode == 3)
 						(*property)->count = -1;
+					break;
+				}
+				case ptp_property_canon_ExExposureLevelIncrements:
+				case ptp_property_canon_ExLCDDisplayWhenPowerOn:
+				case ptp_property_canon_ExHighlightTonePriority:
+				case ptp_property_canon_ExAddOriginalDecisionData:
+				case ptp_property_canon_ExISOExpansion:
+				case ptp_property_canon_ExAutoLightingOptimizer:
+				case ptp_property_canon_ExMirrorLockup: {
+					(*property)->count = 2;
+					for (int i = 0; i < 2; i++)
+						(*property)->value.sw.values[i] = i;
+					break;
+				}
+				case ptp_property_canon_ExFlasSyncSpeedInAvMode:
+				case ptp_property_canon_ExLongExposureNoiseReduction:
+				case ptp_property_canon_ExAFDuringLiveView: {
+					(*property)->count = 3;
+					for (int i = 0; i < 3; i++)
+						(*property)->value.sw.values[i] = i;
+					break;
+				}
+				case ptp_property_canon_ExAFAssistBeamFiring:
+				case ptp_property_canon_ExHighISONoiseReduction:
+				case ptp_property_canon_ExShutterAELockButton: {
+					(*property)->count = 4;
+					for (int i = 0; i < 4; i++)
+						(*property)->value.sw.values[i] = i;
+					break;
+				}
+				case ptp_property_canon_ExSetButtonWhenShooting: {
+					(*property)->count = 5;
+					for (int i = 0; i < 5; i++)
+						(*property)->value.sw.values[i] = i;
 					break;
 				}
 			}
@@ -1113,6 +1181,7 @@ static void ptp_canon_check_event(indigo_device *device) {
 }
 
 bool ptp_canon_initialise(indigo_device *device) {
+	PRIVATE_DATA->vendor_private_data = malloc(sizeof(canon_private_data));
 	if (!ptp_initialise(device))
 		return false;
 	void *buffer = NULL;
