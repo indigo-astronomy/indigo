@@ -91,5 +91,9 @@ char *ptp_property_sony_value_code_label(uint16_t property, uint64_t code) {
 }
 
 bool ptp_sony_initialise(indigo_device *device) {
-	return ptp_initialise(device);
+	assert(0);
+}
+
+bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
+	assert(0);
 }

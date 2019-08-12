@@ -312,6 +312,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_canon_code_label;
 						private_data->property_value_code_label = ptp_property_canon_value_code_label;
 						private_data->initialise = ptp_canon_initialise;
+						private_data->set_property = ptp_canon_set_property;
 					} else if (descriptor.idVendor == NIKON_VID) {
 						private_data->operation_code_label = ptp_operation_nikon_code_label;
 						private_data->response_code_label = ptp_response_nikon_code_label;
@@ -320,6 +321,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_nikon_code_label;
 						private_data->property_value_code_label = ptp_property_nikon_value_code_label;
 						private_data->initialise = ptp_nikon_initialise;
+						private_data->set_property = ptp_nikon_set_property;
 					} else if (descriptor.idVendor == SONY_VID) {
 						private_data->operation_code_label = ptp_operation_sony_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -328,6 +330,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_sony_code_label;
 						private_data->property_value_code_label = ptp_property_sony_value_code_label;
 						private_data->initialise = ptp_sony_initialise;
+						private_data->set_property = ptp_sony_set_property;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -336,6 +339,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_code_label;
 						private_data->property_value_code_label = ptp_property_value_code_label;
 						private_data->initialise = ptp_initialise;
+						private_data->set_property = ptp_set_property;
 					}
 					libusb_ref_device(dev);
 					indigo_device *device = malloc(sizeof(indigo_device));

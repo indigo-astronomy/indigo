@@ -326,7 +326,37 @@ void ptp_dump_device_info(int line, const char *function, indigo_device *device)
 	}
 }
 
-uint8_t *ptp_copy_string(uint8_t *source, char *target) {
+uint8_t *ptp_encode_string(char *source, uint8_t *target) {
+	uint8_t length = (uint8_t)strlen(source) + 1;
+	*target++ = length;
+	for (int i = 0; i < length; i++) {
+		*target++ = *source++;
+		*target++ = 0;
+	}
+	return target;
+}
+
+uint8_t *ptp_encode_uint8(uint8_t source, uint8_t *target) {
+	*target++ = source;
+	return target;
+}
+
+uint8_t *ptp_encode_uint16(uint16_t source, uint8_t *target) {
+	*(uint16_t *)target = source;
+	return target + sizeof(uint16_t);
+}
+
+uint8_t *ptp_encode_uint32(uint32_t source, uint8_t *target) {
+	*(uint32_t *)target = source;
+	return target + sizeof(uint32_t);
+}
+
+uint8_t *ptp_encode_uint64(uint64_t source, uint8_t *target) {
+	*(uint64_t *)target = source;
+	return target + sizeof(uint64_t);
+}
+
+uint8_t *ptp_decode_string(uint8_t *source, char *target) {
 	int length = *source++;
 	for (int i = 0; i < length; i++) {
 		*target++ = *source++;
@@ -335,42 +365,42 @@ uint8_t *ptp_copy_string(uint8_t *source, char *target) {
 	return source;
 }
 
-uint8_t *ptp_copy_uint8(uint8_t *source, uint8_t *target) {
+uint8_t *ptp_decode_uint8(uint8_t *source, uint8_t *target) {
 	*target = *source++;
 	return source;
 }
 
-uint8_t *ptp_copy_uint16(uint8_t *source, uint16_t *target) {
+uint8_t *ptp_decode_uint16(uint8_t *source, uint16_t *target) {
 	*target = *(uint16_t *)source;
 	return source + sizeof(uint16_t);
 }
 
-uint8_t *ptp_copy_uint32(uint8_t *source, uint32_t *target) {
+uint8_t *ptp_decode_uint32(uint8_t *source, uint32_t *target) {
 	*target = *(uint32_t *)source;
 	return source + sizeof(uint32_t);
 }
 
-uint8_t *ptp_copy_uint64(uint8_t *source, uint64_t *target) {
+uint8_t *ptp_decode_uint64(uint8_t *source, uint64_t *target) {
 	*target = *(uint64_t *)source;
 	return source + sizeof(uint64_t);
 }
 
-uint8_t *ptp_copy_uint128(uint8_t *source, char *target) {
+uint8_t *ptp_decode_uint128(uint8_t *source, char *target) {
 	uint32_t u32_1, u32_2, u32_3, u32_4;
-	source = ptp_copy_uint32(source, &u32_1);
-	source = ptp_copy_uint32(source, &u32_2);
-	source = ptp_copy_uint32(source, &u32_3);
-	source = ptp_copy_uint32(source, &u32_4);
+	source = ptp_decode_uint32(source, &u32_1);
+	source = ptp_decode_uint32(source, &u32_2);
+	source = ptp_decode_uint32(source, &u32_3);
+	source = ptp_decode_uint32(source, &u32_4);
 	sprintf(target, "%04x%04x%04x%04x", u32_4, u32_3, u32_2, u32_1);
 	return source;
 }
 
-uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count) {
+uint8_t *ptp_decode_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count) {
 	uint32_t length;
-	source = ptp_copy_uint32(source, &length);
+	source = ptp_decode_uint32(source, &length);
 	assert(length < PTP_MAX_ELEMENTS);
 	for (int i = 0; i < length; i++) {
-		source = ptp_copy_uint16(source, target++);
+		source = ptp_decode_uint16(source, target++);
 	}
 	*target = 0;
 	if (count)
@@ -378,12 +408,12 @@ uint8_t *ptp_copy_uint16_array(uint8_t *source, uint16_t *target, uint32_t *coun
 	return source;
 }
 
-uint8_t *ptp_copy_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count) {
+uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count) {
 	uint32_t length;
-	source = ptp_copy_uint32(source, &length);
+	source = ptp_decode_uint32(source, &length);
 	assert(length < PTP_MAX_ELEMENTS);
 	for (int i = 0; i < length; i++) {
-		source = ptp_copy_uint32(source, target++);
+		source = ptp_decode_uint32(source, target++);
 	}
 	*target = 0;
 	if (count)
@@ -400,21 +430,21 @@ void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source) {
 	target[index] = 0;
 }
 
-uint8_t *ptp_copy_device_info(uint8_t *source, indigo_device *device) {
-	source = ptp_copy_uint16(source, &PRIVATE_DATA->info_standard_version);
-	source = ptp_copy_uint32(source, &PRIVATE_DATA->info_vendor_extension_id);
-	source = ptp_copy_uint16(source, &PRIVATE_DATA->info_vendor_extension_version);
-	source = ptp_copy_string(source, PRIVATE_DATA->info_vendor_extension_desc);
-	source = ptp_copy_uint16(source, &PRIVATE_DATA->info_functional_mode);
-	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_operations_supported, NULL);
-	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_events_supported, NULL);
-	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_properties_supported, NULL);
-	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_capture_formats_supported, NULL);
-	source = ptp_copy_uint16_array(source, PRIVATE_DATA->info_image_formats_supported, NULL);
-	source = ptp_copy_string(source, PRIVATE_DATA->info_manufacturer);
-	source = ptp_copy_string(source, PRIVATE_DATA->info_model);
-	source = ptp_copy_string(source, PRIVATE_DATA->info_device_version);
-	source = ptp_copy_string(source, PRIVATE_DATA->info_serial_number);
+uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device) {
+	source = ptp_decode_uint16(source, &PRIVATE_DATA->info_standard_version);
+	source = ptp_decode_uint32(source, &PRIVATE_DATA->info_vendor_extension_id);
+	source = ptp_decode_uint16(source, &PRIVATE_DATA->info_vendor_extension_version);
+	source = ptp_decode_string(source, PRIVATE_DATA->info_vendor_extension_desc);
+	source = ptp_decode_uint16(source, &PRIVATE_DATA->info_functional_mode);
+	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_operations_supported, NULL);
+	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_events_supported, NULL);
+	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_properties_supported, NULL);
+	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_capture_formats_supported, NULL);
+	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_image_formats_supported, NULL);
+	source = ptp_decode_string(source, PRIVATE_DATA->info_manufacturer);
+	source = ptp_decode_string(source, PRIVATE_DATA->info_model);
+	source = ptp_decode_string(source, PRIVATE_DATA->info_device_version);
+	source = ptp_decode_string(source, PRIVATE_DATA->info_serial_number);
 	if (PRIVATE_DATA->info_vendor_extension_id == ptp_vendor_microsoft) {
 		if (strstr(PRIVATE_DATA->info_manufacturer, "Nikon")) {
 			PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
@@ -437,70 +467,70 @@ uint8_t *ptp_copy_device_info(uint8_t *source, indigo_device *device) {
 	return source;
 }
 
-uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property *target) {
+uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_property *target) {
 	uint8_t form;
 	memset(target, 0, sizeof(ptp_property));
-	source = ptp_copy_uint16(source, &target->code);
-	source = ptp_copy_uint16(source, &target->type);
-	source = ptp_copy_uint8(source, &target->writable);
+	source = ptp_decode_uint16(source, &target->code);
+	source = ptp_decode_uint16(source, &target->type);
+	source = ptp_decode_uint8(source, &target->writable);
 	switch (target->type) {
 		case ptp_uint8_type: {
 			uint8_t value;
-			source = ptp_copy_uint8(source + sizeof(uint8_t), &value);
+			source = ptp_decode_uint8(source + sizeof(uint8_t), &value);
 			target->value.number.value = value;
 			break;
 		}
 		case ptp_int8_type: {
 			int8_t value;
-			source = ptp_copy_uint8(source + sizeof(uint8_t), (uint8_t *)&value);
+			source = ptp_decode_uint8(source + sizeof(uint8_t), (uint8_t *)&value);
 			target->value.number.value = value;
 			break;
 		}
 		case ptp_uint16_type: {
 			uint16_t value;
-			source = ptp_copy_uint16(source + sizeof(uint16_t), &value);
+			source = ptp_decode_uint16(source + sizeof(uint16_t), &value);
 			target->value.number.value = value;
 			break;
 		}
 		case ptp_int16_type: {
 			int16_t value;
-			source = ptp_copy_uint16(source + sizeof(uint16_t), (uint16_t *)&value);
+			source = ptp_decode_uint16(source + sizeof(uint16_t), (uint16_t *)&value);
 			target->value.number.value = value;
 			break;
 		}
 		case ptp_uint32_type: {
 			uint32_t value;
-			source = ptp_copy_uint32(source + sizeof(uint32_t), &value);
+			source = ptp_decode_uint32(source + sizeof(uint32_t), &value);
 			target->value.number.value = value;
 			break;
 		}
 		case ptp_int32_type: {
 			int32_t value;
-			source = ptp_copy_uint32(source + sizeof(uint32_t), (uint32_t *)&value);
+			source = ptp_decode_uint32(source + sizeof(uint32_t), (uint32_t *)&value);
 			target->value.number.value = value;
 			break;
 		}
 		case ptp_uint64_type:
 		case ptp_int64_type: {
 			int64_t value;
-			source = ptp_copy_uint64(source + 2 * sizeof(uint32_t), (uint64_t *)&value);
+			source = ptp_decode_uint64(source + 2 * sizeof(uint32_t), (uint64_t *)&value);
 			target->value.number.value = value;
 			break;
 		}
 		case ptp_uint128_type:
 		case ptp_int128_type: {
-			source = ptp_copy_uint128(source + 4 * sizeof(uint32_t), target->value.text.value);
+			source = ptp_decode_uint128(source + 4 * sizeof(uint32_t), target->value.text.value);
 			break;
 		}
 		case ptp_str_type: {
 			source += *source *2 + 1;
-			source = ptp_copy_string(source, target->value.text.value);
+			source = ptp_decode_string(source, target->value.text.value);
 			break;
 		}
 		default:
 			assert(false);
 	}
-	source = ptp_copy_uint8(source, &form);
+	source = ptp_decode_uint8(source, &form);
 	switch (form) {
 		case ptp_none_form:
 			if (target->type <= ptp_uint32_type) {
@@ -513,9 +543,9 @@ uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property 
 			switch (target->type) {
 				case ptp_uint8_type: {
 					uint8_t min, max, step;
-					source = ptp_copy_uint8(source, &min);
-					source = ptp_copy_uint8(source, &max);
-					source = ptp_copy_uint8(source, &step);
+					source = ptp_decode_uint8(source, &min);
+					source = ptp_decode_uint8(source, &max);
+					source = ptp_decode_uint8(source, &step);
 					target->value.number.min = min;
 					target->value.number.max = max;
 					target->value.number.step = step;
@@ -523,9 +553,9 @@ uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property 
 				}
 				case ptp_int8_type: {
 					int8_t min, max, step;
-					source = ptp_copy_uint8(source, (uint8_t *)&min);
-					source = ptp_copy_uint8(source, (uint8_t *)&max);
-					source = ptp_copy_uint8(source, (uint8_t *)&step);
+					source = ptp_decode_uint8(source, (uint8_t *)&min);
+					source = ptp_decode_uint8(source, (uint8_t *)&max);
+					source = ptp_decode_uint8(source, (uint8_t *)&step);
 					target->value.number.min = min;
 					target->value.number.max = max;
 					target->value.number.step = step;
@@ -533,9 +563,9 @@ uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property 
 				}
 				case ptp_uint16_type: {
 					uint16_t min, max, step;
-					source = ptp_copy_uint16(source, &min);
-					source = ptp_copy_uint16(source, &max);
-					source = ptp_copy_uint16(source, &step);
+					source = ptp_decode_uint16(source, &min);
+					source = ptp_decode_uint16(source, &max);
+					source = ptp_decode_uint16(source, &step);
 					target->value.number.min = min;
 					target->value.number.max = max;
 					target->value.number.step = step;
@@ -543,9 +573,9 @@ uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property 
 				}
 				case ptp_int16_type: {
 					int16_t min, max, step;
-					source = ptp_copy_uint16(source, (uint16_t *)&min);
-					source = ptp_copy_uint16(source, (uint16_t *)&max);
-					source = ptp_copy_uint16(source, (uint16_t *)&step);
+					source = ptp_decode_uint16(source, (uint16_t *)&min);
+					source = ptp_decode_uint16(source, (uint16_t *)&max);
+					source = ptp_decode_uint16(source, (uint16_t *)&step);
 					target->value.number.min = min;
 					target->value.number.max = max;
 					target->value.number.step = step;
@@ -553,9 +583,9 @@ uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property 
 				}
 				case ptp_uint32_type: {
 					uint32_t min, max, step;
-					source = ptp_copy_uint32(source, &min);
-					source = ptp_copy_uint32(source, &max);
-					source = ptp_copy_uint32(source, &step);
+					source = ptp_decode_uint32(source, &min);
+					source = ptp_decode_uint32(source, &max);
+					source = ptp_decode_uint32(source, &step);
 					target->value.number.min = min;
 					target->value.number.max = max;
 					target->value.number.step = step;
@@ -563,9 +593,9 @@ uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property 
 				}
 				case ptp_int32_type: {
 					int32_t min, max, step;
-					source = ptp_copy_uint32(source, (uint32_t *)&min);
-					source = ptp_copy_uint32(source, (uint32_t *)&max);
-					source = ptp_copy_uint32(source, (uint32_t *)&step);
+					source = ptp_decode_uint32(source, (uint32_t *)&min);
+					source = ptp_decode_uint32(source, (uint32_t *)&max);
+					source = ptp_decode_uint32(source, (uint32_t *)&step);
 					target->value.number.min = min;
 					target->value.number.max = max;
 					target->value.number.step = step;
@@ -585,43 +615,43 @@ uint8_t *ptp_copy_property(uint8_t *source, indigo_device *device, ptp_property 
 			break;
 		case ptp_enum_form: {
 			uint16_t count;
-			source = ptp_copy_uint16(source, &count);
+			source = ptp_decode_uint16(source, &count);
 			target->count = count;
 			for (int i = 0; i < target->count; i++) {
 				switch (target->type) {
 					case ptp_uint8_type: {
 						uint8_t value;
-						source = ptp_copy_uint8(source, &value);
+						source = ptp_decode_uint8(source, &value);
 						target->value.sw.values[i] = value;
 						break;
 					}
 					case ptp_int8_type: {
 						int8_t value;
-						source = ptp_copy_uint8(source, (uint8_t *)&value);
+						source = ptp_decode_uint8(source, (uint8_t *)&value);
 						target->value.sw.values[i] = value;
 						break;
 					}
 					case ptp_uint16_type: {
 						uint16_t value;
-						source = ptp_copy_uint16(source, &value);
+						source = ptp_decode_uint16(source, &value);
 						target->value.sw.values[i] = value;
 						break;
 					}
 					case ptp_int16_type: {
 						int16_t value;
-						source = ptp_copy_uint16(source, (uint16_t *)&value);
+						source = ptp_decode_uint16(source, (uint16_t *)&value);
 						target->value.sw.values[i] = value;
 						break;
 					}
 					case ptp_uint32_type: {
 						uint32_t value;
-						source = ptp_copy_uint32(source, &value);
+						source = ptp_decode_uint32(source, &value);
 						target->value.sw.values[i] = value;
 						break;
 					}
 					case ptp_int32_type: {
 						int32_t value;
-						source = ptp_copy_uint32(source, (uint32_t *)&value);
+						source = ptp_decode_uint32(source, (uint32_t *)&value);
 						target->value.sw.values[i] = value;
 						break;
 					}
@@ -922,7 +952,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 bool ptp_initialise(indigo_device *device) {
 	void *buffer = NULL;
 	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer)) {
-		ptp_copy_device_info(buffer, device);
+		ptp_decode_device_info(buffer, device);
 		PTP_DUMP_DEVICE_INFO();
 		if (buffer)
 			free(buffer);
@@ -930,7 +960,7 @@ bool ptp_initialise(indigo_device *device) {
 		uint16_t *properties = PRIVATE_DATA->info_properties_supported;
 		for (int i = 0; properties[i]; i++) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer)) {
-				ptp_copy_property(buffer, device, PRIVATE_DATA->properties + i);
+				ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
 				if (buffer)
 					free(buffer);
 				buffer = NULL;
@@ -943,5 +973,6 @@ bool ptp_initialise(indigo_device *device) {
 	return false;
 }
 
-void ptp_check_event(indigo_device *device) {
+bool ptp_set_property(indigo_device *device, ptp_property *property) {
+	assert(0);
 }
