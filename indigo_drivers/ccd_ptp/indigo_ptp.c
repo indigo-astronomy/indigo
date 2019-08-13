@@ -667,7 +667,7 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 }
 
 bool ptp_open(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int rc = 0;
 	struct libusb_device_descriptor	device_descriptor;
 	libusb_device *dev = PRIVATE_DATA->dev;
@@ -737,12 +737,12 @@ bool ptp_open(indigo_device *device) {
 	}
 	if (config_descriptor)
 		libusb_free_config_descriptor(config_descriptor);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ptp_container request, response;
 	int length = 0;
 	memset(&request, 0, sizeof(request));
@@ -766,11 +766,32 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	}
 	if (rc < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to send request -> %s", libusb_error_name(rc));
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 	if (data_out) {
-		// TBD
+		int size = *(uint32_t *)data_out;
+		request.length = PTP_CONTAINER_HDR_SIZE + size;
+		request.type = ptp_container_data;
+		PTP_DUMP_CONTAINER(&request);
+		if (size < sizeof(ptp_container) - PTP_CONTAINER_HDR_SIZE) {
+			memcpy(request.payload.data, data_out, size);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
+		} else {
+			memcpy(request.payload.data, data_out, sizeof(ptp_container) - PTP_CONTAINER_HDR_SIZE);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, sizeof(ptp_container), &length, PTP_TIMEOUT);
+		}
+		size -= length - PTP_CONTAINER_HDR_SIZE;
+		while (rc >=0 && size > 0) {
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, size, &length, PTP_TIMEOUT);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
+			size -= length;
+		}
+		if (rc < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to send request -> %s", libusb_error_name(rc));
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			return false;
+		}
 	}
 	while (true) {
 		memset(&response, 0, sizeof(response));
@@ -779,7 +800,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 		if (rc < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			return false;
 		}
 		if (length == 0)
@@ -814,7 +835,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 			if (rc < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
-				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				return false;
 			}
 			if (length == 0)
@@ -833,16 +854,16 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		*in_4 = response.payload.params[3];
 	if (in_5)
 		*in_5 = response.payload.params[4];
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return rc >= 0;
 }
 
 void ptp_close(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	libusb_close(PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close()");
 	PRIVATE_DATA->handle = NULL;
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
 bool ptp_update_property(indigo_device *device, ptp_property *property) {

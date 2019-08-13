@@ -176,10 +176,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
-		// TBD
+		CCD_MODE_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		PRIVATE_DATA->transaction_id = 0;
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->message_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -201,6 +202,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void handle_connection(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 	bool result = true;
 	if (PRIVATE_DATA->device_count++ == 0) {
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -236,6 +238,13 @@ static void handle_connection(indigo_device *device) {
 		memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+}
+
+static void handle_set_property(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+	PRIVATE_DATA->set_property(device, PRIVATE_DATA->properties + PRIVATE_DATA->message_property_index);
+	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -263,10 +272,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	} else {
+		for (int i = 0; i < PRIVATE_DATA->info_properties_supported[i]; i++) {
+			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property)) {
+				indigo_property *definition = PRIVATE_DATA->properties[i].property;
+				indigo_property_copy_values(definition, property, false);
+				PRIVATE_DATA->message_property_index = i;
+				indigo_set_timer(device, 0, handle_set_property);
+				break;
+			}
+		}
 	}
-	// --------------------------------------------------------------------------------
-	// TBD
-	// --------------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
 }
 
