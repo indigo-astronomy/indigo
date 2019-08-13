@@ -324,7 +324,7 @@ typedef struct {
 	uint8_t ep_in, ep_out, ep_int;
 	int device_count;
 	ptp_camera_model model;
-	pthread_mutex_t mutex;
+	pthread_mutex_t usb_mutex;
 	uint32_t session_id;
 	uint32_t transaction_id;
 	uint16_t info_standard_version;
@@ -351,6 +351,8 @@ typedef struct {
 	bool (* initialise)(indigo_device *device);
 	bool (* set_property)(indigo_device *device, ptp_property *property);
 	indigo_timer *event_checker;
+	pthread_mutex_t message_mutex;
+	int message_property_index;
 } ptp_private_data;
 
 extern void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container);

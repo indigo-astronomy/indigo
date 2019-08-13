@@ -924,30 +924,50 @@ static void ptp_canon_get_event(indigo_device *device) {
 							uint8_t value = 0;
 							source = ptp_decode_uint8(source, &value);
 							property->value.number.value = value;
+							if (property->count == 0) {
+								property->value.number.min = 0;
+								property->value.number.max = UCHAR_MAX;
+							}
 							break;
 						}
 						case ptp_uint16_type: {
 							uint16_t value = 0;
 							source = ptp_decode_uint16(source, &value);
 							property->value.number.value = value;
+							if (property->count == 0) {
+								property->value.number.min = 0;
+								property->value.number.max = USHRT_MAX;
+							}
 							break;
 						}
 						case ptp_int16_type: {
 							int16_t value = 0;
 							source = ptp_decode_uint16(source, (uint16_t *)&value);
 							property->value.number.value = value;
+							if (property->count == 0) {
+								property->value.number.min = SHRT_MIN;
+								property->value.number.max = SHRT_MAX;
+							}
 							break;
 						}
 						case ptp_uint32_type: {
 							uint32_t value = 0;
 							source = ptp_decode_uint32(source, &value);
 							property->value.number.value = value;
+							if (property->count == 0) {
+								property->value.number.min = 0;
+								property->value.number.max = UINT_MAX;
+							}
 							break;
 						}
 						case ptp_int32_type: {
 							int32_t value = 0;
 							source = ptp_decode_uint32(source, (uint32_t *)&value);
 							property->value.number.value = value;
+							if (property->count == 0) {
+								property->value.number.min = INT_MIN;
+								property->value.number.max = INT_MAX;
+							}
 							break;
 						}
 						case ptp_str_type: {
@@ -1216,22 +1236,24 @@ bool ptp_canon_initialise(indigo_device *device) {
 }
 
 bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
-	uint8_t buffer[1024], *target = buffer + sizeof(uint32_t);
+	uint8_t buffer[1024], *target = buffer + 2 * sizeof(uint32_t);
 	uint32_t code = property->code;
 	assert(property->property != NULL);
+	memset(buffer, 0, sizeof(buffer));
 	switch (property->property->type) {
 		case INDIGO_TEXT_VECTOR:
-			ptp_encode_string(property->property->items[0].text.value, buffer);
+			strncpy((char *)target, property->property->items[0].text.value, 255);
+			target += strlen((char *)target) + 1;
 			break;
 		case INDIGO_SWITCH_VECTOR:
-			for (int i = 0; i < property->property->count; i++)
-				if (property->property->items->sw.value) {
+			for (int i = 0; i < property->property->count; i++) {
+				if (property->property->items[i].sw.value) {
 					property->value.sw.value = property->value.sw.values[i];
 					break;
 				}
-		case INDIGO_NUMBER_VECTOR:
+			}
 			if (property->code == ptp_property_canon_ImageFormat || property->code == ptp_property_canon_ImageFormatCF || property->code == ptp_property_canon_ImageFormatSD || property->code == ptp_property_canon_ImageFormatExtHD) {
-				uint64_t l = property->value.number.value;
+				uint64_t l = property->value.sw.value;
 				uint64_t i1 = (l >> 32) & 0xFFFFFFFF;
 				uint64_t i2 = l & 0xFFFFFFFF;
 				int count = i1 == 0 ? 1 : 2;
@@ -1248,15 +1270,16 @@ bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 				target = ptp_encode_uint32((uint32_t)(i2 & 0xFF), target);
 			} else if ((property->code & 0xF000) == 0x8000) {
 				for (int i = 0; CANON_PRIVATE_DATA->ex_func_group[i][0]; i++) {
-					
+					uint32_t *group = CANON_PRIVATE_DATA->ex_func_group[i];
 					int offset = 4;
-					unsigned int item_count = CANON_PRIVATE_DATA->ex_func_group[i][offset++];
+					unsigned int item_count = group[offset++];
 					for (int j = 0; j < item_count; j++) {
-						unsigned int item = CANON_PRIVATE_DATA->ex_func_group[i][offset++];
-						unsigned int value_size = CANON_PRIVATE_DATA->ex_func_group[i][offset++];
+						unsigned int item = group[offset++];
+						unsigned int value_size = group[offset++];
 						if ((item | 0x8000) == property->code) {
-							 CANON_PRIVATE_DATA->ex_func_group[i][offset++] = (uint32_t)property->value.sw.value;
-							memcpy(buffer + 8, CANON_PRIVATE_DATA->ex_func_group[i], CANON_PRIVATE_DATA->ex_func_group[i][0]);
+							group[offset++] = (uint32_t)property->value.sw.value;
+							memcpy(target, group, group[0]);
+							target += group[0];
 							code = ptp_property_canon_CustomFuncEx;
 							break;
 						} else {
@@ -1266,9 +1289,15 @@ bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 					if (code == ptp_property_canon_CustomFuncEx)
 						break;
 				}
-			} else if (property->type && property->type <= ptp_uint32_type) {
+			} else {
 				target = ptp_encode_uint32((uint32_t)property->value.number.value, target);
 			}
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			if (property->type && property->type <= ptp_uint32_type) {
+				target = ptp_encode_uint32((uint32_t)property->property->items->number.value, target);
+			}
+			break;
 		default:
 			assert(false);
 	}

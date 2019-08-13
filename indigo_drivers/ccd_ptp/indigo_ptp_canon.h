@@ -336,7 +336,7 @@ typedef enum {
 
 typedef struct {
 	int mode;
-	unsigned int ex_func_group[16][1024];
+	uint32_t ex_func_group[16][1024];
 } canon_private_data;
 
 extern char *ptp_operation_canon_code_label(uint16_t code);
