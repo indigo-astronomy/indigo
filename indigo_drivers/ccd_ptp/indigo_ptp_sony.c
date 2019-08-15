@@ -97,3 +97,7 @@ bool ptp_sony_initialise(indigo_device *device) {
 bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 	assert(0);
 }
+
+bool ptp_sony_liveview(indigo_device *device) {
+	assert(0);
+}

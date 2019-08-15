@@ -371,5 +371,6 @@ extern char *ptp_property_nikon_value_code_label(uint16_t property, uint64_t cod
 
 extern bool ptp_nikon_initialise(indigo_device *device);
 extern bool ptp_nikon_set_property(indigo_device *device, ptp_property *property);
+extern bool ptp_nikon_liveview(indigo_device *device);
 
 #endif /* indigo_ptp_nikon_h */
