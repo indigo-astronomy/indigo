@@ -998,7 +998,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 										assert(group_size <= 1024);
 										CANON_PRIVATE_DATA->ex_func_group[group][0] = group_size + 12; // total size
 										CANON_PRIVATE_DATA->ex_func_group[group][1] = 1; // group count
-										CANON_PRIVATE_DATA->ex_func_group[group][2] = group; // group
+										CANON_PRIVATE_DATA->ex_func_group[group][2] = group + 1; // group
 										CANON_PRIVATE_DATA->ex_func_group[group][3] = group_size; // group size
 										memcpy(CANON_PRIVATE_DATA->ex_func_group[group] + 4, source_uint32 + offset, group_size - 4);
 										unsigned int item_count = source_uint32[offset++];
