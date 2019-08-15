@@ -177,6 +177,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		CCD_MODE_PROPERTY->hidden = true;
+		CCD_STREAMING_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		PRIVATE_DATA->transaction_id = 0;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
@@ -247,6 +248,16 @@ static void handle_set_property(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
 
+static void handle_streaming(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+	CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+	if (PRIVATE_DATA->liveview(device))
+		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+}
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -272,6 +283,20 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		// -------------------------------------------------------------------------------- CCD_STREAMING
+	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+		PRIVATE_DATA->abort_capture = false;
+		indigo_set_timer(device, 0, handle_streaming);
+		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
+	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+			PRIVATE_DATA->abort_capture = true;
+		}
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else {
 		for (int i = 0; i < PRIVATE_DATA->info_properties_supported[i]; i++) {
 			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property)) {
@@ -329,6 +354,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_value_code_label = ptp_property_canon_value_code_label;
 						private_data->initialise = ptp_canon_initialise;
 						private_data->set_property = ptp_canon_set_property;
+						private_data->liveview = ptp_canon_liveview;
 					} else if (descriptor.idVendor == NIKON_VID) {
 						private_data->operation_code_label = ptp_operation_nikon_code_label;
 						private_data->response_code_label = ptp_response_nikon_code_label;
@@ -338,6 +364,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_value_code_label = ptp_property_nikon_value_code_label;
 						private_data->initialise = ptp_nikon_initialise;
 						private_data->set_property = ptp_nikon_set_property;
+						private_data->liveview = ptp_nikon_liveview;
 					} else if (descriptor.idVendor == SONY_VID) {
 						private_data->operation_code_label = ptp_operation_sony_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -347,6 +374,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_value_code_label = ptp_property_sony_value_code_label;
 						private_data->initialise = ptp_sony_initialise;
 						private_data->set_property = ptp_sony_set_property;
+						private_data->liveview = ptp_sony_liveview;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -356,6 +384,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_value_code_label = ptp_property_value_code_label;
 						private_data->initialise = ptp_initialise;
 						private_data->set_property = ptp_set_property;
+						private_data->liveview = ptp_liveview;
 					}
 					libusb_ref_device(dev);
 					indigo_device *device = malloc(sizeof(indigo_device));

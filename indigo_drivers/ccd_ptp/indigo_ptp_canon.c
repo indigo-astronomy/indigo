@@ -39,6 +39,8 @@
 #include <malloc.h>
 #endif
 
+#include <indigo/indigo_ccd_driver.h>
+
 #include "indigo_ptp.h"
 #include "indigo_ptp_canon.h"
 
@@ -1235,6 +1237,20 @@ bool ptp_canon_initialise(indigo_device *device) {
 	return true;
 }
 
+static bool set_property(indigo_device *device, uint16_t code, uint32_t value) {
+	for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
+		if (PRIVATE_DATA->info_properties_supported[i] == code) {
+			uint32_t buffer[3];
+			buffer[0] = sizeof(buffer);
+			buffer[1] = code;
+			buffer[2] = value;
+			return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer);
+		}
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No such property %04x (%s)", code, ptp_property_canon_code_name(code));
+	return false;
+}
+
 bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 	uint8_t buffer[1024], *target = buffer + 2 * sizeof(uint32_t);
 	uint32_t code = property->code;
@@ -1308,5 +1324,38 @@ bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 	else
 		property->property->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, property->property, NULL);
+	return true;
+}
+
+bool ptp_canon_liveview(indigo_device *device) {
+	if (set_property(device, ptp_property_canon_EVFMode, 1) && set_property(device, ptp_property_canon_EVFOutputDevice, 2)) {
+		ptp_canon_get_event(device);
+		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value-- != 0) {
+			if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+				CCD_STREAMING_COUNT_ITEM->number.value = -1;
+			indigo_usleep(100000);
+			void *buffer = NULL;
+			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer)) {
+				uint8_t *source = buffer;
+				uint32_t length, type;
+				while (!PRIVATE_DATA->abort_capture) {
+					source = ptp_decode_uint32(source, &length);
+					source = ptp_decode_uint32(source, &type);
+					if (type == 0) {
+						break;
+					}
+					if (type == 1) {
+						indigo_process_dslr_image(device, source, length, ".jpeg");
+						break;
+					}
+					source += length - 8;
+				}
+			}
+			if (buffer)
+				free(buffer);
+		}
+		set_property(device, ptp_property_canon_EVFOutputDevice, 1);
+		set_property(device, ptp_property_canon_EVFMode, 0);
+	}
 	return true;
 }

@@ -350,9 +350,11 @@ typedef struct {
 	char *(* property_value_code_label)(uint16_t property, uint64_t code);
 	bool (* initialise)(indigo_device *device);
 	bool (* set_property)(indigo_device *device, ptp_property *property);
+	bool (* liveview)(indigo_device *device);
 	indigo_timer *event_checker;
 	pthread_mutex_t message_mutex;
 	int message_property_index;
+	bool abort_capture;
 } ptp_private_data;
 
 extern void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container);
@@ -395,6 +397,7 @@ extern bool ptp_update_property(indigo_device *device, ptp_property *property);
 
 extern bool ptp_initialise(indigo_device *device);
 extern bool ptp_set_property(indigo_device *device, ptp_property *property);
+extern bool ptp_liveview(indigo_device *device);
 
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
