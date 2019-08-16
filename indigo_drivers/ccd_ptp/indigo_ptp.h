@@ -396,6 +396,7 @@ extern void ptp_close(indigo_device *device);
 extern bool ptp_update_property(indigo_device *device, ptp_property *property);
 
 extern bool ptp_initialise(indigo_device *device);
+extern bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params);
 extern bool ptp_set_property(indigo_device *device, ptp_property *property);
 extern bool ptp_liveview(indigo_device *device);
 

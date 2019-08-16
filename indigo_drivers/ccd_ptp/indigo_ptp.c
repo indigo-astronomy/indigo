@@ -986,6 +986,20 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 	return true;
 }
 
+static void ptp_check_event(indigo_device *device) {
+	ptp_container event;
+	int length = 0;
+	memset(&event, 0, sizeof(event));
+	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, PTP_TIMEOUT);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
+	if (rc >= 0) {
+		PTP_DUMP_CONTAINER(&event);
+		ptp_handle_event(device, event.code, event.payload.params);
+			// TBD
+	}
+	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+}
+
 bool ptp_initialise(indigo_device *device) {
 	void *buffer = NULL;
 	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer)) {
@@ -1003,11 +1017,18 @@ bool ptp_initialise(indigo_device *device) {
 				buffer = NULL;
 			}
 		}
+		if (PRIVATE_DATA->initialise == ptp_initialise) {
+			PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_check_event);
+		}
 		return true;
 	}
 	if (buffer)
 		free(buffer);
 	return false;
+}
+
+bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
+	return true;
 }
 
 bool ptp_set_property(indigo_device *device, ptp_property *property) {
