@@ -32,6 +32,8 @@
 #include <float.h>
 #include <libusb-1.0/libusb.h>
 
+#include <indigo/indigo_ccd_driver.h>
+
 #include "indigo_ptp.h"
 
 char *ptp_operation_code_label(uint16_t code) {
@@ -281,7 +283,7 @@ void ptp_dump_container(int line, const char *function, indigo_device *device, p
 			offset = sprintf(buffer, "response %s (%04x) %08x [", PRIVATE_DATA->response_code_label(container->code), container->code, container->transaction_id);
 			break;
 		case ptp_container_event:
-			offset = sprintf(buffer, "event %s (%04x) %08x [", PRIVATE_DATA->event_code_label(container->code), container->code, container->transaction_id);
+			offset = sprintf(buffer, "event %s (%04x) [", PRIVATE_DATA->event_code_label(container->code), container->code);
 			break;
 		default:
 			offset = sprintf(buffer, "unknown %04x %08x", container->code, container->transaction_id);
@@ -1028,7 +1030,30 @@ bool ptp_initialise(indigo_device *device) {
 }
 
 bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
-	return true;
+	switch (code) {
+		case ptp_event_ObjectAdded: {
+			void *buffer = NULL;
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer)) {
+				uint32_t size;
+				char filename[PTP_MAX_CHARS];
+				uint8_t *source = buffer;
+				source = ptp_decode_uint32(source + 8, &size);
+				source = ptp_decode_string(source + 40 , filename);
+				free(buffer);
+				buffer = NULL;
+				if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer)) {
+					indigo_process_dslr_image(device, buffer, size, strchr(filename, '.'));
+				}
+				if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
+					ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
+			}
+			if (buffer)
+				free(buffer);
+			return true;
+		}
+		default:
+			return false;
+	}
 }
 
 bool ptp_set_property(indigo_device *device, ptp_property *property) {
