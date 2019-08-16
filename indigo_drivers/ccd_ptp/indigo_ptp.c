@@ -533,9 +533,9 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 	source = ptp_decode_uint8(source, &form);
 	switch (form) {
 		case ptp_none_form:
-			if (target->type <= ptp_uint32_type) {
-				target->value.number.min = DBL_MIN;
-				target->value.number.max = DBL_MAX;
+			if (target->type <= ptp_uint64_type) {
+				target->value.number.min = LONG_MIN;
+				target->value.number.max = LONG_MAX;
 				target->value.number.step = 0;
 			}
 			break;
@@ -601,10 +601,26 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 					target->value.number.step = step;
 					break;
 				}
-				case ptp_uint64_type:
-				case ptp_int64_type:
-					source += 3 * 2 * sizeof(uint32_t);
+				case ptp_uint64_type: {
+					uint64_t min, max, step;
+					source = ptp_decode_uint64(source, &min);
+					source = ptp_decode_uint64(source, &max);
+					source = ptp_decode_uint64(source, &step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
 					break;
+				}
+				case ptp_int64_type: {
+					int64_t min, max, step;
+					source = ptp_decode_uint64(source, (uint64_t *)&min);
+					source = ptp_decode_uint64(source, (uint64_t *)&max);
+					source = ptp_decode_uint64(source, (uint64_t *)&step);
+					target->value.number.min = min;
+					target->value.number.max = max;
+					target->value.number.step = step;
+					break;
+				}
 				case ptp_uint128_type:
 				case ptp_int128_type:
 					source += 3 * 4 * sizeof(uint32_t);
