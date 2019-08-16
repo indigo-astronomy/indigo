@@ -871,7 +871,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	if (in_5)
 		*in_5 = response.payload.params[4];
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	return rc >= 0;
+	return rc >= 0 && response.code == ptp_response_OK;
 }
 
 void ptp_close(indigo_device *device) {
