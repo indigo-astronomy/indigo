@@ -315,14 +315,16 @@ typedef struct {
 	indigo_property *property;
 } ptp_property;
 
-#define DSLR_PROGRAM_PROPERTY	(PRIVATE_DATA->dslr_program)
+#define DSLR_DELETE_IMAGE_PROPERTY      (PRIVATE_DATA->dslr_delete_image_property)
+#define DSLR_DELETE_IMAGE_ON_ITEM       (PRIVATE_DATA->dslr_delete_image_property->items + 0)
+#define DSLR_DELETE_IMAGE_OFF_ITEM      (PRIVATE_DATA->dslr_delete_image_property->items + 1)
 
 typedef struct {
 	void *vendor_private_data;
 	libusb_device *dev;
 	libusb_device_handle *handle;
 	uint8_t ep_in, ep_out, ep_int;
-	int device_count;
+	indigo_property *dslr_delete_image_property;
 	ptp_camera_model model;
 	pthread_mutex_t usb_mutex;
 	uint32_t session_id;
@@ -349,6 +351,7 @@ typedef struct {
 	char *(* property_code_label)(uint16_t code);
 	char *(* property_value_code_label)(uint16_t property, uint64_t code);
 	bool (* initialise)(indigo_device *device);
+	bool (* handle_event)(indigo_device *device, ptp_event_code code, uint32_t *params);
 	bool (* set_property)(indigo_device *device, ptp_property *property);
 	bool (* liveview)(indigo_device *device);
 	indigo_timer *event_checker;

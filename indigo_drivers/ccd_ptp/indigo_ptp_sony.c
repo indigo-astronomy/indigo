@@ -94,6 +94,10 @@ bool ptp_sony_initialise(indigo_device *device) {
 	assert(0);
 }
 
+bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
+	return ptp_handle_event(device, code, params);
+}
+
 bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 	assert(0);
 }

@@ -178,6 +178,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		CCD_MODE_PROPERTY->hidden = true;
 		CCD_STREAMING_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE
+		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		indigo_init_switch_item(DSLR_DELETE_IMAGE_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", true);
+		indigo_init_switch_item(DSLR_DELETE_IMAGE_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", false);
 		// --------------------------------------------------------------------------------
 		PRIVATE_DATA->transaction_id = 0;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
@@ -192,9 +196,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		// --------------------------------------------------------------------------------
-		// TBD
-		// --------------------------------------------------------------------------------
+		if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
+			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property))
 				indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
@@ -205,15 +208,13 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 static void handle_connection(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 	bool result = true;
-	if (PRIVATE_DATA->device_count++ == 0) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			result = false;
-		} else {
-			result = ptp_open(device);
-		}
+	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	if (indigo_try_global_lock(device) != INDIGO_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+		result = false;
+	} else {
+		result = ptp_open(device);
 	}
 	if (result) {
 		PRIVATE_DATA->transaction_id = 0;
@@ -231,6 +232,7 @@ static void handle_connection(indigo_device *device) {
 		}
 	}
 	if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
+		indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 			indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
 	} else {
@@ -269,20 +271,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_set_timer(device, 0, handle_connection);
 			return INDIGO_OK;
 		} else {
-			// TBD
-			if (--PRIVATE_DATA->device_count == 0) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->event_checker);
-				ptp_transaction_0_0(device, ptp_operation_CloseSession);
-				ptp_close(device);
-				for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
-					indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
-					indigo_release_property(PRIVATE_DATA->properties[i].property);
-				}
-				memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
-				indigo_global_unlock(device);
+			indigo_cancel_timer(device, &PRIVATE_DATA->event_checker);
+			ptp_transaction_0_0(device, ptp_operation_CloseSession);
+			ptp_close(device);
+			indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+			for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
+				indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
+				indigo_release_property(PRIVATE_DATA->properties[i].property);
 			}
+			memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
+			indigo_global_unlock(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	} else if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE_PROPERTY
+		indigo_property_copy_values(DSLR_DELETE_IMAGE_PROPERTY, property, false);
+		DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
@@ -315,9 +321,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	// --------------------------------------------------------------------------------
-	// TBD
-	// --------------------------------------------------------------------------------
+	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
@@ -353,6 +357,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_canon_code_label;
 						private_data->property_value_code_label = ptp_property_canon_value_code_label;
 						private_data->initialise = ptp_canon_initialise;
+						private_data->handle_event = NULL;
 						private_data->set_property = ptp_canon_set_property;
 						private_data->liveview = ptp_canon_liveview;
 					} else if (descriptor.idVendor == NIKON_VID) {
@@ -383,6 +388,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_code_label;
 						private_data->property_value_code_label = ptp_property_value_code_label;
 						private_data->initialise = ptp_initialise;
+						private_data->handle_event = ptp_handle_event;
 						private_data->set_property = ptp_set_property;
 						private_data->liveview = ptp_liveview;
 					}
