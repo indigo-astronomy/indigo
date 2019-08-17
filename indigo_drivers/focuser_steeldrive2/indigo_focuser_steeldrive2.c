@@ -619,7 +619,7 @@ static void focuser_steps_handler(indigo_device *device) {
 
 static void focuser_abort_handler(indigo_device *device) {
 	if (IS_CONNECTED) {
-		//pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		char response[256];
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 			if (steeldrive2_command(device, "$BS STOP", response, sizeof(response)) && !strcmp(response, "$BS OK"))
@@ -629,7 +629,7 @@ static void focuser_abort_handler(indigo_device *device) {
 		}
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-		//pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	}
 }
 
