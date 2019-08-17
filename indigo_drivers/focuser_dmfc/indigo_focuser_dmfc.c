@@ -363,7 +363,7 @@ static void focuser_position_handler(indigo_device *device) {
 }
 
 static void focuser_abort_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	//pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
@@ -378,7 +378,7 @@ static void focuser_abort_handler(indigo_device *device) {
 		}
 	}
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	//pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_reverse_motion_handler(indigo_device *device) {
