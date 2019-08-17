@@ -102,6 +102,18 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 	assert(0);
 }
 
+bool ptp_sony_exposure(indigo_device *device) {
+	assert(0);
+}
+
 bool ptp_sony_liveview(indigo_device *device) {
+	assert(0);
+}
+
+bool ptp_sony_lock(indigo_device *device) {
+	assert(0);
+}
+
+bool ptp_sony_af(indigo_device *device) {
 	assert(0);
 }

@@ -32,13 +32,6 @@
 #include <float.h>
 #include <libusb-1.0/libusb.h>
 
-#ifdef INDIGO_MACOS
-#include <malloc/malloc.h>
-#endif
-#ifdef INDIGO_LINUX
-#include <malloc.h>
-#endif
-
 #include <indigo/indigo_ccd_driver.h>
 
 #include "indigo_ptp.h"
@@ -748,29 +741,24 @@ static uint8_t *ptp_copy_image_format(uint8_t *source, uint64_t *target) {
 
 static void ptp_canon_get_event(indigo_device *device) {
 	void *buffer = NULL;
-	if (ptp_transaction_0_0_i(device, ptp_operation_canon_GetEvent, &buffer)) {
-#ifdef INDIGO_MACOS
-		unsigned long max_size = malloc_size(buffer);
-#endif
-#ifdef INDIGO_LINUX
-		unsigned long max_size = malloc_usable_size(buffer);
-#endif
+	uint32_t max_size;
+	if (ptp_transaction_0_0_i(device, ptp_operation_canon_GetEvent, &buffer, &max_size)) {
 		uint8_t *record = buffer;
 		ptp_property *updated[PTP_MAX_ELEMENTS] = { NULL }, **next_updated = updated;
 		while (true) {
 			if (record - (uint8_t *)buffer >= max_size)
 				break;
 			uint8_t *source = record;
-			uint32_t size, type;
+			uint32_t size, event;
 			source = ptp_decode_uint32(source, &size);
-			source = ptp_decode_uint32(source, &type);
-			if (size <= 8 || type == 0)
+			source = ptp_decode_uint32(source, &event);
+			if (size <= 8 || event == 0)
 				break;
-			switch (type) {
+			switch (event) {
 				case ptp_event_canon_PropValueChanged: {
 					uint32_t code;
 					source = ptp_decode_uint32(source, &code);
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "PropValueChanged %04x (%s)", code, PRIVATE_DATA->property_code_label(code));
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x): %s (%04x)", ptp_event_canon_code_label(event), event, PRIVATE_DATA->property_code_label(code), code);
 					ptp_property *property = NULL;
 					for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 						if (PRIVATE_DATA->info_properties_supported[i] == code) {
@@ -1024,7 +1012,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 											ex_property->value.sw.value = source_uint32[offset];
 											offset += value_size;
 											*next_updated++ = ex_property;
-											INDIGO_DRIVER_LOG(DRIVER_NAME, "PropValueChanged %04x (%s)", item_code, PRIVATE_DATA->property_code_label(item_code));
+											INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ex-property = %s (%04x), value = %0x", PRIVATE_DATA->property_code_label(item_code), item_code, ex_property->value.sw.value);
 										}
 									}
 									break;
@@ -1035,6 +1023,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 					}
 					if (code == ptp_property_canon_AutoExposureMode) {
 						CANON_PRIVATE_DATA->mode = (int)property->value.sw.value;
+					}
+					if (code == ptp_property_canon_ShutterSpeed) {
+						CANON_PRIVATE_DATA->shutter = (int)property->value.sw.value;
 					}
 					if (code == ptp_property_canon_BatteryPower) {
 						switch (property->value.number.value) {
@@ -1055,14 +1046,19 @@ static void ptp_canon_get_event(indigo_device *device) {
 								break;
 						}
 					}
-					if (property)
+					if (property) {
 						*next_updated++ = property;
+						if (property->type == ptp_str_type)
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "type = %04x, value = '%s', %s", property->type, property->value.text.value, property->writable ? "rw" : "ro");
+						else
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "type = %04x, value = %04x, %s", property->type, property->value.number.value, property->writable ? "rw" : "ro");
+					}
 					break;
 				}
 				case ptp_event_canon_AvailListChanged: {
 					uint32_t code, type, count;
 					source = ptp_decode_uint32(source, &code);
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "AvailListChanged %04x (%s)", code, PRIVATE_DATA->property_code_label(code));
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x): %04x (%s)", ptp_event_canon_code_label (event), event, code, PRIVATE_DATA->property_code_label(code));
 					ptp_property *property = NULL;
 					for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 						if (PRIVATE_DATA->info_properties_supported[i] == code) {
@@ -1098,12 +1094,36 @@ static void ptp_canon_get_event(indigo_device *device) {
 								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unsupported type %04x", type);
 							}
 						}
+					} else {
+						property->count = -1;
 					}
 					*next_updated++ = property;
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "count = %04x", property->count);
+					break;
+				}
+				case ptp_event_canon_ObjectAddedEx:
+				case ptp_event_canon_ObjectAddedEx2: {
+					uint32_t handle = 0, length = 0;
+					char filename[PTP_MAX_CHARS];
+					source = ptp_decode_uint32(source, &handle);
+					source = ptp_decode_uint32(source + 0x18, (uint32_t *)&length);
+					if (event == ptp_event_canon_ObjectAddedEx2) {
+						source += 2;
+					}
+					strncpy(filename, (char *)source, PTP_MAX_CHARS);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): %d %d '%s'", ptp_event_canon_code_label(event), event, handle, length, filename);
+					void *buffer = NULL;
+					if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
+						indigo_process_dslr_image(device, buffer, (int)length, strchr(filename, '.'));
+						if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
+							ptp_transaction_1_0(device, ptp_operation_canon_DeleteObject, handle);
+					}
+					if (buffer)
+						free(buffer);
 					break;
 				}
 				default:
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "%04x +%d skipped", type, size);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x): +%d skipped", ptp_event_canon_code_label(event), event, size);
 			}
 			
 			record += size;
@@ -1207,7 +1227,7 @@ bool ptp_canon_initialise(indigo_device *device) {
 	if (!ptp_initialise(device))
 		return false;
 	void *buffer = NULL;
-	if (!ptp_transaction_0_0_i(device, ptp_operation_canon_GetDeviceInfoEx, &buffer)) {
+	if (!ptp_transaction_0_0_i(device, ptp_operation_canon_GetDeviceInfoEx, &buffer, NULL)) {
 		if (buffer)
 			free(buffer);
 		return false;
@@ -1234,33 +1254,71 @@ bool ptp_canon_initialise(indigo_device *device) {
 	ptp_transaction_1_0(device, ptp_operation_canon_SetEventMode, 1);
 	ptp_canon_get_event(device);
 	PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_canon_check_event);
+	ptp_canon_lock(device);
 	return true;
 }
 
-static bool set_property(indigo_device *device, uint16_t code, uint32_t value) {
-	for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
-		if (PRIVATE_DATA->info_properties_supported[i] == code) {
-			uint32_t buffer[3];
-			buffer[0] = sizeof(buffer);
-			buffer[1] = code;
-			buffer[2] = value;
-			return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer);
+static bool set_number_property(indigo_device *device, uint16_t code, uint64_t value) {
+	uint8_t buffer[1024], *target = buffer + 2 * sizeof(uint32_t);
+	if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
+		uint64_t i1 = (value >> 32) & 0xFFFFFFFF;
+		uint64_t i2 = value & 0xFFFFFFFF;
+		int count = i1 == 0 ? 1 : 2;
+		target = ptp_encode_uint32((uint32_t)count, target);
+		if (count == 2) {
+			target = ptp_encode_uint32((uint32_t)((i1 >> 24) & 0xFF), target);
+			target = ptp_encode_uint32((uint32_t)((i1 >> 16) & 0xFF), target);
+			target = ptp_encode_uint32((uint32_t)((i1 >> 8) & 0xFF), target);
+			target = ptp_encode_uint32((uint32_t)(i1 & 0xFF), target);
 		}
+		target = ptp_encode_uint32((uint32_t)((i2 >> 24) & 0xFF), target);
+		target = ptp_encode_uint32((uint32_t)((i2 >> 16) & 0xFF), target);
+		target = ptp_encode_uint32((uint32_t)((i2 >> 8) & 0xFF), target);
+		target = ptp_encode_uint32((uint32_t)(i2 & 0xFF), target);
+	} else if ((code & 0xF000) == 0x8000) {
+		for (int i = 0; CANON_PRIVATE_DATA->ex_func_group[i][0]; i++) {
+			uint32_t *group = CANON_PRIVATE_DATA->ex_func_group[i];
+			int offset = 4;
+			unsigned int item_count = group[offset++];
+			for (int j = 0; j < item_count; j++) {
+				unsigned int item = group[offset++];
+				unsigned int value_size = group[offset++];
+				if ((item | 0x8000) == code) {
+					group[offset++] = (uint32_t)value;
+					memcpy(target, group, group[0]);
+					target += group[0];
+					code = ptp_property_canon_CustomFuncEx;
+					break;
+				} else {
+					offset += value_size;
+				}
+			}
+			if (code == ptp_property_canon_CustomFuncEx)
+				break;
+		}
+	} else {
+		target = ptp_encode_uint32((uint32_t)value, target);
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No such property %04x (%s)", code, ptp_property_canon_code_name(code));
-	return false;
+	*((uint32_t *)buffer) = (uint32_t)(target - buffer);
+	*((uint32_t *)buffer + 1) = code;
+	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer);
 }
 
+static bool set_string_property(indigo_device *device, uint16_t code, char *value) {
+	uint8_t buffer[PTP_MAX_CHARS + 4], *target = buffer + 2 * sizeof(uint32_t);
+	strncpy((char *)target, value, PTP_MAX_CHARS);
+	target += strlen((char *)target) + 1;
+	*((uint32_t *)buffer) = (uint32_t)(target - buffer);
+	*((uint32_t *)buffer + 1) = code;
+	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer);
+}
+
+
 bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
-	uint8_t buffer[1024], *target = buffer + 2 * sizeof(uint32_t);
-	uint32_t code = property->code;
 	assert(property->property != NULL);
-	memset(buffer, 0, sizeof(buffer));
 	switch (property->property->type) {
 		case INDIGO_TEXT_VECTOR:
-			strncpy((char *)target, property->property->items[0].text.value, 255);
-			target += strlen((char *)target) + 1;
-			break;
+			return set_string_property(device, property->code, property->property->items[0].text.value);
 		case INDIGO_SWITCH_VECTOR:
 			for (int i = 0; i < property->property->count; i++) {
 				if (property->property->items[i].sw.value) {
@@ -1268,74 +1326,95 @@ bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 					break;
 				}
 			}
-			if (property->code == ptp_property_canon_ImageFormat || property->code == ptp_property_canon_ImageFormatCF || property->code == ptp_property_canon_ImageFormatSD || property->code == ptp_property_canon_ImageFormatExtHD) {
-				uint64_t l = property->value.sw.value;
-				uint64_t i1 = (l >> 32) & 0xFFFFFFFF;
-				uint64_t i2 = l & 0xFFFFFFFF;
-				int count = i1 == 0 ? 1 : 2;
-				target = ptp_encode_uint32((uint32_t)count, target);
-				if (count == 2) {
-					target = ptp_encode_uint32((uint32_t)((i1 >> 24) & 0xFF), target);
-					target = ptp_encode_uint32((uint32_t)((i1 >> 16) & 0xFF), target);
-					target = ptp_encode_uint32((uint32_t)((i1 >> 8) & 0xFF), target);
-					target = ptp_encode_uint32((uint32_t)(i1 & 0xFF), target);
-				}
-				target = ptp_encode_uint32((uint32_t)((i2 >> 24) & 0xFF), target);
-				target = ptp_encode_uint32((uint32_t)((i2 >> 16) & 0xFF), target);
-				target = ptp_encode_uint32((uint32_t)((i2 >> 8) & 0xFF), target);
-				target = ptp_encode_uint32((uint32_t)(i2 & 0xFF), target);
-			} else if ((property->code & 0xF000) == 0x8000) {
-				for (int i = 0; CANON_PRIVATE_DATA->ex_func_group[i][0]; i++) {
-					uint32_t *group = CANON_PRIVATE_DATA->ex_func_group[i];
-					int offset = 4;
-					unsigned int item_count = group[offset++];
-					for (int j = 0; j < item_count; j++) {
-						unsigned int item = group[offset++];
-						unsigned int value_size = group[offset++];
-						if ((item | 0x8000) == property->code) {
-							group[offset++] = (uint32_t)property->value.sw.value;
-							memcpy(target, group, group[0]);
-							target += group[0];
-							code = ptp_property_canon_CustomFuncEx;
-							break;
-						} else {
-							offset += value_size;
-						}
-					}
-					if (code == ptp_property_canon_CustomFuncEx)
-						break;
-				}
-			} else {
-				target = ptp_encode_uint32((uint32_t)property->value.number.value, target);
-			}
-			break;
+			return set_number_property(device, property->code, property->value.sw.value);
 		case INDIGO_NUMBER_VECTOR:
-			if (property->type && property->type <= ptp_uint32_type) {
-				target = ptp_encode_uint32((uint32_t)property->property->items->number.value, target);
-			}
-			break;
+			return set_number_property(device, property->code, (uint32_t)property->property->items->number.value);
 		default:
 			assert(false);
 	}
-	*((uint32_t *)buffer) = (uint32_t)(target - buffer);
-	*((uint32_t *)buffer + 1) = code;
-	if (ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer))
-		property->property->state = INDIGO_OK_STATE;
-	else
-		property->property->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, property->property, NULL);
-	return true;
+}
+
+bool ptp_canon_exposure(indigo_device *device) {
+	bool result = false;
+	if (ptp_operation_supported(device, ptp_operation_canon_RemoteReleaseOn)) {
+		int delay = 0;
+		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
+			if (ptp_property_supported(device, ptp_property_canon_MirrorUpSetting))
+				set_number_property(device, ptp_property_canon_MirrorUpSetting, 1);
+			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup))
+				set_number_property(device, ptp_property_canon_ExMirrorLockup, 1);
+			set_number_property(device, ptp_property_canon_DriveMode, 0x11); // 2s self timer
+			delay = 2;
+		} else {
+			if (ptp_property_supported(device, ptp_property_canon_MirrorUpSetting))
+				set_number_property(device, ptp_property_canon_MirrorUpSetting, 0);
+			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup))
+				set_number_property(device, ptp_property_canon_ExMirrorLockup, 0);
+			set_number_property(device, ptp_property_canon_DriveMode, 0x00); // single shot
+		}
+		result = ptp_transaction_2_0(device, ptp_operation_canon_RemoteReleaseOn, 3, 1);
+		if (result && CANON_PRIVATE_DATA->shutter != 0x0C && CANON_PRIVATE_DATA->mode != 4) {
+			result = ptp_transaction_1_0(device, ptp_operation_canon_RemoteReleaseOff, 3);
+		} else {
+			CCD_EXPOSURE_ITEM->number.value += delay;
+			while (CCD_EXPOSURE_ITEM->number.value > 1) {
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_usleep(ONE_SECOND_DELAY);
+				CCD_EXPOSURE_ITEM->number.value -= 1;
+			}
+			if (CCD_EXPOSURE_ITEM->number.value > 0) {
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
+			}
+			CCD_EXPOSURE_ITEM->number.value = 0;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			result = ptp_transaction_1_0(device, ptp_operation_canon_RemoteReleaseOff, 3);
+		}
+	} else {
+		if (CANON_PRIVATE_DATA->shutter != 0x0C && CANON_PRIVATE_DATA->mode != 4) {
+			result = ptp_transaction_0_0(device, ptp_operation_canon_RemoteRelease);
+		} else {
+			result = ptp_transaction_0_0(device, ptp_operation_canon_BulbStart);
+			if (result) {
+				while (CCD_EXPOSURE_ITEM->number.value > 1) {
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+					indigo_usleep(ONE_SECOND_DELAY);
+					CCD_EXPOSURE_ITEM->number.value -= 1;
+				}
+				if (CCD_EXPOSURE_ITEM->number.value > 0) {
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+					indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
+				}
+				CCD_EXPOSURE_ITEM->number.value = 0;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				result = ptp_transaction_0_0(device, ptp_operation_canon_BulbEnd);
+			}
+		}
+	}
+	if (result) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		while (true) {
+			ptp_canon_get_event(device);
+			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
+				break;
+			indigo_usleep(100000);
+		}
+	}
+	return result;
 }
 
 bool ptp_canon_liveview(indigo_device *device) {
-	if (set_property(device, ptp_property_canon_EVFMode, 1) && set_property(device, ptp_property_canon_EVFOutputDevice, 2)) {
+	if (set_number_property(device, ptp_property_canon_EVFMode, 1) && set_number_property(device, ptp_property_canon_EVFOutputDevice, 2)) {
 		ptp_canon_get_event(device);
 		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value-- != 0) {
 			if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
 				CCD_STREAMING_COUNT_ITEM->number.value = -1;
 			indigo_usleep(100000);
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer)) {
+			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer, NULL)) {
 				uint8_t *source = buffer;
 				uint32_t length, type;
 				while (!PRIVATE_DATA->abort_capture) {
@@ -1353,9 +1432,31 @@ bool ptp_canon_liveview(indigo_device *device) {
 			}
 			if (buffer)
 				free(buffer);
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
-		set_property(device, ptp_property_canon_EVFOutputDevice, 1);
-		set_property(device, ptp_property_canon_EVFMode, 0);
+		set_number_property(device, ptp_property_canon_EVFOutputDevice, 0);
+		//set_property(device, ptp_property_canon_EVFMode, 0);
 	}
 	return true;
+}
+
+bool ptp_canon_lock(indigo_device *device) {
+	if (ptp_operation_supported(device, ptp_operation_canon_SetUILock) && ptp_operation_supported(device, ptp_operation_canon_ResetUILock)) {
+		if (DSLR_LOCK_ITEM->sw.value)
+			return ptp_transaction_0_0(device, ptp_operation_canon_SetUILock);
+		return ptp_transaction_0_0(device, ptp_operation_canon_ResetUILock);
+	}
+	return false;
+}
+
+bool ptp_canon_af(indigo_device *device) {
+	if (ptp_operation_supported(device, ptp_operation_canon_DoAf) && ptp_operation_supported(device, ptp_operation_canon_AfCancel)) {
+		if (ptp_transaction_0_0(device, ptp_operation_canon_DoAf)) {
+			ptp_canon_get_event(device);
+			ptp_transaction_0_0(device, ptp_operation_canon_AfCancel);
+			ptp_canon_get_event(device);
+			return true;
+		}
+	}
+	return false;
 }
