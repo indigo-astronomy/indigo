@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -65,7 +65,6 @@ typedef struct {
 } ioptron_private_data;
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
-	*response = 0;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
@@ -94,6 +93,7 @@ static bool ieq_command(indigo_device *device, char *command, char *response, in
 		// read response
 	if (response != NULL) {
 		int index = 0;
+		*response = 0;
 		while (index < max) {
 			tv.tv_usec = 500000;
 			tv.tv_sec = 0;
