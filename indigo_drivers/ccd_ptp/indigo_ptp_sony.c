@@ -117,3 +117,7 @@ bool ptp_sony_lock(indigo_device *device) {
 bool ptp_sony_af(indigo_device *device) {
 	assert(0);
 }
+
+bool ptp_sony_zoom(indigo_device *device) {
+	assert(0);
+}

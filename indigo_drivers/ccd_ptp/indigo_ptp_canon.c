@@ -1417,7 +1417,7 @@ bool ptp_canon_liveview(indigo_device *device) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer, NULL)) {
 				uint8_t *source = buffer;
 				uint32_t length, type;
-				while (!PRIVATE_DATA->abort_capture) {
+				while (true) {
 					source = ptp_decode_uint32(source, &length);
 					source = ptp_decode_uint32(source, &type);
 					if (type == 0) {
@@ -1457,6 +1457,14 @@ bool ptp_canon_af(indigo_device *device) {
 			ptp_canon_get_event(device);
 			return true;
 		}
+	}
+	return false;
+}
+
+bool ptp_canon_zoom(indigo_device *device) {
+	if (ptp_transaction_1_0(device, ptp_operation_canon_Zoom, DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value ? 5 : 1)) {
+		ptp_canon_get_event(device);
+		return true;
 	}
 	return false;
 }
