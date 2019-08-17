@@ -112,7 +112,7 @@ extern "C" {
 /** CCD_PREVIEW.DISABLED property item pointer.
  */
 #define CCD_PREVIEW_DISABLED_ITEM        (CCD_PREVIEW_PROPERTY->items+1)
-	
+
 /** CCD_LOCAL_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_LOCAL_MODE_PROPERTY           (CCD_CONTEXT->ccd_local_mode_property)
@@ -200,15 +200,15 @@ extern "C" {
 /** CCD_READ_MODE property pointer, property is optional.
  */
 #define CCD_READ_MODE_PROPERTY						(CCD_CONTEXT->ccd_read_mode_property)
-	
+
 /** CCD_READ_MODE.HIGH_SPEED property item pointer.
  */
 #define CCD_READ_MODE_HIGH_SPEED_ITEM			(CCD_READ_MODE_PROPERTY->items+0)
-	
+
 /** CCD_READ_MODE.LOW_NOISE property item pointer.
  */
 #define CCD_READ_MODE_LOW_NOISE_ITEM			(CCD_READ_MODE_PROPERTY->items+1)
-	
+
 /** CCD_GAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_GAIN_PROPERTY                 (CCD_CONTEXT->ccd_gain_property)
@@ -264,7 +264,7 @@ extern "C" {
 /** CCD_IMAGE_FORMAT.XISF property item pointer.
  */
 #define CCD_IMAGE_FORMAT_XISF_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
-	
+
 /** CCD_IMAGE_FORMAT.RAW property item pointer.
  */
 #define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+2)
@@ -292,7 +292,7 @@ extern "C" {
 /** CCD_PREVIEW_IMAGE property pointer, property is mandatory, read-only property.
  */
 #define CCD_PREVIEW_IMAGE_PROPERTY        (CCD_CONTEXT->ccd_preview_image_property)
-	
+
 /** CCD_PREVIEW_IMAGE.IMAGE property item pointer.
  */
 #define CCD_PREVIEW_IMAGE_ITEM            (CCD_PREVIEW_IMAGE_PROPERTY->items+0)
@@ -344,19 +344,19 @@ extern "C" {
 /** CCD_JPEG_SETTINGS.BLACK property item pointer.
  */
 #define CCD_JPEG_SETTINGS_BLACK_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+1)
-	
+
 /** CCD_JPEG_SETTINGS.WHITE property item pointer.
  */
 #define CCD_JPEG_SETTINGS_WHITE_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+2)
-	
+
 /** CCD_JPEG_SETTINGS.BLACK_TRESHOLD property item pointer.
  */
 #define CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+3)
-	
+
 /** CCD_JPEG_SETTINGS.WHITE_TRESHOLD property item pointer.
  */
 #define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+4)
-	
+
 /** CCD_RBI_FLUSH property pointer.
  */
 #define CCD_RBI_FLUSH_PROPERTY          (CCD_CONTEXT->ccd_rbi_flush_property)
@@ -367,7 +367,7 @@ extern "C" {
 /** CCD_RBI_FLUSH.COUNT property item pointer.
  */
 #define CCD_RBI_FLUSH_COUNT_ITEM        (CCD_RBI_FLUSH_PROPERTY->items + 1)
-	
+
 /** CCD_RBI_FLUSH_ENABLE property pointer.
  */
 #define CCD_RBI_FLUSH_ENABLE_PROPERTY   (CCD_CONTEXT->ccd_rbi_flush_enable_property)
@@ -379,21 +379,7 @@ extern "C" {
 /** CCD_RBI_FLUSH_ENABLE.DISABLE property item pointer.
  */
 #define CCD_RBI_FLUSH_DISABLED_ITEM     (CCD_RBI_FLUSH_ENABLE_PROPERTY->items + 1)
-	
-/** RAW header.
- */
 
-typedef struct {
-	uint32_t signature; // 8bit mono = RAW1 = 0x31574152, 16bit mono = RAW2 = 0x32574152, 24bit RGB = RAW3 = 0x33574152
-	uint32_t width;
-	uint32_t height;
-} indigo_raw_header;
-
-/**
- RAW image type
- */
-
-typedef enum { INDIGO_RAW_MONO8 = 0x31574152, INDIGO_RAW_MONO16 = 0x32574152, INDIGO_RAW_RGB24 = 0x33574152, INDIGO_RAW_RGB48 = 0x36574152 } indigo_raw_type;
 
 /** CCD device context structure.
  */
