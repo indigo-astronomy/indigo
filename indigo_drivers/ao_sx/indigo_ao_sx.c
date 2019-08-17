@@ -23,7 +23,7 @@
  \file indigo_ao_sx.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_ao_sx"
 
 #include <stdlib.h>
@@ -80,11 +80,11 @@ static bool sx_flush(indigo_device *device) {
 static bool sx_command(indigo_device *device, char *command, char *response, int max) {
 	char c;
 	struct timeval tv;
-	*response = 0;
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (response != NULL) {
 		int index = 0;
 		int timeout = *command == 'K' || *command == 'R' ? 15 : 1;
+		*response = 0;
 		while (index < max) {
 			fd_set readout;
 			FD_ZERO(&readout);
