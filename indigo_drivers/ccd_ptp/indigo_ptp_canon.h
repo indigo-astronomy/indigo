@@ -354,5 +354,6 @@ extern bool ptp_canon_exposure(indigo_device *device);
 extern bool ptp_canon_liveview(indigo_device *device);
 extern bool ptp_canon_lock(indigo_device *device);
 extern bool ptp_canon_af(indigo_device *device);
+extern bool ptp_canon_zoom(indigo_device *device);
 
 #endif /* indigo_ptp_canon_h */

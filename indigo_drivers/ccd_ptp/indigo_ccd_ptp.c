@@ -187,6 +187,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, "DSLR", "Use mirror lockup", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_LOCK_ITEM, DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME, "Lock", false);
 		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_UNLOCK_ITEM, DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME, "Unlock", true);
+		// -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
+		DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ZOOM_PREVIEW_PROPERTY_NAME, "DSLR", "Zoom preview", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		indigo_init_switch_item(DSLR_ZOOM_PREVIEW_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(DSLR_ZOOM_PREVIEW_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------------- DSLR_LOCK
 		DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		indigo_init_switch_item(DSLR_LOCK_ITEM, DSLR_LOCK_ITEM_NAME, "Lock", false);
@@ -212,6 +216,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property))
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
+			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 		if (indigo_property_match(DSLR_LOCK_PROPERTY, property))
 			indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
 		if (indigo_property_match(DSLR_AF_PROPERTY, property))
@@ -252,6 +258,7 @@ static void handle_connection(indigo_device *device) {
 	if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+		indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 		indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
 		indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
@@ -288,6 +295,18 @@ static void handle_af(indigo_device *device) {
 	DSLR_AF_ITEM->sw.value = false;
 	indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+}
+
+static void handle_zoom(indigo_device *device) {
+	//pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+	DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+	if (PRIVATE_DATA->zoom(device))
+		DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+	//pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
 
 static void handle_set_property(indigo_device *device) {
@@ -347,6 +366,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			ptp_close(device);
 			indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 			indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+			indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
 			indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
 			for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
@@ -368,6 +388,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
 		DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
+		indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
+		indigo_set_timer(device, 0, handle_zoom);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DSLR_LOCK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_LOCK
@@ -417,6 +442,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
+	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_LOCK_PROPERTY);
 	indigo_release_property(DSLR_AF_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -460,6 +486,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->liveview = ptp_canon_liveview;
 						private_data->lock = ptp_canon_lock;
 						private_data->af = ptp_canon_af;
+						private_data->zoom = ptp_canon_zoom;
 					} else if (descriptor.idVendor == NIKON_VID) {
 						private_data->operation_code_label = ptp_operation_nikon_code_label;
 						private_data->response_code_label = ptp_response_nikon_code_label;
@@ -473,6 +500,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->liveview = ptp_nikon_liveview;
 						private_data->lock = ptp_nikon_lock;
 						private_data->af = ptp_nikon_af;
+						private_data->zoom = ptp_nikon_zoom;
 					} else if (descriptor.idVendor == SONY_VID) {
 						private_data->operation_code_label = ptp_operation_sony_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -486,6 +514,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->liveview = ptp_sony_liveview;
 						private_data->lock = ptp_sony_lock;
 						private_data->af = ptp_sony_af;
+						private_data->zoom = ptp_sony_zoom;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -500,6 +529,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->liveview = ptp_liveview;
 						private_data->lock = ptp_lock;
 						private_data->af = ptp_af;
+						private_data->zoom = ptp_zoom;
 					}
 					libusb_ref_device(dev);
 					indigo_device *device = malloc(sizeof(indigo_device));

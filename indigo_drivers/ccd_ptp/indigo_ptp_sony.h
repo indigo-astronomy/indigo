@@ -79,5 +79,6 @@ extern bool ptp_sony_exposure(indigo_device *device);
 extern bool ptp_sony_liveview(indigo_device *device);
 extern bool ptp_sony_lock(indigo_device *device);
 extern bool ptp_sony_af(indigo_device *device);
+extern bool ptp_sony_zoom(indigo_device *device);
 
 #endif /* indigo_ptp_sony_h */

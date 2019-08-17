@@ -321,6 +321,9 @@ typedef struct {
 #define DSLR_MIRROR_LOCKUP_PROPERTY     (PRIVATE_DATA->dslr_mirror_lockup_property)
 #define DSLR_MIRROR_LOCKUP_LOCK_ITEM    (PRIVATE_DATA->dslr_mirror_lockup_property->items + 0)
 #define DSLR_MIRROR_LOCKUP_UNLOCK_ITEM  (PRIVATE_DATA->dslr_mirror_lockup_property->items + 1)
+#define DSLR_ZOOM_PREVIEW_PROPERTY      (PRIVATE_DATA->dslr_zoom_preview_property)
+#define DSLR_ZOOM_PREVIEW_ON_ITEM       (PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
+#define DSLR_ZOOM_PREVIEW_OFF_ITEM      (PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
 
 #define DSLR_LOCK_PROPERTY              (PRIVATE_DATA->dslr_lock_property)
 #define DSLR_LOCK_ITEM                  (PRIVATE_DATA->dslr_lock_property->items + 0)
@@ -335,6 +338,7 @@ typedef struct {
 	uint8_t ep_in, ep_out, ep_int;
 	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_mirror_lockup_property;
+	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_lock_property;
 	indigo_property *dslr_af_property;
 	ptp_camera_model model;
@@ -369,6 +373,7 @@ typedef struct {
 	bool (* liveview)(indigo_device *device);
 	bool (* lock)(indigo_device *device);
 	bool (* af)(indigo_device *device);
+	bool (* zoom)(indigo_device *device);
 	indigo_timer *event_checker;
 	pthread_mutex_t message_mutex;
 	int message_property_index;
@@ -423,6 +428,7 @@ extern bool ptp_exposure(indigo_device *device);
 extern bool ptp_liveview(indigo_device *device);
 extern bool ptp_lock(indigo_device *device);
 extern bool ptp_af(indigo_device *device);
+extern bool ptp_zoom(indigo_device *device);
 
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)

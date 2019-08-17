@@ -418,3 +418,7 @@ bool ptp_nikon_lock(indigo_device *device) {
 bool ptp_nikon_af(indigo_device *device) {
 	assert(0);
 }
+
+bool ptp_nikon_zoom(indigo_device *device) {
+	assert(0);
+}

@@ -1091,3 +1091,7 @@ bool ptp_lock(indigo_device *device) {
 bool ptp_af(indigo_device *device) {
 	assert(0);
 }
+
+bool ptp_zoom(indigo_device *device) {
+	assert(0);
+}
