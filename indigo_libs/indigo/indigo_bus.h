@@ -156,7 +156,7 @@ typedef enum {
 } indigo_enable_blob_mode;
 
 #define INDIGO_ENABLE_BLOB INDIGO_ENABLE_BLOB_URL
-	
+
 /** Enable BLOB mode record
  */
 
@@ -166,6 +166,26 @@ typedef struct indigo_enable_blob_mode_record {
 	indigo_enable_blob_mode mode;					///< mode
 	struct indigo_enable_blob_mode_record *next; ///< next record
 } indigo_enable_blob_mode_record;
+
+/** RAW image header.
+ */
+
+typedef struct {
+	uint32_t signature; // 8bit mono = RAW1 = 0x31574152, 16bit mono = RAW2 = 0x32574152, 24bit RGB = RAW3 = 0x33574152
+	uint32_t width;
+	uint32_t height;
+} indigo_raw_header;
+
+/** RAW image type
+ */
+
+typedef enum {
+	INDIGO_RAW_MONO8 = 0x31574152,
+	INDIGO_RAW_MONO16 = 0x32574152,
+	INDIGO_RAW_RGB24 = 0x33574152,
+	INDIGO_RAW_RGB48 = 0x36574152
+} indigo_raw_type;
+
 
 typedef enum {
 	INDIGO_LOG_ERROR,
@@ -560,17 +580,17 @@ extern char* indigo_dtos(double value, char *format);
 /** Sleeps for specified number of microseconds.
  */
 extern void indigo_usleep(unsigned int delay);
-	
+
 #define ONE_SECOND_DELAY	1000000
-	
+
 /** Locale independent atod()
  */
 extern double indigo_atod(const char *str);
-	
+
 /** Locale independent dtoa()
  */
 extern char *indigo_dtoa(double value, char *str);
-	
+
 #define indigo_fix_locale(s) { char *fc = strchr(s, ','); if (fc) *fc = '.'; }
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
