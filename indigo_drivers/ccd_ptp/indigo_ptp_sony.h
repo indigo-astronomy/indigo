@@ -75,6 +75,9 @@ extern char *ptp_property_sony_value_code_label(uint16_t property, uint64_t code
 extern bool ptp_sony_initialise(indigo_device *device);
 extern bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params);
 extern bool ptp_sony_set_property(indigo_device *device, ptp_property *property);
+extern bool ptp_sony_exposure(indigo_device *device);
 extern bool ptp_sony_liveview(indigo_device *device);
+extern bool ptp_sony_lock(indigo_device *device);
+extern bool ptp_sony_af(indigo_device *device);
 
 #endif /* indigo_ptp_sony_h */

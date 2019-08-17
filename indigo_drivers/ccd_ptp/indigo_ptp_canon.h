@@ -336,6 +336,7 @@ typedef enum {
 
 typedef struct {
 	int mode;
+	int shutter;
 	uint32_t ex_func_group[16][1024];
 } canon_private_data;
 
@@ -349,6 +350,9 @@ extern char *ptp_property_canon_value_code_label(uint16_t property, uint64_t cod
 extern bool ptp_canon_initialise(indigo_device *device);
 extern bool ptp_canon_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params);
 extern bool ptp_canon_set_property(indigo_device *device, ptp_property *property);
+extern bool ptp_canon_exposure(indigo_device *device);
 extern bool ptp_canon_liveview(indigo_device *device);
+extern bool ptp_canon_lock(indigo_device *device);
+extern bool ptp_canon_af(indigo_device *device);
 
 #endif /* indigo_ptp_canon_h */

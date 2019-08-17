@@ -684,33 +684,47 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 	return source;
 }
 
+bool ptp_property_supported(indigo_device *device, uint16_t code) {
+	for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
+		if (PRIVATE_DATA->info_properties_supported[i] == code)
+			return true;
+	return false;
+}
+
+bool ptp_operation_supported(indigo_device *device, uint16_t code) {
+	for (int i = 0; PRIVATE_DATA->info_operations_supported[i]; i++)
+		if (PRIVATE_DATA->info_operations_supported[i] == code)
+			return true;
+	return false;
+}
+
 bool ptp_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int rc = 0;
 	struct libusb_device_descriptor	device_descriptor;
 	libusb_device *dev = PRIVATE_DATA->dev;
 	rc = libusb_get_device_descriptor(dev, &device_descriptor);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_get_device_descriptor() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	rc = libusb_open(dev, &PRIVATE_DATA->handle);
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_open() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_open() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc >= 0) {
 		if (libusb_kernel_driver_active(handle, 0) == 1) {
 			rc = libusb_detach_kernel_driver(handle, 0);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_detach_kernel_driver() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_detach_kernel_driver() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		}
 	}
 	struct libusb_config_descriptor *config_descriptor = NULL;
 	const struct libusb_interface *interface = NULL;
 	for (int config = 0; config < device_descriptor.bNumConfigurations; config++) {
 		rc = libusb_get_config_descriptor(dev, config, &config_descriptor);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_config_descriptor(%d) -> %s", config, rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_get_config_descriptor(%d) -> %s", config, rc < 0 ? libusb_error_name(rc) : "OK");
 		if (rc < 0)
 			break;
 		for (int iface = 0; iface < config_descriptor->bNumInterfaces; iface++) {
 			interface = config_descriptor->interface + iface;
 			if (interface->altsetting->bInterfaceClass == 0x06 && interface->altsetting->bInterfaceSubClass == 0x01 && interface->altsetting->bInterfaceProtocol == 0x01) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PTP CONFIG = %d IFACE = %d", config_descriptor->bConfigurationValue, interface->altsetting->bInterfaceNumber);
+				INDIGO_DRIVER_TRACE(DRIVER_NAME, "PTP CONFIG = %d IFACE = %d", config_descriptor->bConfigurationValue, interface->altsetting->bInterfaceNumber);
 				break;
 			}
 			interface = NULL;
@@ -723,15 +737,15 @@ bool ptp_open(indigo_device *device) {
 	if (rc >= 0 && config_descriptor) {
 		int configuration_value = config_descriptor->bConfigurationValue;
 		rc = libusb_set_configuration(handle, configuration_value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_set_configuration(%d) -> %s", configuration_value, rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_set_configuration(%d) -> %s", configuration_value, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	if (rc >= 0 && interface) {
 		int interface_number = interface->altsetting->bInterfaceNumber;
 		rc = libusb_claim_interface(handle, interface_number);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface_number, rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface_number, rc < 0 ? libusb_error_name(rc) : "OK");
 		int alt_settings = config_descriptor->interface->altsetting->bAlternateSetting;
 		rc = libusb_set_interface_alt_setting(handle, interface_number, alt_settings);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_set_interface_alt_setting(%d, %d) -> %s", interface_number, alt_settings, rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_set_interface_alt_setting(%d, %d) -> %s", interface_number, alt_settings, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	if (rc >= 0 && interface) {
 		const struct libusb_endpoint_descriptor *ep = interface->altsetting->endpoint;
@@ -751,7 +765,7 @@ bool ptp_open(indigo_device *device) {
 				}
 			}
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PTP EP OUT = %02x IN = %02x INT = %02x", PRIVATE_DATA->ep_out, PRIVATE_DATA->ep_in, PRIVATE_DATA->ep_int);
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "PTP EP OUT = %02x IN = %02x INT = %02x", PRIVATE_DATA->ep_out, PRIVATE_DATA->ep_in, PRIVATE_DATA->ep_int);
 	}
 	if (config_descriptor)
 		libusb_free_config_descriptor(config_descriptor);
@@ -759,7 +773,7 @@ bool ptp_open(indigo_device *device) {
 	return true;
 }
 
-bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in) {
+bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_size) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ptp_container request, response;
 	int length = 0;
@@ -775,10 +789,10 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	request.payload.params[4] = out_5;
 	PTP_DUMP_CONTAINER(&request);
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc < 0) {
 		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
@@ -802,7 +816,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		size -= length - PTP_CONTAINER_HDR_SIZE;
 		while (rc >=0 && size > 0) {
 			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, size, &length, PTP_TIMEOUT);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
+			INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 			size -= length;
 		}
 		if (rc < 0) {
@@ -815,7 +829,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		memset(&response, 0, sizeof(response));
 		length = 0;
 		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PTP_TIMEOUT);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 		if (rc < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -833,12 +847,15 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		assert(buffer != NULL);
 		memcpy(buffer, &response.payload, length);
 		int offset = length;
+		if (data_size)
+			*data_size = total;
 		total -= length;
 		while (total > 0) {
 			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total, &length, PTP_TIMEOUT);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
+			INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 			if (rc < 0) {
 				free(buffer);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				return false;
 			}
 			offset += length;
@@ -850,7 +867,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 			memset(&response, 0, sizeof(response));
 			length = 0;
 			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PTP_TIMEOUT);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
+			INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 			if (rc < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -879,7 +896,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 void ptp_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	libusb_close(PRIVATE_DATA->handle);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close()");
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_close()");
 	PRIVATE_DATA->handle = NULL;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
@@ -993,18 +1010,17 @@ static void ptp_check_event(indigo_device *device) {
 	int length = 0;
 	memset(&event, 0, sizeof(event));
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, PTP_TIMEOUT);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 	if (rc >= 0) {
 		PTP_DUMP_CONTAINER(&event);
 		ptp_handle_event(device, event.code, event.payload.params);
-			// TBD
 	}
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
 }
 
 bool ptp_initialise(indigo_device *device) {
 	void *buffer = NULL;
-	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer)) {
+	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer, NULL)) {
 		ptp_decode_device_info(buffer, device);
 		PTP_DUMP_DEVICE_INFO();
 		if (buffer)
@@ -1012,7 +1028,7 @@ bool ptp_initialise(indigo_device *device) {
 		buffer = NULL;
 		uint16_t *properties = PRIVATE_DATA->info_properties_supported;
 		for (int i = 0; properties[i]; i++) {
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer)) {
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, NULL)) {
 				ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
 				if (buffer)
 					free(buffer);
@@ -1033,7 +1049,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 	switch (code) {
 		case ptp_event_ObjectAdded: {
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer)) {
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL)) {
 				uint32_t size;
 				char filename[PTP_MAX_CHARS];
 				uint8_t *source = buffer;
@@ -1041,7 +1057,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				source = ptp_decode_string(source + 40 , filename);
 				free(buffer);
 				buffer = NULL;
-				if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer)) {
+				if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
 					indigo_process_dslr_image(device, buffer, size, strchr(filename, '.'));
 				}
 				if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
@@ -1060,6 +1076,18 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 	assert(0);
 }
 
+bool ptp_exposure(indigo_device *device) {
+	assert(0);
+}
+
 bool ptp_liveview(indigo_device *device) {
+	assert(0);
+}
+
+bool ptp_lock(indigo_device *device) {
+	assert(0);
+}
+
+bool ptp_af(indigo_device *device) {
 	assert(0);
 }
