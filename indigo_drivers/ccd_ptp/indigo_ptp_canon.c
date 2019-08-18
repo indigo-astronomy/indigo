@@ -1070,7 +1070,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 					} else {
 						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
 					}
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): %08x %u '%s'", ptp_event_canon_code_label(event), event, handle, length, filename);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): handle = %08x, size = %u, name = '%s'", ptp_event_canon_code_label(event), event, handle, length, filename);
 					void *buffer = NULL;
 					if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
 						indigo_process_dslr_image(device, buffer, (int)length, strchr(filename, '.'));
@@ -1271,7 +1271,6 @@ static bool set_string_property(indigo_device *device, uint16_t code, char *valu
 	*((uint32_t *)buffer + 1) = code;
 	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer);
 }
-
 
 bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 	assert(property->property != NULL);
