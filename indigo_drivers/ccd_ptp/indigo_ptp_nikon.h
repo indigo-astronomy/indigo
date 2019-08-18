@@ -375,7 +375,7 @@ extern bool ptp_nikon_set_property(indigo_device *device, ptp_property *property
 extern bool ptp_nikon_exposure(indigo_device *device);
 extern bool ptp_nikon_liveview(indigo_device *device);
 extern bool ptp_nikon_lock(indigo_device *device);
-extern bool ptp_nikon_af(indigo_device *device);
 extern bool ptp_nikon_zoom(indigo_device *device);
+extern bool ptp_nikon_focus(indigo_device *device, int steps);
 
 #endif /* indigo_ptp_nikon_h */

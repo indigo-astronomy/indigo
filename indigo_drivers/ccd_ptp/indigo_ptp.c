@@ -1005,7 +1005,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 	return true;
 }
 
-static void ptp_check_event(indigo_device *device) {
+bool ptp_get_event(indigo_device *device) {
 	ptp_container event;
 	int length = 0;
 	memset(&event, 0, sizeof(event));
@@ -1015,6 +1015,11 @@ static void ptp_check_event(indigo_device *device) {
 		PTP_DUMP_CONTAINER(&event);
 		ptp_handle_event(device, event.code, event.payload.params);
 	}
+	return true;
+}
+
+static void ptp_check_event(indigo_device *device) {
+	ptp_get_event(device);
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
 }
 
@@ -1077,21 +1082,5 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_exposure(indigo_device *device) {
-	assert(0);
-}
-
-bool ptp_liveview(indigo_device *device) {
-	assert(0);
-}
-
-bool ptp_lock(indigo_device *device) {
-	assert(0);
-}
-
-bool ptp_af(indigo_device *device) {
-	assert(0);
-}
-
-bool ptp_zoom(indigo_device *device) {
 	assert(0);
 }
