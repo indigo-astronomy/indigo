@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <float.h>
+#include <math.h>
 #include <libusb-1.0/libusb.h>
 
 #include <indigo/indigo_ccd_driver.h>
@@ -181,25 +182,25 @@ char *ptp_property_code_name(uint16_t code) {
 char *ptp_property_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_property_Undefined: return "Undefined";
-		case ptp_property_BatteryLevel: return "BatteryLevel";
+		case ptp_property_BatteryLevel: return "Battery level";
 		case ptp_property_FunctionalMode: return "FunctionalMode";
-		case ptp_property_ImageSize: return "ImageSize";
-		case ptp_property_CompressionSetting: return "CompressionSetting";
-		case ptp_property_WhiteBalance: return "WhiteBalance";
+		case ptp_property_ImageSize: return "Image size";
+		case ptp_property_CompressionSetting: return "Compression";
+		case ptp_property_WhiteBalance: return "White balance";
 		case ptp_property_RGBGain: return "RGBGain";
-		case ptp_property_FNumber: return "FNumber";
-		case ptp_property_FocalLength: return "FocalLength";
+		case ptp_property_FNumber: return "Aperture";
+		case ptp_property_FocalLength: return "Focal length";
 		case ptp_property_FocusDistance: return "FocusDistance";
 		case ptp_property_FocusMode: return "FocusMode";
-		case ptp_property_ExposureMeteringMode: return "ExposureMeteringMode";
-		case ptp_property_FlashMode: return "FlashMode";
-		case ptp_property_ExposureTime: return "ExposureTime";
-		case ptp_property_ExposureProgramMode: return "ExposureProgramMode";
-		case ptp_property_ExposureIndex: return "ExposureIndex";
-		case ptp_property_ExposureBiasCompensation: return "ExposureBiasCompensation";
+		case ptp_property_ExposureMeteringMode: return "Metering mode";
+		case ptp_property_FlashMode: return "Flash mode";
+		case ptp_property_ExposureTime: return "Shutter";
+		case ptp_property_ExposureProgramMode: return "Program mode";
+		case ptp_property_ExposureIndex: return "ISO";
+		case ptp_property_ExposureBiasCompensation: return "Exposure compensation";
 		case ptp_property_DateTime: return "DateTime";
 		case ptp_property_CaptureDelay: return "CaptureDelay";
-		case ptp_property_StillCaptureMode: return "StillCaptureMode";
+		case ptp_property_StillCaptureMode: return "Capture mode";
 		case ptp_property_Contrast: return "Contrast";
 		case ptp_property_Sharpness: return "Sharpness";
 		case ptp_property_DigitalZoom: return "DigitalZoom";
@@ -241,15 +242,54 @@ char *ptp_property_code_label(uint16_t code) {
 	return label;
 }
 
-char *ptp_property_value_code_label(uint16_t property, uint64_t code) {
+char *ptp_property_value_code_label(indigo_device *device, uint16_t property, uint64_t code) {
 	static char label[PTP_MAX_CHARS];
 	switch (property) {
 		case ptp_property_ExposureProgramMode: {
 			switch (code) { case 1: return "Manual"; case 2: return "Program"; case 3: return "Aperture priority"; case 4: return "Shutter priority"; }
 			break;
 		}
+		case ptp_property_WhiteBalance: {
+			switch (code) { case 1: return "Manual"; case 2: return "Auto"; case 3: return "One-push Auto"; case 4: return "Daylight"; case 5: return "Fluorescent"; case 6: return "Incandescent"; case 7: return "Flash"; }
+		}
 		case ptp_property_FNumber: {
 			sprintf(label, "f/%g", code / 100.0);
+			return label;
+		}
+		case ptp_property_ExposureTime: {
+			if (code == 0xffffffff)
+				return "Bulb";
+			if (code == 0xfffffffd)
+				return "Time";
+			if (code == 1)
+				return "1/8000s";
+			if (code == 3)
+				return "1/3200s";
+			if (code == 6)
+				return "1/1600s";
+			if (code == 12)
+				return "1/800s";
+			if (code == 15)
+				return "1/640s";
+			if (code == 80)
+				return "1/125s";
+			if (code < 100) {
+				sprintf(label, "1/%gs", round(1000.0 / code) * 10);
+				return label;
+			}
+			if (code < 10000) {
+				sprintf(label, "1/%gs", round(10000.0 / code));
+				return label;
+			}
+			sprintf(label, "%gs", code / 10000.0);
+			return label;
+		}
+		case ptp_property_ExposureIndex: {
+			sprintf(label, "%lld", code);
+			return label;
+		}
+		case ptp_property_ExposureBiasCompensation: {
+			sprintf(label, "%.1f", round((int)code / 100.0) / 10.0);
 			return label;
 		}
 	}
@@ -687,6 +727,10 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 						target->value.sw.values[i] = value;
 						break;
 					}
+					case ptp_str_type: {
+						source = ptp_decode_string(source, target->value.text.value);
+						break;
+					}
 					default:
 						assert(false);
 				}
@@ -769,13 +813,16 @@ bool ptp_open(indigo_device *device) {
 				int address = ep[i].bEndpointAddress;
 				if ((address & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN) {
 					PRIVATE_DATA->ep_in = address;
+					libusb_clear_halt(handle, address);
 				} else if ((address & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT) {
 					PRIVATE_DATA->ep_out = address;
+					libusb_clear_halt(handle, address);
 				}
 			} else if (ep[i].bmAttributes == LIBUSB_TRANSFER_TYPE_INTERRUPT) {
 				int address = ep[i].bEndpointAddress;
 				if ((address & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN) {
 					PRIVATE_DATA->ep_int = address;
+					libusb_clear_halt(handle, address);
 				}
 			}
 		}
@@ -950,7 +997,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				char str[INDIGO_VALUE_SIZE];
 				for (int i = 0; i < property->count; i++) {
 					sprintf(str, "%llx", property->value.sw.values[i]);
-					indigo_init_switch_item(property->property->items + i, str, PRIVATE_DATA->property_value_code_label(property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
+					indigo_init_switch_item(property->property->items + i, str, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
 				}
 			}
 		}
@@ -986,7 +1033,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 					sprintf(str, "%llx", property->value.sw.values[i]);
 					if (strncmp(property->property->items[i].name, str, INDIGO_NAME_SIZE)) {
 						strncpy(property->property->items[i].name, str, INDIGO_NAME_SIZE);
-						strncpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(property->code, property->value.sw.values[i]), INDIGO_VALUE_SIZE);
+						strncpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), INDIGO_VALUE_SIZE);
 						define = true;
 					}
 					if (property->value.sw.value == property->value.sw.values[i] && !property->property->items[i].sw.value)

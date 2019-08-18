@@ -362,12 +362,16 @@ typedef enum {
 	ptp_property_nikon_MovieNrHighISO = 0xD236
 } ptp_property_nikon_code;
 
+typedef struct {
+	int steps;
+} nikon_private_data;
+
 extern char *ptp_operation_nikon_code_label(uint16_t code);
 extern char *ptp_response_nikon_code_label(uint16_t code);
 extern char *ptp_event_nikon_code_label(uint16_t code);
 extern char *ptp_property_nikon_code_name(uint16_t code);
 extern char *ptp_property_nikon_code_label(uint16_t code);
-extern char *ptp_property_nikon_value_code_label(uint16_t property, uint64_t code);
+extern char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t property, uint64_t code);
 
 extern bool ptp_nikon_initialise(indigo_device *device);
 extern bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params);

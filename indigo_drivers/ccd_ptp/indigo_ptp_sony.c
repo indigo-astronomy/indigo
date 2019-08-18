@@ -86,8 +86,8 @@ char *ptp_property_sony_code_label(uint16_t code) {
 	return ptp_property_code_label(code);
 }
 
-char *ptp_property_sony_value_code_label(uint16_t property, uint64_t code) {
-	return ptp_property_value_code_label(property, code);
+char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t property, uint64_t code) {
+	return ptp_property_value_code_label(device, property, code);
 }
 
 bool ptp_sony_initialise(indigo_device *device) {

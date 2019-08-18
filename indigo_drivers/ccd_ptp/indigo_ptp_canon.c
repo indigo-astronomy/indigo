@@ -187,6 +187,8 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_FocusMode: return DSLR_FOCUS_MODE_PROPERTY_NAME;
 		case ptp_property_canon_ExpCompensation: return DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME;
 		case ptp_property_canon_BatteryPower: return DSLR_BATTERY_LEVEL_PROPERTY_NAME;
+		case ptp_property_canon_ExExposureLevelIncrements: return DSLR_COMPENSATION_STEP_PROPERTY_NAME;
+		case ptp_property_canon_PictureStyle: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
 	}
 	return ptp_property_canon_code_label(code);
 }
@@ -210,7 +212,7 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_WhiteBalanceXA: return "WhiteBalanceXA_Canon";
 		case ptp_property_canon_WhiteBalanceXB: return "WhiteBalanceXB_Canon";
 		case ptp_property_canon_ColorSpace: return "ColorSpace_Canon";
-		case ptp_property_canon_PictureStyle: return "PictureStyle_Canon";
+		case ptp_property_canon_PictureStyle: return "Picture style";
 		case ptp_property_canon_BatterySelect: return "BatterySelect_Canon";
 		case ptp_property_canon_CameraTime: return "CameraTime_Canon";
 		case ptp_property_canon_AutoPowerOff: return "AutoPowerOff_Canon";
@@ -373,7 +375,7 @@ char *ptp_property_canon_code_label(uint16_t code) {
 	return ptp_property_code_label(code);
 }
 
-char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
+char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t property, uint64_t code) {
 	static char label[PTP_MAX_CHARS];
 	switch (property) {
 		case ptp_property_canon_Aperture: {
@@ -716,7 +718,7 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 			return label;
 		}
 	}
-	return ptp_property_value_code_label(property, code);
+	return ptp_property_value_code_label(device, property, code);
 }
 
 static uint8_t *ptp_copy_image_format(uint8_t *source, uint64_t *target) {
@@ -1203,11 +1205,11 @@ bool ptp_canon_initialise(indigo_device *device) {
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
 	INDIGO_LOG(indigo_log("events:"));
 	for (uint32_t *event = events; *event; event++) {
-		INDIGO_LOG(indigo_log("  %04x %s", *event, PRIVATE_DATA->event_code_label(*event)));
+		INDIGO_LOG(indigo_log("  %04x %s", *event, ptp_event_canon_code_label(*event)));
 	}
 	INDIGO_LOG(indigo_log("properties:"));
 	for (uint32_t *property = properties; *property; property++) {
-		INDIGO_LOG(indigo_log("  %04x %s", *property, PRIVATE_DATA->property_code_label(*property)));
+		INDIGO_LOG(indigo_log("  %04x %s", *property, ptp_property_canon_code_label(*property)));
 	}
 	ptp_transaction_1_0(device, ptp_operation_canon_SetRemoteMode, 1);
 	ptp_transaction_1_0(device, ptp_operation_canon_SetEventMode, 1);
