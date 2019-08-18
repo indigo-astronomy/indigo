@@ -36,6 +36,20 @@
 
 #include "indigo_ptp.h"
 
+char *ptp_type_code_label(uint16_t code) {
+	static char *scalar_type_label[] = { "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "int128", "uint128" };
+	static char *array_type_label[] = { "int8[]", "uint8[]", "int16[]", "uint16[]", "int32[]", "uint32[]", "int64[]", "uint64[]", "int128[]", "uint128[]" };
+	if (code == 0)
+		return "undef";
+	if (code <= ptp_uint128_type)
+		return scalar_type_label[code - 1];
+	if (code <= ptp_auint128_type)
+		return array_type_label[code & 0xFF - 1];
+	if (code == 0xFFFF)
+		return "string";
+	return "undef!";
+}
+
 char *ptp_operation_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_operation_Undefined: return "Undefined";

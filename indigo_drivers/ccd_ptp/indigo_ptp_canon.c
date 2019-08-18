@@ -828,75 +828,6 @@ static void ptp_canon_get_event(indigo_device *device) {
 							break;
 					}
 					switch (code) {
-						case ptp_property_canon_PictureStyle:
-						case ptp_property_canon_WhiteBalance:
-						case ptp_property_canon_MeteringMode:
-						case ptp_property_canon_ExpCompensation:
-							property->type = ptp_uint8_type;
-							break;
-						case ptp_property_canon_Aperture:
-						case ptp_property_canon_ShutterSpeed:
-						case ptp_property_canon_ISOSpeed:
-						case ptp_property_canon_FocusMode:
-						case ptp_property_canon_ColorSpace:
-						case ptp_property_canon_BatteryPower:
-						case ptp_property_canon_BatterySelect:
-						case ptp_property_canon_PTPExtensionVersion:
-						case ptp_property_canon_DriveMode:
-						case ptp_property_canon_AEB:
-						case ptp_property_canon_BracketMode:
-						case ptp_property_canon_QuickReviewTime:
-						case ptp_property_canon_EVFMode:
-						case ptp_property_canon_EVFOutputDevice:
-						case ptp_property_canon_AutoPowerOff:
-						case ptp_property_canon_EVFRecordStatus:
-						case ptp_property_canon_AutoExposureMode:
-						case ptp_property_canon_MirrorUpSetting:
-						case ptp_property_canon_MirrorLockupState:
-						case ptp_property_canon_MultiAspect:
-							property->type = ptp_uint16_type;
-							break;
-						case ptp_property_canon_WhiteBalanceAdjustA:
-						case ptp_property_canon_WhiteBalanceAdjustB:
-							property->type = ptp_int32_type;
-							break;
-						case ptp_property_canon_CameraTime:
-						case ptp_property_canon_UTCTime:
-						case ptp_property_canon_Summertime:
-						case ptp_property_canon_AvailableShots:
-						case ptp_property_canon_CaptureDestination:
-						case ptp_property_canon_WhiteBalanceXA:
-						case ptp_property_canon_WhiteBalanceXB:
-						case ptp_property_canon_CurrentStorage:
-						case ptp_property_canon_CurrentFolder:
-						case ptp_property_canon_ShutterCounter:
-						case ptp_property_canon_ModelID:
-						case ptp_property_canon_LensID:
-						case ptp_property_canon_StroboFiring:
-						case ptp_property_canon_AFSelectFocusArea:
-						case ptp_property_canon_ContinousAFMode:
-						case ptp_property_canon_ColorTemperature:
-						case ptp_property_canon_WftStatus:
-						case ptp_property_canon_LensStatus:
-						case ptp_property_canon_CardExtension:
-						case ptp_property_canon_TempStatus:
-						case ptp_property_canon_PhotoStudioMode:
-						case ptp_property_canon_DepthOfFieldPreview:
-						case ptp_property_canon_EVFSharpness:
-						case ptp_property_canon_EVFWBMode:
-						case ptp_property_canon_EVFClickWBCoeffs:
-						case ptp_property_canon_EVFColorTemp:
-						case ptp_property_canon_ExposureSimMode:
-						case ptp_property_canon_LvAfSystem:
-						case ptp_property_canon_MovSize:
-						case ptp_property_canon_DepthOfField:
-						case ptp_property_canon_LvViewTypeSelect:
-						case ptp_property_canon_AloMode:
-						case ptp_property_canon_Brightness:
-						case ptp_property_canon_BuiltinStroboMode:
-						case ptp_property_canon_StroboETTL2Metering:
-							property->type = ptp_uint32_type;
-							break;
 						case ptp_property_canon_Owner:
 						case ptp_property_canon_Artist:
 						case ptp_property_canon_Copyright:
@@ -904,10 +835,32 @@ static void ptp_canon_get_event(indigo_device *device) {
 						case ptp_property_canon_LensName:
 							property->type = ptp_str_type;
 							break;
-						default:
+						case ptp_property_canon_ImageFormat:
+						case ptp_property_canon_ImageFormatCF:
+						case ptp_property_canon_ImageFormatSD:
+						case ptp_property_canon_ImageFormatExtHD:
+						case ptp_property_canon_CustomFuncEx:
 							property->type = ptp_undef_type;
 							break;
+						case ptp_property_canon_PictureStyle:
+						case ptp_property_canon_WhiteBalance:
+						case ptp_property_FocusMeteringMode:
+						case ptp_property_canon_ExpCompensation:
+							property->type = ptp_uint8_type;
+							break;
+						case ptp_property_canon_WhiteBalanceAdjustA:
+						case ptp_property_canon_WhiteBalanceAdjustB:
+							property->type = ptp_int32_type;
+						default: {
+							if (size == 3 * sizeof(uint32_t) + sizeof(uint16_t))
+								property->type = ptp_uint16_type;
+							else if (size == 3 * sizeof(uint32_t) + sizeof(uint32_t))
+								property->type = ptp_uint32_type;
+							else
+								property->type = ptp_undef_type;
+						}
 					}
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "type = %s (%04x), %s", ptp_type_code_label(property->type), property->type, property->writable ? "rw" : "ro");
 					switch (property->type) {
 						case ptp_uint8_type: {
 							uint8_t value = 0;
@@ -1016,6 +969,8 @@ static void ptp_canon_get_event(indigo_device *device) {
 									}
 									break;
 								}
+								default:
+									property = NULL;
 							}
 							break;
 						}
@@ -1048,9 +1003,13 @@ static void ptp_canon_get_event(indigo_device *device) {
 					if (property) {
 						*next_updated++ = property;
 						if (property->type == ptp_str_type)
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "type = %04x, value = '%s', %s", property->type, property->value.text.value, property->writable ? "rw" : "ro");
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = '%s'", property->value.text.value);
+						else if (property->type == ptp_uint8_type || property->type == ptp_int8_type)
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = %02lx", property->value.number.value);
+						else if (property->type == ptp_uint16_type || property->type == ptp_int16_type)
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = %04lx", property->value.number.value);
 						else
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "type = %04x, value = %04x, %s", property->type, property->value.number.value, property->writable ? "rw" : "ro");
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = %08lx", property->value.number.value);
 					}
 					break;
 				}
@@ -1097,7 +1056,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						property->count = -1;
 					}
 					*next_updated++ = property;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "count = %04x", property->count);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "count = %d", property->count);
 					break;
 				}
 				case ptp_event_canon_ObjectAddedEx:
