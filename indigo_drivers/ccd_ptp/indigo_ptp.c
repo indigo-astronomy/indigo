@@ -1025,10 +1025,13 @@ bool ptp_get_event(indigo_device *device) {
 	memset(&event, 0, sizeof(event));
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, PTP_TIMEOUT);
 	INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
-	if (rc >= 0) {
-		PTP_DUMP_CONTAINER(&event);
-		ptp_handle_event(device, event.code, event.payload.params);
+	if (rc < 0) {
+		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int);
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		return false;
 	}
+	PTP_DUMP_CONTAINER(&event);
+	ptp_handle_event(device, event.code, event.payload.params);
 	return true;
 }
 
