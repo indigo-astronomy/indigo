@@ -32,7 +32,7 @@
 #define DRIVER_VERSION 	0x0001
 #define DRIVER_NAME 		"indigo_ccd_ptp"
 
-#define PTP_TIMEOUT							10000
+#define PTP_TIMEOUT							30000
 
 typedef enum {
 	ptp_container_command =	0x0001,

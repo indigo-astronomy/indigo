@@ -1063,13 +1063,14 @@ static void ptp_canon_get_event(indigo_device *device) {
 				case ptp_event_canon_ObjectAddedEx2: {
 					uint32_t handle = 0, length = 0;
 					char filename[PTP_MAX_CHARS];
-					source = ptp_decode_uint32(source, &handle);
-					source = ptp_decode_uint32(source + 0x18, (uint32_t *)&length);
-					if (event == ptp_event_canon_ObjectAddedEx2) {
-						source += 2;
+					ptp_decode_uint32(source, &handle);
+					ptp_decode_uint32(source + 0x14, &length);
+					if (event == ptp_event_canon_ObjectAddedEx) {
+						strncpy(filename, (char *)source + 0x20, PTP_MAX_CHARS);
+					} else {
+						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
 					}
-					strncpy(filename, (char *)source, PTP_MAX_CHARS);
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): %d %d '%s'", ptp_event_canon_code_label(event), event, handle, length, filename);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): %08x %u '%s'", ptp_event_canon_code_label(event), event, handle, length, filename);
 					void *buffer = NULL;
 					if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
 						indigo_process_dslr_image(device, buffer, (int)length, strchr(filename, '.'));
