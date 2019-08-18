@@ -34,6 +34,8 @@
 #include "indigo_ptp.h"
 #include "indigo_ptp_nikon.h"
 
+#define NIKON_PRIVATE_DATA	((nikon_private_data *)(PRIVATE_DATA->vendor_private_data))
+
 char *ptp_operation_nikon_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_operation_nikon_GetProfileAllData: return "GetProfileAllData_Nikon";
@@ -107,9 +109,28 @@ char *ptp_event_nikon_code_label(uint16_t code) {
 }
 
 char *ptp_property_nikon_code_name(uint16_t code) {
-	static char label[INDIGO_NAME_SIZE];
-	sprintf(label, "%04x", code);
-	return label;
+	switch (code) {
+		case ptp_property_ExposureProgramMode: return DSLR_PROGRAM_PROPERTY_NAME;
+		case ptp_property_StillCaptureMode: return DSLR_CAPTURE_MODE_PROPERTY_NAME;
+		case ptp_property_FNumber: return DSLR_APERTURE_PROPERTY_NAME;
+		case ptp_property_ExposureTime: return DSLR_SHUTTER_PROPERTY_NAME;
+		case ptp_property_ImageSize: return CCD_MODE_PROPERTY_NAME;
+		case ptp_property_WhiteBalance: return DSLR_WHITE_BALANCE_PROPERTY_NAME;
+		case ptp_property_ExposureIndex: return DSLR_ISO_PROPERTY_NAME;
+		case ptp_property_ExposureMeteringMode: return DSLR_EXPOSURE_METERING_PROPERTY_NAME;
+		case ptp_property_ExposureBiasCompensation: return DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME;
+		case ptp_property_BatteryLevel: return DSLR_BATTERY_LEVEL_PROPERTY_NAME;
+		case ptp_property_CompressionSetting: return DSLR_COMPRESSION_PROPERTY_NAME;
+		case ptp_property_FocalLength: return DSLR_FOCAL_LENGTH_PROPERTY_NAME;
+		case ptp_property_FlashMode: return DSLR_FLASH_MODE_PROPERTY_NAME;
+		case ptp_property_nikon_AutofocusMode: return DSLR_FOCUS_MODE_PROPERTY_NAME;
+		case ptp_property_nikon_EVStep: return DSLR_COMPENSATION_STEP_PROPERTY_NAME;
+		case ptp_property_nikon_FlashExposureCompensation: return DSLR_FLASH_COMPENSATION_PROPERTY_NAME;
+		case ptp_property_nikon_ExternalFlashMode: return DSLR_EXT_FLASH_MODE_PROPERTY_NAME;
+		case ptp_property_nikon_ExternalFlashCompensation: return DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME;
+		case ptp_property_nikon_ActivePicCtrlItem: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
+	}
+	return ptp_property_nikon_code_label(code);
 }
 
 char *ptp_property_nikon_code_label(uint16_t code) {
@@ -175,7 +196,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_EnableCopyright: return "EnableCopyright_Nikon";
 		case ptp_property_nikon_ISOAutoTime: return "ISOAutoTime_Nikon";
 		case ptp_property_nikon_EVISOStep: return "EVISOStep_Nikon";
-		case ptp_property_nikon_EVStep: return "EVStep_Nikon";
+		case ptp_property_nikon_EVStep: return "Compensation step";
 		case ptp_property_nikon_EVStepExposureComp: return "EVStepExposureComp_Nikon";
 		case ptp_property_nikon_ExposureCompensation: return "ExposureCompensation_Nikon";
 		case ptp_property_nikon_CenterWeightArea: return "CenterWeightArea_Nikon";
@@ -293,10 +314,10 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_ExternalFlashAttached: return "ExternalFlashAttached_Nikon";
 		case ptp_property_nikon_ExternalFlashStatus: return "ExternalFlashStatus_Nikon";
 		case ptp_property_nikon_ExternalFlashSort: return "ExternalFlashSort_Nikon";
-		case ptp_property_nikon_ExternalFlashMode: return "ExternalFlashMode_Nikon";
-		case ptp_property_nikon_ExternalFlashCompensation: return "ExternalFlashCompensation_Nikon";
+		case ptp_property_nikon_ExternalFlashMode: return "Flash mode";
+		case ptp_property_nikon_ExternalFlashCompensation: return "External flash compensation";
 		case ptp_property_nikon_NewExternalFlashMode: return "NewExternalFlashMode_Nikon";
-		case ptp_property_nikon_FlashExposureCompensation: return "FlashExposureCompensation_Nikon";
+		case ptp_property_nikon_FlashExposureCompensation: return "Flash compensation";
 		case ptp_property_nikon_HDRMode: return "HDRMode_Nikon";
 		case ptp_property_nikon_HDRHighDynamic: return "HDRHighDynamic_Nikon";
 		case ptp_property_nikon_HDRSmoothing: return "HDRSmoothing_Nikon";
@@ -317,7 +338,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_TunePreset3: return "TunePreset3_Nikon";
 		case ptp_property_nikon_TunePreset4: return "TunePreset4_Nikon";
 		case ptp_property_nikon_BeepOff: return "BeepOff_Nikon";
-		case ptp_property_nikon_AutofocusMode: return "AutofocusMode_Nikon";
+		case ptp_property_nikon_AutofocusMode: return "AF mode";
 		case ptp_property_nikon_AFAssist: return "AFAssist_Nikon";
 		case ptp_property_nikon_PADVPMode: return "PADVPMode_Nikon";
 		case ptp_property_nikon_ImageReview: return "ImageReview_Nikon";
@@ -379,19 +400,64 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_FlashCommandBValue: return "FlashCommandBValue_Nikon";
 		case ptp_property_nikon_ApplicationMode: return "ApplicationMode_Nikon";
 		case ptp_property_nikon_ActiveSlot: return "ActiveSlot_Nikon";
-		case ptp_property_nikon_ActivePicCtrlItem: return "ActivePicCtrlItem_Nikon";
+		case ptp_property_nikon_ActivePicCtrlItem: return "Picture style";
 		case ptp_property_nikon_ChangePicCtrlItem: return "ChangePicCtrlItem_Nikon";
 		case ptp_property_nikon_MovieNrHighISO: return "MovieNrHighISO_Nikon";
 	}
 	return ptp_property_code_label(code);
 }
 
-char *ptp_property_nikon_value_code_label(uint16_t property, uint64_t code) {
-	return ptp_property_value_code_label(property, code);
+char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t property, uint64_t code) {
+	static char label[PTP_MAX_CHARS];
+	switch (property) {
+		case ptp_property_CompressionSetting: {
+			if (PRIVATE_DATA->model.product == 0x043a || PRIVATE_DATA->model.product == 0x043c || PRIVATE_DATA->model.product == 0x0440 || PRIVATE_DATA->model.product == 0x0441 || PRIVATE_DATA->model.product == 0x0442 || PRIVATE_DATA->model.product == 0x0443) {
+				switch (code) { case 0: return "JPEG basic"; case 1: return "JPEG basic *"; case 2: return "JPEG normal"; case 3: return "JPEG normal *"; case 4: return "JPEG fine"; case 5: return "JPEG  fine *"; case 6: return "TIFF (RGB)"; case 7: return "NEF"; case 8: return "NEF + JPEG basic"; case 9: return "NEF + JPEG basic *"; case 10: return "NEF + JPEG normal"; case 11: return "NEF + JPEG normal *"; case 12: return "NEF + JPEG fine"; case 13: return "NEF + JPEG fine *"; }
+			} else {
+				switch (code) { case 0: return "JPEG Basic"; case 1: return "JPEG Norm"; case 2: return "JPEG Fine"; case 3:return "TIFF-RGB"; case 4: return "RAW"; case 5: return "RAW + JPEG Basic"; case 6: return "RAW + JPEG Norm"; case 7: return "RAW + JPEG Fine"; }
+			}
+		}
+		case ptp_property_ExposureProgramMode: {
+			switch (code) { case 1: return "Manual"; case 2: return "Program"; case 3: return "Aperture priority"; case 4: return "Shutter priority"; case 32784: return "Auto"; case 32785: return "Portrait"; case 32786: return "Landscape"; case 32787:return "Macro"; case 32788: return "Sport"; case 32789: return "Night portrait"; case 32790:return "Night landscape"; case 32791: return "Child"; case 32792: return "Scene"; case 32793: return "Effects"; case 0x8050: return "U1"; case 0x8051: return "U2"; case 0x8052: return "U3"; }
+			break;
+		}
+		case ptp_property_FNumber: {
+			sprintf(label, "f/%g", code / 100.0);
+			return label;
+		}
+		case ptp_property_StillCaptureMode: {
+			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; }
+		}
+		case ptp_property_FocusMeteringMode: {
+			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39 points"; }
+		}
+		case ptp_property_FlashMode: {
+			switch (code) { case 0: return "Undefined"; case 1: return "Automatic flash"; case 2: return "Flash off"; case 3: return "Fill flash"; case 4: return "Automatic Red-eye Reduction"; case 5: return "Red-eye fill flash"; case 6: return "External sync"; case 32784: return "Auto"; case 32785: return "Auto Slow Sync"; case 32786: return "Rear Curtain Sync + Slow Sync"; case 32787: return "Red-eye Reduction + Slow Sync"; }
+		}
+		case ptp_property_WhiteBalance: {
+			switch (code) { case 1: return "Manual"; case 2: return "Auto"; case 3: return "One-push Auto"; case 4: return "Daylight"; case 5: return "Fluorescent"; case 6: return "Incandescent"; case 7: return "Flash"; case 32784: return "Cloudy"; case 32785: return "Shade"; case 32786: return "Color Temperature"; case 32787: return "Preset"; }
+		}
+	}
+	return ptp_property_value_code_label(device, property, code);
 }
 
 bool ptp_nikon_initialise(indigo_device *device) {
-	assert(0);
+	PRIVATE_DATA->vendor_private_data = malloc(sizeof(nikon_private_data));
+	memset(NIKON_PRIVATE_DATA, 0, sizeof(nikon_private_data));
+	if (!ptp_initialise(device))
+		return false;
+	
+	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
+	if (PRIVATE_DATA->model.product == 0x0427 || PRIVATE_DATA->model.product == 0x042c || PRIVATE_DATA->model.product == 0x0433 || PRIVATE_DATA->model.product == 0x043d || PRIVATE_DATA->model.product == 0x0445) {
+		static uint32_t operations[] = { ptp_operation_nikon_GetVendorPropCodes, ptp_operation_nikon_CheckEvent, ptp_operation_nikon_Capture, ptp_operation_nikon_AfDrive, ptp_operation_nikon_SetControlMode, ptp_operation_nikon_DeviceReady, ptp_operation_nikon_AfCaptureSDRAM, ptp_operation_nikon_DelImageSDRAM, ptp_operation_nikon_GetPreviewImg, ptp_operation_nikon_StartLiveView, ptp_operation_nikon_EndLiveView, ptp_operation_nikon_GetLiveViewImg, ptp_operation_nikon_MfDrive, ptp_operation_nikon_ChangeAfArea, ptp_operation_nikon_AfDriveCancel };
+		ptp_append_uint16_32_array(PRIVATE_DATA->info_operations_supported, operations);
+		INDIGO_LOG(indigo_log("operations:"));
+		for (uint32_t *operation = operations; *operation; operation++) {
+			INDIGO_LOG(indigo_log("  %04x %s", *operation, ptp_operation_nikon_code_label(*operation)));
+		}
+	}
+	
+	return true;
 }
 
 bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {

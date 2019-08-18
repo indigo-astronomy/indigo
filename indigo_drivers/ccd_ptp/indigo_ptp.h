@@ -366,7 +366,7 @@ typedef struct {
 	char *(* event_code_label)(uint16_t code);
 	char *(* property_code_name)(uint16_t code);
 	char *(* property_code_label)(uint16_t code);
-	char *(* property_value_code_label)(uint16_t property, uint64_t code);
+	char *(* property_value_code_label)(indigo_device *device, uint16_t property, uint64_t code);
 	bool (* initialise)(indigo_device *device);
 	bool (* handle_event)(indigo_device *device, ptp_event_code code, uint32_t *params);
 	bool (* set_property)(indigo_device *device, ptp_property *property);
@@ -394,7 +394,7 @@ extern char *ptp_response_code_label(uint16_t code);
 extern char *ptp_event_code_label(uint16_t code);
 extern char *ptp_property_code_name(uint16_t code);
 extern char *ptp_property_code_label(uint16_t code);
-extern char *ptp_property_value_code_label(uint16_t property, uint64_t code);
+extern char *ptp_property_value_code_label(indigo_device *device, uint16_t property, uint64_t code);
 extern char *ptp_vendor_label(uint16_t code);
 
 extern uint8_t *ptp_decode_string(uint8_t *source, char *target);
