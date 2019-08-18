@@ -333,6 +333,7 @@ typedef struct {
 
 typedef struct {
 	void *vendor_private_data;
+	indigo_device *focuser;
 	libusb_device *dev;
 	libusb_device_handle *handle;
 	uint8_t ep_in, ep_out, ep_int;
@@ -374,6 +375,7 @@ typedef struct {
 	bool (* lock)(indigo_device *device);
 	bool (* af)(indigo_device *device);
 	bool (* zoom)(indigo_device *device);
+	bool (* focus)(indigo_device *device, int steps);
 	indigo_timer *event_checker;
 	pthread_mutex_t message_mutex;
 	int message_property_index;
@@ -422,13 +424,10 @@ extern void ptp_close(indigo_device *device);
 extern bool ptp_update_property(indigo_device *device, ptp_property *property);
 
 extern bool ptp_initialise(indigo_device *device);
+extern bool ptp_get_event(indigo_device *device);
 extern bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params);
 extern bool ptp_set_property(indigo_device *device, ptp_property *property);
 extern bool ptp_exposure(indigo_device *device);
-extern bool ptp_liveview(indigo_device *device);
-extern bool ptp_lock(indigo_device *device);
-extern bool ptp_af(indigo_device *device);
-extern bool ptp_zoom(indigo_device *device);
 
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)

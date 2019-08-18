@@ -337,6 +337,7 @@ typedef enum {
 typedef struct {
 	int mode;
 	int shutter;
+	int steps;
 	uint32_t ex_func_group[16][1024];
 } canon_private_data;
 
@@ -355,5 +356,6 @@ extern bool ptp_canon_liveview(indigo_device *device);
 extern bool ptp_canon_lock(indigo_device *device);
 extern bool ptp_canon_af(indigo_device *device);
 extern bool ptp_canon_zoom(indigo_device *device);
+extern bool ptp_canon_focus(indigo_device *device, int steps);
 
 #endif /* indigo_ptp_canon_h */

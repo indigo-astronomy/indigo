@@ -1468,3 +1468,40 @@ bool ptp_canon_zoom(indigo_device *device) {
 	}
 	return false;
 }
+
+bool ptp_canon_focus(indigo_device *device, int steps) {
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	if (steps == 0) {
+		pthread_mutex_lock(&mutex);
+		CANON_PRIVATE_DATA->steps = 0;
+		pthread_mutex_unlock(&mutex);
+		return true;
+	} else {
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			pthread_mutex_lock(&mutex);
+			CANON_PRIVATE_DATA->steps = steps;
+			pthread_mutex_unlock(&mutex);
+			while (true) {
+				if (CANON_PRIVATE_DATA->steps == 0)
+					return true;
+				if (CANON_PRIVATE_DATA->steps < 0) {
+					pthread_mutex_lock(&mutex);
+					CANON_PRIVATE_DATA->steps++;
+					pthread_mutex_unlock(&mutex);
+					if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x8001))
+						return false;
+				}
+				if (CANON_PRIVATE_DATA->steps > 0) {
+					pthread_mutex_lock(&mutex);
+					CANON_PRIVATE_DATA->steps--;
+					pthread_mutex_unlock(&mutex);
+					if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x0001))
+						return false;
+				}
+				indigo_usleep(50000);
+			}
+		}
+		indigo_send_message(device, "Focusing is available only while LiveView preview is active");
+		return false;
+	}
+}
