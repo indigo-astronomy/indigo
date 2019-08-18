@@ -359,7 +359,7 @@ uint8_t *ptp_encode_uint64(uint64_t source, uint8_t *target) {
 }
 
 uint8_t *ptp_decode_string(uint8_t *source, char *target) {
-	int length = *source++;
+	uint8_t length = *source++;
 	for (int i = 0; i < length; i++) {
 		*target++ = *source++;
 		source++;
@@ -451,20 +451,20 @@ uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device) {
 		if (strstr(PRIVATE_DATA->info_manufacturer, "Nikon")) {
 			PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
 			PRIVATE_DATA->info_vendor_extension_version = 100;
-			strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Nikon & Microsoft PTP Extensions");
+			strncpy(PRIVATE_DATA->info_vendor_extension_desc, "Nikon & Microsoft PTP Extensions", PTP_MAX_CHARS);
 		} else if (strstr(PRIVATE_DATA->info_manufacturer, "Canon")) {
 			PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_canon;
 			PRIVATE_DATA->info_vendor_extension_version = 100;
-			strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Canon & Microsoft PTP Extensions");
+			strncpy(PRIVATE_DATA->info_vendor_extension_desc, "Canon & Microsoft PTP Extensions", PTP_MAX_CHARS);
 		}
 	} else if (strstr(PRIVATE_DATA->info_manufacturer, "Nikon")) {
 		PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
 		PRIVATE_DATA->info_vendor_extension_version = 100;
-		strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Nikon Extension");
+		strncpy(PRIVATE_DATA->info_vendor_extension_desc, "Nikon Extension", PTP_MAX_CHARS);
 	} else if (strstr(PRIVATE_DATA->info_manufacturer, "Sony")) {
 		PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
 		PRIVATE_DATA->info_vendor_extension_version = 100;
-		strcpy(PRIVATE_DATA->info_vendor_extension_desc, "Sony Extension");
+		strncpy(PRIVATE_DATA->info_vendor_extension_desc, "Sony Extension", PTP_MAX_CHARS);
 	}
 	return source;
 }
@@ -914,8 +914,8 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 		if (property->count >= 0) {
 			define = true;
 			char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE], group[16];
-			strcpy(name, PRIVATE_DATA->property_code_name(property->code));
-			strcpy(label, PRIVATE_DATA->property_code_label(property->code));
+			strncpy(name, PRIVATE_DATA->property_code_name(property->code), INDIGO_NAME_SIZE);
+			strncpy(label, PRIVATE_DATA->property_code_label(property->code), INDIGO_NAME_SIZE);
 			if (!strncmp(name, "DSLR_", 5))
 				strcpy(group, "DSLR");
 			else if (!strncmp(name, "CCD_", 4))
@@ -944,8 +944,8 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 		delete = true;
 		if (property->count == 0) {
 			if (property->type == ptp_str_type) {
-				if (strcpy(property->property->items->text.value, property->value.text.value)) {
-					strcpy(property->property->items->text.value, property->value.text.value);
+				if (strncmp(property->property->items->text.value, property->value.text.value, INDIGO_NAME_SIZE)) {
+					strncpy(property->property->items->text.value, property->value.text.value, INDIGO_NAME_SIZE);
 					update = true;
 				}
 			} else if (property->value.number.min == property->property->items->number.min && property->value.number.max == property->property->items->number.max && property->value.number.step == property->property->items->number.step) {
@@ -967,12 +967,12 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						property->property = indigo_resize_property(property->property, property->count);
 					define = true;
 				}
-				char str[INDIGO_VALUE_SIZE];
+				char str[INDIGO_NAME_SIZE];
 				for (int i = 0; i < property->count; i++) {
 					sprintf(str, "%llx", property->value.sw.values[i]);
-					if (strcmp(property->property->items[i].name, str)) {
-						strcpy(property->property->items[i].name, str);
-						strcpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(property->code, property->value.sw.values[i]));
+					if (strncmp(property->property->items[i].name, str, INDIGO_NAME_SIZE)) {
+						strncpy(property->property->items[i].name, str, INDIGO_NAME_SIZE);
+						strncpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(property->code, property->value.sw.values[i]), INDIGO_VALUE_SIZE);
 						define = true;
 					}
 					if (property->value.sw.value == property->value.sw.values[i] && !property->property->items[i].sw.value)
