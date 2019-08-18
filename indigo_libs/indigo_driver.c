@@ -453,6 +453,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_delete_property(device, all_properties, NULL);
 	indigo_release_property(all_properties);
 	free(DEVICE_CONTEXT);
+	device->device_context = NULL;
 	return INDIGO_OK;
 }
 
