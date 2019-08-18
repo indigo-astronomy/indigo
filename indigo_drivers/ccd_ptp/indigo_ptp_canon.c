@@ -460,7 +460,7 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 		case ptp_property_canon_ImageFormatExtHD: {
 			switch ((code >> 32) & 0xFFFFFFFF) {
 				case 0:
-					strcpy(label,"");
+					strcpy(label, "");
 					break;
 				case 0x10010003:
 					strcpy(label, "Large fine JPEG + ");
@@ -660,10 +660,9 @@ char *ptp_property_canon_value_code_label(uint16_t property, uint64_t code) {
 			break;
 		}
 		case ptp_property_canon_CaptureDestination: {
-			switch (code) {
-				case 0x1: return "Card"; case 0x4: return "RAM";
-			}
-			break;
+			if (code == 0x4)
+				return "RAM";
+			return "Card";
 		}
 		case ptp_property_canon_EVFOutputDevice: {
 			switch (code) {
@@ -854,6 +853,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						case ptp_property_canon_AutoExposureMode:
 						case ptp_property_canon_MirrorUpSetting:
 						case ptp_property_canon_MirrorLockupState:
+						case ptp_property_canon_MultiAspect:
 							property->type = ptp_uint16_type;
 							break;
 						case ptp_property_canon_WhiteBalanceAdjustA:
@@ -895,7 +895,6 @@ static void ptp_canon_get_event(indigo_device *device) {
 						case ptp_property_canon_Brightness:
 						case ptp_property_canon_BuiltinStroboMode:
 						case ptp_property_canon_StroboETTL2Metering:
-						case ptp_property_canon_MultiAspect:
 							property->type = ptp_uint32_type;
 							break;
 						case ptp_property_canon_Owner:
