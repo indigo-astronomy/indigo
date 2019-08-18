@@ -388,6 +388,7 @@ extern void ptp_dump_device_info(int line, const char *function, indigo_device *
 #define PTP_DUMP_CONTAINER(c) INDIGO_DEBUG(ptp_dump_container(__LINE__, __FUNCTION__, device, c))
 #define PTP_DUMP_DEVICE_INFO() INDIGO_LOG(ptp_dump_device_info(__LINE__, __FUNCTION__, device))
 
+extern char *ptp_type_code_label(uint16_t code);
 extern char *ptp_operation_code_label(uint16_t code);
 extern char *ptp_response_code_label(uint16_t code);
 extern char *ptp_event_code_label(uint16_t code);
