@@ -912,7 +912,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 			*data_size = total;
 		total -= length;
 		while (total > 0) {
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total, &length, PTP_TIMEOUT);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total, &length, PTP_TIMEOUT);
 			INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 			if (rc < 0) {
 				free(buffer);
