@@ -416,6 +416,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			} else {
 				switch (code) { case 0: return "JPEG Basic"; case 1: return "JPEG Norm"; case 2: return "JPEG Fine"; case 3:return "TIFF-RGB"; case 4: return "RAW"; case 5: return "RAW + JPEG Basic"; case 6: return "RAW + JPEG Norm"; case 7: return "RAW + JPEG Fine"; }
 			}
+			break;
 		}
 		case ptp_property_ExposureProgramMode: {
 			switch (code) { case 1: return "Manual"; case 2: return "Program"; case 3: return "Aperture priority"; case 4: return "Shutter priority"; case 32784: return "Auto"; case 32785: return "Portrait"; case 32786: return "Landscape"; case 32787:return "Macro"; case 32788: return "Sport"; case 32789: return "Night portrait"; case 32790:return "Night landscape"; case 32791: return "Child"; case 32792: return "Scene"; case 32793: return "Effects"; case 0x8050: return "U1"; case 0x8051: return "U2"; case 0x8052: return "U3"; }
@@ -427,26 +428,180 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 		}
 		case ptp_property_StillCaptureMode: {
 			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; }
+			break;
 		}
 		case ptp_property_FocusMeteringMode: {
 			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39 points"; }
+			break;
 		}
 		case ptp_property_FlashMode: {
 			switch (code) { case 0: return "Undefined"; case 1: return "Automatic flash"; case 2: return "Flash off"; case 3: return "Fill flash"; case 4: return "Automatic Red-eye Reduction"; case 5: return "Red-eye fill flash"; case 6: return "External sync"; case 32784: return "Auto"; case 32785: return "Auto Slow Sync"; case 32786: return "Rear Curtain Sync + Slow Sync"; case 32787: return "Red-eye Reduction + Slow Sync"; }
+			break;
 		}
 		case ptp_property_WhiteBalance: {
 			switch (code) { case 1: return "Manual"; case 2: return "Auto"; case 3: return "One-push Auto"; case 4: return "Daylight"; case 5: return "Fluorescent"; case 6: return "Incandescent"; case 7: return "Flash"; case 32784: return "Cloudy"; case 32785: return "Shade"; case 32786: return "Color Temperature"; case 32787: return "Preset"; }
+			break;
+		}
+		case ptp_property_nikon_ExternalFlashMode:
+		case ptp_property_nikon_ColorSpace: {
+			switch (code) { case 0: return "sRGB"; case 1: return "Adobe RGB"; }
+			break;
+		}
+		case ptp_property_nikon_LiveViewImageZoomRatio: {
+			switch (code) { case 0: return "1x"; case 1: return "2x"; case 2: return "3x"; case 3: return "4x"; case 4: return "6x"; case 5: return "8x"; }
+			break;
+		}
+		case ptp_property_nikon_VignetteCtrl: {
+			switch (code) { case 0: return "High"; case 1: return "Normal"; case 2: return "Low"; case 3: return "Off"; }
+			break;
+		}
+		case ptp_property_nikon_BlinkingStatus: {
+			switch (code) { case 0: return "None"; case 1: return "Shutter"; case 2: return "Aperture"; case 3: return "Shutter + Aperture"; }
+			break;
+		}
+		case ptp_property_nikon_CleanImageSensor: {
+			switch (code) { case 0: return "At startup"; case 1: return "At shutdown"; case 2: return "At startup + shutdown"; case 3: return "Off"; }
+			break;
+		}
+		case ptp_property_nikon_HDRMode: {
+			switch (code) { case 0: return "Off"; case 1: return "Low"; case 2: return "Normal"; case 3: return "High"; case 4: return "Extra high"; case 5: return "Auto"; }
+			break;
+		}
+		case ptp_property_nikon_MovScreenSize: {
+			switch (code) { case 0: return "1920x1080 50p"; case 1: return "1920x1080 25p"; case 2: return "1920x1080 24p"; case 3: return "1280x720 50p"; case 4: return "640x424 25p"; case 5: return "1920x1080 25p"; case 6: return "1920x1080 24p"; case 7: return "1280x720 50p"; }
+			break;
+		}
+		case ptp_property_nikon_EnableCopyright:
+		case ptp_property_nikon_AutoDistortionControl:
+		case ptp_property_nikon_AELockStatus:
+		case ptp_property_nikon_AFLockStatus:
+		case ptp_property_nikon_ExternalFlashAttached:
+		case ptp_property_nikon_ISOAutoTime:
+		case ptp_property_nikon_MovHiQuality:
+		case ptp_property_nikon_ImageRotation:
+		case ptp_property_nikon_ImageCommentEnable:
+		case ptp_property_nikon_ManualMovieSetting:
+		case ptp_property_nikon_ResetBank:
+		case ptp_property_nikon_ResetBank0:
+		case ptp_property_nikon_LongExposureNoiseReduction:
+		case ptp_property_nikon_MovWindNoiceReduction:
+		case ptp_property_nikon_Bracketing:
+		case ptp_property_nikon_FocusAreaWrap:
+		case ptp_property_nikon_NoCFCard: {
+			switch (code) { case 0: return "Off"; case 1: return "On"; }
+			break;
+		}
+		case ptp_property_nikon_AFCModePriority: {
+			switch (code) { case 0: return "Release"; case 1: return "Focus"; }
+			break;
+		}
+		case ptp_property_nikon_AFSModePriority: {
+			switch (code) { case 1: return "Release"; case 0: return "Focus"; }
+			break;
+		}
+		case ptp_property_nikon_AFLockOn: {
+			switch (code) { case 0: return "5 (long)"; case 1: return "4"; case 2: return "3 (normal)"; case 3: return "2"; case 4: return "1 (short)"; case 5: return "Off"; }
+			break;
+		}
+		case ptp_property_nikon_AFAreaPoint: {
+			switch (code) { case 0: return "AF51"; case 1: return "AF11"; }
+			break;
+		}
+		case ptp_property_nikon_AFAssist: {
+			switch (code) { case 0: return "On"; case 1: return "Off"; }
+			break;
+		}
+		case ptp_property_nikon_EVISOStep:
+		case ptp_property_nikon_EVStep: {
+			switch (code) { case 0: return "1/3"; case 1: return "1/2"; }
+			break;
+		}
+		case ptp_property_nikon_CameraInclination: {
+			switch (code) { case 0: return "Level"; case 1: return "Grip is top"; case 2: return "Grip is bottom"; case 3: return "Up Down"; }
+			break;
+		}
+		case ptp_property_nikon_LiveViewImageSize: {
+			switch (code) { case 1: return "QVGA"; case 2: return "VGA"; }
+			break;
+		}
+		case ptp_property_nikon_RawBitMode: {
+			switch (code) { case 0: return "12 bit"; case 1: return "14 bit"; }
+			break;
+		}
+		case ptp_property_nikon_SaveMedia: {
+			switch (code) { case 0: return "Card"; case 1: return "SDRAM"; case 2: return "Card + SDRAM"; }
+			break;
+		}
+		case ptp_property_nikon_LiveViewAFArea: {
+			switch (code) { case 0: return "Face priority"; case 1: return "Wide area"; case 2: return "Normal area"; }
+			break;
+		}
+		case ptp_property_nikon_FlourescentType: {
+			switch (code) { case 0: return "Sodium-vapor"; case 1: return "Warm-white"; case 2: return "White"; case 3: return "Cool-white"; case 4: return "Day white"; case 5: return "Daylight"; case 6: return "High temp. mercury-vapor"; }
+			break;
+		}
+		case ptp_property_nikon_ActiveDLighting: {
+			switch (code) { case 0: return "High"; case 1: return "Normal"; case 2: return "Low"; case 3: return "Off"; case 4: return "Extra high"; case 5: return "Auto"; }
+			break;
+		}
+		case ptp_property_nikon_ActivePicCtrlItem: {
+			switch (code) { case 0: return "Undefined"; case 1: return "Standard"; case 2: return "Neutral"; case 3: return "Vivid"; case 4: return "Monochrome"; case 5: return "Portrait"; case 6: return "Landscape"; case 7: return "Flat"; case 201: return "Custom 1"; case 202: return "Custom 2"; case 203: return "Custom 3"; case 204: return "Custom 4"; case 205: return "Custom 5"; case 206: return "Custom 6"; case 207: return "Custom 7"; case 208: return "Custom 8"; case 209: return "Custom 9"; }
+			break;
+		}
+		case ptp_property_nikon_EffectMode: {
+			switch (code) { case 0: return "Night Vision"; case 1: return "Color Sketch"; case 2: return "Miniature Effect"; case 3: return "Selective Color"; case 4: return "Silhouette"; case 5: return "High Key"; case 6: return "Low Key"; }
+			break;
+		}
+		case ptp_property_nikon_SceneMode: {
+			switch (code) { case 0: return "NightLandscape"; case 1: return "PartyIndoor"; case 2: return "BeachSnow"; case 3: return "Sunset"; case 4: return "Duskdawn"; case 5: return "Petportrait"; case 6: return "Candlelight"; case 7: return "Blossom"; case 8: return "AutumnColors"; case 9: return "Food"; case 10: return "Silhouette"; case 11: return "Highkey"; case 12: return "Lowkey"; case 13: return "Portrait"; case 14: return "Landscape"; case 15: return "Child"; case 16: return "Sports"; case 17: return "Closeup"; case 18: return "NightPortrait"; }
+			break;
+		}
+		case ptp_property_FocusMode: {
+			switch (code) { case 1: return "Manual"; case 2: return "Automatic"; case 3: return "Macro"; case 32784: return "AF-S"; case 32785: return "AF-C"; case 32786: return "AF-A"; case 32787: return "M"; }
+			break;
+		}
+		case ptp_property_ExposureMeteringMode: {
+			switch (code) { case 1: return "Average"; case 2: return "Center Weighted Average"; case 3: return "Multi-spot"; case 4: return "Center-spot"; case 0x8010: return "Center-spot *"; }
+			break;
 		}
 	}
 	return ptp_property_value_code_label(device, property, code);
+}
+
+static void ptp_check_event(indigo_device *device) {
+	void *buffer = NULL;
+	if (ptp_operation_supported(device, ptp_operation_nikon_CheckEvent)) {
+		if (ptp_transaction_0_0_i(device, ptp_operation_nikon_CheckEvent, &buffer, NULL)) {
+			uint8_t *source = buffer;
+			uint16_t count, code;
+			uint32_t param;
+			source = ptp_decode_uint16(source, &count);
+			for (int i = 0; i < count; i++) {
+				source = ptp_decode_uint16(source, &code);
+				source = ptp_decode_uint32(source, &param);
+				ptp_nikon_handle_event(device, code, &param);
+			}
+		}
+		if (buffer)
+			free(buffer);
+	} else {
+		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, PRIVATE_DATA->info_properties_supported[i], &buffer, NULL)) {
+				ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
+			}
+			if (buffer)
+				free(buffer);
+			buffer = NULL;
+		}
+	}
+	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
 }
 
 bool ptp_nikon_initialise(indigo_device *device) {
 	PRIVATE_DATA->vendor_private_data = malloc(sizeof(nikon_private_data));
 	memset(NIKON_PRIVATE_DATA, 0, sizeof(nikon_private_data));
 	if (!ptp_initialise(device))
-		return false;
-	
+		return false;	
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
 	if (PRIVATE_DATA->model.product == 0x0427 || PRIVATE_DATA->model.product == 0x042c || PRIVATE_DATA->model.product == 0x0433 || PRIVATE_DATA->model.product == 0x043d || PRIVATE_DATA->model.product == 0x0445) {
 		static uint32_t operations[] = { ptp_operation_nikon_GetVendorPropCodes, ptp_operation_nikon_CheckEvent, ptp_operation_nikon_Capture, ptp_operation_nikon_AfDrive, ptp_operation_nikon_SetControlMode, ptp_operation_nikon_DeviceReady, ptp_operation_nikon_AfCaptureSDRAM, ptp_operation_nikon_DelImageSDRAM, ptp_operation_nikon_GetPreviewImg, ptp_operation_nikon_StartLiveView, ptp_operation_nikon_EndLiveView, ptp_operation_nikon_GetLiveViewImg, ptp_operation_nikon_MfDrive, ptp_operation_nikon_ChangeAfArea, ptp_operation_nikon_AfDriveCancel };
@@ -456,7 +611,33 @@ bool ptp_nikon_initialise(indigo_device *device) {
 			INDIGO_LOG(indigo_log("  %04x %s", *operation, ptp_operation_nikon_code_label(*operation)));
 		}
 	}
-	
+	if (ptp_operation_supported(device, ptp_operation_nikon_GetVendorPropCodes)) {
+		void *buffer;
+		if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetVendorPropCodes, &buffer, NULL)) {
+			uint16_t properties[PTP_MAX_ELEMENTS];
+			ptp_decode_uint16_array(buffer, properties, NULL);
+			free(buffer);
+			buffer = NULL;
+			uint16_t *target = PRIVATE_DATA->info_properties_supported;
+			int index = 0;
+			for (index = 0; target[index]; index++)
+				;
+			for (int i = 0; properties[i]; i++) {
+				target[index] = properties[i];
+				if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[index], &buffer, NULL)) {
+					ptp_decode_property(buffer, device, PRIVATE_DATA->properties + index);
+				}
+				if (buffer)
+					free(buffer);
+				buffer = NULL;
+				index++;
+			}
+			target[index] = 0;
+		}
+		if (buffer)
+			free(buffer);
+	}
+	PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_check_event);
 	return true;
 }
 
