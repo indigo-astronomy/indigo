@@ -251,6 +251,11 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 		}
 		case ptp_property_WhiteBalance: {
 			switch (code) { case 1: return "Manual"; case 2: return "Auto"; case 3: return "One-push Auto"; case 4: return "Daylight"; case 5: return "Fluorescent"; case 6: return "Incandescent"; case 7: return "Flash"; }
+			break;
+		}
+		case ptp_property_ExposureMeteringMode: {
+			switch (code) { case 1: return "Average"; case 2: return "Center Weighted Average"; case 3: return "Multi-spot"; case 4: return "Center-spot"; }
+			break;
 		}
 		case ptp_property_FNumber: {
 			sprintf(label, "f/%g", code / 100.0);
@@ -477,6 +482,15 @@ uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *co
 	return source;
 }
 
+void ptp_append_uint16_16_array(uint16_t *target, uint16_t *source) {
+	int index = 0;
+	for (index = 0; target[index]; index++)
+		;
+	for (int i = 0; source[i]; i++)
+		target[index++] = source[i];
+	target[index] = 0;
+}
+
 void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source) {
 	int index = 0;
 	for (index = 0; target[index]; index++)
@@ -525,7 +539,6 @@ uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device) {
 
 uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_property *target) {
 	uint8_t form;
-	memset(target, 0, sizeof(ptp_property));
 	source = ptp_decode_uint16(source, &target->code);
 	source = ptp_decode_uint16(source, &target->type);
 	source = ptp_decode_uint8(source, &target->writable);
@@ -1099,10 +1112,10 @@ bool ptp_initialise(indigo_device *device) {
 		for (int i = 0; properties[i]; i++) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, NULL)) {
 				ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
-				if (buffer)
-					free(buffer);
-				buffer = NULL;
 			}
+			if (buffer)
+				free(buffer);
+			buffer = NULL;
 		}
 		if (PRIVATE_DATA->initialise == ptp_initialise) {
 			PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_check_event);
@@ -1135,6 +1148,20 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 			if (buffer)
 				free(buffer);
 			return true;
+		}
+		case ptp_event_DevicePropChanged: {
+			void *buffer = NULL;
+			uint16_t code = params[0];
+			for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
+				if (PRIVATE_DATA->info_properties_supported[i] == code) {
+					if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, code, &buffer, NULL)) {
+						ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
+					}
+					break;
+				}
+			}
+			if (buffer)
+				free(buffer);
 		}
 		default:
 			return false;

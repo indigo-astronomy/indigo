@@ -32,7 +32,7 @@
 #define DRIVER_VERSION 	0x0001
 #define DRIVER_NAME 		"indigo_ccd_ptp"
 
-#define PTP_TIMEOUT									30000
+#define PTP_TIMEOUT									10000
 #define PTP_MAX_BULK_TRANSFER_SIZE	8388608
 
 typedef enum {
@@ -415,6 +415,7 @@ extern uint8_t *ptp_encode_uint16(uint16_t source, uint8_t *target);
 extern uint8_t *ptp_encode_uint32(uint32_t source, uint8_t *target);
 extern uint8_t *ptp_encode_uint64(uint64_t source, uint8_t *target);
 
+extern void ptp_append_uint16_16_array(uint16_t *target, uint16_t *source);
 extern void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source);
 
 extern bool ptp_property_supported(indigo_device *device, uint16_t code);
