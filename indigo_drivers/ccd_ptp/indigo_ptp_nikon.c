@@ -647,7 +647,7 @@ bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t
 
 
 bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
-	assert(0);
+	return ptp_set_property(device, property);
 }
 
 bool ptp_nikon_exposure(indigo_device *device) {

@@ -1260,18 +1260,18 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 	} else {
 		target = ptp_encode_uint32((uint32_t)value, target);
 	}
-	*((uint32_t *)buffer) = (uint32_t)(target - buffer);
+	uint32_t size = *((uint32_t *)buffer) = (uint32_t)(target - buffer);
 	*((uint32_t *)buffer + 1) = code;
-	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer);
+	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer, size);
 }
 
 static bool set_string_property(indigo_device *device, uint16_t code, char *value) {
 	uint8_t buffer[PTP_MAX_CHARS + 4], *target = buffer + 2 * sizeof(uint32_t);
 	strncpy((char *)target, value, PTP_MAX_CHARS);
 	target += strlen((char *)target) + 1;
-	*((uint32_t *)buffer) = (uint32_t)(target - buffer);
+	uint32_t size = *((uint32_t *)buffer) = (uint32_t)(target - buffer);
 	*((uint32_t *)buffer + 1) = code;
-	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer);
+	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer, size);
 }
 
 bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {

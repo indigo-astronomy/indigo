@@ -422,7 +422,7 @@ extern bool ptp_property_supported(indigo_device *device, uint16_t code);
 extern bool ptp_operation_supported(indigo_device *device, uint16_t code);
 
 extern bool ptp_open(indigo_device *device);
-extern bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_size);
+extern bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_sizee);
 extern void ptp_close(indigo_device *device);
 extern bool ptp_update_property(indigo_device *device, ptp_property *property);
 
@@ -432,12 +432,13 @@ extern bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_
 extern bool ptp_set_property(indigo_device *device, ptp_property *property);
 extern bool ptp_exposure(indigo_device *device);
 
-#define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-#define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-#define ptp_transaction_2_0(device, code, out_1, out_2) ptp_transaction(device, code, 2, out_1, out_2, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-#define ptp_transaction_0_0_i(device, code, data_in, data_size) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
-#define ptp_transaction_1_0_i(device, code, out_1, data_in, data_size) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
-#define ptp_transaction_1_1(device, code, out_1, in_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, in_1, NULL, NULL, NULL, NULL, NULL, NULL)
-#define ptp_transaction_0_0_o(device, code, data_out) ptp_transaction(device, code, 1, 0, 0, 0, 0, 0, data_out, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_2_0(device, code, out_1, out_2) ptp_transaction(device, code, 2, out_1, out_2, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_0_0_i(device, code, data_in, data_size) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
+#define ptp_transaction_1_0_i(device, code, out_1, data_in, data_size) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
+#define ptp_transaction_1_1(device, code, out_1, in_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, in_1, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_0_0_o(device, code, data_out, data_size) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, data_out, data_size, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_0_1_o(device, code, out_1, data_out, data_size) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, data_out, data_size, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 
 #endif /* indigo_ptp_h */
