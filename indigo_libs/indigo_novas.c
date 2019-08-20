@@ -31,8 +31,8 @@
 #include <indigo/indigo_novas.h>
 
 #define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
-static double DELTA_T = 34+32.184+0.477677;
-static double DELTA_UTC_UT1 = -0.477677/86400.0;
+double DELTA_T = 34+32.184+0.477677;
+double DELTA_UTC_UT1 = -0.477677/86400.0;
 
 static void init() {
 	static int do_init = 1;
