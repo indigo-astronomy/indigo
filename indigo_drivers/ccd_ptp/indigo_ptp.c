@@ -755,11 +755,11 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 	return source;
 }
 
-bool ptp_property_supported(indigo_device *device, uint16_t code) {
+ptp_property *ptp_property_supported(indigo_device *device, uint16_t code) {
 	for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 		if (PRIVATE_DATA->info_properties_supported[i] == code)
-			return true;
-	return false;
+			return PRIVATE_DATA->properties + i;
+	return NULL;
 }
 
 bool ptp_operation_supported(indigo_device *device, uint16_t code) {
@@ -1067,6 +1067,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			define = true;
 		}
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> = %s", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property->name);
 	if (IS_CONNECTED) {
 		if (define) {
 			if (delete)
@@ -1139,11 +1140,11 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				source = ptp_decode_string(source + 40 , filename);
 				free(buffer);
 				buffer = NULL;
-				if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
+				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
 					indigo_process_dslr_image(device, buffer, size, strchr(filename, '.'));
+					if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
+						ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
 				}
-				if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
-					ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
 			}
 			if (buffer)
 				free(buffer);

@@ -31,6 +31,8 @@
 #include <stdarg.h>
 #include <libusb-1.0/libusb.h>
 
+#include <indigo/indigo_ccd_driver.h>
+
 #include "indigo_ptp.h"
 #include "indigo_ptp_nikon.h"
 
@@ -564,6 +566,17 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			switch (code) { case 1: return "Average"; case 2: return "Center Weighted Average"; case 3: return "Multi-spot"; case 4: return "Center-spot"; case 0x8010: return "Center-spot *"; }
 			break;
 		}
+		case ptp_property_nikon_ExposureDelayMode: {
+			ptp_property *prop = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
+			if (prop) {
+				if (prop->value.number.max == 1) {
+					switch (code) { case 0: return "Off"; case 1: return "On"; }
+				} else {
+					switch (code) { case 0: return "3s"; case 1: return "2s"; case 2: return "1s"; case 3: return "Off";  }
+				}
+			}
+			break;
+		}
 	}
 	return ptp_property_value_code_label(device, property, code);
 }
@@ -651,11 +664,58 @@ bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_nikon_exposure(indigo_device *device) {
-	assert(0);
+	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
+	bool result = true;
+	if (property) {
+		uint8_t value = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 1 : (property->value.number.max == 1 ? 0 : 3);
+		result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_ExposureDelayMode, &value, sizeof(uint8_t));
+	}
+	if (ptp_operation_supported(device, ptp_operation_nikon_InitiateCaptureRecInMedia)) {
+		result = result && ptp_transaction_2_0(device, ptp_operation_nikon_InitiateCaptureRecInMedia, -1, 0);
+	} else {
+		result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
+	}
+	property = ptp_property_supported(device, ptp_property_ExposureTime);
+	if (property->value.sw.value == 0xffffffff) {
+		CCD_EXPOSURE_ITEM->number.value += DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0;
+		while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_usleep(ONE_SECOND_DELAY);
+			CCD_EXPOSURE_ITEM->number.value -= 1;
+		}
+		if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
+		}
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		result = result && ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
+	}
+	return result;
 }
 
 bool ptp_nikon_liveview(indigo_device *device) {
-	assert(0);
+	if (ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
+		uint8_t *buffer = NULL;
+		uint32_t size;
+		while (!PRIVATE_DATA->abort_capture) {
+			if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetLiveViewImg, (void **)&buffer, &size)) {
+				if ((buffer[64] & 0xFF) == 0xFF && (buffer[65] & 0xFF) == 0xD8) {
+					indigo_process_dslr_image(device, (void *)buffer + 64, size - 64, ".jprg");
+				} else if ((buffer[128] & 0xFF) == 0xFF && (buffer[129] & 0xFF) == 0xD8) {
+					indigo_process_dslr_image(device, (void *)buffer + 128, size - 128, ".jprg");
+				} else if ((buffer[384] & 0xFF) == 0xFF && (buffer[385] & 0xFF) == 0xD8) {
+					indigo_process_dslr_image(device, (void *)buffer + 384, size - 384, ".jprg");
+				}
+			}
+			if (buffer)
+				free(buffer);
+			buffer = NULL;
+			indigo_usleep(100000);
+		}
+		ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
+	}
+	return true;
 }
 
 bool ptp_nikon_lock(indigo_device *device) {

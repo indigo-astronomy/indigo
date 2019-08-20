@@ -418,7 +418,7 @@ extern uint8_t *ptp_encode_uint64(uint64_t source, uint8_t *target);
 extern void ptp_append_uint16_16_array(uint16_t *target, uint16_t *source);
 extern void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source);
 
-extern bool ptp_property_supported(indigo_device *device, uint16_t code);
+extern ptp_property *ptp_property_supported(indigo_device *device, uint16_t code);
 extern bool ptp_operation_supported(indigo_device *device, uint16_t code);
 
 extern bool ptp_open(indigo_device *device);
