@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -454,7 +454,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (asi_read_pixels(device)) {
 			char *color_string = get_bayer_string(device);
-			if (color_string) {
+			if ((color_string) &&   /* if colour (bayer) image but not RGB */
+			    (PRIVATE_DATA->exp_bpp != 24) &&
+				(PRIVATE_DATA->exp_bpp != 48)) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
