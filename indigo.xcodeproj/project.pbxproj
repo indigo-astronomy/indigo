@@ -579,6 +579,10 @@
 		59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag_main.c; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		59550A4822F33FFC00C719C4 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.01.pdf; sourceTree = "<group>"; };
+		5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.0.pdf; sourceTree = "<group>"; };
+		5956F662230BCE120016C7C2 /* Protocol_V2.5.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V2.5.pdf; sourceTree = "<group>"; };
+		5956F663230BCE170016C7C2 /* Protocol_V1.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.0.pdf; sourceTree = "<group>"; };
 		595705A321866D9700E713A9 /* indigo_drivers.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_drivers.c; sourceTree = "<group>"; };
 		59588C9F211B4A0200E9FC27 /* indigo.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = indigo.js; sourceTree = "<group>"; };
 		59588CA0211B4ACA00E9FC27 /* wheel_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = wheel_test.html; sourceTree = "<group>"; };
@@ -10396,9 +10400,13 @@
 				9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */,
 				9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */,
 				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
+				5956F663230BCE170016C7C2 /* Protocol_V1.0.pdf */,
 				9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */,
 				9DAD523221246FA9002FCC79 /* Protocol_V1.4.pdf */,
 				59E67789212C8042004B99BE /* Protocol_V2.0.pdf */,
+				5956F662230BCE120016C7C2 /* Protocol_V2.5.pdf */,
+				5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */,
+				5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */,
 				59AEB117215446960008A729 /* ioptron_2.0_simulator */,
 			);
 			path = mount_ioptron;

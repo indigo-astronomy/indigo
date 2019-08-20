@@ -29,6 +29,13 @@
 #include <time.h>
 #include <stdio.h>
 
+#define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
+#define JD UT2JD(time(NULL))
+#define JD2000       2451545.0
+
+extern double DELTA_T;
+extern double DELTA_UTC_UT1;
+
 extern double indigo_lst(time_t *utc, double longitude);
 extern void indigo_eq2hor(time_t *utc, double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az);
 extern void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec);
