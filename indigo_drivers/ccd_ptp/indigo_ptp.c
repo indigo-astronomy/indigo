@@ -847,7 +847,7 @@ bool ptp_open(indigo_device *device) {
 	return true;
 }
 
-bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_size) {
+bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ptp_container request, response;
 	int length = 0;
@@ -876,8 +876,8 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		return false;
 	}
 	if (data_out) {
-		int size = *(uint32_t *)data_out;
-		request.length = PTP_CONTAINER_HDR_SIZE + size;
+		int size = data_out_size;
+		request.length = PTP_CONTAINER_HDR_SIZE + data_out_size;
 		request.type = ptp_container_data;
 		PTP_DUMP_CONTAINER(&request);
 		if (size < sizeof(ptp_container) - PTP_CONTAINER_HDR_SIZE) {
@@ -921,8 +921,8 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		assert(buffer != NULL);
 		memcpy(buffer, &response.payload, length);
 		int offset = length;
-		if (data_size)
-			*data_size = total;
+		if (data_in_size)
+			*data_in_size = total;
 		total -= length;
 		while (total > 0) {
 			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total, &length, PTP_TIMEOUT);
@@ -1169,7 +1169,45 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 }
 
 bool ptp_set_property(indigo_device *device, ptp_property *property) {
-	assert(0);
+	switch (property->property->type) {
+		case INDIGO_TEXT_VECTOR: {
+			strncpy(property->value.text.value, property->property->items->text.value, PTP_MAX_CHARS);
+			uint8_t buffer[PTP_MAX_CHARS * 2 + 2];
+			uint32_t size = (uint32_t)(ptp_encode_string(property->value.text.value, buffer) - buffer);
+			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, buffer, size);
+		}
+		case INDIGO_SWITCH_VECTOR: {
+			for (int i = 0; i < property->property->count; i++) {
+				if (property->property->items[i].sw.value) {
+					property->value.sw.value = property->value.sw.values[i];
+					break;
+				}
+			}
+			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint32_t));
+		}
+		case INDIGO_NUMBER_VECTOR: {
+			switch (property->type) {
+				case ptp_int8_type:
+				case ptp_uint8_type:
+					property->value.number.value = (int64_t)property->property->items->number.target;
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint8_t));
+				case ptp_int16_type:
+				case ptp_uint16_type:
+					property->value.number.value = (int64_t)property->property->items->number.target;
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint16_t));
+				case ptp_int32_type:
+				case ptp_uint32_type:
+					property->value.number.value = (int64_t)property->property->items->number.target;
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint32_t));
+				case ptp_int64_type:
+				case ptp_uint64_type:
+					property->value.number.value = (int64_t)property->property->items->number.target;
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint64_t));
+			}
+		}
+		default:
+			return false;
+	}
 }
 
 bool ptp_exposure(indigo_device *device) {
