@@ -1317,12 +1317,12 @@ bool ptp_canon_exposure(indigo_device *device) {
 			result = ptp_transaction_1_0(device, ptp_operation_canon_RemoteReleaseOff, 3);
 		} else {
 			CCD_EXPOSURE_ITEM->number.value += delay;
-			while (CCD_EXPOSURE_ITEM->number.value > 1) {
+			while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				indigo_usleep(ONE_SECOND_DELAY);
 				CCD_EXPOSURE_ITEM->number.value -= 1;
 			}
-			if (CCD_EXPOSURE_ITEM->number.value > 0) {
+			if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
 			}
@@ -1336,12 +1336,12 @@ bool ptp_canon_exposure(indigo_device *device) {
 		} else {
 			result = ptp_transaction_0_0(device, ptp_operation_canon_BulbStart);
 			if (result) {
-				while (CCD_EXPOSURE_ITEM->number.value > 1) {
+				while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 					indigo_usleep(ONE_SECOND_DELAY);
 					CCD_EXPOSURE_ITEM->number.value -= 1;
 				}
-				if (CCD_EXPOSURE_ITEM->number.value > 0) {
+				if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 					indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
 				}

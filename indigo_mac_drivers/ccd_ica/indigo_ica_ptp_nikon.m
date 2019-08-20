@@ -683,7 +683,7 @@ static struct info {
         delayModeOn = @"1";
         [self mapValueInterval:property map:map];
       } else if (property.max && property.max.intValue == 3) {
-        NSDictionary *map = @{ @0:@"3s", @1:@"2s", @2:@"3s", @3:@"Off" };
+        NSDictionary *map = @{ @0:@"3s", @1:@"2s", @2:@"1s", @3:@"Off" };
         delayModeOff = @"3";
         delayModeOn = @"1";
         [self mapValueInterval:property map:map];
