@@ -758,7 +758,12 @@ bool ptp_nikon_lock(indigo_device *device) {
 }
 
 bool ptp_nikon_zoom(indigo_device *device) {
-	assert(0);
+	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_LiveViewImageZoomRatio);
+	if (property) {
+		uint8_t value = DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value ? 5 : 0;
+		return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_LiveViewImageZoomRatio, &value, sizeof(uint8_t));
+	}
+	return false;
 }
 
 bool ptp_nikon_focus(indigo_device *device, int steps) {
