@@ -851,6 +851,8 @@ bool ptp_open(indigo_device *device) {
 
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (PRIVATE_DATA->handle == NULL)
+		return false;
 	ptp_container request, response;
 	int length = 0;
 	memset(&request, 0, sizeof(request));
@@ -966,6 +968,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	if (in_5)
 		*in_5 = response.payload.params[4];
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	PRIVATE_DATA->last_error = response.code;
 	return rc >= 0 && response.code == ptp_response_OK;
 }
 
