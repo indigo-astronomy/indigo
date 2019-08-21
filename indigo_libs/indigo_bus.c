@@ -23,6 +23,11 @@
  \file indigo_bus.c
  */
 
+#if defined(INDIGO_LINUX)
+#define _GNU_SOURCE
+#define PTHREAD_RECURSIVE_MUTEX_INITIALIZER PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
