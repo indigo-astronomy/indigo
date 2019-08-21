@@ -387,6 +387,7 @@ typedef struct {
 	pthread_mutex_t message_mutex;
 	int message_property_index;
 	bool abort_capture;
+	uint32_t last_error;
 } ptp_private_data;
 
 extern void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container);

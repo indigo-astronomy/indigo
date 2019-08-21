@@ -256,7 +256,12 @@ static void handle_connection(indigo_device *device) {
 	if (result) {
 		PRIVATE_DATA->transaction_id = 0;
 		PRIVATE_DATA->session_id = 0;
-		if (ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id)) {
+		result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
+		if (!result && PRIVATE_DATA->last_error == ptp_response_SessionAlreadyOpen) {
+			ptp_transaction_0_0(device, ptp_operation_CloseSession);
+			result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
+		}
+		if (result) {
 			if (PRIVATE_DATA->initialise(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
