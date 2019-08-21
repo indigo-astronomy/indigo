@@ -299,6 +299,7 @@ typedef struct {
 typedef struct {
 	uint16_t code;
 	uint16_t type;
+	uint8_t form;
 	uint8_t writable;
 	int count;
 	union {
@@ -312,6 +313,10 @@ typedef struct {
 			int64_t value;
 			int64_t values[PTP_MAX_ELEMENTS];
 		} sw;
+		struct {
+			char value[PTP_MAX_CHARS];
+			char values[16][PTP_MAX_CHARS];
+		} sw_str;
 	} value;
 	indigo_property *property;
 } ptp_property;
@@ -370,6 +375,7 @@ typedef struct {
 	char *(* property_value_code_label)(indigo_device *device, uint16_t property, uint64_t code);
 	bool (* initialise)(indigo_device *device);
 	bool (* handle_event)(indigo_device *device, ptp_event_code code, uint32_t *params);
+	bool (* fix_property)(indigo_device *device, ptp_property *property);
 	bool (* set_property)(indigo_device *device, ptp_property *property);
 	bool (* exposure)(indigo_device *device);
 	bool (* liveview)(indigo_device *device);

@@ -538,7 +538,6 @@ uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device) {
 }
 
 uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_property *target) {
-	uint8_t form;
 	source = ptp_decode_uint16(source, &target->code);
 	source = ptp_decode_uint16(source, &target->type);
 	source = ptp_decode_uint8(source, &target->writable);
@@ -599,8 +598,8 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 		default:
 			assert(false);
 	}
-	source = ptp_decode_uint8(source, &form);
-	switch (form) {
+	source = ptp_decode_uint8(source, &target->form);
+	switch (target->form) {
 		case ptp_none_form:
 			if (target->type <= ptp_uint64_type) {
 				target->value.number.min = LONG_MIN;
@@ -741,7 +740,8 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 						break;
 					}
 					case ptp_str_type: {
-						source = ptp_decode_string(source, target->value.text.value);
+						if (i < 16)
+							source = ptp_decode_string(source, target->value.sw_str.values[i]);
 						break;
 					}
 					default:
@@ -751,6 +751,8 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 			break;
 		}
 	}
+	if (PRIVATE_DATA->fix_property)
+		PRIVATE_DATA->fix_property(device, target);
 	ptp_update_property(device, target);
 	return source;
 }
@@ -990,12 +992,13 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE], group[16];
 			strncpy(name, PRIVATE_DATA->property_code_name(property->code), INDIGO_NAME_SIZE);
 			strncpy(label, PRIVATE_DATA->property_code_label(property->code), INDIGO_NAME_SIZE);
-			if (!strncmp(name, "DSLR_", 5))
+			if (!strncmp(name, "DSLR_", 5)) {
 				strcpy(group, "DSLR");
-			else if (!strncmp(name, "CCD_", 4))
+			} else if (!strncmp(name, "CCD_", 4)) {
 				strcpy(group, "Camera");
-			else
+			} else {
 				strcpy(group, "Advanced");
+			}
 			indigo_property_perm perm = property->writable ? INDIGO_RW_PERM : INDIGO_RO_PERM;
 			if (property->count == 0) {
 				if (property->type == ptp_str_type) {
@@ -1009,8 +1012,13 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				property->property = indigo_init_switch_property(NULL, device->name, name, group, label, INDIGO_OK_STATE, perm, INDIGO_ONE_OF_MANY_RULE, property->count);
 				char str[INDIGO_VALUE_SIZE];
 				for (int i = 0; i < property->count; i++) {
-					sprintf(str, "%llx", property->value.sw.values[i]);
-					indigo_init_switch_item(property->property->items + i, str, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
+					if (property->type == ptp_str_type) {
+						strcpy(str, property->value.sw_str.values[i]);
+						indigo_init_switch_item(property->property->items + i, property->value.sw_str.values[i], property->value.sw_str.values[i], !strcmp(property->value.sw_str.value, property->value.sw_str.values[i]));
+					} else {
+						sprintf(str, "%llx", property->value.sw.values[i]);
+						indigo_init_switch_item(property->property->items + i, str, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
+					}
 				}
 			}
 		}
@@ -1043,15 +1051,25 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				}
 				char str[INDIGO_NAME_SIZE];
 				for (int i = 0; i < property->count; i++) {
-					sprintf(str, "%llx", property->value.sw.values[i]);
+					if (property->type == ptp_str_type) {
+						strcpy(str, property->value.sw_str.values[i]);
+					} else {
+						sprintf(str, "%llx", property->value.sw.values[i]);
+					}
 					if (strncmp(property->property->items[i].name, str, INDIGO_NAME_SIZE)) {
 						strncpy(property->property->items[i].name, str, INDIGO_NAME_SIZE);
 						strncpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), INDIGO_VALUE_SIZE);
 						define = true;
 					}
-					if (property->value.sw.value == property->value.sw.values[i] && !property->property->items[i].sw.value)
-						update = true;
-					property->property->items[i].sw.value = (property->value.sw.value == property->value.sw.values[i]);
+					if (property->type == ptp_str_type) {
+						if (!strcmp(property->value.sw_str.value, property->value.sw_str.values[i]) && !property->property->items[i].sw.value)
+							update = true;
+						property->property->items[i].sw.value = !strcmp(property->value.sw_str.value, property->value.sw_str.values[i]);
+					} else {
+						if (property->value.sw.value == property->value.sw.values[i] && !property->property->items[i].sw.value)
+							update = true;
+						property->property->items[i].sw.value = (property->value.sw.value == property->value.sw.values[i]);
+					}
 				}
 			} else {
 				if (IS_CONNECTED) {
@@ -1180,9 +1198,18 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 		case INDIGO_SWITCH_VECTOR: {
 			for (int i = 0; i < property->property->count; i++) {
 				if (property->property->items[i].sw.value) {
-					property->value.sw.value = property->value.sw.values[i];
+					if (property->type == ptp_str_type) {
+						strncpy(property->value.sw_str.value, property->value.sw_str.values[i], PTP_MAX_CHARS);
+					} else {
+						property->value.sw.value = property->value.sw.values[i];
+					}
 					break;
 				}
+			}
+			if (property->type == ptp_str_type) {
+				uint8_t buffer[2 * PTP_MAX_CHARS + 2];
+				uint8_t *end = ptp_encode_string(property->value.sw_str.value, buffer);
+				return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, buffer, (uint32_t)(end - buffer));
 			}
 			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint32_t));
 		}

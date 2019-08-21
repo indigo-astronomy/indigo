@@ -127,9 +127,6 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_FlashMode: return DSLR_FLASH_MODE_PROPERTY_NAME;
 		case ptp_property_nikon_AutofocusMode: return DSLR_FOCUS_MODE_PROPERTY_NAME;
 		case ptp_property_nikon_EVStep: return DSLR_COMPENSATION_STEP_PROPERTY_NAME;
-		case ptp_property_nikon_FlashExposureCompensation: return DSLR_FLASH_COMPENSATION_PROPERTY_NAME;
-		case ptp_property_nikon_ExternalFlashMode: return DSLR_EXT_FLASH_MODE_PROPERTY_NAME;
-		case ptp_property_nikon_ExternalFlashCompensation: return DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME;
 		case ptp_property_nikon_ActivePicCtrlItem: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
 	}
 	return ptp_property_nikon_code_label(code);
@@ -566,6 +563,10 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			switch (code) { case 1: return "Average"; case 2: return "Center Weighted Average"; case 3: return "Multi-spot"; case 4: return "Center-spot"; case 0x8010: return "Center-spot *"; }
 			break;
 		}
+		case ptp_property_nikon_AutofocusMode: {
+			switch (code) { case 0: return "AF-S"; case 1: return "AF-C"; case 2: return "AF-A"; case 3: return "M (fixed)"; case 4: return "M"; }
+			break;
+		}
 		case ptp_property_nikon_ExposureDelayMode: {
 			ptp_property *prop = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
 			if (prop) {
@@ -658,6 +659,35 @@ bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t
 	return ptp_handle_event(device, code, params);
 }
 
+bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
+	switch (property->code) {
+		case ptp_property_ImageSize: {
+			return true;
+		}
+		case ptp_property_nikon_AutofocusMode: {
+			if (property->value.number.value == 3) {
+				property->count = 1;
+				property->value.sw.values[0] = 3;
+				property->writable = false;
+			} else {
+				property->count = (int)property->value.number.max;
+				property->value.sw.values[0] = 0;
+				property->value.sw.values[1] = 1;
+				property->value.sw.values[2] = 2;
+				property->value.sw.values[3] = 4;
+			}
+			return true;
+		}
+		case ptp_property_nikon_EVStep: {
+			property->count = 2;
+			property->value.sw.values[0] = 0;
+			property->value.sw.values[1] = 1;
+			return true;
+		}
+//		case ptp_property_nikon_ActivePicCtrlItem: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
+	}
+	return false;
+}
 
 bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
 	return ptp_set_property(device, property);
@@ -719,7 +749,12 @@ bool ptp_nikon_liveview(indigo_device *device) {
 }
 
 bool ptp_nikon_lock(indigo_device *device) {
-	assert(0);
+	if (ptp_operation_supported(device, ptp_operation_nikon_SetControlMode)) {
+		if (DSLR_LOCK_ITEM->sw.value)
+			return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 1);
+		return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 0);
+	}
+	return false;
 }
 
 bool ptp_nikon_zoom(indigo_device *device) {
