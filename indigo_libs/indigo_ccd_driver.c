@@ -1454,26 +1454,31 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
-
+	char standard_suffix[16];
+	strncpy(standard_suffix, suffix, sizeof(standard_suffix));
+	for (char *pnt = standard_suffix; *pnt; pnt++)
+		*pnt = tolower(*pnt);
+	if (!strcmp(standard_suffix, ".jpg"))
+		strcpy(standard_suffix, ".jpeg");
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
 		int handle = 0;
 		char *message = NULL;
-		if (strlen(dir) + strlen(prefix) + strlen(suffix) < INDIGO_VALUE_SIZE) {
+		if (strlen(dir) + strlen(prefix) + strlen(standard_suffix) < INDIGO_VALUE_SIZE) {
 			char file_name[INDIGO_VALUE_SIZE];
 			char *xxx = strstr(prefix, "XXX");
 			if (xxx == NULL) {
-				strncpy(file_name, dir, INDIGO_VALUE_SIZE - strlen(prefix) - strlen(suffix));
+				strncpy(file_name, dir, INDIGO_VALUE_SIZE - strlen(prefix) - strlen(standard_suffix));
 				strcat(file_name, prefix);
-				strcat(file_name, suffix);
+				strcat(file_name, standard_suffix);
 			} else {
 				char format[INDIGO_VALUE_SIZE];
 				strncpy(format, dir, INDIGO_VALUE_SIZE);
 				strncat(format, prefix, xxx - prefix);
 				strcat(format, "%03d");
 				strcat(format, xxx+3);
-				strcat(format, suffix);
+				strcat(format, standard_suffix);
 				struct stat sb;
 				int i = 1;
 				while (true) {
@@ -1508,7 +1513,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 		*CCD_IMAGE_ITEM->blob.url = 0;
 		CCD_IMAGE_ITEM->blob.value = data;
 		CCD_IMAGE_ITEM->blob.size = blobsize;
-		strncpy(CCD_IMAGE_ITEM->blob.format, suffix, INDIGO_NAME_SIZE);
+		strncpy(CCD_IMAGE_ITEM->blob.format, standard_suffix, INDIGO_NAME_SIZE);
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
