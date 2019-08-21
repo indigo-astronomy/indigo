@@ -1088,7 +1088,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			define = true;
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> = %s", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property->name);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> = %s", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE");
 	if (IS_CONNECTED) {
 		if (define) {
 			if (delete)
