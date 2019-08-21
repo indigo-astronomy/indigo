@@ -516,6 +516,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	return indigo_focuser_change_property(device, client, property);
 }
 
+static indigo_result focuser_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_focuser_detach(device);
+}
+
+
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
@@ -532,7 +541,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
 		NULL,
-		indigo_focuser_detach
+		focuser_detach
 	);
 
 	struct libusb_device_descriptor descriptor;
@@ -650,11 +659,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					indigo_device *device = devices[j];
 					if (PRIVATE_DATA->dev == dev) {
 						private_data = PRIVATE_DATA;
-						indigo_detach_device(device);
 						if (private_data->focuser) {
 							indigo_detach_device(private_data->focuser);
 							free(private_data->focuser);
+							private_data->focuser = NULL;
 						}
+						indigo_detach_device(device);
 						free(device);
 						devices[j] = NULL;
 					}
