@@ -758,8 +758,7 @@ bool ptp_nikon_lock(indigo_device *device) {
 }
 
 bool ptp_nikon_zoom(indigo_device *device) {
-	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_LiveViewImageZoomRatio);
-	if (property) {
+	if (ptp_property_supported(device, ptp_property_nikon_LiveViewImageZoomRatio)) {
 		uint8_t value = DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value ? 5 : 0;
 		return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_LiveViewImageZoomRatio, &value, sizeof(uint8_t));
 	}
@@ -767,5 +766,18 @@ bool ptp_nikon_zoom(indigo_device *device) {
 }
 
 bool ptp_nikon_focus(indigo_device *device, int steps) {
-	assert(0);
+	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_LiveViewAFFocus);
+	if (property && ptp_operation_supported(device, ptp_operation_nikon_MfDrive)) {
+		bool result = true;
+		if (property->value.number.value != 0) {
+			uint8_t value = 0;
+			result = ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_LiveViewImageZoomRatio, &value, sizeof(uint8_t));
+		}
+		if (result) {
+			if (steps > 0)
+				return ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 1, steps);
+			return ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 2, -steps);
+		}
+	}
+	return false;
 }
