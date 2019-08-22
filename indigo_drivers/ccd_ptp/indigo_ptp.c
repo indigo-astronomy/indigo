@@ -37,6 +37,9 @@
 
 #include "indigo_ptp.h"
 
+#define ADVANCED_GROUP
+#define UNKNOWN_GROUP
+
 char *ptp_type_code_label(uint16_t code) {
 	static char *scalar_type_label[] = { "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "int128", "uint128" };
 	static char *array_type_label[] = { "int8[]", "uint8[]", "int16[]", "uint16[]", "int32[]", "uint32[]", "int64[]", "uint64[]", "int128[]", "uint128[]" };
@@ -182,7 +185,7 @@ char *ptp_property_code_name(uint16_t code) {
 char *ptp_property_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_property_Undefined: return "Undefined";
-		case ptp_property_BatteryLevel: return "Battery level";
+		case ptp_property_BatteryLevel: return "BatteryLevel";
 		case ptp_property_FunctionalMode: return "FunctionalMode";
 		case ptp_property_ImageSize: return "Image size";
 		case ptp_property_CompressionSetting: return "Compression";
@@ -999,8 +1002,18 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				strcpy(group, "DSLR");
 			} else if (!strncmp(name, "CCD_", 4)) {
 				strcpy(group, "Camera");
-			} else {
+			} else if (!strncmp(name, "ADV_", 4)) {
+#ifdef ADVANCED_GROUP
 				strcpy(group, "Advanced");
+#else
+				property->count = -1;
+#endif
+			} else {
+#ifdef UNKNOWN_GROUP
+				strcpy(group, "Unknown");
+#else
+				property->count = -1;
+#endif
 			}
 			indigo_property_perm perm = property->writable ? INDIGO_RW_PERM : INDIGO_RO_PERM;
 			if (property->count == 0) {
@@ -1056,12 +1069,13 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				for (int i = 0; i < property->count; i++) {
 					if (property->type == ptp_str_type) {
 						strcpy(str, property->value.sw_str.values[i]);
+						strncpy(property->property->items[i].label, str, INDIGO_VALUE_SIZE);
 					} else {
 						sprintf(str, "%llx", property->value.sw.values[i]);
+						strncpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), INDIGO_VALUE_SIZE);
 					}
 					if (strncmp(property->property->items[i].name, str, INDIGO_NAME_SIZE)) {
 						strncpy(property->property->items[i].name, str, INDIGO_NAME_SIZE);
-						strncpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), INDIGO_VALUE_SIZE);
 						define = true;
 					}
 					if (property->type == ptp_str_type) {
@@ -1088,7 +1102,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			define = true;
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> = %s", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE");
 	if (IS_CONNECTED) {
 		if (define) {
 			if (delete)

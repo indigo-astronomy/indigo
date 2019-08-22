@@ -669,6 +669,16 @@
 #define DSLR_PICTURE_STYLE_PROPERTY_NAME		"DSLR_PICTURE_STYLE"
 
 //----------------------------------------------------------------------
+/** DSLR_ASPECT_RATIO property name.
+ */
+#define DSLR_ASPECT_RATIO_PROPERTY_NAME		"DSLR_ASPECT_RATIO"
+
+//----------------------------------------------------------------------
+/** DSLR_COLOR_SPACE property name.
+ */
+#define DSLR_COLOR_SPACE_PROPERTY_NAME		"DSLR_COLOR_SPACE"
+
+//----------------------------------------------------------------------
 /** DSLR_LOCK property name.
  */
 #define DSLR_LOCK_PROPERTY_NAME		"DSLR_LOCK"

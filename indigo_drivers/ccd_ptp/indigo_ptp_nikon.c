@@ -128,6 +128,17 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_nikon_AutofocusMode: return DSLR_FOCUS_MODE_PROPERTY_NAME;
 		case ptp_property_nikon_EVStep: return DSLR_COMPENSATION_STEP_PROPERTY_NAME;
 		case ptp_property_nikon_ActivePicCtrlItem: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
+		case ptp_property_nikon_ColorSpace: return DSLR_COLOR_SPACE_PROPERTY_NAME;
+		case ptp_property_nikon_AutoDXCrop: return "ADV_AutoDXCrop";
+		case ptp_property_nikon_ArtistName: return "ADV_ArtistName";
+		case ptp_property_nikon_CopyrightInfo: return "ADV_CopyrightInfo";
+		case ptp_property_nikon_LensID: return "ADV_LensID";
+		case ptp_property_nikon_FocalLengthMin: return "ADV_FocalLengthMin";
+		case ptp_property_nikon_FocalLengthMax: return "ADV_FocalLengthMax";
+		case ptp_property_nikon_LongExposureNoiseReduction: return "ADV_LongExposureNoiseReduction";
+		case ptp_property_nikon_NrHighISO: return "ADV_NrHighISO";
+		case ptp_property_nikon_VignetteCtrl: return "ADV_VignetteCtrl";
+		case ptp_property_nikon_ActiveDLighting: return "ADV_ActiveDLighting";
 	}
 	return ptp_property_nikon_code_label(code);
 }
@@ -168,8 +179,8 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_NonCPULensDataMaximumAperture: return "NonCPULensDataMaximumAperture_Nikon";
 		case ptp_property_nikon_ShootingMode: return "ShootingMode_Nikon";
 		case ptp_property_nikon_JPEGCompressionPolicy: return "JPEGCompressionPolicy_Nikon";
-		case ptp_property_nikon_ColorSpace: return "ColorSpace_Nikon";
-		case ptp_property_nikon_AutoDXCrop: return "AutoDXCrop_Nikon";
+		case ptp_property_nikon_ColorSpace: return "Color space";
+		case ptp_property_nikon_AutoDXCrop: return "Auto DX Crop";
 		case ptp_property_nikon_FlickerReduction: return "FlickerReduction_Nikon";
 		case ptp_property_nikon_RemoteMode: return "RemoteMode_Nikon";
 		case ptp_property_nikon_VideoMode: return "VideoMode_Nikon";
@@ -216,15 +227,15 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_ShootingSpeed: return "ShootingSpeed_Nikon";
 		case ptp_property_nikon_MaximumShots: return "MaximumShots_Nikon";
 		case ptp_property_nikon_ExposureDelayMode: return "ExposureDelayMode_Nikon";
-		case ptp_property_nikon_LongExposureNoiseReduction: return "LongExposureNoiseReduction_Nikon";
+		case ptp_property_nikon_LongExposureNoiseReduction: return "Long exposure NR";
 		case ptp_property_nikon_FileNumberSequence: return "FileNumberSequence_Nikon";
 		case ptp_property_nikon_ControlPanelFinderRearControl: return "ControlPanelFinderRearControl_Nikon";
 		case ptp_property_nikon_ControlPanelFinderViewfinder: return "ControlPanelFinderViewfinder_Nikon";
 		case ptp_property_nikon_Illumination: return "Illumination_Nikon";
-		case ptp_property_nikon_NrHighISO: return "NrHighISO_Nikon";
+		case ptp_property_nikon_NrHighISO: return "High ISO NR";
 		case ptp_property_nikon_SHSETCHGUIDDISP: return "SHSETCHGUIDDISP_Nikon";
-		case ptp_property_nikon_ArtistName: return "ArtistName_Nikon";
-		case ptp_property_nikon_CopyrightInfo: return "CopyrightInfo_Nikon";
+		case ptp_property_nikon_ArtistName: return "Artist";
+		case ptp_property_nikon_CopyrightInfo: return "Copyright";
 		case ptp_property_nikon_FlashSyncSpeed: return "FlashSyncSpeed_Nikon";
 		case ptp_property_nikon_FlashShutterSpeed: return "FlashShutterSpeed_Nikon";
 		case ptp_property_nikon_AAFlashMode: return "AAFlashMode_Nikon";
@@ -271,11 +282,11 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_AutoExposureBracketCount: return "AutoExposureBracketCount_Nikon";
 		case ptp_property_nikon_WhiteBalanceBracketStep: return "WhiteBalanceBracketStep_Nikon";
 		case ptp_property_nikon_WhiteBalanceBracketProgram: return "WhiteBalanceBracketProgram_Nikon";
-		case ptp_property_nikon_LensID: return "LensID_Nikon";
+		case ptp_property_nikon_LensID: return "Lens type";
 		case ptp_property_nikon_LensSort: return "LensSort_Nikon";
-		case ptp_property_nikon_LensType: return "LensType_Nikon";
-		case ptp_property_nikon_FocalLengthMin: return "FocalLengthMin_Nikon";
-		case ptp_property_nikon_FocalLengthMax: return "FocalLengthMax_Nikon";
+		case ptp_property_nikon_LensType: return "LensType";
+		case ptp_property_nikon_FocalLengthMin: return "Focal length min";
+		case ptp_property_nikon_FocalLengthMax: return "Focal length max";
 		case ptp_property_nikon_MaxApAtMinFocalLength: return "MaxApAtMinFocalLength_Nikon";
 		case ptp_property_nikon_MaxApAtMaxFocalLength: return "MaxApAtMaxFocalLength_Nikon";
 		case ptp_property_nikon_FinderISODisp: return "FinderISODisp_Nikon";
@@ -283,7 +294,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_AutoOffMenu: return "AutoOffMenu_Nikon";
 		case ptp_property_nikon_AutoOffInfo: return "AutoOffInfo_Nikon";
 		case ptp_property_nikon_SelfTimerShootNum: return "SelfTimerShootNum_Nikon";
-		case ptp_property_nikon_VignetteCtrl: return "VignetteCtrl_Nikon";
+		case ptp_property_nikon_VignetteCtrl: return "Vignette control";
 		case ptp_property_nikon_AutoDistortionControl: return "AutoDistortionControl_Nikon";
 		case ptp_property_nikon_SceneMode: return "SceneMode_Nikon";
 		case ptp_property_nikon_SceneMode2: return "SceneMode2_Nikon";
@@ -328,7 +339,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_BWSettingType: return "BWSettingType_Nikon";
 		case ptp_property_nikon_Slot2SaveMode: return "Slot2SaveMode_Nikon";
 		case ptp_property_nikon_RawBitMode: return "RawBitMode_Nikon";
-		case ptp_property_nikon_ActiveDLighting: return "ActiveDLighting_Nikon";
+		case ptp_property_nikon_ActiveDLighting: return "Active DLighting";
 		case ptp_property_nikon_FlourescentType: return "FlourescentType_Nikon";
 		case ptp_property_nikon_TuneColourTemperature: return "TuneColourTemperature_Nikon";
 		case ptp_property_nikon_TunePreset0: return "TunePreset0_Nikon";
@@ -486,6 +497,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 		case ptp_property_nikon_MovWindNoiceReduction:
 		case ptp_property_nikon_Bracketing:
 		case ptp_property_nikon_FocusAreaWrap:
+		case ptp_property_nikon_AutoDXCrop:
 		case ptp_property_nikon_NoCFCard: {
 			switch (code) { case 0: return "Off"; case 1: return "On"; }
 			break;
@@ -582,6 +594,19 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 	return ptp_property_value_code_label(device, property, code);
 }
 
+static bool ptp_refresh_property(indigo_device *device, ptp_property *property) {
+	bool result = false;
+	if (property) {
+		void *buffer = NULL;
+		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, property->code, &buffer, NULL)) {
+			result = ptp_decode_property(buffer, device, property);
+		}
+		if (buffer)
+			free(buffer);
+	}
+	return result;
+}
+
 static void ptp_check_event(indigo_device *device) {
 	void *buffer = NULL;
 	if (ptp_operation_supported(device, ptp_operation_nikon_CheckEvent)) {
@@ -638,7 +663,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 				;
 			for (int i = 0; properties[i]; i++) {
 				target[index] = properties[i];
-				if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[index], &buffer, NULL)) {
+				if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, target[index], &buffer, NULL)) {
 					ptp_decode_property(buffer, device, PRIVATE_DATA->properties + index);
 				}
 				if (buffer)
@@ -662,6 +687,11 @@ bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t
 bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 	switch (property->code) {
 		case ptp_property_ImageSize: {
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_nikon_AutoDXCrop));
+			return true;
+		}
+		case ptp_property_nikon_ACPower: {
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_BatteryLevel));
 			return true;
 		}
 		case ptp_property_nikon_AutofocusMode: {
@@ -682,9 +712,220 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			property->count = 2;
 			property->value.sw.values[0] = 0;
 			property->value.sw.values[1] = 1;
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureBiasCompensation));
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_nikon_FlashExposureCompensation));
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_nikon_ExternalFlashCompensation));
 			return true;
 		}
-//		case ptp_property_nikon_ActivePicCtrlItem: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
+		case ptp_property_nikon_AutoDXCrop: {
+			property->count = 2;
+			property->value.sw.values[0] = 0;
+			property->value.sw.values[1] = 1;
+			return true;
+		}
+		case ptp_property_nikon_VignetteCtrl: {
+			property->count = 4;
+			property->value.sw.values[0] = 0;
+			property->value.sw.values[1] = 1;
+			property->value.sw.values[2] = 2;
+			property->value.sw.values[3] = 3;
+			return true;
+		}
+		case ptp_property_nikon_ActiveDLighting: {
+			property->count = 5;
+			property->value.sw.values[0] = 0;
+			property->value.sw.values[1] = 1;
+			property->value.sw.values[2] = 2;
+			property->value.sw.values[3] = 3;
+			property->value.sw.values[4] = 4;
+			property->value.sw.values[5] = 5;
+			return true;
+		}
+		case ptp_property_nikon_LensID: {
+			property->type = ptp_str_type;
+			switch (property->value.number.value) {
+				case 0x0000: strcpy(property->value.text.value, "Fisheye Nikkor 8mm f/2.8 AiS"); break;
+				case 0x0001: strcpy(property->value.text.value, "AF Nikkor 50mm f/1.8"); break;
+				case 0x0002: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-70mm f/3.3-4.5"); break;
+				case 0x0003: strcpy(property->value.text.value, "AF Zoom-Nikkor 70-210mm f/4"); break;
+				case 0x0004: strcpy(property->value.text.value, "AF Nikkor 28mm f/2.8"); break;
+				case 0x0005: strcpy(property->value.text.value, "AF Nikkor 50mm f/1.4"); break;
+				case 0x0006: strcpy(property->value.text.value, "AF Micro-Nikkor 55mm f/2.8"); break;
+				case 0x0007: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-85mm f/3.5-4.5"); break;
+				case 0x0008: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-105mm f/3.5-4.5"); break;
+				case 0x0009: strcpy(property->value.text.value, "AF Nikkor 24mm f/2.8"); break;
+				case 0x000A: strcpy(property->value.text.value, "AF Nikkor 300mm f/2.8 IF-ED"); break;
+				case 0x000B: strcpy(property->value.text.value, "AF Nikkor 180mm f/2.8 IF-ED"); break;
+				case 0x000D: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-135mm f/3.5-4.5"); break;
+				case 0x000E: strcpy(property->value.text.value, "AF Zoom-Nikkor 70-210mm f/4"); break;
+				case 0x000F: strcpy(property->value.text.value, "AF Nikkor 50mm f/1.8 N"); break;
+				case 0x0010: strcpy(property->value.text.value, "AF Nikkor 300mm f/4 IF-ED"); break;
+				case 0x0011: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-70mm f/2.8"); break;
+				case 0x0012: strcpy(property->value.text.value, "AF Nikkor 70-210mm f/4-5.6"); break;
+				case 0x0013: strcpy(property->value.text.value, "AF Zoom-Nikkor 24-50mm f/3.3-4.5"); break;
+				case 0x0014: strcpy(property->value.text.value, "AF Zoom-Nikkor 80-200mm f/2.8 ED"); break;
+				case 0x0015: strcpy(property->value.text.value, "AF Nikkor 85mm f/1.8"); break;
+				case 0x0017: strcpy(property->value.text.value, "Nikkor 500mm f/4 P ED IF"); break;
+				case 0x0018: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-135mm f/3.5-4.5 N"); break;
+				case 0x001A: strcpy(property->value.text.value, "AF Nikkor 35mm f/2"); break;
+				case 0x001B: strcpy(property->value.text.value, "AF Zoom-Nikkor 75-300mm f/4.5-5.6"); break;
+				case 0x001C: strcpy(property->value.text.value, "AF Nikkor 20mm f/2.8"); break;
+				case 0x001D: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-70mm f/3.3-4.5 N"); break;
+				case 0x001E: strcpy(property->value.text.value, "AF Micro-Nikkor 60mm f/2.8"); break;
+				case 0x001F: strcpy(property->value.text.value, "AF Micro-Nikkor 105mm f/2.8"); break;
+				case 0x0020: strcpy(property->value.text.value, "AF Zoom-Nikkor 80-200mm f/2.8 ED"); break;
+				case 0x0021: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-70mm f/3.5-4.5"); break;
+				case 0x0022: strcpy(property->value.text.value, "AF DC-Nikkor 135mm f/2"); break;
+				case 0x0023: strcpy(property->value.text.value, "Zoom-Nikkor 1200-1700mm f/5.6-8 P ED IF"); break;
+				case 0x0024: strcpy(property->value.text.value, "AF Zoom-Nikkor 80-200mm f/2.8D ED"); break;
+				case 0x0025: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-70mm f/2.8D"); break;
+				case 0x0026: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-70mm f/3.5-4.5D"); break;
+				case 0x0027: strcpy(property->value.text.value, "AF-I Nikkor 300mm f/2.8D IF-ED"); break;
+				case 0x0028: strcpy(property->value.text.value, "AF-I Nikkor 600mm f/4D IF-ED"); break;
+				case 0x002A: strcpy(property->value.text.value, "AF Nikkor 28mm f/1.4D"); break;
+				case 0x002B: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-80mm f/4-5.6D"); break;
+				case 0x002C: strcpy(property->value.text.value, "AF DC-Nikkor 105mm f/2D"); break;
+				case 0x002D: strcpy(property->value.text.value, "AF Micro-Nikkor 200mm f/4D IF-ED"); break;
+				case 0x002E: strcpy(property->value.text.value, "AF Nikkor 70-210mm f/4-5.6D"); break;
+				case 0x002F: strcpy(property->value.text.value, "AF Zoom-Nikkor 20-35mm f/2.8D IF"); break;
+				case 0x0030: strcpy(property->value.text.value, "AF-I Nikkor 400mm f/2.8D IF-ED"); break;
+				case 0x0031: strcpy(property->value.text.value, "AF Micro-Nikkor 60mm f/2.8D"); break;
+				case 0x0032: strcpy(property->value.text.value, "AF Micro-Nikkor 105mm f/2.8D"); break;
+				case 0x0033: strcpy(property->value.text.value, "AF Nikkor 18mm f/2.8D"); break;
+				case 0x0034: strcpy(property->value.text.value, "AF Fisheye Nikkor 16mm f/2.8D"); break;
+				case 0x0035: strcpy(property->value.text.value, "AF-I Nikkor 500mm f/4D IF-ED"); break;
+				case 0x0036: strcpy(property->value.text.value, "AF Nikkor 24mm f/2.8D"); break;
+				case 0x0037: strcpy(property->value.text.value, "AF Nikkor 20mm f/2.8D"); break;
+				case 0x0038: strcpy(property->value.text.value, "AF Nikkor 85mm f/1.8D"); break;
+				case 0x003A: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-70mm f/3.5-4.5D"); break;
+				case 0x003B: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-70mm f/2.8D N"); break;
+				case 0x003C: strcpy(property->value.text.value, "AF Zoom-Nikkor 80-200mm f/2.8D ED"); break;
+				case 0x003D: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-80mm f/4-5.6D"); break;
+				case 0x003E: strcpy(property->value.text.value, "AF Nikkor 28mm f/2.8D"); break;
+				case 0x003F: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-105mm f/3.5-4.5D"); break;
+				case 0x0041: strcpy(property->value.text.value, "AF Nikkor 180mm f/2.8D IF-ED"); break;
+				case 0x0042: strcpy(property->value.text.value, "AF Nikkor 35mm f/2D"); break;
+				case 0x0043: strcpy(property->value.text.value, "AF Nikkor 50mm f/1.4D"); break;
+				case 0x0044: strcpy(property->value.text.value, "AF Zoom-Nikkor 80-200mm f/4.5-5.6D"); break;
+				case 0x0045: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-80mm f/3.5-5.6D"); break;
+				case 0x0046: strcpy(property->value.text.value, "AF Zoom-Nikkor 35-80mm f/4-5.6D N"); break;
+				case 0x0047: strcpy(property->value.text.value, "AF Zoom-Nikkor 24-50mm f/3.3-4.5D"); break;
+				case 0x0048: strcpy(property->value.text.value, "AF-S Nikkor 300mm f/2.8D IF-ED"); break;
+				case 0x0049: strcpy(property->value.text.value, "AF-S Nikkor 600mm f/4D IF-ED"); break;
+				case 0x004A: strcpy(property->value.text.value, "AF Nikkor 85mm f/1.4D IF"); break;
+				case 0x004B: strcpy(property->value.text.value, "AF-S Nikkor 500mm f/4D IF-ED"); break;
+				case 0x004C: strcpy(property->value.text.value, "AF Zoom-Nikkor 24-120mm f/3.5-5.6D IF"); break;
+				case 0x004D: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-200mm f/3.5-5.6D IF"); break;
+				case 0x004E: strcpy(property->value.text.value, "AF DC-Nikkor 135mm f/2D"); break;
+				case 0x004F: strcpy(property->value.text.value, "IX-Nikkor 24-70mm f/3.5-5.6"); break;
+				case 0x0050: strcpy(property->value.text.value, "IX-Nikkor 60-180mm f/4-5.6"); break;
+				case 0x0053: strcpy(property->value.text.value, "AF Zoom-Nikkor 80-200mm f/2.8D ED"); break;
+				case 0x0054: strcpy(property->value.text.value, "AF Zoom-Micro Nikkor 70-180mm f/4.5-5.6D ED"); break;
+				case 0x0056: strcpy(property->value.text.value, "AF Zoom-Nikkor 70-300mm f/4-5.6D ED"); break;
+				case 0x0059: strcpy(property->value.text.value, "AF-S Nikkor 400mm f/2.8D IF-ED"); break;
+				case 0x005A: strcpy(property->value.text.value, "IX-Nikkor 30-60mm f/4-5.6"); break;
+				case 0x005B: strcpy(property->value.text.value, "IX-Nikkor 60-180mm f/4.5-5.6"); break;
+				case 0x005D: strcpy(property->value.text.value, "AF-S Zoom-Nikkor 28-70mm f/2.8D IF-ED"); break;
+				case 0x005E: strcpy(property->value.text.value, "AF-S Zoom-Nikkor 80-200mm f/2.8D IF-ED"); break;
+				case 0x005F: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-105mm f/3.5-4.5D IF"); break;
+				case 0x0060: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-80mm f/3.5-5.6D"); break;
+				case 0x0061: strcpy(property->value.text.value, "AF Zoom-Nikkor 75-240mm f/4.5-5.6D"); break;
+				case 0x0063: strcpy(property->value.text.value, "AF-S Nikkor 17-35mm f/2.8D IF-ED"); break;
+				case 0x0064: strcpy(property->value.text.value, "PC Micro-Nikkor 85mm f/2.8D"); break;
+				case 0x0065: strcpy(property->value.text.value, "AF VR Zoom-Nikkor 80-400mm f/4.5-5.6D ED"); break;
+				case 0x0066: strcpy(property->value.text.value, "AF Zoom-Nikkor 18-35mm f/3.5-4.5D IF-ED"); break;
+				case 0x0067: strcpy(property->value.text.value, "AF Zoom-Nikkor 24-85mm f/2.8-4D IF"); break;
+				case 0x0068: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-80mm f/3.3-5.6G"); break;
+				case 0x0069: strcpy(property->value.text.value, "AF Zoom-Nikkor 70-300mm f/4-5.6G"); break;
+				case 0x006A: strcpy(property->value.text.value, "AF-S Nikkor 300mm f/4D IF-ED"); break;
+				case 0x006B: strcpy(property->value.text.value, "AF Nikkor ED 14mm f/2.8D"); break;
+				case 0x006D: strcpy(property->value.text.value, "AF-S Nikkor 300mm f/2.8D IF-ED II"); break;
+				case 0x006E: strcpy(property->value.text.value, "AF-S Nikkor 400mm f/2.8D IF-ED II"); break;
+				case 0x006F: strcpy(property->value.text.value, "AF-S Nikkor 500mm f/4D IF-ED II"); break;
+				case 0x0070: strcpy(property->value.text.value, "AF-S Nikkor 600mm f/4D IF-ED II"); break;
+				case 0x0072: strcpy(property->value.text.value, "Nikkor 45mm f/2.8 P"); break;
+				case 0x0074: strcpy(property->value.text.value, "AF-S Zoom-Nikkor 24-85mm f/3.5-4.5G IF-ED"); break;
+				case 0x0075: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-100mm f/3.5-5.6G"); break;
+				case 0x0076: strcpy(property->value.text.value, "AF Nikkor 50mm f/1.8D"); break;
+				case 0x0077: strcpy(property->value.text.value, "AF-S VR Zoom-Nikkor 70-200mm f/2.8G IF-ED"); break;
+				case 0x0078: strcpy(property->value.text.value, "AF-S VR Zoom-Nikkor 24-120mm f/3.5-5.6G IF-ED"); break;
+				case 0x0079: strcpy(property->value.text.value, "AF Zoom-Nikkor 28-200mm f/3.5-5.6G IF-ED"); break;
+				case 0x007A: strcpy(property->value.text.value, "AF-S DX Zoom-Nikkor 12-24mm f/4G IF-ED"); break;
+				case 0x007B: strcpy(property->value.text.value, "AF-S VR Zoom-Nikkor 200-400mm f/4G IF-ED"); break;
+				case 0x007D: strcpy(property->value.text.value, "AF-S DX Zoom-Nikkor 17-55mm f/2.8G IF-ED"); break;
+				case 0x007F: strcpy(property->value.text.value, "AF-S DX Zoom-Nikkor 18-70mm f/3.5-4.5G IF-ED"); break;
+				case 0x0080: strcpy(property->value.text.value, "AF DX Fisheye-Nikkor 10.5mm f/2.8G ED"); break;
+				case 0x0081: strcpy(property->value.text.value, "AF-S VR Nikkor 200mm f/2G IF-ED"); break;
+				case 0x0082: strcpy(property->value.text.value, "AF-S VR Nikkor 300mm f/2.8G IF-ED"); break;
+				case 0x0083: strcpy(property->value.text.value, "FSA-L2, EDG 65, 800mm F13 G"); break;
+				case 0x0089: strcpy(property->value.text.value, "AF-S DX Zoom-Nikkor 55-200mm f/4-5.6G ED"); break;
+				case 0x008A: strcpy(property->value.text.value, "AF-S VR Micro-Nikkor 105mm f/2.8G IF-ED"); break;
+				case 0x008B: strcpy(property->value.text.value, "AF-S DX VR Zoom-Nikkor 18-200mm f/3.5-5.6G IF-ED"); break;
+				case 0x008C: strcpy(property->value.text.value, "AF-S DX Zoom-Nikkor 18-55mm f/3.5-5.6G ED"); break;
+				case 0x008D: strcpy(property->value.text.value, "AF-S VR Zoom-Nikkor 70-300mm f/4.5-5.6G IF-ED"); break;
+				case 0x008F: strcpy(property->value.text.value, "AF-S DX Zoom-Nikkor 18-135mm f/3.5-5.6G IF-ED"); break;
+				case 0x0090: strcpy(property->value.text.value, "AF-S DX VR Zoom-Nikkor 55-200mm f/4-5.6G IF-ED"); break;
+				case 0x0092: strcpy(property->value.text.value, "AF-S Zoom-Nikkor 14-24mm f/2.8G ED"); break;
+				case 0x0093: strcpy(property->value.text.value, "AF-S Zoom-Nikkor 24-70mm f/2.8G ED"); break;
+				case 0x0094: strcpy(property->value.text.value, "AF-S DX Zoom-Nikkor 18-55mm f/3.5-5.6G ED II"); break;
+				case 0x0095: strcpy(property->value.text.value, "PC-E Nikkor 24mm f/3.5D ED"); break;
+				case 0x0096: strcpy(property->value.text.value, "AF-S VR Nikkor 400mm f/2.8G ED"); break;
+				case 0x0097: strcpy(property->value.text.value, "AF-S VR Nikkor 500mm f/4G ED"); break;
+				case 0x0098: strcpy(property->value.text.value, "AF-S VR Nikkor 600mm f/4G ED"); break;
+				case 0x0099: strcpy(property->value.text.value, "AF-S DX VR Zoom-Nikkor 16-85mm f/3.5-5.6G ED"); break;
+				case 0x009A: strcpy(property->value.text.value, "AF-S DX VR Zoom-Nikkor 18-55mm f/3.5-5.6G"); break;
+				case 0x009B: strcpy(property->value.text.value, "PC-E Micro Nikkor 45mm f/2.8D ED"); break;
+				case 0x009C: strcpy(property->value.text.value, "AF-S Micro Nikkor 60mm f/2.8G ED"); break;
+				case 0x009D: strcpy(property->value.text.value, "PC-E Micro Nikkor 85mm f/2.8D"); break;
+				case 0x009E: strcpy(property->value.text.value, "AF-S DX VR Zoom-Nikkor 18-105mm f/3.5-5.6G ED"); break;
+				case 0x009F: strcpy(property->value.text.value, "AF-S DX Nikkor 35mm f/1.8G"); break;
+				case 0x00A0: strcpy(property->value.text.value, "AF-S Nikkor 50mm f/1.4G"); break;
+				case 0x00A1: strcpy(property->value.text.value, "AF-S DX Nikkor 10-24mm f/3.5-4.5G ED"); break;
+				case 0x00A2: strcpy(property->value.text.value, "AF-S Nikkor 70-200mm f/2.8G ED VR II"); break;
+				case 0x00A3: strcpy(property->value.text.value, "AF-S Nikkor 16-35mm f/4G ED VR"); break;
+				case 0x00A4: strcpy(property->value.text.value, "AF-S Nikkor 24mm f/1.4G ED"); break;
+				case 0x00A5: strcpy(property->value.text.value, "AF-S Nikkor 28-300mm f/3.5-5.6G ED VR"); break;
+				case 0x00A6: strcpy(property->value.text.value, "AF-S Nikkor 300mm f/2.8G IF-ED VR II"); break;
+				case 0x00A7: strcpy(property->value.text.value, "AF-S DX Micro Nikkor 85mm f/3.5G ED VR"); break;
+				case 0x00A8: strcpy(property->value.text.value, "AF-S Zoom-Nikkor 200-400mm f/4G IF-ED VR II"); break;
+				case 0x00A9: strcpy(property->value.text.value, "AF-S Nikkor 200mm f/2G ED VR II"); break;
+				case 0x00AA: strcpy(property->value.text.value, "AF-S Nikkor 24-120mm f/4G ED VR"); break;
+				case 0x00AC: strcpy(property->value.text.value, "AF-S DX Nikkor 55-300mm f/4.5-5.6G ED VR"); break;
+				case 0x00AD: strcpy(property->value.text.value, "AF-S DX Nikkor 18-300mm f/3.5-5.6G ED VR"); break;
+				case 0x00AE: strcpy(property->value.text.value, "AF-S Nikkor 85mm f/1.4G"); break;
+				case 0x00AF: strcpy(property->value.text.value, "AF-S Nikkor 35mm f/1.4G"); break;
+				case 0x00B0: strcpy(property->value.text.value, "AF-S Nikkor 50mm f/1.8G"); break;
+				case 0x00B1: strcpy(property->value.text.value, "AF-S DX Micro Nikkor 40mm f/2.8G"); break;
+				case 0x00B2: strcpy(property->value.text.value, "AF-S Nikkor 70-200mm f/4G ED VR"); break;
+				case 0x00B3: strcpy(property->value.text.value, "AF-S Nikkor 85mm f/1.8G"); break;
+				case 0x00B4: strcpy(property->value.text.value, "AF-S Nikkor 24-85mm f/3.5-4.5G ED VR"); break;
+				case 0x00B5: strcpy(property->value.text.value, "AF-S Nikkor 28mm f/1.8G"); break;
+				case 0x00B6: strcpy(property->value.text.value, "AF-S VR Nikkor 800mm f/5.6E FL ED"); break;
+				case 0x00B7: strcpy(property->value.text.value, "AF-S Nikkor 80-400mm f/4.5-5.6G ED VR"); break;
+				case 0x00B8: strcpy(property->value.text.value, "AF-S Nikkor 18-35mm f/3.5-4.5G ED"); break;
+				case 0x01A0: strcpy(property->value.text.value, "AF-S DX Nikkor 18-140mm f/3.5-5.6G ED VR"); break;
+				case 0x01A1: strcpy(property->value.text.value, "AF-S Nikkor 58mm f/1.4G"); break;
+				case 0x01A2: strcpy(property->value.text.value, "AF-S DX Nikkor 18-55mm f/3.5-5.6G VR II"); break;
+				case 0x01A4: strcpy(property->value.text.value, "AF-S DX Nikkor 18-300mm f/3.5-6.3G ED VR"); break;
+				case 0x01A5: strcpy(property->value.text.value, "AF-S Nikkor 35mm f/1.8G ED"); break;
+				case 0x01A6: strcpy(property->value.text.value, "AF-S Nikkor 400mm f/2.8E FL ED VR"); break;
+				case 0x01A7: strcpy(property->value.text.value, "AF-S DX Nikkor 55-200mm f/4-5.6G ED VR II"); break;
+				case 0x01A8: strcpy(property->value.text.value, "AF-S Nikkor 300mm f/4E PF ED VR"); break;
+				case 0x01A9: strcpy(property->value.text.value, "AF-S Nikkor 20mm f/1.8G ED"); break;
+				case 0x02AA: strcpy(property->value.text.value, "AF-S Nikkor 24-70mm f/2.8E ED VR"); break;
+				case 0x02AB: strcpy(property->value.text.value, "AF-S Nikkor 500mm f/4E FL ED VR"); break;
+				case 0x02AC: strcpy(property->value.text.value, "AF-S Nikkor 600mm f/4E FL ED VR"); break;
+				case 0x02AD: strcpy(property->value.text.value, "AF-S DX Nikkor 16-80mm f/2.8-4E ED VR"); break;
+				case 0x02AE: strcpy(property->value.text.value, "AF-S Nikkor 200-500mm f/5.6E ED VR"); break;
+				case 0x03A0: strcpy(property->value.text.value, "AF-P DX Nikkor 18-55mm f/3.5-5.6G VR"); break;
+				case 0x03A3: strcpy(property->value.text.value, "AF-P DX Nikkor 70–300mm f/4.5–6.3G ED VR"); break;
+				case 0x03A4: strcpy(property->value.text.value, "AF-S Nikkor 70-200mm f/2.8E FL ED VR"); break;
+				case 0x03A5: strcpy(property->value.text.value, "AF-S Nikkor 105mm f/1.4E ED"); break;
+				case 0x03AF: strcpy(property->value.text.value, "AF-S Nikkor 24mm f/1.8G ED"); break;
+				default: strcpy(property->value.text.value, "Unknown lens"); break;
+			}
+			return true;
+		}
 	}
 	return false;
 }
@@ -751,8 +992,8 @@ bool ptp_nikon_liveview(indigo_device *device) {
 bool ptp_nikon_lock(indigo_device *device) {
 	if (ptp_operation_supported(device, ptp_operation_nikon_SetControlMode)) {
 		if (DSLR_LOCK_ITEM->sw.value)
-			return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 1);
-		return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 0);
+			return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 1) && ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureProgramMode));
+		return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 0) && ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureProgramMode));
 	}
 	return false;
 }
