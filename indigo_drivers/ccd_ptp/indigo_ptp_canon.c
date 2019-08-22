@@ -197,7 +197,6 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_WhiteBalanceXB: return "ADV_WhiteBalanceXB";
 		case ptp_property_canon_AEB: return "ADV_AEB";
 		case ptp_property_canon_AloMode: return "ADV_AloMode";
-		case ptp_property_canon_CaptureDestination: return "ADV_CaptureDestination";
 		case ptp_property_canon_LensName: return "ADV_LensName";
 		case ptp_property_canon_ShutterCounter: return "ADV_ShutterCounter";
 		case ptp_property_canon_QuickReviewTime: return "ADV_QuickReviewTime";
@@ -1328,14 +1327,18 @@ bool ptp_canon_exposure(indigo_device *device) {
 				set_number_property(device, ptp_property_canon_MirrorUpSetting, 1);
 			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup))
 				set_number_property(device, ptp_property_canon_ExMirrorLockup, 1);
+			ptp_canon_get_event(device);
 			set_number_property(device, ptp_property_canon_DriveMode, 0x11); // 2s self timer
+			ptp_canon_get_event(device);
 			delay = 2;
 		} else {
 			if (ptp_property_supported(device, ptp_property_canon_MirrorUpSetting))
 				set_number_property(device, ptp_property_canon_MirrorUpSetting, 0);
 			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup))
 				set_number_property(device, ptp_property_canon_ExMirrorLockup, 0);
+			ptp_canon_get_event(device);
 			set_number_property(device, ptp_property_canon_DriveMode, 0x00); // single shot
+			ptp_canon_get_event(device);
 		}
 		result = ptp_transaction_2_0(device, ptp_operation_canon_RemoteReleaseOn, 3, 1);
 		if (result && CANON_PRIVATE_DATA->shutter != 0x0C && CANON_PRIVATE_DATA->mode != 4) {
