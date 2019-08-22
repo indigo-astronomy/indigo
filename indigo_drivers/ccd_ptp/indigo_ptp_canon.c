@@ -189,12 +189,33 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_BatteryPower: return DSLR_BATTERY_LEVEL_PROPERTY_NAME;
 		case ptp_property_canon_ExExposureLevelIncrements: return DSLR_COMPENSATION_STEP_PROPERTY_NAME;
 		case ptp_property_canon_PictureStyle: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
+		case ptp_property_canon_MultiAspect: return DSLR_ASPECT_RATIO_PROPERTY_NAME;
+		case ptp_property_canon_ColorSpace: return DSLR_COLOR_SPACE_PROPERTY_NAME;
+		case ptp_property_canon_WhiteBalanceAdjustA: return "ADV_WhiteBalanceAdjustA";
+		case ptp_property_canon_WhiteBalanceAdjustB: return "ADV_WhiteBalanceAdjustB";
+		case ptp_property_canon_WhiteBalanceXA: return "ADV_WhiteBalanceXA";
+		case ptp_property_canon_WhiteBalanceXB: return "ADV_WhiteBalanceXB";
+		case ptp_property_canon_AEB: return "ADV_AEB";
+		case ptp_property_canon_AloMode: return "ADV_AloMode";
+		case ptp_property_canon_CaptureDestination: return "ADV_CaptureDestination";
+		case ptp_property_canon_LensName: return "ADV_LensName";
+		case ptp_property_canon_ShutterCounter: return "ADV_ShutterCounter";
+		case ptp_property_canon_QuickReviewTime: return "ADV_QuickReviewTime";
+		case ptp_property_canon_ExISOExpansion: return "ADV_ExISOExpansion";
+		case ptp_property_canon_ExLongExposureNoiseReduction: return "ADV_ExLongExposureNoiseReduction";
+		case ptp_property_canon_ExHighISONoiseReduction: return "ADV_ExHighISONoiseReduction";
+		case ptp_property_canon_ExAFAssistBeamFiring: return "ADV_ExAFAssistBeamFiring";
+		case ptp_property_canon_Owner: return "ADV_Owner";
+		case ptp_property_canon_Artist: return "ADV_Artist";
+		case ptp_property_canon_Copyright: return "ADV_Copyright";
+		case ptp_property_canon_SerialNumber: return "ADV_SerialNumber";
 	}
 	return ptp_property_canon_code_label(code);
 }
 
 char *ptp_property_canon_code_label(uint16_t code) {
 	switch (code) {
+		case ptp_property_BatteryLevel: return "BatteryLevel";
 		case ptp_property_canon_AutoExposureMode: return "Exposure program";
 		case ptp_property_canon_DriveMode: return "Capture mode";
 		case ptp_property_canon_Aperture: return "Aperture";
@@ -207,21 +228,21 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_ExpCompensation: return "Exposure compensation";
 		case ptp_property_canon_BatteryPower: return "Battery level";
 		case ptp_property_canon_ColorTemperature: return "ColorTemperature_Canon";
-		case ptp_property_canon_WhiteBalanceAdjustA: return "WhiteBalanceAdjustA_Canon";
-		case ptp_property_canon_WhiteBalanceAdjustB: return "WhiteBalanceAdjustB_Canon";
-		case ptp_property_canon_WhiteBalanceXA: return "WhiteBalanceXA_Canon";
-		case ptp_property_canon_WhiteBalanceXB: return "WhiteBalanceXB_Canon";
-		case ptp_property_canon_ColorSpace: return "ColorSpace_Canon";
+		case ptp_property_canon_WhiteBalanceAdjustA: return "White balance shift B/A";
+		case ptp_property_canon_WhiteBalanceAdjustB: return "White balance shift G/M";
+		case ptp_property_canon_WhiteBalanceXA: return "White balance bracket B/A";
+		case ptp_property_canon_WhiteBalanceXB: return "White balance bracket G/M";
+		case ptp_property_canon_ColorSpace: return "Color space";
 		case ptp_property_canon_PictureStyle: return "Picture style";
 		case ptp_property_canon_BatterySelect: return "BatterySelect_Canon";
 		case ptp_property_canon_CameraTime: return "CameraTime_Canon";
 		case ptp_property_canon_AutoPowerOff: return "AutoPowerOff_Canon";
-		case ptp_property_canon_Owner: return "Owner_Canon";
+		case ptp_property_canon_Owner: return "Owner";
 		case ptp_property_canon_ModelID: return "ModelID_Canon";
 		case ptp_property_canon_PTPExtensionVersion: return "PTPExtensionVersion_Canon";
 		case ptp_property_canon_DPOFVersion: return "DPOFVersion_Canon";
 		case ptp_property_canon_AvailableShots: return "AvailableShots_Canon";
-		case ptp_property_canon_CaptureDestination: return "CaptureDestination_Canon";
+		case ptp_property_canon_CaptureDestination: return "Capture destination";
 		case ptp_property_canon_BracketMode: return "BracketMode_Canon";
 		case ptp_property_canon_CurrentStorage: return "CurrentStorage_Canon";
 		case ptp_property_canon_CurrentFolder: return "CurrentFolder_Canon";
@@ -287,7 +308,7 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_CustomFunc18: return "CustomFunc18_Canon";
 		case ptp_property_canon_CustomFunc19: return "CustomFunc19_Canon";
 		case ptp_property_canon_InnerDevelop: return "InnerDevelop_Canon";
-		case ptp_property_canon_MultiAspect: return "MultiAspect_Canon";
+		case ptp_property_canon_MultiAspect: return "Aspect ratio";
 		case ptp_property_canon_MovieSoundRecord: return "MovieSoundRecord_Canon";
 		case ptp_property_canon_MovieRecordVolume: return "MovieRecordVolume_Canon";
 		case ptp_property_canon_WindCut: return "WindCut_Canon";
@@ -305,13 +326,13 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_BatteryInfo: return "BatteryInfo_Canon";
 		case ptp_property_canon_AdapterInfo: return "AdapterInfo_Canon";
 		case ptp_property_canon_LensStatus: return "LensStatus_Canon";
-		case ptp_property_canon_QuickReviewTime: return "QuickReviewTime_Canon";
+		case ptp_property_canon_QuickReviewTime: return "Review time";
 		case ptp_property_canon_CardExtension: return "CardExtension_Canon";
 		case ptp_property_canon_TempStatus: return "TempStatus_Canon";
-		case ptp_property_canon_ShutterCounter: return "ShutterCounter_Canon";
+		case ptp_property_canon_ShutterCounter: return "Shutter counter";
 		case ptp_property_canon_SpecialOption: return "SpecialOption_Canon";
 		case ptp_property_canon_PhotoStudioMode: return "PhotoStudioMode_Canon";
-		case ptp_property_canon_SerialNumber: return "SerialNumber_Canon";
+		case ptp_property_canon_SerialNumber: return "Serial number";
 		case ptp_property_canon_EVFOutputDevice: return "EVFOutputDevice_Canon";
 		case ptp_property_canon_EVFMode: return "EVFMode_Canon";
 		case ptp_property_canon_DepthOfFieldPreview: return "DepthOfFieldPreview_Canon";
@@ -328,7 +349,7 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_MovieParam: return "MovieParam_Canon";
 		case ptp_property_canon_MirrorLockupState: return "MirrorLockupState_Canon";
 		case ptp_property_canon_FlashChargingState: return "FlashChargingState_Canon";
-		case ptp_property_canon_AloMode: return "AloMode_Canon";
+		case ptp_property_canon_AloMode: return "Auto Lighting Optimizer";
 		case ptp_property_canon_FixedMovie: return "FixedMovie_Canon";
 		case ptp_property_canon_OneShotRawOn: return "OneShotRawOn_Canon";
 		case ptp_property_canon_ErrorForDisplay: return "ErrorForDisplay_Canon";
@@ -341,30 +362,30 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_StroboSettingExpComposition: return "StroboSettingExpComposition_Canon";
 		case ptp_property_canon_MovieParam3: return "MovieParam3_Canon";
 		case ptp_property_canon_LVMedicalRotate: return "LVMedicalRotate_Canon";
-		case ptp_property_canon_Artist: return "Artist_Canon";
-		case ptp_property_canon_Copyright: return "Copyright_Canon";
+		case ptp_property_canon_Artist: return "Artist";
+		case ptp_property_canon_Copyright: return "Copyright";
 		case ptp_property_canon_BracketValue: return "BracketValue_Canon";
 		case ptp_property_canon_FocusInfoEx: return "FocusInfoEx_Canon";
 		case ptp_property_canon_DepthOfField: return "DepthOfField_Canon";
 		case ptp_property_canon_Brightness: return "Brightness_Canon";
 		case ptp_property_canon_LensAdjustParams: return "LensAdjustParams_Canon";
 		case ptp_property_canon_EFComp: return "EFComp_Canon";
-		case ptp_property_canon_LensName: return "LensName_Canon";
-		case ptp_property_canon_AEB: return "AEB_Canon";
+		case ptp_property_canon_LensName: return "Lens type";
+		case ptp_property_canon_AEB: return "Auto Exposure Bracketing";
 		case ptp_property_canon_StroboSetting: return "StroboSetting_Canon";
 		case ptp_property_canon_StroboWirelessSetting: return "StroboWirelessSetting_Canon";
 		case ptp_property_canon_StroboFiring: return "StroboFiring_Canon";
 		case ptp_property_canon_LensID: return "LensID_Canon";
 		case ptp_property_canon_LCDBrightness: return "LCDBrightness_Canon";
 		case ptp_property_canon_CADarkBright: return "CADarkBright_Canon";
-		case ptp_property_canon_ExExposureLevelIncrements: return "ExExposureLevelIncrements_Canon";
-		case ptp_property_canon_ExISOExpansion: return "ExISOExpansion_Canon";
+		case ptp_property_canon_ExExposureLevelIncrements: return "Compensation step";
+		case ptp_property_canon_ExISOExpansion: return "ISO Expansion";
 		case ptp_property_canon_ExFlasSyncSpeedInAvMode: return "ExFlasgSyncSpeedInAvMode_Canon";
-		case ptp_property_canon_ExLongExposureNoiseReduction: return "ExLongExposureNoiseReduction_Canon";
-		case ptp_property_canon_ExHighISONoiseReduction: return "ExHighISONoiseReduction_Canon";
+		case ptp_property_canon_ExLongExposureNoiseReduction: return "Long exposure NR";
+		case ptp_property_canon_ExHighISONoiseReduction: return "High ISO NR";
 		case ptp_property_canon_ExHighlightTonePriority: return "ExHHighlightTonePriority_Canon";
 		case ptp_property_canon_ExAutoLightingOptimizer: return "ExAutoLightingOptimizer_Canon";
-		case ptp_property_canon_ExAFAssistBeamFiring: return "ExAFAssistBeamFiring_Canon";
+		case ptp_property_canon_ExAFAssistBeamFiring: return "AF assist beam firing";
 		case ptp_property_canon_ExAFDuringLiveView: return "ExAFDuringLiveView_Canon";
 		case ptp_property_canon_ExMirrorLockup: return "ExMirrorLockup_Canon";
 		case ptp_property_canon_ExShutterAELockButton: return "ExShutterAELockButton_Canon";
@@ -1055,7 +1076,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 							}
 						}
 					} else {
-						property->count = -1;
+						//property->count = -1;
 					}
 					*next_updated++ = property;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "count = %d", property->count);
@@ -1213,6 +1234,10 @@ bool ptp_canon_initialise(indigo_device *device) {
 	}
 	ptp_transaction_1_0(device, ptp_operation_canon_SetRemoteMode, 1);
 	ptp_transaction_1_0(device, ptp_operation_canon_SetEventMode, 1);
+	ptp_transaction_1_0(device, ptp_operation_canon_RequestDevicePropValue, ptp_property_canon_Owner);
+	ptp_transaction_1_0(device, ptp_operation_canon_RequestDevicePropValue, ptp_property_canon_Artist);
+	ptp_transaction_1_0(device, ptp_operation_canon_RequestDevicePropValue, ptp_property_canon_Copyright);
+	ptp_transaction_1_0(device, ptp_operation_canon_RequestDevicePropValue, ptp_property_canon_SerialNumber);
 	ptp_canon_get_event(device);
 	PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_canon_check_event);
 	ptp_canon_lock(device);
