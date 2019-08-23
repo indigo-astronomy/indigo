@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 #define FIT_FORMAT_AMATEUR_CCD
 
@@ -95,6 +95,11 @@ do {							\
 #define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM			"OFF"
 #define GPHOTO2_NAME_DELETE_IMAGE_ON				"On"
 #define GPHOTO2_NAME_DELETE_IMAGE_OFF				"Off"
+#define GPHOTO2_NAME_SYNC_HOST_DATE				"Sync date & time from host"
+#define GPHOTO2_NAME_SYNC_HOST_DATE_ON_ITEM			"ON"
+#define GPHOTO2_NAME_SYNC_HOST_DATE_OFF_ITEM			"OFF"
+#define GPHOTO2_NAME_SYNC_HOST_DATE_ON				"On"
+#define GPHOTO2_NAME_SYNC_HOST_DATE_OFF				"Off"
 #define GPHOTO2_NAME_DEBAYER_ALGORITHM				"Debayer algorithm"
 #define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME			"DEBAYER_LINEAR"
 #define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME			"DEBAYER_VNG"
@@ -116,6 +121,7 @@ do {							\
 #define GPHOTO2_DEBAYER_ALGORITHM_PROPERTY_NAME		"GPHOTO2_DEBAYER_ALGORITHM"
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME	"GPHOTO2_LIBGPHOTO2_VERSION"
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME		"LIBGPHOTO2_VERSION"
+#define GPHOTO2_SYNC_HOST_DATE_PROPERTY_NAME            "GPHOTO2_SYNC_HOST_DATE"
 
 #define NIKON_ISO			"iso"
 #define NIKON_COMPRESSION		"imagequality"
@@ -132,6 +138,8 @@ do {							\
 #define NIKON_FOCUS_METERING		"focusmetermode"
 #define NIKON_EXPOSURE_PROGRAM		"expprogram"
 #define NIKON_BATTERY_LEVEL		"batterylevel"
+#define NIKON_DATETIME                  "datetime"
+#define NIKON_DATETIME_LABEL            "Camera Date and Time"
 
 #define EOS_ISO				NIKON_ISO
 #define EOS_COMPRESSION			"imageformat"
@@ -157,6 +165,8 @@ do {							\
 #define EOS_FOCUS_METERING		"NA"
 #define EOS_EXPOSURE_PROGRAM		"autoexposuremode"
 #define EOS_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
+#define EOS_DATETIME                    NIKON_DATETIME
+#define EOS_DATETIME_LABEL              NIKON_DATETIME_LABEL
 
 #define SONY_COMPRESSION		NIKON_COMPRESSION
 #define SONY_APERTURE			NIKON_APERTURE
@@ -188,6 +198,9 @@ do {							\
 #define DSLR_DELETE_IMAGE_PROPERTY			(PRIVATE_DATA->dslr_delete_image_property)
 #define DSLR_DELETE_IMAGE_ON_ITEM			(PRIVATE_DATA->dslr_delete_image_property->items + 0)
 #define DSLR_DELETE_IMAGE_OFF_ITEM			(PRIVATE_DATA->dslr_delete_image_property->items + 1)
+#define DSLR_SYNC_HOST_DATE_PROPERTY			(PRIVATE_DATA->dslr_sync_host_date_property)
+#define DSLR_SYNC_HOST_DATE_ON_ITEM			(PRIVATE_DATA->dslr_sync_host_date_property->items + 0)
+#define DSLR_SYNC_HOST_DATE_OFF_ITEM			(PRIVATE_DATA->dslr_sync_host_date_property->items + 1)
 #define DSLR_DEBAYER_ALGORITHM_PROPERTY			(PRIVATE_DATA->dslr_debayer_algorithm_property)
 #define DSLR_DEBAYER_ALGORITHM_BAYER_RAW_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 0)
 #define DSLR_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_ITEM	(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 1)
@@ -257,6 +270,7 @@ typedef struct {
 	bool has_single_bulb_mode;
 	bool has_eos_remote_release;
 	bool has_capture_target;
+	bool has_datetime;
 	int debayer_algorithm;
 	double battery_level;
 	double exposure_min;
@@ -273,6 +287,7 @@ typedef struct {
 	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
+	indigo_property *dslr_sync_host_date_property;
 	indigo_property *dslr_debayer_algorithm_property;
 	indigo_property *dslr_libgphoto2_version_property;
 	indigo_timer *exposure_timer;
@@ -890,6 +905,7 @@ static int gphoto2_set_key_val(const char *key, const void *val,
 	case GP_WIDGET_RADIO:
 	case GP_WIDGET_TEXT:
 	case GP_WIDGET_TOGGLE:
+	case GP_WIDGET_DATE:
 		break;
 	default:
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -930,8 +946,15 @@ static int gphoto2_set_key_val_char(const char *key, const char *val,
 static int gphoto2_set_key_val_int(const char *key, const int val,
 				   indigo_device *device)
 {
-	/* int := {GP_WIDGET_TOGGLE, GP_WIDGET_DATE}. */
+	/* int := {GP_WIDGET_TOGGLE}. */
 	return gphoto2_set_key_val(key, &val, GP_WIDGET_TOGGLE, device);
+}
+
+static int gphoto2_set_key_val_date(const char *key, const time_t val,
+				    indigo_device *device)
+{
+	/* int := {GP_WIDGET_DATE}. */
+	return gphoto2_set_key_val(key, &val, GP_WIDGET_DATE, device);
 }
 
 static int gphoto2_set_key_val_float(const char *key, const float val,
@@ -1695,6 +1718,15 @@ static indigo_result ccd_attach(indigo_device *device)
 						    EOS_MEMORY_CARD);
 		}
 
+		/*----------------------- HAS-DATETIME -----------------------*/
+		PRIVATE_DATA->has_datetime =
+			exists_widget_label(NIKON_DATETIME_LABEL,
+					    device) == 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
+				  NIKON_DATETIME_LABEL,
+				  PRIVATE_DATA->has_datetime ? "is" : "is not",
+				  PRIVATE_DATA->gphoto2_id.name);
+
 		/*------------------------- SHUTTER-TIME ---------------------*/
 		int count = enumerate_widget(EOS_SHUTTERSPEED, device, NULL);
 		DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL,
@@ -1927,6 +1959,27 @@ static indigo_result ccd_attach(indigo_device *device)
 					GPHOTO2_NAME_DELETE_IMAGE_OFF,
 					true);
 
+		/*------------------------ SYNC-HOST-DATE --------------------*/
+		DSLR_SYNC_HOST_DATE_PROPERTY = indigo_init_switch_property(NULL,
+								      device->name,
+								      GPHOTO2_SYNC_HOST_DATE_PROPERTY_NAME,
+								      GPHOTO2_NAME_DSLR,
+								      GPHOTO2_NAME_SYNC_HOST_DATE,
+								      INDIGO_OK_STATE,
+								      INDIGO_RW_PERM,
+								      INDIGO_ONE_OF_MANY_RULE,
+								      2);
+		indigo_init_switch_item(DSLR_SYNC_HOST_DATE_ON_ITEM,
+					GPHOTO2_NAME_SYNC_HOST_DATE_ON_ITEM,
+					GPHOTO2_NAME_SYNC_HOST_DATE_ON,
+					false);
+		indigo_init_switch_item(DSLR_SYNC_HOST_DATE_OFF_ITEM,
+					GPHOTO2_NAME_SYNC_HOST_DATE_OFF_ITEM,
+					GPHOTO2_NAME_SYNC_HOST_DATE_OFF,
+					true);
+		if (!PRIVATE_DATA->has_datetime)
+			DSLR_SYNC_HOST_DATE_PROPERTY->hidden = true;
+
 		/*--------------------- DEBAYER-ALGORITHM --------------------*/
 		DSLR_DEBAYER_ALGORITHM_PROPERTY = indigo_init_switch_property(NULL,
 									      device->name,
@@ -2086,6 +2139,7 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
 	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
+	indigo_release_property(DSLR_SYNC_HOST_DATE_PROPERTY);
 	indigo_release_property(DSLR_DEBAYER_ALGORITHM_PROPERTY);
 	indigo_release_property(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY);
 
@@ -2153,6 +2207,9 @@ static indigo_result ccd_enumerate_properties(indigo_device *device,
 			if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
 				indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 
+			if (indigo_property_match(DSLR_SYNC_HOST_DATE_PROPERTY, property))
+				indigo_define_property(device, DSLR_SYNC_HOST_DATE_PROPERTY, NULL);
+
 			if (indigo_property_match(DSLR_DEBAYER_ALGORITHM_PROPERTY, property))
 				indigo_define_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
 
@@ -2193,6 +2250,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_SYNC_HOST_DATE_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
 			indigo_define_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
 		} else {
@@ -2210,6 +2268,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_SYNC_HOST_DATE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
 				indigo_delete_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
 				device->is_connected = false;
@@ -2309,6 +2368,29 @@ static indigo_result ccd_change_property(indigo_device *device,
 		PRIVATE_DATA->delete_downloaded_image = DSLR_DELETE_IMAGE_ON_ITEM->sw.value;
 		DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+
+		return INDIGO_OK;
+	}
+	/*--------------------------- SYNC-HOST-DATE -------------------------*/
+	else if (indigo_property_match(DSLR_SYNC_HOST_DATE_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_SYNC_HOST_DATE_PROPERTY, property, false);
+
+		if (DSLR_SYNC_HOST_DATE_ON_ITEM->sw.value) {
+
+			int rc;
+			time_t t;
+
+			t = time(NULL);
+			rc = gphoto2_set_key_val_date(NIKON_DATETIME, t, device);
+			if (rc == GP_OK) {
+				DSLR_SYNC_HOST_DATE_PROPERTY->state = INDIGO_OK_STATE;
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "set camera date to '%s'", ctime(&t));
+			} else {
+				DSLR_SYNC_HOST_DATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "cannot set camera date to '%s'", ctime(&t));
+			}
+		}
+		indigo_update_property(device, DSLR_SYNC_HOST_DATE_PROPERTY, NULL);
 
 		return INDIGO_OK;
 	}
@@ -2488,6 +2570,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 					     DSLR_MIRROR_LOCKUP_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_DELETE_IMAGE_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_SYNC_HOST_DATE_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_DEBAYER_ALGORITHM_PROPERTY);
 		}
