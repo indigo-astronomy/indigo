@@ -597,6 +597,7 @@
 		595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_snoop.h; sourceTree = "<group>"; };
 		595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent.h; sourceTree = "<group>"; };
 		595AA1D01FC5EEFE00350E7B /* indigo_agent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent.c; sourceTree = "<group>"; };
+		595AEB0F230FDE0200AB5C99 /* ioptron_2.5_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.5_simulator.ino; sourceTree = "<group>"; };
 		595F28FA211E211100380EF4 /* DDHidMouse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DDHidMouse.h; sourceTree = "<group>"; };
 		595F28FB211E211100380EF4 /* DDHidStandardUsages.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = DDHidStandardUsages.plist; sourceTree = "<group>"; };
 		595F28FC211E211100380EF4 /* NSDictionary+DDHidExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+DDHidExtras.h"; sourceTree = "<group>"; };
@@ -1892,7 +1893,7 @@
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
-		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
+		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59AF31F621F25E7A0008CC52 /* d3.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.min.js; sourceTree = "<group>"; };
 		59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.geo.projection.min.js; sourceTree = "<group>"; };
 		59AF320721F262280008CC52 /* constellations.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.json; sourceTree = "<group>"; wrapsLines = 1; };
@@ -4363,6 +4364,14 @@
 				595AA1CA1FC5ED8A00350E7B /* indigo_agent_snoop.c */,
 			);
 			path = agent_snoop;
+			sourceTree = "<group>";
+		};
+		595AEB0E230FDE0200AB5C99 /* ioptron_2.5_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				595AEB0F230FDE0200AB5C99 /* ioptron_2.5_simulator.ino */,
+			);
+			path = ioptron_2.5_simulator;
 			sourceTree = "<group>";
 		};
 		595F28F9211E211100380EF4 /* DDHidLib */ = {
@@ -10408,6 +10417,7 @@
 				5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */,
 				5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */,
 				59AEB117215446960008A729 /* ioptron_2.0_simulator */,
+				595AEB0E230FDE0200AB5C99 /* ioptron_2.5_simulator */,
 			);
 			path = mount_ioptron;
 			sourceTree = "<group>";

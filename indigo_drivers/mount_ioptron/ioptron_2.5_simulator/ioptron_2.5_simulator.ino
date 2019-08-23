@@ -42,8 +42,8 @@ int rate[] = { 1, 2, 8, 16, 64, 128, 256, 512, 1024 };
 char timestamp[] = "+0000000101000000#";
 long setup_time;
 
-char lat[] = "+173335#";
-char lon[] = "+061588#";
+long lat = +173335;
+long lon = +61588;
 
 char dec[] = "+32400000";
 char ra[] = "00000000";
@@ -53,7 +53,7 @@ char zero[] = "+3240000000000000#";
 long dec_rate = 0;
 long ra_rate = 0;
 
-char guiding_rate[] = "050#";
+char guiding_rate[] = "0500#";
 
 void format(long value, bool sign, char *buffer, int length) {
   if (sign) {
@@ -201,9 +201,9 @@ void loop() {
       } else if (strcmp(command, "MountInfo") == 0) {
         Serial.write("0045");
       } else if (strcmp(command, "FW1") == 0) {
-        Serial.write("140807140807#");
+        Serial.write("161101161101#");
       } else if (strcmp(command, "FW2") == 0) {
-        Serial.write("140807140807#");
+        Serial.write("161101161101#");
       } else if (strncmp(command, "ST", 2) == 0) {
         status[1] = command[2];
         Serial.write("1");
@@ -233,18 +233,16 @@ void loop() {
       } else if (strncmp(command, "SHE", 3) == 0) {
         status[5] = command[3];
         Serial.write("1");
-      } else if (strcmp(command, "GAS") == 0) {
-        Serial.write(status, 7);
+      } else if (strcmp(command, "GLS") == 0) {
+        char buffer[20];
+        sprintf(buffer, "%+07ld%06ld%s", lon, lat + 90 * 60 * 60, status);
+        Serial.write(buffer, 19);
       } else if (strncmp(command, "St", 2) == 0) {
-        strncpy(lat, command + 2, 7);
+        lat = atol(command + 2);
         Serial.write("1");
-      } else if (strcmp(command, "Gt") == 0) {
-        Serial.write(lat, 8);
       } else if (strncmp(command, "Sg", 2) == 0) {
-        strncpy(lon, command + 2, 7);
+        lon = atol(command + 7);
         Serial.write("1");
-      } else if (strcmp(command, "Gg") == 0) {
-        Serial.write(lon, 8);
       } else if (strncmp(command, "SG", 2) == 0) {
         strncpy(timestamp, command + 2, 4);
         Serial.write("1");
@@ -267,10 +265,10 @@ void loop() {
         format(now % 24, false, timestamp + 11, 2);
         Serial.write(timestamp, 18);
       } else if (strncmp(command, "RG", 2) == 0) {
-        strncpy(guiding_rate, command + 2, 3);
+        strncpy(guiding_rate, command + 2, 4);
         Serial.write("1");
       } else if (strcmp(command, "AG") == 0) {
-        Serial.write(guiding_rate, 4);
+        Serial.write(guiding_rate, 5);
       } else if (strncmp(command, "Sr", 2) == 0) {
         strncpy(ra, command + 2, 8);
         Serial.write("1");
