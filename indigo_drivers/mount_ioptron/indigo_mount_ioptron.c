@@ -637,7 +637,7 @@ static void position_timer_callback(indigo_device *device) {
 				}
 				if (response[13] == '2') {
 					char val[7];
-					strncpy(val, response + 6, 6);
+					strncpy(val, response + 7, 6);
 					bool update = MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
 					double latitude = atol(val) / 60.0 / 60.0 - 90;
 					if (latitude != MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) {
