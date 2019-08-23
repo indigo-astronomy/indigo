@@ -225,9 +225,11 @@ static bool ieq_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (strncmp(name, "ieq://", 6)) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
-		if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) != 4) {
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = indigo_open_serial(name);
+		if (PRIVATE_DATA->handle >= 0) {
+			if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) != 4) {
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = indigo_open_serial(name);
+			}
 		}
 	} else {
 		char *host = name + 6;
