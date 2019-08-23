@@ -208,6 +208,7 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_Artist: return "ADV_Artist";
 		case ptp_property_canon_Copyright: return "ADV_Copyright";
 		case ptp_property_canon_SerialNumber: return "ADV_SerialNumber";
+		case ptp_property_canon_AutoPowerOff: return "ADV_AutoPowerOff";
 	}
 	return ptp_property_canon_code_label(code);
 }
@@ -235,7 +236,7 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_PictureStyle: return "Picture style";
 		case ptp_property_canon_BatterySelect: return "BatterySelect_Canon";
 		case ptp_property_canon_CameraTime: return "CameraTime_Canon";
-		case ptp_property_canon_AutoPowerOff: return "AutoPowerOff_Canon";
+		case ptp_property_canon_AutoPowerOff: return "Auto power off";
 		case ptp_property_canon_Owner: return "Owner";
 		case ptp_property_canon_ModelID: return "ModelID_Canon";
 		case ptp_property_canon_PTPExtensionVersion: return "PTPExtensionVersion_Canon";
@@ -1325,9 +1326,9 @@ bool ptp_canon_exposure(indigo_device *device) {
 		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
 			if (ptp_property_supported(device, ptp_property_canon_MirrorUpSetting))
 				set_number_property(device, ptp_property_canon_MirrorUpSetting, 1);
-			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup))
+			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup)) {
 				set_number_property(device, ptp_property_canon_ExMirrorLockup, 1);
-			ptp_canon_get_event(device);
+			}
 			set_number_property(device, ptp_property_canon_DriveMode, 0x11); // 2s self timer
 			ptp_canon_get_event(device);
 			delay = 2;
@@ -1336,7 +1337,6 @@ bool ptp_canon_exposure(indigo_device *device) {
 				set_number_property(device, ptp_property_canon_MirrorUpSetting, 0);
 			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup))
 				set_number_property(device, ptp_property_canon_ExMirrorLockup, 0);
-			ptp_canon_get_event(device);
 			set_number_property(device, ptp_property_canon_DriveMode, 0x00); // single shot
 			ptp_canon_get_event(device);
 		}
@@ -1492,4 +1492,13 @@ bool ptp_canon_focus(indigo_device *device, int steps) {
 		indigo_send_message(device, "Focusing is available only while LiveView preview is active");
 		return false;
 	}
+}
+
+bool ptp_canon_set_host_time(indigo_device *device) {
+	if (ptp_property_supported(device, ptp_property_canon_CameraTime)) {
+		time_t secs = time(NULL);
+		struct tm tm = *localtime_r(&secs, &tm);
+		return set_number_property(device, ptp_property_canon_CameraTime, secs + tm.tm_gmtoff);
+	}
+	return false;
 }

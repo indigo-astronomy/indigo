@@ -168,7 +168,6 @@ static ptp_camera_model CAMERA[] = {
 	{ 0 }
 };
 
-
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -179,6 +178,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->hidden = true;
 		CCD_STREAMING_PROPERTY->hidden = PRIVATE_DATA->liveview == NULL;
 		CCD_IMAGE_FORMAT_PROPERTY->hidden = true;
+		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->model.width;
+		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->model.height;
+		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value =  CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->model.width;
+		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (DSLR_DELETE_IMAGE_PROPERTY == NULL)
@@ -211,6 +214,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		DSLR_AF_PROPERTY->hidden = PRIVATE_DATA->af == NULL;
 		indigo_init_switch_item(DSLR_AF_ITEM, DSLR_AF_ITEM_NAME, "Start autofocus", false);
+		// -------------------------------------------------------------------------------- DSLR_SET_HOST_TIME
+		DSLR_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SET_HOST_TIME_PROPERTY_NAME, "DSLR", "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (DSLR_SET_HOST_TIME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		DSLR_SET_HOST_TIME_PROPERTY->hidden = PRIVATE_DATA->set_host_time == NULL;
+		indigo_init_switch_item(DSLR_SET_HOST_TIME_ITEM, DSLR_SET_HOST_TIME_ITEM_NAME, "Set host time", false);
 		// --------------------------------------------------------------------------------
 		PRIVATE_DATA->transaction_id = 0;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
@@ -235,6 +244,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
 		if (indigo_property_match(DSLR_AF_PROPERTY, property))
 			indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_SET_HOST_TIME_PROPERTY, property))
+			indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property))
 				indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
@@ -279,6 +290,7 @@ static void handle_connection(indigo_device *device) {
 		indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 		indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
 		indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
+		indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 			indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
 	} else {
@@ -313,6 +325,19 @@ static void handle_af(indigo_device *device) {
 		DSLR_AF_PROPERTY->state = INDIGO_ALERT_STATE;
 	DSLR_AF_ITEM->sw.value = false;
 	indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+}
+
+static void handle_set_host_time(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+	DSLR_SET_HOST_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
+	if (PRIVATE_DATA->set_host_time(device))
+		DSLR_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		DSLR_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	DSLR_SET_HOST_TIME_ITEM->sw.value = false;
+	indigo_update_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
 
@@ -387,6 +412,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
 			indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
+			indigo_delete_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
 			for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 				indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
 				indigo_release_property(PRIVATE_DATA->properties[i].property);
@@ -421,6 +447,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- DSLR_AF
 		indigo_property_copy_values(DSLR_AF_PROPERTY, property, false);
 		indigo_set_timer(device, 0, handle_af);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DSLR_SET_HOST_TIME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSLR_AF
+		indigo_property_copy_values(DSLR_SET_HOST_TIME_PROPERTY, property, false);
+		indigo_set_timer(device, 0, handle_set_host_time);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -463,6 +494,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_LOCK_PROPERTY);
 	indigo_release_property(DSLR_AF_PROPERTY);
+	indigo_release_property(DSLR_SET_HOST_TIME_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
@@ -574,6 +606,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->af = ptp_canon_af;
 						private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_zoom : NULL;
 						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_focus : NULL;
+						private_data->set_host_time = ptp_canon_set_host_time;
 					} else if (descriptor.idVendor == NIKON_VID) {
 						private_data->operation_code_label = ptp_operation_nikon_code_label;
 						private_data->response_code_label = ptp_response_nikon_code_label;
@@ -590,6 +623,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->af = NULL;
 						private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_zoom : NULL;
 						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus: NULL;
+						private_data->set_host_time = ptp_set_host_time;
 					} else if (descriptor.idVendor == SONY_VID) {
 						private_data->operation_code_label = ptp_operation_sony_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -605,6 +639,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->lock = NULL;
 						private_data->af = ptp_sony_af;
 						private_data->zoom = NULL;
+						private_data->focus = NULL;
+						private_data->set_host_time = NULL;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -621,6 +657,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->lock = NULL;
 						private_data->af = NULL;
 						private_data->zoom = NULL;
+						private_data->focus = NULL;
+						private_data->set_host_time = ptp_set_host_time;
 					}
 					libusb_ref_device(dev);
 					indigo_device *device = malloc(sizeof(indigo_device));
@@ -630,8 +668,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					char usb_path[INDIGO_NAME_SIZE];
 					indigo_get_usb_path(dev, usb_path);
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", CAMERA[i].name, usb_path);
-					device->private_data = private_data;
-					
+					device->private_data = private_data;					
 					if (private_data->focus) {
 						indigo_device *focuser = malloc(sizeof(indigo_device));
 						assert(focuser != NULL);

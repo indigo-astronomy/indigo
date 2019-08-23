@@ -766,6 +766,15 @@
 #define DSLR_AF_ITEM_NAME        "AF"
 
 //----------------------------------------------------------------------
+/** DSLR_SET_HOST_TIME property name.
+ */
+#define DSLR_SET_HOST_TIME_PROPERTY_NAME				"DSLR_SET_HOST_TIME"
+
+/**  DSLR_SET_HOST_TIME.SET property item name.
+ */
+#define DSLR_SET_HOST_TIME_ITEM_NAME						"SET"
+
+//----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
  */
 #define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"
