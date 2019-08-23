@@ -212,7 +212,7 @@ char *ptp_property_code_label(uint16_t code) {
 		case ptp_property_BurstInterval: return "BurstInterval";
 		case ptp_property_TimelapseNumber: return "TimelapseNumber";
 		case ptp_property_TimelapseInterval: return "TimelapseInterval";
-		case ptp_property_FocusMeteringMode: return "FocusMeteringMode";
+		case ptp_property_FocusMeteringMode: return "Focus metering mode";
 		case ptp_property_UploadURL: return "UploadURL";
 		case ptp_property_Artist: return "Artist";
 		case ptp_property_CopyrightInfo: return "CopyrightInfo";
@@ -1097,7 +1097,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				}
 			}
 		}
-		if (property->writable != (property->property->perm == INDIGO_RW_PERM)) {
+		if (!property->writable == (property->property->perm == INDIGO_RW_PERM)) {
 			property->writable = (property->property->perm == INDIGO_RW_PERM);
 			define = true;
 		}
@@ -1257,4 +1257,17 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 
 bool ptp_exposure(indigo_device *device) {
 	assert(0);
+}
+
+bool ptp_set_host_time(indigo_device *device) {
+	if (ptp_property_supported(device, ptp_property_DateTime)) {
+		time_t secs = time(NULL);
+		struct tm tm = *localtime_r(&secs, &tm);
+		char iso_time[16];
+		sprintf(iso_time, "%02d%02d%02dT%02d%02d%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		uint8_t buffer[2 * PTP_MAX_CHARS + 2];
+		uint8_t *end = ptp_encode_string(iso_time, buffer);
+		return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_DateTime, buffer, (uint32_t)(end - buffer));
+	}
+	return false;
 }

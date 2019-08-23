@@ -129,6 +129,7 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_nikon_EVStep: return DSLR_COMPENSATION_STEP_PROPERTY_NAME;
 		case ptp_property_nikon_ActivePicCtrlItem: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
 		case ptp_property_nikon_ColorSpace: return DSLR_COLOR_SPACE_PROPERTY_NAME;
+		case ptp_property_FocusMeteringMode: return DSLR_FOCUS_METERING_PROPERTY_NAME;
 		case ptp_property_nikon_AutoDXCrop: return "ADV_AutoDXCrop";
 		case ptp_property_nikon_ArtistName: return "ADV_ArtistName";
 		case ptp_property_nikon_CopyrightInfo: return "ADV_CopyrightInfo";
@@ -139,6 +140,19 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_nikon_NrHighISO: return "ADV_NrHighISO";
 		case ptp_property_nikon_VignetteCtrl: return "ADV_VignetteCtrl";
 		case ptp_property_nikon_ActiveDLighting: return "ADV_ActiveDLighting";
+		case ptp_property_nikon_ImageCommentString: return "ADV_ImageCommentString";
+		case ptp_property_nikon_ImageCommentEnable: return "ADV_ImageCommentEnable";
+		case ptp_property_nikon_EnableCopyright: return "ADV_EnableCopyright";
+		case ptp_property_nikon_AFAssist: return "ADV_AFAssist";
+		case ptp_property_nikon_AFCModePriority: return "ADV_AFCModePriority";
+		case ptp_property_nikon_AFSModePriority: return "ADV_AFSModePriority";
+		case ptp_property_nikon_AFAreaPoint: return "ADV_AFAreaPoint";
+		case ptp_property_nikon_AFLockOn: return "ADV_AFLockOn";
+		case ptp_property_nikon_EVISOStep: return "ADV_EVISOStep";
+		case ptp_property_nikon_ImageRotation: return "ADV_ImageRotation";
+		case ptp_property_nikon_RawBitMode: return "ADV_RawBitMode";
+		case ptp_property_nikon_RawCompression: return "ADV_RawCompression";
+		case ptp_property_nikon_CameraInclination: return "ADV_CameraInclination";
 	}
 	return ptp_property_nikon_code_label(code);
 }
@@ -151,7 +165,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_ShootingBankNameC: return "ShootingBankNameC_Nikon";
 		case ptp_property_nikon_ShootingBankNameD: return "ShootingBankNameD_Nikon";
 		case ptp_property_nikon_ResetBank0: return "ResetBank0_Nikon";
-		case ptp_property_nikon_RawCompression: return "RawCompression_Nikon";
+		case ptp_property_nikon_RawCompression: return "NEF compression";
 		case ptp_property_nikon_WhiteBalanceAutoBias: return "WhiteBalanceAutoBias_Nikon";
 		case ptp_property_nikon_WhiteBalanceTungstenBias: return "WhiteBalanceTungstenBias_Nikon";
 		case ptp_property_nikon_WhiteBalanceFluorescentBias: return "WhiteBalanceFluorescentBias_Nikon";
@@ -192,8 +206,8 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_MenuBankNameC: return "MenuBankNameC_Nikon";
 		case ptp_property_nikon_MenuBankNameD: return "MenuBankNameD_Nikon";
 		case ptp_property_nikon_ResetBank: return "ResetBank_Nikon";
-		case ptp_property_nikon_AFCModePriority: return "AFCModePriority_Nikon";
-		case ptp_property_nikon_AFSModePriority: return "AFSModePriority_Nikon";
+		case ptp_property_nikon_AFCModePriority: return "AFC mode priority";
+		case ptp_property_nikon_AFSModePriority: return "AFS mode priority";
 		case ptp_property_nikon_GroupDynamicAF: return "GroupDynamicAF_Nikon";
 		case ptp_property_nikon_AFActivation: return "AFActivation_Nikon";
 		case ptp_property_nikon_FocusAreaIllumManualFocus: return "FocusAreaIllumManualFocus_Nikon";
@@ -201,11 +215,11 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_FocusAreaIllumWhenSelected: return "FocusAreaIllumWhenSelected_Nikon";
 		case ptp_property_nikon_FocusAreaWrap: return "FocusAreaWrap_Nikon";
 		case ptp_property_nikon_VerticalAFON: return "VerticalAFON_Nikon";
-		case ptp_property_nikon_AFLockOn: return "AFLockOn_Nikon";
+		case ptp_property_nikon_AFLockOn: return "AF tracking with lock-on";
 		case ptp_property_nikon_FocusAreaZone: return "FocusAreaZone_Nikon";
-		case ptp_property_nikon_EnableCopyright: return "EnableCopyright_Nikon";
+		case ptp_property_nikon_EnableCopyright: return "Copyright enable";
 		case ptp_property_nikon_ISOAutoTime: return "ISOAutoTime_Nikon";
-		case ptp_property_nikon_EVISOStep: return "EVISOStep_Nikon";
+		case ptp_property_nikon_EVISOStep: return "ISO EV step";
 		case ptp_property_nikon_EVStep: return "Compensation step";
 		case ptp_property_nikon_EVStepExposureComp: return "EVStepExposureComp_Nikon";
 		case ptp_property_nikon_ExposureCompensation: return "ExposureCompensation_Nikon";
@@ -258,12 +272,12 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_NoCFCard: return "NoCFCard_Nikon";
 		case ptp_property_nikon_CenterButtonZoomRatio: return "CenterButtonZoomRatio_Nikon";
 		case ptp_property_nikon_FunctionButton2: return "FunctionButton2_Nikon";
-		case ptp_property_nikon_AFAreaPoint: return "AFAreaPoint_Nikon";
+		case ptp_property_nikon_AFAreaPoint: return "AF area points";
 		case ptp_property_nikon_NormalAFOn: return "NormalAFOn_Nikon";
 		case ptp_property_nikon_CleanImageSensor: return "CleanImageSensor_Nikon";
-		case ptp_property_nikon_ImageCommentString: return "ImageCommentString_Nikon";
-		case ptp_property_nikon_ImageCommentEnable: return "ImageCommentEnable_Nikon";
-		case ptp_property_nikon_ImageRotation: return "ImageRotation_Nikon";
+		case ptp_property_nikon_ImageCommentString: return "Comment";
+		case ptp_property_nikon_ImageCommentEnable: return "Comment enable";
+		case ptp_property_nikon_ImageRotation: return "Image rotation";
 		case ptp_property_nikon_ManualSetLensNo: return "ManualSetLensNo_Nikon";
 		case ptp_property_nikon_MovScreenSize: return "MovScreenSize_Nikon";
 		case ptp_property_nikon_MovVoice: return "MovVoice_Nikon";
@@ -313,7 +327,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_SaveMedia: return "SaveMedia_Nikon";
 		case ptp_property_nikon_USBSpeed: return "USBSpeed_Nikon";
 		case ptp_property_nikon_CCDNumber: return "CCDNumber_Nikon";
-		case ptp_property_nikon_CameraInclination: return "CameraInclination_Nikon";
+		case ptp_property_nikon_CameraInclination: return "Camera inclination";
 		case ptp_property_nikon_GroupPtnType: return "GroupPtnType_Nikon";
 		case ptp_property_nikon_FNumberLock: return "FNumberLock_Nikon";
 		case ptp_property_nikon_ExposureApertureLock: return "ExposureApertureLock_Nikon";
@@ -338,7 +352,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_BWContrast: return "BWContrast_Nikon";
 		case ptp_property_nikon_BWSettingType: return "BWSettingType_Nikon";
 		case ptp_property_nikon_Slot2SaveMode: return "Slot2SaveMode_Nikon";
-		case ptp_property_nikon_RawBitMode: return "RawBitMode_Nikon";
+		case ptp_property_nikon_RawBitMode: return "NEF bit depth";
 		case ptp_property_nikon_ActiveDLighting: return "Active DLighting";
 		case ptp_property_nikon_FlourescentType: return "FlourescentType_Nikon";
 		case ptp_property_nikon_TuneColourTemperature: return "TuneColourTemperature_Nikon";
@@ -349,7 +363,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_TunePreset4: return "TunePreset4_Nikon";
 		case ptp_property_nikon_BeepOff: return "BeepOff_Nikon";
 		case ptp_property_nikon_AutofocusMode: return "AF mode";
-		case ptp_property_nikon_AFAssist: return "AFAssist_Nikon";
+		case ptp_property_nikon_AFAssist: return "AF assist";
 		case ptp_property_nikon_PADVPMode: return "PADVPMode_Nikon";
 		case ptp_property_nikon_ImageReview: return "ImageReview_Nikon";
 		case ptp_property_nikon_AFAreaIllumination: return "AFAreaIllumination_Nikon";
@@ -441,7 +455,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_FocusMeteringMode: {
-			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39 points"; }
+			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39/51 points"; case 0x8015: return "Expansion"; }
 			break;
 		}
 		case ptp_property_FlashMode: {
@@ -498,6 +512,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 		case ptp_property_nikon_Bracketing:
 		case ptp_property_nikon_FocusAreaWrap:
 		case ptp_property_nikon_AutoDXCrop:
+		case ptp_property_nikon_RawCompression:
 		case ptp_property_nikon_NoCFCard: {
 			switch (code) { case 0: return "Off"; case 1: return "On"; }
 			break;
@@ -717,12 +732,29 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_nikon_ExternalFlashCompensation));
 			return true;
 		}
+		case ptp_property_nikon_EVISOStep: {
+			property->count = 2;
+			property->value.sw.values[0] = 0;
+			property->value.sw.values[1] = 1;
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_nikon_ISOSensitivity));
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureIndex));
+			return true;
+		}
+		case ptp_property_nikon_ImageCommentEnable:
+		case ptp_property_nikon_EnableCopyright:
+		case ptp_property_nikon_AFAssist:
+		case ptp_property_nikon_AFCModePriority:
+		case ptp_property_nikon_AFSModePriority:
+		case ptp_property_nikon_AFAreaPoint:
+		case ptp_property_nikon_RawBitMode:
+		case ptp_property_nikon_RawCompression:
 		case ptp_property_nikon_AutoDXCrop: {
 			property->count = 2;
 			property->value.sw.values[0] = 0;
 			property->value.sw.values[1] = 1;
 			return true;
 		}
+		case ptp_property_nikon_CameraInclination:
 		case ptp_property_nikon_VignetteCtrl: {
 			property->count = 4;
 			property->value.sw.values[0] = 0;
@@ -731,8 +763,9 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			property->value.sw.values[3] = 3;
 			return true;
 		}
-		case ptp_property_nikon_ActiveDLighting: {
-			property->count = 5;
+		case ptp_property_nikon_ActiveDLighting:
+		case ptp_property_nikon_AFLockOn: {
+			property->count = 6;
 			property->value.sw.values[0] = 0;
 			property->value.sw.values[1] = 1;
 			property->value.sw.values[2] = 2;
