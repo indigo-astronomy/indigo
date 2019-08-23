@@ -102,26 +102,28 @@ typedef struct {
 static bool temma_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
-
-	struct termios options;
-	memset(&options, 0, sizeof options);
-	if (tcgetattr(PRIVATE_DATA->handle, &options) != 0) {
-		close(PRIVATE_DATA->handle);
-		return false;
-	}
-	cfsetispeed(&options,B9600);
-	cfsetospeed(&options,B9600);
-	options.c_cflag |= ( CS8 | PARENB | CRTSCTS );
-	options.c_cflag &= ( ~PARODD & ~CSTOPB );
-	cfsetispeed( &options, B19200 ) ;
-	cfsetospeed( &options, B19200 ) ;
-	options.c_iflag = IGNBRK;
-	options.c_cc[VMIN] = 1;
-	options.c_cc[VTIME] = 5;
-	options.c_lflag = options.c_oflag = 0;
-	if (tcsetattr(PRIVATE_DATA->handle,TCSANOW, &options) != 0) {
-		close(PRIVATE_DATA->handle);
-		return false;
+	if (PRIVATE_DATA->handle >= 0) {
+		struct termios options;
+		memset(&options, 0, sizeof options);
+		if (tcgetattr(PRIVATE_DATA->handle, &options) != 0) {
+			close(PRIVATE_DATA->handle);
+			return false;
+		}
+		cfsetispeed(&options,B9600);
+		cfsetospeed(&options,B9600);
+		options.c_cflag |= ( CS8 | PARENB | CRTSCTS );
+		options.c_cflag &= ( ~PARODD & ~CSTOPB );
+		cfsetispeed( &options, B19200 ) ;
+		cfsetospeed( &options, B19200 ) ;
+		options.c_iflag = IGNBRK;
+		options.c_cc[VMIN] = 1;
+		options.c_cc[VTIME] = 5;
+		options.c_lflag = options.c_oflag = 0;
+		if (tcsetattr(PRIVATE_DATA->handle ,TCSANOW, &options) != 0) {
+			close(PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+			return false;
+		}
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
