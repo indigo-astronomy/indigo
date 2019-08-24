@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 #define FIT_FORMAT_AMATEUR_CCD
 
@@ -95,7 +95,7 @@ do {							\
 #define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM			"OFF"
 #define GPHOTO2_NAME_DELETE_IMAGE_ON				"On"
 #define GPHOTO2_NAME_DELETE_IMAGE_OFF				"Off"
-#define GPHOTO2_NAME_SYNC_HOST_DATE				"Sync date & time from host"
+#define GPHOTO2_NAME_SYNC_HOST_DATE				"Sync date and time from host"
 #define GPHOTO2_NAME_SYNC_HOST_DATE_ON_ITEM			"ON"
 #define GPHOTO2_NAME_SYNC_HOST_DATE_OFF_ITEM			"OFF"
 #define GPHOTO2_NAME_SYNC_HOST_DATE_ON				"On"
@@ -950,7 +950,7 @@ static int gphoto2_set_key_val_int(const char *key, const int val,
 	return gphoto2_set_key_val(key, &val, GP_WIDGET_TOGGLE, device);
 }
 
-static int gphoto2_set_key_val_date(const char *key, const time_t val,
+static int gphoto2_set_key_val_date(const char *key, const int val,
 				    indigo_device *device)
 {
 	/* int := {GP_WIDGET_DATE}. */
@@ -1961,14 +1961,14 @@ static indigo_result ccd_attach(indigo_device *device)
 
 		/*------------------------ SYNC-HOST-DATE --------------------*/
 		DSLR_SYNC_HOST_DATE_PROPERTY = indigo_init_switch_property(NULL,
-								      device->name,
-								      GPHOTO2_SYNC_HOST_DATE_PROPERTY_NAME,
-								      GPHOTO2_NAME_DSLR,
-								      GPHOTO2_NAME_SYNC_HOST_DATE,
-								      INDIGO_OK_STATE,
-								      INDIGO_RW_PERM,
-								      INDIGO_ONE_OF_MANY_RULE,
-								      2);
+									   device->name,
+									   GPHOTO2_SYNC_HOST_DATE_PROPERTY_NAME,
+									   GPHOTO2_NAME_DSLR,
+									   GPHOTO2_NAME_SYNC_HOST_DATE,
+									   INDIGO_OK_STATE,
+									   INDIGO_RW_PERM,
+									   INDIGO_ONE_OF_MANY_RULE,
+									   2);
 		indigo_init_switch_item(DSLR_SYNC_HOST_DATE_ON_ITEM,
 					GPHOTO2_NAME_SYNC_HOST_DATE_ON_ITEM,
 					GPHOTO2_NAME_SYNC_HOST_DATE_ON,
@@ -2381,7 +2381,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			time_t t;
 
 			t = time(NULL);
-			rc = gphoto2_set_key_val_date(NIKON_DATETIME, t, device);
+			rc = gphoto2_set_key_val_date(EOS_DATETIME, t, device);
 			if (rc == GP_OK) {
 				DSLR_SYNC_HOST_DATE_PROPERTY->state = INDIGO_OK_STATE;
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "set camera date to '%s'", ctime(&t));
