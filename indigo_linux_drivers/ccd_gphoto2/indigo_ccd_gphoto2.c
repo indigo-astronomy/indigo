@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 #define FIT_FORMAT_AMATEUR_CCD
 
@@ -128,10 +128,8 @@ do {							\
 #define NIKON_SHUTTERSPEED		"shutterspeed"
 #define NIKON_WHITEBALANCE		"whitebalance"
 #define NIKON_CAPTURE_TARGET		"capturetarget"
-#define NIKON_CAPTURE_TARGET_LABEL	"Capture Target"
 #define NIKON_MEMORY_CARD		"Memory card"
 #define NIKON_BULB_MODE			"bulb"
-#define NIKON_BULB_MODE_LABEL		"Bulb Mode"
 #define NIKON_APERTURE			"f-number"
 #define NIKON_EXPOSURE_COMPENSATION	"exposurecompensation"
 #define NIKON_EXPOSURE_METERING		"exposuremetermode"
@@ -139,14 +137,12 @@ do {							\
 #define NIKON_EXPOSURE_PROGRAM		"expprogram"
 #define NIKON_BATTERY_LEVEL		"batterylevel"
 #define NIKON_DATETIME                  "datetime"
-#define NIKON_DATETIME_LABEL            "Camera Date and Time"
 
 #define EOS_ISO				NIKON_ISO
 #define EOS_COMPRESSION			"imageformat"
 #define EOS_SHUTTERSPEED		NIKON_SHUTTERSPEED
 #define EOS_WHITEBALANCE		NIKON_WHITEBALANCE
 #define EOS_CAPTURE_TARGET		NIKON_CAPTURE_TARGET
-#define EOS_CAPTURE_TARGET_LABEL	NIKON_CAPTURE_TARGET_LABEL
 #define EOS_MEMORY_CARD			NIKON_MEMORY_CARD
 #define EOS_ZOOM_PREVIEW		"eoszoom"
 #define EOS_REMOTE_RELEASE		"eosremoterelease"
@@ -156,9 +152,7 @@ do {							\
 #define EOS_MIRROR_LOCKUP_ENABLE	"20,1,3,14,1,60f,1,1"
 #define EOS_MIRROR_LOCKUP_DISABLE	"20,1,3,14,1,60f,1,0"
 #define EOS_VIEWFINDER			"viewfinder"
-#define EOS_REMOTE_RELEASE_LABEL	"Canon EOS Remote Release"
 #define EOS_BULB_MODE			NIKON_BULB_MODE
-#define EOS_BULB_MODE_LABEL		NIKON_BULB_MODE_LABEL
 #define EOS_APERTURE			"aperture"
 #define EOS_EXPOSURE_COMPENSATION	NIKON_EXPOSURE_COMPENSATION
 #define EOS_EXPOSURE_METERING		"meteringmode"
@@ -166,7 +160,6 @@ do {							\
 #define EOS_EXPOSURE_PROGRAM		"autoexposuremode"
 #define EOS_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
 #define EOS_DATETIME                    NIKON_DATETIME
-#define EOS_DATETIME_LABEL              NIKON_DATETIME_LABEL
 
 #define SONY_COMPRESSION		NIKON_COMPRESSION
 #define SONY_APERTURE			NIKON_APERTURE
@@ -651,7 +644,7 @@ cleanup:
 	return rc;
 }
 
-static void vendor_generic_widget(indigo_device *device)
+static void vendor_specific_widget(indigo_device *device)
 {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -720,7 +713,7 @@ static int lookup_widget(CameraWidget *widget, const char *key,
 	return rc;
 }
 
-static int exists_widget_label(const char *key, indigo_device *device)
+static int exists_widget(const char *key, indigo_device *device)
 {
 	CameraWidget *widget = NULL, *child = NULL;
 	int rc;
@@ -737,8 +730,6 @@ static int exists_widget_label(const char *key, indigo_device *device)
 	}
 
 	rc = lookup_widget(widget, key, &child);
-	if (rc < GP_OK)
-		goto cleanup;
 
 cleanup:
 	gp_widget_free(widget);
@@ -758,18 +749,28 @@ static int enumerate_widget(const char *key, indigo_device *device,
 
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
 
-	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
-				  context);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-				    "[camera:%p,context:%p] camera get config failed",
-				    PRIVATE_DATA->camera, context);
-		goto cleanup;
+	rc = gp_camera_get_single_config(PRIVATE_DATA->camera,
+					 key, &child, context);
+	if (rc == GP_OK) {
+		if (!child)
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+					    "widget child for key '%s' is NULL",
+					    key);
+		widget = child;
 	}
-
-	rc = lookup_widget(widget, key, &child);
-	if (rc < GP_OK)
-		goto cleanup;
+	else {
+		rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
+					  context);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[camera:%p,context:%p] camera get config failed",
+					    PRIVATE_DATA->camera, context);
+			goto cleanup;
+		}
+		rc = lookup_widget(widget, key, &child);
+		if (rc < GP_OK)
+			goto cleanup;
+	}
 
 	/* This type check is optional, if you know what type the label
 	 * has already. If you are not sure, better check. */
@@ -810,26 +811,10 @@ static int enumerate_widget(const char *key, indigo_device *device,
 		goto cleanup;
 
 	const char *widget_choice;
+	const int I = rc;
 	int i = 0;
-	const bool is_sony_alpha_a7r_iii = (!strcmp(EOS_SHUTTERSPEED, key) &&
-					    strstr(PRIVATE_DATA->gphoto2_id.name_extended,
-						   "Sony Alpha-A7R III"));
-	const char *widget_choice_sony_alpha_a7r_iii[] = {
-		"1/8000", "1/6400", "1/5000", "1/4000", "1/3200", "1/2500", "1/2000", "1/1600", "1/1250",
-		"1/1000", "1/800",  "1/640",  "1/500",  "1/400",  "1/320",  "1/250",  "1/200", 	"1/160",
-		"1/125",  "1/100",  "1/80",   "1/60",   "1/50",   "1/40",   "1/30",   "1/25", 	"1/25",
-		"1/15",   "1/13",   "1/10",   "1/8", 	"1/6", 	  "1/6",    "1/4",    "1/3", 	"4/10",
-		"5/10",   "6/10",   "8/10",   "10/10",  "13/10",  "16/10",  "20/10",  "25/10",  "32/10",
-		"40/10",  "40/10",  "60/10",  "80/10",  "100/10", "130/10", "150/10", "200/10", "250/10",
-		"300/10" };
-	const int n_choices = !is_sony_alpha_a7r_iii ? rc : 55;
-	if (is_sony_alpha_a7r_iii) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME,
-				    "setting static shutterspeed for camera '%s'",
-				    PRIVATE_DATA->gphoto2_id.name_extended);
-	}
 
-	while (i < n_choices) {
+	while (i < I) {
 		rc = gp_widget_get_choice(child, i, &widget_choice);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -845,8 +830,7 @@ static int enumerate_widget(const char *key, indigo_device *device,
 		if (!strcmp(property->name, DSLR_SHUTTER_PROPERTY_NAME)) {
 
 			double shutter_d;
-			shutter_d = parse_shutterspeed(!is_sony_alpha_a7r_iii ?
-						       widget_choice : widget_choice_sony_alpha_a7r_iii[i]);
+			shutter_d = parse_shutterspeed(widget_choice);
 
 			if (shutter_d > 0.0)
 				snprintf(label, sizeof(label), "%f", shutter_d);
@@ -854,7 +838,7 @@ static int enumerate_widget(const char *key, indigo_device *device,
 
 		/* Init and set value same as on camera. */
 		indigo_init_switch_item(property->items + i,
-					!is_sony_alpha_a7r_iii ? widget_choice : widget_choice_sony_alpha_a7r_iii[i],
+					widget_choice,
 					label,
 					val && !strcmp(val, widget_choice));
 		i++;
@@ -872,6 +856,8 @@ static int gphoto2_set_key_val(const char *key, const void *val,
 			       CameraWidgetType widget_type,
 			       indigo_device *device)
 {
+	UNUSED(widget_type);
+
 	CameraWidget *widget = NULL, *child = NULL;
 	CameraWidgetType type;
 	int rc;
@@ -922,14 +908,16 @@ static int gphoto2_set_key_val(const char *key, const void *val,
 	if (rc < GP_OK) {
 		goto cleanup;
 	}
-	/* This stores it on the camera again */
-	rc = gp_camera_set_config(PRIVATE_DATA->camera, widget,
-				  context);
-	if (rc < GP_OK)
-		goto cleanup;
 
+	rc = gp_camera_set_single_config(PRIVATE_DATA->camera,
+					 key, child, context);
+	if (rc != GP_OK)
+		/* This stores it on the camera again */
+		rc = gp_camera_set_config(PRIVATE_DATA->camera, widget,
+					  context);
 cleanup:
-	gp_widget_free(widget);
+	if (widget)
+		gp_widget_free(widget);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 
@@ -1672,32 +1660,30 @@ static indigo_result ccd_attach(indigo_device *device)
 		}
 
 		/*--------------- IDENTIFY-VENDOR-SPECIFIC-WIDGETS -----------*/
-		vendor_generic_widget(device);
+		vendor_specific_widget(device);
 
 		/*-------------------- HAS-SINGLE-BULB-MODE ------------------*/
 		PRIVATE_DATA->has_single_bulb_mode =
-			exists_widget_label(EOS_BULB_MODE_LABEL,
+			exists_widget(EOS_BULB_MODE,
 					    device) == 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
-				  EOS_BULB_MODE_LABEL,
+				  EOS_BULB_MODE,
 				  PRIVATE_DATA->has_single_bulb_mode ? "is" : "is not",
 				  PRIVATE_DATA->gphoto2_id.name);
 
 		/*------------------- HAS-EOS-REMOTE-RELEASE -----------------*/
 		PRIVATE_DATA->has_eos_remote_release =
-			exists_widget_label(EOS_REMOTE_RELEASE_LABEL,
-					    device) == 0;
+			exists_widget(EOS_REMOTE_RELEASE, device) == 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
-				  EOS_REMOTE_RELEASE_LABEL,
+				  EOS_REMOTE_RELEASE,
 				  PRIVATE_DATA->has_eos_remote_release ? "is" : "is not",
 				  PRIVATE_DATA->gphoto2_id.name);
 
 		/*------------------- HAS-CAPTURE-TARGET ---------------------*/
 		PRIVATE_DATA->has_capture_target =
-			exists_widget_label(EOS_CAPTURE_TARGET_LABEL,
-					    device) == 0;
+			exists_widget(EOS_CAPTURE_TARGET, device) == 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
-				  EOS_CAPTURE_TARGET_LABEL,
+				  EOS_CAPTURE_TARGET,
 				  PRIVATE_DATA->has_capture_target ? "is" : "is not",
 				  PRIVATE_DATA->gphoto2_id.name);
 		/* Set SD memory card as capture target. The other choice is internal RAM, however
@@ -1720,10 +1706,9 @@ static indigo_result ccd_attach(indigo_device *device)
 
 		/*----------------------- HAS-DATETIME -----------------------*/
 		PRIVATE_DATA->has_datetime =
-			exists_widget_label(NIKON_DATETIME_LABEL,
-					    device) == 0;
+			exists_widget(EOS_DATETIME, device) == 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "widget '%s' %s available for camera '%s'",
-				  NIKON_DATETIME_LABEL,
+				  EOS_DATETIME,
 				  PRIVATE_DATA->has_datetime ? "is" : "is not",
 				  PRIVATE_DATA->gphoto2_id.name);
 
@@ -1889,7 +1874,7 @@ static indigo_result ccd_attach(indigo_device *device)
 					1.0, /* step */
 					PRIVATE_DATA->battery_level);
 
-		if (exists_widget_label(EOS_BATTERY_LEVEL, device) != GP_OK)
+		if (exists_widget(EOS_BATTERY_LEVEL, device) != GP_OK)
 			DSLR_BATTERY_LEVEL_PROPERTY->hidden = true;
 		else {
 			PRIVATE_DATA->battery_level_timer =
