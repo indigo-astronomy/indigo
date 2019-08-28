@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -111,17 +111,18 @@ static void temperature_timer_callback(indigo_device *device) {
 	float temp;
 	static bool has_sensor = true;
 	static bool first_call = true;
-	bool has_handcontrol;
+	bool has_handcontrol = false;
 	bool moving = false, moving_HC = false;
+	int res;
 
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int res = EAFIsHandControl(PRIVATE_DATA->dev_id, &has_handcontrol);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsHandControl(%d) = %d", PRIVATE_DATA->dev_id, res);
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFIsHandControl(%d, <- %d) = %d", PRIVATE_DATA->dev_id, has_handcontrol, res);
-	}
+	//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	//int res = EAFIsHandControl(PRIVATE_DATA->dev_id, &has_handcontrol);
+	//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	//if (res != EAF_SUCCESS) {
+	//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsHandControl(%d) = %d", PRIVATE_DATA->dev_id, res);
+	//} else {
+	//	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFIsHandControl(%d, <- %d) = %d", PRIVATE_DATA->dev_id, has_handcontrol, res);
+	//}
 
 	/* Update temerature at first call even if HC is connected.
 	   We want alert sate and T=-273 if the sensor is not connected. */
