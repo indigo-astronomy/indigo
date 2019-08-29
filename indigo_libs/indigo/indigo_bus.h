@@ -628,6 +628,11 @@ extern bool indigo_is_sandboxed;
 /** Cache BLOB content
  */
 extern bool indigo_use_blob_caching;
+	
+/** Use recursive locks for dispaching all bus messages
+ */
+extern bool indigo_use_strict_locking;
+
 #ifdef __cplusplus
 }
 #endif
