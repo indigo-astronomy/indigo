@@ -57,19 +57,13 @@
 
 #define BUFFER_SIZE	1024
 
-#define STRICT_LOCKING
-
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
 static indigo_blob_entry *blobs[MAX_BLOBS];
 
-#ifdef STRICT_LOCKING
 static pthread_mutex_t device_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 static pthread_mutex_t client_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
-#else
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+bool indigo_use_strict_locking = true;
 
 static pthread_mutex_t blob_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -424,9 +418,8 @@ indigo_result indigo_detach_client(indigo_client *client) {
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
 	if (!is_started)
 		return INDIGO_FAILED;
-#ifdef STRICT_LOCKING
-	pthread_mutex_lock(&device_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&device_mutex);
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property enumeration request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -439,18 +432,16 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 				device->last_result = device->enumerate_properties(device, client, property);
 		}
 	}
-#ifdef STRICT_LOCKING
-	pthread_mutex_unlock(&device_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
 	if ((!is_started) || (property == NULL) || (property->perm == INDIGO_RO_PERM))
 		return INDIGO_FAILED;
-#ifdef STRICT_LOCKING
-	pthread_mutex_lock(&device_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&device_mutex);
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -463,18 +454,16 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 				device->last_result = device->change_property(device, client, property);
 		}
 	}
-#ifdef STRICT_LOCKING
-	pthread_mutex_unlock(&device_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-#ifdef STRICT_LOCKING
-	pthread_mutex_lock(&device_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&device_mutex);
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: enable BLOB mode change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -487,18 +476,16 @@ indigo_result indigo_enable_blob(indigo_client *client, indigo_property *propert
 				device->last_result = device->enable_blob(device, client, property, mode);
 		}
 	}
-#ifdef STRICT_LOCKING
-	pthread_mutex_unlock(&device_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-#ifdef STRICT_LOCKING
-	pthread_mutex_lock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&client_mutex);
 	if (!property->hidden) {
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property definition", property, true, true));
 		char message[INDIGO_VALUE_SIZE];
@@ -514,18 +501,16 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 				client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
 		}
 	}
-#ifdef STRICT_LOCKING
-	pthread_mutex_unlock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&client_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-#ifdef STRICT_LOCKING
-	pthread_mutex_lock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&client_mutex);
 	if (!property->hidden) {
 		char message[INDIGO_VALUE_SIZE];
 		int count = property->count;
@@ -565,9 +550,8 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					strcpy(entry->format, item->blob.format);
 				} else {
 					pthread_mutex_unlock(&blob_mutex);
-#ifdef STRICT_LOCKING
-					pthread_mutex_unlock(&client_mutex);
-#endif
+					if (indigo_use_strict_locking)
+						pthread_mutex_unlock(&client_mutex);
 					return INDIGO_TOO_MANY_ELEMENTS;
 				}
 			}
@@ -580,18 +564,16 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		}
 		property->count = count;
 	}
-#ifdef STRICT_LOCKING
-	pthread_mutex_unlock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&client_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-#ifdef STRICT_LOCKING
-	pthread_mutex_lock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&client_mutex);
 	if (!property->hidden) {
 		char message[INDIGO_VALUE_SIZE];
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property removal", property, false, false));
@@ -607,18 +589,16 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 				client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
 		}
 	}
-#ifdef STRICT_LOCKING
-	pthread_mutex_unlock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&client_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_send_message(indigo_device *device, const char *format, ...) {
 	if (!is_started)
 		return INDIGO_FAILED;
-#ifdef STRICT_LOCKING
-	pthread_mutex_lock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&client_mutex);
 	INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent"));
 	char message[INDIGO_VALUE_SIZE];
 	if (format != NULL) {
@@ -632,9 +612,8 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 		if (client != NULL && client->send_message != NULL)
 			client->last_result = client->send_message(client, device, format != NULL ? message : NULL);
 	}
-#ifdef STRICT_LOCKING
-	pthread_mutex_unlock(&client_mutex);
-#endif
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&client_mutex);
 	return INDIGO_OK;
 }
 
