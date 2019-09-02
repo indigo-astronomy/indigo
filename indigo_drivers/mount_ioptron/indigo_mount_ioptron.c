@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -226,7 +226,7 @@ static bool ieq_open(indigo_device *device) {
 	if (strncmp(name, "ieq://", 6)) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
 		if (PRIVATE_DATA->handle >= 0) {
-			if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) != 4) {
+			if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4 || strlen(response) > 5) {
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
 			}
