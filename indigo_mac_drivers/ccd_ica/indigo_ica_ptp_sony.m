@@ -494,7 +494,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
             unsigned long i = data.length;
             retryCount = 0;
             while (i > 0) {
-              if (start[0] == 0xFF && start[1] == 0xD8) {
+              if (start[0] == 0xFF && start[1] == 0xD8 && start[2] == 0xFF && start[3] == 0xDB) {
                 uint8 *end = start + 2;
                 i -= 2;
                 while (i > 0) {
