@@ -1151,13 +1151,13 @@ double indigo_stod(char *string) {
 	strncpy(copy, string, 128);
 	string = copy;
 	double value = 0;
-	char *separator = strpbrk(string, ":*' \xdf");
+	char *separator = strpbrk(string, ":*'\xdf");
 	if (separator == NULL) {
 		value = indigo_atod(string);
 	} else {
 		*separator++ = 0;
 		value = indigo_atod(string);
-		separator = strpbrk(string = separator, ":*' ");
+		separator = strpbrk(string = separator, ":*'");
 		if (separator == NULL) {
 			if (value < 0)
 				value -= indigo_atod(string)/60.0;
