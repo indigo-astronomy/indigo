@@ -32,10 +32,10 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-unsigned long current_position = 0;
-unsigned long target_position = 0;
-unsigned long min_position = 0;
-unsigned long max_position = 3799422;
+uint32_t current_position = 0;
+uint32_t target_position = 0;
+uint32_t min_position = 0;
+uint32_t max_position = 3799422;
 bool stop_detect = true;
 bool fans_on = false;
 
@@ -82,12 +82,12 @@ void loop() {
           packet[7] = (current_position) & 0xFF;
           break;
         case 0x17: // MTR_GOTO_POS2
-          target_position = (packet[5] & 0xFF) << 16 | (packet[6] & 0xFF) << 8 | (packet[7] & 0xFF);
+          target_position = ((uint32_t)packet[5] & 0xFF) << 16 | ((uint32_t)packet[6] & 0xFF) << 8 | ((uint32_t)packet[7] & 0xFF);
           packet[1] = 4;
           packet[5] = 1;
           break;
         case 0x04: // MTR_OFFSET_CNT
-          target_position = current_position = (packet[5] & 0xFF) << 16 | (packet[6] & 0xFF) << 8 | (packet[7] & 0xFF);
+          target_position = current_position = ((uint32_t)packet[5] & 0xFF) << 16 | ((uint32_t)packet[6] & 0xFF) << 8 | ((uint32_t)packet[7] & 0xFF);
           packet[1] = 4;
           packet[5] = 1;
           break;
@@ -96,7 +96,7 @@ void loop() {
           packet[5] = target_position == current_position ? 0xFF : 0x00;
           break;
         case 0x1B: // MTR_SLEWLIMITMAX
-          max_position = (packet[5] & 0xFF) << 16 | (packet[6] & 0xFF) << 8 | (packet[7] & 0xFF);
+          max_position = ((uint32_t)packet[5] & 0xFF) << 16 | ((uint32_t)packet[6] & 0xFF) << 8 | ((uint32_t)packet[7] & 0xFF);
           packet[1] = 4;
           packet[5] = 1;
           break;
