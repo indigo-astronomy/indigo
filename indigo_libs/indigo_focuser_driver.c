@@ -86,7 +86,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			if (FOCUSER_ABORT_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(FOCUSER_ABORT_MOTION_ITEM, FOCUSER_ABORT_MOTION_ITEM_NAME, "Abort motion", false);
-				// -------------------------------------------------------------------------------- CCD_TEMPERATURE
+				// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 			FOCUSER_BACKLASH_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Backlash compensation", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_BACKLASH_PROPERTY == NULL)
 				return INDIGO_FAILED;
