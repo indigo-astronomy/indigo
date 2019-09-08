@@ -300,12 +300,15 @@ static void focuser_position_handler(indigo_device *device) {
 
 static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	uint8_t response_packet[10];
-	uint8_t stop_packet[10] = { 0x3B, 0x06, 0x20, 0x12, 0x24, 0x00, 0 };
-	if (efa_command(device, stop_packet, response_packet)) {
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		uint8_t response_packet[10];
+		uint8_t stop_packet[10] = { 0x3B, 0x06, 0x20, 0x12, 0x24, 0x00, 0 };
+		if (efa_command(device, stop_packet, response_packet)) {
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	}
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
