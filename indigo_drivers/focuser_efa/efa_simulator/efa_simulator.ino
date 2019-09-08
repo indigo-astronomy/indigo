@@ -32,9 +32,12 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-unsigned long current_position = 0x000000;
-unsigned long target_position = 0x000000;
-unsigned long limit_position = 0xFFFFFF;
+unsigned long current_position = 0;
+unsigned long target_position = 0;
+unsigned long min_position = 0;
+unsigned long max_position = 3799422;
+bool stop_detect = true;
+bool fans_on = false;
 
 void setup() {
 #ifdef LCD
@@ -52,10 +55,10 @@ void setup() {
 }
 
 void loop() {
-  if (target_position > current_position && current_position < limit_position) {
+  if (target_position > current_position && current_position < max_position) {
     current_position++;
 		delay(30);
-  } else if (target_position < current_position && current_position > 0) {
+  } else if (target_position < current_position && current_position > min_position) {
     current_position--;
 		delay(30);
   }
@@ -79,12 +82,12 @@ void loop() {
           packet[7] = (current_position) & 0xFF;
           break;
         case 0x17: // MTR_GOTO_POS2
-          target_position = packet[5] << 16 | packet[6] << 8 | packet[7];
+          target_position = (packet[5] & 0xFF) << 16 | (packet[6] & 0xFF) << 8 | (packet[7] & 0xFF);
           packet[1] = 4;
           packet[5] = 1;
           break;
         case 0x04: // MTR_OFFSET_CNT
-          current_position = packet[5] << 16 | packet[6] << 8 | packet[7];
+          target_position = current_position = (packet[5] & 0xFF) << 16 | (packet[6] & 0xFF) << 8 | (packet[7] & 0xFF);
           packet[1] = 4;
           packet[5] = 1;
           break;
@@ -93,25 +96,65 @@ void loop() {
           packet[5] = target_position == current_position ? 0xFF : 0x00;
           break;
         case 0x1B: // MTR_SLEWLIMITMAX
-          limit_position = packet[5] << 16 | packet[6] << 8 | packet[7];
+          max_position = (packet[5] & 0xFF) << 16 | (packet[6] & 0xFF) << 8 | (packet[7] & 0xFF);
           packet[1] = 4;
           packet[5] = 1;
           break;
         case 0x1D: // MTR_SLEWLIMITGETMAX
           packet[1] = 6;
-          packet[5] = (limit_position >> 16) & 0xFF;
-          packet[6] = (limit_position >> 8) & 0xFF;
-          packet[7] = (limit_position) & 0xFF;
+          packet[5] = (max_position >> 16) & 0xFF;
+          packet[6] = (max_position >> 8) & 0xFF;
+          packet[7] = (max_position) & 0xFF;
+          break;
+        case 0x24: // MTR_PMSLEW_RATE
+          if (packet[5])
+            target_position = max_position;
+          else
+            target_position = current_position;
+          packet[1] = 4;
+          packet[5] = 1;
+          break;
+        case 0x25: // MTR_NMSLEW_RATE
+          if (packet[5])
+            target_position = min_position;
+          else
+            target_position = current_position;
+          packet[1] = 4;
+          packet[5] = 1;
           break;
         case 0x26: // TEMP_GET - 2 or 3 bytes??
           packet[1] = 6;
           packet[6] = 0x5C;
           packet[7] = 0x01;
           break;
+        case 0xEE: // MTR_GET_STOP_DETECT
+          packet[1] = 4;
+          packet[5] = stop_detect ? 1 : 0;
+          break;
+        case 0xEF: // MTR_STOP_DETECT
+          stop_detect = packet[5] == 1;
+          packet[1] = 3;
+          break;
         case 0xFE: // GET_VERSION
           packet[1] = 5;
           packet[5] = 0x01;
           packet[6] = 0x05;
+          break;
+        default:
+          packet[1] = 4;
+          packet[5] = 0xFF;
+          break;
+      }
+    } else if (packet[3] == 0x13) {
+      switch (packet[4] & 0xFF) {
+        case 0x27: // FANS_SET
+          fans_on = packet[5] == 1;
+          packet[1] = 4;
+          packet[5] = 1;
+          break;
+        case 0x28: // FANS_GET
+          packet[1] = 4;
+          packet[5] = fans_on ? 0 : 3;
           break;
         default:
           packet[1] = 4;

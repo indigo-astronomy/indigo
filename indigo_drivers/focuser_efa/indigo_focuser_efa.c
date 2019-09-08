@@ -48,10 +48,15 @@
 
 #define PRIVATE_DATA													((efa_private_data *)device->private_data)
 
+#define X_FOCUSER_FANS_PROPERTY								(PRIVATE_DATA->fans_property)
+#define X_FOCUSER_FANS_OFF_ITEM								(X_FOCUSER_FANS_PROPERTY->items+0)
+#define X_FOCUSER_FANS_ON_ITEM								(X_FOCUSER_FANS_PROPERTY->items+1)
+
 typedef struct {
 	int handle;
 	indigo_timer *timer;
 	pthread_mutex_t mutex;
+	indigo_property *fans_property;
 } efa_private_data;
 
 // -------------------------------------------------------------------------------- Low level communication routines
@@ -96,6 +101,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		X_FOCUSER_FANS_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_FANS", FOCUSER_MAIN_GROUP, "Fans", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_FOCUSER_FANS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_FOCUSER_FANS_OFF_ITEM, "OFF", "Off", true);
+		indigo_init_switch_item(X_FOCUSER_FANS_ON_ITEM, "ON", "On", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -109,14 +119,18 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
-		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.max = 0xFFFF;
+		FOCUSER_STEPS_ITEM->number.max = 3799422;
 		FOCUSER_STEPS_ITEM->number.step = 1;
-		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 3799422;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 3799422;
+		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
+		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		// TBD
 		// --------------------------------------------------------------------------------
@@ -129,7 +143,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		// TBD
+		if (indigo_property_match(X_FOCUSER_FANS_PROPERTY, property))
+			indigo_define_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -223,6 +238,13 @@ static void focuser_connection_handler(indigo_device *device) {
 			if (efa_command(device, get_position_packet, response_packet)) {
 				FOCUSER_POSITION_ITEM->number.value = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
 			}
+			uint8_t get_fans_packet[10] = { 0x3B, 0x03, 0x20, 0x13, 0x28, 0 };
+			if (efa_command(device, get_fans_packet, response_packet)) {
+				indigo_set_switch(X_FOCUSER_FANS_PROPERTY, X_FOCUSER_FANS_ON_ITEM, response_packet[5] == 0);
+			}
+			uint8_t set_stop_detect_packet[10] = { 0x3B, 0x04, 0x20, 0x12, 0xEF, 0x01, 0 };
+			efa_command(device, set_stop_detect_packet, response_packet);
+			indigo_define_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 			PRIVATE_DATA->timer = indigo_set_timer(device, 0, focuser_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -231,6 +253,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_delete_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = 0;
@@ -244,12 +267,60 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	long position = FOCUSER_POSITION_ITEM->number.value + (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ? 1 : -1) * FOCUSER_STEPS_ITEM->number.value;
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 	uint8_t response_packet[10];
 	uint8_t goto_packet[10] = { 0x3B, 0x06, 0x20, 0x12, 0x17, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
 	if (efa_command(device, goto_packet, response_packet)) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_position_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	long position = FOCUSER_POSITION_ITEM->number.value;
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	uint8_t response_packet[10];
+	uint8_t goto_packet[10] = { 0x3B, 0x06, 0x20, 0x12, 0x17, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
+	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value)
+		goto_packet[4] = 0x04;
+	if (efa_command(device, goto_packet, response_packet)) {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_abort_motion_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	uint8_t response_packet[10];
+	uint8_t stop_packet[10] = { 0x3B, 0x06, 0x20, 0x12, 0x24, 0x00, 0 };
+	if (efa_command(device, stop_packet, response_packet)) {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_fans_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	uint8_t response_packet[10];
+	uint8_t fans_packet[10] = { 0x3B, 0x04, 0x20, 0x13, 0x27, X_FOCUSER_FANS_ON_ITEM->sw.value ? 0x01 : 0x00, 0 };
+	if (efa_command(device, fans_packet, response_packet)) {
+		X_FOCUSER_FANS_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		X_FOCUSER_FANS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -267,11 +338,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		indigo_set_timer(device, 0, focuser_steps_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		indigo_set_timer(device, 0, focuser_position_handler);
+		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_abort_motion_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match(X_FOCUSER_FANS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_FOCUSER_FANS
+		indigo_property_copy_values(X_FOCUSER_FANS_PROPERTY, property, false);
+		indigo_set_timer(device, 0, focuser_fans_handler);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -283,6 +363,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connection_handler(device);
 	}
+	indigo_release_property(X_FOCUSER_FANS_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
