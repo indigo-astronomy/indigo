@@ -23,6 +23,8 @@
 
 #define LCD
 
+//#define CELESTRON
+
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
 #endif
@@ -81,11 +83,13 @@ void loop() {
           packet[6] = (current_position >> 8) & 0xFF;
           packet[7] = (current_position) & 0xFF;
           break;
-        case 0x17: // MTR_GOTO_POS2
+#ifdef CELESTRON
+        case 0x02: // MTR_GOTO_POS
           target_position = ((uint32_t)packet[5] & 0xFF) << 16 | ((uint32_t)packet[6] & 0xFF) << 8 | ((uint32_t)packet[7] & 0xFF);
           packet[1] = 4;
           packet[5] = 1;
           break;
+#endif
         case 0x04: // MTR_OFFSET_CNT
           target_position = current_position = ((uint32_t)packet[5] & 0xFF) << 16 | ((uint32_t)packet[6] & 0xFF) << 8 | ((uint32_t)packet[7] & 0xFF);
           packet[1] = 4;
@@ -94,6 +98,12 @@ void loop() {
         case 0x13: // MTR_GOTO_OVER
           packet[1] = 4;
           packet[5] = target_position == current_position ? 0xFF : 0x00;
+          break;
+#ifndef CELESTRON
+        case 0x17: // MTR_GOTO_POS2
+          target_position = ((uint32_t)packet[5] & 0xFF) << 16 | ((uint32_t)packet[6] & 0xFF) << 8 | ((uint32_t)packet[7] & 0xFF);
+          packet[1] = 4;
+          packet[5] = 1;
           break;
         case 0x1B: // MTR_SLEWLIMITMAX
           max_position = ((uint32_t)packet[5] & 0xFF) << 16 | ((uint32_t)packet[6] & 0xFF) << 8 | ((uint32_t)packet[7] & 0xFF);
@@ -106,6 +116,7 @@ void loop() {
           packet[6] = (max_position >> 8) & 0xFF;
           packet[7] = (max_position) & 0xFF;
           break;
+#endif
         case 0x24: // MTR_PMSLEW_RATE
           if (packet[5])
             target_position = max_position;
@@ -122,6 +133,25 @@ void loop() {
           packet[1] = 4;
           packet[5] = 1;
           break;
+#ifdef CELESTRON
+        case 0x2B: // MTR_GET_CALIBRATION_STATE
+          packet[1] = 4;
+          packet[5] = 0x00;
+          break;
+        case 0x2C: // MTR_GET_CALIBRATION
+          packet[1] = 7;
+          packet[5] = 0x01;
+          packet[6] = 0x00;
+          packet[7] = 0xFF;
+          packet[8] = 0x00;
+          break;
+#else
+        case 0x30: // MTR_GET_CALIBRATION_STATE
+          packet[1] = 4;
+          packet[5] = 0x00;
+          break;
+#endif          
+#ifndef CELESTRON
         case 0x26: // TEMP_GET - 2 or 3 bytes??
           packet[1] = 6;
           packet[6] = 0x5C;
@@ -135,16 +165,26 @@ void loop() {
           stop_detect = packet[5] == 1;
           packet[1] = 3;
           break;
+#endif
         case 0xFE: // GET_VERSION
+#ifdef CELESTRON
+					packet[1] = 7;
+					packet[5] = 0x07;
+					packet[6] = 0x0F;
+					packet[7] = 0x20;
+					packet[8] = 0x30;
+#else
           packet[1] = 5;
           packet[5] = 0x01;
           packet[6] = 0x05;
+#endif
           break;
         default:
           packet[1] = 4;
           packet[5] = 0xFF;
           break;
       }
+#ifndef CELESTRON
     } else if (packet[3] == 0x13) {
       switch (packet[4] & 0xFF) {
         case 0x27: // FANS_SET
@@ -161,6 +201,7 @@ void loop() {
           packet[5] = 0xFF;
           break;
       }
+#endif
     }
     count = packet[1];
     char tmp = packet[2];

@@ -1,9 +1,11 @@
-# PlaneWave EFA focuser driver
+# Celestron / PlaneWave EFA focuser driver
 
+https://www.celestron.com/products/focus-motor-for-sct-and-edgehd
 https://planewave.com/products-page/general-accessories/efa-kit-electronic-focuser/#.XXPOEi2B3OQ
 
 ## Supported devices
 
+* Celestron Focus Motor for SCT and EdgeHD
 * EFA control unit
 
 Single device is present on startup (no hot-plug support).
