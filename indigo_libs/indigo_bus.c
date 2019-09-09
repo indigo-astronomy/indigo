@@ -599,7 +599,6 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&client_mutex);
-	INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent"));
 	char message[INDIGO_VALUE_SIZE];
 	if (format != NULL) {
 		va_list args;
@@ -607,6 +606,7 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 		va_end(args);
 	}
+	INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent '%s'", message));
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		indigo_client *client = clients[i];
 		if (client != NULL && client->send_message != NULL)
