@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -1092,7 +1092,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
-					sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon, tm.tm_mday + 1, tm.tm_year - 100);
+					sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year - 100);
 				else if (PRIVATE_DATA->protocol >= 0x0200)
 					sprintf(command, ":SC%02d%02d%02d#", tm.tm_year - 100, tm.tm_mon + 1, tm.tm_mday);
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
@@ -1149,7 +1149,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
-					sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon, tm.tm_mday + 1, tm.tm_year - 100);
+					sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year - 100);
 				else if (PRIVATE_DATA->protocol >= 0x0200)
 					sprintf(command, ":SC%02d%02d%02d#", tm.tm_year - 100, tm.tm_mon + 1, tm.tm_mday);
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
