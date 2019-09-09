@@ -22,7 +22,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PlaneWave EFA focuser driver
+/** INDIGO Celestron / PlaneWave EFA focuser driver
  \file indigo_focuser_efa.h
  */
 
