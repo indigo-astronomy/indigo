@@ -259,8 +259,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Uknown version");
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s detected", INFO_DEVICE_MODEL_ITEM->text.value, INFO_DEVICE_FW_REVISION_ITEM->text.value);
-				indigo_delete_property(device, INFO_PROPERTY, NULL);
-				indigo_define_property(device, INFO_PROPERTY, NULL);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFA not detected");
 				close(PRIVATE_DATA->handle);
