@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -857,7 +857,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_coordinates(device, "Mount is parked!");
 		} else {
@@ -965,7 +965,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked!");
 		} else {
@@ -998,7 +998,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
-		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
 		} else {
@@ -1039,7 +1039,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
-		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
 		} else {
@@ -1172,7 +1172,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
-		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
 		} else {
