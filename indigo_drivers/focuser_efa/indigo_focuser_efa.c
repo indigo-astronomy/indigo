@@ -47,6 +47,11 @@
 
 #include "indigo_focuser_efa.h"
 
+#define SOM 0x3B
+#define APP	0x20
+#define FOC	0x12
+#define FAN 0x13
+
 #define PRIVATE_DATA													((efa_private_data *)device->private_data)
 
 #define X_FOCUSER_FANS_PROPERTY								(PRIVATE_DATA->fans_property)
@@ -160,7 +165,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	uint8_t response_packet[10];
 	if (PRIVATE_DATA->is_efa) {
-		uint8_t get_temp_packet[10] = { 0x3B, 0x04, 0x20, 0x12, 0x26, 0x00, 0 };
+		uint8_t get_temp_packet[10] = { SOM, 0x04, APP, FOC, 0x26, 0x00, 0 };
 		if (efa_command(device, get_temp_packet, response_packet)) {
 			int raw_temp = response_packet[6] << 8 | response_packet[7];
 			// formula is definitely wrong :(
@@ -182,12 +187,12 @@ static void focuser_timer_callback(indigo_device *device) {
 		}
 	}
 	bool moving = false;
-	uint8_t check_state_packet[10] = { 0x3B, 0x03, 0x20, 0x12, 0x13, 0 };
+	uint8_t check_state_packet[10] = { SOM, 0x03, APP, FOC, 0x13, 0 };
 	if (efa_command(device, check_state_packet, response_packet)) {
 		moving = response_packet[5] == 0;
 	}
 	long position = 0;
-	uint8_t get_position_packet[10] = { 0x3B, 0x03, 0x20, 0x12, 0x01, 0 };
+	uint8_t get_position_packet[10] = { SOM, 0x03, APP, FOC, 0x01, 0 };
 	if (efa_command(device, get_position_packet, response_packet)) {
 		position = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
 	}
@@ -244,7 +249,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			uint8_t get_version_packet[10] = { 0x3B, 0x03, 0x20, 0x12, 0xFE, 0 };
+			uint8_t get_version_packet[10] = { SOM, 0x03, APP, FOC, 0xFE, 0 };
 			if (efa_command(device, get_version_packet, response_packet)) {
 				if (response_packet[1] == 5) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PlaneWave EFA");
@@ -270,18 +275,18 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_update_property(device, CONNECTION_PROPERTY, "Failed to open port %s (%s)", DEVICE_PORT_ITEM->text.value, strerror(errno));
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			uint8_t get_position_packet[10] = { 0x3B, 0x03, 0x20, 0x12, 0x01, 0 };
+			uint8_t get_position_packet[10] = { SOM, 0x03, APP, FOC, 0x01, 0 };
 			if (efa_command(device, get_position_packet, response_packet)) {
 				FOCUSER_POSITION_ITEM->number.value = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
 			}
 			if (PRIVATE_DATA->is_efa) {
-				uint8_t get_calibration_status_packet[10] = { 0x3B, 0x03, 0x20, 0x12, 0x30, 0 };
+				uint8_t get_calibration_status_packet[10] = { SOM, 0x03, APP, FOC, 0x30, 0 };
 				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
 					indigo_send_message(device, "Warning! Focuser is not calibrated!");
 				}
-				uint8_t set_stop_detect_packet[10] = { 0x3B, 0x04, 0x20, 0x12, 0xEF, 0x01, 0 };
+				uint8_t set_stop_detect_packet[10] = { SOM, 0x04, APP, FOC, 0xEF, 0x01, 0 };
 				efa_command(device, set_stop_detect_packet, response_packet);
-				uint8_t get_fans_packet[10] = { 0x3B, 0x03, 0x20, 0x13, 0x28, 0 };
+				uint8_t get_fans_packet[10] = { SOM, 0x03, APP, FAN, 0x28, 0 };
 				if (efa_command(device, get_fans_packet, response_packet)) {
 					indigo_set_switch(X_FOCUSER_FANS_PROPERTY, X_FOCUSER_FANS_ON_ITEM, response_packet[5] == 0);
 				}
@@ -290,7 +295,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 				FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 			} else {
-				uint8_t get_calibration_status_packet[10] = { 0x3B, 0x03, 0x20, 0x12, 0x2B, 0 };
+				uint8_t get_calibration_status_packet[10] = { SOM, 0x03, APP, FOC, 0x2B, 0 };
 				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
 					indigo_send_message(device, "Warning! Focuser is not calibrated!");
 				}
@@ -326,7 +331,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 	uint8_t response_packet[10];
-	uint8_t goto_packet[10] = { 0x3B, 0x06, 0x20, 0x12, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
+	uint8_t goto_packet[10] = { SOM, 0x06, APP, FOC, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
 	if (efa_command(device, goto_packet, response_packet)) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -342,7 +347,7 @@ static void focuser_position_handler(indigo_device *device) {
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 	uint8_t response_packet[10];
-	uint8_t goto_packet[10] = { 0x3B, 0x06, 0x20, 0x12, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
+	uint8_t goto_packet[10] = { SOM, 0x06, APP, FOC, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
 	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value)
 		goto_packet[4] = 0x04;
 	if (efa_command(device, goto_packet, response_packet)) {
@@ -356,7 +361,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		uint8_t response_packet[10];
-		uint8_t stop_packet[10] = { 0x3B, 0x06, 0x20, 0x12, 0x24, 0x00, 0 };
+		uint8_t stop_packet[10] = { SOM, 0x06, APP, FOC, 0x24, 0x00, 0 };
 		if (efa_command(device, stop_packet, response_packet)) {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -371,7 +376,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_fans_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	uint8_t response_packet[10];
-	uint8_t fans_packet[10] = { 0x3B, 0x04, 0x20, 0x13, 0x27, X_FOCUSER_FANS_ON_ITEM->sw.value ? 0x01 : 0x00, 0 };
+	uint8_t fans_packet[10] = { SOM, 0x04, APP, FAN, 0x27, X_FOCUSER_FANS_ON_ITEM->sw.value ? 0x01 : 0x00, 0 };
 	if (efa_command(device, fans_packet, response_packet)) {
 		X_FOCUSER_FANS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
