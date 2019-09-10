@@ -469,7 +469,7 @@
 
 /** CCD_IMAGE_FILE.FILE property item name.
  */
-#define CCD_IMAGE_FILE_ITEM_NAME              "FILE "
+#define CCD_IMAGE_FILE_ITEM_NAME              "FILE"
 
 /** CCD_IMAGE property name.
  */
