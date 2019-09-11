@@ -87,8 +87,8 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 |  |  |  |  | OFF | yes |  |
 | CCD_COOLER_POWER | number | yes | no | POWER | yes | It depends on hardware if it is undefined, read-only or read-write. |
 | CCD_FITS_HEADERS | text | no | yes | HEADER_1, ... | yes | String in form "name = value", "name = 'value'" or "comment text" |
-| CCD_PREVIEW | switch | no | yes | ENABLE | yes | Send JPEG preview to client |
-|  |  |  |  | DISABLE | yes | |
+| CCD_PREVIEW | switch | no | yes | ENABLED | yes | Send JPEG preview to client |
+|  |  |  |  | DISABLED | yes | |
 | CCD_PREVIEW_IMAGE | blob | no | yes | IMAGE | yes |  |
 
 Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_ccd_driver.c).

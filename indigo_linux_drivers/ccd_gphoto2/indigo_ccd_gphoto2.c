@@ -256,6 +256,9 @@ typedef struct {
 	char *buffer;
 	unsigned long int buffer_size;
 	unsigned long int buffer_size_max;
+	char *preview_buffer;
+	unsigned long int preview_buffer_size;
+	unsigned long int preview_buffer_size_max;
 	char filename_suffix[9];
 	enum vendor vendor;
 	char *gphoto2_compression_id;
@@ -1169,6 +1172,21 @@ static void exposure_timer_callback(indigo_device *device)
 			return;
 
 		}
+
+		if (CCD_PREVIEW_ENABLED_ITEM->sw.value && ! CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+			if (PRIVATE_DATA->preview_buffer && PRIVATE_DATA->preview_buffer > 0) {
+				indigo_process_dslr_preview_image(device,
+					PRIVATE_DATA->preview_buffer,
+					PRIVATE_DATA->preview_buffer_size
+				);
+				INDIGO_DRIVER_LOG(DRIVER_NAME,
+						  "preview sent");
+			} else {
+				INDIGO_DRIVER_LOG(DRIVER_NAME,
+						  "get preview failed. check DSLR_COMPRESSION property");
+			}
+		}
+
 		if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value ||
 		    CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value)
 			indigo_process_dslr_image(device,
@@ -1500,6 +1518,105 @@ static void *thread_capture(void *user_data)
 		strncpy(PRIVATE_DATA->filename_suffix, suffix,
 			sizeof(PRIVATE_DATA->filename_suffix));
 
+	if ( CCD_PREVIEW_ENABLED_ITEM->sw.value ) {
+		// initialize buffer
+		PRIVATE_DATA->preview_buffer_size = 0;
+		// copy
+		char preview_name[sizeof(camera_file_path.name)] = {};
+		strcpy(preview_name, camera_file_path.name);
+
+		char *image_ext = NULL;
+		image_ext = strstr(preview_name, ".");
+		if (!image_ext) {
+			goto abort_dslr_preview;
+		}
+
+		// check safe
+		size_t length = image_ext - preview_name;
+		if ( length + 5 > sizeof(preview_name) ) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p]"
+					    " file name is too long",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context);
+			goto abort_dslr_preview;
+		}
+		// change ext
+		strcpy(image_ext, ".JPG");
+		// check same
+		if (strcmp(camera_file_path.name, preview_name) == 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p]"
+					    " preview is same",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context);
+			goto abort_dslr_preview;
+		}
+
+		// wait for ready
+		// from <https://github.com/jim-easterbrook/python-gphoto2/issues/65>
+		CameraEventType event_type = GP_EVENT_UNKNOWN;
+		void *event_data = NULL;
+		bool added = false;
+		while (true) {
+			rc = gp_camera_wait_for_event(PRIVATE_DATA->camera, 20, &event_type,
+						&event_data, context);
+			if (event_type == GP_EVENT_TIMEOUT) {
+				break;
+			} else if (event_type == GP_EVENT_FILE_ADDED) {
+				added = true;
+			}
+		}
+		if (!added) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p]"
+					    " no detect GP_EVENT_FILE_ADDED",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context);
+			goto abort_dslr_preview;
+		}
+
+		// download
+		rc = gp_camera_file_get(PRIVATE_DATA->camera, camera_file_path.folder,
+					preview_name, GP_FILE_TYPE_NORMAL,
+					camera_file, context);
+		if (rc != GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p]"
+					    " gp_camera_file_get (preview)",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context);
+			goto abort_dslr_preview;
+		}
+		/* Memory of buffer free'd by this function when previously allocated. */
+		rc = gp_file_get_data_and_size(camera_file, (const char**)&buffer,
+					       &buffer_size);
+		if (rc != GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
+					    "gp_file_get_data_and_size (preview)",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context);
+			goto abort_dslr_preview;
+		}
+		/* If new image is larger than current buffer, then
+		   increase buffer size. Otherwise it will fit in the old buffer. */
+		if (buffer_size > PRIVATE_DATA->preview_buffer_size_max) {
+			PRIVATE_DATA->preview_buffer_size_max = buffer_size;
+			PRIVATE_DATA->preview_buffer = realloc(PRIVATE_DATA->preview_buffer,
+						       PRIVATE_DATA->
+						       preview_buffer_size_max);
+		}
+		memcpy(PRIVATE_DATA->preview_buffer, buffer, buffer_size);
+		PRIVATE_DATA->preview_buffer_size = buffer_size;
+	}
+abort_dslr_preview:
+	// error occured but can continue
+
 	if (PRIVATE_DATA->delete_downloaded_image) {
 		rc = gp_camera_file_delete(PRIVATE_DATA->camera,
 					   camera_file_path.folder,
@@ -1643,6 +1760,9 @@ static indigo_result ccd_attach(indigo_device *device)
 		PRIVATE_DATA->buffer = NULL;
 		PRIVATE_DATA->buffer_size = 0;
 		PRIVATE_DATA->buffer_size_max = 0;
+		PRIVATE_DATA->preview_buffer = NULL;
+		PRIVATE_DATA->preview_buffer_size = 0;
+		PRIVATE_DATA->preview_buffer_size_max = 0;
 		PRIVATE_DATA->name_best_jpeg_format = NULL;
 		PRIVATE_DATA->name_pure_raw_format = NULL;
 		PRIVATE_DATA->mirror_lockup_secs = 0;
@@ -2148,6 +2268,12 @@ static indigo_result ccd_detach(indigo_device *device)
 		PRIVATE_DATA->buffer = NULL;
 		PRIVATE_DATA->buffer_size = 0;
 		PRIVATE_DATA->buffer_size_max = 0;
+	}
+	if (PRIVATE_DATA->preview_buffer) {
+		free(PRIVATE_DATA->preview_buffer);
+		PRIVATE_DATA->preview_buffer = NULL;
+		PRIVATE_DATA->preview_buffer_size = 0;
+		PRIVATE_DATA->preview_buffer_size_max = 0;
 	}
 
 	if (PRIVATE_DATA->name_pure_raw_format)
