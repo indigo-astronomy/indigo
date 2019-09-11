@@ -464,6 +464,8 @@ extern void indigo_process_image(indigo_device *device, void *data, int frame_wi
  */
 extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix);
 
+extern void indigo_process_dslr_preview_image(indigo_device *device, void *data, int blobsize);
+
 #ifdef __cplusplus
 }
 #endif
