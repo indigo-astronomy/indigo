@@ -142,7 +142,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
 			else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
 				libfcusb_set_frequency(PRIVATE_DATA->device_context, 4);
-			else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
+			else if (X_FOCUSER_FREQUENCY_16_ITEM->sw.value)
 				libfcusb_set_frequency(PRIVATE_DATA->device_context, 16);
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 				libfcusb_move_in(PRIVATE_DATA->device_context);
