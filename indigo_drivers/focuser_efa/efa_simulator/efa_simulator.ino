@@ -75,6 +75,9 @@ void loop() {
     char packet[16] = { 0x3B, count };
     for (int i = 0; i <= count; i++)
       packet[i + 2] = Serial.read();
+#ifndef CELESTRON
+    Serial.write(packet, count + 3);
+#endif
     if (packet[3] == 0x12) {
       switch (packet[4] & 0xFF) {
         case 0x01: // MTR_GET_POS

@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -85,23 +85,27 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 	else if (count == 7)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5], packet_out[6], packet_out[7], packet_out[8], packet_out[8]);
 	if (indigo_write(PRIVATE_DATA->handle, (const char *)packet_out, count + 3)) {
-		if (indigo_read(PRIVATE_DATA->handle, (char *)packet_in, 5) == 5 && packet_in[0] == 0x3B) {
-			count = packet_in[1];
-			if (indigo_read(PRIVATE_DATA->handle, (char *)packet_in + 5, count - 2) == count - 2) {
-				if (count == 3)
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5]);
-				else if (count == 4)
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6]);
-				else if (count == 5)
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7]);
-				else if (count == 6)
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8]);
-				else if (count == 7)
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8], packet_in[9]);
-				return packet_in[2] == packet_out[3] && packet_in[4] == packet_out[4];
+		while (true) {
+			if (indigo_read(PRIVATE_DATA->handle, (char *)packet_in, 5) == 5 && packet_in[0] == 0x3B) {
+				count = packet_in[1];
+				if (indigo_read(PRIVATE_DATA->handle, (char *)packet_in + 5, count - 2) == count - 2) {
+					if (count == 3)
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5]);
+					else if (count == 4)
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6]);
+					else if (count == 5)
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7]);
+					else if (count == 6)
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8]);
+					else if (count == 7)
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8], packet_in[9]);
+					if (memcmp(packet_in, packet_out, count + 3) == 0)
+						continue;
+					return packet_in[2] == packet_out[3] && packet_in[4] == packet_out[4];
+				}
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X] !!!", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4]);
 			}
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X] !!!", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4]);
 		}
 	}
 	return false;
