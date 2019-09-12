@@ -926,7 +926,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			}
 		}
 	}
-	
+
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 		INDIGO_DEBUG(clock_t start = clock());
 		time_t timer;
@@ -1518,4 +1518,20 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
+}
+
+void indigo_process_dslr_preview_image(indigo_device *device, void *data, int blobsize) {
+	if (CCD_CONTEXT->preview_image) {
+		if (CCD_CONTEXT->preview_image_size < blobsize) {
+			CCD_CONTEXT->preview_image = realloc(CCD_CONTEXT->preview_image, CCD_CONTEXT->preview_image_size = blobsize);
+		}
+	} else {
+		CCD_CONTEXT->preview_image = malloc(CCD_CONTEXT->preview_image_size = blobsize);
+	}
+	memcpy(CCD_CONTEXT->preview_image, data, blobsize);
+	CCD_PREVIEW_IMAGE_ITEM->blob.value = CCD_CONTEXT->preview_image;
+	CCD_PREVIEW_IMAGE_ITEM->blob.size = blobsize;
+	strcpy(CCD_PREVIEW_IMAGE_ITEM->blob.format, ".jpeg");
+	CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 }
