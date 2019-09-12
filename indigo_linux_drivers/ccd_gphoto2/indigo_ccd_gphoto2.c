@@ -1519,9 +1519,9 @@ static void *thread_capture(void *user_data)
 			sizeof(PRIVATE_DATA->filename_suffix));
 
 	if ( CCD_PREVIEW_ENABLED_ITEM->sw.value ) {
-		// initialize buffer
+		/* initialize buffer */
 		PRIVATE_DATA->preview_buffer_size = 0;
-		// copy
+		/* copy path */
 		char preview_name[sizeof(camera_file_path.name)] = {};
 		strcpy(preview_name, camera_file_path.name);
 
@@ -1531,7 +1531,7 @@ static void *thread_capture(void *user_data)
 			goto abort_dslr_preview;
 		}
 
-		// check safe
+		/* check safe */
 		size_t length = image_ext - preview_name;
 		if ( length + 5 > sizeof(preview_name) ) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -1542,21 +1542,21 @@ static void *thread_capture(void *user_data)
 					    context);
 			goto abort_dslr_preview;
 		}
-		// change ext
+		/* change ext */
 		strcpy(image_ext, ".JPG");
-		// check same
+		/* check same */
 		if (strcmp(camera_file_path.name, preview_name) == 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p]"
-					    " preview is same",
+					    " preview is same as CCD_IMAGE",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context);
 			goto abort_dslr_preview;
 		}
 
-		// wait for ready
-		// from <https://github.com/jim-easterbrook/python-gphoto2/issues/65>
+		/* wait for ready
+		   from <https://github.com/jim-easterbrook/python-gphoto2/issues/65> */
 		CameraEventType event_type = GP_EVENT_UNKNOWN;
 		void *event_data = NULL;
 		bool added = false;
@@ -1579,7 +1579,7 @@ static void *thread_capture(void *user_data)
 			goto abort_dslr_preview;
 		}
 
-		// download
+		/* download preview image */
 		rc = gp_camera_file_get(PRIVATE_DATA->camera, camera_file_path.folder,
 					preview_name, GP_FILE_TYPE_NORMAL,
 					camera_file, context);
@@ -1615,7 +1615,7 @@ static void *thread_capture(void *user_data)
 		PRIVATE_DATA->preview_buffer_size = buffer_size;
 	}
 abort_dslr_preview:
-	// error occured but can continue
+	/* error occured but can continue */
 
 	if (PRIVATE_DATA->delete_downloaded_image) {
 		rc = gp_camera_file_delete(PRIVATE_DATA->camera,
