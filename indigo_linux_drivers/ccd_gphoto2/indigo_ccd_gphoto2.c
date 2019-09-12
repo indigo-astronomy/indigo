@@ -140,6 +140,7 @@ do {							\
 #define NIKON_BATTERY_LEVEL		"batterylevel"
 #define NIKON_DATETIME                  "datetime"
 #define NIKON_DATETIME_LABEL            "Camera Date and Time"
+#define NIKON_PREVIEW_SUFFIX            ".JPG"
 
 #define EOS_ISO				NIKON_ISO
 #define EOS_COMPRESSION			"imageformat"
@@ -167,6 +168,7 @@ do {							\
 #define EOS_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
 #define EOS_DATETIME                    NIKON_DATETIME
 #define EOS_DATETIME_LABEL              NIKON_DATETIME_LABEL
+#define EOS_PREVIEW_SUFFIX              ".JPG"
 
 #define SONY_COMPRESSION		NIKON_COMPRESSION
 #define SONY_APERTURE			NIKON_APERTURE
@@ -175,6 +177,7 @@ do {							\
 #define SONY_FOCUS_METERING		"NA"
 #define SONY_EXPOSURE_PROGRAM		NIKON_EXPOSURE_PROGRAM
 #define SONY_BATTERY_LEVEL		NIKON_BATTERY_LEVEL
+#define SONY_PREVIEW_SUFFIX              ".jpg"
 
 #define TIMER_COUNTER_STEP_SEC		1	/* 1000 ms. */
 #define TIMER_BATTERY_LEVEL_UPDATE_SEC	120
@@ -220,6 +223,7 @@ do {							\
 #define EXPOSURE_METERING				(PRIVATE_DATA->gphoto2_exposure_metering_id)
 #define FOCUS_METERING					(PRIVATE_DATA->gphoto2_focus_metering_id)
 #define EXPOSURE_PROGRAM				(PRIVATE_DATA->gphoto2_exposure_program_id)
+#define PREVIEW_SUFFIX					(PRIVATE_DATA->gphoto2_preview_suffix)
 #define is_connected					gp_bits
 
 enum vendor {
@@ -266,6 +270,7 @@ typedef struct {
 	char *gphoto2_exposure_metering_id;
 	char *gphoto2_focus_metering_id;
 	char *gphoto2_exposure_program_id;
+	char *gphoto2_preview_suffix;
 	char *name_best_jpeg_format;
 	char *name_pure_raw_format;
 	float mirror_lockup_secs;
@@ -666,6 +671,7 @@ static void vendor_generic_widget(indigo_device *device)
 		EXPOSURE_METERING = EOS_EXPOSURE_METERING;
 		FOCUS_METERING    = EOS_FOCUS_METERING;
 		EXPOSURE_PROGRAM  = EOS_EXPOSURE_PROGRAM;
+		PREVIEW_SUFFIX    = EOS_PREVIEW_SUFFIX;
 		break;
 	}
 	case SONY: {
@@ -674,6 +680,7 @@ static void vendor_generic_widget(indigo_device *device)
 		EXPOSURE_METERING = SONY_EXPOSURE_METERING;
 		FOCUS_METERING    = SONY_FOCUS_METERING;
 		EXPOSURE_PROGRAM  = SONY_EXPOSURE_PROGRAM;
+		PREVIEW_SUFFIX    = SONY_PREVIEW_SUFFIX;
 		break;
 	}
 	default: /* Nikon fallback, seems to be most compatible with remaining vendors. */
@@ -682,6 +689,7 @@ static void vendor_generic_widget(indigo_device *device)
 		EXPOSURE_METERING = NIKON_EXPOSURE_METERING;
 		FOCUS_METERING    = NIKON_FOCUS_METERING;
 		EXPOSURE_PROGRAM  = NIKON_EXPOSURE_PROGRAM;
+		PREVIEW_SUFFIX    = NIKON_PREVIEW_SUFFIX;
 		break;
 	}
 }
@@ -1543,7 +1551,7 @@ static void *thread_capture(void *user_data)
 			goto abort_dslr_preview;
 		}
 		/* change ext */
-		strcpy(image_ext, ".JPG");
+		strcpy(image_ext, PREVIEW_SUFFIX);
 		/* check same */
 		if (strcmp(camera_file_path.name, preview_name) == 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
