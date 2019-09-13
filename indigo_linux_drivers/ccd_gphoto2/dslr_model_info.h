@@ -22,7 +22,7 @@ static struct dslr_model_info {
   { "CANON EOS REBEL T6", 5184, 3456, 4.3  },  // == Kiss X80 (J) == 1300D (E)
   { "CANON EOS REBEL T7", 6000, 4000, 3.71  },  // == Kiss X90 (J) == 2000D/1500D (E)
   { "CANON EOS REBEL T7I", 6000, 4000, 3.71  },  // == Kiss X9i (J) == 800D (E)
-  { "CANON EOS REBEL T100", 5184, 3456, 4.3  },  // ???
+  { "CANON EOS REBEL T100", 5184, 3456, 4.3  },  // == 4000D (E)
   { "CANON EOS REBEL SL1", 5184, 3456, 4.3  },  // == Kiss X7 (J) == 100D (E)
   { "CANON EOS REBEL SL2", 6000, 4000, 3.71  },  // == Kiss X9 (J) == 200D (E)
   { "CANON EOS KISS X2", 4272, 2848, 5.19  },  // Digital Rebel XSi (A) == 450D (E)
@@ -47,7 +47,7 @@ static struct dslr_model_info {
   { "CANON EOS 1200D", 5184, 3456, 4.3  },  // == Kiss X70 (J) == Rebel T5 (A)
   { "CANON EOS 1300D", 5184, 3456, 4.3  },  // == Kiss X80 (J) == Rebel T6 (A)
   { "CANON EOS 2000D", 6000, 4000, 3.71  },  // == Kiss X90 (J) == Rebel T7 (A)
-  { "CANON EOS 4000D", 5184, 3456, 4.3  },  // ???
+  { "CANON EOS 4000D", 5184, 3456, 4.3  },  // == Rebel T100 (A)
   { "CANON EOS 8000D", 6000, 4000, 3.71  },  // == Rebel T6s (A) == 760D (E)
   { "CANON EOS 100D", 5184, 3456, 4.3  },  // == Kiss X7 (J) == Rebel SL1 (A)
   { "CANON EOS 200D", 6000, 4000, 3.71  },  // == Kiss X9 (J) == Rebel SL2 (A)
