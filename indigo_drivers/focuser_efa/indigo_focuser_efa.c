@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -71,6 +71,10 @@ typedef struct {
 
 static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *packet_in) {
 	int count = packet_out[1], sum = 0;
+	if (count == 3) {
+		count = packet_out[1] = 4;
+		packet_out[5] = 0;
+	}
 	for (int i = 0; i <= count; i++)
 		sum += packet_out[i + 1];
 	packet_out[count + 2] = (-sum) & 0xFF;
@@ -86,25 +90,46 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5], packet_out[6], packet_out[7], packet_out[8], packet_out[8]);
 	if (indigo_write(PRIVATE_DATA->handle, (const char *)packet_out, count + 3)) {
 		while (true) {
-			if (indigo_read(PRIVATE_DATA->handle, (char *)packet_in, 5) == 5 && packet_in[0] == 0x3B) {
-				count = packet_in[1];
-				if (indigo_read(PRIVATE_DATA->handle, (char *)packet_in + 5, count - 2) == count - 2) {
-					if (count == 3)
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5]);
-					else if (count == 4)
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6]);
-					else if (count == 5)
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7]);
-					else if (count == 6)
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8]);
-					else if (count == 7)
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8], packet_in[9]);
-					if (memcmp(packet_in, packet_out, count + 3) == 0)
-						continue;
-					return packet_in[2] == packet_out[3] && packet_in[4] == packet_out[4];
+			long result = read(PRIVATE_DATA->handle, packet_in, 1);
+			if (result <= 0) {
+				if (result == 0 || errno == EAGAIN) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → TIMEOUT", PRIVATE_DATA->handle);
+					continue;
 				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → ERROR (%s)", PRIVATE_DATA->handle, strerror(errno));
+				break;
+			}
+			if (packet_in[0] != 0x3B) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X, skipped", packet_in[0]);
+				continue;
+			}
+			result = read(PRIVATE_DATA->handle, packet_in + 1, 1);
+			if (result <= 0) {
+				if (result == 0 || errno == EAGAIN) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → TIMEOUT", PRIVATE_DATA->handle);
+					continue;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → ERROR (%s)", PRIVATE_DATA->handle, strerror(errno));
+				break;
+			}
+			count = packet_in[1];
+			if (indigo_read(PRIVATE_DATA->handle, (char *)packet_in + 2, count + 1) > 0) {
+				if (count == 3)
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5]);
+				else if (count == 4)
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6]);
+				else if (count == 5)
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7]);
+				else if (count == 6)
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8]);
+				else if (count == 7)
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7], packet_in[8], packet_in[9]);
+				if (memcmp(packet_in, packet_out, count + 3) == 0)
+					continue;
+				return packet_in[2] == packet_out[3] && packet_in[4] == packet_out[4];
 			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → %02X %02X %02X→%02X [%02X] !!!", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4]);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → ERROR (%s)", strerror(errno));
+				break;
 			}
 		}
 	}
