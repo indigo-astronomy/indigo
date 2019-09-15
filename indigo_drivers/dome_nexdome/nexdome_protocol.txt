@@ -1,0 +1,352 @@
+Nexdome protocol 1.10
+======================
+
+Rough Draft based on the firmware source code
+available here: https://github.com/grozzie2/NexDome
+
+------------------------
+
+#define SHUTTER_STATE_NOT_CONNECTED 0
+#define SHUTTER_STATE_OPEN 1
+#define SHUTTER_STATE_OPENING 2
+#define SHUTTER_STATE_CLOSED 3
+#define SHUTTER_STATE_CLOSING 4
+#define SHUTTER_STATE_UNKNOWN 5
+
+#define NOT_RAINING	1
+#define RAINING		0
+
+Dome States:
+DOME_STOPPED 0
+DOME_GOTO_ACTIVE 1
+DOME_FIND_HOME 2
+DOME_CALIBRATING 3
+
+
+OK ====================================
+/* Abort current motion */
+ SerialBuffer[0]=='a'
+
+ Computer.println("A");
+
+OK =====================================
+ /*  Raw position count */
+ SerialBuffer[0]=='p'
+
+sprintf(buf,"P %ld\n",Dome.CurrentPosition());
+Computer.write(buf,strlen(buf));
+
+OK ====================================
+ /* is dome in motion */
+ SerialBuffer[0]=='m'
+   int state=0;
+   if(Dome.Active) {
+	 Dome.Run();
+	 //  default is just a normal move
+	 state=1;
+	 if(Dome.FindingHome) state=2;
+	 if(Dome.Calibrating) state=3;
+   }
+sprintf(buf,"M %d\n",state);
+Computer.write(buf);
+
+OK ================================
+ /* query current heading */
+ SerialBuffer[0]=='q'
+
+ dtostrf(Dome.GetHeading(),2,1,buf);
+ Computer.write("Q ");
+ Computer.write(buf);
+ Computer.write("\n");
+
+OK ================================
+  /* query shutter state */
+  SerialBuffer[0]=='u'
+  Computer.print("U ");
+  Computer.print(ShutterState);
+  Computer.print(" ");
+  Computer.println(rg11State);
+
+OK =================================
+  /*  get shutter position  */
+  SerialBuffer[0]=='b'
+  Computer.print("B ");
+  Computer.println(ShutterPosition);
+
+OK ====================================
+  /*  Open Shutter  */
+  if(SerialBuffer[0]=='d') {
+	   if(rg11State == RAINING) {
+		   Computer.println("E");
+	   }
+	   else {
+		   Computer.println("D");
+	   }
+   }
+
+OK ====================================
+  /*  Close Shutter  */
+  if(SerialBuffer[0]=='e') {
+   Computer.println("D");
+   if(ShutterState != SHUTTER_STATE_NOT_CONNECTED) ShutterState=SHUTTER_STATE_CLOSING;
+
+OK ====================================
+   /*  Set Shutter Position */
+  if(SerialBuffer[0]=='f') {
+   float tt;
+
+   Computer.println("F");
+   tt=atof(&SerialBuffer[1]);
+
+OK =============================
+ // Wake up the shutter so it's more responsive while config
+ //  dialog is on screen
+ if(SerialBuffer[0]=='x') {
+   //Wireless.println("x");
+   Computer.println("X");
+   //ShutterQueryTime=SHUTTER_AWAKE_WAIT;
+ }
+
+OK? =============================
+ /* sync on this heading */
+ if(SerialBuffer[0]=='s') {
+   float h;
+   float hnow;
+   float delta;
+   //float oldhome;
+   float newhome;
+   //  dont adjust home sensor if we have not seen it to
+   //  verify where it is, this prevents a sync on park position
+   //  from screwing it up when we power up
+   h=atof(&SerialBuffer[1]);
+   if(Dome.HasBeenHome) {
+	 //  We are syncing, lets calculate the new offset for the home
+	 //  sensor
+	 hnow=Dome.GetHeading();
+	 delta=hnow-h;
+	 newhome=Dome.HomeAzimuth-delta;
+	 if(newhome < 0) newhome=newhome+360;
+	 if(newhome > 360) newhome=newhome-360;
+	 if(newhome==360) newhome=0;
+	 Dome.HomeAzimuth=newhome;
+	 Dome.SaveConfig();
+   } else {
+	 //Computer.println("Dome has not been home");
+   }
+   if((h >=0)&&(h<360)) {
+	  Computer.print("S ");
+	  Computer.println(h);
+	  Dome.Sync(h);
+   } else {
+	 Computer.println("E ");
+   }
+ }
+
+OK =============================
+ if(SerialBuffer[0]=='o') {
+   Computer.print("O ");
+   Computer.println(LastHeadingError);
+   //  Now set this to the last one we caught
+   //  So we will report the next one, even if it's tiny
+   LastHeadingError=HeadingError;
+ }
+
+OK ========================================
+ /* current status of steps per turn */
+ if(SerialBuffer[0]=='t') {
+   Computer.print("T ");
+   Computer.println(Dome.StepsPerDomeTurn);
+   //Computer.println(" Steps per Dome turn");
+   //Computer.println(Dome.HomeAzimuth);
+   //Computer.println(" Home Azimuth");
+
+ }
+
+OK ========================================
+ /* query for home azimuth */
+ if(SerialBuffer[0]=='i') {
+   Computer.print("I ");
+   Computer.println(Dome.HomeAzimuth);
+   //Computer.println(" Steps per Dome turn");
+   //Computer.println(Dome.HomeAzimuth);
+   //Computer.println(" Home Azimuth");
+
+ }
+
+OK ==========================================
+ /* Set the home azimuth */
+ if(SerialBuffer[0]=='j') {
+   //  dont set this if we got an empty set
+   if((SerialBuffer[1]!=0x0a)&&(SerialBuffer[1]!=0x0d)) {
+	 float newaz;
+	 newaz=atof(&SerialBuffer[1]);
+	 if((newaz >=0)&&(newaz < 360)) Dome.HomeAzimuth=newaz;
+   }
+   //  Respond same as a query for home azimuth
+   Computer.print("I ");
+   Computer.println(Dome.HomeAzimuth);
+   Dome.SaveConfig();
+   //Computer.println(" Steps per Dome turn");
+   //Computer.println(Dome.HomeAzimuth);
+   //Computer.println(" Home Azimuth");
+
+ }
+
+OK ========================================
+ /* query for park azimuth */
+ if(SerialBuffer[0]=='n') {
+   Computer.print("N ");
+   Computer.println(Dome.ParkAzimuth);
+   //Computer.println(" Steps per Dome turn");
+   //Computer.println(Dome.HomeAzimuth);
+   //Computer.println(" Home Azimuth");
+
+ }
+
+OK =======================================
+ /* Set the park azimuth */
+ if(SerialBuffer[0]=='l') {
+   float newaz;
+   newaz=atof(&SerialBuffer[1]);
+   if((newaz >=0)&&(newaz < 360)) Dome.ParkAzimuth=newaz;
+   //  Respond same as a query for park
+   Computer.print("N ");
+   Computer.println(Dome.ParkAzimuth);
+   Dome.SaveConfig();
+   //Computer.println(" Steps per Dome turn");
+   //Computer.println(Dome.HomeAzimuth);
+   //Computer.println(" Home Azimuth");
+
+ }
+
+
+OK =======================================
+/*  goto based on a heading */
+ if(SerialBuffer[0]=='g') {
+   float target;
+   target=atof(&SerialBuffer[1]);
+   if((target >=0.0)&&(target <= 360.0)) {
+	 SerialTarget=true;
+	 Dome.SetHeading(target);
+	 Computer.println("G");
+   } else {
+	 Computer.println("E");
+   }
+ }
+
+
+OK =========================================
+ /* find the home position */
+ if(SerialBuffer[0]=='h') {
+   Dome.FindHome();
+   SerialTarget=true;
+   Computer.println("H");
+ }
+
+OK ======================================
+ /* are we at the home position */
+ if(SerialBuffer[0]=='z') {
+   Computer.print("Z ");
+   if(Dome.isAtHome()) Computer.println("1");
+   else {
+	 if(Dome.HasBeenHome) {
+	   Computer.println("0");
+	 }else {
+	   Computer.println("-1");
+	 }
+   }
+ }
+OK =================================
+ /* query for battery info */
+ if(SerialBuffer[0]=='k') {
+   if(SerialBuffer[1]==' ') {
+	 int newcutoff;
+	 newcutoff=atoi(&SerialBuffer[1]);
+	 //Wireless.print("b ");
+	 //Wireless.println(newcutoff);
+   }
+   Computer.print("K ");
+   Computer.print(BatteryVolts);
+   Computer.print(" ");
+   Computer.print(ShutterBatteryVolts);
+   Computer.print(" ");
+   Computer.println(LowVoltCutoff);
+ }
+
+OK =================================
+ /* calibrate the number of steps in a full turn */
+ if(SerialBuffer[0]=='c') {
+   //  calibrate the dome
+   //  In order to calibrate, we need to be at the home position
+   if(Dome.isAtHome()) {
+	 Computer.println("C");
+	 SerialTarget=true;
+	 Dome.Calibrate();
+
+   } else {
+	 Computer.println("E");
+   }
+ }
+
+OK ================================
+ //  get / set the reversed flag
+ if(SerialBuffer[0]=='y') {
+   if(SerialBuffer[1]==' ') {
+	 //  This is a command to set the reverse flag
+	 if(SerialBuffer[2]=='1') {
+	   //  only do this if we are actually changing
+	   if(!DomeIsReversed) {
+		 DomeIsReversed=true;
+		 Dome.SaveConfig();
+		 //accelStepper.setPinsInverted(false,false,false);
+	   }
+	 } else {
+	   if(DomeIsReversed) {
+		 DomeIsReversed=false;
+		 Dome.SaveConfig();
+		 //accelStepper.setPinsInverted(true,false,false);
+	   }
+	 }
+   }
+   Computer.print("Y ");
+   Computer.println(DomeIsReversed);
+
+ }
+
+OK =======================================
+ //  query/set for shutter hibernate timer
+ if(SerialBuffer[0]=='r') {
+   if(SerialBuffer[1]==' ') {
+	 unsigned long int newtimer;
+	 newtimer=atol(&SerialBuffer[1]);
+	 //Computer.println("Setting timer to ");
+	 //Computer.println(newtimer);
+	 //Wireless.print("h ");
+	 //Wireless.println(newtimer);
+	 //ShutterHibernateTimer=0;  //  trigger a query to see it stuck
+   }
+   Computer.print("R ");
+   Computer.println(ShutterHibernateTimer);
+ }
+
+ ===================================
+ /*  restart xbee wireless */
+ if(SerialBuffer[0]=='w') {
+   Computer.println("W");
+   ConfigureWireless();
+ }
+
+
+OK ====================================
+ /* get firmware version */
+ if(SerialBuffer[0]=='v') {
+   Computer.print("VNexDome V ");
+   Computer.print(VERSION_MAJOR);
+   Computer.print(".");
+   Computer.print(VERSION_MINOR);
+   if(ShutterVersion[0] != 0) {
+	 Computer.print(" NexShutter V ");
+	 Computer.println(ShutterVersion);
+   }
+   Computer.println("");
+ }
