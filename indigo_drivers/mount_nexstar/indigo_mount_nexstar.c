@@ -821,9 +821,9 @@ static void guider_handle_guide_rate(indigo_device *device) {
 	}
 	COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	if (PRIVATE_DATA->guide_rate == 1)
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (50%% sidereal).");
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
 	else if (PRIVATE_DATA->guide_rate == 2)
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (100%% sidereal).");
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
 	else
 		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
 }
