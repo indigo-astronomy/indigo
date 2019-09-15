@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -38,7 +38,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
-
+#include <sys/ioctl.h>
 #include <sys/termios.h>
 #include <sys/time.h>
 
@@ -88,7 +88,18 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← %02X %02X %02X→%02X [%02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5], packet_out[6], packet_out[7], packet_out[8]);
 	else if (count == 7)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5], packet_out[6], packet_out[7], packet_out[8], packet_out[8]);
+	int bits = 0;
+	for (int i = 0; i < 10; i++) {
+		ioctl(PRIVATE_DATA->handle, TIOCMGET, &bits);
+		if ((bits & TIOCM_CTS) == 0)
+			break;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for CTS...");
+		indigo_usleep(10000);
+	}
+	bits = TIOCM_RTS;
+	ioctl(PRIVATE_DATA->handle, TIOCMBIS, &bits);
 	if (indigo_write(PRIVATE_DATA->handle, (const char *)packet_out, count + 3)) {
+		ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
 		while (true) {
 			long result = read(PRIVATE_DATA->handle, packet_in, 1);
 			if (result <= 0) {
@@ -132,6 +143,8 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 				break;
 			}
 		}
+	} else {
+		ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
 	}
 	return false;
 }
