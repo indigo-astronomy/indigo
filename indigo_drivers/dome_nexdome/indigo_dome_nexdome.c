@@ -69,6 +69,12 @@ typedef enum {
 	SHUTTER_STATE_UNKNOWN = 5
 } nexdome_shutter_state_t;
 
+typedef enum {
+	DOME_HAS_NOT_BEEN_HOME = -1,
+	DOME_NOT_AT_HOME =0,
+	DOME_AT_HOME = 1,
+} nexdome_home_state_t;
+
 #define NEXDOME_CMD_LEN 100
 
 static bool nexdome_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
@@ -370,6 +376,21 @@ static bool nexdome_find_home(indigo_device *device) {
 }
 
 
+static bool nexdome_get_home_state(indigo_device *device, int *state) {
+	if(!state) return false;
+
+	char response[NEXDOME_CMD_LEN]={0};
+	if (nexdome_command(device, "z\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
+		int parsed = sscanf(response, "Z %d", state);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "z -> %s, %d", response, *state);
+		if (parsed != 1) return false;
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+
 static bool nexdome_callibrate(indigo_device *device) {
 	char response[NEXDOME_CMD_LEN] = {0};
 
@@ -537,6 +558,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 						nexdome_goto_azimuth(device, 31.9);
 						nexdome_find_home(device);
 						nexdome_callibrate(device);
+						nexdome_get_home_state(device, &state);
 					}
 
 					//dsd_get_position(device, &position);
