@@ -404,6 +404,37 @@ static bool nexdome_callibrate(indigo_device *device) {
 }
 
 
+static bool nexdome_get_reversed_flag(indigo_device *device, bool *reversed) {
+	if(!reversed) return false;
+
+	char response[NEXDOME_CMD_LEN]={0};
+	if (nexdome_command(device, "y\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
+		int parsed = sscanf(response, "Y %d", (int*)reversed);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "y -> %s, %d", response, *reversed);
+		if (parsed != 1) return false;
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+
+static bool nexdome_set_reversed_flag(indigo_device *device, bool reversed) {
+	char command[NEXDOME_CMD_LEN];
+	char response[NEXDOME_CMD_LEN] = {0};
+
+	snprintf(command, NEXDOME_CMD_LEN, "y %d\n", (int)reversed);
+
+	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "y %d -> %s, %d", reversed, response);
+		if (response[0] != 'Y') return false;
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 
 static void dome_timer_callback(indigo_device *device) {
@@ -559,6 +590,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 						nexdome_find_home(device);
 						nexdome_callibrate(device);
 						nexdome_get_home_state(device, &state);
+						bool reversed;
+						nexdome_get_reversed_flag(device, &reversed);
+						nexdome_set_reversed_flag(device, 1);
+						nexdome_get_reversed_flag(device, &reversed);
 					}
 
 					//dsd_get_position(device, &position);
