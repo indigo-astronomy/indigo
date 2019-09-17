@@ -364,12 +364,15 @@ void NexDome::Stop()
 
 //  this is a raw move to a stepper count
 void NexDome::MoveTo(long int p)
-{  
+{
   if(p > currentPosition) {
     SenseRising=true;
   } else {
     SenseRising=false;
   }
+
+  if (p > StepsPerDomeTurn) p = p - StepsPerDomeTurn;
+  else if (p < 0) p = p + StepsPerDomeTurn;
   
   targetPosition=p;
   return;
