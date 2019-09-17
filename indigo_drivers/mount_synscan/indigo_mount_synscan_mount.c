@@ -220,7 +220,7 @@ void synscan_mount_connect(indigo_device* device) {
 		indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 		indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 		indigo_delete_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
-		if (--PRIVATE_DATA->device_count == 0) {
+		if (PRIVATE_DATA->device_count > 0 && --PRIVATE_DATA->device_count == 0) {
 			synscan_close(device);
 		}
 	}

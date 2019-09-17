@@ -205,6 +205,11 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 		}
 	}
 
+	if (nretries == 2 && !PRIVATE_DATA->udp) {
+		indigo_send_message(device, "Lost connection");
+		indigo_device_disconnect(NULL, device->name);
+	}
+	
 	//  Mount command failed
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return false;
