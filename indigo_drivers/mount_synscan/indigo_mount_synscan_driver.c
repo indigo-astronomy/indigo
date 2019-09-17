@@ -69,7 +69,7 @@ bool synscan_open(indigo_device *device) {
 					indigo_usleep(100000);
 					if (recvfrom(handle, buffer, sizeof(buffer), MSG_WAITALL, (struct sockaddr *) &addr, &len) && *buffer == '=') {
 						strcpy(name + 10, inet_ntoa(addr.sin_addr));
-						indigo_update_property(device, DEVICE_PORT_PROPERTY, "mount detected at %s", name);
+						indigo_update_property(device, DEVICE_PORT_PROPERTY, "Mount detected at %s", name);
 						break;
 					}
 				}
@@ -91,10 +91,10 @@ bool synscan_open(indigo_device *device) {
 		PRIVATE_DATA->udp = false;
 	}
 	if (PRIVATE_DATA->handle > 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		return true;
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 		return false;
 	}
 }
@@ -103,7 +103,7 @@ void synscan_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 
