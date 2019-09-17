@@ -394,7 +394,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 			} else {
 				DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, DEVICE_PORT_PROPERTY, "%s does not exists", DEVICE_PORT_ITEM->text.value);
+				indigo_update_property(device, DEVICE_PORT_PROPERTY, "Serial port %s does not exists", DEVICE_PORT_ITEM->text.value);
 			}
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;

@@ -121,15 +121,15 @@ static bool temma_open(indigo_device *device) {
 		options.c_lflag = options.c_oflag = 0;
 		if (tcsetattr(PRIVATE_DATA->handle ,TCSANOW, &options) != 0) {
 			close(PRIVATE_DATA->handle);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 			return false;
 		}
 	}
 	if (PRIVATE_DATA->handle >= 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		return true;
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 		return false;
 	}
 }
@@ -162,7 +162,7 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
@@ -225,7 +225,7 @@ static void temma_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 
@@ -351,13 +351,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to get version, not temma mount?");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get version, not temma mount?");
 					PRIVATE_DATA->device_count--;
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				}
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to open serial port");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open serial port");
 				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);

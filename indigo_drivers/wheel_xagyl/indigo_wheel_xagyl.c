@@ -50,7 +50,7 @@ static bool xagyl_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
 	if (PRIVATE_DATA->handle >= 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		char buffer[128];
 		if (indigo_printf(PRIVATE_DATA->handle, "I0") && indigo_scanf(PRIVATE_DATA->handle, "Xagyl %s", buffer) == 1) {
 			strncpy(INFO_DEVICE_MODEL_ITEM->text.value, buffer, INDIGO_VALUE_SIZE);
@@ -84,7 +84,7 @@ static bool xagyl_open(indigo_device *device) {
 		}
 		return true;
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
 	return false;
 }
@@ -124,7 +124,7 @@ static void xagyl_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 

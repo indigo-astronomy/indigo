@@ -244,14 +244,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				PRIVATE_DATA->handle = indigo_open_serial(name);
 			}
 			if (PRIVATE_DATA->handle > 0) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 				indigo_async((void * (*)(void*))wemacro_reader, device);
 				indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 				indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
 				indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s -> %s (%d)", name, strerror(errno), errno);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s -> %s (%d)", name, strerror(errno), errno);
 				PRIVATE_DATA->device_count--;
 				indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 				indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
@@ -264,7 +264,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {

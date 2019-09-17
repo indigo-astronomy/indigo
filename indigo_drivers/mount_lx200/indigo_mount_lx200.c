@@ -111,10 +111,10 @@ static bool meade_open(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->handle >= 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		return true;
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 		return false;
 	}
 }
@@ -195,7 +195,7 @@ static void meade_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 
@@ -402,7 +402,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (result) {
 				if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 					if (meade_command(device, ":GVP#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "product:  %s", response);
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s", response);
 						strncpy(PRIVATE_DATA->product, response, 64);
 					}
 					if (!strncmp(PRIVATE_DATA->product, "LX", 2) || !strncmp(PRIVATE_DATA->product, "Autostar", 8)) {
@@ -430,7 +430,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					PRIVATE_DATA->parked = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
 					if (meade_command(device, ":GVF#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Version:  %s", response);
 						char *sep = strchr(response, '|');
 						if (sep != NULL)
 							*sep = 0;
@@ -439,11 +439,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
 					}
 					if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware: %s", response);
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
 						strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
 					}
 					if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "status:   %s", response);
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
 						ALIGNMENT_MODE_PROPERTY->hidden = false;
 						if (*response == 'P' || *response == 'G') {
 							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
@@ -569,11 +569,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					PRIVATE_DATA->parked = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
 					if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware: %s", response);
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
 						strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
 					}
 					if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "status:   %s", response);
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
 						ALIGNMENT_MODE_PROPERTY->hidden = false;
 						if (*response == 'P' || *response == 'G') {
 							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
