@@ -50,7 +50,7 @@ static bool trutek_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
 	if (PRIVATE_DATA->handle >= 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d ← %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 		if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
@@ -63,7 +63,7 @@ static bool trutek_open(indigo_device *device) {
 			}
 		}
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
 	return false;
 }
@@ -108,7 +108,7 @@ static void trutek_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 

@@ -361,7 +361,7 @@ static indigo_device *allocate_device(const char *name, long index, int button_c
 		NULL,
 		aux_detach
 		);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "joystick %s #%08x with %d buttons and %d axes detected", name, index, button_count, axis_count + 2 * pov_count);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick %s #%08x with %d buttons and %d axes detected", name, index, button_count, axis_count + 2 * pov_count);
 	joystick_private_data *private_data = malloc(sizeof(joystick_private_data));
 	assert(private_data != NULL);
 	memset(private_data, 0, sizeof(joystick_private_data));

@@ -245,7 +245,7 @@ static bool ieq_open(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->handle >= 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		if (ieq_command(device, ":V#", response, sizeof(response))) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
 		}
@@ -340,16 +340,16 @@ static bool ieq_open(indigo_device *device) {
 				if (strncmp("171001", response, 6) <= 0 && (product == 120 || product == 121 || product == 122)) {
 					PRIVATE_DATA->protocol = 0x0300;
 				}
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #1:  %s", response);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware #1:  %s", response);
 				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 				if (ieq_command(device, ":FW2#", response, sizeof(response))) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #2:  %s", response);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware #2:  %s", response);
 					strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, " / ");
 					strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 				}
 			}
 		}
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "product:  %s (%s) protocol %d.%d", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s (%s) protocol %d.%d", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF);
 		if (PRIVATE_DATA->gotonova) {
 			MOUNT_PARK_PROPERTY->hidden = true;
 			MOUNT_TRACKING_PROPERTY->hidden = true;
@@ -465,7 +465,7 @@ static bool ieq_open(indigo_device *device) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		return true;
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 		return false;
 	}
 }
@@ -474,7 +474,7 @@ static void ieq_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 

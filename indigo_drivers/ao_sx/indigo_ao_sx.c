@@ -117,14 +117,14 @@ static bool sx_open(indigo_device *device) {
 		if (sx_flush(device)) {
 			if (sx_command(device, "X", response, 1) && *response == 'Y') {
 				if (sx_command(device, "V", response, 4) && *response == 'V') {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 					return true;
 				}
 			}
 		}
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "handshake failed on %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed on %s", name);
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
 	PRIVATE_DATA->device_count = 0;
 	return false;
@@ -136,7 +136,7 @@ static void sx_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	PRIVATE_DATA->device_count = 0;
 }

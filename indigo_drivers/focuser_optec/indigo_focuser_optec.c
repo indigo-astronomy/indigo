@@ -57,40 +57,40 @@ static bool optec_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
 	if (PRIVATE_DATA->handle >= 0) {
 		char reply;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		if (indigo_printf(PRIVATE_DATA->handle, "FMMODE\r\n") && indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &reply) == 1 && reply == '!') {
 			double value;
 			indigo_printf(PRIVATE_DATA->handle, "FPOSRO\r\n");
 			if (indigo_scanf(PRIVATE_DATA->handle, "P=%lf\r\n", &value) == 1) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = value;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to read current position");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current position");
 			}
 			indigo_printf(PRIVATE_DATA->handle, "FTMPRO\r\n");
 			if (indigo_scanf(PRIVATE_DATA->handle, "T=%lf\r\n", &value) == 1) {
 				FOCUSER_TEMPERATURE_ITEM->number.value = value;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to read current temperature");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current temperature");
 			}
 			indigo_printf(PRIVATE_DATA->handle, "FREADA\r\n");
 			if (indigo_scanf(PRIVATE_DATA->handle, "A=%lf\r\n", &value) == 1) {
 				FOCUSER_COMPENSATION_ITEM->number.value = value;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to read current compensation");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current compensation");
 			}
 			indigo_printf(PRIVATE_DATA->handle, "FTxxxA\r\n");
 			if (indigo_scanf(PRIVATE_DATA->handle, "A=%lf\r\n", &value) == 1) {
 				if (value == 1)
 					FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to read current compensation");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current compensation");
 			}
 			return true;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to initialize");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize");
 		}
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
 	return false;
 }
@@ -100,7 +100,7 @@ static void optec_close(indigo_device *device) {
 		indigo_printf(PRIVATE_DATA->handle, "FFMODE\r\n");
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 

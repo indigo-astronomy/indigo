@@ -199,7 +199,7 @@ static indigo_result focuser_detach(indigo_device *device);
 	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 	//indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", device->name);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", device->name);
 }
 
 -(void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error {
@@ -215,7 +215,7 @@ static indigo_result focuser_detach(indigo_device *device);
 		if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:@"FFE1"]]) {
 			ffe1 = characteristic;
 			[peripheral setNotifyValue:true forCharacteristic:characteristic];
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", device->name);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", device->name);
 			indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 			indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
 			indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);

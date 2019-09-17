@@ -125,7 +125,7 @@ static void usbv3_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 
@@ -133,10 +133,10 @@ static bool usbv3_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
 	if (PRIVATE_DATA->handle <= 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s (%s)", name, strerror(errno));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s (%s)", name, strerror(errno));
 		return false;
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 	usbv3_command(device, "SGETAL");
 	if (*usbv3_response(device) != 'C') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "invalid response");
