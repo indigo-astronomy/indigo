@@ -364,6 +364,7 @@ typedef enum {
 
 typedef struct {
 	int steps;
+	ptp_property *dslr_compression_property;
 } nikon_private_data;
 
 extern char *ptp_operation_nikon_code_label(uint16_t code);
@@ -382,5 +383,6 @@ extern bool ptp_nikon_liveview(indigo_device *device);
 extern bool ptp_nikon_lock(indigo_device *device);
 extern bool ptp_nikon_zoom(indigo_device *device);
 extern bool ptp_nikon_focus(indigo_device *device, int steps);
+extern bool ptp_nikon_check_compression_has_raw(indigo_device *device);
 
 #endif /* indigo_ptp_nikon_h */
