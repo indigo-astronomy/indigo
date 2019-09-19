@@ -71,6 +71,7 @@ typedef struct {
 	int handle;
 	float target_position, current_position;
 	nexdome_dome_state_t dome_state;
+	nexdome_shutter_state_t shutter_state;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
 } nexdome_private_data;
@@ -440,6 +441,7 @@ static bool nexdome_set_reversed_flag(indigo_device *device, bool reversed) {
 
 static void dome_timer_callback(indigo_device *device) {
 	static bool need_update = true;
+	static nexdome_shutter_state_t prev_shutter_state = SHUTTER_STATE_UNKNOWN;
 
 	if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
@@ -474,6 +476,40 @@ static void dome_timer_callback(indigo_device *device) {
 		}
 		need_update = false;
 	}
+
+	bool raining;
+	if(!nexdome_shutter_state(device, &PRIVATE_DATA->shutter_state, &raining)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_shutter_state(): returned error");
+	}
+	if (PRIVATE_DATA->shutter_state != prev_shutter_state) {
+		switch(PRIVATE_DATA->shutter_state) {
+		case SHUTTER_STATE_NOT_CONNECTED:
+			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			break;
+		case SHUTTER_STATE_OPEN:
+			DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+			DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			break;
+		case SHUTTER_STATE_CLOSED:
+			DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
+			DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			break;
+		case SHUTTER_STATE_OPENING:
+		case SHUTTER_STATE_CLOSING:
+			DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+			DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			break;
+		case SHUTTER_STATE_UNKNOWN:
+			DOME_SHUTTER_PROPERTY->state = INDIGO_IDLE_STATE;
+			break;
+		}
+		prev_shutter_state = PRIVATE_DATA->shutter_state;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+	}
+
 	indigo_set_timer(device, 1, dome_timer_callback);
 }
 
@@ -763,10 +799,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		}
-		nexdome_abort(device);
+
 		if(!nexdome_abort(device)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_abort(%d): returned error", PRIVATE_DATA->handle);
+			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			DOME_ABORT_MOTION_ITEM->sw.value = false;
+			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+			return INDIGO_OK;
 		}
+
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
@@ -774,7 +815,18 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		bool success;
+		if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
+			success = nexdome_open_shutter(device);
+		} else {
+			success = nexdome_close_shutter(device);
+		}
+		if (!success) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+			return INDIGO_OK;
+		}
+		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
