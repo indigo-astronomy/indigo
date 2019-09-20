@@ -510,7 +510,7 @@ static void dome_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	}
 
-	indigo_set_timer(device, 1, dome_timer_callback);
+	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
 }
 
 static indigo_result dome_attach(indigo_device *device) {
@@ -577,10 +577,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				}
 				if ( PRIVATE_DATA->handle < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, " indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
+					device->is_connected = false;
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					return INDIGO_OK;;
+					indigo_global_unlock(device);
+					return INDIGO_OK;
 				} else if (!nexdome_get_info(device, name, firmware)) {
 					int res = close(PRIVATE_DATA->handle);
 					if (res < 0) {
@@ -686,12 +688,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected = ", PRIVATE_DATA->handle);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
 					PRIVATE_DATA->dome_timer = indigo_set_timer(device, 0.5, dome_timer_callback);
 				}
 			}
 		} else {
 			if (device->is_connected) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "DISCONNECTED = %d", PRIVATE_DATA->handle);
 				indigo_cancel_timer(device, &PRIVATE_DATA->dome_timer);
 				//indigo_delete_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 				//indigo_delete_property(device, DSD_COILS_MODE_PROPERTY, NULL);
