@@ -72,6 +72,8 @@ typedef struct {
 	float target_position, current_position;
 	nexdome_dome_state_t dome_state;
 	nexdome_shutter_state_t shutter_state;
+	bool park_requested;
+	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
 } nexdome_private_data;
@@ -477,6 +479,14 @@ static void dome_timer_callback(indigo_device *device) {
 		need_update = false;
 	}
 
+	if (PRIVATE_DATA->park_requested && (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 100)) {
+		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
+		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, false);
+		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+		PRIVATE_DATA->park_requested = false;
+		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+	}
+
 	bool raining;
 	if(!nexdome_shutter_state(device, &PRIVATE_DATA->shutter_state, &raining)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_shutter_state(): returned error");
@@ -602,7 +612,25 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, name, INDIGO_VALUE_SIZE);
 					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
-					nexdome_get_azimuth(device, &PRIVATE_DATA->target_position);
+
+					if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
+					}
+					PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+					if(!nexdome_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
+					}
+					if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 100) {
+						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
+						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, false);
+					} else {
+						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, false);
+						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+					}
+					DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->park_requested = false;
+					indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+
 
 					/*
 					nexdome_dome_state_t state;
@@ -694,7 +722,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 		} else {
 			if (device->is_connected) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "DISCONNECTED = %d", PRIVATE_DATA->handle);
 				indigo_cancel_timer(device, &PRIVATE_DATA->dome_timer);
 				//indigo_delete_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 				//indigo_delete_property(device, DSD_COILS_MODE_PROPERTY, NULL);
@@ -853,27 +880,24 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
 		if (DOME_PARK_UNPARKED_ITEM->sw.value) {
-			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->park_requested = false;
 		} else {
-			DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->current_position > 180) {
-				DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
-				DOME_STEPS_ITEM->number.value = 360 - PRIVATE_DATA->current_position;
-			} else if (PRIVATE_DATA->current_position < 180) {
-				DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
-				DOME_STEPS_ITEM->number.value = PRIVATE_DATA->current_position;
+			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+			if(!nexdome_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
 			}
-			PRIVATE_DATA->target_position = 0;
-			DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
+			if(!nexdome_goto_azimuth(device, PRIVATE_DATA->park_azimuth)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+			}
+			PRIVATE_DATA->target_position = PRIVATE_DATA->park_azimuth;
+			PRIVATE_DATA->park_requested = true;
+
+			DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			//indigo_set_timer(device, 0.5, dome_timer_callback);
 		}
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
