@@ -699,7 +699,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-						return INDIGO_OK;;
+						indigo_global_unlock(device);
+						return INDIGO_OK;
 					} else if (!dsd_get_position(device, &position)) {  // check if it is DSD Focuser first
 						int res = close(PRIVATE_DATA->handle);
 						if (res < 0) {
