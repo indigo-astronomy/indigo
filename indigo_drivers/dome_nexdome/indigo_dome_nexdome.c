@@ -557,13 +557,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			} else {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				char *name = DEVICE_PORT_ITEM->text.value;
-				if (strncmp(name, "nexdome://", 10)) {
-					PRIVATE_DATA->handle = indigo_open_serial(name);
-					/* To be on the safe side -> Wait for 2 seconds! */
-					sleep(2);
+				char *device_name = DEVICE_PORT_ITEM->text.value;
+				if (strncmp(device_name, "nexdome://", 10)) {
+					PRIVATE_DATA->handle = indigo_open_serial(device_name);
+					/* To be on the safe side -> Wait for 1 seconds! */
+					sleep(1);
 				} else {
-					char *host = name + 8;
+					char *host = device_name + 8;
 					char *colon = strchr(host, ':');
 					if (colon == NULL) {
 						PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
