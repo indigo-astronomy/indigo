@@ -46,7 +46,7 @@
 //#define HOME 2
 //  We dont use the irq on pin 3 for the dome rotator
 //  but we do use it for the shutter switches
-#define OTHER_IRQ 3
+//#define OTHER_IRQ 3
 
 /*
  *   Defining which pins for serial gets tricky
