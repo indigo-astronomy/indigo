@@ -518,7 +518,9 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
-		DOME_SPEED_ITEM->number.value = 1;
+		DOME_SPEED_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- DOME_STEPS_PROPERTY
+		strncpy(DOME_STEPS_ITEM->label, "Relative move (°)", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -717,18 +719,33 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked");
 			return INDIGO_OK;
 		}
+
+		if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(%d): returned error", PRIVATE_DATA->handle);
+		}
+
 		DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
 		if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
 			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value + 360) % 360;
 		} else if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
 			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value + 360) % 360;
 		}
-		//DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		//DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
-		//indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+
+		if(!nexdome_goto_azimuth(device, PRIVATE_DATA->target_position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed.");
+			return INDIGO_OK;
+		}
+
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-		//indigo_set_timer(device, 0.5, dome_timer_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
@@ -779,8 +796,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			*/
 			DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			//DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			//indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			//DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			//indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
