@@ -173,7 +173,7 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 	*/
 	double zeta = atan2(x, y);
 	if ((zeta > -2 * M_PI) && (zeta < 2 * M_PI)) {
-		if (site_latitude > 0) {
+		if (site_latitude >= 0) {
 			zeta = (180.0 / M_PI) * zeta;
 			zeta = map360(zeta);
 		} else {
