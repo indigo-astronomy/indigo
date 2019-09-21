@@ -812,8 +812,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		}
 		if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
-			double alt, az;
-			if (indigo_fix_dome_coordinates(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &alt, &az) == INDIGO_OK) {
+			double az;
+			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &az)) {
 				/*
 				int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
 				if (dif < 180) {
@@ -824,23 +824,18 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					DOME_STEPS_ITEM->number.value = 360 - dif;
 				}
 				*/
-				if (fabs(PRIVATE_DATA->target_position - az) > 0.1) {
-					//should be fixed - maybe indigo_fix_dome_coordinates() shall give a flag whether to move the dome
-					PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
-					if(!nexdome_goto_azimuth(device, PRIVATE_DATA->target_position)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
-						DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-						return INDIGO_OK;
-					}
-					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+				PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
+				if(!nexdome_goto_azimuth(device, PRIVATE_DATA->target_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+					return INDIGO_OK;
 				}
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+
 				DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-			} else {
-				DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Invalid coordinates");
 			}
 		}
 		return INDIGO_OK;
