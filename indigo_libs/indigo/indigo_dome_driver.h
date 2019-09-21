@@ -41,7 +41,7 @@ extern "C" {
 /** Site group name string.
  */
 #define DOME_SITE_GROUP									"Site"
-	
+
 /** Device context pointer.
  */
 #define DOME_CONTEXT                					((indigo_dome_context *)device->device_context)
@@ -134,7 +134,7 @@ extern "C" {
 /** DOME_SHUTTER.CLOSED property item pointer.
  */
 #define DOME_SHUTTER_CLOSED_ITEM							(DOME_SHUTTER_PROPERTY->items+0)
-	
+
 /** DOME_SHUTTER.OPENED property item pointer.
  */
 #define DOME_SHUTTER_OPENED_ITEM							(DOME_SHUTTER_PROPERTY->items+1)
@@ -217,7 +217,7 @@ extern "C" {
 /** DOME_SET_HOST_TIME.SET property item pointer.
 */
 #define DOME_SET_HOST_TIME_ITEM											(DOME_SET_HOST_TIME_PROPERTY->items+0)
-	
+
 /** DOME_SNOOP_DEVICES property pointer, property is optional.
  */
 #define DOME_SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->dome_snoop_devices_property)
@@ -265,9 +265,9 @@ extern indigo_result indigo_dome_change_property(indigo_device *device, indigo_c
 /** Detach callback function.
  */
 extern indigo_result indigo_dome_detach(indigo_device *device);
-/** Update dome coordinates.
+/** Update dome azimuth according to mount and OTA dimensions.
  */
-extern indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, double dec, double *alt, double *az);
+extern bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double *az);
 
 #ifdef __cplusplus
 }
