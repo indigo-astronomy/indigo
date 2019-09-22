@@ -57,6 +57,7 @@ static bool artesky_command(int handle, char *command, char *response) {
 	result |= indigo_write(handle, "\n", 1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
 	if (result) {
+		*response = 0;
 		result = indigo_read_line(handle, response, 10) > 0;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
 	}
