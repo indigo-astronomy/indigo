@@ -113,6 +113,7 @@
 #include "focuser_dsd/indigo_focuser_dsd.h"
 #include "ccd_ptp/indigo_ccd_ptp.h"
 #include "focuser_efa/indigo_focuser_efa.h"
+#include "aux_arteskyflat/indigo_aux_arteskyflat.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -146,6 +147,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_mount,
 	indigo_agent_snoop,
 	indigo_ao_sx,
+	indigo_aux_arteskyflat,
 	indigo_aux_dsusb,
 	indigo_aux_joystick,
 	indigo_aux_ppb,

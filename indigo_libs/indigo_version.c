@@ -415,6 +415,12 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{
+		"FLAT_LIGHT_INTENSITY", AUX_LIGHT_INTENSITY_PROPERTY_NAME, {
+			{ "FLAT_LIGHT_INTENSITY_VALUE", AUX_LIGHT_INTENSITY_ITEM_NAME },
+			NULL
+		}
+	},
 	NULL
 };
 
