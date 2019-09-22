@@ -319,6 +319,7 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | DEWPOINT | no |  |
 | AUX_INFO | number | yes | no | ... | no | Any number of any number items |
 | AUX_CONTROL | switch | no | no | ... | no | Any number of any switch items |
+| AUX_LIGHT_INTENSITY | number | no | no | LIGHT_INTENSITY | yes | Flatbox light intensity |
 
 ## Agent specific properties
 
