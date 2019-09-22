@@ -205,7 +205,10 @@ static bool nexdome_shutter_state(indigo_device *device, nexdome_shutter_state_t
 
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "u\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		int parsed = sscanf(response, "U %d %d", (int*)state, (int*)not_raining);
+		int _state, _not_raining;
+		int parsed = sscanf(response, "U %d %d", &_state, &_not_raining);
+		*state = _state;
+		*not_raining = _not_raining;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "u -> %s, %d %d", response, *state, *not_raining);
 		if (parsed != 2) return false;
 		return true;
