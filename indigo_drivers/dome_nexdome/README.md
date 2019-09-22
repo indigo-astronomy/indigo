@@ -4,8 +4,8 @@ https://www.nexdome.com/
 
 ## Supported devices
 
-All NexDome domes based on Gerry Rozema's firmware available here:
-https://github.com/grozzie2/NexDome
+All NexDome domes based on Gerry Rozema's firmware (available here:
+https://github.com/grozzie2/NexDome)
 
 Single device is present on startup (no hot-plug support).
 
@@ -21,7 +21,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_dome_nexdome
 
-## Status: Under development
+## Status: Under development - Untested
 
 Driver is developed and tested with:
-* Arduino NexDome simulator (based on the original firmware).
+* Arduino NexDome simulator (based on the firmware).

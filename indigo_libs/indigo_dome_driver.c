@@ -366,15 +366,15 @@ bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, doubl
 		);
 		double diff = az_prev - *az;
 		if (fabs(diff) >= threshold) {
-			INDIGO_DRIVER_TRACE("dome_driver", "Update dome Az diff = %g, threshold = %g", fabs(diff), threshold);
+			INDIGO_DRIVER_DEBUG("dome_driver", "Update dome Az diff = %.4f, threshold = %.4f", fabs(diff), threshold);
 			update_needed = true;
 			az_prev = *az;
 		} else {
-			INDIGO_DRIVER_TRACE("dome_driver", "No dome Az update needed diff = %g, threshold = %g", fabs(diff), threshold);
+			INDIGO_DRIVER_DEBUG("dome_driver", "No dome Az update needed diff = %.4f, threshold = %.4f", fabs(diff), threshold);
 			update_needed = false;
 		}
 		*az = round(*az * 100) / 100;
-		INDIGO_DRIVER_TRACE("dome_driver","ha = %g, lst = %g, dec = %g, az = %.2g, az_prev = %.3g", ha, lst, dec, *az, az_prev);
+		INDIGO_DRIVER_DEBUG("dome_driver","ha = %.5f, lst = %.5f, dec = %.5f, az = %.4f, az_prev = %.4f", ha, lst, dec, *az, az_prev);
 	}
 	return update_needed;
 }
