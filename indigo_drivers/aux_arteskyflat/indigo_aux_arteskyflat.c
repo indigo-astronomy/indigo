@@ -171,7 +171,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		indigo_set_timer(device, 0, aux_connection_handler);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- X_CCD_EXPOSURE
+		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
 	} else if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
 		indigo_set_timer(device, 0, aux_intensity_handler);
