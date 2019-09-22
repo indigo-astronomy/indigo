@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -278,7 +278,10 @@ static bool dsd_goto_position(indigo_device *device, uint32_t position) {
 
 
 static bool dsd_get_step_mode(indigo_device *device, stepmode_t *mode) {
-	return dsd_command_get_value(device, "[GSTP]", mode);
+	uint32_t _mode;
+	bool res = dsd_command_get_value(device, "[GSTP]", &_mode);
+	*mode = _mode;
+	return res;
 }
 
 
@@ -328,7 +331,10 @@ static bool dsd_set_coils_timeout(indigo_device *device, uint32_t to) {
 
 
 static bool dsd_get_coils_mode(indigo_device *device, coilsmode_t *mode) {
-	return dsd_command_get_value(device, "[GCLM]", mode);
+	uint32_t _mode;
+	bool res = dsd_command_get_value(device, "[GCLM]", &_mode);
+	*mode = _mode;
+	return res;
 }
 
 
