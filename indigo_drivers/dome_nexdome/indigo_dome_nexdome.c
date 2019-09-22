@@ -175,7 +175,9 @@ static bool nexdome_dome_state(indigo_device *device, nexdome_dome_state_t *stat
 
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "m\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		int parsed = sscanf(response, "M %d", (int*)state);
+		int _state;
+		int parsed = sscanf(response, "M %d", &_state);
+		*state = _state;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "m -> %s, %d", response, *state);
 		if (parsed != 1) return false;
 		return true;
@@ -388,7 +390,9 @@ static bool nexdome_get_home_state(indigo_device *device, int *state) {
 
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "z\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		int parsed = sscanf(response, "Z %d", state);
+		int _state;
+		int parsed = sscanf(response, "Z %d", &_state);
+		*state = _state;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "z -> %s, %d", response, *state);
 		if (parsed != 1) return false;
 		return true;
@@ -416,7 +420,9 @@ static bool nexdome_get_reversed_flag(indigo_device *device, bool *reversed) {
 
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "y\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		int parsed = sscanf(response, "Y %d", (int*)reversed);
+		int _reversed;
+		int parsed = sscanf(response, "Y %d", &_reversed);
+		*reversed = _reversed;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "y -> %s, %d", response, *reversed);
 		if (parsed != 1) return false;
 		return true;
