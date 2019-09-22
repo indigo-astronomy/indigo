@@ -114,6 +114,7 @@
 #include "ccd_ptp/indigo_ccd_ptp.h"
 #include "focuser_efa/indigo_focuser_efa.h"
 #include "aux_arteskyflat/indigo_aux_arteskyflat.h"
+#include "dome_nexdome/indigo_dome_nexdome.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -179,6 +180,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
+	indigo_dome_nexdome,
 	indigo_dome_simulator,
 	indigo_focuser_asi,
 	indigo_focuser_efa,

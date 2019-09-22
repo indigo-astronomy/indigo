@@ -88,6 +88,8 @@ This is the list of requirements taken into the consideration:
 59. DeepSky Dad AF1 and AF2 focuser driver
 60. Baader Planetarium SteelDrive II focuser driver
 61. Unihedron SQM driver
+62. Artesky Flat Box USB driver
+63. NexDome driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
