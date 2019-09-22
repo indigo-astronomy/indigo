@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -70,20 +70,23 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *packet_in) {
-	int bits = TIOCM_RTS;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS set", PRIVATE_DATA->handle);
-	ioctl(PRIVATE_DATA->handle, TIOCMBIS, &bits);
+	int bits = 0;
 	int delay = 0;
-	for (int i = 1; i <= 10; i++) {
-		bits = 0;
-		ioctl(PRIVATE_DATA->handle, TIOCMGET, &bits);
-		if ((bits & TIOCM_CTS) == 0)
-			break;
-		indigo_usleep(i * 10000);
-		delay += i;
+	int result = 0;
+	if (PRIVATE_DATA->is_efa) {
+		for (int i = 0; i < 10; i++) {
+			bits = 0;
+			result = ioctl(PRIVATE_DATA->handle, TIOCMGET, &bits);
+			if ((bits & TIOCM_CTS) == 0 || result < 0)
+				break;
+			delay = delay == 0 ? 1 : delay * 2;
+			indigo_usleep(i * 10000);
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → CTS %s (%dms, %04x)", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : ((bits & TIOCM_CTS) ? "not cleared" : "cleared"), delay * 10, bits);
+		bits = TIOCM_RTS;
+		result = ioctl(PRIVATE_DATA->handle, TIOCMBIS, &bits);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "set");
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d → CTS %s (%dms, %04x)", PRIVATE_DATA->handle, (bits & TIOCM_CTS) ? "set" : "cleared", delay * 10, bits);
-	bits = TIOCM_RTS;
 	int count = packet_out[1], sum = 0;
 	if (count == 3) {
 		count = packet_out[1] = 4;
@@ -103,8 +106,10 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 	else if (count == 7)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← %02X %02X %02X→%02X [%02X %02X %02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5], packet_out[6], packet_out[7], packet_out[8], packet_out[8]);
 	if (indigo_write(PRIVATE_DATA->handle, (const char *)packet_out, count + 3)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS cleared", PRIVATE_DATA->handle);
-		ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
+		if (PRIVATE_DATA->is_efa) {
+			result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
+		}
 		for (int i = 0; i < 10; i++) {
 			long result = read(PRIVATE_DATA->handle, packet_in, 1);
 			if (result <= 0) {
@@ -151,8 +156,10 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 			}
 		}
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS cleared", PRIVATE_DATA->handle);
-		ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
+		if (PRIVATE_DATA->is_efa) {
+			result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
+		}
 	}
 	return false;
 }
@@ -218,17 +225,10 @@ static void focuser_timer_callback(indigo_device *device) {
 		uint8_t get_temp_packet[10] = { SOM, 0x04, APP, FOC, 0x26, 0x00, 0 };
 		if (efa_command(device, get_temp_packet, response_packet)) {
 			int raw_temp = response_packet[6] << 8 | response_packet[7];
-			// formula is definitely wrong :(
-			bool neg = false;
-			if (raw_temp > 32768) {
-				raw_temp = 65536 - raw_temp;
-				neg = true;
+			if (raw_temp & 0x8000) {
+				raw_temp = raw_temp - 0x10000;
 			}
-			int int_part = raw_temp / 16;
-			int fraction_part = (raw_temp - int_part) * 625 / 1000;
-			double temp = int_part + fraction_part / 10.0;
-			if (neg)
-				temp = -temp;
+			double temp = raw_temp / 16.0;
 			if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
 				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -286,23 +286,12 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
-			struct termios options;
-			if (tcgetattr(PRIVATE_DATA->handle, &options) == -1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d ← tcgetattr() failed (%s)", PRIVATE_DATA->handle, strerror(errno));
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = -1;
-			} else {
-				options.c_cflag |= CRTSCTS;
-				if (tcsetattr(PRIVATE_DATA->handle, TCSANOW, &options) == -1) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d ← tcsetattr() failed (%s)", PRIVATE_DATA->handle, strerror(errno));
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = -1;
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d ← RTS/CTS enabled (%08x)", PRIVATE_DATA->handle, options.c_cflag);
-				}
-			}
+			int bits = TIOCM_RTS;
+			int result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
 		}
 		if (PRIVATE_DATA->handle > 0) {
+			PRIVATE_DATA->is_efa = true;
 			uint8_t get_version_packet[10] = { SOM, 0x03, APP, FOC, 0xFE, 0 };
 			if (efa_command(device, get_version_packet, response_packet)) {
 				if (response_packet[1] == 5) {
