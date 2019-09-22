@@ -1,5 +1,9 @@
 //#include <EEPROM.h>
 
+#ifdef ARDUINO_SAM_DUE
+#include <avr/dtostrf.h>
+#define Serial SerialUSB
+#endif
 
 /*
  *  This is NexDome simulator based on the original firmware by Gerry Rozema
