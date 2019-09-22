@@ -149,11 +149,11 @@ static bool nexdome_get_info(indigo_device *device, char *name, char *firmware) 
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "v\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "V%s V %s", name, firmware);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "v -> %s, '%s' '%s'", response, name, firmware);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "v -> %s, '%s' '%s'", response, name, firmware);
 		if (parsed != 2) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -161,11 +161,11 @@ static bool nexdome_get_info(indigo_device *device, char *name, char *firmware) 
 static bool nexdome_abort(indigo_device *device) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "a\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "a -> %s", response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "a -> %s", response);
 		if (response[0] != 'A') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -176,11 +176,11 @@ static bool nexdome_dome_state(indigo_device *device, nexdome_dome_state_t *stat
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "m\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "M %d", (int*)state);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "m -> %s, %d", response, *state);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "m -> %s, %d", response, *state);
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -191,11 +191,11 @@ static bool nexdome_get_azimuth(indigo_device *device, float *azimuth) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "q\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "Q %f", azimuth);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "q -> %s, %f", response, *azimuth);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "q -> %s, %f", response, *azimuth);
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -206,11 +206,11 @@ static bool nexdome_shutter_state(indigo_device *device, nexdome_shutter_state_t
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "u\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "U %d %d", (int*)state, (int*)not_raining);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "u -> %s, %d %d", response, *state, *not_raining);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "u -> %s, %d %d", response, *state, *not_raining);
 		if (parsed != 2) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -221,11 +221,11 @@ static bool nexdome_get_shutter_position(indigo_device *device, float *pos) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "b\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "B %f", pos);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "b -> %s, %f", response, *pos);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "b -> %s, %f", response, *pos);
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -233,11 +233,11 @@ static bool nexdome_get_shutter_position(indigo_device *device, float *pos) {
 static bool nexdome_open_shutter(indigo_device *device) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "d\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "d -> %s", response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d -> %s", response);
 		if (response[0] != 'D') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -245,11 +245,11 @@ static bool nexdome_open_shutter(indigo_device *device) {
 static bool nexdome_close_shutter(indigo_device *device) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "e\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "e -> %s", response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "e -> %s", response);
 		if (response[0] != 'D') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -261,11 +261,11 @@ static bool nexdome_set_shutter_position(indigo_device *device, float position) 
 	snprintf(command, NEXDOME_CMD_LEN, "f %.2f\n", position);
 
 	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "f %.2f -> %s", position, response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "f %.2f -> %s", position, response);
 		if (response[0] != 'F') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -278,11 +278,11 @@ static bool nexdome_sync_azimuth(indigo_device *device, float azimuth) {
 
 	// we ignore the returned sync value
 	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "s %.2f -> %s", azimuth, response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "s %.2f -> %s", azimuth, response);
 		if (response[0] != 'S') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -293,11 +293,11 @@ static bool nexdome_get_home_azimuth(indigo_device *device, float *azimuth) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "i\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "I %f", azimuth);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "i -> %s, %f", response, *azimuth);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "i -> %s, %f", response, *azimuth);
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -310,11 +310,11 @@ static bool nexdome_set_home_azimuth(indigo_device *device, float azimuth) {
 
 	// we ignore the returned value
 	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "j %.2f -> %s", azimuth, response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "j %.2f -> %s", azimuth, response);
 		if (response[0] != 'I') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -325,11 +325,11 @@ static bool nexdome_get_park_azimuth(indigo_device *device, float *azimuth) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "n\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "N %f", azimuth);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "n -> %s, %f", response, *azimuth);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "n -> %s, %f", response, *azimuth);
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -342,11 +342,11 @@ static bool nexdome_set_park_azimuth(indigo_device *device, float azimuth) {
 
 	// we ignore the returned value
 	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "l %.2f -> %s", azimuth, response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "l %.2f -> %s", azimuth, response);
 		if (response[0] != 'N') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -358,11 +358,11 @@ static bool nexdome_goto_azimuth(indigo_device *device, float azimuth) {
 	snprintf(command, NEXDOME_CMD_LEN, "g %.2f\n", azimuth);
 
 	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "g %.2f -> %s", azimuth, response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "g %.2f -> %s", azimuth, response);
 		if (response[0] != 'G') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -371,11 +371,11 @@ static bool nexdome_find_home(indigo_device *device) {
 	char response[NEXDOME_CMD_LEN] = {0};
 
 	if (nexdome_command(device, "h\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "h -> %s", response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "h -> %s", response);
 		if (response[0] != 'H') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -386,11 +386,11 @@ static bool nexdome_get_home_state(indigo_device *device, int *state) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "z\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "Z %d", state);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "z -> %s, %d", response, *state);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "z -> %s, %d", response, *state);
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -399,11 +399,11 @@ static bool nexdome_callibrate(indigo_device *device) {
 	char response[NEXDOME_CMD_LEN] = {0};
 
 	if (nexdome_command(device, "c\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "c -> %s", response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "c -> %s", response);
 		if (response[0] != 'C') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -414,11 +414,11 @@ static bool nexdome_get_reversed_flag(indigo_device *device, bool *reversed) {
 	char response[NEXDOME_CMD_LEN]={0};
 	if (nexdome_command(device, "y\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
 		int parsed = sscanf(response, "Y %d", (int*)reversed);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "y -> %s, %d", response, *reversed);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "y -> %s, %d", response, *reversed);
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -430,11 +430,11 @@ static bool nexdome_set_reversed_flag(indigo_device *device, bool reversed) {
 	snprintf(command, NEXDOME_CMD_LEN, "y %d\n", (int)reversed);
 
 	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "y %d -> %s, %d", reversed, response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "y %d -> %s, %d", reversed, response);
 		if (response[0] != 'Y') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
 	return false;
 }
 
@@ -445,6 +445,7 @@ static void dome_timer_callback(indigo_device *device) {
 	static bool need_update = true;
 	static nexdome_shutter_state_t prev_shutter_state = SHUTTER_STATE_UNKNOWN;
 
+	/* Handle dome rotation */
 	if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
 	}
@@ -487,6 +488,7 @@ static void dome_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 	}
 
+	/* Handle dome shutter */
 	bool raining;
 	if(!nexdome_shutter_state(device, &PRIVATE_DATA->shutter_state, &raining)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_shutter_state(): returned error");
@@ -520,8 +522,27 @@ static void dome_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	}
 
+	/* Keep the dome in sync if needed */
+	if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+		double az;
+		if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &az)) {
+			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
+			if(!nexdome_goto_azimuth(device, PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				return;
+			}
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		}
+	}
+
 	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
 }
+
 
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -539,12 +560,15 @@ static indigo_result dome_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 5;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
+		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
+		DOME_SYNC_PARAMETERS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
+
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -602,16 +626,17 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					}
 					indigo_global_unlock(device);
 					device->is_connected = false;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Deep Sky Dad AF did not respond");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: NexDome did not respond. Are you using the correct firmware?");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, "Deep Sky Dad AF did not respond");
+					indigo_update_property(device, CONNECTION_PROPERTY, "NexDome did not respond. Are you using the correct firmware?");
 					return INDIGO_OK;;
 				} else { // Successfully connected
 					uint32_t value;
 					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, name, INDIGO_VALUE_SIZE);
 					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s connected.", name, firmware);
 
 					if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
@@ -631,103 +656,16 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					PRIVATE_DATA->park_requested = false;
 					indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 
-
-					/*
-					nexdome_dome_state_t state;
-					nexdome_dome_state(device, &state);
-					nexdome_abort(device);
-					float heading;
-					nexdome_get_azimuth(device, &heading);
-					nexdome_shutter_state_t sstate;
-					bool not_raining;
-					nexdome_shutter_state(device, &sstate, &not_raining);
-					float pos;
-					nexdome_get_shutter_position(device, &pos);
-					//nexdome_open_shutter(device);
-					//nexdome_close_shutter(device);
-					sleep(1);
-					nexdome_set_shutter_position(device, 44.4);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "version = %s", firmware);
-					nexdome_sync_azimuth(device, 24.1);
-					nexdome_set_park_azimuth(device, 1.35);
-					nexdome_get_park_azimuth(device, &pos);
-					nexdome_set_home_azimuth(device, 54.3);
-					nexdome_get_home_azimuth(device, &pos);
-					nexdome_goto_azimuth(device, 31.9);
-					nexdome_find_home(device);
-					nexdome_callibrate(device);
-					nexdome_get_home_state(device, &state);
-					bool reversed;
-					nexdome_get_reversed_flag(device, &reversed);
-					nexdome_set_reversed_flag(device, 1);
-					nexdome_get_reversed_flag(device, &reversed);
-					*/
-
-					//dsd_get_position(device, &position);
-					//FOCUSER_POSITION_ITEM->number.value = (double)position;
-
-					//if (!dsd_get_max_position(device, &PRIVATE_DATA->max_position)) {
-					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle);
-					//}
-					//FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-
-					//if (!dsd_get_speed(device, &value)) {
-					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
-					//}
-					//FOCUSER_SPEED_ITEM->number.value = (double)value;
-
-					/* While we do not have max move property hardoce it to max position */
-					//dsd_set_max_move(device, (uint32_t)FOCUSER_POSITION_ITEM->number.max);
-
-					/* DSD does not have reverse motion, so we set it to be sure we know its state */
-					//dsd_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
-
-					//update_step_mode_switches(device);
-					//indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
-
-					//update_coils_mode_switches(device);
-					//indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
-
-					//if (!dsd_get_move_current(device, &value)) {
-					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
-					//}
-					//DSD_CURRENT_CONTROL_MOVE_ITEM->number.value = (double)value;
-					//DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
-					//if (!dsd_get_hold_current(device, &value)) {
-					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle);
-					//}
-					//DSD_CURRENT_CONTROL_HOLD_ITEM->number.value = (double)value;
-					//DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
-					//indigo_define_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
-
-					//if (!dsd_get_settle_buffer(device, &value)) {
-					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
-					//}
-					//DSD_TIMINGS_SETTLE_ITEM->number.value = (double)value;
-					//DSD_TIMINGS_SETTLE_ITEM->number.target = (double)value;
-					//if (!dsd_get_coils_timeout(device, &value)) {
-					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_timeout(%d) failed", PRIVATE_DATA->handle);
-					//}
-					//DSD_TIMINGS_COILS_TOUT_ITEM->number.value = (double)value;
-					//DSD_TIMINGS_COILS_TOUT_ITEM->number.target = (double)value;
-					//indigo_define_property(device, DSD_TIMINGS_PROPERTY, NULL);
-
-
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
 					PRIVATE_DATA->dome_timer = indigo_set_timer(device, 0.5, dome_timer_callback);
 				}
 			}
 		} else {
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->dome_timer);
-				//indigo_delete_property(device, DSD_STEP_MODE_PROPERTY, NULL);
-				//indigo_delete_property(device, DSD_COILS_MODE_PROPERTY, NULL);
-				//indigo_delete_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
-				//indigo_delete_property(device, DSD_TIMINGS_PROPERTY, NULL);
-
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -738,6 +676,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_global_unlock(device);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				device->is_connected = false;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected = %d", PRIVATE_DATA->handle);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -811,33 +750,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked");
 			return INDIGO_OK;
 		}
-		if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
-			double az;
-			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &az)) {
-				/*
-				int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
-				if (dif < 180) {
-					indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
-					DOME_STEPS_ITEM->number.value = dif;
-				} else if (dif > 180) {
-					indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
-					DOME_STEPS_ITEM->number.value = 360 - dif;
-				}
-				*/
-				PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
-				if(!nexdome_goto_azimuth(device, PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
-					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-					return INDIGO_OK;
-				}
-				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-
-				DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-			}
-		}
+		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
@@ -906,6 +820,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	}
 	return indigo_dome_change_property(device, client, property);
 }
+
 
 static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
