@@ -134,6 +134,7 @@
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
+		59B81EC523376FE000DFA81B /* indigo_aux_arteskyflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B81EC423376A1A00DFA81B /* indigo_aux_arteskyflat.c */; };
 		59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD17321823693008199D6 /* indigo_ccd_altair.c */; };
 		59BBD18E218249CD008199D6 /* indigo_aux_rts.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD18A2182472E008199D6 /* indigo_aux_rts.c */; };
 		59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */; };
@@ -1917,6 +1918,12 @@
 		59AF6E9E2273881C00B838BF /* guider.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = guider.html; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
 		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
+		59B81EC023376A1A00DFA81B /* indigo_aux_arteskyflat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_arteskyflat.h; sourceTree = "<group>"; };
+		59B81EC123376A1A00DFA81B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59B81EC223376A1A00DFA81B /* indigo_aux_arteskyflat_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_arteskyflat_main.c; sourceTree = "<group>"; };
+		59B81EC323376A1A00DFA81B /* arteskyflat.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = arteskyflat.rules; sourceTree = "<group>"; };
+		59B81EC423376A1A00DFA81B /* indigo_aux_arteskyflat.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_arteskyflat.c; sourceTree = "<group>"; };
+		59B81EC7233774DC00DFA81B /* arteskyflat_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = arteskyflat_simulator.ino; sourceTree = "<group>"; };
 		59BBD17021823693008199D6 /* indigo_ccd_altair.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_altair.h; sourceTree = "<group>"; };
 		59BBD17121823693008199D6 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59BBD17221823693008199D6 /* indigo_ccd_altair_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_altair_main.c; sourceTree = "<group>"; };
@@ -7016,6 +7023,27 @@
 			path = data;
 			sourceTree = "<group>";
 		};
+		59B81EBF23376A1A00DFA81B /* aux_arteskyflat */ = {
+			isa = PBXGroup;
+			children = (
+				59B81EC123376A1A00DFA81B /* README.md */,
+				59B81EC023376A1A00DFA81B /* indigo_aux_arteskyflat.h */,
+				59B81EC423376A1A00DFA81B /* indigo_aux_arteskyflat.c */,
+				59B81EC223376A1A00DFA81B /* indigo_aux_arteskyflat_main.c */,
+				59B81EC323376A1A00DFA81B /* arteskyflat.rules */,
+				59B81EC6233774AD00DFA81B /* arteskyflat_simulator */,
+			);
+			path = aux_arteskyflat;
+			sourceTree = "<group>";
+		};
+		59B81EC6233774AD00DFA81B /* arteskyflat_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59B81EC7233774DC00DFA81B /* arteskyflat_simulator.ino */,
+			);
+			path = arteskyflat_simulator;
+			sourceTree = "<group>";
+		};
 		59BBD16F21823693008199D6 /* ccd_altair */ = {
 			isa = PBXGroup;
 			children = (
@@ -7251,6 +7279,7 @@
 				9D7244E821F1CFEB0028FDF4 /* agent_mount */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				590BF1AD21EBCF7500C24DBA /* ao_sx */,
+				59B81EBF23376A1A00DFA81B /* aux_arteskyflat */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
 				5996615022CF3E0F00330652 /* aux_ppb */,
@@ -11184,6 +11213,7 @@
 				9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */,
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,
 				590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */,
+				59B81EC523376FE000DFA81B /* indigo_aux_arteskyflat.c in Sources */,
 				9D61B9DF216DE636000DE7E8 /* indigo_focuser_mjkzz_bt.m in Sources */,
 				593A3580219DBE5E00EDF481 /* indigo_filter.c in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
