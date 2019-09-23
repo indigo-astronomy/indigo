@@ -114,6 +114,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 		if (PRIVATE_DATA->handle > 0) {
+			indigo_usleep(ONE_SECOND_DELAY);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 			if (artesky_command(PRIVATE_DATA->handle, ">L000", response) && !strcmp(response, "*L19000")) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Artesky Flat Box detected");
