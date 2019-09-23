@@ -112,15 +112,18 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
-		if (PRIVATE_DATA->handle > 0) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-			if (artesky_command(PRIVATE_DATA->handle, ">L000", response) && !strcmp(response, "*L19000")) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Artesky Flat Box detected");
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+		for (int i = 0; i < 2; i++) {
+			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->handle > 0) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
+				if (artesky_command(PRIVATE_DATA->handle, ">L000", response) && !strcmp(response, "*L19000")) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Artesky Flat Box detected");
+					break;
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
