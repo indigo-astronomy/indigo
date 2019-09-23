@@ -33,8 +33,6 @@
 extern "C" {
 #endif
 
-#define DOME_SIMULATOR_NAME		"NexDome"
-
 /** Create DOME NexDome device instance
  */
 
