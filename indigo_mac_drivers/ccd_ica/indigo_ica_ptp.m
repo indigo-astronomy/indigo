@@ -1455,7 +1455,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
--(void)didDownloadFile:(ICCameraFile*)file error:(nullable NSError*)error options:(nullable NSDictionary<NSString*,id>*)options contextInfo:(nullable void*)contextInfo {
+-(void)didDownloadFile:(ICCameraFile*)file error:(nullable NSError*)error options:(NSDictionary<NSString*,id>*)options contextInfo:(void*)contextInfo {
   //if (error == nil) {
     NSURL *folder = options[ICDownloadsDirectoryURL];
     NSString *name = options[ICSavedFilename];
