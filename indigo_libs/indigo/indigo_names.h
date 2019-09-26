@@ -1645,6 +1645,19 @@
 #define DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME	"MOVE_COUNTERCLOCKWISE"
 
 //----------------------------------------------------------------------
+/** DOME_ON_HORIZONTAL_COORDINATES_SET property name.
+ */
+#define DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME	"DOME_ON_HORIZONTAL_COORDINATES_SET"
+
+/** DOME_ON_HORIZONTAL_COORDINATES_SET.GOTO property item name.
+ */
+#define DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME	"GOTO"
+
+/**  DOME_ON_HORIZONTAL_COORDINATES_SET.SYNC property item name.
+ */
+#define DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME	"SYNC"
+
+//----------------------------------------------------------------------
 /** DOME_STEPS property name.
  */
 #define DOME_STEPS_PROPERTY_NAME						"DOME_STEPS"
