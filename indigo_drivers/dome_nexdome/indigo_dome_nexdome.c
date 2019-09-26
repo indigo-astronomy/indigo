@@ -567,6 +567,8 @@ static indigo_result dome_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 5;
+		// -------------------------------------------------------------------------------- DOME_ON_HORIZONTAL_COORDINATES_SET
+		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS

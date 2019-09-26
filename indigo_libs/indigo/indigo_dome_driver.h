@@ -66,6 +66,21 @@ extern "C" {
  */
 #define DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM		(DOME_DIRECTION_PROPERTY->items+1)
 
+
+//----------------------------------------------
+/** DOME_ON_HORIZONTAL_COORDINATES_SET property pointer, property is optional.
+ */
+#define DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY							(DOME_CONTEXT->dome_on_horiz_coordinates_set_property)
+
+/**  DOME_ON_HORIZONTAL_COORDINATES_SET.GOTO property item pointer.
+ */
+#define DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM						(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->items+0)
+
+/**  DOME_ON_HORIZONTAL_COORDINATES_SET.SYNC property item pointer.
+ */
+#define DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM						(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->items+1)
+
+
 /** DOME_STEPS property pointer, property is optional, property change request should be fully handled by dome driver
  */
 #define DOME_STEPS_PROPERTY								(DOME_CONTEXT->dome_steps_property)
@@ -237,6 +252,7 @@ typedef struct {
 	indigo_device_context device_context;										///< device context base
 	indigo_property *dome_speed_property;										///< DOME_SPEED property pointer
 	indigo_property *dome_direction_property;								///< DOME_DIRECTION property pointer
+	indigo_property *dome_on_horiz_coordinates_set_property;				///< DOME_ON_HORIZONTAL_COORDINATES_SET property pointer
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
 	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
