@@ -741,11 +741,20 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		}
 
-		if(!nexdome_goto_azimuth(device, PRIVATE_DATA->target_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			return INDIGO_OK;
+		if (DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM->sw.value) {
+			if(!nexdome_sync_azimuth(device, PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_sync_azimuth(%d): returned error", PRIVATE_DATA->handle);
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				return INDIGO_OK;
+			}
+		} else { /* GOTO */
+			if(!nexdome_goto_azimuth(device, PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				return INDIGO_OK;
+			}
 		}
 
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
