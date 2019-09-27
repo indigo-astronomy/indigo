@@ -659,7 +659,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 		return false;
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
 	if (PRIVATE_DATA->model.product == 0x0427 || PRIVATE_DATA->model.product == 0x042c || PRIVATE_DATA->model.product == 0x0433 || PRIVATE_DATA->model.product == 0x043d || PRIVATE_DATA->model.product == 0x0445) {
-		static uint32_t operations[] = { ptp_operation_nikon_GetVendorPropCodes, ptp_operation_nikon_CheckEvent, ptp_operation_nikon_Capture, ptp_operation_nikon_AfDrive, ptp_operation_nikon_SetControlMode, ptp_operation_nikon_DeviceReady, ptp_operation_nikon_AfCaptureSDRAM, ptp_operation_nikon_DelImageSDRAM, ptp_operation_nikon_GetPreviewImg, ptp_operation_nikon_StartLiveView, ptp_operation_nikon_EndLiveView, ptp_operation_nikon_GetLiveViewImg, ptp_operation_nikon_MfDrive, ptp_operation_nikon_ChangeAfArea, ptp_operation_nikon_AfDriveCancel };
+		static uint32_t operations[] = { ptp_operation_nikon_GetVendorPropCodes, ptp_operation_nikon_CheckEvent, ptp_operation_nikon_Capture, ptp_operation_nikon_AfDrive, ptp_operation_nikon_SetControlMode, ptp_operation_nikon_DeviceReady, ptp_operation_nikon_AfCaptureSDRAM, ptp_operation_nikon_DelImageSDRAM, ptp_operation_nikon_GetPreviewImg, ptp_operation_nikon_StartLiveView, ptp_operation_nikon_EndLiveView, ptp_operation_nikon_GetLiveViewImg, ptp_operation_nikon_MfDrive, ptp_operation_nikon_ChangeAfArea, ptp_operation_nikon_AfDriveCancel, 0 };
 		ptp_append_uint16_32_array(PRIVATE_DATA->info_operations_supported, operations);
 		INDIGO_LOG(indigo_log("operations:"));
 		for (uint32_t *operation = operations; *operation; operation++) {
