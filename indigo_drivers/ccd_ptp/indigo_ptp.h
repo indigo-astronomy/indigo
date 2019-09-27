@@ -449,6 +449,7 @@ extern bool ptp_check_jpeg_ext(const char *ext);
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_2_0(device, code, out_1, out_2) ptp_transaction(device, code, 2, out_1, out_2, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_3_0(device, code, out_1, out_2, out_3) ptp_transaction(device, code, 3, out_1, out_2, out_3, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_0_0_i(device, code, data_in, data_size) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
 #define ptp_transaction_1_0_i(device, code, out_1, data_in, data_size) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
 #define ptp_transaction_1_1(device, code, out_1, in_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, in_1, NULL, NULL, NULL, NULL, NULL, NULL)

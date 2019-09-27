@@ -819,9 +819,10 @@ bool ptp_open(indigo_device *device) {
 		int interface_number = interface->altsetting->bInterfaceNumber;
 		rc = libusb_claim_interface(handle, interface_number);
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface_number, rc < 0 ? libusb_error_name(rc) : "OK");
-		int alt_settings = config_descriptor->interface->altsetting->bAlternateSetting;
-		rc = libusb_set_interface_alt_setting(handle, interface_number, alt_settings);
-		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_set_interface_alt_setting(%d, %d) -> %s", interface_number, alt_settings, rc < 0 ? libusb_error_name(rc) : "OK");
+// Doesn't work with Sony!!!
+//		int alt_settings = config_descriptor->interface->altsetting->bAlternateSetting;
+//		rc = libusb_set_interface_alt_setting(handle, interface_number, alt_settings);
+//		INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_set_interface_alt_setting(%d, %d) -> %s", interface_number, alt_settings, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	if (rc >= 0 && interface) {
 		const struct libusb_endpoint_descriptor *ep = interface->altsetting->endpoint;
