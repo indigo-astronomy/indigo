@@ -66,6 +66,11 @@ typedef enum {
 	ptp_property_sony_StillImage = 0xD2C7,
 } ptp_property_sony_code;
 
+typedef struct {
+	char payload;
+} sony_private_data;
+
+
 extern char *ptp_operation_sony_code_label(uint16_t code);
 extern char *ptp_event_sony_code_label(uint16_t code);
 extern char *ptp_property_sony_code_name(uint16_t code);
