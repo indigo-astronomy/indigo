@@ -1177,11 +1177,9 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				buffer = NULL;
 				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
 					const char *ext = strchr(filename, '.');
-					if ( ptp_check_jpeg_ext(ext) &&
-					     PRIVATE_DATA->check_compression_has_row != NULL &&
-					     PRIVATE_DATA->check_compression_has_row(device) ) {
+					if (ptp_check_jpeg_ext(ext) && PRIVATE_DATA->check_compression_has_raw != NULL && PRIVATE_DATA->check_compression_has_raw(device)) {
 						// jpeg is secondary image
-						if ( CCD_PREVIEW_ENABLED_ITEM->sw.value ) {
+						if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 							indigo_process_dslr_preview_image(device, buffer, size);
 						}
 					} else {
@@ -1283,5 +1281,5 @@ bool ptp_set_host_time(indigo_device *device) {
 }
 
 bool ptp_check_jpeg_ext(const char *ext) {
-	return strcmp(ext, ".JPG") == 0 || strcmp(ext, ".jpg") == 0;
+	return strcmp(ext, ".JPG") == 0 || strcmp(ext, ".jpg") == 0 || strcmp(ext, ".JPEG") == 0 || strcmp(ext, ".jpeg") == 0;
 }

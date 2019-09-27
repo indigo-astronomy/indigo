@@ -1098,10 +1098,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 					void *buffer = NULL;
 					if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
 						const char *ext = strchr(filename, '.');
-						if ( ptp_check_jpeg_ext(ext) &&
-						     ptp_canon_check_compression_has_raw(device) ) {
+						if (ptp_check_jpeg_ext(ext) && ptp_canon_check_compression_has_raw(device)) {
 							// jpeg is secondary image
-							if ( CCD_PREVIEW_ENABLED_ITEM->sw.value ) {
+							if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 								indigo_process_dslr_preview_image(device, buffer, (int)length);
 							}
 						} else {

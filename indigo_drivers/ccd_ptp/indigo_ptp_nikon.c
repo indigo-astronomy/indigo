@@ -1061,11 +1061,11 @@ bool ptp_nikon_focus(indigo_device *device, int steps) {
 }
 
 bool ptp_nikon_check_compression_has_raw(indigo_device *device) {
-	if ( ! DSLR_COMPRESSION_PROPERTY || ! DSLR_COMPRESSION_PROPERTY->property ) {
+	if (!DSLR_COMPRESSION_PROPERTY || !DSLR_COMPRESSION_PROPERTY->property) {
 		return false;
 	}
 	for (int i = 0; i < DSLR_COMPRESSION_PROPERTY->count; ++i) {
-		if ( DSLR_COMPRESSION_PROPERTY->property->items[i].sw.value ) {
+		if (DSLR_COMPRESSION_PROPERTY->property->items[i].sw.value) {
 			const char *label = DSLR_COMPRESSION_PROPERTY->property->items[i].label;
 			return strstr(label, "NEF") != NULL || strstr(label, "RAW") != NULL;
 		}

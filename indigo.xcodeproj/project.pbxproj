@@ -49,6 +49,7 @@
 		595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */; };
 		595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */; };
 		595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */ = {isa = PBXBuildFile; fileRef = 595AA1D01FC5EEFE00350E7B /* indigo_agent.c */; };
+		595E9FC1233E6666006E01D3 /* ptp_camera_model.h in Headers */ = {isa = PBXBuildFile; fileRef = 595E9FC0233E6666006E01D3 /* ptp_camera_model.h */; };
 		595F2918211E211100380EF4 /* DDHidMouse.h in Headers */ = {isa = PBXBuildFile; fileRef = 595F28FA211E211100380EF4 /* DDHidMouse.h */; };
 		595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */ = {isa = PBXBuildFile; fileRef = 595F28FC211E211100380EF4 /* NSDictionary+DDHidExtras.h */; };
 		595F291A211E211100380EF4 /* DDHidEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F28FD211E211100380EF4 /* DDHidEvent.m */; };
@@ -610,6 +611,9 @@
 		595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent.h; sourceTree = "<group>"; };
 		595AA1D01FC5EEFE00350E7B /* indigo_agent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent.c; sourceTree = "<group>"; };
 		595AEB0F230FDE0200AB5C99 /* ioptron_2.5_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.5_simulator.ino; sourceTree = "<group>"; };
+		595E9FBE233E65F7006E01D3 /* make_dslr_table.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = make_dslr_table.py; sourceTree = "<group>"; };
+		595E9FBF233E6607006E01D3 /* dslr.csv */ = {isa = PBXFileReference; lastKnownFileType = file; name = dslr.csv; path = data/dslr.csv; sourceTree = SOURCE_ROOT; };
+		595E9FC0233E6666006E01D3 /* ptp_camera_model.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ptp_camera_model.h; sourceTree = "<group>"; };
 		595F28FA211E211100380EF4 /* DDHidMouse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DDHidMouse.h; sourceTree = "<group>"; };
 		595F28FB211E211100380EF4 /* DDHidStandardUsages.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = DDHidStandardUsages.plist; sourceTree = "<group>"; };
 		595F28FC211E211100380EF4 /* NSDictionary+DDHidExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+DDHidExtras.h"; sourceTree = "<group>"; };
@@ -5271,6 +5275,8 @@
 		599A240C1DBEC5820020BF8F /* tools */ = {
 			isa = PBXGroup;
 			children = (
+				595E9FBE233E65F7006E01D3 /* make_dslr_table.py */,
+				595E9FBF233E6607006E01D3 /* dslr.csv */,
 				598000F922E44A0B00021D67 /* build_debs.sh */,
 				590EE1AF22ABD56600828030 /* rpi_ctrl_fix.sh */,
 				590EE1A322AAFE3500828030 /* rpi_ctrl.sh */,
@@ -10179,6 +10185,7 @@
 				9D586C3D22FB0C34002D382E /* README.md */,
 				9D586C3E22FB0D43002D382E /* indigo_ccd_ptp.h */,
 				9D586C3F22FB0D43002D382E /* indigo_ccd_ptp.c */,
+				595E9FC0233E6666006E01D3 /* ptp_camera_model.h */,
 				59FA0B1C22FB400900A15D19 /* indigo_ptp.h */,
 				9D586C4422FC6265002D382E /* indigo_ptp.c */,
 				59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */,
@@ -10955,6 +10962,7 @@
 				590BF1B321EBCF7500C24DBA /* indigo_ao_sx.h in Headers */,
 				593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */,
 				59D9681921A2FE3F0069A64C /* USB2ST4_Conv.h in Headers */,
+				595E9FC1233E6666006E01D3 /* ptp_camera_model.h in Headers */,
 				59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */,
 				9DAD522721246C18002FCC79 /* indigo_mount_synscan.h in Headers */,
 				59A52FB721A34251000B6F27 /* dc1394.h in Headers */,
