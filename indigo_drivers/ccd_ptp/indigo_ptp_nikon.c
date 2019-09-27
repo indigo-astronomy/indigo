@@ -37,6 +37,7 @@
 #include "indigo_ptp_nikon.h"
 
 #define NIKON_PRIVATE_DATA	((nikon_private_data *)(PRIVATE_DATA->vendor_private_data))
+#define DSLR_COMPRESSION_PROPERTY (NIKON_PRIVATE_DATA->dslr_compression_property)
 
 char *ptp_operation_nikon_code_label(uint16_t code) {
 	switch (code) {
@@ -655,7 +656,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 	PRIVATE_DATA->vendor_private_data = malloc(sizeof(nikon_private_data));
 	memset(NIKON_PRIVATE_DATA, 0, sizeof(nikon_private_data));
 	if (!ptp_initialise(device))
-		return false;	
+		return false;
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
 	if (PRIVATE_DATA->model.product == 0x0427 || PRIVATE_DATA->model.product == 0x042c || PRIVATE_DATA->model.product == 0x0433 || PRIVATE_DATA->model.product == 0x043d || PRIVATE_DATA->model.product == 0x0445) {
 		static uint32_t operations[] = { ptp_operation_nikon_GetVendorPropCodes, ptp_operation_nikon_CheckEvent, ptp_operation_nikon_Capture, ptp_operation_nikon_AfDrive, ptp_operation_nikon_SetControlMode, ptp_operation_nikon_DeviceReady, ptp_operation_nikon_AfCaptureSDRAM, ptp_operation_nikon_DelImageSDRAM, ptp_operation_nikon_GetPreviewImg, ptp_operation_nikon_StartLiveView, ptp_operation_nikon_EndLiveView, ptp_operation_nikon_GetLiveViewImg, ptp_operation_nikon_MfDrive, ptp_operation_nikon_ChangeAfArea, ptp_operation_nikon_AfDriveCancel };
@@ -959,6 +960,9 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			}
 			return true;
 		}
+		case ptp_property_CompressionSetting:
+			DSLR_COMPRESSION_PROPERTY = property;
+			return true;
 	}
 	return false;
 }
@@ -1051,6 +1055,19 @@ bool ptp_nikon_focus(indigo_device *device, int steps) {
 			if (steps > 0)
 				return ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 1, steps);
 			return ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 2, -steps);
+		}
+	}
+	return false;
+}
+
+bool ptp_nikon_check_compression_has_raw(indigo_device *device) {
+	if ( ! DSLR_COMPRESSION_PROPERTY || ! DSLR_COMPRESSION_PROPERTY->property ) {
+		return false;
+	}
+	for (int i = 0; i < DSLR_COMPRESSION_PROPERTY->count; ++i) {
+		if ( DSLR_COMPRESSION_PROPERTY->property->items[i].sw.value ) {
+			const char *label = DSLR_COMPRESSION_PROPERTY->property->items[i].label;
+			return strstr(label, "NEF") != NULL || strstr(label, "RAW") != NULL;
 		}
 	}
 	return false;

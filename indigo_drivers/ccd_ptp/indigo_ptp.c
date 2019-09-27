@@ -1176,7 +1176,17 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				free(buffer);
 				buffer = NULL;
 				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
-					indigo_process_dslr_image(device, buffer, size, strchr(filename, '.'));
+					const char *ext = strchr(filename, '.');
+					if ( ptp_check_jpeg_ext(ext) &&
+					     PRIVATE_DATA->check_compression_has_row != NULL &&
+					     PRIVATE_DATA->check_compression_has_row(device) ) {
+						// jpeg is secondary image
+						if ( CCD_PREVIEW_ENABLED_ITEM->sw.value ) {
+							indigo_process_dslr_preview_image(device, buffer, size);
+						}
+					} else {
+						indigo_process_dslr_image(device, buffer, size, ext);
+					}
 					if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
 						ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
 				}
@@ -1270,4 +1280,8 @@ bool ptp_set_host_time(indigo_device *device) {
 		return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_DateTime, buffer, (uint32_t)(end - buffer));
 	}
 	return false;
+}
+
+bool ptp_check_jpeg_ext(const char *ext) {
+	return strcmp(ext, ".JPG") == 0 || strcmp(ext, ".jpg") == 0;
 }

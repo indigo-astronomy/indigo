@@ -113,3 +113,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 bool ptp_sony_af(indigo_device *device) {
 	assert(0);
 }
+
+bool ptp_sony_check_compression_has_raw(indigo_device *device) {
+	assert(0);
+}
