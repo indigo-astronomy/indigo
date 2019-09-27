@@ -387,7 +387,7 @@ typedef struct {
 	bool (* zoom)(indigo_device *device);
 	bool (* focus)(indigo_device *device, int steps);
 	bool (* set_host_time)(indigo_device *device);
-	bool (* check_compression_has_row)(indigo_device *device);
+	bool (* check_compression_has_raw)(indigo_device *device);
 	indigo_timer *event_checker;
 	pthread_mutex_t message_mutex;
 	int message_property_index;
