@@ -387,6 +387,7 @@ typedef struct {
 	bool (* zoom)(indigo_device *device);
 	bool (* focus)(indigo_device *device, int steps);
 	bool (* set_host_time)(indigo_device *device);
+	bool (* check_compression_has_row)(indigo_device *device);
 	indigo_timer *event_checker;
 	pthread_mutex_t message_mutex;
 	int message_property_index;
@@ -443,6 +444,7 @@ extern bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_
 extern bool ptp_set_property(indigo_device *device, ptp_property *property);
 extern bool ptp_exposure(indigo_device *device);
 extern bool ptp_set_host_time(indigo_device *device);
+extern bool ptp_check_jpeg_ext(const char *ext);
 
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)

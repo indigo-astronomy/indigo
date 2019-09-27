@@ -339,6 +339,7 @@ typedef struct {
 	int shutter;
 	int steps;
 	uint32_t ex_func_group[16][1024];
+	uint64_t image_format;
 } canon_private_data;
 
 extern char *ptp_operation_canon_code_label(uint16_t code);
@@ -358,5 +359,6 @@ extern bool ptp_canon_af(indigo_device *device);
 extern bool ptp_canon_zoom(indigo_device *device);
 extern bool ptp_canon_focus(indigo_device *device, int steps);
 extern bool ptp_canon_set_host_time(indigo_device *device);
+extern bool ptp_canon_check_compression_has_raw(indigo_device *device);
 
 #endif /* indigo_ptp_canon_h */

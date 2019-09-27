@@ -78,5 +78,6 @@ extern bool ptp_sony_set_property(indigo_device *device, ptp_property *property)
 extern bool ptp_sony_exposure(indigo_device *device);
 extern bool ptp_sony_liveview(indigo_device *device);
 extern bool ptp_sony_af(indigo_device *device);
+extern bool ptp_sony_check_compression_has_raw(indigo_device *device);
 
 #endif /* indigo_ptp_sony_h */
