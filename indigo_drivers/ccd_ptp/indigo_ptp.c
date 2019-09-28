@@ -185,16 +185,16 @@ char *ptp_property_code_name(uint16_t code) {
 char *ptp_property_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_property_Undefined: return "Undefined";
-		case ptp_property_BatteryLevel: return "BatteryLevel";
-		case ptp_property_FunctionalMode: return "FunctionalMode";
+		case ptp_property_BatteryLevel: return "Battery level";
+		case ptp_property_FunctionalMode: return "Functional mode";
 		case ptp_property_ImageSize: return "Image size";
 		case ptp_property_CompressionSetting: return "Compression";
 		case ptp_property_WhiteBalance: return "White balance";
 		case ptp_property_RGBGain: return "RGBGain";
 		case ptp_property_FNumber: return "Aperture";
 		case ptp_property_FocalLength: return "Focal length";
-		case ptp_property_FocusDistance: return "FocusDistance";
-		case ptp_property_FocusMode: return "FocusMode";
+		case ptp_property_FocusDistance: return "Focus distance";
+		case ptp_property_FocusMode: return "Focus mode";
 		case ptp_property_ExposureMeteringMode: return "Metering mode";
 		case ptp_property_FlashMode: return "Flash mode";
 		case ptp_property_ExposureTime: return "Shutter";
@@ -206,39 +206,39 @@ char *ptp_property_code_label(uint16_t code) {
 		case ptp_property_StillCaptureMode: return "Capture mode";
 		case ptp_property_Contrast: return "Contrast";
 		case ptp_property_Sharpness: return "Sharpness";
-		case ptp_property_DigitalZoom: return "DigitalZoom";
-		case ptp_property_EffectMode: return "EffectMode";
-		case ptp_property_BurstNumber: return "BurstNumber";
-		case ptp_property_BurstInterval: return "BurstInterval";
-		case ptp_property_TimelapseNumber: return "TimelapseNumber";
-		case ptp_property_TimelapseInterval: return "TimelapseInterval";
+		case ptp_property_DigitalZoom: return "Digital zoom";
+		case ptp_property_EffectMode: return "Effect mode";
+		case ptp_property_BurstNumber: return "Burst number";
+		case ptp_property_BurstInterval: return "Burst interval";
+		case ptp_property_TimelapseNumber: return "Timelapse number";
+		case ptp_property_TimelapseInterval: return "Timelapse interval";
 		case ptp_property_FocusMeteringMode: return "Focus metering mode";
-		case ptp_property_UploadURL: return "UploadURL";
+		case ptp_property_UploadURL: return "Upload URL";
 		case ptp_property_Artist: return "Artist";
-		case ptp_property_CopyrightInfo: return "CopyrightInfo";
-		case ptp_property_SupportedStreams: return "SupportedStreams";
-		case ptp_property_EnabledStreams: return "EnabledStreams";
-		case ptp_property_VideoFormat: return "VideoFormat";
-		case ptp_property_VideoResolution: return "VideoResolution";
-		case ptp_property_VideoQuality: return "VideoQuality";
-		case ptp_property_VideoFrameRate: return "VideoFrameRate";
-		case ptp_property_VideoContrast: return "VideoContrast";
-		case ptp_property_VideoBrightness: return "VideoBrightness";
-		case ptp_property_AudioFormat: return "AudioFormat";
-		case ptp_property_AudioBitrate: return "AudioBitrate";
-		case ptp_property_AudioSamplingRate: return "AudioSamplingRate";
-		case ptp_property_AudioBitPerSample: return "AudioBitPerSample";
-		case ptp_property_AudioVolume: return "AudioVolume";
-		case ptp_property_MTPSynchronizationPartner: return "MTPSynchronizationPartner";
-		case ptp_property_MTPDeviceFriendlyName: return "MTPDeviceFriendlyName";
-		case ptp_property_MTPVolumeLevel: return "MTPVolumeLevel";
-		case ptp_property_MTPDeviceIcon: return "MTPDeviceIcon";
-		case ptp_property_MTPSessionInitiatorInfo: return "MTPSessionInitiatorInfo";
-		case ptp_property_MTPPerceivedDeviceType: return "MTPPerceivedDeviceType";
-		case ptp_property_MTPPlaybackRate: return "MTPPlaybackRate";
-		case ptp_property_MTPPlaybackObject: return "MTPPlaybackObject";
-		case ptp_property_MTPPlaybackContainerIndex: return "MTPPlaybackContainerIndex";
-		case ptp_property_MTPPlaybackPosition: return "MTPPlaybackPosition";
+		case ptp_property_CopyrightInfo: return "Copyright info";
+		case ptp_property_SupportedStreams: return "Supported streams";
+		case ptp_property_EnabledStreams: return "Enabled streams";
+		case ptp_property_VideoFormat: return "Video format";
+		case ptp_property_VideoResolution: return "Video resolution";
+		case ptp_property_VideoQuality: return "Video quality";
+		case ptp_property_VideoFrameRate: return "Video frame rate";
+		case ptp_property_VideoContrast: return "Video contrast";
+		case ptp_property_VideoBrightness: return "Video brightness";
+		case ptp_property_AudioFormat: return "Audio format";
+		case ptp_property_AudioBitrate: return "Audio bitrate";
+		case ptp_property_AudioSamplingRate: return "Audio sampling rate";
+		case ptp_property_AudioBitPerSample: return "Audio bit per sample";
+		case ptp_property_AudioVolume: return "Audiov olume";
+		case ptp_property_MTPSynchronizationPartner: return "MTP synchronization partner";
+		case ptp_property_MTPDeviceFriendlyName: return "MTP device friendly name";
+		case ptp_property_MTPVolumeLevel: return "MTP bolume level";
+		case ptp_property_MTPDeviceIcon: return "MTP device icon";
+		case ptp_property_MTPSessionInitiatorInfo: return "MTP session initiator info";
+		case ptp_property_MTPPerceivedDeviceType: return "MTP perceived device type";
+		case ptp_property_MTPPlaybackRate: return "MTP playback rate";
+		case ptp_property_MTPPlaybackObject: return "MTP playback object";
+		case ptp_property_MTPPlaybackContainerIndex: return "MTP playback container index";
+		case ptp_property_MTPPlaybackPosition: return "MTP playback position";
 	}
 	static char label[INDIGO_NAME_SIZE];
 	sprintf(label, "%04x", code);
@@ -1031,7 +1031,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				for (int i = 0; i < property->count; i++) {
 					if (property->type == ptp_str_type) {
 						strcpy(str, property->value.sw_str.values[i]);
-						indigo_init_switch_item(property->property->items + i, property->value.sw_str.values[i], property->value.sw_str.values[i], !strcmp(property->value.sw_str.value, property->value.sw_str.values[i]));
+						indigo_init_switch_item(property->property->items + i, str, str, !strcmp(property->value.sw_str.value, str));
 					} else {
 						sprintf(str, "%llx", property->value.sw.values[i]);
 						indigo_init_switch_item(property->property->items + i, str, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
@@ -1128,7 +1128,7 @@ bool ptp_get_event(indigo_device *device) {
 		return false;
 	}
 	PTP_DUMP_CONTAINER(&event);
-	ptp_handle_event(device, event.code, event.payload.params);
+	PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
 	return true;
 }
 
