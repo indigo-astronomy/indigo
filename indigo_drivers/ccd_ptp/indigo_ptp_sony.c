@@ -35,17 +35,19 @@
 #include "indigo_ptp_sony.h"
 
 #define SONY_PRIVATE_DATA	((sony_private_data *)(PRIVATE_DATA->vendor_private_data))
+#define SONY_ITERATE_DOWN	0xFFFF0000FFFFFFFFULL
+#define SONY_ITERATE_UP		0xFFFF000000000000ULL
 
 char *ptp_operation_sony_code_label(uint16_t code) {
 	switch (code) {
-		case ptp_operation_sony_SDIOConnect: return "sonySDIOConnect_Sony";
-		case ptp_operation_sony_GetSDIOGetExtDeviceInfo: return "sonyGetSDIOGetExtDeviceInfo_Sony";
-		case ptp_operation_sony_GetDevicePropDesc: return "sonyGetDevicePropDesc_Sony";
-		case ptp_operation_sony_GetDevicePropertyValue: return "sonyGetDevicePropertyValue_Sony";
-		case ptp_operation_sony_SetControlDeviceA: return "sonySetControlDeviceA_Sony";
-		case ptp_operation_sony_GetControlDeviceDesc: return "sonyGetControlDeviceDesc_Sony";
-		case ptp_operation_sony_SetControlDeviceB: return "sonySetControlDeviceB_Sony";
-		case ptp_operation_sony_GetAllDevicePropData: return "sonyGetAllDevicePropData_Sony";
+		case ptp_operation_sony_SDIOConnect: return "SDIOConnect_Sony";
+		case ptp_operation_sony_GetSDIOGetExtDeviceInfo: return "GetSDIOGetExtDeviceInfo_Sony";
+		case ptp_operation_sony_GetDevicePropDesc: return "GetDevicePropDesc_Sony";
+		case ptp_operation_sony_GetDevicePropertyValue: return "GetDevicePropertyValue_Sony";
+		case ptp_operation_sony_SetControlDeviceA: return "SetControlDeviceA_Sony";
+		case ptp_operation_sony_GetControlDeviceDesc: return "GetControlDeviceDesc_Sony";
+		case ptp_operation_sony_SetControlDeviceB: return "SetControlDeviceB_Sony";
+		case ptp_operation_sony_GetAllDevicePropData: return "GetAllDevicePropData_Sony";
 	}
 	return ptp_operation_code_label(code);
 }
@@ -74,6 +76,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		case ptp_property_sony_AspectRatio: return DSLR_ASPECT_RATIO_PROPERTY_NAME;
 		case ptp_property_sony_ISO:	return DSLR_ISO_PROPERTY_NAME;
 		case ptp_property_sony_ImageSize: return DSLR_IMAGE_SIZE_PROPERTY_NAME;
+		case ptp_property_sony_PictureEffect: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
 	}
 	return ptp_property_code_name(code);
 }
@@ -89,7 +92,7 @@ char *ptp_property_sony_code_label(uint16_t code) {
 		case ptp_property_sony_AspectRatio: return "Aspect ratio";
 		case ptp_property_sony_FocusStatus: return "FocusStatus_Sony";
 		case ptp_property_sony_ExposeIndex: return "ExposeIndex_Sony";
-		case ptp_property_sony_PictureEffect: return "PictureEffect_Sony";
+		case ptp_property_sony_PictureEffect: return "Picture effect";
 		case ptp_property_sony_ABFilter: return "ABFilter_Sony";
 		case ptp_property_sony_ISO: return "ISO";
 		case ptp_property_sony_Autofocus: return "Autofocus_Sony";
@@ -101,6 +104,7 @@ char *ptp_property_sony_code_label(uint16_t code) {
 }
 
 char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t property, uint64_t code) {
+	static char label[PTP_MAX_CHARS];
 	switch (property) {
 		case ptp_property_StillCaptureMode: {
 			switch (code) {
@@ -175,6 +179,7 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 				case 1: return "MF";
 				case 2: return "AF-S";
 				case 32772: return "AF-C";
+				case 32773: return "AF-A";
 				case 32774: return "DMF";
 			}
 			break;
@@ -232,6 +237,86 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 				case 0x8003: return "Reer Sync";
 			}
 			break;
+		}
+		case ptp_property_sony_PictureEffect: {
+			switch (code) {
+				case 32768: return "Off";
+				case 32769: return "Toy camera - normal";
+				case 32770: return "Toy camera - cool";
+				case 32771: return "Toy camera - warm";
+				case 32772: return "Toy camera - green";
+				case 32773: return "Toy camera - magenta";
+				case 32784: return "Pop Color";
+				case 32800: return "Posterisation B/W";
+				case 32801: return "Posterisation Color";
+				case 32816: return "Retro";
+				case 32832: return "Soft high key";
+				case 32848: return "Partial color - red";
+				case 32849: return "Partial color - green";
+				case 32850: return "Partial color - blue";
+				case 32851: return "Partial color - yellow";
+				case 32864: return "High contrast mono";
+				case 32880: return "Soft focus - low";
+				case 32881: return "Soft focus - mid";
+				case 32882: return "Soft focus - high";
+				case 32896: return "HDR painting - low";
+				case 32897: return "HDR painting - mid";
+				case 32898: return "HDR painting - high";
+				case 32912: return "Rich tone mono";
+				case 32928: return "Miniature - auto";
+				case 32929: return "Miniature - top";
+				case 32930: return "Miniature - middle horizontal";
+				case 32931: return "Miniature - bottom";
+				case 32932: return "Miniature - right";
+				case 32933: return "Miniature - middle vertical";
+				case 32934: return "Miniature - left";
+				case 32944: return "Watercolor";
+				case 32960: return "Illustration - low";
+				case 32961: return "Illustration - mid";
+				case 32962: return "Illustration - high";
+			}
+			break;
+		}
+		case ptp_property_ExposureBiasCompensation: {
+			switch (code) {
+				case SONY_ITERATE_DOWN: return "-";
+				case SONY_ITERATE_UP: return "+";
+			}
+			sprintf(label, "%+.1f", (int)code / 1000.0);
+			return label;
+		}
+		case ptp_property_FNumber: {
+			switch (code) {
+				case SONY_ITERATE_DOWN: return "-";
+				case SONY_ITERATE_UP: return "+";
+			}
+			sprintf(label, "f/%.1f", (int)code / 100.0);
+			return label;
+		}
+		case ptp_property_sony_ISO: {
+			switch (code) {
+				case SONY_ITERATE_DOWN: return "-";
+				case SONY_ITERATE_UP: return "+";
+			}
+			sprintf(label, "%d", (int)code);
+			return label;
+		}
+		case ptp_property_sony_ShutterSpeed: {
+			if (code == SONY_ITERATE_DOWN) {
+				return "-";
+			} else if (code == SONY_ITERATE_UP) {
+				return "+";
+			} else if (code == 0) {
+				return "Bulb";
+			} else {
+				int a = (int)code >> 16;
+				int b = (int)code & 0xFFFF;
+				if (b == 10)
+					sprintf(label, "%g\"", (double)a / b);
+				else
+					sprintf(label, "1/%d", b);
+			}
+			return label;
 		}
 	}
 	return ptp_property_value_code_label(device, property, code);
@@ -461,52 +546,45 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			break;
 		}
 	}
+	uint64_t mode = SONY_PRIVATE_DATA->mode;
 	switch (code) {
-		case ptp_property_ExposureBiasCompensation: {
+		case ptp_property_ExposureBiasCompensation:
 			target->count = 3;
-			target->type = ptp_str_type;
-			sprintf(target->value.sw_str.value, "%+.1f", target->value.number.value / 1000.0);
-			strcpy(target->value.sw_str.values[0], "-");
-			strcpy(target->value.sw_str.values[1], target->value.sw_str.value);
-			strcpy(target->value.sw_str.values[2], "+");
+			target->value.sw.values[0] = SONY_ITERATE_DOWN;
+			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[2] = SONY_ITERATE_UP;
+			target->writable = mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
 			break;
-		}
-		case ptp_property_FNumber: {
+		case ptp_property_sony_ISO:
 			target->count = 3;
-			target->type = ptp_str_type;
-			sprintf(target->value.sw_str.value, "f/%.1f", target->value.number.value / 100.0);
-			strcpy(target->value.sw_str.values[0], "-");
-			strcpy(target->value.sw_str.values[1], target->value.sw_str.value);
-			strcpy(target->value.sw_str.values[2], "+");
+			target->value.sw.values[0] = SONY_ITERATE_DOWN;
+			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[2] = SONY_ITERATE_UP;
+			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
 			break;
-		}
-		case ptp_property_sony_ISO: {
+		case ptp_property_sony_ShutterSpeed:
 			target->count = 3;
-			target->type = ptp_str_type;
-			sprintf(target->value.sw_str.value, "%d", (int)target->value.number.value);
-			strcpy(target->value.sw_str.values[0], "-");
-			strcpy(target->value.sw_str.values[1], target->value.sw_str.value);
-			strcpy(target->value.sw_str.values[2], "+");
+			target->value.sw.values[0] = SONY_ITERATE_DOWN;
+			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[2] = SONY_ITERATE_UP;
+			target->writable = mode == 1 || mode == 4 || mode == 32850 || mode == 32851;
 			break;
-		}
-		case ptp_property_sony_ShutterSpeed: {
+		case ptp_property_FNumber:
 			target->count = 3;
-			target->type = ptp_str_type;
-			if (target->value.number.value == 0) {
-				strcpy(target->value.sw_str.value, "Bulb");
-			} else {
-				int a = (int)target->value.number.value >> 16;
-				int b = (int)target->value.number.value & 0xFFFF;
-				if (b == 10)
-					sprintf(target->value.sw_str.value, "%g\"", (double)a / b);
-				else
-					sprintf(target->value.sw_str.value, "1/%d", b);
-			}
-			strcpy(target->value.sw_str.values[0], "-");
-			strcpy(target->value.sw_str.values[1], target->value.sw_str.value);
-			strcpy(target->value.sw_str.values[2], "+");
+			target->value.sw.values[0] = SONY_ITERATE_DOWN;
+			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[2] = SONY_ITERATE_UP;
+			target->writable = mode == 1 ||  mode == 3 ||mode == 32849 || mode == 32851;
 			break;
-		}
+		case ptp_property_FocusMode:
+			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
+			break;
+		case ptp_property_ExposureMeteringMode:
+			target->writable = true;
+			break;
+		case ptp_property_ExposureProgramMode:
+			SONY_PRIVATE_DATA->mode = target->value.sw.value;
+			break;
 	}
 	ptp_update_property(device, target);
 	return source;
@@ -514,7 +592,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 
 static void ptp_check_event(indigo_device *device) {
 	ptp_get_event(device);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->event_checker);
 }
 
 bool ptp_sony_initialise(indigo_device *device) {
@@ -603,7 +681,60 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 }
 
 bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
-	assert(0);
+  switch (property->code) {
+		case ptp_property_ExposureBiasCompensation:
+		case ptp_property_sony_ISO:
+		case ptp_property_sony_ShutterSpeed:
+    case ptp_property_FNumber: {
+			int16_t value = 0;
+			if (property->property->items[0].sw.value) {
+				value = -1;
+			} else if (property->property->items[2].sw.value) {
+				value = 1;
+			}
+			if (property->code == ptp_property_sony_ShutterSpeed)
+				value = -value;
+			indigo_set_switch(property->property, property->property->items + 1, true);
+			return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, property->code, &value, sizeof(uint16_t));
+		}
+    default: {
+			int64_t value = 0;
+			switch (property->property->type) {
+				case INDIGO_SWITCH_VECTOR: {
+					for (int i = 0; i < property->property->count; i++) {
+						indigo_item *item = property->property->items + i;
+						if (item->sw.value) {
+							value = atoll(item->name);
+							break;
+						}
+					}
+					break;
+				}
+				case INDIGO_NUMBER_VECTOR: {
+					property->value.number.value = property->property->items->number.target;
+					value = (int64_t)property->value.number.value;
+					break;
+				}
+				default:
+					assert(0);
+			}
+			switch (property->type) {
+				case ptp_int8_type:
+				case ptp_uint8_type:
+					return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceA, property->code, &value, sizeof(uint8_t));
+				case ptp_int16_type:
+				case ptp_uint16_type:
+					return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceA, property->code, &value, sizeof(uint16_t));
+				case ptp_int32_type:
+				case ptp_uint32_type:
+					return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceA, property->code, &value, sizeof(uint32_t));
+				case ptp_int64_type:
+				case ptp_uint64_type:
+					return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceA, property->code, &value, sizeof(uint64_t));
+			}
+		}
+  }
+	return false;
 }
 
 bool ptp_sony_exposure(indigo_device *device) {

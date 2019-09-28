@@ -38,7 +38,7 @@
 #include "indigo_ptp.h"
 
 #define ADVANCED_GROUP
-#define UNKNOWN_GROUP
+//#define UNKNOWN_GROUP
 
 char *ptp_type_code_label(uint16_t code) {
 	static char *scalar_type_label[] = { "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "int128", "uint128" };
@@ -1033,8 +1033,12 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						strcpy(str, property->value.sw_str.values[i]);
 						indigo_init_switch_item(property->property->items + i, str, str, !strcmp(property->value.sw_str.value, str));
 					} else {
+						indigo_item *item = property->property->items + i;
 						sprintf(str, "%llx", property->value.sw.values[i]);
-						indigo_init_switch_item(property->property->items + i, str, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
+						indigo_init_switch_item(item, str, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
+						if (!strcmp(item->label, "+") || !strcmp(item->label, "-")) {
+							strcpy(item->name, item->label);
+						}
 					}
 				}
 			}
@@ -1099,7 +1103,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			}
 		}
 		if (!property->writable == (property->property->perm == INDIGO_RW_PERM)) {
-			property->writable = (property->property->perm == INDIGO_RW_PERM);
+			property->property->perm = property->writable ? INDIGO_RW_PERM : INDIGO_RO_PERM;
 			define = true;
 		}
 	}
@@ -1240,23 +1244,21 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint32_t));
 		}
 		case INDIGO_NUMBER_VECTOR: {
+			property->value.number.value = property->property->items->number.target;
+			int64_t value = (int64_t)property->value.number.value;
 			switch (property->type) {
 				case ptp_int8_type:
 				case ptp_uint8_type:
-					property->value.number.value = (int64_t)property->property->items->number.target;
-					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint8_t));
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &value, sizeof(uint8_t));
 				case ptp_int16_type:
 				case ptp_uint16_type:
-					property->value.number.value = (int64_t)property->property->items->number.target;
-					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint16_t));
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &value, sizeof(uint16_t));
 				case ptp_int32_type:
 				case ptp_uint32_type:
-					property->value.number.value = (int64_t)property->property->items->number.target;
-					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint32_t));
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &value, sizeof(uint32_t));
 				case ptp_int64_type:
 				case ptp_uint64_type:
-					property->value.number.value = (int64_t)property->property->items->number.target;
-					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint64_t));
+					return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &value, sizeof(uint64_t));
 			}
 		}
 		default:

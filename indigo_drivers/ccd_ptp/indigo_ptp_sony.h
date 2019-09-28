@@ -67,7 +67,7 @@ typedef enum {
 } ptp_property_sony_code;
 
 typedef struct {
-	char payload;
+	uint64_t mode;
 } sony_private_data;
 
 
