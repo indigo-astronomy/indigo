@@ -499,6 +499,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_nikon_code_label;
 						private_data->property_value_code_label = ptp_property_nikon_value_code_label;
 						private_data->initialise = ptp_nikon_initialise;
+						private_data->handle_event = NULL;
 						private_data->fix_property = ptp_nikon_fix_property;
 						private_data->set_property = ptp_nikon_set_property;
 						private_data->exposure = ptp_nikon_exposure;
@@ -517,6 +518,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->property_code_label = ptp_property_sony_code_label;
 						private_data->property_value_code_label = ptp_property_sony_value_code_label;
 						private_data->initialise = ptp_sony_initialise;
+						private_data->handle_event = ptp_sony_handle_event;
 						private_data->fix_property = NULL;
 						private_data->set_property = ptp_sony_set_property;
 						private_data->exposure = ptp_sony_exposure;
