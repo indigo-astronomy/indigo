@@ -884,6 +884,7 @@ void ProcessSerialCommand()
       //Wireless.print("b ");
       //Wireless.println(newcutoff);
     }
+    ShutterBatteryVolts = 751; /*7.51 V*/
     Computer.print("K ");
     Computer.print(BatteryVolts);
     Computer.print(" ");
@@ -1131,7 +1132,7 @@ void ProcessShutterData()
     }
     if(WirelessBuffer[0]=='B') {
       char *ptr;
-      ShutterBatteryVolts=atoi(&WirelessBuffer[1]);
+      //ShutterBatteryVolts=atoi(&WirelessBuffer[1]);
       //  now find the low voltage cutoff if it exists
       ptr=&WirelessBuffer[2];
       while((ptr[0]!=0)&&(ptr[0]!=' ')&&(ptr[0]!=0x0a)&&(ptr[0]!=0x0d)) ptr++;
@@ -1204,7 +1205,8 @@ int CheckBattery()
   volts=volts/2;
   volts=volts*3;
   //v=(float)volts/(float)100;
-  BatteryVolts=volts;
+  //BatteryVolts=volts;
+  BatteryVolts = 752; /*7.52 V*/
   //Computer.println(volts);
   return 0;
 }
