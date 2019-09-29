@@ -37,7 +37,6 @@
 #include "indigo_ptp_nikon.h"
 
 #define NIKON_PRIVATE_DATA	((nikon_private_data *)(PRIVATE_DATA->vendor_private_data))
-#define DSLR_COMPRESSION_PROPERTY (NIKON_PRIVATE_DATA->dslr_compression_property)
 
 char *ptp_operation_nikon_code_label(uint16_t code) {
 	switch (code) {
@@ -960,14 +959,24 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			}
 			return true;
 		}
-		case ptp_property_CompressionSetting:
-			DSLR_COMPRESSION_PROPERTY = property;
+		case ptp_property_CompressionSetting: {
+			if (PRIVATE_DATA->model.product == 0x043a || PRIVATE_DATA->model.product == 0x043c || PRIVATE_DATA->model.product == 0x0440 || PRIVATE_DATA->model.product == 0x0441 || PRIVATE_DATA->model.product == 0x0442 || PRIVATE_DATA->model.product == 0x0443)
+				NIKON_PRIVATE_DATA->has_raw = property->value.sw.value >= 7 && property->value.sw.value <= 13;
+			else
+				NIKON_PRIVATE_DATA->has_raw = property->value.sw.value >= 4 && property->value.sw.value <= 7;
 			return true;
+		}
 	}
 	return false;
 }
 
 bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
+	if (property->code == ptp_property_CompressionSetting) {
+		if (PRIVATE_DATA->model.product == 0x043a || PRIVATE_DATA->model.product == 0x043c || PRIVATE_DATA->model.product == 0x0440 || PRIVATE_DATA->model.product == 0x0441 || PRIVATE_DATA->model.product == 0x0442 || PRIVATE_DATA->model.product == 0x0443)
+			NIKON_PRIVATE_DATA->has_raw = property->value.sw.value >= 7 && property->value.sw.value <= 13;
+		else
+			NIKON_PRIVATE_DATA->has_raw = property->value.sw.value >= 4 && property->value.sw.value <= 7;
+	}
 	return ptp_set_property(device, property);
 }
 
@@ -1061,14 +1070,5 @@ bool ptp_nikon_focus(indigo_device *device, int steps) {
 }
 
 bool ptp_nikon_check_compression_has_raw(indigo_device *device) {
-	if (!DSLR_COMPRESSION_PROPERTY || !DSLR_COMPRESSION_PROPERTY->property) {
-		return false;
-	}
-	for (int i = 0; i < DSLR_COMPRESSION_PROPERTY->count; ++i) {
-		if (DSLR_COMPRESSION_PROPERTY->property->items[i].sw.value) {
-			const char *label = DSLR_COMPRESSION_PROPERTY->property->items[i].label;
-			return strstr(label, "NEF") != NULL || strstr(label, "RAW") != NULL;
-		}
-	}
-	return false;
+	return NIKON_PRIVATE_DATA->has_raw;
 }
