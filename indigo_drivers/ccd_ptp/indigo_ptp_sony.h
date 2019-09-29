@@ -69,6 +69,9 @@ typedef enum {
 typedef struct {
 	uint64_t mode;
 	uint64_t focus_state;
+	uint64_t focus_mode;
+	uint64_t shutter_speed;
+	bool has_raw;
 } sony_private_data;
 
 

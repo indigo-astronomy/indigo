@@ -31,6 +31,8 @@
 #include <stdarg.h>
 #include <libusb-1.0/libusb.h>
 
+#include <indigo/indigo_ccd_driver.h>
+
 #include "indigo_ptp.h"
 #include "indigo_ptp_sony.h"
 
@@ -551,33 +553,35 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 		case ptp_property_ExposureBiasCompensation:
 			target->count = 3;
 			target->value.sw.values[0] = SONY_ITERATE_DOWN;
-			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[1] = target->value.number.value;
 			target->value.sw.values[2] = SONY_ITERATE_UP;
 			target->writable = mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
 			break;
 		case ptp_property_sony_ISO:
 			target->count = 3;
 			target->value.sw.values[0] = SONY_ITERATE_DOWN;
-			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[1] = target->value.number.value;
 			target->value.sw.values[2] = SONY_ITERATE_UP;
 			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
 			break;
 		case ptp_property_sony_ShutterSpeed:
 			target->count = 3;
 			target->value.sw.values[0] = SONY_ITERATE_DOWN;
-			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[1] = target->value.number.value;
 			target->value.sw.values[2] = SONY_ITERATE_UP;
 			target->writable = mode == 1 || mode == 4 || mode == 32850 || mode == 32851;
+			SONY_PRIVATE_DATA->shutter_speed = target->value.number.value;
 			break;
 		case ptp_property_FNumber:
 			target->count = 3;
 			target->value.sw.values[0] = SONY_ITERATE_DOWN;
-			target->value.sw.values[1] = target->value.sw.value;
+			target->value.sw.values[1] = target->value.number.value;
 			target->value.sw.values[2] = SONY_ITERATE_UP;
 			target->writable = mode == 1 ||  mode == 3 ||mode == 32849 || mode == 32851;
 			break;
 		case ptp_property_FocusMode:
 			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
+			SONY_PRIVATE_DATA->focus_mode = target->value.number.value;
 			break;
 		case ptp_property_ExposureMeteringMode:
 			target->writable = true;
@@ -587,6 +591,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			break;
 		case ptp_property_sony_FocusStatus:
 			SONY_PRIVATE_DATA->focus_state = target->value.number.value;
+			break;
+		case ptp_property_CompressionSetting:
+			SONY_PRIVATE_DATA->has_raw = target-> value.number.value == 16 || target-> value.number.value == 19;
 			break;
 	}
 	ptp_update_property(device, target);
@@ -679,6 +686,10 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 			buffer = NULL;
 			return true;
 		}
+		case ptp_event_sony_ObjectAdded: {
+			code = ptp_event_ObjectAdded;
+			break;
+		}
 	}
 	return ptp_handle_event(device, code, params);
 }
@@ -741,7 +752,49 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_sony_exposure(indigo_device *device) {
-	assert(0);
+	int16_t value = 2;
+	SONY_PRIVATE_DATA->focus_state = 1;
+	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t))) {
+		if (SONY_PRIVATE_DATA->focus_mode != 1) {
+			for (int i = 0; i < 50 && SONY_PRIVATE_DATA->focus_state == 1; i++) {
+				usleep(100000);
+			}
+			if (SONY_PRIVATE_DATA->focus_state == 3) {
+				value = 1;
+				ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
+				return false;
+			}
+		} else {
+			usleep(1000000);
+		}
+	}
+	if (SONY_PRIVATE_DATA->shutter_speed == 0) {
+		value = 1;
+		ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
+	}
+	value = 2;
+	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t))) {
+		value = 1;
+		if (SONY_PRIVATE_DATA->shutter_speed == 0) {
+			while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_usleep(ONE_SECOND_DELAY);
+				CCD_EXPOSURE_ITEM->number.value -= 1;
+			}
+			if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
+			}
+			CCD_EXPOSURE_ITEM->number.value = 0;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));
+		} else {
+			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));
+			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
+		}
+		return true;
+	}
+	return false;
 }
 
 bool ptp_sony_liveview(indigo_device *device) {
@@ -749,20 +802,22 @@ bool ptp_sony_liveview(indigo_device *device) {
 }
 
 bool ptp_sony_af(indigo_device *device) {
-	int16_t value = 2;
-	SONY_PRIVATE_DATA->focus_state = 1;
-	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t))) {
-		for (int i = 0; i < 50 && SONY_PRIVATE_DATA->focus_state == 1; i++) {
-			usleep(100000);
+	if (SONY_PRIVATE_DATA->focus_mode != 1) {
+		int16_t value = 2;
+		SONY_PRIVATE_DATA->focus_state = 1;
+		if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t))) {
+			for (int i = 0; i < 50 && SONY_PRIVATE_DATA->focus_state == 1; i++) {
+				usleep(100000);
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_state %d", (int)(SONY_PRIVATE_DATA->focus_state));
+			value = 1;
+			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
+			return SONY_PRIVATE_DATA->focus_state;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_state %d", (int)(SONY_PRIVATE_DATA->focus_state));
-		value = 1;
-		ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
-		return SONY_PRIVATE_DATA->focus_state != 3;
 	}
 	return false;
 }
 
 bool ptp_sony_check_compression_has_raw(indigo_device *device) {
-	assert(0);
+	return SONY_PRIVATE_DATA->has_raw;
 }
