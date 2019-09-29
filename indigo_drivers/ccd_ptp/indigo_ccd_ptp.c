@@ -464,7 +464,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			int rc = libusb_get_device_descriptor(dev, &descriptor);
-			INDIGO_DRIVER_TRACE(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			for (int i = 0; CAMERA[i].vendor; i++) {
 				if (CAMERA[i].vendor == descriptor.idVendor && CAMERA[i].product == descriptor.idProduct) {
 					ptp_private_data *private_data = malloc(sizeof(ptp_private_data));
