@@ -354,6 +354,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_PREVIEW_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_PREVIEW
+		indigo_property_copy_values(CCD_PREVIEW_PROPERTY, property, false);
+		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			if (CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
+				CCD_PREVIEW_IMAGE_PROPERTY->hidden = false;
+				if (IS_CONNECTED)
+					indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			}
+		} else {
+			if (!CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
+				if (IS_CONNECTED)
+					indigo_delete_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+				CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
+			}
+		}
+		CCD_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED)
+			indigo_update_property(device, CCD_PREVIEW_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else {
 		for (int i = 0; i < PRIVATE_DATA->info_properties_supported[i]; i++) {
 			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property)) {
