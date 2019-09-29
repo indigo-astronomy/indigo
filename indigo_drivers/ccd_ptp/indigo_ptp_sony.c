@@ -585,6 +585,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 		case ptp_property_ExposureProgramMode:
 			SONY_PRIVATE_DATA->mode = target->value.sw.value;
 			break;
+		case ptp_property_sony_FocusStatus:
+			SONY_PRIVATE_DATA->focus_state = target->value.number.value;
+			break;
 	}
 	ptp_update_property(device, target);
 	return source;
@@ -746,7 +749,18 @@ bool ptp_sony_liveview(indigo_device *device) {
 }
 
 bool ptp_sony_af(indigo_device *device) {
-	assert(0);
+	int16_t value = 2;
+	SONY_PRIVATE_DATA->focus_state = 1;
+	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t))) {
+		for (int i = 0; i < 50 && SONY_PRIVATE_DATA->focus_state == 1; i++) {
+			usleep(100000);
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_state %d", (int)(SONY_PRIVATE_DATA->focus_state));
+		value = 1;
+		ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
+		return SONY_PRIVATE_DATA->focus_state != 3;
+	}
+	return false;
 }
 
 bool ptp_sony_check_compression_has_raw(indigo_device *device) {
