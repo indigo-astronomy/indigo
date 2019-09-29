@@ -364,7 +364,7 @@ typedef enum {
 
 typedef struct {
 	int steps;
-	ptp_property *dslr_compression_property;
+	bool has_raw;
 } nikon_private_data;
 
 extern char *ptp_operation_nikon_code_label(uint16_t code);
