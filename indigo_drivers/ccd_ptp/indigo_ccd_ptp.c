@@ -61,9 +61,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->hidden = true;
 		CCD_STREAMING_PROPERTY->hidden = PRIVATE_DATA->liveview == NULL;
 		CCD_IMAGE_FORMAT_PROPERTY->hidden = true;
+		CCD_FRAME_PROPERTY->hidden = true;
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->model.width;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->model.height;
-		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value =  CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->model.width;
+		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value =  CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->model.pixel_size;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
