@@ -606,12 +606,12 @@ static void ptp_check_event(indigo_device *device) {
 }
 
 bool ptp_sony_initialise(indigo_device *device) {
+	DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
 	PRIVATE_DATA->vendor_private_data = malloc(sizeof(sony_private_data));
 	memset(SONY_PRIVATE_DATA, 0, sizeof(sony_private_data));
 	if (!ptp_initialise(device))
 		return false;
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
-
 	if (ptp_operation_supported(device, ptp_operation_sony_GetSDIOGetExtDeviceInfo)) {
 		void *buffer = NULL;
 		uint32_t size;
@@ -798,7 +798,41 @@ bool ptp_sony_exposure(indigo_device *device) {
 }
 
 bool ptp_sony_liveview(indigo_device *device) {
-	assert(0);
+	void *buffer = NULL;
+	uint32_t size;
+	int retry_count = 0;
+	while (!PRIVATE_DATA->abort_capture) {
+		if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, 0xffffc002, &buffer, &size)) {
+			uint8_t *start = (uint8_t *)buffer;
+			while (size > 0) {
+				if (start[0] == 0xFF && start[1] == 0xD8 && start[2] == 0xFF && start[3] == 0xDB) {
+					uint8_t *end = start + 2;
+					size -= 2;
+					while (size > 0) {
+						if (end[0] == 0xFF && end[1] == 0xD9) {
+							indigo_process_dslr_image(device, start, (int)(end - start), ".jpeg");
+							retry_count = 0;
+							break;
+						}
+						end++;
+						size--;
+					}
+					break;
+				}
+				start++;
+				size--;
+			}
+		} else if (PRIVATE_DATA->last_error == ptp_response_AccessDenied) {
+			if (retry_count++ > 100) {
+				return false;
+			}
+		}
+		if (buffer)
+			free(buffer);
+		buffer = NULL;
+		indigo_usleep(100000);
+	}
+	return true;
 }
 
 bool ptp_sony_af(indigo_device *device) {
