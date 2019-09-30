@@ -607,6 +607,8 @@ static void ptp_check_event(indigo_device *device) {
 
 bool ptp_sony_initialise(indigo_device *device) {
 	DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
+	DSLR_DELETE_IMAGE_PROPERTY->hidden = true;
+	indigo_set_switch(DSLR_DELETE_IMAGE_PROPERTY, DSLR_DELETE_IMAGE_OFF_ITEM, true);
 	PRIVATE_DATA->vendor_private_data = malloc(sizeof(sony_private_data));
 	memset(SONY_PRIVATE_DATA, 0, sizeof(sony_private_data));
 	if (!ptp_initialise(device))
