@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome.c
  */
 
-#define DRIVER_VERSION 0x00001
+#define DRIVER_VERSION 0x00002
 #define DRIVER_NAME	"indigo_dome_nexdome"
 
 #include <stdlib.h>
@@ -44,6 +44,14 @@
 #define is_connected                    gp_bits
 
 #define PRIVATE_DATA					((nexdome_private_data *)device->private_data)
+
+#define NEXDOME_REVERSED_PROPERTY       (PRIVATE_DATA->reversed_property)
+#define NEXDOME_REVERSED_YES_ITEM       (NEXDOME_REVERSED_PROPERTY->items+0)
+#define NEXDOME_REVERSED_NO_ITEM        (NEXDOME_REVERSED_PROPERTY->items+1)
+
+#define NEXDOME_REVERSED_PROPERTY_NAME  "NEXDOME_REVERED"
+#define NEXDOME_REVERSED_YES_ITEM_NAME  "YES"
+#define NEXDOME_REVERSED_NO_ITEM_NAME   "NO"
 
 typedef enum {
 	DOME_STOPED = 0,
@@ -67,6 +75,9 @@ typedef enum {
 	DOME_AT_HOME = 1,
 } nexdome_home_state_t;
 
+// Low Voltage threshold taken from INDI
+# define VOLT_THRESHOLD (7.5)
+
 typedef struct {
 	int handle;
 	float target_position, current_position;
@@ -76,6 +87,7 @@ typedef struct {
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
+	indigo_property *reversed_property;
 } nexdome_private_data;
 
 
@@ -439,8 +451,24 @@ static bool nexdome_set_reversed_flag(indigo_device *device, bool reversed) {
 	snprintf(command, NEXDOME_CMD_LEN, "y %d\n", (int)reversed);
 
 	if (nexdome_command(device, command, response, sizeof(response), NEXDOME_CMD_LEN)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "y %d -> %s, %d", reversed, response);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "y %d -> %s", reversed, response);
 		if (response[0] != 'Y') return false;
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	return false;
+}
+
+static bool nexdome_get_voltages(indigo_device *device, float *v_rotattor, float *v_shutter) {
+	if (!v_rotattor || !v_shutter) return false;
+
+	char response[NEXDOME_CMD_LEN]={0};
+	if (nexdome_command(device, "k\n", response, sizeof(response), NEXDOME_CMD_LEN)) {
+		int parsed = sscanf(response, "K %f %f", v_rotattor, v_shutter);
+		*v_rotattor /= 100;
+		*v_shutter /= 100;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "k -> %s, %f %f", response, *v_rotattor, *v_shutter);
+		if (parsed != 2) return false;
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
@@ -452,7 +480,29 @@ static bool nexdome_set_reversed_flag(indigo_device *device, bool reversed) {
 
 static void dome_timer_callback(indigo_device *device) {
 	static bool need_update = true;
+	static bool low_voltage = false;
 	static nexdome_shutter_state_t prev_shutter_state = SHUTTER_STATE_UNKNOWN;
+
+	/* Check dome power */
+	float v_rotattor, v_shutter;
+	if(!nexdome_get_voltages(device, &v_rotattor, &v_shutter)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_voltages(): returned error");
+	} else {
+		/* Threshold taken from INDI driver */
+		if ((v_rotattor < VOLT_THRESHOLD) || (v_shutter < VOLT_THRESHOLD)) {
+			if (!low_voltage) {
+				indigo_send_message(device, "Dome power is low! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
+			}
+			low_voltage = true;
+		} else {
+			if (low_voltage) {
+				indigo_send_message(device, "Dome power is normal! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
+			}
+			low_voltage = false;
+		}
+	}
 
 	/* Handle dome rotation */
 	if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
@@ -553,6 +603,15 @@ static void dome_timer_callback(indigo_device *device) {
 }
 
 
+static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(NEXDOME_REVERSED_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
+	}
+	return indigo_dome_enumerate_properties(device, NULL, NULL);
+}
+
+
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -573,6 +632,13 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
 		DOME_SYNC_PARAMETERS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- NEXDOME_REVERSED
+		NEXDOME_REVERSED_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_REVERSED_PROPERTY_NAME, "Callibration", "Reversed dome directions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (NEXDOME_REVERSED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_REVERSED_PROPERTY->hidden = false;
+		indigo_init_switch_item(NEXDOME_REVERSED_YES_ITEM, NEXDOME_REVERSED_YES_ITEM_NAME, "Yes", false);
+		indigo_init_switch_item(NEXDOME_REVERSED_NO_ITEM, NEXDOME_REVERSED_NO_ITEM_NAME, "No", false);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -649,6 +715,17 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s connected.", name, firmware);
 
+					bool reversed;
+					if(!nexdome_get_reversed_flag(device, &reversed)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_reversed_flag(): returned error");
+					}
+					if (reversed) {
+						indigo_set_switch(NEXDOME_REVERSED_PROPERTY, NEXDOME_REVERSED_YES_ITEM, true);
+					} else {
+						indigo_set_switch(NEXDOME_REVERSED_PROPERTY, NEXDOME_REVERSED_NO_ITEM, true);
+					}
+					indigo_define_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
+
 					if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
 					}
@@ -658,9 +735,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					}
 					if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 100) {
 						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, false);
 					} else {
-						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, false);
 						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
 					}
 					DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -677,6 +752,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		} else {
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->dome_timer);
+				indigo_delete_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -836,6 +912,16 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(NEXDOME_REVERSED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_REVERED
+		indigo_property_copy_values(NEXDOME_REVERSED_PROPERTY, property, false);
+		NEXDOME_REVERSED_PROPERTY->state = INDIGO_OK_STATE;
+		if(!nexdome_set_reversed_flag(device, NEXDOME_REVERSED_YES_ITEM->sw.value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_set_reversed_flag(%d, %d): returned error", PRIVATE_DATA->handle, NEXDOME_REVERSED_YES_ITEM->sw.value);
+			NEXDOME_REVERSED_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_dome_change_property(device, client, property);
@@ -846,6 +932,8 @@ static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+	indigo_release_property(NEXDOME_REVERSED_PROPERTY);
+	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
 }
@@ -860,7 +948,7 @@ indigo_result indigo_dome_nexdome(indigo_driver_action action, indigo_driver_inf
 	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
 		"NexDome",
 		dome_attach,
-		indigo_dome_enumerate_properties,
+		nexdome_enumerate_properties,
 		dome_change_property,
 		NULL,
 		dome_detach
