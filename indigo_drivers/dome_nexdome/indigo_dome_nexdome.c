@@ -59,6 +59,18 @@
 #define NEXDOME_RESET_SHUTTER_COMM_ITEM_NAME      "RESET"
 
 
+#define NEXDOME_FIND_HOME_PROPERTY                (PRIVATE_DATA->find_home_property)
+#define NEXDOME_FIND_HOME_ITEM                    (NEXDOME_FIND_HOME_PROPERTY->items+0)
+#define NEXDOME_FIND_HOME_PROPERTY_NAME           "NEXDOME_FIND_HOME"
+#define NEXDOME_FIND_HOME_ITEM_NAME               "FIND_HOME"
+
+
+#define NEXDOME_CALLIBRATE_PROPERTY               (PRIVATE_DATA->callibrate_property)
+#define NEXDOME_CALLIBRATE_ITEM                   (NEXDOME_CALLIBRATE_PROPERTY->items+0)
+#define NEXDOME_CALLIBRATE_PROPERTY_NAME          "NEXDOME_CALLIBRATE"
+#define NEXDOME_CALLIBRATE_ITEM_NAME              "CALLIBRATE"
+
+
 typedef enum {
 	DOME_STOPED = 0,
 	DOME_GOTO = 1,
@@ -90,11 +102,14 @@ typedef struct {
 	nexdome_dome_state_t dome_state;
 	nexdome_shutter_state_t shutter_state;
 	bool park_requested;
+	bool callibration_requested;
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
 	indigo_property *reversed_property;
 	indigo_property *reset_shutter_comm_property;
+	indigo_property *find_home_property;
+	indigo_property *callibrate_property;
 } nexdome_private_data;
 
 
@@ -543,7 +558,7 @@ static void dome_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		need_update = true;
 	} else if(need_update) {
-		if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*100) >= 100) {
+		if (!PRIVATE_DATA->callibration_requested && fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*100) >= 100) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -556,12 +571,23 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		}
+
+		if(NEXDOME_FIND_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_set_switch(NEXDOME_FIND_HOME_PROPERTY, NEXDOME_FIND_HOME_ITEM, false);
+			indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, "Home Found.");
+		}
+		if(NEXDOME_CALLIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			NEXDOME_CALLIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_set_switch(NEXDOME_CALLIBRATE_PROPERTY, NEXDOME_CALLIBRATE_ITEM, false);
+			indigo_update_property(device, NEXDOME_CALLIBRATE_PROPERTY, "Callibration complete.");
+		}
+		PRIVATE_DATA->callibration_requested = false;
 		need_update = false;
 	}
 
 	if (PRIVATE_DATA->park_requested && (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 100)) {
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, false);
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->park_requested = false;
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
@@ -578,19 +604,16 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 			break;
 		case SHUTTER_STATE_OPEN:
-			DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
-			DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			break;
 		case SHUTTER_STATE_CLOSED:
-			DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
-			DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			break;
 		case SHUTTER_STATE_OPENING:
 		case SHUTTER_STATE_CLOSING:
-			DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
-			DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 			break;
 		case SHUTTER_STATE_UNKNOWN:
@@ -629,6 +652,10 @@ static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
 		if (indigo_property_match(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property))
 			indigo_define_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
+		if (indigo_property_match(NEXDOME_FIND_HOME_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
+		if (indigo_property_match(NEXDOME_CALLIBRATE_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -667,6 +694,18 @@ static indigo_result dome_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		NEXDOME_RESET_SHUTTER_COMM_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_RESET_SHUTTER_COMM_ITEM, NEXDOME_RESET_SHUTTER_COMM_ITEM_NAME, "Reset", false);
+		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME_PROPERTY
+		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, "Setup", "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_FIND_HOME_PROPERTY->hidden = false;
+		indigo_init_switch_item(NEXDOME_FIND_HOME_ITEM, NEXDOME_FIND_HOME_ITEM_NAME, "Find home", false);
+		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME_PROPERTY
+		NEXDOME_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_CALLIBRATE_PROPERTY_NAME, "Setup", "Callibrate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (NEXDOME_CALLIBRATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_CALLIBRATE_PROPERTY->hidden = false;
+		indigo_init_switch_item(NEXDOME_CALLIBRATE_ITEM, NEXDOME_CALLIBRATE_ITEM_NAME, "Callibrate", false);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -755,6 +794,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_define_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
 
 					indigo_define_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
+					indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
+					indigo_define_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
 
 					if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
@@ -784,6 +825,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_cancel_timer(device, &PRIVATE_DATA->dome_timer);
 				indigo_delete_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
+				indigo_delete_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
+				indigo_delete_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -953,7 +996,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	} else if (indigo_property_match(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_RESET_SHUTTER_COMM
 		indigo_property_copy_values(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property, false);
@@ -972,6 +1014,38 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(NEXDOME_FIND_HOME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
+		indigo_property_copy_values(NEXDOME_FIND_HOME_PROPERTY, property, false);
+		if (NEXDOME_FIND_HOME_ITEM->sw.value) {
+			NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+			if(!nexdome_find_home(device)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_find_home(%d): returned error", PRIVATE_DATA->handle);
+				indigo_set_switch(NEXDOME_FIND_HOME_PROPERTY, NEXDOME_FIND_HOME_ITEM, false);
+				NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				PRIVATE_DATA->callibration_requested = true;
+			}
+		}
+		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(NEXDOME_CALLIBRATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_CALLIBRATE
+		indigo_property_copy_values(NEXDOME_CALLIBRATE_PROPERTY, property, false);
+		if (NEXDOME_CALLIBRATE_ITEM->sw.value) {
+			NEXDOME_CALLIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			if(!nexdome_callibrate(device)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_callibrate(%d): returned error.", PRIVATE_DATA->handle);
+				indigo_set_switch(NEXDOME_CALLIBRATE_PROPERTY, NEXDOME_CALLIBRATE_ITEM, false);
+				NEXDOME_CALLIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, NEXDOME_CALLIBRATE_PROPERTY, "Callibration failed. Is the dome in home position?");
+				return INDIGO_OK;
+			} else {
+				PRIVATE_DATA->callibration_requested = true;
+			}
+		}
+		indigo_update_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_dome_change_property(device, client, property);
@@ -984,6 +1058,8 @@ static indigo_result dome_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(NEXDOME_REVERSED_PROPERTY);
 	indigo_release_property(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
+	indigo_release_property(NEXDOME_FIND_HOME_PROPERTY);
+	indigo_release_property(NEXDOME_CALLIBRATE_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
