@@ -565,7 +565,7 @@ static void dome_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_dome_state(): returned error");
 	}
 
-	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) need_update = true;
+	if ((DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) || PRIVATE_DATA->callibration_requested) need_update = true;
 
 	if (PRIVATE_DATA->dome_state != DOME_STOPED) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
