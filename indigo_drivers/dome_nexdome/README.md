@@ -21,7 +21,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_dome_nexdome
 
-## Status: Under development - Untested
+## Status: Untested
 
 Driver is developed and tested with:
 * Arduino NexDome simulator (based on the firmware).
