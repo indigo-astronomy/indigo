@@ -33,6 +33,8 @@
 extern "C" {
 #endif
 
+#define DOME_NEXDOME_NAME              "NexDome"
+
 /** Create DOME NexDome device instance
  */
 
@@ -43,4 +45,3 @@ extern indigo_result indigo_dome_nexdome(indigo_driver_action action, indigo_dri
 #endif
 
 #endif /* dome_nexdome_h */
-
