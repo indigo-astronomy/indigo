@@ -45,6 +45,8 @@
 
 #define PRIVATE_DATA                              ((nexdome_private_data *)device->private_data)
 
+#define NEXDOME_SETTINGS_GROUP                    "Settings"
+
 #define NEXDOME_REVERSED_PROPERTY                 (PRIVATE_DATA->reversed_property)
 #define NEXDOME_REVERSED_YES_ITEM                 (NEXDOME_REVERSED_PROPERTY->items+0)
 #define NEXDOME_REVERSED_NO_ITEM                  (NEXDOME_REVERSED_PROPERTY->items+1)
@@ -69,6 +71,14 @@
 #define NEXDOME_CALLIBRATE_ITEM                   (NEXDOME_CALLIBRATE_PROPERTY->items+0)
 #define NEXDOME_CALLIBRATE_PROPERTY_NAME          "NEXDOME_CALLIBRATE"
 #define NEXDOME_CALLIBRATE_ITEM_NAME              "CALLIBRATE"
+
+
+#define NEXDOME_POWER_PROPERTY                    (PRIVATE_DATA->power_property)
+#define NEXDOME_POWER_ROTATOR_ITEM                (NEXDOME_POWER_PROPERTY->items+0)
+#define NEXDOME_POWER_SHUTTER_ITEM                (NEXDOME_POWER_PROPERTY->items+1)
+#define NEXDOME_POWER_PROPERTY_NAME               "NEXDOME_POWER"
+#define NEXDOME_POWER_ROTATOR_ITEM_NAME           "ROTATOR_VOLTAGE"
+#define NEXDOME_POWER_SHUTTER_ITEM_NAME           "SHUTTER_VOLTAGE"
 
 
 typedef enum {
@@ -110,6 +120,7 @@ typedef struct {
 	indigo_property *reset_shutter_comm_property;
 	indigo_property *find_home_property;
 	indigo_property *callibrate_property;
+	indigo_property *power_property;
 } nexdome_private_data;
 
 
@@ -519,23 +530,29 @@ static void dome_timer_callback(indigo_device *device) {
 	static nexdome_shutter_state_t prev_shutter_state = SHUTTER_STATE_UNKNOWN;
 
 	/* Check dome power */
-	float v_rotattor, v_shutter;
-	if(!nexdome_get_voltages(device, &v_rotattor, &v_shutter)) {
+	float v_rotator, v_shutter;
+	if(!nexdome_get_voltages(device, &v_rotator, &v_shutter)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_voltages(): returned error");
 	} else {
 		/* Threshold taken from INDI driver */
-		if ((v_rotattor < VOLT_THRESHOLD) || (v_shutter < VOLT_THRESHOLD)) {
+		if ((v_rotator < VOLT_THRESHOLD) || (v_shutter < VOLT_THRESHOLD)) {
 			if (!low_voltage) {
-				indigo_send_message(device, "Dome power is low! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
+				indigo_send_message(device, "Dome power is low! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
 			}
 			low_voltage = true;
 		} else {
 			if (low_voltage) {
-				indigo_send_message(device, "Dome power is normal! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (Vr = %.1fV, Vs = %.1fV)", v_rotattor, v_shutter);
+				indigo_send_message(device, "Dome power is normal! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
 			}
 			low_voltage = false;
+		}
+		if ((fabs((v_rotator - NEXDOME_POWER_ROTATOR_ITEM->number.value)*100) >= 100) ||
+		   (fabs((v_shutter - NEXDOME_POWER_SHUTTER_ITEM->number.value)*100) >= 100)) {
+			NEXDOME_POWER_ROTATOR_ITEM->number.value = v_rotator;
+			NEXDOME_POWER_SHUTTER_ITEM->number.value = v_shutter;
+			indigo_update_property(device, NEXDOME_POWER_PROPERTY, NULL);
 		}
 	}
 
@@ -656,6 +673,8 @@ static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 		if (indigo_property_match(NEXDOME_CALLIBRATE_PROPERTY, property))
 			indigo_define_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
+		if (indigo_property_match(NEXDOME_POWER_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -682,30 +701,39 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
 		DOME_SYNC_PARAMETERS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- NEXDOME_REVERSED
-		NEXDOME_REVERSED_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_REVERSED_PROPERTY_NAME, "Setup", "Reversed dome directions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		NEXDOME_REVERSED_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_REVERSED_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Reversed dome directions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (NEXDOME_REVERSED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_REVERSED_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_REVERSED_YES_ITEM, NEXDOME_REVERSED_YES_ITEM_NAME, "Yes", false);
 		indigo_init_switch_item(NEXDOME_REVERSED_NO_ITEM, NEXDOME_REVERSED_NO_ITEM_NAME, "No", false);
 		// -------------------------------------------------------------------------------- NEXDOME_RESET_SHUTTER_COMM_PROPERTY
-		NEXDOME_RESET_SHUTTER_COMM_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_RESET_SHUTTER_COMM_PROPERTY_NAME, "Setup", "Reset shutter communication", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		NEXDOME_RESET_SHUTTER_COMM_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_RESET_SHUTTER_COMM_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Reset shutter communication", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (NEXDOME_RESET_SHUTTER_COMM_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_RESET_SHUTTER_COMM_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_RESET_SHUTTER_COMM_ITEM, NEXDOME_RESET_SHUTTER_COMM_ITEM_NAME, "Reset", false);
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME_PROPERTY
-		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, "Setup", "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_FIND_HOME_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_FIND_HOME_ITEM, NEXDOME_FIND_HOME_ITEM_NAME, "Find home", false);
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME_PROPERTY
-		NEXDOME_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_CALLIBRATE_PROPERTY_NAME, "Setup", "Callibrate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		NEXDOME_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_CALLIBRATE_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Callibrate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (NEXDOME_CALLIBRATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_CALLIBRATE_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_CALLIBRATE_ITEM, NEXDOME_CALLIBRATE_ITEM_NAME, "Callibrate", false);
+		// -------------------------------------------------------------------------------- NEXDOME_POWER_PROPERTY
+		NEXDOME_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_POWER_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Power status", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		if (NEXDOME_POWER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_POWER_PROPERTY->hidden = false;
+		indigo_init_number_item(NEXDOME_POWER_ROTATOR_ITEM, NEXDOME_POWER_ROTATOR_ITEM_NAME, "Rotator (Volts)", 0, 500, 1, 0);
+		strcpy(NEXDOME_POWER_ROTATOR_ITEM->number.format, "%.2f");
+		indigo_init_number_item(NEXDOME_POWER_SHUTTER_ITEM, NEXDOME_POWER_SHUTTER_ITEM_NAME, "Shutter (Volts)", 0, 500, 1, 0);
+		strcpy(NEXDOME_POWER_SHUTTER_ITEM->number.format, "%.2f");
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -796,6 +824,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_define_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
+					indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
 
 					if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
@@ -827,6 +856,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_delete_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
+				indigo_delete_property(device, NEXDOME_POWER_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -1060,6 +1090,7 @@ static indigo_result dome_detach(indigo_device *device) {
 	indigo_release_property(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
 	indigo_release_property(NEXDOME_FIND_HOME_PROPERTY);
 	indigo_release_property(NEXDOME_CALLIBRATE_PROPERTY);
+	indigo_release_property(NEXDOME_POWER_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
