@@ -557,12 +557,12 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 
 	/* Handle dome rotation */
-	if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
-	}
-
 	if(!nexdome_dome_state(device, &PRIVATE_DATA->dome_state)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_dome_state(): returned error");
+	}
+
+	if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
 	}
 
 	if ((DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) || PRIVATE_DATA->callibration_requested) need_update = true;
