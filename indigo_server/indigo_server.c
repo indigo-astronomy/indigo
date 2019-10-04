@@ -609,16 +609,16 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 			if (drivers_property->items[i].sw.value) {
 				if (driver) {
 					if (driver->dl_handle == NULL && !driver->initialized)
-						drivers_property->items[i].sw.value = indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
+						drivers_property->items[i].sw.value = driver->initialized = driver->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
 				} else {
-					drivers_property->items[i].sw.value = indigo_available_drivers[i].initialized = indigo_load_driver(name, true, NULL) == INDIGO_OK;
+					drivers_property->items[i].sw.value = driver->initialized = indigo_load_driver(name, true, NULL) == INDIGO_OK;
 				}
 			} else if (driver) {
 				if (driver->dl_handle) {
 					indigo_remove_driver(driver);
 				} else if (driver->initialized) {
-					indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
-					indigo_available_drivers[i].initialized = false;
+					driver->driver(INDIGO_DRIVER_SHUTDOWN, NULL);
+					driver->initialized = false;
 				}
 			}
 		}
