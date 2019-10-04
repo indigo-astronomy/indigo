@@ -364,6 +364,10 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | AGENT_IMAGER_DOWNLOADFILES | switch | no | yes | REFRESH | yes | Refresh the list of available files | 
 |  |  |  |  | file name | yes | Set the file to AGENT_IMAGER_DOWNLOADFILE | 
 | AGENT_IMAGER_DOWNLOAD_IMAGE | blob | no | yes | IMAGE | yes |  |
+| AGENT_IMAGER_SEQUENCE | text | no | yes | SEQUENCE | yes | Sequence control string |
+|  |  |  |  | 01...16 | yes | Batch control string |
+| AGENT_IMAGER_SEQUENCE_STATE | light | no | yes | SEQUENCE | yes | Sequence state |
+|  |  |  |  | 01...16 | yes | Batch state |
 
 ### Guider agent
 
