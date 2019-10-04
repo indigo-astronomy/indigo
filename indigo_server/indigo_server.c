@@ -458,6 +458,7 @@ static indigo_result attach(indigo_device *device) {
 			indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].name, indigo_available_drivers[i].description, indigo_available_drivers[i].initialized);
 	for (int i = 0; i < dynamic_drivers_count && drivers_property->count < INDIGO_MAX_DRIVERS; i++)
 		indigo_init_switch_item(&drivers_property->items[drivers_property->count++], dynamic_drivers[i].name, dynamic_drivers[i].description, false);
+	indigo_property_sort_items(drivers_property);
 	servers_property = indigo_init_light_property(NULL, server_device.name, "SERVERS", MAIN_GROUP, "Configured servers", INDIGO_OK_STATE, 2 * INDIGO_MAX_SERVERS);
 	servers_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
@@ -477,6 +478,7 @@ static indigo_result attach(indigo_device *device) {
 			indigo_init_light_item(&servers_property->items[servers_property->count++], entry->executable, entry->executable, INDIGO_OK_STATE);
 		}
 	}
+	indigo_property_sort_items(servers_property);
 	load_property = indigo_init_text_property(NULL, server_device.name, "LOAD", MAIN_GROUP, "Load driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item(LOAD_ITEM, "DRIVER", "Load driver", "");
 	unload_property = indigo_init_text_property(NULL, server_device.name, "UNLOAD", MAIN_GROUP, "Unload driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);

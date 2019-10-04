@@ -529,6 +529,11 @@ extern void indigo_property_copy_values(indigo_property *property, indigo_proper
  */
 extern void indigo_property_copy_targets(indigo_property *property, indigo_property *other, bool with_state);
 
+/** Sort item values on description
+ */
+
+extern void indigo_property_sort_items(indigo_property *property);
+
 /** Request text property change.
  */
 extern indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
