@@ -45,6 +45,7 @@
 #include <io.h>
 #include <winsock2.h>
 #pragma warning(disable:4996)
+#define stricmp strcasecmp
 #endif
 
 #include <indigo/indigo_bus.h>
@@ -1055,6 +1056,16 @@ void indigo_property_copy_targets(indigo_property *property, indigo_property *ot
 				}
 			}
 		}
+	}
+}
+
+static int item_comparator(const void *item_1, const void *item_2) {
+	return strcasecmp(((indigo_item *)item_1)->label, ((indigo_item *)item_2)->label);
+}
+
+void indigo_property_sort_items(indigo_property *property) {
+	if (property->count > 1) {
+		qsort(property->items, property->count, sizeof(indigo_item), item_comparator);
 	}
 }
 
