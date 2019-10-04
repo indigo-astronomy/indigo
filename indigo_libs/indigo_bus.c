@@ -45,7 +45,7 @@
 #include <io.h>
 #include <winsock2.h>
 #pragma warning(disable:4996)
-#define stricmp strcasecmp
+#define strcasecmp stricmp
 #endif
 
 #include <indigo/indigo_bus.h>
