@@ -78,6 +78,7 @@
 #define AGENT_IMAGER_START_EXPOSURE_ITEM  		(AGENT_START_PROCESS_PROPERTY->items+0)
 #define AGENT_IMAGER_START_STREAMING_ITEM 		(AGENT_START_PROCESS_PROPERTY->items+1)
 #define AGENT_IMAGER_START_FOCUSING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+2)
+#define AGENT_IMAGER_START_SEQUENCE_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+3)
 
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
@@ -97,6 +98,12 @@
 #define AGENT_IMAGER_SELECTION_X_ITEM  				(AGENT_IMAGER_SELECTION_PROPERTY->items+0)
 #define AGENT_IMAGER_SELECTION_Y_ITEM  				(AGENT_IMAGER_SELECTION_PROPERTY->items+1)
 
+#define AGENT_IMAGER_SEQUENCE_PROPERTY				(DEVICE_PRIVATE_DATA->agent_sequence)
+#define AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY	(DEVICE_PRIVATE_DATA->agent_sequence_enabled)
+#define AGENT_IMAGER_SEQUENCE_STATE_PROPERTY	(DEVICE_PRIVATE_DATA->agent_sequence_state)
+
+#define SEQUENCE_SIZE			32
+
 #define SELECTION_RADIUS	9
 
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -113,6 +120,9 @@ typedef struct {
 	indigo_property *agent_wheel_filter_property;
 	indigo_property *agent_selection_property;
 	indigo_property *agent_stats_property;
+	indigo_property *agent_sequence;
+	indigo_property *agent_sequence_enabled;
+	indigo_property *agent_sequence_state;
 	char current_folder[INDIGO_VALUE_SIZE], current_type[16];
 	void *image_buffer;
 	int focuser_position;
@@ -129,6 +139,8 @@ static void save_config(indigo_device *device) {
 	indigo_save_property(device, NULL, AGENT_IMAGER_BATCH_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_IMAGER_FOCUS_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_IMAGER_DITHERING_PROPERTY);
+	indigo_save_property(device, NULL, AGENT_IMAGER_SEQUENCE_PROPERTY);
+	indigo_save_property(device, NULL, AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY);
 	if (DEVICE_CONTEXT->property_save_file_handle) {
 		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		close(DEVICE_CONTEXT->property_save_file_handle);
@@ -164,10 +176,14 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 	indigo_property *remote_exposure_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_EXPOSURE_PROPERTY_NAME);
 	indigo_property *remote_image_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_PROPERTY_NAME);
 	if (remote_exposure_property == NULL || remote_image_property == NULL) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY or CCD_IMAGE_PROPERTY not found");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE or CCD_IMAGE not found");
 		return INDIGO_ALERT_STATE;
 	} else {
 		indigo_property *remote_format_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
+		if (remote_format_property == NULL) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_IMAGE_FORMAT not found");
+			return INDIGO_ALERT_STATE;
+		}
 		for (int i = 0; i < remote_format_property->count; i++) {
 			indigo_item *item = remote_format_property->items + i;
 			if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_RAW_ITEM_NAME)) {
@@ -236,7 +252,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 	}
 }
 
-static void exposure_batch(indigo_device *device) {
+static bool execute_batch(indigo_device *device) {
 	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
 	indigo_property *remote_exposure_property = NULL;
 	set_headers(device);
@@ -254,7 +270,6 @@ static void exposure_batch(indigo_device *device) {
 				AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = time;
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, remote_exposure_property->device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, time);
 				indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-				
 				for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000; i++)
 					indigo_usleep(1000);
 				if (remote_exposure_property->state != INDIGO_BUSY_STATE) {
@@ -310,14 +325,7 @@ static void exposure_batch(indigo_device *device) {
 			AGENT_IMAGER_BATCH_DELAY_ITEM->number.value = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
 			AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-			if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE)
-				indigo_send_message(device, "Batch finished");
-			else
-				indigo_send_message(device, "Batch failed");
-			return;
+			return AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE;
 		}
 	}
 	if (remote_exposure_property == NULL) {
@@ -328,9 +336,18 @@ static void exposure_batch(indigo_device *device) {
 	AGENT_IMAGER_BATCH_DELAY_ITEM->number.value = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
 	AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-	AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+	return false;
+}
+
+static void exposure_batch(indigo_device *device) {
+	if (execute_batch(device)) {
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_send_message(device, "Batch finished");
+	} else {
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, "Batch failed");
+	}
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	indigo_send_message(device, "Batch failed");
 }
 
 static void streaming_batch(indigo_device *device) {
@@ -416,6 +433,11 @@ static void autofocus(indigo_device *device) {
 	char *device_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
 	bool moving_out = true, first_move = true;
 	indigo_property *remote_steps_property = indigo_filter_cached_property(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_STEPS_PROPERTY_NAME);
+	if (remote_steps_property == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS not found");
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		goto finished;
+	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		double quality = 0;
@@ -486,6 +508,127 @@ finished:
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 }
 
+static void sequence(indigo_device *device) {
+	for (int i = 0; i < SEQUENCE_SIZE; i++) {
+		if (AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY->items[i].sw.value) {
+			AGENT_IMAGER_SEQUENCE_STATE_PROPERTY->items[i].light.value = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_IMAGER_SEQUENCE_STATE_PROPERTY, NULL);
+			
+			char copy[INDIGO_VALUE_SIZE];
+			strncpy(copy, AGENT_IMAGER_SEQUENCE_PROPERTY->items[i].text.value, INDIGO_VALUE_SIZE);
+			char *pnt, *token = strtok_r(copy, ";", &pnt);
+			while (token) {
+				char *value = strchr(token, '=');
+				if (value == NULL) {
+					AGENT_IMAGER_SEQUENCE_STATE_PROPERTY->items[i].light.value = INDIGO_ALERT_STATE;
+					goto finalize_batch;
+				}
+				*value++ = 0;
+				indigo_property *remote_property = NULL;
+				if (!strcasecmp(token, "count")) {
+					AGENT_IMAGER_BATCH_COUNT_ITEM->number.target = atoi(value);
+				} else if (!strcasecmp(token, "exposure")) {
+					AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = atof(value);
+				} else if (!strcasecmp(token, "delay")) {
+					AGENT_IMAGER_BATCH_DELAY_ITEM->number.target = atof(value);
+				} else if (!strcasecmp(token, "filter")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_WHEEL_INDEX, WHEEL_SLOT_PROPERTY_NAME);
+					if (remote_property) {
+						for (int j = 0; j < AGENT_WHEEL_FILTER_PROPERTY->count; j++) {
+							indigo_item *item = AGENT_WHEEL_FILTER_PROPERTY->items + j;
+							if (!strcasecmp(value, item->label) || !strcasecmp(value, item->name)) {
+								indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, WHEEL_SLOT_ITEM_NAME, j + 1);
+								break;
+							}
+						}
+					}
+				} else if (!strcasecmp(token, "mode")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_MODE_PROPERTY_NAME);
+					if (remote_property) {
+						for (int j = 0; j < remote_property->count; j++) {
+							indigo_item *item = remote_property->items + j;
+							if (!strcasecmp(item->label, value) || !strcasecmp(item->name, value)) {
+								indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, item->name, true);
+								break;
+							}
+						}
+					}
+				} else if (!strcasecmp(token, "name")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_LOCAL_MODE_PROPERTY_NAME);
+					if (remote_property) {
+						indigo_change_text_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, value);
+					}
+				} else if (!strcasecmp(token, "gain")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_GAIN_PROPERTY_NAME);
+					if (remote_property) {
+						indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, CCD_GAIN_ITEM_NAME, atof(value));
+					}
+				} else if (!strcasecmp(token, "offset")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_OFFSET_PROPERTY_NAME);
+					if (remote_property) {
+						indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, CCD_OFFSET_ITEM_NAME, atof(value));
+					}
+				} else if (!strcasecmp(token, "gamma")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_GAMMA_PROPERTY_NAME);
+					if (remote_property) {
+						indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, CCD_GAMMA_ITEM_NAME, atof(value));
+					}
+				} else if (!strcasecmp(token, "aperture")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, DSLR_APERTURE_PROPERTY_NAME);
+					if (remote_property) {
+						for (int j = 0; j < remote_property->count; j++) {
+							indigo_item *item = remote_property->items + j;
+							if (!strcasecmp(item->label, value) || !strcasecmp(item->name, value)) {
+								indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, item->name, true);
+								break;
+							}
+						}
+					}
+				} else if (!strcasecmp(token, "shutter")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, DSLR_SHUTTER_PROPERTY_NAME);
+					if (remote_property) {
+						for (int j = 0; j < remote_property->count; j++) {
+							indigo_item *item = remote_property->items + j;
+							if (!strcasecmp(item->label, value) || !strcasecmp(item->name, value)) {
+								indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, item->name, true);
+								break;
+							}
+						}
+					}
+				} else if (!strcasecmp(token, "iso")) {
+					remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, DSLR_ISO_PROPERTY_NAME);
+					if (remote_property) {
+						for (int j = 0; j < remote_property->count; j++) {
+							indigo_item *item = remote_property->items + j;
+							if (!strcasecmp(item->label, value) || !strcasecmp(item->name, value)) {
+								indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, item->name, true);
+								break;
+							}
+						}
+					}
+				}
+				if (remote_property) {
+					indigo_usleep(500000);
+					while (remote_property->state == INDIGO_BUSY_STATE) {
+						indigo_usleep(500000);
+					}
+				}
+				token = strtok_r(NULL, ";", &pnt);
+			}
+			if (execute_batch(device))
+				AGENT_IMAGER_SEQUENCE_STATE_PROPERTY->items[i].light.value = INDIGO_OK_STATE;
+			else
+				AGENT_IMAGER_SEQUENCE_STATE_PROPERTY->items[i].light.value = INDIGO_ALERT_STATE;
+		} else {
+			AGENT_IMAGER_SEQUENCE_STATE_PROPERTY->items[i].light.value = INDIGO_IDLE_STATE;
+		}
+	finalize_batch:
+		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_STATE_PROPERTY, NULL);
+	}
+	AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+}
+
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -521,13 +664,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM_NAME, "Aggressivity (px)", 0, 10, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_DITHERING_DELAY_ITEM, AGENT_IMAGER_DITHERING_DELAY_ITEM_NAME, "Settle down delay (s)", 0, 60, 1, 5);
 		// -------------------------------------------------------------------------------- Process properties
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		AGENT_START_PROCESS_PROPERTY->hidden = true;
 		indigo_init_switch_item(AGENT_IMAGER_START_EXPOSURE_ITEM, AGENT_IMAGER_START_EXPOSURE_ITEM_NAME, "Start batch", false);
 		indigo_init_switch_item(AGENT_IMAGER_START_STREAMING_ITEM, AGENT_IMAGER_START_STREAMING_ITEM_NAME, "Start streaming", false);
 		indigo_init_switch_item(AGENT_IMAGER_START_FOCUSING_ITEM, AGENT_IMAGER_START_FOCUSING_ITEM_NAME, "Start focusing", false);
+		indigo_init_switch_item(AGENT_IMAGER_START_SEQUENCE_ITEM, AGENT_IMAGER_START_SEQUENCE_ITEM_NAME, "Start sequence", false);
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -577,6 +721,24 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_STATS_FWHM_ITEM, AGENT_IMAGER_STATS_FWHM_ITEM_NAME, "FWHM", 0, 0xFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_HFD_ITEM, AGENT_IMAGER_STATS_HFD_ITEM_NAME, "HFD", 0, 0xFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_PEAK_ITEM, AGENT_IMAGER_STATS_PEAK_ITEM_NAME, "Peak", 0, 0xFFFF, 0, 0);
+		// -------------------------------------------------------------------------------- Sequencer
+		AGENT_IMAGER_SEQUENCE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_IMAGER_SEQUENCE_PROPERTY_NAME, "Sequencer", "Sequence", INDIGO_OK_STATE, INDIGO_RW_PERM, SEQUENCE_SIZE);
+		if (AGENT_IMAGER_SEQUENCE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY_NAME, "Sequencer", "Sequence control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, SEQUENCE_SIZE);
+		if (AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_IMAGER_SEQUENCE_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_IMAGER_SEQUENCE_STATE_PROPERTY_NAME, "Sequencer", "Sequence state", INDIGO_OK_STATE, SEQUENCE_SIZE);
+		if (AGENT_IMAGER_SEQUENCE_STATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		for (int i = 0; i < SEQUENCE_SIZE; i++) {
+			char name[32], label[32];
+			sprintf(name, "%02d", i);
+			sprintf(label, "Batch #%d", i);
+			indigo_init_text_item(AGENT_IMAGER_SEQUENCE_PROPERTY->items + i, name, label, "");
+			indigo_init_switch_item(AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY->items + i, name, label, false);
+			indigo_init_light_item(AGENT_IMAGER_SEQUENCE_STATE_PROPERTY->items + i, name, label, INDIGO_IDLE_STATE);
+		}
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
@@ -610,6 +772,12 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_IMAGER_STATS_PROPERTY, property))
 		indigo_define_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_STATE_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_SEQUENCE_STATE_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -696,6 +864,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, autofocus);
+				} else if (AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value) {
+					AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
+					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_set_timer(device, 0, sequence);
 				}
 			}
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
@@ -789,8 +961,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 		}
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- AGENT_WHEEL_FILTER
 	} else 	if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
-// -------------------------------------------------------------------------------- AGENT_WHEEL_FILTER
 		indigo_property_copy_values(AGENT_WHEEL_FILTER_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
 			if (AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value) {
@@ -800,6 +972,20 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- AGENT_IMAGER_SEQUENCE
+	} else 	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_PROPERTY, property)) {
+		indigo_property_copy_values(AGENT_IMAGER_SEQUENCE_PROPERTY, property, false);
+		AGENT_IMAGER_SEQUENCE_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- AGENT_IMAGER_SEQUENCE_ENABLED
+	} else 	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY, property)) {
+		indigo_property_copy_values(AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY, property, false);
+		AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_filter_change_property(device, client, property);
@@ -817,6 +1003,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_IMAGER_STATS_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_SEQUENCE_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_SEQUENCE_ENABLED_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_SEQUENCE_STATE_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	if (DEVICE_PRIVATE_DATA->image_buffer)
 		free(DEVICE_PRIVATE_DATA->image_buffer);
