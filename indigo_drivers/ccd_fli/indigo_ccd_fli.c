@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000a
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -513,7 +513,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		/* Use all info property fields */
 		INFO_PROPERTY->count = 7;
-		
+
 		CCD_RBI_FLUSH_EXPOSURE_ITEM->number.min = MIN_NIR_FLOOD;
 		CCD_RBI_FLUSH_EXPOSURE_ITEM->number.max = MAX_NIR_FLOOD;
 		CCD_RBI_FLUSH_EXPOSURE_ITEM->number.value = CCD_RBI_FLUSH_EXPOSURE_ITEM->number.target = DEFAULT_NIR_FLOOD;
@@ -833,7 +833,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (CCD_COOLER_ON_ITEM->sw.value)
 				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 			else
-				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f but the cooler is OFF, ", PRIVATE_DATA->target_temperature);
+				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f but the cooler is OFF", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- CCD_FRAME
