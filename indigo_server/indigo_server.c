@@ -611,7 +611,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 					if (driver->dl_handle == NULL && !driver->initialized)
 						drivers_property->items[i].sw.value = driver->initialized = driver->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
 				} else {
-					drivers_property->items[i].sw.value = driver->initialized = indigo_load_driver(name, true, NULL) == INDIGO_OK;
+					drivers_property->items[i].sw.value = indigo_load_driver(name, true, NULL) == INDIGO_OK;
 				}
 			} else if (driver) {
 				if (driver->dl_handle) {
