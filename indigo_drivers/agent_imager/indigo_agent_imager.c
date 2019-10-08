@@ -942,6 +942,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property, false);
 		AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, NULL);
+		AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 		for (int i = 1; i < AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + i;
 			if (!strcmp(item->name, AGENT_IMAGER_DOWNLOAD_FILE_ITEM->text.value)) {
@@ -950,7 +951,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				strcpy(file_name, DEVICE_PRIVATE_DATA->current_folder);
 				strcat(file_name, AGENT_IMAGER_DOWNLOAD_FILE_ITEM->text.value);
 				if (stat(file_name, &file_stat) < 0) {
-					AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 				if (DEVICE_PRIVATE_DATA->image_buffer)
@@ -959,7 +959,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					DEVICE_PRIVATE_DATA->image_buffer = malloc(file_stat.st_size);
 				int fd = open(file_name, O_RDONLY, 0);
 				if (fd == -1) {
-					AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 				int result = indigo_read(fd, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.value = DEVICE_PRIVATE_DATA->image_buffer, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.size = file_stat.st_size);
@@ -967,7 +966,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				if (result == -1) {
 					AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
-					AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 				*AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.url = 0;
@@ -975,7 +973,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
 				if (unlink(file_name) == -1) {
-					AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 				AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_OK_STATE;
