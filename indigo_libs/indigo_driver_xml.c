@@ -281,7 +281,7 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 	assert(client_context != NULL);
 	int handle = client_context->output;
 	if (message)
-		indigo_printf(handle, "<message%s/>\n", message_attribute(message));
+		indigo_printf(handle, "<message device='%s'%s/>\n", indigo_xml_escape(device->name), message_attribute(message));
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -314,4 +314,3 @@ void indigo_release_xml_device_adapter(indigo_client *client) {
 	free(client->client_context);
 	free(client);
 }
-

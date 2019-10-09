@@ -394,7 +394,7 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	int handle = client_context->output;
 	char output_buffer[JSON_BUFFER_SIZE];
 	char *pnt = output_buffer;
-	int size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
+	int size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", message, device->name );
 	if (client_context->web_socket)
 		ws_write(handle, output_buffer, size);
 	else
