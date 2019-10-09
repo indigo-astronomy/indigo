@@ -619,6 +619,29 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 	return INDIGO_OK;
 }
 
+indigo_result indigo_send_device_message(indigo_device *device, const char *format, ...) {
+	if (!is_started)
+		return INDIGO_FAILED;
+	if (indigo_use_strict_locking)
+		pthread_mutex_lock(&client_mutex);
+	char message[INDIGO_VALUE_SIZE];
+	if (format != NULL) {
+		va_list args;
+		va_start(args, format);
+		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+		va_end(args);
+	}
+	INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent '%s'", message));
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+		indigo_client *client = clients[i];
+		if (client != NULL && client->send_message != NULL)
+			client->last_result = client->send_device_message(client, device, format != NULL ? message : NULL);
+	}
+	if (indigo_use_strict_locking)
+		pthread_mutex_unlock(&client_mutex);
+	return INDIGO_OK;
+}
+
 indigo_result indigo_stop() {
 	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&client_mutex);

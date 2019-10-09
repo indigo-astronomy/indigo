@@ -281,6 +281,23 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 	assert(client_context != NULL);
 	int handle = client_context->output;
 	if (message)
+		indigo_printf(handle, "<message%s/>\n", message_attribute(message));
+	pthread_mutex_unlock(&write_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result xml_device_adapter_send_device_message(indigo_client *client, indigo_device *device, const char *message) {
+	assert(device != NULL);
+	assert(client != NULL);
+	if (!indigo_reshare_remote_devices && device->is_remote)
+		return INDIGO_OK;
+	if (client->version == INDIGO_VERSION_NONE)
+		return INDIGO_OK;
+	pthread_mutex_lock(&write_mutex);
+	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	int handle = client_context->output;
+	if (message)
 		indigo_printf(handle, "<message device='%s'%s/>\n", indigo_xml_escape(device->name), message_attribute(message));
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
@@ -294,6 +311,7 @@ indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 		xml_device_adapter_update_property,
 		xml_device_adapter_delete_property,
 		xml_device_adapter_send_message,
+		xml_device_adapter_send_device_message,
 		NULL
 	};
 	indigo_client *client = malloc(sizeof(indigo_client));

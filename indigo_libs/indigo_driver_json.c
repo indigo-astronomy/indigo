@@ -394,6 +394,27 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	int handle = client_context->output;
 	char output_buffer[JSON_BUFFER_SIZE];
 	char *pnt = output_buffer;
+	int size = sprintf(pnt, "{ \"message\": \"%s\" }", message );
+	if (client_context->web_socket)
+		ws_write(handle, output_buffer, size);
+	else
+		indigo_write(handle, output_buffer, size);
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	pthread_mutex_unlock(&json_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result json_device_message_property(indigo_client *client, indigo_device *device, const char *message) {
+	assert(device != NULL);
+	assert(client != NULL);
+	if (!indigo_reshare_remote_devices && device->is_remote)
+		return INDIGO_OK;
+	pthread_mutex_lock(&json_mutex);
+	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	int handle = client_context->output;
+	char output_buffer[JSON_BUFFER_SIZE];
+	char *pnt = output_buffer;
 	int size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", message, device->name );
 	if (client_context->web_socket)
 		ws_write(handle, output_buffer, size);
@@ -420,6 +441,7 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 		json_update_property,
 		json_delete_property,
 		json_message_property,
+		json_device_message_property,
 		json_detach,
 
 	};

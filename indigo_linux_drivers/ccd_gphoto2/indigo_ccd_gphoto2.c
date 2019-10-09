@@ -1034,7 +1034,7 @@ static void ctx_error_func(GPContext *context, const char *str, void *data)
 	if ( data ) {
 		indigo_device *device = *(indigo_device **)(data);
 		if ( device ) {
-			indigo_send_message(device, "ERROR:%s", str);
+			indigo_send_device_message(device, "ERROR:%s", str);
 		}
 	}
 
@@ -1047,7 +1047,7 @@ static void ctx_status_func(GPContext *context, const char *str, void *data)
 	if ( data ) {
 		indigo_device *device = *(indigo_device **)(data);
 		if ( device ) {
-			indigo_send_message(device, "STATUS:%s", str);
+			indigo_send_device_message(device, "STATUS:%s", str);
 		}
 	}
 
