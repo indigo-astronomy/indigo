@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_qhy"
 
 #include <stdlib.h>
@@ -78,6 +78,7 @@
 #define MAX_CCD_TEMP               40.0
 #define TEMP_THRESHOLD             0.3
 
+#define FW_COUNT									 7
 
 #define PRIVATE_DATA               ((qhy_private_data *)device->private_data)
 
@@ -1357,7 +1358,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					}
 					PRIVATE_DATA->fw_current_slot = -1;
 					WHEEL_SLOT_ITEM->number.value = 1;
-					PRIVATE_DATA->fw_count = 5;
+					PRIVATE_DATA->fw_count = FW_COUNT;
 					PRIVATE_DATA->fw_target_slot = targetpos;
 
 					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->fw_count;
@@ -1591,7 +1592,7 @@ static void process_plug_event() {
 		device->master_device = master_device;
 		sprintf(device->name, "%s Guider #%s", dev_name, dev_usbpath);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		private_data->fw_count = 5; /* No way to get it from SDK but all QHY FWs have 5 slots */
+		private_data->fw_count = FW_COUNT; /* No way to get it from SDK but all QHY FWs have 5 or 7 slots */
 		device->private_data = private_data;
 		indigo_async((void *(*)(void *))indigo_attach_device, device);
 		devices[slot]=device;
