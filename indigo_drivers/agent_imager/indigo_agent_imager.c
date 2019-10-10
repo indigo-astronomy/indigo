@@ -1022,6 +1022,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_IMAGER_SEQUENCE_PROPERTY, property, false);
 		AGENT_IMAGER_SEQUENCE_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
+		if (AGENT_IMAGER_SEQUENCE_STATE_ITEM->light.value != INDIGO_BUSY_STATE) {
+			AGENT_IMAGER_SEQUENCE_STATE_ITEM->light.value = INDIGO_IDLE_STATE;
+			for (int i = 1; i < SEQUENCE_SIZE; i++)
+				AGENT_IMAGER_SEQUENCE_STATE_PROPERTY->items[i].light.value = INDIGO_IDLE_STATE;
+			indigo_update_property(device, AGENT_IMAGER_SEQUENCE_STATE_PROPERTY, NULL);
+		}
 		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
 		return INDIGO_OK;
 	}

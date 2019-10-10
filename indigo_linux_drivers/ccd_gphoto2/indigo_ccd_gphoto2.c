@@ -1031,7 +1031,12 @@ cleanup:
 static void ctx_error_func(GPContext *context, const char *str, void *data)
 {
 	UNUSED(context);
-	UNUSED(data);
+	if ( data ) {
+		indigo_device *device = *(indigo_device **)(data);
+		if ( device ) {
+			indigo_send_message(device, "%s:[%s] ERROR: %s", DRIVER_NAME, device->name, str);
+		}
+	}
 
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", str);
 }
@@ -1039,7 +1044,12 @@ static void ctx_error_func(GPContext *context, const char *str, void *data)
 static void ctx_status_func(GPContext *context, const char *str, void *data)
 {
 	UNUSED(context);
-	UNUSED(data);
+	if ( data ) {
+		indigo_device *device = *(indigo_device **)(data);
+		if ( device ) {
+			indigo_send_message(device, "%s:[%s] STATUS: %s", DRIVER_NAME, device->name, str);
+		}
+	}
 
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", str);
 }
@@ -2757,9 +2767,9 @@ static int device_connect(indigo_device *gphoto2_template,
 	if (!context) {
 		context = gp_context_new();
 		gp_context_set_error_func(context,
-					  ctx_error_func, NULL);
+					  ctx_error_func, &devices[slot]);
 		gp_context_set_message_func(context,
-					    ctx_status_func, NULL);
+					    ctx_status_func, &devices[slot]);
 	}
 
 	/* Allocate memory for camera. */

@@ -385,9 +385,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
-		ssag_start_exposure(device, CCD_EXPOSURE_ITEM->number.target);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		ssag_start_exposure(device, CCD_EXPOSURE_ITEM->number.target);
 		if (CCD_EXPOSURE_ITEM->number.target < 0.1) {
 			indigo_usleep(CCD_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, exposure_timer_callback);

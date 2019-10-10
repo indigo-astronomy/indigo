@@ -385,10 +385,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			int ra_s = ra % 60;
 			int dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value * 600;
 			int dec_d = dec / 600;
-			int dec_m = (dec / 10) % 60;
-			int dec_s = dec % 10;
+			int dec_m = abs((dec / 10) % 60);
+			int dec_s = abs(dec % 10);
 			temma_set_lst(device);
-			sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+			sprintf(buffer, "P%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
 			temma_command(device, buffer, true);
 			temma_command(device, TEMMA_MOTOR_OFF, true);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -419,23 +419,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		int ra_s = ra % 60;
 		int dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * 600;
 		int dec_d = dec / 600;
-		int dec_m = (dec / 10) % 60;
-		int dec_s = dec % 10;
+		int dec_m = abs((dec / 10) % 60);
+		int dec_s = abs(dec % 10);
 		temma_command(device, TEMMA_MOTOR_ON, true);
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-			sprintf(buffer, "D%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+			sprintf(buffer, "D%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
 			temma_set_lst(device);
 			temma_command(device, "Z", false);
 			temma_set_lst(device);
 			temma_command(device, buffer, true);
 			PRIVATE_DATA->startTracking = true;
 		} else if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-			sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+			sprintf(buffer, "P%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
 			temma_set_lst(device);
 			temma_command(device, buffer, true);
 			PRIVATE_DATA->startTracking = true;
 		} else {
-			sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+			sprintf(buffer, "P%02d%02d%02d%+03d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
 			temma_set_lst(device);
 			temma_command(device, buffer, true);
 			PRIVATE_DATA->stopTracking = true;
