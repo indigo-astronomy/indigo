@@ -23,7 +23,7 @@
  \file indigo_aux_usbdp.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_aux_usbdp"
 
 #include <stdlib.h>
@@ -87,6 +87,9 @@
 
 #define AUX_GROUP															"USB Dewpoint"
 
+
+
+
 typedef struct {
 	int handle;
 	indigo_timer *aux_timer;
@@ -103,6 +106,35 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
+#define UDP_CMD_LEN 6
+#define UDP_STATUS_CMD "SGETAL"
+#define UDP2_OUTPUT_CMD "S%1uO%03u"         // channel 1-3, power 0-100
+#define UDP2_THRESHOLD_CMD "STHR%1u%1u"     // channel 1-2, value 0-9
+#define UDP2_CALIBRATION_CMD "SCA%1u%1u%1u" // channel 1-2-A, value 0-9
+#define UDP2_LINK_CMD "SLINK%1u"            // 0 or 1 to link channels 2 and 3
+#define UDP2_AUTO_CMD "SAUTO%1u"            // 0 or 1 to enable auto mode
+#define UDP2_AGGRESSIVITY_CMD "SAGGR%1u"    // 1-4 (1, 2, 5, 10)
+#define UDP2_IDENTIFY_CMD "SWHOIS"
+#define UDP_RESET_CMD "SEERAZ"
+
+#define UDP1_STATUS_RESPONSE "Tloc=%f-Tamb=%f-RH=%f-DP=%f-TH=%d-C=%d"
+#define UDP2_STATUS_RESPONSE "##%f/%f/%f/%f/%f/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u**"
+#define UDP2_STATUS_START "##"
+#define UDP2_STATUS_SEPARATOR "/"
+#define UDP2_STATUS_END "**"
+
+#define UDP_IDENTIFY_RESPONSE "UDP2(%u)" // Firmware version? Mine is "UDP2(1446)"
+
+typedef struct {
+	float tloc;
+	float tamb;
+	float rh;
+	float dewpoint;
+	int th;
+	int c;
+} usbdp_status_t;
+
+
 static bool usbdp_command(indigo_device *device, char *command, char *response, int max) {
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
@@ -115,6 +147,28 @@ static bool usbdp_command(indigo_device *device, char *command, char *response, 
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Command %s -> <%s>", command, response != NULL ? response : "NULL");
 	return true;
+}
+
+static bool usbdp_status(indigo_device *device, usbdp_status_t *status) {
+	char response[80];
+	if (!usbdp_command(device, UDP_STATUS_CMD, response, sizeof(response))) {
+		return false;
+	}
+
+	if (PRIVATE_DATA->version == 1) {
+		int parsed = sscanf(response, UDP1_STATUS_RESPONSE, &status->tloc, &status->tamb, &status->rh, &status->dewpoint, &status->th, &status->c);
+		if (parsed == 6) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Tloc=%f Tamb=%f RH=%f DP=%f TH=%d C=%d", status->tloc, status->tamb, status->rh, status->dewpoint, status->th, status->c);
+			return true;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME," status parse failed parsed %d values", parsed);
+			return false;
+		}
+	} else if (PRIVATE_DATA->version == 2) {
+
+	} else {
+		return false;
+	}
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -265,117 +319,53 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-			if (PRIVATE_DATA->handle > 0) {
-				if (usbdp_command(device, "SWHOIS", response, sizeof(response))) {
-					usbdp_command(device, "FTPAMB", response, sizeof(response));
-					usbdp_command(device, "SGETAL", response, sizeof(response));
-					if (!strcmp(response, "UPB_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 1;
-						AUX_HEATER_OUTLET_PROPERTY->count = 2;
-						AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
-						AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
-					} else if (!strcmp(response, "UPB2_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 2;
-						AUX_HEATER_OUTLET_PROPERTY->count = 3;
-						AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
-						AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "usbdp not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-					}
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "usbdp not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
-				}
-			}
-
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
-			if (usbdp_command(device, "PA", response, sizeof(response)) && !strncmp(response, "usbdp", 3)) {
-				char *pnt, *token = strtok_r(response, ":", &pnt);
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
-					X_AUX_VOLTAGE_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-					X_AUX_CURRENT_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Power
-					X_AUX_POWER_ITEM->number.value = atoi(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
-					AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
-					AUX_WEATHER_HUMIDITY_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
-					AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_atod(token);
-				}
-
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
-					AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
-					AUX_HEATER_OUTLET_2_ITEM->number.value = AUX_HEATER_OUTLET_2_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
-				}
-				if (PRIVATE_DATA->version == 2) {
-					if ((token = strtok_r(NULL, ":", &pnt))) { // Dew3
-						AUX_HEATER_OUTLET_3_ITEM->number.value = AUX_HEATER_OUTLET_3_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
-					}
-				}
-
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
-					AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
-					AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token);
-				}
-				if (PRIVATE_DATA->version == 2) {
-					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew3
-						AUX_HEATER_OUTLET_CURRENT_3_ITEM->number.value = atoi(token);
-					}
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Overcurrent
-					AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = token[4] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-					AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = token[5] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-					if (PRIVATE_DATA->version == 2) {
-						AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = token[6] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-					}
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 0 ? AUX_DEW_CONTROL_MANUAL_ITEM : AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+			if (usbdp_command(device, "SWHOIS", response, sizeof(response))) {
+				if (!strcmp(response, "UDP")) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint at %s", DEVICE_PORT_ITEM->text.value);
+					PRIVATE_DATA->version = 1;
+					AUX_HEATER_OUTLET_PROPERTY->hidden = true;
+					AUX_HEATER_OUTLET_STATE_PROPERTY->hidden = true;
+					AUX_HEATER_OUTLET_CURRENT_PROPERTY->hidden = true;
+				} else if (!strncmp(response, "UDP2", 4)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v2 at %s", DEVICE_PORT_ITEM->text.value);
+					PRIVATE_DATA->version = 2;
+					AUX_HEATER_OUTLET_PROPERTY->count = 3;
+					AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
+					AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB_Dewpoint not detected");
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'SA' response");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB_Dewpoint not detected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
 		}
+
 		if (PRIVATE_DATA->handle > 0) {
-			if (usbdp_command(device, "PV", response, sizeof(response)) ) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "usbdpv2" : "usbdp");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
-			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-			indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-			indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
-			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
-			usbdp_command(device, "PU:1", response, sizeof(response));
-			if (PRIVATE_DATA->version == 1) {
+			usbdp_command(device, "FTPAMB", response, sizeof(response));
+			//usbdp_command(device, "SEERAZ", response, sizeof(response));
+			usbdp_status_t status;
 
-			}
+			if (usbdp_status(device, &status)) {
+				if (PRIVATE_DATA->version == 1) {
 
+				} else if (PRIVATE_DATA->version == 2){
+
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SGETAL' response");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'SGETAL' response");
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = 0;
+			}
 			PRIVATE_DATA->aux_timer = indigo_set_timer(device, 0, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
