@@ -46,9 +46,9 @@
 #define PRIVATE_DATA									((usbdp_private_data *)device->private_data)
 
 #define AUX_OUTLET_NAMES_PROPERTY						(PRIVATE_DATA->outlet_names_property)
-#define AUX_HEATER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 10)
-#define AUX_HEATER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 11)
-#define AUX_HEATER_OUTLET_NAME_3_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 12)
+#define AUX_HEATER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 0)
+#define AUX_HEATER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_NAME_3_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 2)
 
 #define AUX_HEATER_OUTLET_PROPERTY					(PRIVATE_DATA->heater_outlet_property)
 #define AUX_HEATER_OUTLET_1_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 0)
@@ -183,7 +183,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- OUTLET_NAMES
-		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "X_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 13);
+		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "X_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_1_ITEM, AUX_HEATER_OUTLET_NAME_1_ITEM_NAME, "Heater #1", "Heater #1");
@@ -276,12 +276,11 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateInfo = false;
 	bool updateAutoHeater = false;
 	bool updateHub = false;
+
+	usbdp_status_t status;
+
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (usbdp_command(device, "PA", response, sizeof(response))) {
-
-	}
-	if (usbdp_command(device, "PC", response, sizeof(response))) {
-
+	if (usbdp_status(device, &status)) {
 	}
 
 	if (updateHeaterOutlet) {
@@ -348,7 +347,10 @@ static void aux_connection_handler(indigo_device *device) {
 
 		if (PRIVATE_DATA->handle > 0) {
 			usbdp_command(device, "FTPAMB", response, sizeof(response));
-			//usbdp_command(device, "SEERAZ", response, sizeof(response));
+			//char cmd[80];
+			//sprintf(cmd, UDP2_AUTO_CMD, 1);
+			//usbdp_command(device, cmd, response, sizeof(response));
+			//usbdp_command(device, "123456", response, sizeof(response));
 			usbdp_status_t status;
 
 			if (usbdp_status(device, &status)) {
