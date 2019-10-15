@@ -137,6 +137,7 @@ static bool usbdp_command(indigo_device *device, char *command, char *response, 
 	return true;
 }
 
+
 static bool usbdp_status(indigo_device *device, usbdp_status_t *status) {
 	char response[80];
 	if (!usbdp_command(device, UDP_STATUS_CMD, response, sizeof(response))) {
@@ -149,7 +150,7 @@ static bool usbdp_status(indigo_device *device, usbdp_status_t *status) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Tloc=%f Tamb=%f RH=%f DP=%f TH=%d C=%d", status->tloc, status->tamb, status->rh, status->dewpoint, status->th, status->c);
 			return true;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME," status parse failed parsed %d values", parsed);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 6 values in response \"%s\"", parsed, response);
 			return false;
 		}
 	} else if (PRIVATE_DATA->version == 2) {
@@ -346,13 +347,7 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 
 		if (PRIVATE_DATA->handle > 0) {
-			usbdp_command(device, "FTPAMB", response, sizeof(response));
-			char cmd[80];
-			sprintf(cmd, UDP2_THRESHOLD_CMD, 1, 4);
-			usbdp_command(device, cmd, response, sizeof(response));
-			//usbdp_command(device, "123456", response, sizeof(response));
 			usbdp_status_t status;
-
 			if (usbdp_status(device, &status)) {
 				if (PRIVATE_DATA->version == 1) {
 
