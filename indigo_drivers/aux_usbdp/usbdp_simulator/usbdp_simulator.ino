@@ -1,6 +1,6 @@
-// Pegasus ultimate powerbox simulator for Arduino
+// USB_Dewpoint v2 simulator for Arduino
 //
-// Copyright (c) 2018 CloudMakers, s. r. o.
+// Copyright (c) 2019 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -34,56 +34,42 @@ byte power6 = 0;
 byte power7 = 0;
 byte power8 = 12;
 #endif
-bool usb1 = true;
-bool usb2 = true;
-bool usb3 = true;
-bool usb4 = true;
-bool usb5 = true;
-bool usb6 = true;
-bool hub = true;
-byte autodev = 0;
-bool led = false;
+float temperature = 12.353;
 
-float temperature = 22.4;
-int target = 50;
-double position = 50;
-int reverse = 0;
-int backlash = 100;
-int speed = 400;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(19200);
   Serial.setTimeout(1000);
   while (!Serial)
     ;
 }
 
 void loop() {
-  double step = speed / 100.0;
-  if (target > position) {
-    if (target - position < step)
-      position = target;
-    else
-      position += step;
-  } else if (target < position) {
-    if (position - target < step)
-      position = target;
-    else
-      position -= step;
-  }
-  String command = Serial.readStringUntil('\n');
-  if (command.equals("P#")) {
-#ifdef V2
-    Serial.println("UPB2_OK");
-#else
-    Serial.println("UPB_OK");
-#endif
-  } else if (command.startsWith("PE:")) {
-    power1 = command.charAt(3) == '1';
-    power2 = command.charAt(4) == '1';
-    power3 = command.charAt(5) == '1';
-    power4 = command.charAt(6) == '1';
-    Serial.println("PE:1");
+  char cmd[7];
+  Serial.readBytes(cmd, 6);
+  cmd[6] = 0;
+  char response[80];
+  String command = String(cmd);
+
+  if (command.equals("SWHOIS")) {
+    #ifdef V1
+    Serial.println("UDP");
+    #else
+    Serial.println("UDP2(1446)");
+    #endif
+
+  } else if (command.equals("SEERAZ")) {
+    Serial.println("EEPROM RESET");
+
+  } else if (command.equals("SGETAL")) {
+    #ifdef V1
+    Serial.print("temp = ");
+    Serial.println(temperature, 2);
+    #else
+    Serial.print("temp = ");
+    Serial.println(temperature, 2);
+    #endif
+/*
 #ifdef V2
 	} else if (command.startsWith("PS")) {
 		Serial.print("PS:");
@@ -243,5 +229,6 @@ void loop() {
     Serial.println(command);
   } else if (command.equals("SS")) {
     Serial.println(speed);
+*/
   }
 }
