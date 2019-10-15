@@ -52,5 +52,8 @@ status response:
 // Tloc=26.37-Tamb=26.65-RH=35.73-DP=-19.55-TH=00-C=1201
 #define UDP1_STATUS_RESPONSE "Tloc=%f-Tamb=%f-RH=%f-DP=%f-TH=%d-C=%d"
 
+when dewpoint is passed:
+SGETAL -> ! WARM ! -10.31--10.27=-0.03 <0
+
 whois responce:
 "UDP"
