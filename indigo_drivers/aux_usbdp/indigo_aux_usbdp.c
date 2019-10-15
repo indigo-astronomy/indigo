@@ -43,52 +43,34 @@
 
 #include "indigo_aux_usbdp.h"
 
-#define PRIVATE_DATA									((usbdp_private_data *)device->private_data)
+#define PRIVATE_DATA								((usbdp_private_data *)device->private_data)
 
-#define AUX_OUTLET_NAMES_PROPERTY						(PRIVATE_DATA->outlet_names_property)
+#define AUX_OUTLET_NAMES_PROPERTY					(PRIVATE_DATA->outlet_names_property)
 #define AUX_HEATER_OUTLET_NAME_1_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 0)
 #define AUX_HEATER_OUTLET_NAME_2_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 1)
 #define AUX_HEATER_OUTLET_NAME_3_ITEM				(AUX_OUTLET_NAMES_PROPERTY->items + 2)
 
 #define AUX_HEATER_OUTLET_PROPERTY					(PRIVATE_DATA->heater_outlet_property)
-#define AUX_HEATER_OUTLET_1_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 0)
-#define AUX_HEATER_OUTLET_2_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 1)
-#define AUX_HEATER_OUTLET_3_ITEM						(AUX_HEATER_OUTLET_PROPERTY->items + 2)
+#define AUX_HEATER_OUTLET_1_ITEM					(AUX_HEATER_OUTLET_PROPERTY->items + 0)
+#define AUX_HEATER_OUTLET_2_ITEM					(AUX_HEATER_OUTLET_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_3_ITEM					(AUX_HEATER_OUTLET_PROPERTY->items + 2)
 
 #define AUX_HEATER_OUTLET_STATE_PROPERTY		(PRIVATE_DATA->heater_outlet_state_property)
 #define AUX_HEATER_OUTLET_STATE_1_ITEM			(AUX_HEATER_OUTLET_STATE_PROPERTY->items + 0)
 #define AUX_HEATER_OUTLET_STATE_2_ITEM			(AUX_HEATER_OUTLET_STATE_PROPERTY->items + 1)
 #define AUX_HEATER_OUTLET_STATE_3_ITEM			(AUX_HEATER_OUTLET_STATE_PROPERTY->items + 2)
 
-#define AUX_HEATER_OUTLET_CURRENT_PROPERTY	(PRIVATE_DATA->heater_outlet_current_property)
-#define AUX_HEATER_OUTLET_CURRENT_1_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 0)
-#define AUX_HEATER_OUTLET_CURRENT_2_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 1)
-#define AUX_HEATER_OUTLET_CURRENT_3_ITEM		(AUX_HEATER_OUTLET_CURRENT_PROPERTY->items + 2)
-
-
-#define AUX_WEATHER_PROPERTY								(PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_PROPERTY						(PRIVATE_DATA->weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM				(AUX_WEATHER_PROPERTY->items + 0)
-#define AUX_WEATHER_HUMIDITY_ITEM						(AUX_WEATHER_PROPERTY->items + 1)
-#define AUX_WEATHER_DEWPOINT_ITEM						(AUX_WEATHER_PROPERTY->items + 2)
+#define AUX_WEATHER_HUMIDITY_ITEM					(AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_DEWPOINT_ITEM				(AUX_WEATHER_PROPERTY->items + 2)
 
-#define AUX_DEW_CONTROL_PROPERTY						(PRIVATE_DATA->heating_mode_property)
-#define AUX_DEW_CONTROL_MANUAL_ITEM					(AUX_DEW_CONTROL_PROPERTY->items + 0)
+#define AUX_DEW_CONTROL_PROPERTY				(PRIVATE_DATA->heating_mode_property)
+#define AUX_DEW_CONTROL_MANUAL_ITEM				(AUX_DEW_CONTROL_PROPERTY->items + 0)
 #define AUX_DEW_CONTROL_AUTOMATIC_ITEM			(AUX_DEW_CONTROL_PROPERTY->items + 1)
 
-#define AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
-#define X_AUX_AVERAGE_ITEM									(AUX_INFO_PROPERTY->items + 0)
-#define X_AUX_AMP_HOUR_ITEM									(AUX_INFO_PROPERTY->items + 1)
-#define X_AUX_WATT_HOUR_ITEM								(AUX_INFO_PROPERTY->items + 2)
-#define X_AUX_VOLTAGE_ITEM									(AUX_INFO_PROPERTY->items + 3)
-#define X_AUX_CURRENT_ITEM									(AUX_INFO_PROPERTY->items + 4)
-#define X_AUX_POWER_ITEM										(AUX_INFO_PROPERTY->items + 5)
 
-
-
-#define AUX_GROUP															"USB Dewpoint"
-
-
-
+#define AUX_GROUP															"Auxiliary"
 
 typedef struct {
 	int handle;
@@ -96,10 +78,8 @@ typedef struct {
 	indigo_property *outlet_names_property;
 	indigo_property *heater_outlet_property;
 	indigo_property *heater_outlet_state_property;
-	indigo_property *heater_outlet_current_property;
 	indigo_property *heating_mode_property;
 	indigo_property *weather_property;
-	indigo_property *info_property;
 	int version;
 	pthread_mutex_t mutex;
 } usbdp_private_data;
@@ -136,16 +116,19 @@ typedef struct {
 
 
 static bool usbdp_command(indigo_device *device, char *command, char *response, int max) {
+	/* Wait a bit before flushing as usb to serial caches data */
+	indigo_usleep(20000);
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	//indigo_write(PRIVATE_DATA->handle, "\n\r", 2);
+
 	if (response != NULL) {
 		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == -1) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Command %s -> no response", command);
 			return false;
 		}
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Command %s -> <%s>", command, response != NULL ? response : "NULL");
+
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -202,12 +185,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_1_ITEM, AUX_HEATER_OUTLET_STATE_1_ITEM_NAME, "Heater #1 state", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_2_ITEM, AUX_HEATER_OUTLET_STATE_2_ITEM_NAME, "Heater #2 state", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_3_ITEM, AUX_HEATER_OUTLET_STATE_3_ITEM_NAME, "Heater #3 state", INDIGO_OK_STATE);
-		AUX_HEATER_OUTLET_CURRENT_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_CURRENT_PROPERTY_NAME, AUX_GROUP, "Heater outlets current", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
-		if (AUX_HEATER_OUTLET_CURRENT_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_HEATER_OUTLET_CURRENT_1_ITEM, AUX_HEATER_OUTLET_CURRENT_1_ITEM_NAME, "Heater #1 current [A]", 0, 3, 0, 0);
-		indigo_init_number_item(AUX_HEATER_OUTLET_CURRENT_2_ITEM, AUX_HEATER_OUTLET_CURRENT_2_ITEM_NAME, "Heater #2 current [A]", 0, 3, 0, 0);
-		indigo_init_number_item(AUX_HEATER_OUTLET_CURRENT_3_ITEM, AUX_HEATER_OUTLET_CURRENT_3_ITEM_NAME, "Heater #3 current [A]", 0, 3, 0, 0);
 		AUX_DEW_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_DEW_CONTROL_PROPERTY_NAME, AUX_GROUP, "Dew control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_DEW_CONTROL_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -217,19 +194,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_WEATHER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient Temperature [C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", -50, 100, 0, 0);
-		// -------------------------------------------------------------------------------- INFO
-		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 6);
-		if (AUX_INFO_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(X_AUX_AVERAGE_ITEM, "X_AUX_AVERAGE", "Avereage current [A]", 0, 100, 0, 0);
-		indigo_init_number_item(X_AUX_AMP_HOUR_ITEM, "X_AUX_AMP_HOUR", "Amp-hour [Ah]", 0, 100, 0, 0);
-		indigo_init_number_item(X_AUX_WATT_HOUR_ITEM, "X_AUX_WATT_HOUR", "Watt-hour [Wh]", 0, 100, 0, 0);
-		indigo_init_number_item(X_AUX_VOLTAGE_ITEM, "X_AUX_VOLTAGE", "Voltage [V]", 0, 15, 0, 0);
-		indigo_init_number_item(X_AUX_CURRENT_ITEM, "X_AUX_CURRENT", "Current [A]", 0, 20, 0, 0);
-		indigo_init_number_item(X_AUX_POWER_ITEM, "X_AUX_POWER_OUTLET", "Power [W]", 0, 200, 0, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -250,14 +217,10 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		if (indigo_property_match(AUX_HEATER_OUTLET_STATE_PROPERTY, property))
 			indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-		if (indigo_property_match(AUX_HEATER_OUTLET_CURRENT_PROPERTY, property))
-			indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
 		if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property))
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-		if (indigo_property_match(AUX_INFO_PROPERTY, property))
-			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 	}
 	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -271,16 +234,24 @@ static void aux_timer_callback(indigo_device *device) {
 
 	bool updateHeaterOutlet = false;
 	bool updateHeaterOutletState = false;
-	bool updateHeaterOutletCurrent = false;
 	bool updateWeather = false;
-	bool updateInfo = false;
 	bool updateAutoHeater = false;
-	bool updateHub = false;
 
 	usbdp_status_t status;
 
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (usbdp_status(device, &status)) {
+		if (PRIVATE_DATA->version == 1) {
+			if ((fabs(((double)status.tamb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) ||
+			    (fabs(((double)status.rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) ||
+			    (fabs(((double)status.dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
+					AUX_WEATHER_TEMPERATURE_ITEM->number.value = status.tamb;
+					AUX_WEATHER_HUMIDITY_ITEM->number.value = status.rh;
+					AUX_WEATHER_DEWPOINT_ITEM->number.value = status.dewpoint;
+					updateWeather = true;
+				}
+		} else {
+		}
 	}
 
 	if (updateHeaterOutlet) {
@@ -291,10 +262,7 @@ static void aux_timer_callback(indigo_device *device) {
 		AUX_HEATER_OUTLET_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 	}
-	if (updateHeaterOutletCurrent) {
-		AUX_HEATER_OUTLET_CURRENT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
-	}
+
 	if (updateAutoHeater) {
 		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
@@ -302,10 +270,6 @@ static void aux_timer_callback(indigo_device *device) {
 	if (updateWeather) {
 		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
-	}
-	if (updateInfo) {
-		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
 	}
 
 	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
@@ -322,22 +286,32 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			if (usbdp_command(device, "SWHOIS", response, sizeof(response))) {
 				if (!strcmp(response, "UDP")) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint at %s", DEVICE_PORT_ITEM->text.value);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v1 at %s", DEVICE_PORT_ITEM->text.value);
 					PRIVATE_DATA->version = 1;
+					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v1");
+					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+					AUX_OUTLET_NAMES_PROPERTY->hidden = true;
 					AUX_HEATER_OUTLET_PROPERTY->hidden = true;
 					AUX_HEATER_OUTLET_STATE_PROPERTY->hidden = true;
-					AUX_HEATER_OUTLET_CURRENT_PROPERTY->hidden = true;
+					AUX_DEW_CONTROL_PROPERTY->hidden = true;
+					indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 				} else if (!strncmp(response, "UDP2", 4)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v2 at %s", DEVICE_PORT_ITEM->text.value);
 					PRIVATE_DATA->version = 2;
-					AUX_HEATER_OUTLET_PROPERTY->count = 3;
-					AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
-					AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
+					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
+					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+					indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+					indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
+					indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+					indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB_Dewpoint not detected");
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB_Dewpoint not detected");
 				close(PRIVATE_DATA->handle);
@@ -347,9 +321,9 @@ static void aux_connection_handler(indigo_device *device) {
 
 		if (PRIVATE_DATA->handle > 0) {
 			usbdp_command(device, "FTPAMB", response, sizeof(response));
-			//char cmd[80];
-			//sprintf(cmd, UDP2_AUTO_CMD, 1);
-			//usbdp_command(device, cmd, response, sizeof(response));
+			char cmd[80];
+			sprintf(cmd, UDP2_THRESHOLD_CMD, 1, 4);
+			usbdp_command(device, cmd, response, sizeof(response));
 			//usbdp_command(device, "123456", response, sizeof(response));
 			usbdp_status_t status;
 
@@ -380,16 +354,14 @@ static void aux_connection_handler(indigo_device *device) {
 		// TODO: stop heaters
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (PRIVATE_DATA->handle > 0) {
-			usbdp_command(device, "PL:0", response, sizeof(response));
+			//usbdp_command(device, "PL:0", response, sizeof(response));
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = 0;
@@ -406,7 +378,6 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
 	}
 	snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
@@ -414,14 +385,10 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_CURRENT_1_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_CURRENT_2_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_CURRENT_3_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 	if (IS_CONNECTED) {
 		indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-		indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -497,10 +464,8 @@ static indigo_result aux_detach(indigo_device *device) {
 	}
 	indigo_release_property(AUX_HEATER_OUTLET_PROPERTY);
 	indigo_release_property(AUX_HEATER_OUTLET_STATE_PROPERTY);
-	indigo_release_property(AUX_HEATER_OUTLET_CURRENT_PROPERTY);
 	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
-	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
