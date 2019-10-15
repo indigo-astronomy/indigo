@@ -161,7 +161,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
 		INFO_PROPERTY->count = 5;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
@@ -301,6 +301,7 @@ static void aux_connection_handler(indigo_device *device) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v2 at %s", DEVICE_PORT_ITEM->text.value);
 					PRIVATE_DATA->version = 2;
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
+					sprintf(INFO_DEVICE_INTERFACE_ITEM->text.value, "%d", INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_POWERBOX);
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 					indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 					indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);

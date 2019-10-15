@@ -12,6 +12,7 @@
 #define UDP_IDENTIFY_CMD "SWHOIS"
 #define UDP_RESET_CMD "SEERAZ"
 
+V2
 /**************************** USB_Dewpoint Constants **************************/
 
 // Responses also include "\n\r"
@@ -45,3 +46,11 @@
 #define UDP_STATUS_END "**"
 
 #define UDP_IDENTIFY_RESPONSE "UDP2(%u)" // Firmware version? Mine is "UDP2(1446)"
+
+V1
+status response:
+// Tloc=26.37-Tamb=26.65-RH=35.73-DP=-19.55-TH=00-C=1201
+#define UDP1_STATUS_RESPONSE "Tloc=%f-Tamb=%f-RH=%f-DP=%f-TH=%d-C=%d"
+
+whois responce:
+"UDP"
