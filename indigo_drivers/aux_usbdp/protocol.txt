@@ -1,0 +1,56 @@
+/***************************** USB_Dewpoint Commands **************************/
+
+// All commands are exactly 6 bytes, no start/end markers
+#define UDP_CMD_LEN 6
+#define UDP_STATUS_CMD "SGETAL"
+#define UDP_OUTPUT_CMD "S%1uO%03u"         // channel 1-3, power 0-100
+#define UDP_THRESHOLD_CMD "STHR%1u%1u"     // channel 1-2, value 0-9
+#define UDP_CALIBRATION_CMD "SCA%1u%1u%1u" // channel 1-2-A, value 0-9
+#define UDP_LINK_CMD "SLINK%1u"            // 0 or 1 to link channels 2 and 3
+#define UDP_AUTO_CMD "SAUTO%1u"            // 0 or 1 to enable auto mode
+#define UDP_AGGRESSIVITY_CMD "SAGGR%1u"    // 1-4 (1, 2, 5, 10)
+#define UDP_IDENTIFY_CMD "SWHOIS"
+#define UDP_RESET_CMD "SEERAZ"
+
+V2
+/**************************** USB_Dewpoint Constants **************************/
+
+// Responses also include "\n\r"
+#define UDP_DONE_RESPONSE "DONE"
+#define UDP_RES_LEN 80 // With some margin, maximum feasible seems to be around 70
+
+// Status response is like:
+// ##22.37/22.62/23.35/50.77/12.55/0/0/0/0/0/0/2/2/0/0/4**
+
+// Fields are in order:
+// temperature ch 1
+// temperature ch 2
+// temperature ambient
+// relative humidity
+// dew point
+// output ch 1
+// output ch 2
+// output ch 3
+// calibration ch 1
+// calibration ch 2
+// calibration ambient
+// threshold ch 1
+// threshold ch 2
+// auto mode
+// outputs ch 2 & 3 linked
+// aggressivity
+
+#define UDP_STATUS_RESPONSE "##%f/%f/%f/%f/%f/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u**"
+#define UDP_STATUS_START "##"
+#define UDP_STATUS_SEPARATOR "/"
+#define UDP_STATUS_END "**"
+
+#define UDP_IDENTIFY_RESPONSE "UDP2(%u)" // Firmware version? Mine is "UDP2(1446)"
+
+V1
+status response:
+// Tloc=26.37-Tamb=26.65-RH=35.73-DP=-19.55-TH=00-C=1201
+#define UDP1_STATUS_RESPONSE "Tloc=%f-Tamb=%f-RH=%f-DP=%f-TH=%d-C=%d"
+
+whois responce:
+"UDP"

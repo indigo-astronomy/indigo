@@ -65,15 +65,15 @@ typedef enum {
 	INDIGO_INTERFACE_WHEEL     = (1 << 4),    							///< Filter wheel interface
 	INDIGO_INTERFACE_DOME      = (1 << 5),    							///< Dome interface
 	INDIGO_INTERFACE_GPS       = (1 << 6),    							///< GPS interface
-	INDIGO_INTERFACE_WEATHER   = (1 << 7),    							///< Weather interface
 	INDIGO_INTERFACE_AO        = (1 << 8),    							///< Adaptive Optics Interface
 	INDIGO_INTERFACE_AUX       = (1 << 15),    							///< Auxiliary interface
 	INDIGO_INTERFACE_AUX_JOYSTICK  = (1 << 15) | (1 << 16),	///< Joystick AUX interface
 	INDIGO_INTERFACE_AUX_SHUTTER   = (1 << 15) | (1 << 17),	///< Shutter AUX interface
 	INDIGO_INTERFACE_AUX_POWERBOX  = (1 << 15) | (1 << 18),	///< Powerbox AUX interface
-	INDIGO_INTERFACE_AUX_SQM  		 = (1 << 15) | (1 << 19),	///< SQM AUX interface
+	INDIGO_INTERFACE_AUX_SQM       = (1 << 15) | (1 << 19),	///< SQM AUX interface
 	INDIGO_INTERFACE_AUX_DUSTCAP   = (1 << 15) | (1 << 20), ///< Dust Cap AUX Interface
-	INDIGO_INTERFACE_AUX_LIGHTBOX  = (1 << 15) | (1 << 21)  ///< Light Box AUX Interface
+	INDIGO_INTERFACE_AUX_LIGHTBOX  = (1 << 15) | (1 << 21),  ///< Light Box AUX Interface
+	INDIGO_INTERFACE_AUX_WEATHER   = (1 << 15) | (1 << 22)   ///< Weather AUX interface
 } indigo_device_interface;
 
 /** Property, device or client version.
@@ -633,7 +633,7 @@ extern bool indigo_is_sandboxed;
 /** Cache BLOB content
  */
 extern bool indigo_use_blob_caching;
-	
+
 /** Use recursive locks for dispaching all bus messages
  */
 extern bool indigo_use_strict_locking;

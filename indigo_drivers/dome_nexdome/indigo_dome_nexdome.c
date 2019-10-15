@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome.c
  */
 
-#define DRIVER_VERSION 0x00002
+#define DRIVER_VERSION 0x00003
 #define DRIVER_NAME	"indigo_dome_nexdome"
 
 #include <stdlib.h>
@@ -548,8 +548,8 @@ static void dome_timer_callback(indigo_device *device) {
 			}
 			low_voltage = false;
 		}
-		if ((fabs((v_rotator - NEXDOME_POWER_ROTATOR_ITEM->number.value)*100) >= 100) ||
-		   (fabs((v_shutter - NEXDOME_POWER_SHUTTER_ITEM->number.value)*100) >= 100)) {
+		if ((fabs((v_rotator - NEXDOME_POWER_ROTATOR_ITEM->number.value)*100) >= 1) ||
+		   (fabs((v_shutter - NEXDOME_POWER_SHUTTER_ITEM->number.value)*100) >= 1)) {
 			NEXDOME_POWER_ROTATOR_ITEM->number.value = v_rotator;
 			NEXDOME_POWER_SHUTTER_ITEM->number.value = v_shutter;
 			indigo_update_property(device, NEXDOME_POWER_PROPERTY, NULL);
@@ -575,7 +575,7 @@ static void dome_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		need_update = true;
 	} else if(need_update) {
-		if (!PRIVATE_DATA->callibration_requested && fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*100) >= 100) {
+		if (!PRIVATE_DATA->callibration_requested && fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*100) >= 1) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -603,7 +603,7 @@ static void dome_timer_callback(indigo_device *device) {
 		need_update = false;
 	}
 
-	if (PRIVATE_DATA->park_requested && (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 100)) {
+	if (PRIVATE_DATA->park_requested && (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1)) {
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->park_requested = false;
@@ -833,7 +833,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					if(!nexdome_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
 					}
-					if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 100) {
+					if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
 						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 					} else {
 						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
