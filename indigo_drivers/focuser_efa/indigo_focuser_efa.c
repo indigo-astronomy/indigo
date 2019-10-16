@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -189,16 +189,16 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.max = 3799422;
-		FOCUSER_STEPS_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 3799422;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 3799422;
+		// -------------------------------------------------------------------------------- FOCUSER_STEPS
+		FOCUSER_STEPS_ITEM->number.min = FOCUSER_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min;
+		FOCUSER_STEPS_ITEM->number.max = FOCUSER_POSITION_ITEM->number.max = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max;
+		FOCUSER_STEPS_ITEM->number.step = FOCUSER_POSITION_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
@@ -237,46 +237,84 @@ static void focuser_timer_callback(indigo_device *device) {
 			}
 		}
 	}
-	bool moving = false;
-	uint8_t check_state_packet[10] = { SOM, 0x03, APP, FOC, 0x13, 0 };
-	if (efa_command(device, check_state_packet, response_packet)) {
-		moving = response_packet[5] == 0;
-	}
-	long position = 0;
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->timer);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+#define THRESHOLD 50000
+
+static long focuser_position(indigo_device *device) {
+	uint8_t response_packet[10];
 	uint8_t get_position_packet[10] = { SOM, 0x03, APP, FOC, 0x01, 0 };
 	if (efa_command(device, get_position_packet, response_packet)) {
-		position = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
+		long position = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
+		if (position & 0x800000)
+			position = -(position ^ 0xFFFFFF) - 1;
+		return position;
 	}
-	bool update = false;
-	if (moving) {
-		if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			update = true;
-		}
-		if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			update = true;
-		}
-	} else {
-		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			update = true;
-		}
-		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			update = true;
+	return 0;
+}
+
+static void focuser_goto(indigo_device *device, long target) {
+	uint8_t response_packet[10];
+	uint8_t check_state_packet[10] = { SOM, 0x03, APP, FOC, 0x13, 0 };
+	
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+
+	long position = focuser_position(device);
+
+	if (PRIVATE_DATA->is_efa) {
+		uint8_t slew_positive_packet[10] = { SOM, 0x04, APP, FOC, 0x24, 0x09, 0 };
+		uint8_t slew_negative_packet[10] = { SOM, 0x04, APP, FOC, 0x25, 0x09, 0 };
+		uint8_t stop_packet[10] = { SOM, 0x04, APP, FOC, 0x24, 0x00, 0 };
+		if (labs(target - position) > THRESHOLD) {
+			if (!efa_command(device, target > position ? slew_positive_packet : slew_negative_packet, response_packet))
+				goto failure;
+			while (true) {
+				if (efa_command(device, check_state_packet, response_packet)) {
+					if (response_packet[5] == 0xFE)
+						goto failure;
+				}
+				position = focuser_position(device);
+				FOCUSER_POSITION_ITEM->number.value = position;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				if (labs(target - position) <= THRESHOLD) {
+					if (!efa_command(device, stop_packet, response_packet))
+						goto failure;
+					break;
+				}
+				indigo_usleep(300000);
+			}
 		}
 	}
-	if (FOCUSER_POSITION_ITEM->number.value != position) {
+	uint8_t goto_packet[10] = { SOM, 0x06, APP, FOC, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (target >> 16) & 0xFF, (target >> 8) & 0xFF, target & 0xFF, 0 };
+	if (!efa_command(device, goto_packet, response_packet))
+		goto failure;
+	while (true) {
+		position = focuser_position(device);
+		if (efa_command(device, check_state_packet, response_packet)) {
+			if (response_packet[5] == 0xFE)
+				goto failure;
+			if (response_packet[5] == 0xFF)
+				break;
+		}
 		FOCUSER_POSITION_ITEM->number.value = position;
-		update = true;
-	}
-	if (update) {
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_usleep(300000);
 	}
-	indigo_reschedule_timer(device, moving ? 0.5 : 1, &PRIVATE_DATA->timer);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	return;
+failure:
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
 static void focuser_connection_handler(indigo_device *device) {
@@ -319,10 +357,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_update_property(device, CONNECTION_PROPERTY, "Failed to open port %s (%s)", DEVICE_PORT_ITEM->text.value, strerror(errno));
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			uint8_t get_position_packet[10] = { SOM, 0x03, APP, FOC, 0x01, 0 };
-			if (efa_command(device, get_position_packet, response_packet)) {
-				FOCUSER_POSITION_ITEM->number.value = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
-			}
+			FOCUSER_POSITION_ITEM->number.value = focuser_position(device);
 			if (PRIVATE_DATA->is_efa) {
 				uint8_t get_calibration_status_packet[10] = { SOM, 0x03, APP, FOC, 0x30, 0 };
 				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
@@ -374,12 +409,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
-	uint8_t response_packet[10];
-	uint8_t goto_packet[10] = { SOM, 0x06, APP, FOC, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
-	if (efa_command(device, goto_packet, response_packet)) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-	}
+	focuser_goto(device, position);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -390,19 +420,22 @@ static void focuser_position_handler(indigo_device *device) {
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
-	uint8_t response_packet[10];
-	uint8_t goto_packet[10] = { SOM, 0x06, APP, FOC, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
-	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value)
-		goto_packet[4] = 0x04;
-	if (efa_command(device, goto_packet, response_packet)) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+		uint8_t response_packet[10];
+		uint8_t sync_packet[10] = { SOM, 0x06, APP, FOC, 0x04, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
+		if (efa_command(device, sync_packet, response_packet))
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else {
+		focuser_goto(device, position);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_abort_motion_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+//	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		uint8_t response_packet[10];
 		uint8_t stop_packet[10] = { SOM, 0x06, APP, FOC, 0x24, 0x00, 0 };
@@ -414,7 +447,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	}
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+//	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_fans_handler(indigo_device *device) {
