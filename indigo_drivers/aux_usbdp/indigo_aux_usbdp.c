@@ -385,10 +385,11 @@ static void aux_connection_handler(indigo_device *device) {
 
 			char command[8];
 			char response[80];
-			sprintf(command, UDP2_THRESHOLD_CMD, 2, 3);
+			sprintf(command, UDP2_THRESHOLD_CMD, 3, 3);
 			usbdp_command(device, command, response, 80);
-			usbdp_command(device, UDP_RESET_CMD, response, 80);
+			//usbdp_command(device, UDP_RESET_CMD, response, 80);
 			usbdp_command(device, "123456", response, 80);
+			usbdp_command(device, "SBDK2D", response, 80);
 			sprintf(command, UDP2_OUTPUT_CMD, 1, 11);
 			usbdp_command(device, command, response, 80);
 			sprintf(command, UDP2_LINK_CMD, 1);
