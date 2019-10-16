@@ -111,14 +111,40 @@ typedef struct {
 #define UDP_IDENTIFY_RESPONSE "UDP2(%u)" // Firmware version? Mine is "UDP2(1446)"
 
 typedef struct {
-	float tloc;
-	float tamb;
+	float temp_loc;
+	float temp_amb;
 	float rh;
 	float dewpoint;
-	int th;
+	int threshold;
 	int c;
-} usbdp_status_t;
+} usbdp_status_v1_t;
 
+typedef struct {
+	float temp_ch1;
+	float temp_ch2;
+	float temp_amb;
+	float rh;
+	float dewpoint;
+	char  output_ch1;
+	char  output_ch2;
+	char  output_ch3;
+	char  cal_ch1;
+	char  cal_ch2;
+	char  cal_amb;
+	char  threshold_ch1;
+	char  threshold_ch2;
+	bool  auto_mode;
+	bool  ch2_3_linked;
+	char  aggressivity;
+} usbdp_status_v2_t;
+
+typedef struct {
+	char version;
+	union {
+		usbdp_status_v1_t v1;
+		usbdp_status_v2_t v2;
+	};
+} usbdp_status_t;
 
 static bool usbdp_command(indigo_device *device, char *command, char *response, int max) {
 	/* Wait a bit before flushing as usb to serial caches data */
@@ -144,16 +170,50 @@ static bool usbdp_status(indigo_device *device, usbdp_status_t *status) {
 		return false;
 	}
 
-	if (PRIVATE_DATA->version == 1) {
-		int parsed = sscanf(response, UDP1_STATUS_RESPONSE, &status->tloc, &status->tamb, &status->rh, &status->dewpoint, &status->th, &status->c);
+	status->version = PRIVATE_DATA->version;
+
+	if (status->version == 1) {
+		int parsed = sscanf(response, UDP1_STATUS_RESPONSE,
+			&status->v1.temp_loc,
+			&status->v1.temp_amb,
+			&status->v1.rh,
+			&status->v1.dewpoint,
+			&status->v1.threshold,
+			&status->v1.c
+		);
 		if (parsed == 6) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Tloc=%f Tamb=%f RH=%f DP=%f TH=%d C=%d", status->tloc, status->tamb, status->rh, status->dewpoint, status->th, status->c);
+			status->version = PRIVATE_DATA->version;
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Tloc=%f Tamb=%f RH=%f DP=%f TH=%d C=%d", status->v1.temp_loc, status->v1.temp_amb, status->v1.rh, status->v1.dewpoint, status->v1.threshold, status->v1.c);
 			return true;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 6 values in response \"%s\"", parsed, response);
 			return false;
 		}
-	} else if (PRIVATE_DATA->version == 2) {
+	} else if (status->version == 2) {
+		int parsed = sscanf(response, UDP2_STATUS_RESPONSE,
+			&status->v2.temp_ch1,
+			&status->v2.temp_ch2,
+			&status->v2.temp_amb,
+			&status->v2.rh,
+			&status->v2.dewpoint,
+			&status->v2.output_ch1,
+			&status->v2.output_ch2,
+			&status->v2.output_ch3,
+			&status->v2.cal_ch1,
+			&status->v2.cal_ch2,
+			&status->v2.cal_amb,
+			&status->v2.threshold_ch1,
+			&status->v2.threshold_ch2,
+			&status->v2.auto_mode,
+			&status->v2.ch2_3_linked,
+			&status->v2.aggressivity
+		);
+		if (parsed == 16) {
+			return true;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 16 values in response \"%s\"", parsed, response);
+			return false;
+		}
 
 	} else {
 		return false;
@@ -256,17 +316,32 @@ static void aux_timer_callback(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (usbdp_status(device, &status)) {
-		if (PRIVATE_DATA->version == 1) {
-			if ((fabs(((double)status.tamb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) ||
-			    (fabs(((double)status.rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) ||
-			    (fabs(((double)status.dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
-				AUX_WEATHER_TEMPERATURE_ITEM->number.value = status.tamb;
-				AUX_WEATHER_HUMIDITY_ITEM->number.value = status.rh;
-				AUX_WEATHER_DEWPOINT_ITEM->number.value = status.dewpoint;
+		if (status.version == 1) {
+			if ((fabs(((double)status.v1.temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) ||
+			    (fabs(((double)status.v1.rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) ||
+			    (fabs(((double)status.v1.dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
+				AUX_WEATHER_TEMPERATURE_ITEM->number.value = status.v1.temp_amb;
+				AUX_WEATHER_HUMIDITY_ITEM->number.value = status.v1.rh;
+				AUX_WEATHER_DEWPOINT_ITEM->number.value = status.v1.dewpoint;
 				updateWeather = true;
 			}
-			if (fabs(((double)status.tloc - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) {
-				AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = status.tloc;
+			if (fabs(((double)status.v1.temp_loc - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) {
+				AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = status.v1.temp_loc;
+				updateSensors = true;
+			}
+		} else if (status.version == 2) {
+			if ((fabs(((double)status.v2.temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) ||
+			    (fabs(((double)status.v2.rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) ||
+			    (fabs(((double)status.v2.dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
+				AUX_WEATHER_TEMPERATURE_ITEM->number.value = status.v2.temp_amb;
+				AUX_WEATHER_HUMIDITY_ITEM->number.value = status.v2.rh;
+				AUX_WEATHER_DEWPOINT_ITEM->number.value = status.v2.dewpoint;
+				updateWeather = true;
+			}
+			if ((fabs(((double)status.v2.temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) ||
+			    (fabs(((double)status.v2.temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1)) {
+				AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = status.v2.temp_ch1;
+				AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = status.v2.temp_ch2;
 				updateSensors = true;
 			}
 		} else {
@@ -307,6 +382,24 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
+
+			char command[8];
+			char response[80];
+			sprintf(command, UDP2_THRESHOLD_CMD, 3, 3);
+			usbdp_command(device, command, response, 80);
+			//usbdp_command(device, UDP_RESET_CMD, response, 80);
+			usbdp_command(device, "123456", response, 80);
+			usbdp_command(device, "SBDK2D", response, 80);
+			sprintf(command, UDP2_OUTPUT_CMD, 1, 11);
+			usbdp_command(device, command, response, 80);
+			sprintf(command, UDP2_LINK_CMD, 1);
+			usbdp_command(device, command, response, 80);
+			sprintf(command, UDP2_AUTO_CMD, 1);
+			usbdp_command(device, command, response, 80);
+			sprintf(command, UDP2_AGGRESSIVITY_CMD, 3);
+			usbdp_command(device, command, response, 80);
+
+
 			if (usbdp_command(device, "SWHOIS", response, sizeof(response))) {
 				if (!strcmp(response, "UDP")) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v1 at %s", DEVICE_PORT_ITEM->text.value);

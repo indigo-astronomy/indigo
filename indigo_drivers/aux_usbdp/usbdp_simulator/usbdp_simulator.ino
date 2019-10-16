@@ -1,4 +1,4 @@
-// USB_Dewpoint v2 simulator for Arduino
+// USB_Dewpoint v1 and v2 simulator for Arduino
 //
 // Copyright (c) 2019 Rumen G. Bogdanovski
 // All rights reserved.
@@ -24,211 +24,193 @@
 
 #define V2
 
-bool power1 = true;
-bool power2 = true;
-bool power3 = true;
-bool power4 = true;
-byte power5 = 0;
-byte power6 = 0;
-#ifdef V2
-byte power7 = 0;
-byte power8 = 12;
-#endif
-float temperature = 12.353;
+#define READINGS_UPDATE 10
+int epoch = 0;
 
+float temp_ch1 = 27.68;
+float temp_ch2 = 27.11;
+float temp_amb = 28.05;
+float rh = 61.73;
+byte  output_ch1 = 0;
+byte  output_ch2 = 0;
+byte  output_ch3 = 0;
+byte  cal_ch1 = 0;
+byte  cal_ch2 = 0;
+byte  cal_amb = 0;
+byte  threshold_ch1 = 2;
+byte  threshold_ch2 = 2;
+bool  auto_mode = 0;
+bool  ch2_3_linked = 0;
+byte  aggressivity = 4;
+
+float dewpoint(float Tamb, float RH) {
+  return Tamb - (100 - RH) / 5.0;
+}
 
 void setup() {
   Serial.begin(19200);
-  Serial.setTimeout(1000);
+  Serial.setTimeout(2000);
   while (!Serial)
     ;
+  randomSeed(analogRead(0));
 }
 
 void loop() {
+  // update readings if needed
+  if (0 == (epoch++ % READINGS_UPDATE)) {
+    temp_ch1 += random(-50,50)/100.0;
+    if(temp_ch1 < -40) temp_ch1 = -40;
+    if(temp_ch1 > 50) temp_ch1 = 50;
+
+    temp_ch2 += random(-50,50)/100.0;
+    if(temp_ch2 < -40) temp_ch2 = -40;
+    if(temp_ch2 > 50) temp_ch2 = 50;
+
+    temp_amb += random(-50,50)/100.0;
+    if(temp_amb < -40) temp_amb = -40;
+    if(temp_amb > 50) temp_amb = 50;
+
+    rh += random(-50,50)/100.0;
+    if(rh < 0) rh = 0;
+    if(rh > 100) rh = 100;
+  }
+
   char cmd[7];
   Serial.readBytes(cmd, 6);
   cmd[6] = 0;
   char response[80];
   String command = String(cmd);
-
+  //========================================================== SWHOIS
   if (command.equals("SWHOIS")) {
     #ifdef V1
     Serial.println("UDP");
     #else
     Serial.println("UDP2(1446)");
     #endif
-
+  //========================================================== SEERAZ
   } else if (command.equals("SEERAZ")) {
+    output_ch1 = 0;
+    output_ch2 = 0;
+    output_ch3 = 0;
+    cal_ch1 = 0;
+    cal_ch2 = 0;
+    cal_amb = 0;
+    threshold_ch1 = 2;
+    threshold_ch2 = 2;
+    auto_mode = 0;
+    ch2_3_linked = 0;
+    aggressivity = 4;
     Serial.println("EEPROM RESET");
-
+  //========================================================== SGETAL
   } else if (command.equals("SGETAL")) {
-    #ifdef V1
-    Serial.print("temp = ");
-    Serial.println(temperature, 2);
-    #else
-    Serial.print("temp = ");
-    Serial.println(temperature, 2);
-    #endif
-/*
-#ifdef V2
-	} else if (command.startsWith("PS")) {
-		Serial.print("PS:");
-		Serial.print(power1 ? "1" : "0");
-		Serial.print(power2 ? "1" : "0");
-		Serial.print(power3 ? "1" : "0");
-		Serial.print(power4 ? "1" : "0");
-		Serial.print(":");
-		Serial.println((int)power8);
-#endif
-  } else if (command.startsWith("P1:")) {
-    power1 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("P2:")) {
-    power2 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("P3:")) {
-    power3 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("P4:")) {
-    power4 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("P5:")) {
-    power5 = command.substring(3).toInt();
-    Serial.println(command);
-  } else if (command.startsWith("P6:")) {
-    power6 = command.substring(3).toInt();
-    Serial.println(command);
-#ifdef V2
-	} else if (command.startsWith("P7:")) {
-		power7 = command.substring(3).toInt();
-		Serial.println(command);
-	} else if (command.startsWith("P8:")) {
-		power8 = command.substring(3).toInt();
-		Serial.println(command);
-  } else if (command.startsWith("U1:")) {
-    usb1 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("U2:")) {
-    usb2 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("U3:")) {
-    usb3 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("U4:")) {
-    usb4 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("U5:")) {
-    usb5 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("U6:")) {
-    usb6 = command.charAt(3) == '1';
-    Serial.println(command);
-#endif
-  } else if (command.startsWith("PU:")) {
-    hub = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("PF")) {
-    Serial.println("RBT");
-  } else if (command.startsWith("PA")) {
-#ifdef V2
-    Serial.print("UPB2:12.2:0.0:0:23.2:59:14.7:");
-#else
-    Serial.print("UPB:12.2:0.0:0:23.2:59:14.7:");
-#endif
-    Serial.print(power1 ? '1' : '0');
-    Serial.print(power2 ? '1' : '0');
-    Serial.print(power3 ? '1' : '0');
-    Serial.print(power4 ? '1' : '0');
-    Serial.print(':');
-#ifdef V2
-    Serial.print(usb1 ? '1' : '0');
-    Serial.print(usb2 ? '1' : '0');
-    Serial.print(usb3 ? '1' : '0');
-    Serial.print(usb4 ? '1' : '0');
-    Serial.print(usb5 ? '1' : '0');
-    Serial.print(usb6 ? '1' : '0');
-#else
-    Serial.print(hub ? '0' : '1');
-#endif    
-		Serial.print(':');
-    Serial.print(power5);
-    Serial.print(':');
-    Serial.print(power6);
-    Serial.print(':');
-#ifdef V2
-    Serial.print(power7);
-    Serial.print(':');
-#endif    
-    Serial.print(power1 ? 200 : 0);
-    Serial.print(':');
-    Serial.print(power2 ? 200 : 0);
-    Serial.print(':');
-    Serial.print(power3 ? 200 : 0);
-    Serial.print(':');
-    Serial.print(power4 ? 200 : 0);
-    Serial.print(':');
-    Serial.print(power5 ? 300 : 0);
-    Serial.print(':');
-    Serial.print(power6 ? 300 : 0);
-#ifdef V2
-    Serial.print(':');
-    Serial.print(power7 ? 600 : 0);
-    Serial.print(":0000010:");
-#else
-    Serial.print(":000001:");
-#endif
-    Serial.println(autodev);
-  } else if (command.startsWith("PC")) {
-    Serial.println("2.1:12:46");
-  } else if (command.startsWith("PD:")) {
-    autodev = command.charAt(3);
-    Serial.println(command);
-  } else if (command.equals("PV")) {
-    Serial.println("1.0");
-  } else if (command.startsWith("PZ:")) {
-    power1 = power2 = power3 = power4 = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("PL:")) {
-    led = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.equals("SA")) {
-    Serial.print((long)position);
-    Serial.print(":");
-    Serial.print(target == position ? '0' : '1');
-    Serial.print(":");
-    Serial.print(reverse);
-    Serial.print(":");
-    Serial.println(backlash);
-  } else if (command.startsWith("SB:")) {
-    backlash = command.substring(3).toInt();
-		Serial.println(command);
-  } else if (command.equals("SP")) {
-    Serial.println((int)position);
-	} else if (command.equals("SS")) {
-		Serial.println((int)speed);
-  } else if (command.startsWith("SH")) {
-    target = (long)position;
-    Serial.println("H:1");
-  } else if (command.equals("ST")) {
-    Serial.println(temperature);
-  } else if (command.equals("SI")) {
-    Serial.println(target == position ? '0' : '1');
-  } else if (command.startsWith("SM:")) {
-    target = command.substring(3).toInt();
-    Serial.println(command);
-  } else if (command.startsWith("SR:")) {
-    reverse = command.charAt(3) == '1';
-    Serial.println(command);
-  } else if (command.startsWith("SC:")) {
-    target = position = command.substring(3).toInt();
-  } else if (command.startsWith("SS:")) {
-    speed = command.substring(3).toInt();
-		Serial.println((int)speed);
-  } else if (command.startsWith("SG:")) {
-    target = position + command.substring(3).toInt();
-    Serial.println(command);
-  } else if (command.equals("SS")) {
-    Serial.println(speed);
-*/
+  #ifdef V1
+    // Tloc=26.37-Tamb=26.65-RH=35.73-DP=-19.55-TH=00-C=1201
+    // Tloc=27.68-Tamb=28.05-RH=34.04-DP=-19.37-TH=02-C=1201
+    Serial.print("Tloc=");
+    Serial.print(temp_ch1, 2);
+    Serial.print("-Tamb=");
+    Serial.print(temp_amb, 2);
+    Serial.print("-RH=");
+    Serial.print(rh, 2);
+    Serial.print("-DP=");
+    Serial.print(dewpoint(temp_amb, rh), 2);
+    Serial.println("-TH=00-C=1201");
+  #else
+    // ##22.37/22.62/23.35/50.77/12.55/0/0/0/0/0/0/2/2/0/0/4**
+    // Fields are in order:
+    // temperature ch 1
+    // temperature ch 2
+    // temperature ambient
+    // relative humidity
+    // dew point
+    // output ch 1
+    // output ch 2
+    // output ch 3
+    // calibration ch 1
+    // calibration ch 2
+    // calibration ambient
+    // threshold ch 1
+    // threshold ch 2
+    // auto mode
+    // outputs ch 2 & 3 linked
+    // aggressivity
+    Serial.print("##");
+    Serial.print(temp_ch1, 2);
+    Serial.print("/");
+    Serial.print(temp_ch2, 2);
+    Serial.print("/");
+    Serial.print(temp_amb, 2);
+    Serial.print("/");
+    Serial.print(rh, 2);
+    Serial.print("/");
+    Serial.print(dewpoint(temp_amb, rh), 2);
+    Serial.print("/");
+    Serial.print(output_ch1);
+    Serial.print("/");
+    Serial.print(output_ch2);
+    Serial.print("/");
+    Serial.print(output_ch3);
+    Serial.print("/");
+    Serial.print(cal_ch1);
+    Serial.print("/");
+    Serial.print(cal_ch2);
+    Serial.print("/");
+    Serial.print(cal_amb);
+    Serial.print("/");
+    Serial.print(threshold_ch1);
+    Serial.print("/");
+    Serial.print(threshold_ch2);
+    Serial.print("/");
+    Serial.print(auto_mode);
+    Serial.print("/");
+    Serial.print(ch2_3_linked);
+    Serial.print("/");
+    Serial.print(aggressivity);
+    Serial.println("**");
+  #endif
+
+  #ifdef V2
+  //========================================================== SCA
+	} else if (command.startsWith("SCA")) {
+    cal_ch1 = command.substring(3, 4).toInt();
+		cal_ch2 = command.substring(4, 5).toInt();
+    cal_amb = command.substring(5, 6).toInt();
+    Serial.println("DONE");
+  //========================================================== STHR
+  } else if (command.startsWith("STHR")) {
+    threshold_ch1 = command.substring(4, 5).toInt();
+    threshold_ch2 = command.substring(5, 6).toInt();
+    Serial.println("DONE");
+  //========================================================== SLINK
+  } else if (command.startsWith("SLINK")) {
+    ch2_3_linked = command.charAt(5) == '1';
+    Serial.println("DONE");
+  //========================================================== SAUTO
+  } else if (command.startsWith("SAUTO")) {
+    auto_mode = command.charAt(5) == '1';
+    Serial.println("DONE");
+  //========================================================== SAGGR
+  } else if (command.startsWith("SAGGR")) {
+    aggressivity = command.substring(5, 6).toInt();
+    Serial.println("DONE");
+  //========================================================== S1O
+  } else if (command.startsWith("S1O")) {
+    output_ch1 = command.substring(3, 6).toInt();
+    Serial.println("DONE");
+  //========================================================== S2O
+  } else if (command.startsWith("S2O")) {
+    output_ch2 = command.substring(3, 6).toInt();
+    if (ch2_3_linked) output_ch3 = output_ch2;
+    Serial.println("DONE");
+  //========================================================== S3O
+  } else if (command.startsWith("S3O")) {
+    output_ch3 = command.substring(3, 6).toInt();
+    if (ch2_3_linked) output_ch2 = output_ch3;
+    Serial.println("DONE");
+  #endif
+  } else if (command.startsWith("S")){
+    // Do nothing... no repsonse (mimics the real device);
+  } else {
+    Serial.println("Unknown command");
   }
 }
