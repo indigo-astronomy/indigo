@@ -24,11 +24,13 @@
 
 #define V2
 
-float temp_ch1 = 12.1;
-float temp_ch2 = 12.22;
-float temp_amb = 13.31;
-float rh = 65.32;
-float dewpoint = -12.7;
+#define READINGS_UPDATE 10
+int epoch = 0;
+
+float temp_ch1 = 27.68;
+float temp_ch2 = 27.11;
+float temp_amb = 28.05;
+float rh = 61.73;
 byte  output_ch1 = 0;
 byte  output_ch2 = 0;
 byte  output_ch3 = 0;
@@ -41,15 +43,38 @@ bool  auto_mode = 0;
 bool  ch2_3_linked = 0;
 byte  aggressivity = 4;
 
+float dewpoint(float Tamb, float RH) {
+  return Tamb - (100 - RH) / 5.0;
+}
 
 void setup() {
   Serial.begin(19200);
-  Serial.setTimeout(1000);
+  Serial.setTimeout(2000);
   while (!Serial)
     ;
+  randomSeed(analogRead(0));
 }
 
 void loop() {
+  // update readings if needed
+  if (0 == (epoch++ % READINGS_UPDATE)) {
+    temp_ch1 += random(-50,50)/100.0;
+    if(temp_ch1 < -40) temp_ch1 = -40;
+    if(temp_ch1 > 50) temp_ch1 = 50;
+
+    temp_ch2 += random(-50,50)/100.0;
+    if(temp_ch2 < -40) temp_ch2 = -40;
+    if(temp_ch2 > 50) temp_ch2 = 50;
+
+    temp_amb += random(-50,50)/100.0;
+    if(temp_amb < -40) temp_amb = -40;
+    if(temp_amb > 50) temp_amb = 50;
+
+    rh += random(-50,50)/100.0;
+    if(rh < 0) rh = 0;
+    if(rh > 100) rh = 100;
+  }
+
   char cmd[7];
   Serial.readBytes(cmd, 6);
   cmd[6] = 0;
@@ -80,6 +105,7 @@ void loop() {
   } else if (command.equals("SGETAL")) {
   #ifdef V1
     // Tloc=26.37-Tamb=26.65-RH=35.73-DP=-19.55-TH=00-C=1201
+    // Tloc=27.68-Tamb=28.05-RH=34.04-DP=-19.37-TH=02-C=1201
     Serial.print("Tloc=");
     Serial.print(temp_ch1, 2);
     Serial.print("-Tamb=");
@@ -87,7 +113,7 @@ void loop() {
     Serial.print("-RH=");
     Serial.print(rh, 2);
     Serial.print("-DP=");
-    Serial.print(dewpoint, 2);
+    Serial.print(dewpoint(temp_amb, rh), 2);
     Serial.println("-TH=00-C=1201");
   #else
     // ##22.37/22.62/23.35/50.77/12.55/0/0/0/0/0/0/2/2/0/0/4**
@@ -117,7 +143,7 @@ void loop() {
     Serial.print("/");
     Serial.print(rh, 2);
     Serial.print("/");
-    Serial.print(dewpoint, 2);
+    Serial.print(dewpoint(temp_amb, rh), 2);
     Serial.print("/");
     Serial.print(output_ch1);
     Serial.print("/");
@@ -174,12 +200,16 @@ void loop() {
   //========================================================== S2O
   } else if (command.startsWith("S2O")) {
     output_ch2 = command.substring(3, 6).toInt();
+    if (ch2_3_linked) output_ch3 = output_ch2;
     Serial.println("DONE");
   //========================================================== S3O
   } else if (command.startsWith("S3O")) {
     output_ch3 = command.substring(3, 6).toInt();
+    if (ch2_3_linked) output_ch2 = output_ch3;
     Serial.println("DONE");
   #endif
+  } else if (command.startsWith("S")){
+    // Do nothing... no repsonse (mimics the real device);
   } else {
     Serial.println("Unknown command");
   }
