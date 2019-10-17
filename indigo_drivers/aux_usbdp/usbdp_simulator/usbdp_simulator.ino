@@ -75,6 +75,28 @@ void loop() {
     if(rh > 100) rh = 100;
   }
 
+  float dew_point = dewpoint(temp_amb, rh);
+  /* In automatic mode the target of USB_Dewpoint is to keep over the night :
+      - "Temp1 + Calibration1 > Dewpoint + Threshold1"
+      - "Temp2 + Calibration2 > Dewpoint + Threshold2"
+     To do so, “Temp1” and “Output1” are linked, “Temp2” and “Output2” are linked.
+  */
+  if (auto_mode) {
+    if ((temp_ch1 + cal_ch1) < (dew_point + threshold_ch1)) {
+      output_ch1 = 88;
+    } else {
+      output_ch1 = 0;
+    }
+    if ((temp_ch2 + cal_ch2) < (dew_point + threshold_ch2)) {
+      output_ch2 = 88;
+    } else {
+      output_ch2 = 0;
+    }
+    if (ch2_3_linked) {
+      output_ch3 = output_ch2;
+    }
+  }
+
   char cmd[7];
   Serial.readBytes(cmd, 6);
   cmd[6] = 0;
