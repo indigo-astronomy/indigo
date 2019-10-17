@@ -92,23 +92,25 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 #define UDP_CMD_LEN 6
+
 #define UDP_STATUS_CMD "SGETAL"
+#define UDP1_STATUS_RESPONSE "Tloc=%f-Tamb=%f-RH=%f-DP=%f-TH=%d-C=%d"
+#define UDP2_STATUS_RESPONSE "##%f/%f/%f/%f/%f/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u**"
+
+#define UDP_IDENTIFY_CMD "SWHOIS"
+#define UDP1_IDENTIFY_RESPONSE "UDP"
+#define UDP2_IDENTIFY_RESPONSE "UDP2(%u)" // Firmware version? Like "UDP2(1446)"
+
+#define UDP_RESET_CMD "SEERAZ"
+#define UDP_RESET_RESPONSE "EEPROM RESET"
+
 #define UDP2_OUTPUT_CMD "S%1uO%03u"         // channel 1-3, power 0-100
 #define UDP2_THRESHOLD_CMD "STHR%1u%1u"     // channel 1-2, value 0-9
-#define UDP2_CALIBRATION_CMD "SCA%1u%1u%1u" // channel 1-2-A, value 0-9
+#define UDP2_CALIBRATION_CMD "SCA%1u%1u%1u" // channel 1-2-Amb, value 0-9
 #define UDP2_LINK_CMD "SLINK%1u"            // 0 or 1 to link channels 2 and 3
 #define UDP2_AUTO_CMD "SAUTO%1u"            // 0 or 1 to enable auto mode
 #define UDP2_AGGRESSIVITY_CMD "SAGGR%1u"    // 1-4 (1, 2, 5, 10)
-#define UDP2_IDENTIFY_CMD "SWHOIS"
-#define UDP_RESET_CMD "SEERAZ"
-
-#define UDP1_STATUS_RESPONSE "Tloc=%f-Tamb=%f-RH=%f-DP=%f-TH=%d-C=%d"
-#define UDP2_STATUS_RESPONSE "##%f/%f/%f/%f/%f/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u**"
-#define UDP2_STATUS_START "##"
-#define UDP2_STATUS_SEPARATOR "/"
-#define UDP2_STATUS_END "**"
-
-#define UDP_IDENTIFY_RESPONSE "UDP2(%u)" // Firmware version? Mine is "UDP2(1446)"
+#define UDP_DONE_RESPONSE  "DONE"
 
 typedef struct {
 	float temp_loc;
@@ -398,49 +400,34 @@ static void aux_timer_callback(indigo_device *device) {
 }
 
 static void aux_connection_handler(indigo_device *device) {
-	char response[128];
+	char command[8];
+	char response[80];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
-			/*
-			char command[8];
-			char response[80];
-			sprintf(command, UDP2_THRESHOLD_CMD, 3, 3);
-			usbdp_command(device, command, response, 80);
-			//usbdp_command(device, UDP_RESET_CMD, response, 80);
-			usbdp_command(device, "123456", response, 80);
-			usbdp_command(device, "SBDK2D", response, 80);
-			sprintf(command, UDP2_OUTPUT_CMD, 1, 11);
-			usbdp_command(device, command, response, 80);
-			sprintf(command, UDP2_LINK_CMD, 1);
-			usbdp_command(device, command, response, 80);
-			sprintf(command, UDP2_AUTO_CMD, 1);
-			usbdp_command(device, command, response, 80);
-			sprintf(command, UDP2_AGGRESSIVITY_CMD, 3);
-			usbdp_command(device, command, response, 80);
-			*/
-
-			if (usbdp_command(device, "SWHOIS", response, sizeof(response))) {
-				if (!strcmp(response, "UDP")) {
+			if (usbdp_command(device, UDP_IDENTIFY_CMD, response, sizeof(response))) {
+				if (!strcmp(response, UDP1_IDENTIFY_RESPONSE)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v1 at %s", DEVICE_PORT_ITEM->text.value);
 					PRIVATE_DATA->version = 1;
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v1");
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 					indigo_update_property(device, INFO_PROPERTY, NULL);
-					//indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-					//AUX_OUTLET_NAMES_PROPERTY->count = 1;
-					//indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-					AUX_OUTLET_NAMES_PROPERTY->hidden = true;
+
+					// for V1 we need one name only
+					indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+					AUX_OUTLET_NAMES_PROPERTY->count = 1;
+					indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+
 					AUX_HEATER_OUTLET_PROPERTY->hidden = true;
 					AUX_HEATER_OUTLET_STATE_PROPERTY->hidden = true;
 					AUX_DEW_CONTROL_PROPERTY->hidden = true;
 					indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 					AUX_TEMPERATURE_SENSORS_PROPERTY->count = 1;
 					indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
-				} else if (!strncmp(response, "UDP2", 4)) {
+				} else if (!strncmp(response, UDP2_IDENTIFY_RESPONSE, 4)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v2 at %s", DEVICE_PORT_ITEM->text.value);
 					PRIVATE_DATA->version = 2;
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
@@ -463,7 +450,6 @@ static void aux_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->handle = 0;
 			}
 		}
-
 		if (PRIVATE_DATA->handle > 0) {
 			usbdp_status_t status;
 			if (usbdp_status(device, &status)) {
@@ -490,7 +476,6 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
-		// TODO: stop heaters
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
@@ -501,7 +486,20 @@ static void aux_connection_handler(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (PRIVATE_DATA->handle > 0) {
-			//usbdp_command(device, "PL:0", response, sizeof(response));
+			if (PRIVATE_DATA->version == 2) {
+				// maybe stop automatic mode too ?
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Stopping heaters...");
+				// Stop heaters on disconnect
+				sprintf(command, UDP2_OUTPUT_CMD, 1, 0);
+				usbdp_command(device, command, response, sizeof(response));
+				// maybe check responce if "DONE" ?
+				sprintf(command, UDP2_OUTPUT_CMD, 2, 0);
+				usbdp_command(device, command, response, sizeof(response));
+				// maybe check responce if "DONE" ?
+				sprintf(command, UDP2_OUTPUT_CMD, 3, 0);
+				usbdp_command(device, command, response, sizeof(response));
+				// maybe check responce if "DONE" ?
+			}
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = 0;
@@ -545,13 +543,13 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	if (IS_CONNECTED) {
 		sprintf(command, UDP2_OUTPUT_CMD, 1, (int)(AUX_HEATER_OUTLET_1_ITEM->number.value));
 		usbdp_command(device, command, response, sizeof(response));
-
+		// maybe check responce if "DONE" ?
 		sprintf(command, UDP2_OUTPUT_CMD, 2, (int)(AUX_HEATER_OUTLET_2_ITEM->number.value));
 		usbdp_command(device, command, response, sizeof(response));
-
+		// maybe check responce if "DONE" ?
 		sprintf(command, UDP2_OUTPUT_CMD, 3, (int)(AUX_HEATER_OUTLET_3_ITEM->number.value));
 		usbdp_command(device, command, response, sizeof(response));
-
+		// maybe check responce if "DONE" ?
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	}
@@ -599,7 +597,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			int current_count = AUX_OUTLET_NAMES_PROPERTY->count;
+			AUX_OUTLET_NAMES_PROPERTY->count = 3;
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
+			AUX_OUTLET_NAMES_PROPERTY->count = current_count;
 		}
 	}
 	return indigo_aux_change_property(device, client, property);
@@ -672,6 +673,5 @@ indigo_result indigo_aux_usbdp(indigo_driver_action action, indigo_driver_info *
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-
 	return INDIGO_OK;
 }
