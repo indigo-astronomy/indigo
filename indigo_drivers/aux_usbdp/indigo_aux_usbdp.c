@@ -248,9 +248,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_HEATER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_HEATER_OUTLET_STATE_PROPERTY_NAME, AUX_GROUP, "Heater outlets state", INDIGO_OK_STATE, 3);
 		if (AUX_HEATER_OUTLET_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_1_ITEM, AUX_HEATER_OUTLET_STATE_1_ITEM_NAME, "Heater #1", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_2_ITEM, AUX_HEATER_OUTLET_STATE_2_ITEM_NAME, "Heater #2", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_3_ITEM, AUX_HEATER_OUTLET_STATE_3_ITEM_NAME, "Heater #3", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_1_ITEM, AUX_HEATER_OUTLET_STATE_1_ITEM_NAME, "Heater #1", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_2_ITEM, AUX_HEATER_OUTLET_STATE_2_ITEM_NAME, "Heater #2", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_3_ITEM, AUX_HEATER_OUTLET_STATE_3_ITEM_NAME, "Heater #3", INDIGO_IDLE_STATE);
 		AUX_DEW_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_DEW_CONTROL_PROPERTY_NAME, AUX_GROUP, "Dew control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_DEW_CONTROL_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -344,7 +344,30 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = status.v2.temp_ch2;
 				updateSensors = true;
 			}
-		} else {
+			if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != status.v2.auto_mode) {
+				if (status.v2.auto_mode) {
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+				} else {
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
+				}
+				updateAutoHeater = true;
+			}
+			if (((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != status.v2.output_ch1) ||
+			    ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != status.v2.output_ch2) ||
+			    ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != status.v2.output_ch3)) {
+				AUX_HEATER_OUTLET_1_ITEM->number.value = status.v2.output_ch1;
+				AUX_HEATER_OUTLET_2_ITEM->number.value = status.v2.output_ch2;
+				AUX_HEATER_OUTLET_3_ITEM->number.value = status.v2.output_ch3;
+				updateHeaterOutlet = true;
+			}
+			if (((AUX_HEATER_OUTLET_STATE_1_ITEM->light.value != INDIGO_IDLE_STATE) != (bool)status.v2.output_ch1) ||
+			    ((AUX_HEATER_OUTLET_STATE_2_ITEM->light.value != INDIGO_IDLE_STATE) != (bool)status.v2.output_ch2) ||
+			    ((AUX_HEATER_OUTLET_STATE_3_ITEM->light.value != INDIGO_IDLE_STATE) != (bool)status.v2.output_ch3)) {
+				AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = ((bool)status.v2.output_ch1) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+				AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = ((bool)status.v2.output_ch2) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+				AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = ((bool)status.v2.output_ch3) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+				updateHeaterOutletState = true;
+			}
 		}
 	}
 
@@ -500,9 +523,9 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
+	snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+	snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
 	snprintf(AUX_TEMPERATURE_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_TEMPERATURE_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
@@ -520,14 +543,15 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (IS_CONNECTED) {
-		sprintf(command, "P5:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
+		sprintf(command, UDP2_OUTPUT_CMD, 1, (int)(AUX_HEATER_OUTLET_1_ITEM->number.value));
 		usbdp_command(device, command, response, sizeof(response));
-		sprintf(command, "P6:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
+
+		sprintf(command, UDP2_OUTPUT_CMD, 2, (int)(AUX_HEATER_OUTLET_2_ITEM->number.value));
 		usbdp_command(device, command, response, sizeof(response));
-		if (PRIVATE_DATA->version == 2) {
-			sprintf(command, "P7:%d", (int)(AUX_HEATER_OUTLET_3_ITEM->number.value * 255.0 / 100.0));
-			usbdp_command(device, command, response, sizeof(response));
-		}
+
+		sprintf(command, UDP2_OUTPUT_CMD, 3, (int)(AUX_HEATER_OUTLET_3_ITEM->number.value));
+		usbdp_command(device, command, response, sizeof(response));
+
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	}
@@ -536,9 +560,12 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 
 static void aux_dew_control_handler(indigo_device *device) {
 	char response[128];
+	char command[10];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (IS_CONNECTED) {
-		usbdp_command(device, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? "PD:1" : "PD:0", response, sizeof(response));
+		sprintf(command, UDP2_AUTO_CMD, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
+		usbdp_command(device, command, response, sizeof(response));
+		// maybe check responce if "DONE" ?
 		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	}
