@@ -1192,7 +1192,7 @@ static void exposure_timer_callback(indigo_device *device)
 		}
 
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value && ! CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-			if (PRIVATE_DATA->preview_buffer && PRIVATE_DATA->preview_buffer > 0) {
+			if (PRIVATE_DATA->preview_buffer && PRIVATE_DATA->preview_buffer_size > 0) {
 				indigo_process_dslr_preview_image(device,
 					PRIVATE_DATA->preview_buffer,
 					PRIVATE_DATA->preview_buffer_size
@@ -1201,7 +1201,10 @@ static void exposure_timer_callback(indigo_device *device)
 						  "preview sent");
 			} else {
 				INDIGO_DRIVER_LOG(DRIVER_NAME,
-						  "get preview failed. check DSLR_COMPRESSION property");
+						  "[preview_buffer:%d,preview_buffer_size:%d] "
+						  "get preview failed. check DSLR_COMPRESSION property",
+						  PRIVATE_DATA->preview_buffer,
+						  PRIVATE_DATA->preview_buffer_size > 0);
 			}
 		}
 
@@ -1378,11 +1381,74 @@ static void thread_capture_abort(void *user_data)
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "capture thread aborted");
 }
 
+static void delete_downloaded_image(indigo_device *device, CameraFilePath *camera_file_path) {
+	int rc;
+	assert(camera_file_path != NULL);
+	rc = gp_camera_file_delete(PRIVATE_DATA->camera,
+					 camera_file_path->folder,
+					 camera_file_path->name,
+					 context);
+	if (rc < GP_OK)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+						"[rc:%d,camera:%p,context:%p] "
+						"gp_camera_file_delete",
+						rc,
+						PRIVATE_DATA->camera,
+						context);
+	else
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "deleted image '%s' on camera '%s'",
+					camera_file_path->name,
+					PRIVATE_DATA->gphoto2_id.name);
+}
+
+static void download_image(indigo_device *device, CameraFilePath *camera_file_path, CameraFile *camera_file, unsigned long int *buffer_size_max, unsigned long int *buffer_size, char **buffer) {
+	int rc;
+	char *temp = NULL;
+	unsigned long int temp_size = 0;
+
+	rc = gp_camera_file_get(PRIVATE_DATA->camera, camera_file_path->folder,
+				camera_file_path->name, GP_FILE_TYPE_NORMAL,
+				camera_file, context);
+
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p]"
+				    " gp_camera_file_get",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context);
+		return;
+	}
+
+	/* Memory of buffer free'd by this function when previously allocated. */
+	rc = gp_file_get_data_and_size(camera_file, (const char**)&temp,
+				       &temp_size);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
+				    "gp_file_get_data_and_size",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context);
+		return;
+	}
+
+	/* If new image is larger than current buffer, then
+	   increase buffer size. Otherwise it will fit in the old buffer. */
+	if (temp_size > *buffer_size_max) {
+		*buffer_size_max = temp_size;
+		*buffer = realloc(*buffer,
+					       *buffer_size_max);
+	}
+	memcpy(*buffer, temp, temp_size);
+	*buffer_size = temp_size;
+}
+
 static void *thread_capture(void *user_data)
 {
 	int rc;
 	CameraFile *camera_file = NULL;
-	CameraFilePath camera_file_path;
+	CameraFilePath camera_file_path_1st;
+	CameraFilePath *camera_file_path_2nd = NULL;
 	indigo_device *device;
 	struct capture_abort capture_abort;
 	struct timespec tp;
@@ -1479,7 +1545,7 @@ static void *thread_capture(void *user_data)
 
 	/* Function will release the shutter. */
 	rc = gp_camera_capture(PRIVATE_DATA->camera, GP_CAPTURE_IMAGE,
-			       &camera_file_path,
+			       &camera_file_path_1st,
 			       context);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -1491,167 +1557,129 @@ static void *thread_capture(void *user_data)
 		goto cleanup;
 	}
 
-	rc = gp_camera_file_get(PRIVATE_DATA->camera, camera_file_path.folder,
-				camera_file_path.name, GP_FILE_TYPE_NORMAL,
-				camera_file, context);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-				    "[rc:%d,camera:%p,context:%p]"
-				    " gp_camera_file_get",
-				    rc,
-				    PRIVATE_DATA->camera,
-				    context);
-		goto cleanup;
-	}
+	/* capture succeed */
 
-	/* Memory of buffer free'd by this function when previously allocated. */
-	rc = gp_file_get_data_and_size(camera_file, (const char**)&buffer,
-				       &buffer_size);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
-				    "gp_file_get_data_and_size",
-				    rc,
-				    PRIVATE_DATA->camera,
-				    context);
-		goto cleanup;
-	}
-
-	/* If new image is larger than current buffer, then
-	   increase buffer size. Otherwise it will fit in the old buffer. */
-	if (buffer_size > PRIVATE_DATA->buffer_size_max) {
-		PRIVATE_DATA->buffer_size_max = buffer_size;
-		PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer,
-					       PRIVATE_DATA->
-					       buffer_size_max);
-	}
-	memcpy(PRIVATE_DATA->buffer, buffer, buffer_size);
-	PRIVATE_DATA->buffer_size = buffer_size;
-
-	char *suffix;
-
-	memset(PRIVATE_DATA->filename_suffix, 0,
-	       sizeof(PRIVATE_DATA->filename_suffix));
-	suffix = strstr(camera_file_path.name, ".");
-	if (suffix)
-		strncpy(PRIVATE_DATA->filename_suffix, suffix,
-			sizeof(PRIVATE_DATA->filename_suffix));
-
-	if ( CCD_PREVIEW_ENABLED_ITEM->sw.value ) {
-		/* initialize buffer */
-		PRIVATE_DATA->preview_buffer_size = 0;
-		/* copy path */
-		char preview_name[sizeof(camera_file_path.name)] = {};
-		strcpy(preview_name, camera_file_path.name);
-
-		char *image_ext = NULL;
-		image_ext = strstr(preview_name, ".");
-		if (!image_ext) {
-			goto abort_dslr_preview;
-		}
-
-		/* check safe */
-		size_t length = image_ext - preview_name;
-		if ( length + 5 > sizeof(preview_name) ) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "[rc:%d,camera:%p,context:%p]"
-					    " file name is too long",
-					    rc,
-					    PRIVATE_DATA->camera,
-					    context);
-			goto abort_dslr_preview;
-		}
-		/* change ext */
-		strcpy(image_ext, PREVIEW_SUFFIX);
-		/* check same */
-		if (strcmp(camera_file_path.name, preview_name) == 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "[rc:%d,camera:%p,context:%p]"
-					    " preview is same as CCD_IMAGE",
-					    rc,
-					    PRIVATE_DATA->camera,
-					    context);
-			goto abort_dslr_preview;
-		}
-
-		/* wait for ready
-		   from <https://github.com/jim-easterbrook/python-gphoto2/issues/65> */
-		CameraEventType event_type = GP_EVENT_UNKNOWN;
-		void *event_data = NULL;
-		bool added = false;
-		while (true) {
-			rc = gp_camera_wait_for_event(PRIVATE_DATA->camera, 20, &event_type,
-						&event_data, context);
-			if (event_type == GP_EVENT_TIMEOUT) {
-				break;
-			} else if (event_type == GP_EVENT_FILE_ADDED) {
-				added = true;
+	/* wait for ready for the secondary image
+	   from <https://github.com/jim-easterbrook/python-gphoto2/issues/65> */
+	CameraEventType event_type = GP_EVENT_UNKNOWN;
+	void *event_data = NULL;
+	bool added = false;
+	while (true) {
+		rc = gp_camera_wait_for_event(PRIVATE_DATA->camera, 20, &event_type,
+					      &event_data, context);
+		if (event_type == GP_EVENT_TIMEOUT) {
+			break;
+		} else if (event_type == GP_EVENT_FILE_ADDED) {
+			added = true;
+			assert(event_data != NULL);
+			camera_file_path_2nd = event_data;
+			INDIGO_DRIVER_LOG(DRIVER_NAME,
+					  "secondary image detected:"
+					  " folder: %s, name: %s",
+					  camera_file_path_2nd->folder,
+					  camera_file_path_2nd->name);
+		} else {
+			if (event_data) {
+				free(event_data);
 			}
 		}
-		if (!added) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "[rc:%d,camera:%p,context:%p]"
-					    " no detect GP_EVENT_FILE_ADDED",
-					    rc,
-					    PRIVATE_DATA->camera,
-					    context);
-			goto abort_dslr_preview;
-		}
-
-		/* download preview image */
-		rc = gp_camera_file_get(PRIVATE_DATA->camera, camera_file_path.folder,
-					preview_name, GP_FILE_TYPE_NORMAL,
-					camera_file, context);
-		if (rc != GP_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "[rc:%d,camera:%p,context:%p]"
-					    " gp_camera_file_get (preview)",
-					    rc,
-					    PRIVATE_DATA->camera,
-					    context);
-			goto abort_dslr_preview;
-		}
-		/* Memory of buffer free'd by this function when previously allocated. */
-		rc = gp_file_get_data_and_size(camera_file, (const char**)&buffer,
-					       &buffer_size);
-		if (rc != GP_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
-					    "gp_file_get_data_and_size (preview)",
-					    rc,
-					    PRIVATE_DATA->camera,
-					    context);
-			goto abort_dslr_preview;
-		}
-		/* If new image is larger than current buffer, then
-		   increase buffer size. Otherwise it will fit in the old buffer. */
-		if (buffer_size > PRIVATE_DATA->preview_buffer_size_max) {
-			PRIVATE_DATA->preview_buffer_size_max = buffer_size;
-			PRIVATE_DATA->preview_buffer = realloc(PRIVATE_DATA->preview_buffer,
-						       PRIVATE_DATA->
-						       preview_buffer_size_max);
-		}
-		memcpy(PRIVATE_DATA->preview_buffer, buffer, buffer_size);
-		PRIVATE_DATA->preview_buffer_size = buffer_size;
 	}
-abort_dslr_preview:
-	/* error occured but can continue */
+	if (!added) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "only primary image");
+	}
 
-	if (PRIVATE_DATA->delete_downloaded_image) {
-		rc = gp_camera_file_delete(PRIVATE_DATA->camera,
-					   camera_file_path.folder,
-					   camera_file_path.name,
-					   context);
-		if (rc < GP_OK)
+	if (camera_file_path_2nd) {
+		/* secondary image detected */
+
+		/* initialize */
+		PRIVATE_DATA->preview_buffer_size = 0;
+		CameraFilePath *raw_file_path = NULL,
+			       *jpg_file_path = NULL;
+
+		/* check 1st image extension */
+		char *image_ext = NULL;
+		image_ext = strchr(camera_file_path_1st.name, '.');
+		if (!image_ext) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "[rc:%d,camera:%p,context:%p] "
-					    "gp_camera_file_delete",
+					    "[rc:%d,camera:%p,context:%p]"
+					    " Unknown filename: %s",
 					    rc,
 					    PRIVATE_DATA->camera,
-					    context);
-		else
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "deleted image '%s' on camera '%s'",
-					  camera_file_path.name,
-					  PRIVATE_DATA->gphoto2_id.name);
+					    context,
+					    camera_file_path_1st.name);
+			goto cleanup;
+		}
+		if (strcmp(image_ext, PREVIEW_SUFFIX) == 0) {
+			/* 1st image is JPEG */
+			raw_file_path = camera_file_path_2nd;
+			jpg_file_path = &camera_file_path_1st;
+		} else {
+			/* 1st image is RAW */
+			raw_file_path = &camera_file_path_1st;
+			jpg_file_path = camera_file_path_2nd;
+		}
 
+		/* CCD_IMAGE */
+
+		download_image(device, raw_file_path, camera_file,
+			       &(PRIVATE_DATA->buffer_size_max),
+			       &(PRIVATE_DATA->buffer_size),
+			       &(PRIVATE_DATA->buffer));
+
+		/* update suffix */
+
+		char *suffix;
+
+		memset(PRIVATE_DATA->filename_suffix, 0,
+		       sizeof(PRIVATE_DATA->filename_suffix));
+		suffix = strstr(raw_file_path->name, ".");
+		if (suffix)
+			strncpy(PRIVATE_DATA->filename_suffix, suffix,
+				sizeof(PRIVATE_DATA->filename_suffix));
+
+		/* CCD_PREVIEW */
+
+		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			download_image(device, jpg_file_path, camera_file,
+				       &(PRIVATE_DATA->preview_buffer_size_max),
+				       &(PRIVATE_DATA->preview_buffer_size),
+				       &(PRIVATE_DATA->preview_buffer));
+		}
+
+		/* post process */
+
+		if (PRIVATE_DATA->delete_downloaded_image) {
+			delete_downloaded_image(device, raw_file_path);
+			delete_downloaded_image(device, jpg_file_path);
+		}
+	} else {
+		/* only primary image (RAW mode or JPEG mode) */
+
+		download_image(device, &camera_file_path_1st, camera_file,
+			       &(PRIVATE_DATA->buffer_size_max),
+			       &(PRIVATE_DATA->buffer_size),
+			       &(PRIVATE_DATA->buffer));
+
+		/* update suffix */
+
+		char *suffix;
+
+		memset(PRIVATE_DATA->filename_suffix, 0,
+		       sizeof(PRIVATE_DATA->filename_suffix));
+		suffix = strstr(camera_file_path_1st.name, ".");
+		if (suffix)
+			strncpy(PRIVATE_DATA->filename_suffix, suffix,
+				sizeof(PRIVATE_DATA->filename_suffix));
+
+		/* post process */
+
+		if (PRIVATE_DATA->delete_downloaded_image) {
+			delete_downloaded_image(device, &camera_file_path_1st);
+		}
+
+		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			PRIVATE_DATA->preview_buffer_size = 0;
+		}
 	}
 
 cleanup:
@@ -1659,6 +1687,9 @@ cleanup:
 	   free's buffer and set buffer_size = 0, when reference counter == 0. */
 	if (camera_file)
 		gp_file_unref(camera_file);
+	if (camera_file_path_2nd) {
+		free(camera_file_path_2nd);
+	}
 
 	pthread_cleanup_pop(0);
 
