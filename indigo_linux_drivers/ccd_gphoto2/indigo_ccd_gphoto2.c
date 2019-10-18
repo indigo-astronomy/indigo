@@ -1201,7 +1201,7 @@ static void exposure_timer_callback(indigo_device *device)
 						  "preview sent");
 			} else {
 				INDIGO_DRIVER_LOG(DRIVER_NAME,
-						  "[preview_buffer:%d,preview_buffer_size:%d]"
+						  "[preview_buffer:%d,preview_buffer_size:%d] "
 						  "get preview failed. check DSLR_COMPRESSION property",
 						  PRIVATE_DATA->preview_buffer,
 						  PRIVATE_DATA->preview_buffer_size > 0);
@@ -1589,10 +1589,10 @@ static void *thread_capture(void *user_data)
 	}
 
 	if (camera_file_path_2nd) {
+		/* secondary image detected */
+
 		/* initialize */
 		PRIVATE_DATA->preview_buffer_size = 0;
-
-		/* secondary image detected */
 		CameraFilePath *raw_file_path = NULL,
 			       *jpg_file_path = NULL;
 
@@ -1671,7 +1671,7 @@ static void *thread_capture(void *user_data)
 			strncpy(PRIVATE_DATA->filename_suffix, suffix,
 				sizeof(PRIVATE_DATA->filename_suffix));
 
-		/* pqost process */
+		/* post process */
 
 		if (PRIVATE_DATA->delete_downloaded_image) {
 			delete_downloaded_image(device, &camera_file_path_1st);
