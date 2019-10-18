@@ -81,14 +81,29 @@
 #define AUX_DEW_THRESHOLD_PROPERTY				(PRIVATE_DATA->dew_threshold_property)
 #define AUX_DEW_THRESHOLD_SENSOR_1_ITEM			(AUX_DEW_THRESHOLD_PROPERTY->items + 0)
 #define AUX_DEW_THRESHOLD_SENSOR_2_ITEM			(AUX_DEW_THRESHOLD_PROPERTY->items + 1)
-#define AUX_DEW_THRESHOLD_PROPERTY_NAME			"AUX_DEW_THRESHOLD"
-#define AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME    "AT_SENSOR_1"
-#define AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME	"AT_SENSOR_2"
+
+#define AUX_HEATER_AGGRESSIVITY_PROPERTY		(PRIVATE_DATA->heater_aggressivity_property)
+#define AUX_HEATER_AGGRESSIVITY_1_ITEM			(AUX_HEATER_AGGRESSIVITY_PROPERTY->items + 0)
+#define AUX_HEATER_AGGRESSIVITY_2_ITEM			(AUX_HEATER_AGGRESSIVITY_PROPERTY->items + 1)
+#define AUX_HEATER_AGGRESSIVITY_5_ITEM			(AUX_HEATER_AGGRESSIVITY_PROPERTY->items + 2)
+#define AUX_HEATER_AGGRESSIVITY_10_ITEM			(AUX_HEATER_AGGRESSIVITY_PROPERTY->items + 3)
+#define AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME	"AUX_HEATER_AGGRESSIVITY"
+#define AUX_HEATER_AGGRESSIVITY_1_ITEM_NAME		"AGGRESSIVITY_1"
+#define AUX_HEATER_AGGRESSIVITY_2_ITEM_NAME		"AGGRESSIVITY_2"
+#define AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME		"AGGRESSIVITY_5"
+#define AUX_HEATER_AGGRESSIVITY_10_ITEM_NAME	"AGGRESSIVITY_10"
+
+#define AUX_LINK_CH_2AND3_PROPERTY					(PRIVATE_DATA->link_channels_23_property)
+#define AUX_LINK_CH_2AND3_LINKED_ITEM				(AUX_LINK_CH_2AND3_PROPERTY->items + 0)
+#define AUX_LINK_CH_2AND3_NOT_LINKED_ITEM			(AUX_LINK_CH_2AND3_PROPERTY->items + 1)
+#define AUX_LINK_CH_2AND3_PROPERTY_NAME				"AUX_LINK_CHANNELS_2AND3"
+#define AUX_LINK_CH_2AND3_LINKED_ITEM_NAME			"LINKED"
+#define AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME		"NOT_LINKED"
 
 #define AUX_DEW_WARNING_PROPERTY				(PRIVATE_DATA->dew_warning_proeprty)
 #define AUX_DEW_WARNING_SENSOR_1_ITEM			(AUX_DEW_WARNING_PROPERTY->items+0)
-#define AUX_DEW_WARNING_SENSOR_2				(AUX_DEW_WARNING_PROPERTY->items+1)
-#define AUX_DEW_WARNING_SENSOR_3				(AUX_DEW_WARNING_PROPERTY->items+2)
+#define AUX_DEW_WARNING_SENSOR_2_ITEM			(AUX_DEW_WARNING_PROPERTY->items+1)
+#define AUX_DEW_WARNING_SENSOR_3_ITEM				(AUX_DEW_WARNING_PROPERTY->items+2)
 
 #define AUX_DEW_CONTROL_PROPERTY				(PRIVATE_DATA->heating_mode_property)
 #define AUX_DEW_CONTROL_MANUAL_ITEM				(AUX_DEW_CONTROL_PROPERTY->items + 0)
@@ -108,6 +123,8 @@ typedef struct {
 	indigo_property *weather_property;
 	indigo_property *temperature_sensors_property;
 	indigo_property *dew_warning_proeprty;
+	indigo_property *heater_aggressivity_property;
+	indigo_property *link_channels_23_property;
 	indigo_property *dew_threshold_property;
 	indigo_property *temperature_callibration_property;
 	int version;
@@ -310,6 +327,27 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Sensor #1 [C]", 0, 9, 1, 0);
 		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_2_ITEM, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, "Sensor #2 [C]", 0, 9, 1, 0);
+		// -------------------------------------------------------------------------------- LINK_CHAANNELS_2AND3
+		AUX_LINK_CH_2AND3_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LINK_CH_2AND3_PROPERTY_NAME, SETTINGS_GROUP, "Link chanels 2 and 3", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AUX_LINK_CH_2AND3_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AUX_LINK_CH_2AND3_LINKED_ITEM, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME, "Linked", false);
+		indigo_init_switch_item(AUX_LINK_CH_2AND3_NOT_LINKED_ITEM, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME, "Not Linked", true);
+		// -------------------------------------------------------------------------------- HEATER_AGGRESSIVITY
+		AUX_HEATER_AGGRESSIVITY_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, SETTINGS_GROUP, "Auto mode heater aggressivity", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (AUX_HEATER_AGGRESSIVITY_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_1_ITEM, AUX_HEATER_AGGRESSIVITY_1_ITEM_NAME, "Aggressivity 1%", true);
+		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_2_ITEM, AUX_HEATER_AGGRESSIVITY_2_ITEM_NAME, "Aggressivity 2%", false);
+		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_5_ITEM, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME, "Aggressivity 5%", false);
+		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_10_ITEM, AUX_HEATER_AGGRESSIVITY_10_ITEM_NAME, "Aggressivity 10%", false);
+		// -------------------------------------------------------------------------------- DEW_WARNING
+		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, AUX_GROUP, "Dew warning", INDIGO_OK_STATE, 3);
+		if (AUX_DEW_WARNING_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Sensor #1", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_2_ITEM, AUX_DEW_WARNING_SENSOR_2_ITEM_NAME, "Sesnor #2", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_3_ITEM, AUX_DEW_WARNING_SENSOR_3_ITEM_NAME, "Ambient", INDIGO_OK_STATE);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -340,6 +378,12 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 		if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property))
 			indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+		if (indigo_property_match(AUX_DEW_WARNING_PROPERTY, property))
+			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+		if (indigo_property_match(AUX_LINK_CH_2AND3_PROPERTY, property))
+			indigo_define_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
+		if (indigo_property_match(AUX_HEATER_AGGRESSIVITY_PROPERTY, property))
+			indigo_define_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
 	}
 	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -493,12 +537,14 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_HEATER_OUTLET_PROPERTY->hidden = true;
 					AUX_HEATER_OUTLET_STATE_PROPERTY->hidden = true;
 					AUX_DEW_CONTROL_PROPERTY->hidden = true;
+					AUX_HEATER_AGGRESSIVITY_PROPERTY->hidden = true;
+					AUX_LINK_CH_2AND3_PROPERTY->hidden = true;
 					indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 					AUX_TEMPERATURE_SENSORS_PROPERTY->count = 1;
 					indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
-
 					indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 					indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+					indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 				} else if (!strncmp(response, UDP2_IDENTIFY_RESPONSE, 4)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v2 at %s", DEVICE_PORT_ITEM->text.value);
 					PRIVATE_DATA->version = 2;
@@ -512,6 +558,9 @@ static void aux_connection_handler(indigo_device *device) {
 					indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 					indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 					indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+					indigo_define_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
+					indigo_define_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
+					indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB_Dewpoint not detected");
 					close(PRIVATE_DATA->handle);
@@ -557,6 +606,9 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
@@ -595,6 +647,7 @@ static void aux_outlet_names_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 	}
 	snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
@@ -608,6 +661,8 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	snprintf(AUX_CALLIBRATION_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_DEW_WARNING_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+	snprintf(AUX_DEW_WARNING_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 	if (IS_CONNECTED) {
 		indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -615,6 +670,7 @@ static void aux_outlet_names_handler(indigo_device *device) {
 		indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 		indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 		indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+		indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 
 	}
@@ -750,6 +806,9 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_TEMPERATURE_SENSORS_PROPERTY);
 	indigo_release_property(AUX_CALLIBRATION_PROPERTY);
 	indigo_release_property(AUX_DEW_THRESHOLD_PROPERTY);
+	indigo_release_property(AUX_HEATER_AGGRESSIVITY_PROPERTY);
+	indigo_release_property(AUX_LINK_CH_2AND3_PROPERTY);
+	indigo_release_property(AUX_DEW_WARNING_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
