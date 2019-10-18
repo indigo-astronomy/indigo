@@ -1610,11 +1610,11 @@ static void *thread_capture(void *user_data)
 			goto cleanup;
 		}
 		if (strcmp(image_ext, PREVIEW_SUFFIX) == 0) {
-			// 1st image is JPEG
+			/* 1st image is JPEG */
 			raw_file_path = camera_file_path_2nd;
 			jpg_file_path = &camera_file_path_1st;
 		} else {
-			// 1st image is RAW
+			/* 1st image is RAW */
 			raw_file_path = &camera_file_path_1st;
 			jpg_file_path = camera_file_path_2nd;
 		}
