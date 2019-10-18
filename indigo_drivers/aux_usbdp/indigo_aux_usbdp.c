@@ -344,12 +344,13 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_5_ITEM, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME, "Aggressivity 5%", false);
 		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_10_ITEM, AUX_HEATER_AGGRESSIVITY_10_ITEM_NAME, "Aggressivity 10%", false);
 		// -------------------------------------------------------------------------------- DEW_WARNING
-		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, AUX_GROUP, "Dew warning", INDIGO_OK_STATE, 3);
+		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, AUX_GROUP, "Dew warning", INDIGO_OK_STATE, 2);
 		if (AUX_DEW_WARNING_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		AUX_DEW_WARNING_PROPERTY->hidden = true;
 		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Sensor #1", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_2_ITEM, AUX_DEW_WARNING_SENSOR_2_ITEM_NAME, "Sesnor #2", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_3_ITEM, AUX_DEW_WARNING_SENSOR_3_ITEM_NAME, "Ambient", INDIGO_OK_STATE);
+		//indigo_init_light_item(AUX_DEW_WARNING_SENSOR_3_ITEM, AUX_DEW_WARNING_SENSOR_3_ITEM_NAME, "Ambient", INDIGO_OK_STATE);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -411,7 +412,11 @@ static void aux_timer_callback(indigo_device *device) {
 	int channel_1_state;
 	int channel_2_state;
 	int channel_3_state;
-
+/*
+	int dew_warning_1;
+	int dew_warning_2;
+	int dew_warning_amb;
+*/
 	usbdp_status_t status;
 
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
