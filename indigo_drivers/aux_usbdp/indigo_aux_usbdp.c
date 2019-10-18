@@ -301,7 +301,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_DEW_CONTROL_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AUX_DEW_CONTROL_MANUAL_ITEM, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, "Manual", true);
-		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", true);
+		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", false);
 		// -------------------------------------------------------------------------------- WEATHER
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_WEATHER_PROPERTY == NULL)
@@ -408,6 +408,9 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateThreshold = false;
 	bool updateAggressivity = false;
 	bool updateLinked = false;
+	int channel_1_state;
+	int channel_2_state;
+	int channel_3_state;
 
 	usbdp_status_t status;
 
@@ -422,6 +425,7 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_WEATHER_DEWPOINT_ITEM->number.value = status.v1.dewpoint;
 				updateWeather = true;
 			}
+
 			if (fabs(((double)status.v1.temp_loc - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) {
 				AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = status.v1.temp_loc;
 				updateSensors = true;
@@ -435,12 +439,14 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_WEATHER_DEWPOINT_ITEM->number.value = status.v2.dewpoint;
 				updateWeather = true;
 			}
+
 			if ((fabs(((double)status.v2.temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) ||
 			    (fabs(((double)status.v2.temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1)) {
 				AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = status.v2.temp_ch1;
 				AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = status.v2.temp_ch2;
 				updateSensors = true;
 			}
+
 			if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != status.v2.auto_mode) {
 				if (status.v2.auto_mode) {
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
@@ -449,6 +455,7 @@ static void aux_timer_callback(indigo_device *device) {
 				}
 				updateAutoHeater = true;
 			}
+
 			if (((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != status.v2.output_ch1) ||
 			    ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != status.v2.output_ch2) ||
 			    ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != status.v2.output_ch3)) {
@@ -457,14 +464,41 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_HEATER_OUTLET_3_ITEM->number.value = status.v2.output_ch3;
 				updateHeaterOutlet = true;
 			}
-			if (((AUX_HEATER_OUTLET_STATE_1_ITEM->light.value != INDIGO_IDLE_STATE) != (bool)status.v2.output_ch1) ||
-			    ((AUX_HEATER_OUTLET_STATE_2_ITEM->light.value != INDIGO_IDLE_STATE) != (bool)status.v2.output_ch2) ||
-			    ((AUX_HEATER_OUTLET_STATE_3_ITEM->light.value != INDIGO_IDLE_STATE) != (bool)status.v2.output_ch3)) {
-				AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = ((bool)status.v2.output_ch1) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-				AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = ((bool)status.v2.output_ch2) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-				AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = ((bool)status.v2.output_ch3) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+
+			// OUTLET STATUS UPDATE
+			if ((bool)status.v2.output_ch1 && status.v2.auto_mode) {
+				channel_1_state = INDIGO_BUSY_STATE;
+			} else if ((bool)status.v2.output_ch1) {
+				channel_1_state = INDIGO_OK_STATE;
+			} else {
+				channel_1_state = INDIGO_IDLE_STATE;
+			}
+
+			if ((bool)status.v2.output_ch2 && status.v2.auto_mode) {
+				channel_2_state = INDIGO_BUSY_STATE;
+			} else if ((bool)status.v2.output_ch2) {
+				channel_2_state = INDIGO_OK_STATE;
+			} else {
+				channel_2_state = INDIGO_IDLE_STATE;
+			}
+
+			if ((bool)status.v2.output_ch3 && status.v2.auto_mode && status.v2.ch2_3_linked) {
+				channel_3_state = INDIGO_BUSY_STATE;
+			} else if ((bool)status.v2.output_ch3) {
+				channel_3_state = INDIGO_OK_STATE;
+			} else {
+				channel_3_state = INDIGO_IDLE_STATE;
+			}
+
+			if ((AUX_HEATER_OUTLET_STATE_1_ITEM->light.value != channel_1_state) ||
+			    (AUX_HEATER_OUTLET_STATE_2_ITEM->light.value != channel_2_state) ||
+			    (AUX_HEATER_OUTLET_STATE_3_ITEM->light.value != channel_3_state)) {
+				AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = channel_1_state;
+				AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = channel_2_state;
+				AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = channel_3_state;
 				updateHeaterOutletState = true;
 			}
+
 			if (((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != status.v2.cal_ch1) ||
 			    ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != status.v2.cal_ch2) ||
 			    ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != status.v2.cal_amb)) {
@@ -473,12 +507,14 @@ static void aux_timer_callback(indigo_device *device) {
 				AUX_CALLIBRATION_SENSOR_3_ITEM->number.value = status.v2.cal_amb;
 				updateCallibration = true;
 			}
+
 			if (((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != status.v2.threshold_ch1) ||
 			    ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != status.v2.threshold_ch2)) {
 				AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value = status.v2.threshold_ch1;
 				AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value = status.v2.threshold_ch2;
 				updateThreshold = true;
 			}
+
 			if (PRIVATE_DATA->requested_aggressivity != status.v2.aggressivity) {
 				switch (status.v2.aggressivity) {
 				case(1):
@@ -497,6 +533,7 @@ static void aux_timer_callback(indigo_device *device) {
 				PRIVATE_DATA->requested_aggressivity = status.v2.aggressivity;
 				updateAggressivity = true;
 			}
+
 			if (AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != status.v2.ch2_3_linked) {
 				if (status.v2.ch2_3_linked) {
 					indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_LINKED_ITEM, true);
@@ -512,22 +549,18 @@ static void aux_timer_callback(indigo_device *device) {
 		AUX_CALLIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 	}
-
 	if (updateThreshold) {
 		AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 	}
-
 	if (updateAggressivity) {
 		AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
 	}
-
 	if (updateLinked) {
 		AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
 	}
-
 	if (updateHeaterOutlet) {
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -536,7 +569,6 @@ static void aux_timer_callback(indigo_device *device) {
 		AUX_HEATER_OUTLET_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 	}
-
 	if (updateAutoHeater) {
 		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
