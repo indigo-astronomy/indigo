@@ -55,15 +55,16 @@
 											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_FRAME_TYPE')"></indigo-select-item>
 											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_MODE')"></indigo-select-item>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature-low'" :values="['Off', 0, -10, -15, -20, -30]" :enabler="findProperty('Imager Agent', 'CCD_COOLER')" :tooltip="'Cooling state'"></indigo-edit-number>
-											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]" :tooltip="'Image count'"></indigo-edit-number>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]" :tooltip="'Exposure time'"></indigo-edit-number>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :values="[0, 5, 10, 15, 20, 30]" :tooltip="'Delay between exposures'"></indigo-edit-number>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]" :tooltip="'Image count'"></indigo-edit-number>
 											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'" :tooltip="'Folder for saved images'"></indigo-edit-text>
 											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'" :tooltip="'File name prefix for saved images'"></indigo-edit-text>
 											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :enabler="findProperty('Imager Agent', 'CCD_COOLER')" :tooltip="'Cooling state'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :tooltip="'Image count'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :tooltip="'Exposure time'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :tooltip="'Delay between exposures'"></indigo-show-number>
+											<indigo-show-number v-if="!useAgent" :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :tooltip="'Exposure time'"></indigo-show-number>
+											<indigo-show-number v-else :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :tooltip="'Exposure time'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :tooltip="'Delay between exposures'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'FRAME'" :icon="'glyphicons-repeat'" :tooltip="'Image count'"></indigo-show-number>
 										</template>
 										<div v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
 											<button id="preview1_button" class="btn btn-svg idle-state mr-2" onclick="preview1()" data-toggle="tooltip" title="Single image preview">
@@ -266,64 +267,68 @@
 						};
 						xhr.send();
 					}
-				}
-			} else if (property.name == "CCD_EXPOSURE") {
-				if (property.state == "Ok") {
-					$("#preview1_button").removeClass("busy-state");
-					$("#preview1_button").addClass("idle-state");
-					$("#preview_button").removeClass("busy-state");
-					$("#preview_button").addClass("idle-state");
-					$("#capture_button").removeClass("busy-state");
-					$("#capture_button").addClass("idle-state");
-					if (repeatExposure) {
-						$("#preview_button").removeClass("idle-state");
-						$("#preview_button").addClass("busy-state");
-						changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+				} else if (property.name == "CCD_EXPOSURE") {
+					if (property.state == "Ok") {
+						$("#preview1_button").removeClass("busy-state");
+						$("#preview1_button").addClass("idle-state");
+						$("#preview_button").removeClass("busy-state");
+						$("#preview_button").addClass("idle-state");
+						if (repeatExposure) {
+							$("#preview_button").removeClass("idle-state");
+							$("#preview_button").addClass("busy-state");
+							changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+						}
+					} else if (property.state == "Alert") {
+						$("#preview1_button").removeClass("busy-state");
+						$("#preview1_button").addClass("idle-state");
+						$("#preview_button").removeClass("busy-state");
+						$("#preview_button").addClass("idle-state");
 					}
-				} else if (property.state == "Alert") {
-					$("#preview1_button").removeClass("busy-state");
-					$("#preview1_button").addClass("idle-state");
-					$("#preview_button").removeClass("busy-state");
-					$("#preview_button").addClass("idle-state");
-					$("#capture_button").removeClass("busy-state");
-					$("#capture_button").addClass("idle-state");
-				}
-			} else if (property.name == "FOCUSER_STEPS") {
-				if (property.state == "Alert") {
-					$("#focuser_in_button").removeClass("idle-state");
-					$("#focuser_in_button").removeClass("busy-state");
-					$("#focuser_in_button").addClass("alert-state");
-					$("#focuser_out_button").removeClass("idle-state");
-					$("#focuser_out_button").removeClass("busy-state");
-					$("#focuser_out_button").addClass("alert-state");
-				} else if (property.state == "Busy") {
-					$("#focuser_in_button").removeClass("idle-state");
-					$("#focuser_in_button").removeClass("alert-state");
-					$("#focuser_in_button").addClass("busy-state");
-					$("#focuser_out_button").removeClass("idle-state");
-					$("#focuser_out_button").removeClass("alert-state");
-					$("#focuser_out_button").addClass("busy-state");
-				} else {
-					$("#focuser_in_button").removeClass("alert-state");
-					$("#focuser_in_button").removeClass("busy-state");
-					$("#focuser_in_button").addClass("idle-state");
-					$("#focuser_out_button").removeClass("alert-state");
-					$("#focuser_out_button").removeClass("busy-state");
-					$("#focuser_out_button").addClass("idle-state");
-				}
-			} else if (property.name == "FOCUSER_POSITION") {
-				if (property.state == "Alert") {
-					$("#focuser_position_button").removeClass("idle-state");
-					$("#focuser_position_button").removeClass("busy-state");
-					$("#focuser_position_button").addClass("alert-state");
-				} else if (property.state == "Busy") {
-					$("#focuser_position_button").removeClass("idle-state");
-					$("#focuser_position_button").removeClass("alert-state");
-					$("#focuser_position_button").addClass("busy-state");
-				} else {
-					$("#focuser_position_button").removeClass("alert-state");
-					$("#focuser_position_button").removeClass("busy-state");
-					$("#focuser_position_button").addClass("idle-state");
+				} else if (property.name == "AGENT_START_PROCESS") {
+					if (property.state == "Ok") {
+						$("#capture_button").removeClass("busy-state");
+						$("#capture_button").addClass("idle-state");
+					} else if (property.state == "Alert") {
+						$("#capture_button").removeClass("busy-state");
+						$("#capture_button").addClass("idle-state");
+					}
+				} else if (property.name == "FOCUSER_STEPS") {
+					if (property.state == "Alert") {
+						$("#focuser_in_button").removeClass("idle-state");
+						$("#focuser_in_button").removeClass("busy-state");
+						$("#focuser_in_button").addClass("alert-state");
+						$("#focuser_out_button").removeClass("idle-state");
+						$("#focuser_out_button").removeClass("busy-state");
+						$("#focuser_out_button").addClass("alert-state");
+					} else if (property.state == "Busy") {
+						$("#focuser_in_button").removeClass("idle-state");
+						$("#focuser_in_button").removeClass("alert-state");
+						$("#focuser_in_button").addClass("busy-state");
+						$("#focuser_out_button").removeClass("idle-state");
+						$("#focuser_out_button").removeClass("alert-state");
+						$("#focuser_out_button").addClass("busy-state");
+					} else {
+						$("#focuser_in_button").removeClass("alert-state");
+						$("#focuser_in_button").removeClass("busy-state");
+						$("#focuser_in_button").addClass("idle-state");
+						$("#focuser_out_button").removeClass("alert-state");
+						$("#focuser_out_button").removeClass("busy-state");
+						$("#focuser_out_button").addClass("idle-state");
+					}
+				} else if (property.name == "FOCUSER_POSITION") {
+					if (property.state == "Alert") {
+						$("#focuser_position_button").removeClass("idle-state");
+						$("#focuser_position_button").removeClass("busy-state");
+						$("#focuser_position_button").addClass("alert-state");
+					} else if (property.state == "Busy") {
+						$("#focuser_position_button").removeClass("idle-state");
+						$("#focuser_position_button").removeClass("alert-state");
+						$("#focuser_position_button").addClass("busy-state");
+					} else {
+						$("#focuser_position_button").removeClass("alert-state");
+						$("#focuser_position_button").removeClass("busy-state");
+						$("#focuser_position_button").addClass("idle-state");
+					}
 				}
 			}
 			guiSetup();
@@ -337,6 +342,7 @@
 			repeatExposure = false;
 			$("#preview1_button").removeClass("idle-state");
 			$("#preview1_button").addClass("busy-state");
+			INDIGO.useAgent = false;
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
 			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
@@ -346,6 +352,7 @@
 			repeatExposure = true;
 			$("#preview_button").removeClass("idle-state");
 			$("#preview_button").addClass("busy-state");
+			INDIGO.useAgent = false;
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
 			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
@@ -355,6 +362,7 @@
 			repeatExposure = false;
 			$("#capture_button").removeClass("idle-state");
 			$("#capture_button").addClass("busy-state");
+			INDIGO.useAgent = true;
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "LOCAL" : true });
 			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
 			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
@@ -380,6 +388,7 @@
 	function stop() {
 		repeatExposure = false;
 		changeProperty("Imager Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
+		changeProperty("Imager Agent", "CCD_ABORT_EXPOSURE", { "ABORT_EXPOSURE": true });
 	}
 
 	function focuser_position() {
