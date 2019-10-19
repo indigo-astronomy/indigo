@@ -629,6 +629,11 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_LOCAL_MODE
 		indigo_property_copy_values(CCD_LOCAL_MODE_PROPERTY, property, false);
+		long len = strlen(CCD_LOCAL_MODE_DIR_ITEM->text.value);
+		if (len == 0)
+			strcpy(CCD_LOCAL_MODE_DIR_ITEM->text.value, "./");
+		else if (CCD_LOCAL_MODE_DIR_ITEM->text.value[len - 1] != '/')
+			strcat(CCD_LOCAL_MODE_DIR_ITEM->text.value, "/");
 		CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
