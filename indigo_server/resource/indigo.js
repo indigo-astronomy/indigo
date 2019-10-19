@@ -11,6 +11,7 @@ var INDIGO = new Vue({
 		devices: { },
 		db: [],
 	  dark: false,
+	  useAgent: false,
 	},
 	methods: {
 		findProperty: function(device, name) {
