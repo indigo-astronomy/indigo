@@ -23,7 +23,7 @@
  \file indigo_aux_usbdp.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_usbdp"
 
 #include <stdlib.h>
@@ -347,7 +347,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, AUX_GROUP, "Dew warning", INDIGO_OK_STATE, 2);
 		if (AUX_DEW_WARNING_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		AUX_DEW_WARNING_PROPERTY->hidden = true;
 		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Sensor #1", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_2_ITEM, AUX_DEW_WARNING_SENSOR_2_ITEM_NAME, "Sesnor #2", INDIGO_OK_STATE);
 		//indigo_init_light_item(AUX_DEW_WARNING_SENSOR_3_ITEM, AUX_DEW_WARNING_SENSOR_3_ITEM_NAME, "Ambient", INDIGO_OK_STATE);
@@ -412,11 +411,10 @@ static void aux_timer_callback(indigo_device *device) {
 	int channel_1_state;
 	int channel_2_state;
 	int channel_3_state;
-/*
+
 	int dew_warning_1;
 	int dew_warning_2;
-	int dew_warning_amb;
-*/
+
 	usbdp_status_t status;
 
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -550,6 +548,29 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 	}
 
+	/* Dew warning is issued when:
+		"Temp1 + Calibration1 <= Dewpoint + Threshold1"
+		"Temp2 + Calibration2 <= Dewpoint + Threshold2"
+	 */
+	if ((AUX_TEMPERATURE_SENSOR_1_ITEM->number.value + AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) <=
+	    (AUX_WEATHER_DEWPOINT_ITEM->number.value + AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value)) {
+		dew_warning_1 = INDIGO_ALERT_STATE;
+	} else {
+		dew_warning_1 = INDIGO_OK_STATE;
+	}
+	if ((AUX_TEMPERATURE_SENSOR_2_ITEM->number.value + AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) <=
+	    (AUX_WEATHER_DEWPOINT_ITEM->number.value + AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value)) {
+		dew_warning_2 = INDIGO_ALERT_STATE;
+	} else {
+		dew_warning_2 = INDIGO_OK_STATE;
+	}
+	if ((AUX_DEW_WARNING_SENSOR_1_ITEM->light.value != dew_warning_1) ||
+	    (AUX_DEW_WARNING_SENSOR_2_ITEM->light.value != dew_warning_2)) {
+		AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = dew_warning_1;
+		AUX_DEW_WARNING_SENSOR_2_ITEM->light.value = dew_warning_2;
+		indigo_update_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+	}
+
 	if (updateCallibration) {
 		AUX_CALLIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
@@ -624,6 +645,7 @@ static void aux_connection_handler(indigo_device *device) {
 					indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 					indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 					indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+					AUX_DEW_WARNING_PROPERTY->count = 1;
 					indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 				} else if (!strncmp(response, UDP2_IDENTIFY_RESPONSE, 4)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to USB_Dewpoint v2 at %s", DEVICE_PORT_ITEM->text.value);
@@ -738,7 +760,7 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
 	snprintf(AUX_TEMPERATURE_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_TEMPERATURE_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_CALLIBRATION_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_CALLIBRATION_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_CALLIBRATION_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
