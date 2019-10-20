@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 103
+INDIGO_BUILD = 104
 
 INDIGO_ROOT = $(shell pwd)
 BUILD_ROOT = $(INDIGO_ROOT)/build
