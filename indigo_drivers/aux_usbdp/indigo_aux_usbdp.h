@@ -36,7 +36,7 @@ extern "C" {
 /** USB_Dewpoint aux entry point callback
  */
 
-extern indigo_result indigo_aux_up(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_aux_usbdp(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }

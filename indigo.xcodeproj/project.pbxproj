@@ -40,6 +40,7 @@
 		59463C1B20DE6781004950F2 /* indigo_focuser_wemacro_bt.m in Sources */ = {isa = PBXBuildFile; fileRef = 59463C1820DE6781004950F2 /* indigo_focuser_wemacro_bt.m */; };
 		59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */; };
 		59487D6E221B3C19007027AE /* indigo_cat_data.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C6F75321FE214D0043DC52 /* indigo_cat_data.h */; };
+		5951E149235CDC0400D2DEF1 /* indigo_aux_usbdp.c in Sources */ = {isa = PBXBuildFile; fileRef = 5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */; };
 		59550A4922F33FFC00C719C4 /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59550A4822F33FFC00C719C4 /* Makefile.inc */; };
 		595705A42186740F00E713A9 /* indigo_drivers.c in Sources */ = {isa = PBXBuildFile; fileRef = 595705A321866D9700E713A9 /* indigo_drivers.c */; };
 		59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
@@ -590,6 +591,12 @@
 		59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag.h; sourceTree = "<group>"; };
 		59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag_firmware.h; sourceTree = "<group>"; };
 		59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag_main.c; sourceTree = "<group>"; };
+		5951E141235CDBD900D2DEF1 /* indigo_aux_usbdp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_usbdp.h; sourceTree = "<group>"; };
+		5951E142235CDBD900D2DEF1 /* indigo_aux_usbdp_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_usbdp_main.c; sourceTree = "<group>"; };
+		5951E144235CDBD900D2DEF1 /* usbdp_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = usbdp_simulator.ino; sourceTree = "<group>"; };
+		5951E145235CDBD900D2DEF1 /* protocol.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = protocol.txt; sourceTree = "<group>"; };
+		5951E146235CDBD900D2DEF1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_usbdp.c; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		59550A4822F33FFC00C719C4 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.01.pdf; sourceTree = "<group>"; };
@@ -612,7 +619,7 @@
 		595AA1D01FC5EEFE00350E7B /* indigo_agent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent.c; sourceTree = "<group>"; };
 		595AEB0F230FDE0200AB5C99 /* ioptron_2.5_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.5_simulator.ino; sourceTree = "<group>"; };
 		595E9FBE233E65F7006E01D3 /* make_dslr_table.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = make_dslr_table.py; sourceTree = "<group>"; };
-		595E9FBF233E6607006E01D3 /* dslr.csv */ = {isa = PBXFileReference; lastKnownFileType = file; name = dslr.csv; path = data/dslr.csv; sourceTree = SOURCE_ROOT; };
+		595E9FBF233E6607006E01D3 /* dslr.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = dslr.csv; path = data/dslr.csv; sourceTree = SOURCE_ROOT; };
 		595E9FC0233E6666006E01D3 /* ptp_camera_model.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ptp_camera_model.h; sourceTree = "<group>"; };
 		595F28FA211E211100380EF4 /* DDHidMouse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DDHidMouse.h; sourceTree = "<group>"; };
 		595F28FB211E211100380EF4 /* DDHidStandardUsages.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = DDHidStandardUsages.plist; sourceTree = "<group>"; };
@@ -4391,6 +4398,27 @@
 			path = ccd_ssag;
 			sourceTree = "<group>";
 		};
+		5951E13F235CDBD900D2DEF1 /* aux_usbdp */ = {
+			isa = PBXGroup;
+			children = (
+				5951E146235CDBD900D2DEF1 /* README.md */,
+				5951E141235CDBD900D2DEF1 /* indigo_aux_usbdp.h */,
+				5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */,
+				5951E142235CDBD900D2DEF1 /* indigo_aux_usbdp_main.c */,
+				5951E145235CDBD900D2DEF1 /* protocol.txt */,
+				5951E143235CDBD900D2DEF1 /* usbdp_simulator */,
+			);
+			path = aux_usbdp;
+			sourceTree = "<group>";
+		};
+		5951E143235CDBD900D2DEF1 /* usbdp_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5951E144235CDBD900D2DEF1 /* usbdp_simulator.ino */,
+			);
+			path = usbdp_simulator;
+			sourceTree = "<group>";
+		};
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
 			isa = PBXGroup;
 			children = (
@@ -7321,6 +7349,7 @@
 				59BBD189218246C8008199D6 /* aux_rts */,
 				9DC4969622C39A170052AB3E /* aux_sqm */,
 				9D6940822180B9F600AB112C /* aux_upb */,
+				5951E13F235CDBD900D2DEF1 /* aux_usbdp */,
 				59BBD16F21823693008199D6 /* ccd_altair */,
 				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
 				590A863E1DB8096A002F12FB /* ccd_asi */,
@@ -11214,6 +11243,7 @@
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				59A321A321D6291E00EC0F4A /* indigo_focuser_asi.c in Sources */,
 				5911B6D922633DBE00D6B9EC /* indigo_agent_guider.c in Sources */,
+				5951E149235CDC0400D2DEF1 /* indigo_aux_usbdp.c in Sources */,
 				9D586C4522FC6265002D382E /* indigo_ptp.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
 				59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */,

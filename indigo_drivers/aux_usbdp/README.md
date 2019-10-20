@@ -19,4 +19,4 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_usbdp
 
-## Status: Under Development
+## Status: Untested
