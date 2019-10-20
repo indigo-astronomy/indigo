@@ -30,17 +30,11 @@
 
 indigo_result indigo_get_usb_path(libusb_device* handle, char *path) {
 	uint8_t data[10];
-	char buf[10];
-	int i;
-	
 	data[0] = libusb_get_bus_number(handle);
 	int n = libusb_get_port_numbers(handle, &data[1], 9);
 	if (n != LIBUSB_ERROR_OVERFLOW) {
-		sprintf(path,"%X", data[0]);
-		for (i = 1; i <= n; i++) {
-			sprintf(buf, "%X", data[i]);
-			strcat(path, ".");
-			strcat(path, buf);
+		for (int i = 0; i <= n; i++) {
+			sprintf(path + 2 * i, "%02X", data[i]);
 		}
 	} else {
 		path[0] = '\0';
