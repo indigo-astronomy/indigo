@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_touptek"
 
 #include <stdlib.h>
@@ -57,7 +57,7 @@
 #define X_CCD_FAN_SPEED_ITEM							(X_CCD_FAN_PROPERTY->items + 0)
 
 typedef struct {
-	ToupcamInstV2 cam;
+	ToupcamDeviceV2 cam;
 	HToupCam handle;
 	bool present;
 	indigo_device *camera;
@@ -110,7 +110,8 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 			}
 			break;
 		}
-		case TOUPCAM_EVENT_TIMEOUT:
+		case TOUPCAM_EVENT_NOFRAMETIMEOUT:
+		case TOUPCAM_EVENT_NOPACKETTIMEOUT:
 		case TOUPCAM_EVENT_ERROR: {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -864,10 +865,10 @@ static void hotplug_callback(void* pCallbackCtx) {
 		if (device)
 			PRIVATE_DATA->present = false;
 	}
-	ToupcamInstV2 cams[TOUPCAM_MAX];
+	ToupcamDeviceV2 cams[TOUPCAM_MAX];
 	int cnt = Toupcam_EnumV2(cams);
 	for (int j = 0; j < cnt; j++) {
-		ToupcamInstV2 cam = cams[j];
+		ToupcamDeviceV2 cam = cams[j];
 		bool found = false;
 		for (int i = 0; i < TOUPCAM_MAX; i++) {
 			indigo_device *device = devices[i];
