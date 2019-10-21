@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 38.15031.2019.0706</li></ul>
+<ul><li>Version: 39.15529.2019.0906</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -95,6 +95,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
      <li>samples
        <ol>
          <li>democpp, C++ sample. It demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></li>
+         <li>AutoTestTool, auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</li>
          <li>demopush, C++ sample, this sample use Push Mode, StartPushModeV3</li>
 		 <li>demomfc, a simple C++ sample. It use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode.</li>
          <li>demomono, a simple C++ sample. It demonstrates to use mono camera with 8 or 16 bits.</li>
@@ -374,12 +375,12 @@ The SDK zip file contains all of the necessary resources and information:</p>
     <p><strong>Return value:</strong> non-negative integer, enumerated camera number</p>
     <p><strong>Parameters:</strong></p>
     	<blockquote>
-    		<p>AltaircamInstV2 pti[ALTAIRCAM_MAX]: AltaircamInstV2 buffer</p>
+    		<p>AltaircamDeviceV2 pti[ALTAIRCAM_MAX]: AltaircamDeviceV2 buffer</p>
     	</blockquote>
-    <p><strong>Remarks:</strong> call this function to enumerate Altaircam cameras that are currently connected to computer and when it is returned, AltaircamInstV2 buffer contains the information of each camera instance enumerated.<strong>If we don't care about that multiple cameras connect to the computer simultaneously, it's optional to call this function to enumerate the camera instances</strong>.</p>
+    <p><strong>Remarks:</strong> call this function to enumerate Altaircam cameras that are currently connected to computer and when it is returned, AltaircamDeviceV2 buffer contains the information of each camera instance enumerated.<strong>If we don't care about that multiple cameras connect to the computer simultaneously, it's optional to call this function to enumerate the camera instances</strong>.</p>
     <p>The code snippet shows as below:<br/></p>
 <table width="100%" border="0" bgcolor="#B0D0B0">
-  <tr><td><pre>AltaircamInstV2 arr[ALTAIRCAM_MAX];
+  <tr><td><pre>AltaircamDeviceV2 arr[ALTAIRCAM_MAX];
 unsigned cnt = Altaircam_EnumV2(arr);
 for (unsigned i = 0; i &lt; cnt; ++i)
     ......</pre></td></tr>
@@ -1823,7 +1824,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 <hr/>
 <p>Altaircam does support .NET development environment (C# and VB.NET).</p>
 <p>altaircam.cs use P/Invoke to call into altaircam.dll. Copy altaircam.cs to your C# project, please reference demowinformcs1, demowinformcs2 and demowinformcs3 in the samples directory.</p>
-<p>Please pay attation to that <strong>the object of the C# class Altair. Altaircam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new Altair.Altaircam</strong> (The constructor is private on purpose).</p>
+<p>Please pay attation to that <strong>the object of the C# class Altaircam. Altaircam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new Altaircam</strong> (The constructor is private on purpose).</p>
 <p>Most properties and methods of the Altaircam class P/Invoke into the corresponding Altaircam_xxxx functions of altaircam.dll/so. So, the descriptions of the Altaircam_xxxx function are also applicable for the corresponding C# properties or methods. For example, the C# Snap method call the function Altaircam_Snap, the descriptions of the Altaircam_Snap function is applicable for C# Snap method:</p>
 <table width="100%" border="0" bgcolor="#B0D0B0">
 <tr><td><pre>[DllImport(&quot;altaircam.dll&quot;, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
@@ -1854,6 +1855,8 @@ public bool Snap(uint nResolutionIndex)
 <hr/>
 <h1><font color="#0000FF">8. Changelog</font></h1>
 <hr/>
+<p>v40: Auto test tool, see samples\AutoTestTool</p>
+<p>v39: Update C#/VB.NET/Java/Python</p>
 <p>v38: Add support to byte order, change BGR/RGB. Please see <a href="#bgr">here</a></p>
 <p>v37: Add Android support<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Altaircam_StartPushModeV3 (Altaircam_StartPushModeV2 and Altaircam_StartPushMode are obsoleted)</p>
 <p>v36: Add Java support. Please see <a href="#java">here</a></p>
@@ -1873,7 +1876,7 @@ public bool Snap(uint nResolutionIndex)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add FFC and DFC, please see <a href="#ffc">here</a> and <a href="#dfc">here</a></p>
 <p>v22: Add ALTAIRCAM_OPTION_DDR_DEPTH, please see <a href="#ddrdepth">here</a></p>
 <p>v21: Add Altaircam_IoControl</p>
-<p>v20: Add Altaircam_EnumV2, AltaircamModelV2, AltaircamInstV2; (Altaircam_Enum, AltaircamModel and AltaircamInst are obsoleted)<br/>
+<p>v20: Add Altaircam_EnumV2, AltaircamModelV2, AltaircamDeviceV2; (Altaircam_Enum, AltaircamModel and AltaircamDevice are obsoleted)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Pixel Format, see ALTAIRCAM_OPTION_PIXEL_FORMAT; (ALTAIRCAM_OPTION_PIXEL_FORMAT is the super set of ALTAIRCAM_OPTION_BITDEPTH)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Flat Field Correction</p>
 <p>v19: Add Black Balance: please see <a href="#black">here</a></p>

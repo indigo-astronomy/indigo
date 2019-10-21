@@ -23,7 +23,7 @@
  \file indigo_ccd_altair.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_ccd_altair"
 
 #include <stdlib.h>
@@ -57,7 +57,7 @@
 #define X_CCD_FAN_SPEED_ITEM							(X_CCD_FAN_PROPERTY->items + 0)
 
 typedef struct {
-	AltaircamInstV2 cam;
+	AltaircamDeviceV2 cam;
 	HAltaircam handle;
 	bool present;
 	indigo_device *camera;
@@ -882,10 +882,10 @@ static void hotplug_callback(void* pCallbackCtx) {
 		if (device)
 			PRIVATE_DATA->present = false;
 	}
-	AltaircamInstV2 cams[ALTAIRCAM_MAX];
+	AltaircamDeviceV2 cams[ALTAIRCAM_MAX];
 	int cnt = Altaircam_EnumV2(cams);
 	for (int j = 0; j < cnt; j++) {
-		AltaircamInstV2 cam = cams[j];
+		AltaircamDeviceV2 cam = cams[j];
 		bool found = false;
 		for (int i = 0; i < ALTAIRCAM_MAX; i++) {
 			indigo_device *device = devices[i];
