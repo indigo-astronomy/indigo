@@ -660,10 +660,13 @@ static void set_property(indigo_device *device, char *name, char *value) {
     indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "count")) {
 		AGENT_IMAGER_BATCH_COUNT_ITEM->number.target = atoi(value);
+		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "exposure")) {
 		AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = atof(value);
+		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "delay")) {
 		AGENT_IMAGER_BATCH_DELAY_ITEM->number.target = atof(value);
+		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "filter")) {
 		remote_property = indigo_filter_cached_property(device, INDIGO_FILTER_WHEEL_INDEX, WHEEL_SLOT_PROPERTY_NAME);
 		if (remote_property) {
