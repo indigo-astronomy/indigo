@@ -55,11 +55,11 @@ typedef struct {
 static bool artesky_command(int handle, char *command, char *response) {
 	int result = indigo_write(handle, command, strlen(command));
 	result |= indigo_write(handle, "\n", 1);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
 	if (result) {
 		*response = 0;
 		result = indigo_read_line(handle, response, 10) > 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
 	}
 	return result;
 }
@@ -116,8 +116,8 @@ static void aux_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				if (artesky_command(PRIVATE_DATA->handle, ">L000", response) && !strcmp(response, "*L19000")) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Artesky Flat Box detected");
+				if (artesky_command(PRIVATE_DATA->handle, "#", response)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "RESP: %s", response);
 					break;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
@@ -127,7 +127,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
+			sprintf(command, "V", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
 			if (artesky_command(PRIVATE_DATA->handle, command, response))
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 			else
