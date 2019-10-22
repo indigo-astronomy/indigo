@@ -90,6 +90,7 @@ This is the list of requirements taken into the consideration:
 61. Unihedron SQM driver
 62. Artesky Flat Box USB driver
 63. NexDome driver
+64. USB_Dewpoint V1 and V2 AUX driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
