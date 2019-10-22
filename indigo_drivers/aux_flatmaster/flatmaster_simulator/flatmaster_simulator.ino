@@ -33,7 +33,9 @@ void setup() {
 }
 
 void loop() {
-  String command = Serial.readStringUntil('\n');
+  String command;
+  command = "";
+  command = Serial.readStringUntil('\n');
   if (command.equals("#")) {
     Serial.println("OK_FM");
   } else if (command.startsWith("E:")) {
@@ -50,8 +52,7 @@ void loop() {
     Serial.println(intensity);
   } else if (command.equals("V")) {
     Serial.println("1.1");
-  } else {
-    //Serial.println("ERR");
+  } else if (command.length() > 0) {
+    Serial.println("ERR");
   }
-  command = "";
 }
