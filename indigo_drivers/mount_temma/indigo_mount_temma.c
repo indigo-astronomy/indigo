@@ -61,6 +61,13 @@
 #define CORRECTION_SPEED_RA_ITEM_NAME     "RA"
 #define CORRECTION_SPEED_DEC_ITEM_NAME    "DEC"
 
+#define ZENITH_PROPERTY                   (PRIVATE_DATA->zenith_property)
+#define ZENITH_EAST_ITEM                  (ZENITH_PROPERTY->items+0)
+#define ZENITH_WEST_ITEM                  (ZENITH_PROPERTY->items+1)
+#define ZENITH_PROPERTY_NAME              "X_ZENITH"
+#define ZENITH_EAST_ITEM_NAME             "EAST"
+#define ZENITH_WEST_ITEM_NAME             "WEST"
+
 #define TEMMA_GET_VERSION						"v"
 #define TEMMA_GET_POSITION					"E"
 #define TEMMA_GET_GOTO_STATE				"s"
@@ -81,8 +88,11 @@
 #define TEMMA_SLEW_FAST_SOUTH				"MQ"
 #define TEMMA_SLEW_STOP							"MA"
 
+#define TEMMA_SWITCH_SIDE_OF_MOUNT  "PT"
+
 #define TEMMA_MOTOR_ON							"STN-OFF"
 #define TEMMA_MOTOR_OFF							"STN-ON"
+#define TEMMA_ZENITH                "Z"
 
 typedef struct {
 	int handle;
@@ -97,6 +107,7 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	char product[128];
 	indigo_property *correction_speed_property;
+	indigo_property *zenith_property;
 } temma_private_data;
 
 static bool temma_open(indigo_device *device) {
@@ -185,6 +196,8 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				else
 					PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
 				PRIVATE_DATA->pierSide = buffer[13];
+				MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'E';
+				MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'W';
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->pierSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
 				break;
 			}
@@ -302,6 +315,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		MOUNT_PARK_SET_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -310,6 +324,11 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(CORRECTION_SPEED_RA_ITEM, CORRECTION_SPEED_RA_ITEM_NAME, "RA speed (10% - 90%)", 10, 90, 1, 50);
 		indigo_init_number_item(CORRECTION_SPEED_DEC_ITEM, CORRECTION_SPEED_DEC_ITEM_NAME, "Dec speed (10% - 90%)", 10, 90, 1, 50);
+		ZENITH_PROPERTY = indigo_init_switch_property(NULL, device->name, ZENITH_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Sync zenith", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (ZENITH_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(ZENITH_EAST_ITEM, ZENITH_EAST_ITEM_NAME, "East zenith", false);
+		indigo_init_switch_item(ZENITH_WEST_ITEM, ZENITH_WEST_ITEM_NAME, "West zenith", false);
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -321,6 +340,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	if (IS_CONNECTED) {
 		if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property))
 			indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+		if (indigo_property_match(ZENITH_PROPERTY, property))
+			indigo_define_property(device, ZENITH_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -353,6 +374,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					temma_command(device, TEMMA_GET_GOTO_STATE, true);
 					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 					indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, ZENITH_PROPERTY, NULL);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get version, not temma mount?");
@@ -373,6 +395,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				temma_close(device);
 			}
 			indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+			indigo_delete_property(device, ZENITH_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
@@ -550,6 +573,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- SIDE_OF_PIER
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(MOUNT_SIDE_OF_PIER_PROPERTY, property, false);
+			if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+				if (PRIVATE_DATA->pierSide == 'W') {
+					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of pier switched : West -> East");
+				}
+			} else if (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+				if (PRIVATE_DATA->pierSide == 'E') {
+					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of pier switched : East -> West");
+				}
+			}
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CORRECTION_SPEED
 		if (IS_CONNECTED) {
@@ -561,6 +601,30 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			temma_command(device, buffer, false);
 			CORRECTION_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(ZENITH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ZENITH
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(ZENITH_PROPERTY, property, false);
+			if (ZENITH_EAST_ITEM->sw.value || ZENITH_WEST_ITEM->sw.value) {
+				// show busy
+				ZENITH_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, ZENITH_PROPERTY, NULL);
+				// check side of pier
+				if ((ZENITH_EAST_ITEM->sw.value && PRIVATE_DATA->pierSide == 'W') ||
+				    (ZENITH_WEST_ITEM->sw.value && PRIVATE_DATA->pierSide == 'E')) {
+					// update side of pier
+					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, false);
+				}
+				// send zenith
+				temma_command(device, TEMMA_ZENITH, false);
+				ZENITH_EAST_ITEM->sw.value = false;
+				ZENITH_WEST_ITEM->sw.value = false;
+				// show ok
+				ZENITH_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, ZENITH_PROPERTY, NULL);
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
@@ -577,6 +641,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(CORRECTION_SPEED_PROPERTY);
+	indigo_release_property(ZENITH_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
