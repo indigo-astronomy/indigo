@@ -41,28 +41,39 @@
 #include <indigo/indigo_io.h>
 #include "indigo_aux_flatmaster.h"
 
-#define PRIVATE_DATA												((flatmaster_private_data *)device->private_data)
+#define PRIVATE_DATA                                          ((flatmaster_private_data *)device->private_data)
 
-#define AUX_LIGHT_INTENSITY_PROPERTY				(PRIVATE_DATA->light_intensity_property)
-#define AUX_LIGHT_INTENSITY_ITEM						(AUX_LIGHT_INTENSITY_PROPERTY->items+0)
+#define AUX_LIGHT_SWITCH_PROPERTY                             (PRIVATE_DATA->light_switch_property)
+#define AUX_LIGHT_SWITCH_ON_ITEM                              (AUX_LIGHT_SWITCH_PROPERTY->items+0)
+#define AUX_LIGHT_SWITCH_OFF_ITEM                             (AUX_LIGHT_SWITCH_PROPERTY->items+1)
+
+#define AUX_LIGHT_INTENSITY_PROPERTY                          (PRIVATE_DATA->light_intensity_property)
+#define AUX_LIGHT_INTENSITY_ITEM                              (AUX_LIGHT_INTENSITY_PROPERTY->items+0)
+
+/* bring 220-20 in range of 0-100 */
+#define CALCULATE_INTENSITY(intensity)                        ((int)floor((100 - (int)(intensity) - 0) * (220 - 20) / (100 - 0) + 20))
 
 typedef struct {
 	int handle;
+	indigo_property *light_switch_property;
 	indigo_property *light_intensity_property;
 	pthread_mutex_t mutex;
 } flatmaster_private_data;
 
-static bool artesky_command(int handle, char *command, char *response) {
+static bool flatmaster_command(int handle, char *command, char *response) {
 	int result = indigo_write(handle, command, strlen(command));
 	result |= indigo_write(handle, "\n", 1);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
 	if (result) {
 		*response = 0;
 		result = indigo_read_line(handle, response, 10) > 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
 	}
 	return result;
 }
+
+static void aux_intensity_handler(indigo_device *device);
+static void aux_switch_handler(indigo_device *device);
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
 
@@ -70,11 +81,18 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_OK) {
+		INFO_PROPERTY->count = 5;
+		// -------------------------------------------------------------------------------- AUX_LIGHT_SWITCH
+		AUX_LIGHT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_MAIN_GROUP, "Light (on/off)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AUX_LIGHT_SWITCH_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AUX_LIGHT_SWITCH_ON_ITEM, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(AUX_LIGHT_SWITCH_OFF_ITEM, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
 		AUX_LIGHT_INTENSITY_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_MAIN_GROUP, "Light intensity", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_LIGHT_INTENSITY_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 255, 1, 0);
+		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 100, 1, 0);
 		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
@@ -102,6 +120,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property))
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+		if (indigo_property_match(AUX_LIGHT_SWITCH_PROPERTY, property))
+			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -116,8 +136,7 @@ static void aux_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				if (artesky_command(PRIVATE_DATA->handle, "#", response)) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "RESP: %s", response);
+				if (flatmaster_command(PRIVATE_DATA->handle, "#", response) && !strcmp("OK_FM", response)) {
 					break;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
@@ -127,12 +146,26 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			sprintf(command, "V", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-			if (artesky_command(PRIVATE_DATA->handle, command, response))
+			if (flatmaster_command(PRIVATE_DATA->handle, "V", response)) {
+				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+
+			}
+			/* FlatMaster does not report intensity and ON/OFF state, so we set it to be consistent */
+			/* bring 220-20 in range of 0-100 */
+			sprintf(command, "L:%d", CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+			if (flatmaster_command(PRIVATE_DATA->handle, command, response))
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 			else
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+
+			sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
+			if (flatmaster_command(PRIVATE_DATA->handle, command, response))
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
@@ -141,8 +174,9 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-		artesky_command(PRIVATE_DATA->handle, ">B000", response);
-		artesky_command(PRIVATE_DATA->handle, ">D000", response);
+		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+		// turn off flatmaster at disconnect
+		flatmaster_command(PRIVATE_DATA->handle, "E:0", response);
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
@@ -156,13 +190,28 @@ static void aux_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (AUX_LIGHT_INTENSITY_PROPERTY->state != INDIGO_BUSY_STATE) {
 		char command[16],	response[16];
-		sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-		if (artesky_command(PRIVATE_DATA->handle, command, response))
+		/* bring 220-20 in range of 0-100 */
+		sprintf(command, "L:%d", CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+		if (flatmaster_command(PRIVATE_DATA->handle, command, response))
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_switch_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (AUX_LIGHT_SWITCH_PROPERTY->state != INDIGO_BUSY_STATE) {
+		char command[16],	response[16];
+		sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
+		if (flatmaster_command(PRIVATE_DATA->handle, command, response))
+			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -175,6 +224,12 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		indigo_set_timer(device, 0, aux_connection_handler);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- AUX_LIGHT_SWITCH
+	} else if (indigo_property_match(AUX_LIGHT_SWITCH_PROPERTY, property)) {
+		indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
+		if (IS_CONNECTED)
+			indigo_set_timer(device, 0, aux_switch_handler);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
 	} else if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
@@ -185,6 +240,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_LIGHT_INTENSITY_PROPERTY);
+			indigo_save_property(device, NULL, AUX_LIGHT_SWITCH_PROPERTY);
 		}
 	}
 	return indigo_aux_change_property(device, client, property);
@@ -197,6 +253,7 @@ static indigo_result aux_detach(indigo_device *device) {
 		aux_connection_handler(device);
 	}
 	indigo_release_property(AUX_LIGHT_INTENSITY_PROPERTY);
+	indigo_release_property(AUX_LIGHT_SWITCH_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
