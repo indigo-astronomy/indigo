@@ -37,7 +37,7 @@ void loop() {
   if (command.equals("#")) {
     Serial.println("OK_FM");
   } else if (command.startsWith("E:")) {
-    power = command.charAt(3) == '1';
+    power = command.charAt(2) == '1';
     if (power)
       Serial.println("E:1");
     else
