@@ -130,7 +130,7 @@ static void aux_connection_handler(indigo_device *device) {
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 				sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-				if (artesky_command(PRIVATE_DATA->handle, command, response) && *response == 'B') {
+				if (artesky_command(PRIVATE_DATA->handle, command, response) && *response == '*') {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Artesky Flat Box detected");
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 					break;
