@@ -116,6 +116,7 @@
 #include "aux_arteskyflat/indigo_aux_arteskyflat.h"
 #include "dome_nexdome/indigo_dome_nexdome.h"
 #include "aux_usbdp/indigo_aux_usbdp.h"
+#include "aux_flatmaster/indigo_aux_flatmaster.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -151,6 +152,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
 	indigo_aux_dsusb,
+	indigo_aux_flatmaster,
 	indigo_aux_joystick,
 	indigo_aux_ppb,
 	indigo_aux_rts,
