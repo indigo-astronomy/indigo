@@ -291,6 +291,7 @@
 		9DE0E7C422C6465500289234 /* indigo_focuser_dsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */; };
 		9DE0E7C622C6465500289234 /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B822C6465500289234 /* Makefile.inc */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
+		9DFA598B2361D94B00326A74 /* indigo_aux_flatmaster.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA59852361D92600326A74 /* indigo_aux_flatmaster.c */; };
 		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
 /* End PBXBuildFile section */
 
@@ -3663,6 +3664,12 @@
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
+		9DFA59842361D92600326A74 /* flatmaster.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = flatmaster.rules; sourceTree = "<group>"; };
+		9DFA59852361D92600326A74 /* indigo_aux_flatmaster.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flatmaster.c; sourceTree = "<group>"; };
+		9DFA59862361D92600326A74 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DFA59872361D92600326A74 /* indigo_aux_flatmaster_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flatmaster_main.c; sourceTree = "<group>"; };
+		9DFA59882361D92600326A74 /* indigo_aux_flatmaster.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_flatmaster.h; sourceTree = "<group>"; };
+		9DFA598A2361D92600326A74 /* flatmaster_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = flatmaster_simulator.ino; sourceTree = "<group>"; };
 		9DFE1864213586AB00149BDE /* indigo_focuser_dmfc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dmfc.h; sourceTree = "<group>"; };
 		9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc.c; sourceTree = "<group>"; };
 		9DFE1866213586AB00149BDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -7344,6 +7351,7 @@
 				590BF1AD21EBCF7500C24DBA /* ao_sx */,
 				59B81EBF23376A1A00DFA81B /* aux_arteskyflat */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
+				9DFA59832361D92600326A74 /* aux_flatmaster */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
 				5996615022CF3E0F00330652 /* aux_ppb */,
 				59BBD189218246C8008199D6 /* aux_rts */,
@@ -10908,6 +10916,28 @@
 			path = ccd_qsi;
 			sourceTree = "<group>";
 		};
+		9DFA59832361D92600326A74 /* aux_flatmaster */ = {
+			isa = PBXGroup;
+			children = (
+				9DFA59862361D92600326A74 /* README.md */,
+				9DFA59842361D92600326A74 /* flatmaster.rules */,
+				9DFA59882361D92600326A74 /* indigo_aux_flatmaster.h */,
+				9DFA59852361D92600326A74 /* indigo_aux_flatmaster.c */,
+				9DFA59872361D92600326A74 /* indigo_aux_flatmaster_main.c */,
+				9DFA59892361D92600326A74 /* flatmaster_simulator */,
+			);
+			name = aux_flatmaster;
+			path = indigo_drivers/aux_flatmaster;
+			sourceTree = SOURCE_ROOT;
+		};
+		9DFA59892361D92600326A74 /* flatmaster_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DFA598A2361D92600326A74 /* flatmaster_simulator.ino */,
+			);
+			path = flatmaster_simulator;
+			sourceTree = "<group>";
+		};
 		9DFE1863213586AB00149BDE /* focuser_dmfc */ = {
 			isa = PBXGroup;
 			children = (
@@ -11318,6 +11348,7 @@
 				9DB9180A1DFEA71C00678721 /* indigo_mount_nexstar.c in Sources */,
 				5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */,
 				9D59D66F20D3F82A009EA8FF /* indigo_ccd_apogee.cpp in Sources */,
+				9DFA598B2361D94B00326A74 /* indigo_aux_flatmaster.c in Sources */,
 				9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */,
 				59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */,
 				59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */,
