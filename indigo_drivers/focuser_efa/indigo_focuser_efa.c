@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -295,14 +295,14 @@ static void focuser_goto(indigo_device *device, long target) {
 		goto failure;
 	while (true) {
 		position = focuser_position(device);
+		FOCUSER_POSITION_ITEM->number.value = position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		if (efa_command(device, check_state_packet, response_packet)) {
 			if (response_packet[5] == 0xFE)
 				goto failure;
 			if (response_packet[5] == 0xFF)
 				break;
 		}
-		FOCUSER_POSITION_ITEM->number.value = position;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_usleep(300000);
 	}
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -331,15 +331,18 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			PRIVATE_DATA->is_efa = true;
+			PRIVATE_DATA->is_celestron = false;
 			uint8_t get_version_packet[10] = { SOM, 0x03, APP, FOC, 0xFE, 0 };
 			if (efa_command(device, get_version_packet, response_packet)) {
 				if (response_packet[1] == 5) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PlaneWave EFA");
 					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d", response_packet[5], response_packet[6]);
 					PRIVATE_DATA->is_efa = true;
+					PRIVATE_DATA->is_celestron = false;
 				} else if (response_packet[1] == 7) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron Focus Motor");
 					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d", response_packet[5], response_packet[6], (response_packet[7] << 8) + response_packet[8]);
+					PRIVATE_DATA->is_efa = false;
 					PRIVATE_DATA->is_celestron = true;
 				} else {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Uknown device");
