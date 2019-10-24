@@ -91,6 +91,7 @@ This is the list of requirements taken into the consideration:
 62. Artesky Flat Box USB driver
 63. NexDome driver
 64. USB_Dewpoint V1 and V2 AUX driver
+65. Pegasus Astro FlatMaster driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
