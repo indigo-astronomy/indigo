@@ -117,6 +117,7 @@
 #include "dome_nexdome/indigo_dome_nexdome.h"
 #include "aux_usbdp/indigo_aux_usbdp.h"
 #include "aux_flatmaster/indigo_aux_flatmaster.h"
+#include "focuser_focusdreampro/indigo_focuser_focusdreampro.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -191,6 +192,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_dmfc,
 	indigo_focuser_dsd,
 	indigo_focuser_fcusb,
+	indigo_focuser_focusdreampro,
 	indigo_focuser_fli,
 	indigo_focuser_lakeside,
 	indigo_focuser_mjkzz,

@@ -178,6 +178,7 @@
 		59E38B541F1577A000187839 /* indigo_ica_ptp_canon.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */; };
 		59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */; };
 		59E38B561F1577A000187839 /* indigo_ica_ptp_nikon.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E38B521F1577A000187839 /* indigo_ica_ptp_nikon.m */; };
+		59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */; };
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
 		59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */; };
 		59F654721EE47516007B8C93 /* indigo_ccd_qhy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */; };
@@ -3390,6 +3391,10 @@
 		59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
 		59E38B521F1577A000187839 /* indigo_ica_ptp_nikon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_nikon.m; sourceTree = "<group>"; };
 		59E67789212C8042004B99BE /* Protocol_V2.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V2.0.pdf; sourceTree = "<group>"; };
+		59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_focusdreampro.c; sourceTree = "<group>"; };
+		59EFE8A32363481E00ED5337 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59EFE8A42363481E00ED5337 /* indigo_focuser_focusdreampro.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_focusdreampro.h; sourceTree = "<group>"; };
+		59EFE8A52363481E00ED5337 /* indigo_focuser_focusdreampro_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_focusdreampro_main.c; sourceTree = "<group>"; };
 		59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_data.c; sourceTree = "<group>"; };
 		59F3D85E21BC074400800970 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sbig.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -7380,6 +7385,7 @@
 				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				5941355E232403F700ED5FF4 /* focuser_efa */,
 				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
+				59EFE8A12363481D00ED5337 /* focuser_focusdreampro */,
 				9DFE1863213586AB00149BDE /* focuser_dmfc */,
 				9DE0E7B222C6465500289234 /* focuser_dsd */,
 				59FE347D2188699F004FB5D4 /* focuser_lakeside */,
@@ -9886,6 +9892,18 @@
 			path = man7;
 			sourceTree = "<group>";
 		};
+		59EFE8A12363481D00ED5337 /* focuser_focusdreampro */ = {
+			isa = PBXGroup;
+			children = (
+				59EFE8A32363481E00ED5337 /* README.md */,
+				59EFE8A42363481E00ED5337 /* indigo_focuser_focusdreampro.h */,
+				59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */,
+				59EFE8A52363481E00ED5337 /* indigo_focuser_focusdreampro_main.c */,
+			);
+			name = focuser_focusdreampro;
+			path = indigo_drivers/focuser_focusdreampro;
+			sourceTree = SOURCE_ROOT;
+		};
 		59F4EC6F1E941CF400CC7772 /* ccd_sbig */ = {
 			isa = PBXGroup;
 			children = (
@@ -11263,6 +11281,7 @@
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
 				595F292F211E211200380EF4 /* DDHidUsage.m in Sources */,
+				59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */,
 				599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */,
 				59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */,
 				9D73E61921FF37F9003CEC15 /* libuvc_diag.c in Sources */,
