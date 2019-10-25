@@ -55,6 +55,8 @@ typedef struct {
 	bool fdp, jolo;
 } focusdreampro_private_data;
 
+static int SPEED[] = { 500, 250, 110, 40, 10, 5 };
+
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool focusdreampro_command(indigo_device *device, char *command, char *response, int length) {
@@ -102,12 +104,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		FOCUSER_SPEED_ITEM->number.min = 1;
-		FOCUSER_SPEED_ITEM->number.max = 1000000;
+		FOCUSER_SPEED_ITEM->number.min = 0;
+		FOCUSER_SPEED_ITEM->number.max = 5;
 		FOCUSER_SPEED_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.max = 500;
+		FOCUSER_STEPS_ITEM->number.max = 100000;
 		FOCUSER_STEPS_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
@@ -237,7 +239,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			} else {
 				FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			snprintf(command, sizeof(command), "S:%d", (int)FOCUSER_SPEED_ITEM->number.target);
+			snprintf(command, sizeof(command), "S:%d", SPEED[(int)FOCUSER_SPEED_ITEM->number.target]);
 			if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -276,7 +278,7 @@ static void focuser_speed_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	if (IS_CONNECTED) {
-		snprintf(command, sizeof(command), "S:%d", (int)FOCUSER_SPEED_ITEM->number.target);
+		snprintf(command, sizeof(command), "S:%d", SPEED[(int)FOCUSER_SPEED_ITEM->number.target]);
 		if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
 			FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
