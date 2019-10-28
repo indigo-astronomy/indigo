@@ -23,7 +23,7 @@
  \file indigo_aux_flatmaster.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_flatmaster"
 
 #include <stdlib.h>
@@ -60,13 +60,13 @@ typedef struct {
 	pthread_mutex_t mutex;
 } flatmaster_private_data;
 
-static bool flatmaster_command(int handle, char *command, char *response) {
+static bool flatmaster_command(int handle, char *command, char *response, int resp_len) {
 	int result = indigo_write(handle, command, strlen(command));
 	result |= indigo_write(handle, "\n", 1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
 	if (result) {
 		*response = 0;
-		result = indigo_read_line(handle, response, 10) > 0;
+		result = indigo_read_line(handle, response, resp_len) > 0;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
 	}
 	return result;
@@ -136,7 +136,7 @@ static void aux_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				if (flatmaster_command(PRIVATE_DATA->handle, "#", response) && !strcmp("OK_FM", response)) {
+				if (flatmaster_command(PRIVATE_DATA->handle, "#", response, sizeof(response)) && !strcmp("OK_FM", response)) {
 					break;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
@@ -146,7 +146,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			if (flatmaster_command(PRIVATE_DATA->handle, "V", response)) {
+			if (flatmaster_command(PRIVATE_DATA->handle, "V", response, sizeof(response))) {
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
@@ -154,14 +154,14 @@ static void aux_connection_handler(indigo_device *device) {
 			/* FlatMaster does not report intensity and ON/OFF state, so we set it to be consistent */
 			/* bring 220-20 in range of 0-100 */
 			sprintf(command, "L:%d", CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-			if (flatmaster_command(PRIVATE_DATA->handle, command, response))
+			if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 			else
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 
 			sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
-			if (flatmaster_command(PRIVATE_DATA->handle, command, response))
+			if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 			else
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -176,7 +176,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		// turn off flatmaster at disconnect
-		flatmaster_command(PRIVATE_DATA->handle, "E:0", response);
+		flatmaster_command(PRIVATE_DATA->handle, "E:0", response, sizeof(response));
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
@@ -192,7 +192,7 @@ static void aux_intensity_handler(indigo_device *device) {
 		char command[16],	response[16];
 		/* bring 220-20 in range of 0-100 */
 		sprintf(command, "L:%d", CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-		if (flatmaster_command(PRIVATE_DATA->handle, command, response))
+		if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -206,7 +206,7 @@ static void aux_switch_handler(indigo_device *device) {
 	if (AUX_LIGHT_SWITCH_PROPERTY->state != INDIGO_BUSY_STATE) {
 		char command[16],	response[16];
 		sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
-		if (flatmaster_command(PRIVATE_DATA->handle, command, response))
+		if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
 			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
