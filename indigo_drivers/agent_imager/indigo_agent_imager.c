@@ -137,6 +137,7 @@ typedef struct {
 	double drift_x, drift_y;
 	int stack_size;
 	pthread_mutex_t mutex;
+	double focus_exposure;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -648,16 +649,7 @@ static void autofocus_process(indigo_device *device) {
 static void set_property(indigo_device *device, char *name, char *value) {
 	indigo_property *remote_property = NULL;
 	if (!strcasecmp(name, "focus")) {
-		int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
-		int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
-    double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
-		AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = atof(value);
-		if (!autofocus(device))
-			indigo_send_message(device, "Autofocus failed");
-		restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
-		restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
-    AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = exposure;
-    indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+		DEVICE_PRIVATE_DATA->focus_exposure = atof(value);
 	} else if (!strcasecmp(name, "count")) {
 		AGENT_IMAGER_BATCH_COUNT_ITEM->number.target = atoi(value);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
@@ -808,6 +800,19 @@ static void sequence_process(indigo_device *device) {
 		AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 		AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+		if (DEVICE_PRIVATE_DATA->focus_exposure > 0) {
+			int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
+			int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
+			double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
+			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = DEVICE_PRIVATE_DATA->focus_exposure;
+			if (!autofocus(device))
+				indigo_send_message(device, "Autofocus failed");
+			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
+			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = exposure;
+			indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
+			DEVICE_PRIVATE_DATA->focus_exposure = 0;
+		}		
 		if (exposure_batch(device)) {
 			indigo_send_message(device, "Batch %d finished", batch_index);
 		} else {
