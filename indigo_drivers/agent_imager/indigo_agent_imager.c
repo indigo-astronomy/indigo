@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -805,8 +805,14 @@ static void sequence_process(indigo_device *device) {
 			int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 			double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = DEVICE_PRIVATE_DATA->focus_exposure;
-			if (!autofocus(device))
+			indigo_send_message(device, "Autofocus started");
+			if (autofocus(device)) {
+				indigo_send_message(device, "Autofocus finished");
+			} else {
 				indigo_send_message(device, "Autofocus failed");
+				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+				break;
+			}
 			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = exposure;
