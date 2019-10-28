@@ -21,6 +21,7 @@ indigo_server indigo_aux_flatmaster
 
 ## Comments
 
-## Status: Under Development
+## Status: Stable
 
-* Tested with simulator
+* Developed with Arduino simulator
+* Tested with real Pegasus Astro Flatmaster
