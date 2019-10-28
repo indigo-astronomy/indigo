@@ -399,6 +399,9 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 	device = FILTER_CLIENT_CONTEXT->device;
 	indigo_property **device_cache = FILTER_CLIENT_CONTEXT->device_property_cache;
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
+	if (property->type == INDIGO_BLOB_VECTOR) {
+		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
+	}
 	if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
 		indigo_item *interface = indigo_get_item(property, INFO_DEVICE_INTERFACE_ITEM_NAME);
 		if (interface) {
