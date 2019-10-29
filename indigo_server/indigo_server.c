@@ -118,6 +118,7 @@
 #include "aux_usbdp/indigo_aux_usbdp.h"
 #include "aux_flatmaster/indigo_aux_flatmaster.h"
 #include "focuser_focusdreampro/indigo_focuser_focusdreampro.h"
+#include "aux_fbc/indigo_aux_fbc.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -153,6 +154,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
 	indigo_aux_dsusb,
+	indigo_aux_fbc,
 	indigo_aux_flatmaster,
 	indigo_aux_joystick,
 	indigo_aux_ppb,
