@@ -226,6 +226,7 @@
 		9D73E62121FF3996003CEC15 /* utlist.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E62021FF3996003CEC15 /* utlist.h */; };
 		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
 		9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
+		9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
 		9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */; };
 		9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* indigo_server.c */; };
@@ -3529,6 +3530,11 @@
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_alignment.c; sourceTree = "<group>"; };
 		9D89442022DCD297002DFE13 /* eq8_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = eq8_simulator.ino; sourceTree = "<group>"; };
+		9D9691D523687AD800E0CACE /* indigo_aux_fbc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_fbc.h; sourceTree = "<group>"; };
+		9D9691D623687AD800E0CACE /* indigo_aux_fbc_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_fbc_main.c; sourceTree = "<group>"; };
+		9D9691D723687AD800E0CACE /* lacertafbc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = lacertafbc.rules; sourceTree = "<group>"; };
+		9D9691D823687AD800E0CACE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_fbc.c; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_iidc.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
@@ -7356,6 +7362,7 @@
 				590BF1AD21EBCF7500C24DBA /* ao_sx */,
 				59B81EBF23376A1A00DFA81B /* aux_arteskyflat */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
+				9D9691D423687AD800E0CACE /* aux_fbc */,
 				9DFA59832361D92600326A74 /* aux_flatmaster */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
 				5996615022CF3E0F00330652 /* aux_ppb */,
@@ -10487,6 +10494,18 @@
 			path = eq8_simulator;
 			sourceTree = "<group>";
 		};
+		9D9691D423687AD800E0CACE /* aux_fbc */ = {
+			isa = PBXGroup;
+			children = (
+				9D9691D823687AD800E0CACE /* README.md */,
+				9D9691D523687AD800E0CACE /* indigo_aux_fbc.h */,
+				9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */,
+				9D9691D623687AD800E0CACE /* indigo_aux_fbc_main.c */,
+				9D9691D723687AD800E0CACE /* lacertafbc.rules */,
+			);
+			path = aux_fbc;
+			sourceTree = "<group>";
+		};
 		9D976FD21DD0C46E00782B32 /* ccd_iidc */ = {
 			isa = PBXGroup;
 			children = (
@@ -11283,6 +11302,7 @@
 				595F292F211E211200380EF4 /* DDHidUsage.m in Sources */,
 				59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */,
 				599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */,
+				9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */,
 				59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */,
 				9D73E61921FF37F9003CEC15 /* libuvc_diag.c in Sources */,
 				595F292B211E211200380EF4 /* DDHidUsageTables.m in Sources */,
