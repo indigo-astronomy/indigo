@@ -50,13 +50,18 @@
 #define AUX_LIGHT_INTENSITY_PROPERTY                          (PRIVATE_DATA->light_intensity_property)
 #define AUX_LIGHT_INTENSITY_ITEM                              (AUX_LIGHT_INTENSITY_PROPERTY->items+0)
 
-/* bring 220-20 in range of 0-100 */
-#define CALCULATE_INTENSITY(intensity)                        ((int)floor((100 - (int)(intensity) - 0) * (220 - 20) / (100 - 0) + 20))
+#define AUX_LIGHT_IMPULSE_PROPERTY                            (PRIVATE_DATA->light_impulse_property)
+#define AUX_LIGHT_IMPULSE_DURATION_ITEM                       (AUX_LIGHT_IMPULSE_PROPERTY->items+0)
+
+#define AUX_SHUTTER_CONTROL_PROPERTY                          (PRIVATE_DATA->shutter_control_property)
+#define AUX_SHUTTER_CONTROL_EXPOSURE_ITEM                     (AUX_SHUTTER_CONTROL_PROPERTY->items+0)
 
 typedef struct {
 	int handle;
 	indigo_property *light_switch_property;
 	indigo_property *light_intensity_property;
+	indigo_property *light_impulse_property;
+	indigo_property *shutter_control_property;
 	pthread_mutex_t mutex;
 } fbc_private_data;
 
@@ -101,6 +106,16 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 100, 1, 0);
 		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
+		// -------------------------------------------------------------------------------- AUX_LIGHT_IMPULSE
+		AUX_LIGHT_IMPULSE_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_IMPULSE_PROPERTY_NAME, AUX_MAIN_GROUP, "Light impulse", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (AUX_LIGHT_IMPULSE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AUX_LIGHT_IMPULSE_DURATION_ITEM, AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME, "Duration (s)", 0, 100, 1, 0);
+		// -------------------------------------------------------------------------------- AUX_SHUTTER_CONTROL
+		AUX_SHUTTER_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_SHUTTER_CONTROL_PROPERTY_NAME, AUX_MAIN_GROUP, "Shutter Control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (AUX_SHUTTER_CONTROL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AUX_SHUTTER_CONTROL_EXPOSURE_ITEM, AUX_SHUTTER_CONTROL_EXPOSURE_ITEM_NAME, "Exposure (s)", 0, 7200, 1, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -129,6 +144,10 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		if (indigo_property_match(AUX_LIGHT_SWITCH_PROPERTY, property))
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+		if (indigo_property_match(AUX_LIGHT_IMPULSE_PROPERTY, property))
+			indigo_define_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
+		if (indigo_property_match(AUX_SHUTTER_CONTROL_PROPERTY, property))
+			indigo_define_property(device, AUX_SHUTTER_CONTROL_PROPERTY, NULL);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -172,32 +191,22 @@ static void aux_connection_handler(indigo_device *device) {
 				sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
-			/* fbc does not report intensity and ON/OFF state, so we set it to be consistent */
-			/* bring 220-20 in range of 0-100 */
 
-			if (fbc_command(PRIVATE_DATA->handle, ": P #", response, sizeof(response)))
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-			else
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-
+			/*
 			sprintf(command, ": E 15000 #");
-			if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0))
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-			else
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-			sprintf(command, ": F 15000 #");
-			if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0))
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-			else
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+			fbc_command(PRIVATE_DATA->handle, command, NULL, 0);
 
-			/* Stop ilumination or exposure */
+			sprintf(command, ": F 15000 #");
+			fbc_command(PRIVATE_DATA->handle, command, NULL, 0);
+			*/
+
+			/* Stop ilumination and exposure */
 			fbc_command(PRIVATE_DATA->handle, ": E 0 #", NULL, 0);
 			fbc_command(PRIVATE_DATA->handle, ": F 0 #", NULL, 0);
 
+			indigo_define_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
+			indigo_define_property(device, AUX_SHUTTER_CONTROL_PROPERTY, NULL);
+			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -206,10 +215,14 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_delete_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_SHUTTER_CONTROL_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-		// turn off fbc at disconnect
-		//fbc_command(PRIVATE_DATA->handle, "E:0", response, sizeof(response));
+		// turn off fbc at disconnecect - stop ilumination and exposure */
+		fbc_command(PRIVATE_DATA->handle, ": E 0 #", NULL, 0);
+		fbc_command(PRIVATE_DATA->handle, ": F 0 #", NULL, 0);
+
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
@@ -222,9 +235,9 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (AUX_LIGHT_INTENSITY_PROPERTY->state != INDIGO_BUSY_STATE) {
-		char command[16],	response[16];
+		char command[16];
 		sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
-		if (fbc_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
+		if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0))
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -232,6 +245,37 @@ static void aux_intensity_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
+
+
+static void aux_impulse_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (AUX_LIGHT_IMPULSE_PROPERTY->state != INDIGO_BUSY_STATE) {
+		char command[16];
+		sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
+		if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0))
+			AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+
+static void aux_shutter_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (AUX_SHUTTER_CONTROL_PROPERTY->state != INDIGO_BUSY_STATE) {
+		char command[16];
+		sprintf(command, ": E %d #", (int)(AUX_SHUTTER_CONTROL_EXPOSURE_ITEM->number.value * 1000));
+		if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0))
+			AUX_SHUTTER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			AUX_SHUTTER_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_SHUTTER_CONTROL_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 
 static void aux_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -262,6 +306,18 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (IS_CONNECTED)
 			indigo_set_timer(device, 0, aux_switch_handler);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- AUX_LIGHT_IMPULSE
+	} else if (indigo_property_match(AUX_LIGHT_IMPULSE_PROPERTY, property)) {
+		indigo_property_copy_values(AUX_LIGHT_IMPULSE_PROPERTY, property, false);
+		if (IS_CONNECTED)
+			indigo_set_timer(device, 0, aux_impulse_handler);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- AUX_SHUTTER_CONTROL
+	} else if (indigo_property_match(AUX_SHUTTER_CONTROL_PROPERTY, property)) {
+		indigo_property_copy_values(AUX_SHUTTER_CONTROL_PROPERTY, property, false);
+		if (IS_CONNECTED)
+			indigo_set_timer(device, 0, aux_shutter_handler);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
 	} else if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
@@ -284,6 +340,8 @@ static indigo_result aux_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		aux_connection_handler(device);
 	}
+	indigo_release_property(AUX_LIGHT_IMPULSE_PROPERTY);
+	indigo_release_property(AUX_SHUTTER_CONTROL_PROPERTY);
 	indigo_release_property(AUX_LIGHT_INTENSITY_PROPERTY);
 	indigo_release_property(AUX_LIGHT_SWITCH_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
