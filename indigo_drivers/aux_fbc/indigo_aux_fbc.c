@@ -58,6 +58,7 @@
 
 typedef struct {
 	int handle;
+	indigo_timer *exposure_timer, *illumination_timer;
 	indigo_property *light_switch_property;
 	indigo_property *light_intensity_property;
 	indigo_property *light_impulse_property;
@@ -87,6 +88,36 @@ static bool fbc_command(int handle, char *command, char *response, int resp_len)
 static void aux_intensity_handler(indigo_device *device);
 static void aux_switch_handler(indigo_device *device);
 
+
+static void ccd_exposure_callback(indigo_device *device) {
+	if (!IS_CONNECTED) return;
+	CCD_EXPOSURE_ITEM->number.value -= 1;
+	if (CCD_EXPOSURE_ITEM->number.value > 1) {
+		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->exposure_timer);
+	} else if (CCD_EXPOSURE_ITEM->number.value >= 0) {
+		indigo_reschedule_timer(device, CCD_EXPOSURE_ITEM->number.value, &PRIVATE_DATA->exposure_timer);
+	} else {
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+}
+
+
+static void light_impulse_callback(indigo_device *device) {
+	if (!IS_CONNECTED) return;
+	AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value -= 1;
+	if (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value > 1) {
+		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->illumination_timer);
+	} else if (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value >= 0) {
+		indigo_reschedule_timer(device, AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value, &PRIVATE_DATA->illumination_timer);
+	} else {
+		AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value = 0;
+		AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
+}
+
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
 
 static indigo_result aux_attach(indigo_device *device) {
@@ -98,24 +129,25 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_LIGHT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_MAIN_GROUP, "Light (on/off)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_LIGHT_SWITCH_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		AUX_LIGHT_SWITCH_PROPERTY->hidden = true; /* it can not stay on forever */
 		indigo_init_switch_item(AUX_LIGHT_SWITCH_ON_ITEM, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(AUX_LIGHT_SWITCH_OFF_ITEM, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
 		AUX_LIGHT_INTENSITY_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_MAIN_GROUP, "Light intensity", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_LIGHT_INTENSITY_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 100, 1, 50);
 		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
 		// -------------------------------------------------------------------------------- AUX_LIGHT_IMPULSE
 		AUX_LIGHT_IMPULSE_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_IMPULSE_PROPERTY_NAME, AUX_MAIN_GROUP, "Light impulse", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_LIGHT_IMPULSE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_LIGHT_IMPULSE_DURATION_ITEM, AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME, "Duration (s)", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_LIGHT_IMPULSE_DURATION_ITEM, AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME, "Duration (s)", 0, 30, 1, 0);
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE_PROPERTY
 		CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Shutter Control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (CCD_EXPOSURE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Exposure (s)", 0, 7200, 1, 0);
+		indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Exposure (s)", 0, 30, 1, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -138,6 +170,7 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property))
@@ -151,6 +184,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
+
 
 static void aux_connection_handler(indigo_device *device) {
 	char command[160], response[160];
@@ -203,6 +237,8 @@ static void aux_connection_handler(indigo_device *device) {
 			/* Stop ilumination and exposure */
 			fbc_command(PRIVATE_DATA->handle, ": E 0 #", NULL, 0);
 			fbc_command(PRIVATE_DATA->handle, ": F 0 #", NULL, 0);
+			sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
+			fbc_command(PRIVATE_DATA->handle, command, NULL, 0);
 
 			indigo_define_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -232,6 +268,7 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
+
 static void aux_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (AUX_LIGHT_INTENSITY_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -252,10 +289,15 @@ static void aux_impulse_handler(indigo_device *device) {
 	if (AUX_LIGHT_IMPULSE_PROPERTY->state != INDIGO_BUSY_STATE) {
 		char command[16];
 		sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
-		if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0))
-			AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0)) {
+			AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_BUSY_STATE;
+			double delay = AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value;
+			if (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value > 1)
+				delay = 1;
+			PRIVATE_DATA->illumination_timer = indigo_set_timer(device, delay, light_impulse_callback);
+		} else {
 			AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -267,10 +309,15 @@ static void aux_shutter_handler(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
 		char command[16];
 		sprintf(command, ": E %d #", (int)(CCD_EXPOSURE_ITEM->number.value * 1000));
-		if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0))
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		if (fbc_command(PRIVATE_DATA->handle, command, NULL, 0)) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			double delay = CCD_EXPOSURE_ITEM->number.value;
+			if (CCD_EXPOSURE_ITEM->number.value > 1)
+				delay = 1;
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, delay, ccd_exposure_callback);
+		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -328,7 +375,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_LIGHT_INTENSITY_PROPERTY);
-			indigo_save_property(device, NULL, AUX_LIGHT_SWITCH_PROPERTY);
+			//indigo_save_property(device, NULL, AUX_LIGHT_SWITCH_PROPERTY);
 		}
 	}
 	return indigo_aux_change_property(device, client, property);
