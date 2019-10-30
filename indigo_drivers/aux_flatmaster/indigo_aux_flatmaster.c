@@ -23,7 +23,7 @@
  \file indigo_aux_flatmaster.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_flatmaster"
 
 #include <stdlib.h>
@@ -92,7 +92,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_LIGHT_INTENSITY_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_MAIN_GROUP, "Light intensity", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_LIGHT_INTENSITY_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 100, 1, 0);
+		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity (%)", 0, 100, 1, 50);
 		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
