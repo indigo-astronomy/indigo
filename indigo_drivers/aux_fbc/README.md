@@ -23,7 +23,7 @@ indigo_server indigo_aux_fbc
 Lacerta FBC should be in SerialMode to be controlled over the USB. To put the device in this
 mode one should turn all knobs to 0 before powering the device.
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * Lacerta FBC
