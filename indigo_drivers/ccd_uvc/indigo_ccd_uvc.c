@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -64,24 +64,56 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
-static void exposure_timer_callback(indigo_device *device) {
-	uvc_frame_t *frame;
-	uvc_error_t res = uvc_stream_get_frame(PRIVATE_DATA->strmhp, &frame, 0);
-	if (res != UVC_SUCCESS || frame == NULL) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_stream_get_frame() -> %s", uvc_strerror(res));
+static void exposure_callback(uvc_frame_t *frame, indigo_device *device) {
+	uvc_error_t res;
+	if (frame == NULL) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_get_frame() -> %s", uvc_strerror(res));
 		uvc_frame_t *rgb = uvc_allocate_frame(3 * frame->width + frame->height);
 		res = uvc_any2rgb(frame, rgb);
-		memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, rgb->data, 3 * frame->width * frame->height);
-		uvc_free_frame(rgb);
-		indigo_process_image(device, PRIVATE_DATA->buffer, rgb->width, rgb->height, 24, true, true, NULL);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_any2rgb(...) -> %s", uvc_strerror(res));
+		if (res != UVC_SUCCESS) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, rgb->data, 3 * frame->width * frame->height);
+			uvc_free_frame(rgb);
+			indigo_process_image(device, PRIVATE_DATA->buffer, rgb->width, rgb->height, 24, true, true, NULL);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	res = uvc_stream_stop(PRIVATE_DATA->strmhp);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_stop(...) -> %s", uvc_strerror(res));
 	uvc_stream_close(PRIVATE_DATA->strmhp);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_close()");
+}
+
+static void streaming_callback(uvc_frame_t *frame, indigo_device *device) {
+	uvc_error_t res;
+	if (frame == NULL) {
+		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		uvc_frame_t *rgb = uvc_allocate_frame(3 * frame->width + frame->height);
+		res = uvc_any2rgb(frame, rgb);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_any2rgb(...) -> %s", uvc_strerror(res));
+		if (res != UVC_SUCCESS) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, rgb->data, 3 * frame->width * frame->height);
+			uvc_free_frame(rgb);
+			indigo_process_image(device, PRIVATE_DATA->buffer, rgb->width, rgb->height, 24, true, true, NULL);
+		}
+	}
+	if (CCD_STREAMING_COUNT_ITEM->number.value != -1)
+		CCD_STREAMING_COUNT_ITEM->number.value--;
+	if (CCD_STREAMING_COUNT_ITEM->number.value == 0 || CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
+		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+		res = uvc_stream_stop(PRIVATE_DATA->strmhp);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_stop(...) -> %s", uvc_strerror(res));
+		uvc_stream_close(PRIVATE_DATA->strmhp);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_close()");
+	}
+	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -93,8 +125,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
 		CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 0;
-			// -------------------------------------------------------------------------------- CCD_INFO
+		// -------------------------------------------------------------------------------- CCD_INFO
 		CCD_INFO_PROPERTY->count = 2;
+		// -------------------------------------------------------------------------------- CCD_STREAMING
+		CCD_STREAMING_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -131,11 +165,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (PRIVATE_DATA->handle == 0) {
 				uvc_error_t res = uvc_open(PRIVATE_DATA->dev, &PRIVATE_DATA->handle);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(res));
 				if (res != UVC_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(res));
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(res));
 					uvc_print_diag(PRIVATE_DATA->handle, stderr);
 					const uvc_format_desc_t *format = uvc_get_format_descs(PRIVATE_DATA->handle);
 					CCD_MODE_PROPERTY->count = 0;
@@ -168,6 +201,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 									sprintf(name, "%d_%dx%d", frame_format, frame->wWidth, frame->wHeight);
 									sprintf(label, formats[frame_format].label_format, frame->wWidth, frame->wHeight);
 									indigo_init_switch_item(CCD_MODE_PROPERTY->items + CCD_MODE_PROPERTY->count++, name, label, CCD_MODE_PROPERTY->count == 1);
+									if (CCD_MODE_PROPERTY->count == 1) {
+										uvc_error_t res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, formats[frame_format].format, frame->wWidth, frame->wHeight, 0);
+										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, 0) -> %s", formats[frame_format].format, frame->wWidth, frame->wHeight, uvc_strerror(res));
+										if (res != UVC_SUCCESS) {
+											CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+										} else {
+											res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
+											INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(res));
+										}
+									}
 								}
 								frame = frame->next;
 							}
@@ -178,6 +221,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 		} else {
+			if (PRIVATE_DATA->strmhp) {
+				uvc_stream_stop(PRIVATE_DATA->strmhp);
+			}
 			if (PRIVATE_DATA->handle != 0) {
 				uvc_close(PRIVATE_DATA->handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_close() -> %s");
@@ -188,8 +234,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		}
 	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- CCD_MODE
+		// -------------------------------------------------------------------------------- CCD_MODE
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
+		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			if (item->sw.value) {
@@ -202,62 +250,76 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					else
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
 					PRIVATE_DATA->format = formats[m].format;
+					if (IS_CONNECTED) {
+						uvc_error_t res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, formats[m].format, w, h, 0);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, 0) -> %s", formats[m].format, w, h, uvc_strerror(res));
+						if (res == UVC_SUCCESS) {
+							CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+							CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+						}
+					}
 					break;
 				}
 			}
 		}
 		if (IS_CONNECTED) {
-			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		uvc_error_t res;
-		res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, PRIVATE_DATA->format, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, 0);
-		if (res != UVC_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, %d) -> %s", PRIVATE_DATA->format, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, 0, uvc_strerror(res));
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, %d) -> %s", PRIVATE_DATA->format, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, 0, uvc_strerror(res));
+		uvc_error_t res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_EXPOSURE_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_EXPOSURE_ITEM->number.value), uvc_strerror(res));
+		if (res == UVC_SUCCESS) {
 			res = uvc_stream_open_ctrl(PRIVATE_DATA->handle, &PRIVATE_DATA->strmhp, &PRIVATE_DATA->ctrl);
-			if (res != UVC_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_stream_open_ctrl() -> %s", uvc_strerror(res));
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_open_ctrl() -> %s", uvc_strerror(res));
-				res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
-				if (res != UVC_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(res));
-				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(res));
-				}
-				res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_EXPOSURE_ITEM->number.value);
-				if (res != UVC_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_EXPOSURE_ITEM->number.value), uvc_strerror(res));
-				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_EXPOSURE_ITEM->number.value), uvc_strerror(res));
-				}
-				res = uvc_stream_start(PRIVATE_DATA->strmhp, NULL, NULL, 0);
-				if (res != UVC_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_stream_start() -> %s", uvc_strerror(res));
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_start() -> %s", uvc_strerror(res));
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0, exposure_timer_callback);
-				}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_open_ctrl() -> %s", uvc_strerror(res));
+			if (res == UVC_SUCCESS) {
+				res = uvc_stream_start(PRIVATE_DATA->strmhp, (uvc_frame_callback_t *)exposure_callback, device, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_start() -> %s", uvc_strerror(res));
 			}
+		}
+		if (res == UVC_SUCCESS) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_STREAMING
+		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+		uvc_error_t res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value), uvc_strerror(res));
+		if (res == UVC_SUCCESS) {
+			res = uvc_stream_open_ctrl(PRIVATE_DATA->handle, &PRIVATE_DATA->strmhp, &PRIVATE_DATA->ctrl);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_open_ctrl() -> %s", uvc_strerror(res));
+			if (res == UVC_SUCCESS) {
+				res = uvc_stream_start(PRIVATE_DATA->strmhp, (uvc_frame_callback_t *)streaming_callback, device, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_start() -> %s", uvc_strerror(res));
+			}
+		}
+		if (res == UVC_SUCCESS) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else {
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		// TBD
-		// --------------------------------------------------------------------------------
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				uvc_error_t res = uvc_stream_stop(PRIVATE_DATA->strmhp);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_stop() -> %s", uvc_strerror(res));
+				uvc_stream_close(PRIVATE_DATA->strmhp);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_close()");
+			}
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 	}
 	return indigo_ccd_change_property(device, client, property);
 }

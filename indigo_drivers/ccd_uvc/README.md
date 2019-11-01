@@ -19,4 +19,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_ccd_uvc
 
-## Status: Under development
+## Status: Stable
+
+Tested with SVBONY SV205

@@ -858,7 +858,6 @@ uvc_error_t uvc_claim_if(uvc_device_handle_t *devh, int idx) {
   UVC_ENTER();
 
   if ( devh->claimed & ( 1 << idx )) {
-    fprintf ( stderr, "attempt to claim already-claimed interface %d\n", idx );
     UVC_EXIT(ret);
     return ret;
   }
