@@ -3392,6 +3392,7 @@
 		59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
 		59E38B521F1577A000187839 /* indigo_ica_ptp_nikon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_nikon.m; sourceTree = "<group>"; };
 		59E67789212C8042004B99BE /* Protocol_V2.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V2.0.pdf; sourceTree = "<group>"; };
+		59E86E5C236CE83C00727D18 /* USB_Video_Class_1.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = USB_Video_Class_1.1.pdf; sourceTree = "<group>"; };
 		59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_focusdreampro.c; sourceTree = "<group>"; };
 		59EFE8A32363481E00ED5337 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59EFE8A42363481E00ED5337 /* indigo_focuser_focusdreampro.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_focusdreampro.h; sourceTree = "<group>"; };
@@ -10471,6 +10472,7 @@
 				9D73E61221FF37F8003CEC15 /* libuvc_misc.c */,
 				9D73E61521FF37F9003CEC15 /* libuvc_stream.c */,
 				9D73E62221FF4D72003CEC15 /* Makefile.inc */,
+				59E86E5C236CE83C00727D18 /* USB_Video_Class_1.1.pdf */,
 			);
 			path = ccd_uvc;
 			sourceTree = "<group>";
