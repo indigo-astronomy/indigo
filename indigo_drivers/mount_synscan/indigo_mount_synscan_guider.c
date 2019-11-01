@@ -7,6 +7,7 @@
 //
 
 #include <sys/time.h>
+#include <string.h>
 #include <unistd.h>
 #include <indigo/indigo_mount_driver.h>
 #include "indigo_mount_synscan_private.h"
@@ -154,7 +155,18 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 	bool result = true;
 	if (PRIVATE_DATA->device_count == 0) {
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		result = synscan_open(device) && synscan_configure(device);
+		result = synscan_open(device);
+		if (result)
+			result = synscan_configure(device);
+		if (!result && !PRIVATE_DATA->udp) {
+			synscan_close(device);
+			if (strcmp(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1"))
+				strcpy(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1");
+			else
+				strcpy(DEVICE_BAUDRATE_ITEM->text.value, "115200-8N1");
+			indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, "Trying to change baudrate");
+			result = synscan_open(device);
+		}
 	}
 	if (result) {
 		PRIVATE_DATA->device_count++;

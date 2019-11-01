@@ -87,14 +87,14 @@ bool synscan_open(indigo_device *device) {
 		}
 		PRIVATE_DATA->udp = true;
 	} else {
-		PRIVATE_DATA->handle = indigo_open_serial(name);
+		PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
 		PRIVATE_DATA->udp = false;
 	}
 	if (PRIVATE_DATA->handle > 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s @ %s", name, PRIVATE_DATA->udp ? "UDP" : DEVICE_BAUDRATE_ITEM->text.value);
 		return true;
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s @ %s", name, PRIVATE_DATA->udp ? "UDP" : DEVICE_BAUDRATE_ITEM->text.value);
 		return false;
 	}
 }
