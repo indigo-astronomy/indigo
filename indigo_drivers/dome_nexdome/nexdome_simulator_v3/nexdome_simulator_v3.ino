@@ -9,12 +9,13 @@
 #define RESPONSE_TERMINATION       '#'
 #define ERROR_MESSAGE              ":Err#"
 #define RAIN_DETECTED              ":Rain#"
-#define RAIN_NOT_DETECTED          ":RainStopped#"
+#define RAIN_STOPPED               ":RainStopped#"
 
 #define STATE_BUFFER_CLEAR         0
 #define STATE_COMMAND_STARTED      1
 #define STATE_COMMAND_RECEIVED     2
 #define STATE_COMMAND_ERROR        3
+
 
 #define COMPOSE_VALUE_RESPONSE(command, value) (":" + command.substring(0,3) + String(value, DEC) + "#")
 #define COMPOSE_RESPONSE(command)              (":" + command.substring(0,3) + "#")
@@ -28,10 +29,30 @@ int ReceiveCounter = 0;
 int ReceivedCommandLength = 0;
 int CommandReceiverState = STATE_BUFFER_CLEAR;
 
+#define DELAY_TIME 1000  // 1sec
+long int delay_start;
+
 String r_version = "3.0.0";
 String s_version = "3.0.1";
 
-/* Defaul gonfiguration */
+#define R_STATE_STOPPED         0
+#define R_STATE_MOVNG_LEFT      1
+#define R_STATE_MOVING_RIGHT    2
+
+#define S_STATE_CLOSED          0
+#define S_STATE_OPEN            1
+#define S_STATE_OPENING         2
+#define S_STATE_CLOSING         3
+#define S_STATE_ABORTED         4
+
+int r_state;
+int r_requested_state;
+
+int s_state;
+int s_requested_state;
+
+
+/* Default configuration */
 long int r_accelleration_ramp = 1500;
 long int s_accelleration_ramp = 1500;
 long int r_dead_zone = 300;
@@ -45,28 +66,22 @@ long int s_velosity = 800; // ~5deg/sec
 long int r_position = 1600;
 long int s_position = 0;
 int s_battery_voltage = 1000;
-int s_rain_datected = 0;
-
-/* Events */
-int event_rain = 0;
-int event_status_report = 0;
-
-/* Timer */
-long int timer_counter = 0;
 
 String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength);
 
 void setup() {
-  // put your setup code here, to run once:
-
   Serial.setTimeout(SERIAL_TIMEOUT);
   Serial.begin(BAUD_RATE);
   while (!Serial);
+
+  delay_start = millis();
+  r_state = R_STATE_STOPPED;
+  r_requested_state = R_STATE_STOPPED;
+  s_state = S_STATE_CLOSED;
+  s_requested_state = S_STATE_CLOSED;
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
   switch (CommandReceiverState) {
     case STATE_BUFFER_CLEAR:
       if (Serial.available()) {
@@ -121,28 +136,14 @@ void loop() {
       break;
   }
 
-  if (event_rain){
-    event_rain = 0;
-    if (s_rain_datected){
-      Serial.print(RAIN_DETECTED);
-    }
-    else{
-      Serial.print(RAIN_NOT_DETECTED);
-    }
-  }
-
-  if (event_status_report){
-    event_status_report = 0;
+  // check if delay has timed out
+  if (((millis() - delay_start) >= DELAY_TIME)) {
+    delay_start += DELAY_TIME; // this prevents delay drifting
+    // Report Battery Voltage
     ResponseMessage = ":" + String("BV") + String(s_battery_voltage, DEC) + "#";
     Serial.print(ResponseMessage);
-  }
     
-  if (60000 == timer_counter){
-    timer_counter = 0;
-    event_status_report = 1;
   }
-  
-  timer_counter++;
 }
 
 String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
@@ -174,7 +175,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       s_accelleration_ramp = GET_INT_PARAM(command);
     }
     else if (command.equals("CLS")) {
-      //ToDo Start Closing
+      s_requested_state = S_STATE_CLOSING;
     }
     else if (command.equals("DRR")) {
       response = COMPOSE_VALUE_RESPONSE(command, r_dead_zone);
@@ -205,7 +206,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       r_home_position = GET_INT_PARAM(command);
     }
     else if (command.equals("OPS")) {
-      //ToDo Start Opening
+      s_requested_state = S_STATE_OPENING;
     }
     else if (command.equals("PRR")) {
       response = COMPOSE_VALUE_RESPONSE(command, r_position);
@@ -275,21 +276,17 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     }
     /* Additional commands to simulate events */
     /* Set battery voltage in range [0..1023], @WBV,dddd -> :WBV# */
-    else if (command.startsWith("WBV")) {
+    else if (command.startsWith("wbv")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       s_battery_voltage = GET_INT_PARAM(command);
     }
     /* Simulate rain */
     else if (command.equals("StartRain")) {
-      response = "";
-      s_rain_datected = 1;
-      event_rain = 1;
+      response = RAIN_DETECTED;
     }
     /* Stop rain */
     else if (command.equals("StopRain")) {
-      response = "";
-      s_rain_datected = 0;
-      event_rain = 1;
+      response = RAIN_STOPPED;
     }
     else{
       response = ERROR_MESSAGE;

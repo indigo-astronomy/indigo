@@ -36,7 +36,7 @@
 @VRS
 @VWS,12000
 @VRS
-@WBV,750
+@wbv,750
 @ZDR
 @ZDS
 @ZRR
