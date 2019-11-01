@@ -29,6 +29,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_gps_driver.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +37,7 @@ extern "C" {
 
 #define MOUNT_NEXSTAR_NAME              "Mount Nexstar"
 #define MOUNT_NEXSTAR_GUIDER_NAME       "Mount Nexstar (guider)"
+#define MOUNT_NEXSTAR_GPS_NAME       		"Mount Nexstar (gps)"
 
 
 /** Create mount Nexstar device instance
