@@ -22,6 +22,7 @@
 #define NO_PARAMS(command)                     ((command.length() <= 4) || (command.charAt(3) != ','))
 #define GET_INT_PARAM(command)                 (command.substring(4).toInt())
 
+
 char ReceiveBuffer[COMMAND_LENGTH];
 String ResponseMessage;
 char CurrentSymbol;
@@ -31,6 +32,10 @@ int CommandReceiverState = STATE_BUFFER_CLEAR;
 
 #define DELAY_TIME 1000  // 1sec
 long int delay_start;
+
+long int r_delay_start;
+long int s_delay_start;
+
 
 String r_version = "3.0.0";
 String s_version = "3.0.1";
@@ -58,7 +63,7 @@ long int s_accelleration_ramp = 1500;
 long int r_dead_zone = 300;
 long int r_home_position = 0;
 long int r_max_steps = 55080;
-long int s_max_steps = 46000;
+long int s_max_steps = 12000;
 long int r_velosity = 600; // ~4deg/sec
 long int s_velosity = 800; // ~5deg/sec
 
@@ -67,6 +72,37 @@ long int r_position = 1600;
 long int s_position = 0;
 int s_battery_voltage = 1000;
 
+String SES_response() {
+  bool open_sensor = false;
+  bool closed_sensor = false;
+
+  if (s_position == s_max_steps) open_sensor = true;
+  if (s_position == 0) closed_sensor = true;
+
+  return ":SES," +
+          String(s_position, DEC) + "," +
+          String(s_max_steps, DEC) + "," +
+          String(open_sensor, DEC) + "," +
+          String(closed_sensor, DEC) +
+          "#";
+}
+
+
+String SER_response() {
+  bool home_sensor = false;
+
+  if (r_position == r_home_position) home_sensor = true;
+
+  return ":SER," +
+          String(r_position, DEC) + "," +
+          String(home_sensor, DEC) + "," +
+          String(r_max_steps, DEC) + "," +
+          String(r_home_position, DEC) + "," +
+          String(r_dead_zone, DEC) +
+          "#";
+}
+
+
 String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength);
 
 void setup() {
@@ -74,7 +110,7 @@ void setup() {
   Serial.begin(BAUD_RATE);
   while (!Serial);
 
-  delay_start = millis();
+  delay_start = r_delay_start = s_delay_start = millis();
   r_state = R_STATE_STOPPED;
   r_requested_state = R_STATE_STOPPED;
   s_state = S_STATE_CLOSED;
@@ -142,7 +178,49 @@ void loop() {
     // Report Battery Voltage
     ResponseMessage = ":" + String("BV") + String(s_battery_voltage, DEC) + "#";
     Serial.print(ResponseMessage);
-    
+    if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)) {
+      Serial.print(String("S") + String(s_position, DEC) + "\n");
+    }
+  }
+
+  if (s_requested_state != s_state) {
+    switch (s_requested_state) {
+      case S_STATE_OPENING:
+        if (s_state == S_STATE_OPEN) {
+          s_requested_state = s_state;
+        } else {
+          s_state = s_requested_state;
+          Serial.print(":open#");
+        }
+        break;
+      case S_STATE_CLOSING:
+        if (s_state == S_STATE_CLOSED) {
+          s_requested_state = s_state;
+        } else {
+          s_state = s_requested_state;
+          Serial.print(":close#");
+        }
+        break;
+    }
+  }
+
+  if (((millis() - s_delay_start) >= 1)) {
+    s_delay_start += 1; // this prevents delay drifting
+    if (s_state == S_STATE_OPENING) {
+      if (s_position < s_max_steps) s_position++;
+      else {
+        s_state = S_STATE_OPEN;
+        s_position = s_max_steps;
+        Serial.print(SES_response());
+      }
+    } else if (s_state == S_STATE_CLOSING) {
+      if (s_position > 0) s_position--;
+      else {
+        s_state = S_STATE_CLOSED;
+        s_position = 0;
+        Serial.print(SES_response());
+      }
+    }
   }
 }
 
@@ -237,10 +315,10 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       s_max_steps = GET_INT_PARAM(command);
     }
     else if (command.equals("SRR")) {
-      // print SER report
+      response = SER_response();
     }
     else if (command.equals("SRS")) {
-      // print SES report
+      response = SES_response();
     }
     else if (command.equals("SWR")) {
       // abort motion
