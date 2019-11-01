@@ -40,9 +40,9 @@ INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
 INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 
-STABLE_DRIVERS = agent_lx200_server agent_snoop ao_sx aux_dsusb guider_gpusb aux_joystick aux_upb aux_ppb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_ica ccd_iidc ccd_mi ccd_qhy ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_asi focuser_dmfc focuser_dsd focuser_fcusb focuser_fli focuser_mjkzz focuser_mjkzz_bt focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro focuser_wemacro_bt gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_eqmac mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx focuser_steeldrive2 aux_sqm aux_usbdp aux_flatmaster focuser_focusdreampro aux_arteskyflat aux_fbc
+STABLE_DRIVERS = agent_lx200_server agent_snoop ao_sx aux_dsusb guider_gpusb aux_joystick aux_upb aux_ppb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_ica ccd_iidc ccd_mi ccd_qhy ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_asi focuser_dmfc focuser_dsd focuser_fcusb focuser_fli focuser_mjkzz focuser_mjkzz_bt focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro focuser_wemacro_bt gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_eqmac mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx focuser_steeldrive2 aux_sqm aux_usbdp aux_flatmaster focuser_focusdreampro aux_arteskyflat aux_fbc ccd_uvc
 UNTESTED_DRIVERS = agent_imager agent_alignment agent_mount agent_guider aux_rts focuser_lakeside focuser_optec wheel_optec wheel_quantum wheel_trutek wheel_xagyl agent_auxiliary focuser_efa dome_nexdome ccd_ptp
-DEVELOPED_DRIVERS = ccd_uvc
+DEVELOPED_DRIVERS =
 OPTIONAL_DRIVERS = ccd_andor
 
 #---------------------------------------------------------------------
