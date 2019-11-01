@@ -30,7 +30,6 @@
 
 1. QHY CCD driver __DONE__ (unstable SDK)
 2. Fishcamp CCD driver (based on Fishcamp SDK)
-3. UVC CCD driver
 
 #### DSLRs
 

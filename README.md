@@ -94,6 +94,7 @@ This is the list of requirements taken into the consideration:
 65. Pegasus Astro FlatMaster driver
 66. AstroGadget FocusDreamPro / ASCOM Jolo focuser driver added
 67. Lacerta Flat Box Controller AUX driver
+68. UVC (USB Video Class) CCD driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
