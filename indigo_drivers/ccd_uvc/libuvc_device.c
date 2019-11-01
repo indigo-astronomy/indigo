@@ -1014,8 +1014,10 @@ uvc_error_t uvc_parse_vc_header(uvc_device_t *dev,
   switch (info->ctrl_if.bcdUVC) {
   case 0x0100:
     info->ctrl_if.dwClockFrequency = DW_TO_INT(block + 7);
+		break;
   case 0x010a:
     info->ctrl_if.dwClockFrequency = DW_TO_INT(block + 7);
+		break;
   case 0x0110:
     break;
   default:
@@ -1210,7 +1212,12 @@ uvc_error_t uvc_scan_streaming(uvc_device_t *dev,
 
   if_desc = &(info->config->interface[interface_idx].altsetting[0]);
   buffer = if_desc->extra;
-  buffer_left = if_desc->extra_length;
+	if (buffer) {
+	  buffer_left = if_desc->extra_length;
+	} else {
+		buffer = if_desc->endpoint->extra;
+		buffer_left = if_desc->endpoint->extra_length;
+	}
 
   stream_if = calloc(1, sizeof(*stream_if));
   stream_if->parent = info;

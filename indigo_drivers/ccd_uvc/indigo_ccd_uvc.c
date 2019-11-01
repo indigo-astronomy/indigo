@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -67,9 +67,9 @@ typedef struct {
 static void exposure_timer_callback(indigo_device *device) {
 	uvc_frame_t *frame;
 	uvc_error_t res = uvc_stream_get_frame(PRIVATE_DATA->strmhp, &frame, 0);
-	if (res != UVC_SUCCESS) {
+	if (res != UVC_SUCCESS || frame == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_stream_get_frame() -> %s", uvc_strerror(res));
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_get_frame() -> %s", uvc_strerror(res));
 		uvc_frame_t *rgb = uvc_allocate_frame(3 * frame->width + frame->height);
@@ -217,12 +217,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		uvc_error_t res;
-		res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, PRIVATE_DATA->format, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, 30);
+		res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, PRIVATE_DATA->format, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, 0);
 		if (res != UVC_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, %d) -> %s", PRIVATE_DATA->format, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, 30, uvc_strerror(res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, %d) -> %s", PRIVATE_DATA->format, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, 0, uvc_strerror(res));
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, %d) -> %s", PRIVATE_DATA->format, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, 30, uvc_strerror(res));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, %d) -> %s", PRIVATE_DATA->format, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, 0, uvc_strerror(res));
 			res = uvc_stream_open_ctrl(PRIVATE_DATA->handle, &PRIVATE_DATA->strmhp, &PRIVATE_DATA->ctrl);
 			if (res != UVC_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_stream_open_ctrl() -> %s", uvc_strerror(res));
@@ -316,7 +316,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					memcpy(device, &ccd_template, sizeof(indigo_device));
 					char usb_path[INDIGO_NAME_SIZE];
 					indigo_get_usb_path(dev, usb_path);
-					snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", descriptor->product, usb_path);
+					snprintf(device->name, INDIGO_NAME_SIZE, "%s %s #%s", descriptor->manufacturer, descriptor->product, usb_path);
 					device->private_data = private_data;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
