@@ -210,7 +210,7 @@ void loop() {
         }
         break;
       case S_STATE_ABORTED:
-        if (s_state != S_STATE_ABORTED){
+        if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)){
           s_state = S_STATE_ABORTED;
           Serial.print(SES_response());
         }
