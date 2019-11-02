@@ -27,6 +27,29 @@ def main():
                   bytesize = serial.EIGHTBITS,\
                   timeout = 0)
     
+    
+        # Request open
+        serial_port.write("@OPS\n")
+        received = ""
+        i = 0;
+        while ((0 > received.find(":SES")) and (20 > i)) :
+            sleep(0.1);
+            received = serial_port.read(1000)
+            if received:
+                print received;
+                i = i + 1;
+            if 10 == i:
+                #Abort operation
+                serial_port.write("@SWS\n");  
+        
+        i = 0;
+        while (10 > i):
+            received = serial_port.read(1000)
+            if received:
+                print received;
+                i = i+ 1;
+            
+        # Request open to open fully        
         serial_port.write("@OPS\n")
         received = ""
         while 0 > received.find(":SES"):
@@ -35,6 +58,28 @@ def main():
             if received:
                 print received;
 
+        # Request close
+        serial_port.write("@CLS\n")
+        received = ""
+        i = 0;
+        while ((0 > received.find(":SES")) and (20 > i)) :
+            sleep(0.1);
+            received = serial_port.read(1000)
+            if received:
+                print received;
+                i = i + 1;
+            if 10 == i:
+                #Abort operation
+                serial_port.write("@SWS\n");
+
+        i = 0;
+        while (10 > i):
+            received = serial_port.read(1000)
+            if received:
+                print received;
+                i = i+ 1;
+            
+        # Request close to close fully        
         serial_port.write("@CLS\n")
         received = ""
         while 0 > received.find(":SES"):
