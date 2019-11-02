@@ -1,0 +1,51 @@
+1. I do not see a command for close and open the shutter in the description at Github
+ 
+
+We are migrating the documentation to the Wiki pages under the ASCOM driver project. In the next release I’ll remove the old documents that you;ve most likely found, but right now the firmware protocol is documented at https://github.com/nexdome/ASCOM/wiki/Firmware-Protocol (that does include the shutter commands).
+
+ 
+
+Note: I have updated the protocol documentation in response to some of your questions.
+
+ 
+
+2. When :SES...# and :SER...#  status reports are issued?
+ 
+
+They are issued whenever a motor stops moving, or when you send the @SR command.
+
+ 
+
+3. when Sddddd and Pddddd are issued?
+ 
+
+These are sent about 4 times a second when a motor is moving. You should expect them at any time because the user might be moving the motor manually using the toggle switch.
+
+ 
+
+4. when is :BVddddd# issued and what is the reference voltage so that I can translate 65535 to real volts?
+ 
+
+That’s sent periodically on a timer. Arduino uses a maximum value of 1024 for analogue input and VRef = 5v. The battery voltage is divided by 3 electronically, so a value of 1024 represents +5v at the A to D input and 15v at the battery. Thus a value of 815 represents 15/1023*815 = 11.9 volts at the battery. Suggest displaying voltages rounded down to 1 decimal place.
+
+ 
+
+4. When XB->status reports are issued? At startup? what is the proper state transition?
+ 
+
+These are issued whenever there is a state change, except for the “Online” state which repeats every 10 seconds. You can find state transition diagrams in this document: https://github.com/nexdome/Firmware/blob/master/ReadMe.pdf
+
+ 
+
+5. I see goto azimuth in degrees command but I do not see a get azimuth in degrees. is there a way to get it in degrees or I have to calculate it?
+ 
+
+I agree that the asymmetry is a bit odd, but there wasn’t room to include all the commands I wanted. You can get the dome circumference (in whole steps) using the @RRR (range read) command. You get the current step position using @PRR or from a position update or a status event, and you can compute azimuth in degrees from that. Azimuth 0 = step position 0 = true north.
+
+ 
+
+6. What are limits and typical values for RW/RR, AR/AW, VR/VW ?
+
+ 
+
+The default values were documented at one point, but they seem to have gone missing. Oops! I’ve updated the protocol wiki page. The range of values is generally the same as an unsigned long, which (for Arduino) is 0 to 4,294,967,295 (2^32 - 1) . Due to resource constraints on code and memory, we decided that range checking for “sensible values” should be done in drivers and applications, where the resources are available.
