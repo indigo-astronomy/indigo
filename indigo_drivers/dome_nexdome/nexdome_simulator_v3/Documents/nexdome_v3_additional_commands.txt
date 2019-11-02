@@ -1,0 +1,18 @@
+nexdome_simulator implements all firmware v3 protocol commands.
+This document describes all additional commands implemented.
+All of them are used only for testing purposes.
+
+@wbv,ddddd
+:wbv#
+Write battery voltage in ADC units [0..1023]. Default 1000. This value will be send periodically.
+Example: @wbv,750
+
+@EnaBatStatus
+:BatEna#
+Enables periodic battery status report.
+Example: @EnaBatStatus
+
+@DisBatStatus
+:BatDis#
+Enables periodic battery status report.
+Example: @DisBatStatus

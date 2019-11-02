@@ -10,6 +10,8 @@
 #define ERROR_MESSAGE              ":Err#"
 #define RAIN_DETECTED              ":Rain#"
 #define RAIN_STOPPED               ":RainStopped#"
+#define BATTERY_ENABLED            ":BateryStatusEnabled#"
+#define BATTERY_DISABLED           ":BateryStatusDisabled#"
 
 #define STATE_BUFFER_CLEAR         0
 #define STATE_COMMAND_STARTED      1
@@ -71,6 +73,8 @@ long int s_velosity = 800; // ~5deg/sec
 long int r_position = 1600;
 long int s_position = 0;
 int s_battery_voltage = 1000;
+int s_battery_status_report = 1;
+
 
 String SES_response() {
   bool open_sensor = false;
@@ -175,12 +179,16 @@ void loop() {
   // check if delay has timed out
   if (((millis() - delay_start) >= DELAY_TIME)) {
     delay_start += DELAY_TIME; // this prevents delay drifting
-    // Report Battery Voltage
-    ResponseMessage = ":" + String("BV") + String(s_battery_voltage, DEC) + "#";
-    Serial.print(ResponseMessage);
-    if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)) {
-      Serial.print(String("S") + String(s_position, DEC) + "\n");
+
+    if (s_battery_status_report){
+      // Report Battery Voltage
+      ResponseMessage = ":" + String("BV") + String(s_battery_voltage, DEC) + "#";
+      Serial.print(ResponseMessage);
+      if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)) {
+        Serial.print(String("S") + String(s_position, DEC) + "\n");
+      }
     }
+
   }
 
   if (s_requested_state != s_state) {
@@ -366,6 +374,15 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     else if (command.equals("StopRain")) {
       response = RAIN_STOPPED;
     }
+    /* Enable battery status report */
+    else if (command.equals("EnaBatStatus")) {
+      response = BATTERY_ENABLED;
+      s_battery_status_report = 1;
+    }
+    else if (command.equals("DisBatStatus")) {
+      response = BATTERY_DISABLED;
+      s_battery_status_report = 0;
+    }  
     else{
       response = ERROR_MESSAGE;
     }
