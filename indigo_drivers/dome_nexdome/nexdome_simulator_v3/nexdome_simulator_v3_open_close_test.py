@@ -42,7 +42,7 @@ def main():
             received = serial_port.read(1000)
             if received:
                 print received;
-    
+
         serial_port.close()
     
     except serial.serialutil.SerialException:
