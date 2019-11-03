@@ -44,8 +44,8 @@ String r_version = "3.0.0";
 String s_version = "3.0.1";
 
 #define R_STATE_STOPPED         0
-#define R_STATE_MOVING_LEFT     1
-#define R_STATE_MOVING_RIGHT    2
+#define R_STATE_MOVING_LEFT     1 //counter-clockwise
+#define R_STATE_MOVING_RIGHT    2 //clockwise
 #define R_STATE_MOVE            R_STATE_MOVING_LEFT
 
 #define S_STATE_CLOSED          0
@@ -74,6 +74,7 @@ const int steps_per_degree = 153;
 
 /* Runtime parameters */
 long int r_position = 1600;
+long int r_requested_position = 0;
 long int s_position = 0;
 int s_battery_voltage = 1000;
 int s_battery_status_report = 1;
@@ -87,11 +88,11 @@ String SES_response() {
   if (s_position == 0) closed_sensor = true;
 
   return ":SES," +
-          String(s_position, DEC) + "," +
-          String(s_max_steps, DEC) + "," +
-          String(open_sensor, DEC) + "," +
-          String(closed_sensor, DEC) +
-          "#";
+         String(s_position, DEC) + "," +
+         String(s_max_steps, DEC) + "," +
+         String(open_sensor, DEC) + "," +
+         String(closed_sensor, DEC) +
+         "#";
 }
 
 
@@ -101,12 +102,12 @@ String SER_response() {
   if (r_position == r_home_position) home_sensor = true;
 
   return ":SER," +
-          String(r_position, DEC) + "," +
-          String(home_sensor, DEC) + "," +
-          String(r_max_steps, DEC) + "," +
-          String(r_home_position, DEC) + "," +
-          String(r_dead_zone, DEC) +
-          "#";
+         String(r_position, DEC) + "," +
+         String(home_sensor, DEC) + "," +
+         String(r_max_steps, DEC) + "," +
+         String(r_home_position, DEC) + "," +
+         String(r_dead_zone, DEC) +
+         "#";
 }
 
 
@@ -128,35 +129,35 @@ void loop() {
   switch (CommandReceiverState) {
     case STATE_BUFFER_CLEAR:
       if (Serial.available()) {
-       CurrentSymbol = Serial.read();
-       if (START_COMMAND == CurrentSymbol){
-         CommandReceiverState = STATE_COMMAND_STARTED;  
-       }
+        CurrentSymbol = Serial.read();
+        if (START_COMMAND == CurrentSymbol) {
+          CommandReceiverState = STATE_COMMAND_STARTED;
+        }
       }
       break;
-        
+
     case STATE_COMMAND_STARTED:
       if (Serial.available()) {
         CurrentSymbol = Serial.read();
-        if (START_COMMAND == CurrentSymbol){
-          ReceiveCounter = 0; 
+        if (START_COMMAND == CurrentSymbol) {
+          ReceiveCounter = 0;
         }
-        else{
-          if ((COMMAND_TERMINATION_CR == CurrentSymbol) || (COMMAND_TERMINATION_LF == CurrentSymbol)){
-            if (0 == ReceiveCounter){
+        else {
+          if ((COMMAND_TERMINATION_CR == CurrentSymbol) || (COMMAND_TERMINATION_LF == CurrentSymbol)) {
+            if (0 == ReceiveCounter) {
               CommandReceiverState = STATE_COMMAND_ERROR;
             }
-            else{
+            else {
               ReceiveBuffer[ReceiveCounter] = 0;
               CommandReceiverState = STATE_COMMAND_RECEIVED;
             }
           }
-          else{
-            if (ReceiveCounter < COMMAND_LENGTH){
+          else {
+            if (ReceiveCounter < COMMAND_LENGTH) {
               ReceiveBuffer[ReceiveCounter] = CurrentSymbol;
               ReceiveCounter++;
             }
-            else{
+            else {
               CommandReceiverState = STATE_COMMAND_ERROR;
               ReceiveCounter = 0;
             }
@@ -164,7 +165,7 @@ void loop() {
         }
       }
       break;
-      
+
     case STATE_COMMAND_RECEIVED:
       ResponseMessage = NexDomeProcessCommand(ReceiveBuffer, ReceiveCounter);
       Serial.print(ResponseMessage);
@@ -172,7 +173,7 @@ void loop() {
       ReceiveBuffer[0] = 0;
       ReceiveCounter = 0;
       break;
-        
+
     case STATE_COMMAND_ERROR:
       Serial.print(ERROR_MESSAGE);
       CommandReceiverState = STATE_BUFFER_CLEAR;
@@ -183,7 +184,7 @@ void loop() {
   if (((millis() - delay_start) >= DELAY_TIME)) {
     delay_start += DELAY_TIME; // this prevents delay drifting
 
-    if (s_battery_status_report){
+    if (s_battery_status_report) {
       // Report Battery Voltage
       ResponseMessage = ":" + String("BV") + String(s_battery_voltage, DEC) + "#";
       Serial.print(ResponseMessage);
@@ -216,9 +217,36 @@ void loop() {
         }
         break;
       case S_STATE_ABORTED:
-        if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)){
+        if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)) {
           s_state = S_STATE_ABORTED;
           Serial.print(SES_response());
+        }
+        break;
+    }
+  }
+
+  if (r_requested_state != r_state) {
+    switch (r_requested_state) {
+      case R_STATE_MOVING_LEFT:
+        if (r_state != R_STATE_MOVING_LEFT) {
+          r_state = r_requested_state;
+          Serial.print(":left#");
+        } else {
+          r_requested_state = r_state;
+        }
+        break;
+      case R_STATE_MOVING_RIGHT:
+        if (r_state != R_STATE_MOVING_RIGHT) {
+          r_state = r_requested_state;
+          Serial.print(":rigth#");
+        } else {
+          r_requested_state = r_state;
+        }
+        break;
+      case R_STATE_STOPPED:
+        if ((r_state == R_STATE_MOVING_LEFT) || (r_state == R_STATE_MOVING_RIGHT)) {
+          r_state = R_STATE_STOPPED;
+          Serial.print(SER_response());
         }
         break;
     }
@@ -241,16 +269,23 @@ void loop() {
         Serial.print(SES_response());
       }
     }
-  }
 
-  if (r_requested_state != r_state) {
-    switch (r_requested_state) {
-      case R_STATE_STOPPED:
-        r_state = R_STATE_STOPPED;
-        break;
-      case R_STATE_MOVING_LEFT:
-      case R_STATE_MOVING_RIGHT:
-        break;
+    if (r_requested_position != r_position) {
+      if (r_state == R_STATE_MOVING_LEFT) {
+        r_position--;
+      }
+      else if (r_state == R_STATE_MOVING_RIGHT) {
+        r_position++;        
+      }
+      if (r_position > r_max_steps) {
+        r_position = 0;
+      }
+      if (0 > r_position ) {
+        r_position = r_max_steps;
+      }
+    }
+    else {
+      r_requested_state = R_STATE_STOPPED;
     }
   }
 }
@@ -259,7 +294,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
 {
   String response;
   String command;
-  
+
   if (BufferLength < 3) {
     response = ERROR_MESSAGE;
   }
@@ -267,7 +302,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     command = String(ReceivedBuffer);
 
     response = COMPOSE_RESPONSE(command);
-    
+
     /* Firmware protocol commands */
     if (command.equals("ARR")) {
       response = COMPOSE_VALUE_RESPONSE(command, r_accelleration_ramp);
@@ -294,19 +329,35 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       r_dead_zone = GET_INT_PARAM(command);
     }
     else if (command.equals("FRR")) {
-      response = ":" + command.substring(0,2) + r_version + "#";
+      response = ":" + command.substring(0, 2) + r_version + "#";
     }
     else if (command.equals("FRS")) {
-      response = ":" + command.substring(0,2) + s_version + "#";
+      response = ":" + command.substring(0, 2) + s_version + "#";
     }
     else if (command.startsWith("GAR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       int azimuth = GET_INT_PARAM(command);
-      // Check if deff is more than dead zone and then process goto...
-      r_requested_state = R_STATE_MOVE;
+      r_requested_position = (r_max_steps / 360) * azimuth;
+      long int delta = r_position - r_requested_position;
+      if (abs(delta) > r_dead_zone) {
+        if (0 > delta){
+          if (abs(delta) > r_max_steps/2){
+            r_requested_state = R_STATE_MOVING_LEFT;
+          } else {
+            r_requested_state = R_STATE_MOVING_RIGHT;
+          }
+        } else {
+          if (abs(delta) > r_max_steps/2){
+            r_requested_state = R_STATE_MOVING_RIGHT;
+          } else {
+            r_requested_state = R_STATE_MOVING_LEFT;
+          }         
+        }
+      }
     }
     else if (command.equals("GHR")) {
-      // Goto Home position
+      r_requested_position = r_home_position;
+      r_requested_state = R_STATE_MOVING_RIGHT;
     }
     else if (command.equals("HRR")) {
       response = COMPOSE_VALUE_RESPONSE(command, r_home_position);
@@ -353,7 +404,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       response = SES_response();
     }
     else if (command.equals("SWR")) {
-      // abort motion
+      r_requested_state = R_STATE_STOPPED;
     }
     else if (command.equals("SWS")) {
       s_requested_state = S_STATE_ABORTED;
@@ -408,11 +459,11 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     else if (command.equals("DisBatStatus")) {
       response = BATTERY_DISABLED;
       s_battery_status_report = 0;
-    }  
-    else{
+    }
+    else {
       response = ERROR_MESSAGE;
     }
   }
-  
+
   return response;
 }
