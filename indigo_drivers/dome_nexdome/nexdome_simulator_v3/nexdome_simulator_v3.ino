@@ -23,6 +23,7 @@
 #define COMPOSE_RESPONSE(command)              (":" + command.substring(0,3) + "#")
 #define NO_PARAMS(command)                     ((command.length() <= 4) || (command.charAt(3) != ','))
 #define GET_INT_PARAM(command)                 (command.substring(4).toInt())
+#define DEGREES_TO_STEPS(deg)                  (deg * steps_per_degree)
 
 
 char ReceiveBuffer[COMMAND_LENGTH];
@@ -43,8 +44,9 @@ String r_version = "3.0.0";
 String s_version = "3.0.1";
 
 #define R_STATE_STOPPED         0
-#define R_STATE_MOVNG_LEFT      1
+#define R_STATE_MOVING_LEFT     1
 #define R_STATE_MOVING_RIGHT    2
+#define R_STATE_MOVE            R_STATE_MOVING_LEFT
 
 #define S_STATE_CLOSED          0
 #define S_STATE_OPEN            1
@@ -68,6 +70,7 @@ long int r_max_steps = 55080;
 long int s_max_steps = 12000;
 long int r_velosity = 600; // ~4deg/sec
 long int s_velosity = 800; // ~5deg/sec
+const int steps_per_degree = 153;
 
 /* Runtime parameters */
 long int r_position = 1600;
@@ -189,6 +192,9 @@ void loop() {
       Serial.print(String("S") + String(s_position, DEC) + "\n");
     }
 
+    if ((r_state == R_STATE_MOVING_LEFT) || (r_state == R_STATE_MOVING_RIGHT)) {
+      Serial.print(String("P") + String(r_position, DEC) + "\n");
+    }
   }
 
   if (s_requested_state != s_state) {
@@ -234,6 +240,17 @@ void loop() {
         s_position = 0;
         Serial.print(SES_response());
       }
+    }
+  }
+
+  if (r_requested_state != r_state) {
+    switch (r_requested_state) {
+      case R_STATE_STOPPED:
+        r_state = R_STATE_STOPPED;
+        break;
+      case R_STATE_MOVING_LEFT:
+      case R_STATE_MOVING_RIGHT:
+        break;
     }
   }
 }
@@ -286,6 +303,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       int azimuth = GET_INT_PARAM(command);
       // Check if deff is more than dead zone and then process goto...
+      r_requested_state = R_STATE_MOVE;
     }
     else if (command.equals("GHR")) {
       // Goto Home position
