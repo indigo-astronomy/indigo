@@ -22,6 +22,18 @@ int nexstar_mount_vendor = VNDR_ALL_SUPPORTED;
 /* do not use RTC by default */
 int nexstar_use_rtc = 0;
 
+void (*tc_debug)(const char *format, ...) = NULL;
+
+static void debug(char *msg, char *buf, int size) {
+	if (tc_debug) {
+		static char line[1024];
+		char *end = line + sprintf(line, "libnexstar: %s", msg);
+		for (int i = 0; i < size; i++)
+			end += sprintf(end, " %02x", buf[i]);
+		tc_debug(line);
+	}
+}
+
 /*****************************************************
  Telescope communication
  *****************************************************/
@@ -36,10 +48,14 @@ int open_telescope(char *dev_file) {
 		/* should be tty port */
 		dev_fd = open_telescope_rs(dev_file);
 	}
-	if (dev_fd < 0) return dev_fd;
+	if (dev_fd < 0) {
+		debug("open FAILED", NULL, 0);
+		return dev_fd;
+	}
 
 	nexstar_mount_vendor = guess_mount_vendor(dev_fd);
 	if(nexstar_mount_vendor < 0) {
+		debug("detection FAILED", NULL, 0);
 		close_telescope(dev_fd);
 		return RC_FAILED;
 	}
@@ -48,6 +64,7 @@ int open_telescope(char *dev_file) {
 }
 
 int close_telescope(int devfd) {
+	debug("close", NULL, 0);
 	return close(devfd);
 }
 
@@ -64,6 +81,12 @@ int enforce_protocol_version(int devfd, int ver) {
 	return RC_OK;
 }
 
+int _write_telescope(int devfd, char *buf, int size) {
+	int result = write(devfd, buf, size);
+	debug("write", buf, size);
+	return result;
+}
+
 int _read_telescope(int devfd, char *reply, int len, char fl) {
 	char c;
 	int res;
@@ -73,13 +96,17 @@ int _read_telescope(int devfd, char *reply, int len, char fl) {
 		if (res == 1) {
 			reply[count] = c;
 			count++;
-			if ((fl) && (c == '#')) return count;
-			//printf("R: %d, C:%d\n", (unsigned char)reply[count-1], count);
+			if ((fl) && (c == '#')) {
+				debug("read", reply, count);
+				return count;
+			}
 		} else {
+			debug("read FAILED", reply, count);
 			return RC_FAILED;
 		}
 	}
 	if (c == '#') {
+		debug("read", reply, count);
 		return count;
 	} else {
 		/* if the last byte is not '#', this means that the device did
@@ -87,9 +114,11 @@ int _read_telescope(int devfd, char *reply, int len, char fl) {
 		res=read(devfd,&c,1);
 		if ((res == 1) && (c == '#')) {
 			//printf("%s(): RC_DEVICE\n",__FUNCTION__);
+			debug("read FAILED", reply, count);
 			return RC_DEVICE;
 		}
 	}
+	debug("read FAILED", reply, count);
 	return RC_FAILED;
 }
 

@@ -1092,6 +1092,8 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 	if (action == last_action)
 		return INDIGO_OK;
 
+	INDIGO_DEBUG(tc_debug = indigo_debug);
+	
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
