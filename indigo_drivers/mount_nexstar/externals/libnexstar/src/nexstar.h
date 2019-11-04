@@ -106,7 +106,11 @@ extern "C" {
 int open_telescope(char *dev_file);
 int close_telescope(int dev_fd);
 int enforce_protocol_version(int devfd, int ver);
-#define write_telescope(dev_fd, buf, size) (write(dev_fd, buf, size))
+
+extern void (*tc_debug)(const char *format, ...);
+
+int _write_telescope(int devfd, char *buf, int size);
+#define write_telescope(dev_fd, buf, size) (_write_telescope(dev_fd, buf, size))
 
 int _read_telescope(int devfd, char *reply, int len, char vl);
 #define read_telescope(devfd, reply, len) (_read_telescope(devfd, reply, len, 0))
