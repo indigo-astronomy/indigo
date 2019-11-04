@@ -13,6 +13,12 @@
 #define BATTERY_ENABLED            ":BateryStatusEnabled#"
 #define BATTERY_DISABLED           ":BateryStatusDisabled#"
 
+#define XB_START_MSG               "XB->Start\n"
+#define XB_WAITAT_MSG              "XB->WaitAT\n"
+#define XB_CONFIG_MSG              "XB->Config\n"
+#define XB_DETECT_MSG              "XB->Detect\n"
+#define XB_ONLINE_MSG              "XB->Online\n"
+
 #define STATE_BUFFER_CLEAR         0
 #define STATE_COMMAND_STARTED      1
 #define STATE_COMMAND_RECEIVED     2
@@ -34,10 +40,13 @@ int ReceivedCommandLength = 0;
 int CommandReceiverState = STATE_BUFFER_CLEAR;
 
 #define DELAY_TIME 1000  // 1sec
-long int delay_start;
+#define XB_DELAY_TIME 10000 // 10sec
+#define XB_TRANSITION_TIME 1000 // 1sek
 
+long int delay_start;
 long int r_delay_start;
 long int s_delay_start;
+long int xb_delay_start;
 
 
 String r_version = "3.0.0";
@@ -46,7 +55,6 @@ String s_version = "3.0.1";
 #define R_STATE_STOPPED         0
 #define R_STATE_MOVING_LEFT     1 //counter-clockwise
 #define R_STATE_MOVING_RIGHT    2 //clockwise
-#define R_STATE_MOVE            R_STATE_MOVING_LEFT
 
 #define S_STATE_CLOSED          0
 #define S_STATE_OPEN            1
@@ -54,11 +62,19 @@ String s_version = "3.0.1";
 #define S_STATE_CLOSING         3
 #define S_STATE_ABORTED         4
 
+#define XB_STATE_START          0
+#define XB_STATE_WAITAT         1
+#define XB_STATE_CONFIG         2
+#define XB_STATE_DETECT         3
+#define XB_STATE_ONLINE         4
+
 int r_state;
 int r_requested_state;
 
 int s_state;
 int s_requested_state;
+
+int xb_state;
 
 
 /* Default configuration */
@@ -118,11 +134,13 @@ void setup() {
   Serial.begin(BAUD_RATE);
   while (!Serial);
 
-  delay_start = r_delay_start = s_delay_start = millis();
+  delay_start = r_delay_start = s_delay_start = xb_delay_start = millis();
   r_state = R_STATE_STOPPED;
   r_requested_state = R_STATE_STOPPED;
   s_state = S_STATE_CLOSED;
   s_requested_state = S_STATE_CLOSED;
+  xb_state = XB_STATE_START;
+  Serial.print(XB_START_MSG);
 }
 
 void loop() {
@@ -189,15 +207,45 @@ void loop() {
       ResponseMessage = ":" + String("BV") + String(s_battery_voltage, DEC) + "#";
       Serial.print(ResponseMessage);
     }
+
+    // Report Shutter position if needed
     if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)) {
       Serial.print(String("S") + String(s_position, DEC) + "\n");
     }
 
+    // Report Rotator position if needed
     if ((r_state == R_STATE_MOVING_LEFT) || (r_state == R_STATE_MOVING_RIGHT)) {
       Serial.print(String("P") + String(r_position, DEC) + "\n");
     }
   }
 
+  // check if XB report is needed
+  if (((millis() - xb_delay_start) >= XB_DELAY_TIME) && (xb_state == XB_STATE_ONLINE)) {
+    xb_delay_start += XB_DELAY_TIME; // this prevents delay drifting
+    Serial.print(XB_ONLINE_MSG);
+  } else if (((millis() - xb_delay_start) >= XB_TRANSITION_TIME) && (xb_state != XB_STATE_ONLINE)) {
+    xb_delay_start += XB_TRANSITION_TIME; // this prevents delay drifting
+    xb_state++;
+    switch(xb_state) {
+      case XB_STATE_START:
+        Serial.print(XB_START_MSG);
+        break;
+      case XB_STATE_WAITAT:
+        Serial.print(XB_WAITAT_MSG);
+        break;
+      case XB_STATE_CONFIG:
+        Serial.print(XB_CONFIG_MSG);
+        break;
+      case XB_STATE_DETECT:
+        Serial.print(XB_DETECT_MSG);
+        break;
+      case XB_STATE_ONLINE:
+        Serial.print(XB_ONLINE_MSG);
+        break;
+    }
+  }
+
+  // Change Shutter state
   if (s_requested_state != s_state) {
     switch (s_requested_state) {
       case S_STATE_OPENING:
@@ -225,6 +273,7 @@ void loop() {
     }
   }
 
+  // Change Rotator state
   if (r_requested_state != r_state) {
     switch (r_requested_state) {
       case R_STATE_MOVING_LEFT:
@@ -252,6 +301,7 @@ void loop() {
     }
   }
 
+  // Process Shutter move request
   if (((millis() - s_delay_start) >= 1)) {
     s_delay_start += 1; // this prevents delay drifting
     if (s_state == S_STATE_OPENING) {
@@ -269,7 +319,11 @@ void loop() {
         Serial.print(SES_response());
       }
     }
+  }
 
+  // Process Rotator request
+  if (((millis() - r_delay_start) >= 1)) {
+    r_delay_start += 1; // this prevents delay drifting
     if (r_requested_position != r_position) {
       if (r_state == R_STATE_MOVING_LEFT) {
         r_position--;
@@ -459,6 +513,11 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     else if (command.equals("DisBatStatus")) {
       response = BATTERY_DISABLED;
       s_battery_status_report = 0;
+    }
+    else if (command.equals("XBReset")) {
+      xb_state = XB_STATE_START;
+      response = XB_START_MSG;
+      xb_delay_start = millis();
     }
     else {
       response = ERROR_MESSAGE;
