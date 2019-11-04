@@ -54,6 +54,9 @@ def main():
             received = serial_port.read(1000)
             if received:
                 print received;
+
+        print "RESET Xbee";
+        serial_port.write("@XBReset\n")
                 
         print "Rotate to 180 deg"
         serial_port.write("@GAR,180\n")
