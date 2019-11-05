@@ -29,7 +29,7 @@ static void debug(char *msg, char *buf, int size) {
 		static char line[1024];
 		char *end = line + sprintf(line, "libnexstar: %s", msg);
 		for (int i = 0; i < size; i++)
-			end += sprintf(end, " %02x", buf[i]);
+			end += sprintf(end, " %02x", buf[i] & 0xFF);
 		tc_debug(line);
 	}
 }
