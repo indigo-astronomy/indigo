@@ -16,3 +16,8 @@ Example: @EnaBatStatus
 :BatDis#
 Enables periodic battery status report.
 Example: @DisBatStatus
+
+@DeleteEEPROM
+:EEPROMisClear
+Clears whole EEPROM
+Example: @DeleteEEPROM
