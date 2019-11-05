@@ -46,8 +46,8 @@ def main():
             if received:
                 print received;        
         
-        print "Rotate to 0 deg"
-        serial_port.write("@GAR,0\n")
+        print "Rotate to 10 deg"
+        serial_port.write("@GAR,10\n")
         received = ""
         while 0 > received.find(":SER"):
             sleep(0.1);

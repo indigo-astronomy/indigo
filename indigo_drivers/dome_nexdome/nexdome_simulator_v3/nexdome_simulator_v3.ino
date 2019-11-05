@@ -1,3 +1,35 @@
+// NexDome Firmware v3 simulator for Arduino
+// https://github.com/nexdome/Firmware
+//
+// Copyright (c) 2019 Ivan Gorchev and Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
+
+#define R_VERSION                  "3.0.0"
+#define S_VERSION                  "3.0.1"
+
+#define R_DATA_ID                  0xbab1
+#define S_DATA_ID                  0xbab2
+
+// Communication constants
 #define BAUD_RATE                  9600
 #define SERIAL_TIMEOUT             1000
 #define COMMAND_LENGTH             30
@@ -5,8 +37,8 @@
 #define SEPARATOR                  ','
 #define COMMAND_TERMINATION_CR     '\r'
 #define COMMAND_TERMINATION_LF     '\n'
-#define START_RESPONSE             ':'
-#define RESPONSE_TERMINATION       '#'
+#define RESPONSE_START             ":"
+#define RESPONSE_END               "#"
 #define ERROR_MESSAGE              ":Err#"
 #define RAIN_DETECTED              ":Rain#"
 #define RAIN_STOPPED               ":RainStopped#"
@@ -25,8 +57,8 @@
 #define STATE_COMMAND_ERROR        3
 
 
-#define COMPOSE_VALUE_RESPONSE(command, value) (":" + command.substring(0,3) + String(value, DEC) + "#")
-#define COMPOSE_RESPONSE(command)              (":" + command.substring(0,3) + "#")
+#define COMPOSE_VALUE_RESPONSE(command, value) (RESPONSE_START + command.substring(0,3) + String(value, DEC) + RESPONSE_END)
+#define COMPOSE_RESPONSE(command)              (RESPONSE_START + command.substring(0,3) + RESPONSE_END)
 #define NO_PARAMS(command)                     ((command.length() <= 4) || (command.charAt(3) != ','))
 #define GET_INT_PARAM(command)                 (command.substring(4).toInt())
 #define DEGREES_TO_STEPS(deg)                  (deg * steps_per_degree)
@@ -48,9 +80,7 @@ long int r_delay_start;
 long int s_delay_start;
 long int xb_delay_start;
 
-
-String r_version = "3.0.0";
-String s_version = "3.0.1";
+// Device states
 
 #define R_STATE_STOPPED         0
 #define R_STATE_MOVING_LEFT     1 //counter-clockwise
@@ -76,54 +106,77 @@ int s_requested_state;
 
 int xb_state;
 
+// Configuration
+typedef struct {
+  int data_id;
+  long int accelleration_ramp;
+  long int dead_zone;
+  long int home_position;
+  long int max_steps;
+  long int velocity;
+} rotator_config_t;
 
-/* Default configuration */
-long int r_accelleration_ramp = 1500;
-long int s_accelleration_ramp = 1500;
-long int r_dead_zone = 300;
-long int r_home_position = 0;
-long int r_max_steps = 55080;
-long int s_max_steps = 12000;
-long int r_velosity = 600; // ~4deg/sec
-long int s_velosity = 800; // ~5deg/sec
-const int steps_per_degree = 153;
+typedef struct {
+  int data_id;
+  long int accelleration_ramp;
+  long int max_steps;
+  long int velocity;
+} shutter_config_t;
+
+rotator_config_t r;
+shutter_config_t s;
 
 /* Runtime parameters */
-long int r_position = 1600;
+long int r_position = 0;
 long int r_requested_position = 0;
 long int s_position = 0;
 int s_battery_voltage = 1000;
 int s_battery_status_report = 1;
 
+void rotator_defaults() {
+  r.data_id = R_DATA_ID;
+  r.accelleration_ramp = 1500;
+  r.dead_zone = 300;
+  r.home_position = 0;
+  r.max_steps = 55080;
+  r.velocity = 600; // ~4deg/sec
+}
+
+void shutter_defaults() {
+  s.data_id = S_DATA_ID;
+  s.accelleration_ramp = 1500;
+  s.max_steps = 12000;
+  s.velocity = 800; // ~5deg/sec
+}
 
 String SES_response() {
   bool open_sensor = false;
   bool closed_sensor = false;
 
-  if (s_position == s_max_steps) open_sensor = true;
+  if (s_position == s.max_steps) open_sensor = true;
   if (s_position == 0) closed_sensor = true;
 
   return ":SES," +
          String(s_position, DEC) + "," +
-         String(s_max_steps, DEC) + "," +
+         String(s.max_steps, DEC) + "," +
          String(open_sensor, DEC) + "," +
          String(closed_sensor, DEC) +
-         "#";
+         RESPONSE_END;
 }
 
 
 String SER_response() {
   bool home_sensor = false;
 
-  if (r_position == r_home_position) home_sensor = true;
+  if (r_position == r.home_position) home_sensor = true;
 
   return ":SER," +
          String(r_position, DEC) + "," +
          String(home_sensor, DEC) + "," +
-         String(r_max_steps, DEC) + "," +
-         String(r_home_position, DEC) + "," +
-         String(r_dead_zone, DEC) +
-         "#";
+         String(r.max_steps, DEC) + "," +
+         String(r.home_position, DEC) + "," +
+         String(r.dead_zone, DEC) +
+         RESPONSE_END;
 }
 
 
@@ -133,6 +186,11 @@ void setup() {
   Serial.setTimeout(SERIAL_TIMEOUT);
   Serial.begin(BAUD_RATE);
   while (!Serial);
+
+
+  /* Default configuration */
+  rotator_defaults();
+  shutter_defaults();
 
   delay_start = r_delay_start = s_delay_start = xb_delay_start = millis();
   r_state = R_STATE_STOPPED;
@@ -204,18 +262,18 @@ void loop() {
 
     if (s_battery_status_report) {
       // Report Battery Voltage
-      ResponseMessage = ":" + String("BV") + String(s_battery_voltage, DEC) + "#";
+      ResponseMessage = RESPONSE_START + String("BV") + String(s_battery_voltage, DEC) + RESPONSE_END;
       Serial.print(ResponseMessage);
     }
 
     // Report Shutter position if needed
     if ((s_state == S_STATE_OPENING) || (s_state == S_STATE_CLOSING)) {
-      Serial.print(String("S") + String(s_position, DEC) + "\n");
+      Serial.print("S" + String(s_position, DEC) + "\n");
     }
 
     // Report Rotator position if needed
     if ((r_state == R_STATE_MOVING_LEFT) || (r_state == R_STATE_MOVING_RIGHT)) {
-      Serial.print(String("P") + String(r_position, DEC) + "\n");
+      Serial.print("P" + String(r_position, DEC) + "\n");
     }
   }
 
@@ -305,10 +363,10 @@ void loop() {
   if (((millis() - s_delay_start) >= 1)) {
     s_delay_start += 1; // this prevents delay drifting
     if (s_state == S_STATE_OPENING) {
-      if (s_position < s_max_steps) s_position++;
+      if (s_position < s.max_steps) s_position++;
       else {
         s_state = S_STATE_OPEN;
-        s_position = s_max_steps;
+        s_position = s.max_steps;
         Serial.print(SES_response());
       }
     } else if (s_state == S_STATE_CLOSING) {
@@ -331,11 +389,11 @@ void loop() {
       else if (r_state == R_STATE_MOVING_RIGHT) {
         r_position++;        
       }
-      if (r_position > r_max_steps) {
+      if (r_position > r.max_steps) {
         r_position = 0;
       }
       if (0 > r_position ) {
-        r_position = r_max_steps;
+        r_position = r.max_steps;
       }
     }
     else {
@@ -358,50 +416,72 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     response = COMPOSE_RESPONSE(command);
 
     /* Firmware protocol commands */
+    //======================================
     if (command.equals("ARR")) {
-      response = COMPOSE_VALUE_RESPONSE(command, r_accelleration_ramp);
+      response = COMPOSE_VALUE_RESPONSE(command, r.accelleration_ramp);
     }
+    //======================================
     else if (command.equals("ARS")) {
-      response = COMPOSE_VALUE_RESPONSE(command, s_accelleration_ramp);
+      response = COMPOSE_VALUE_RESPONSE(command, s.accelleration_ramp);
     }
+    //======================================
     else if (command.startsWith("AWR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      r_accelleration_ramp = GET_INT_PARAM(command);
+      int accelleration_ramp = GET_INT_PARAM(command);
+      if (accelleration_ramp < 100)
+        response = ERROR_MESSAGE;
+      else
+        r.accelleration_ramp = accelleration_ramp;
     }
+    //======================================
     else if (command.startsWith("AWS")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      s_accelleration_ramp = GET_INT_PARAM(command);
+      int accelleration_ramp = GET_INT_PARAM(command);
+      if (accelleration_ramp < 100)
+        response = ERROR_MESSAGE;
+      else
+        s.accelleration_ramp = accelleration_ramp;
     }
+    //=======================================
     else if (command.equals("CLS")) {
       s_requested_state = S_STATE_CLOSING;
     }
+    //=======================================
     else if (command.equals("DRR")) {
-      response = COMPOSE_VALUE_RESPONSE(command, r_dead_zone);
+      response = COMPOSE_VALUE_RESPONSE(command, r.dead_zone);
     }
+    //=======================================
     else if (command.startsWith("DWR")) {
       if NO_PARAMS(command) return ERROR_MESSAGE;
-      r_dead_zone = GET_INT_PARAM(command);
+      int dead_zone = GET_INT_PARAM(command);
+      if ((dead_zone < 0) || (dead_zone > 10000))
+        response = ERROR_MESSAGE;
+      else
+        r.dead_zone = dead_zone;
     }
+    //========================================
     else if (command.equals("FRR")) {
-      response = ":" + command.substring(0, 2) + r_version + "#";
+      response = RESPONSE_START + command.substring(0, 2) + R_VERSION + RESPONSE_END;
     }
+    //========================================
     else if (command.equals("FRS")) {
-      response = ":" + command.substring(0, 2) + s_version + "#";
+      response = RESPONSE_START + command.substring(0, 2) + S_VERSION + RESPONSE_END;
     }
+    //========================================
     else if (command.startsWith("GAR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       int azimuth = GET_INT_PARAM(command);
-      r_requested_position = (r_max_steps / 360) * azimuth;
+      r_requested_position = (r.max_steps / 360) * azimuth;
       long int delta = r_position - r_requested_position;
-      if (abs(delta) > r_dead_zone) {
+      if (abs(delta) > r.dead_zone) {
         if (0 > delta){
-          if (abs(delta) > r_max_steps/2){
+          if (abs(delta) > r.max_steps/2){
             r_requested_state = R_STATE_MOVING_LEFT;
           } else {
             r_requested_state = R_STATE_MOVING_RIGHT;
           }
         } else {
-          if (abs(delta) > r_max_steps/2){
+          if (abs(delta) > r.max_steps/2){
             r_requested_state = R_STATE_MOVING_RIGHT;
           } else {
             r_requested_state = R_STATE_MOVING_LEFT;
@@ -409,77 +489,112 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
         }
       }
     }
+    //=======================================
     else if (command.equals("GHR")) {
-      r_requested_position = r_home_position;
+      r_requested_position = r.home_position;
       r_requested_state = R_STATE_MOVING_RIGHT;
     }
+    //=======================================
     else if (command.equals("HRR")) {
-      response = COMPOSE_VALUE_RESPONSE(command, r_home_position);
+      response = COMPOSE_VALUE_RESPONSE(command, r.home_position);
     }
+    //=======================================
     else if (command.startsWith("HWR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      r_home_position = GET_INT_PARAM(command);
+      int home_position = GET_INT_PARAM(command);
+      if ((home_position < 0) || (home_position > r.max_steps))
+        response = ERROR_MESSAGE;
+      else
+        r.home_position = home_position;
     }
+    //=======================================
     else if (command.equals("OPS")) {
       s_requested_state = S_STATE_OPENING;
     }
+    //=======================================
     else if (command.equals("PRR")) {
       response = COMPOSE_VALUE_RESPONSE(command, r_position);
     }
+    //=======================================
     else if (command.equals("PRS")) {
       response = COMPOSE_VALUE_RESPONSE(command, s_position);
     }
+    //=======================================
     else if (command.startsWith("PWR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       r_position = GET_INT_PARAM(command);
     }
+    //=======================================
     else if (command.startsWith("PWS")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       s_position = GET_INT_PARAM(command);
     }
+    //=======================================
     else if (command.equals("RRR")) {
-      response = COMPOSE_VALUE_RESPONSE(command, r_max_steps);
+      response = COMPOSE_VALUE_RESPONSE(command, r.max_steps);
     }
+    //=======================================
     else if (command.equals("RRS")) {
-      response = COMPOSE_VALUE_RESPONSE(command, s_max_steps);
+      response = COMPOSE_VALUE_RESPONSE(command, s.max_steps);
     }
+    //=======================================
     else if (command.startsWith("RWR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      r_max_steps = GET_INT_PARAM(command);
+      r.max_steps = GET_INT_PARAM(command);
     }
+    //=======================================
     else if (command.startsWith("RWS")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      s_max_steps = GET_INT_PARAM(command);
+      s.max_steps = GET_INT_PARAM(command);
     }
+    //=======================================
     else if (command.equals("SRR")) {
       response = SER_response();
     }
+    //=======================================
     else if (command.equals("SRS")) {
       response = SES_response();
     }
+    //=======================================
     else if (command.equals("SWR")) {
       r_requested_state = R_STATE_STOPPED;
     }
+    //=======================================
     else if (command.equals("SWS")) {
       s_requested_state = S_STATE_ABORTED;
     }
+    //=======================================
     else if (command.equals("VRR")) {
-      response = COMPOSE_VALUE_RESPONSE(command, r_velosity);
+      response = COMPOSE_VALUE_RESPONSE(command, r.velocity);
     }
+    //=======================================
     else if (command.equals("VRS")) {
-      response = COMPOSE_VALUE_RESPONSE(command, s_velosity);
+      response = COMPOSE_VALUE_RESPONSE(command, s.velocity);
     }
+    //=======================================
     else if (command.startsWith("VWR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      r_velosity = GET_INT_PARAM(command);
+      int velocity = GET_INT_PARAM(command);
+      if (velocity < 100)
+        response = ERROR_MESSAGE;
+      else
+        r.velocity = velocity;
     }
+    //=======================================
     else if (command.startsWith("VWS")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      s_velosity = GET_INT_PARAM(command);
+      int velocity = GET_INT_PARAM(command);
+      if (velocity < 100)
+        response = ERROR_MESSAGE;
+      else
+        s.velocity = velocity;
     }
+    //======================================
     else if (command.equals("ZDR")) {
+      rotator_defaults();
     }
     else if (command.equals("ZDS")) {
+      shutter_defaults();
     }
     else if (command.equals("ZRR")) {
     }
@@ -489,6 +604,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     }
     else if (command.equals("ZWS")) {
     }
+    //======================================
     /* Additional commands to simulate events */
     /* Set battery voltage in range [0..1023], @wbv,dddd -> :wbv# */
     else if (command.startsWith("wbv")) {
@@ -514,11 +630,13 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       response = BATTERY_DISABLED;
       s_battery_status_report = 0;
     }
+    /* Simulate Xbee reset */
     else if (command.equals("XBReset")) {
       xb_state = XB_STATE_START;
       response = XB_START_MSG;
       xb_delay_start = millis();
     }
+    //========================================
     else {
       response = ERROR_MESSAGE;
     }
