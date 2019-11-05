@@ -37,13 +37,18 @@
 #define SEPARATOR                  ','
 #define COMMAND_TERMINATION_CR     '\r'
 #define COMMAND_TERMINATION_LF     '\n'
+
 #define RESPONSE_START             ":"
-#define RESPONSE_END               "#"
-#define ERROR_MESSAGE              ":Err#"
-#define RAIN_DETECTED              ":Rain#"
-#define RAIN_STOPPED               ":RainStopped#"
-#define BATTERY_ENABLED            ":BateryStatusEnabled#"
-#define BATTERY_DISABLED           ":BateryStatusDisabled#"
+#define RESPONSE_END               "#\n"
+
+#define ERROR_MESSAGE              (compose_message("Err"))
+#define RAIN_DETECTED              (compose_message("Rain"))
+#define RAIN_STOPPED               (compose_message("RainStopped"))
+#define BATTERY_ENABLED            (compose_message("BateryStatusEnabled"))
+#define BATTERY_DISABLED           (compose_message("BateryStatusDisabled"))
+
+#define COMPOSE_VALUE_RESPONSE(command, value) (compose_message(command.substring(0,3) + String(value, DEC)))
+#define COMPOSE_COMMAND_RESPONSE(command)      (compose_message(command.substring(0,3)))
 
 #define XB_START_MSG               "XB->Start\n"
 #define XB_WAITAT_MSG              "XB->WaitAT\n"
@@ -56,9 +61,6 @@
 #define STATE_COMMAND_RECEIVED     2
 #define STATE_COMMAND_ERROR        3
 
-
-#define COMPOSE_VALUE_RESPONSE(command, value) (RESPONSE_START + command.substring(0,3) + String(value, DEC) + RESPONSE_END)
-#define COMPOSE_RESPONSE(command)              (RESPONSE_START + command.substring(0,3) + RESPONSE_END)
 #define NO_PARAMS(command)                     ((command.length() <= 4) || (command.charAt(3) != ','))
 #define GET_INT_PARAM(command)                 (command.substring(4).toInt())
 #define DEGREES_TO_STEPS(deg)                  (deg * steps_per_degree)
@@ -71,9 +73,9 @@ int ReceiveCounter = 0;
 int ReceivedCommandLength = 0;
 int CommandReceiverState = STATE_BUFFER_CLEAR;
 
-#define DELAY_TIME 1000  // 1sec
-#define XB_DELAY_TIME 10000 // 10sec
-#define XB_TRANSITION_TIME 1000 // 1sek
+#define DELAY_TIME             1000  // 1sec
+#define XB_DELAY_TIME          10000 // 10sec
+#define XB_TRANSITION_TIME     1000  // 1sek
 
 long int delay_start;
 long int r_delay_start;
@@ -149,6 +151,10 @@ void shutter_defaults() {
   s.velocity = 800; // ~5deg/sec
 }
 
+String compose_message(String message) {
+  return RESPONSE_START + message + RESPONSE_END;
+}
+
 String SES_response() {
   bool open_sensor = false;
   bool closed_sensor = false;
@@ -156,27 +162,26 @@ String SES_response() {
   if (s_position == s.max_steps) open_sensor = true;
   if (s_position == 0) closed_sensor = true;
 
-  return ":SES," +
+  return compose_message("SES," +
          String(s_position, DEC) + "," +
          String(s.max_steps, DEC) + "," +
          String(open_sensor, DEC) + "," +
-         String(closed_sensor, DEC) +
-         RESPONSE_END;
+         String(closed_sensor, DEC)
+         );
 }
-
 
 String SER_response() {
   bool home_sensor = false;
 
   if (r_position == r.home_position) home_sensor = true;
 
-  return ":SER," +
+  return compose_message("SER," +
          String(r_position, DEC) + "," +
          String(home_sensor, DEC) + "," +
          String(r.max_steps, DEC) + "," +
          String(r.home_position, DEC) + "," +
-         String(r.dead_zone, DEC) +
-         RESPONSE_END;
+         String(r.dead_zone, DEC)
+         );
 }
 
 
@@ -262,7 +267,7 @@ void loop() {
 
     if (s_battery_status_report) {
       // Report Battery Voltage
-      ResponseMessage = RESPONSE_START + String("BV") + String(s_battery_voltage, DEC) + RESPONSE_END;
+      ResponseMessage = compose_message(String("BV") + String(s_battery_voltage, DEC));
       Serial.print(ResponseMessage);
     }
 
@@ -311,7 +316,7 @@ void loop() {
           s_requested_state = s_state;
         } else {
           s_state = s_requested_state;
-          Serial.print(":open#");
+          Serial.print(compose_message("open"));
         }
         break;
       case S_STATE_CLOSING:
@@ -319,7 +324,7 @@ void loop() {
           s_requested_state = s_state;
         } else {
           s_state = s_requested_state;
-          Serial.print(":close#");
+          Serial.print(compose_message("close"));
         }
         break;
       case S_STATE_ABORTED:
@@ -337,7 +342,7 @@ void loop() {
       case R_STATE_MOVING_LEFT:
         if (r_state != R_STATE_MOVING_LEFT) {
           r_state = r_requested_state;
-          Serial.print(":left#");
+          Serial.print(compose_message("left"));
         } else {
           r_requested_state = r_state;
         }
@@ -345,7 +350,7 @@ void loop() {
       case R_STATE_MOVING_RIGHT:
         if (r_state != R_STATE_MOVING_RIGHT) {
           r_state = r_requested_state;
-          Serial.print(":rigth#");
+          Serial.print(compose_message("rigth"));
         } else {
           r_requested_state = r_state;
         }
@@ -413,7 +418,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
   else {
     command = String(ReceivedBuffer);
 
-    response = COMPOSE_RESPONSE(command);
+    response = COMPOSE_COMMAND_RESPONSE(command);
 
     /* Firmware protocol commands */
     //======================================
@@ -461,11 +466,11 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     }
     //========================================
     else if (command.equals("FRR")) {
-      response = RESPONSE_START + command.substring(0, 2) + R_VERSION + RESPONSE_END;
+      response = compose_message(command.substring(0, 2) + R_VERSION);
     }
     //========================================
     else if (command.equals("FRS")) {
-      response = RESPONSE_START + command.substring(0, 2) + S_VERSION + RESPONSE_END;
+      response = compose_message(command.substring(0, 2) + S_VERSION);
     }
     //========================================
     else if (command.startsWith("GAR")) {
