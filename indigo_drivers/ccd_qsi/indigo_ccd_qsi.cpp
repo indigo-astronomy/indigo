@@ -24,7 +24,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME		"indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -49,7 +49,8 @@
 #include "qsiapi.h"
 
 #define QSI_VENDOR_ID             0x0403
-#define QSI_PRODUCT_ID						0xEB48
+#define QSI_PRODUCT_ID1						0xEB48
+#define QSI_PRODUCT_ID2						0xEB49
 
 #define PRIVATE_DATA              ((qsi_private_data *)device->private_data)
 
@@ -603,7 +604,8 @@ static void remove_all_devices() {
 	}
 }
 
-static libusb_hotplug_callback_handle callback_handle;
+static libusb_hotplug_callback_handle callback_handle1;
+static libusb_hotplug_callback_handle callback_handle2;
 
 indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -623,13 +625,16 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "QSIAPI version: %s", info.c_str());
 			last_action = action;
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, QSI_VENDOR_ID, QSI_PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, QSI_VENDOR_ID, QSI_PRODUCT_ID1, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle1);
+			if (rc >= 0)
+				rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, QSI_VENDOR_ID, QSI_PRODUCT_ID2, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 		}
 		case INDIGO_DRIVER_SHUTDOWN: {
 			last_action = action;
-			libusb_hotplug_deregister_callback(NULL, callback_handle);
+			libusb_hotplug_deregister_callback(NULL, callback_handle1);
+			libusb_hotplug_deregister_callback(NULL, callback_handle2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 			remove_all_devices();
 			break;
