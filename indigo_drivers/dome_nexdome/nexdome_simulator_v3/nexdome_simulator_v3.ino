@@ -19,6 +19,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <EEPROM.h>
+
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
 #endif
@@ -40,12 +42,12 @@
 
 #define RESPONSE_START             ":"
 #define RESPONSE_END               "#\n"
-
 #define ERROR_MESSAGE              (compose_message("Err"))
 #define RAIN_DETECTED              (compose_message("Rain"))
 #define RAIN_STOPPED               (compose_message("RainStopped"))
 #define BATTERY_ENABLED            (compose_message("BateryStatusEnabled"))
 #define BATTERY_DISABLED           (compose_message("BateryStatusDisabled"))
+#define EEPROM_CLEAR               (compose_message("EEPROMisClear"))
 
 #define COMPOSE_VALUE_RESPONSE(command, value) (compose_message(command.substring(0,3) + String(value, DEC)))
 #define COMPOSE_COMMAND_RESPONSE(command)      (compose_message(command.substring(0,3)))
@@ -109,6 +111,12 @@ int s_requested_state;
 int xb_state;
 
 // Configuration
+
+#define ROTATOR_CONFIG_SIZE    22
+#define SHUTTER__CONFIG_SIZE   14
+#define EEPROM_R_ADDRESS       0
+#define EEPROM_S_ADDRESS       EEPROM_R_ADDRESS + ROTATOR_CONFIG_SIZE
+ 
 typedef struct {
   int data_id;
   long int accelleration_ramp;
@@ -206,7 +214,7 @@ void setup() {
   Serial.print(XB_START_MSG);
 }
 
-void loop() {
+void loop() {  
   switch (CommandReceiverState) {
     case STATE_BUFFER_CLEAR:
       if (Serial.available()) {
@@ -598,16 +606,37 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     else if (command.equals("ZDR")) {
       rotator_defaults();
     }
+    //======================================
     else if (command.equals("ZDS")) {
       shutter_defaults();
     }
+    //======================================
     else if (command.equals("ZRR")) {
+      int eerpom_r_id;
+      EEPROM.get(EEPROM_R_ADDRESS, eerpom_r_id);
+      if (R_DATA_ID != eerpom_r_id){
+        response = ERROR_MESSAGE;
+      } else {
+        EEPROM.get(EEPROM_R_ADDRESS, r);
+      }
     }
+    //======================================
     else if (command.equals("ZRS")) {
+      int eerpom_s_id;
+      EEPROM.get(EEPROM_S_ADDRESS, eerpom_s_id);
+      if (S_DATA_ID != eerpom_s_id){
+        response = ERROR_MESSAGE;
+      } else {
+        EEPROM.get(EEPROM_S_ADDRESS, s);
+      }
     }
+    //======================================
     else if (command.equals("ZWR")) {
+      EEPROM.put(EEPROM_R_ADDRESS, r);
     }
+    //======================================
     else if (command.equals("ZWS")) {
+      EEPROM.put(EEPROM_S_ADDRESS, s);
     }
     //======================================
     /* Additional commands to simulate events */
@@ -640,6 +669,13 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
       xb_state = XB_STATE_START;
       response = XB_START_MSG;
       xb_delay_start = millis();
+    }
+    /* Delete EEPROM */
+    else if (command.equals("DeleteEEPROM")){
+      for (int i = 0 ; i < EEPROM.length() ; i++) {
+      EEPROM.write(i, 0);
+      response = EEPROM_CLEAR;
+      }
     }
     //========================================
     else {
