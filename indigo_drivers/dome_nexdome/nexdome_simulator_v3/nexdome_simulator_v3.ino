@@ -23,8 +23,8 @@
 #define Serial SerialUSB
 #endif
 
-#define R_VERSION                  "3.0.0"
-#define S_VERSION                  "3.0.1"
+#define R_VERSION                  "3.1.0"
+#define S_VERSION                  "3.1.1"
 
 #define R_DATA_ID                  0xbab1
 #define S_DATA_ID                  0xbab2
