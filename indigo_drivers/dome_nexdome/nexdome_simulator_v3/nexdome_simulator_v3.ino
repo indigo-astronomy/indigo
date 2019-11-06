@@ -45,9 +45,11 @@
 #define ERROR_MESSAGE              (compose_message("Err"))
 #define RAIN_DETECTED              (compose_message("Rain"))
 #define RAIN_STOPPED               (compose_message("RainStopped"))
-#define BATTERY_ENABLED            (compose_message("BateryStatusEnabled"))
-#define BATTERY_DISABLED           (compose_message("BateryStatusDisabled"))
-#define EEPROM_CLEAR               (compose_message("EEPROMisClear"))
+
+// Non standard reponces
+#define BATTERY_ENABLED            "BateryStatusEnabled\n"
+#define BATTERY_DISABLED           "BateryStatusDisabled\n"
+#define EEPROM_CLEAR               "EEPROMisClear\n"
 
 #define COMPOSE_VALUE_RESPONSE(command, value) (compose_message(command.substring(0,3) + String(value, DEC)))
 #define COMPOSE_COMMAND_RESPONSE(command)      (compose_message(command.substring(0,3)))
@@ -112,10 +114,8 @@ int xb_state;
 
 // Configuration
 
-#define ROTATOR_CONFIG_SIZE    22
-#define SHUTTER__CONFIG_SIZE   14
 #define EEPROM_R_ADDRESS       0
-#define EEPROM_S_ADDRESS       EEPROM_R_ADDRESS + ROTATOR_CONFIG_SIZE
+#define EEPROM_S_ADDRESS       (EEPROM_R_ADDRESS + sizeof(rotator_config_t))
  
 typedef struct {
   int data_id;
@@ -192,6 +192,27 @@ String SER_response() {
          );
 }
 
+void load_rotator_settings() {
+  int eerpom_r_id;
+  EEPROM.get(EEPROM_R_ADDRESS, eerpom_r_id);
+  if (R_DATA_ID != eerpom_r_id){
+    rotator_defaults();
+  } else {
+    EEPROM.get(EEPROM_R_ADDRESS, r);
+  }
+}
+
+
+void load_shutter_settings() {
+  int eerpom_s_id;
+  EEPROM.get(EEPROM_S_ADDRESS, eerpom_s_id);
+  if (S_DATA_ID != eerpom_s_id){
+    shutter_defaults();
+  } else {
+    EEPROM.get(EEPROM_S_ADDRESS, s);
+  }
+}
+
 
 String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength);
 
@@ -202,8 +223,8 @@ void setup() {
 
 
   /* Default configuration */
-  rotator_defaults();
-  shutter_defaults();
+  load_rotator_settings();
+  load_shutter_settings();
 
   delay_start = r_delay_start = s_delay_start = xb_delay_start = millis();
   r_state = R_STATE_STOPPED;
@@ -622,17 +643,11 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     }
     //======================================
     else if (command.equals("ZRS")) {
-      int eerpom_s_id;
-      EEPROM.get(EEPROM_S_ADDRESS, eerpom_s_id);
-      if (S_DATA_ID != eerpom_s_id){
-        response = ERROR_MESSAGE;
-      } else {
-        EEPROM.get(EEPROM_S_ADDRESS, s);
-      }
+      load_shutter_settings();
     }
     //======================================
     else if (command.equals("ZWR")) {
-      EEPROM.put(EEPROM_R_ADDRESS, r);
+      load_rotator_settings();
     }
     //======================================
     else if (command.equals("ZWS")) {
@@ -673,8 +688,8 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     /* Delete EEPROM */
     else if (command.equals("DeleteEEPROM")){
       for (int i = 0 ; i < EEPROM.length() ; i++) {
-      EEPROM.write(i, 0);
-      response = EEPROM_CLEAR;
+        EEPROM.write(i, 0);
+        response = EEPROM_CLEAR;
       }
     }
     //========================================

@@ -37,14 +37,10 @@
 @ZDS
 @ZRR
 @ZRS
-@ZWR
-@ZWS
 @StartRain
 @VRS
 @ZDR
 @ZDS
 @ZRR
 @ZRS
-@ZWR
-@ZWS
 @StopRain
