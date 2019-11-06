@@ -24,7 +24,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME		"indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -77,11 +77,11 @@ static void wheel_timer_callback(indigo_device *device) {
 	try {
 		short slot;
 		cam.get_Position(&slot);
+		WHEEL_SLOT_ITEM->number.value = slot + 1;
 		if (slot == -1) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_set_timer(device, 0.5, wheel_timer_callback);
 		} else {
-			WHEEL_SLOT_ITEM->number.value = slot;
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -139,11 +139,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			} else {
 				short slot;
 				cam.get_Position(&slot);
-				if (WHEEL_SLOT_ITEM->number.value == slot) {
+				if (WHEEL_SLOT_ITEM->number.value - 1 == slot) {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-					cam.put_Position(slot);
+					cam.put_Position(WHEEL_SLOT_ITEM->number.value - 1);
 					indigo_set_timer(device, 0.5, wheel_timer_callback);
 				}
 			}
