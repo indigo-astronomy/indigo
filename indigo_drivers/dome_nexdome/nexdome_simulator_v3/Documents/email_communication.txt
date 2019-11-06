@@ -49,3 +49,45 @@ I agree that the asymmetry is a bit odd, but there wasn’t room to include all 
  
 
 The default values were documented at one point, but they seem to have gone missing. Oops! I’ve updated the protocol wiki page. The range of values is generally the same as an unsigned long, which (for Arduino) is 0 to 4,294,967,295 (2^32 - 1) . Due to resource constraints on code and memory, we decided that range checking for “sensible values” should be done in drivers and applications, where the resources are available.
+
+========================================================================================
+
+Hi Rumen.
+
+ 
+
+    ":XXX#\n" not ":XXX#" as stated in the document.
+
+ 
+
+I would prefer not to do that because I don’t want client app developers to rely on the newline being there. It’s deliberately undocumented. There’s lots of undocumented diagnostic output that client apps are required to to ignore. In theory, the newlines could be removed in a future version. They are there because it makes the output more readable in a terminal emulator.
+
+ 
+
+You will never be able to produce a 100% accurate simulation because the firmware is subject to change and there is undocumented diagnostic output. This is why I recommend getting some Arduinos and running the released firmware rather than building a simulator. If you want to go down the simulator route then you have to accept that there’s undocumented output. You might even deliberately build some “extra” undocumented output into your simulator because clients are required to ignore it and that would be a useful test. The only assumption you can make is that undocumented output will never contain anything that could be interpreted as a valid documented response.
+
+ 
+
+    can you give me any example response of FRR and FRS?
+
+ 
+
+My development kit is currently producing:
+
+@FRR
+
+:FR3.1.0-iss8-home-sensor.28#
+
+ 
+
+It’s  a semantic version string and follows the rules of semantic versioning. A production release would be something like “:FR3.1.0#”.
+
+ 
+
+    there is a mistake in the description: AR[R/S] Returns AR[R/S]ddddd not ARddddd as listed. 
+
+ 
+
+Good catch. It would be easiest for me if you would report any bugs via GitHub. I work on multiple projects and things tend to get lost if they come by email. I’ve already added this one: https://github.com/nexdome/Firmware/issues/14
+
+
