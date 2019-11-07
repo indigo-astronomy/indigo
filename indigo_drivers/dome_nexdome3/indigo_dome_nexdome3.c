@@ -115,7 +115,7 @@ typedef struct {
 	bool callibration_requested;
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
-	indigo_timer *dome_timer;
+	indigo_timer *dome_event;
 	indigo_property *reversed_property;
 	indigo_property *reset_shutter_comm_property;
 	indigo_property *find_home_property;
@@ -288,8 +288,66 @@ static bool nexdome_restart_shutter_communication(indigo_device *device) {
 	return false;
 }
 
+static void handle_rotator_position(indigo_device *device, char *message) {
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+}
+
+static void handle_shutter_position(indigo_device *device, char *message) {
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+}
+
+static void handle_rotator_move(indigo_device *device, char *message) {
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+}
+
+static void handle_shutter_move(indigo_device *device, char *message) {
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+}
+
+static void handle_rotator_status(indigo_device *device, char *message) {
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+}
+
+static void handle_shutter_status(indigo_device *device, char *message) {
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+}
+
+static void handle_battery_status(indigo_device *device, char *message) {
+	int adc_value;
+	if (sscanf(message, ":BV%d#", &adc_value) != 1) {
+		return;
+	}
+	/* 15 / 1024 =  0.01465 V/ADU */
+	double volts = 0.01465 * adc_value;
+
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d %.2f", __FUNCTION__, message, adc_value, volts);
+}
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
+
+static void dome_event_handler(indigo_device *device) {
+	char message[NEXDOME_CMD_LEN];
+	while (IS_CONNECTED) {
+		if (nexdome_get_message(device, message, sizeof(message))) {
+			if (!strncmp(message, "P", 1)) {
+				handle_rotator_position(device, message);
+			} else if (!strncmp(message, "S", 1)) {
+				handle_shutter_position(device, message);
+			} else if (!strcmp(message, ":left#") || !strcmp(message, ":right#")) {
+				handle_rotator_move(device, message);
+			}else if (!strcmp(message, ":open#") || !strcmp(message, ":close#")) {
+				handle_shutter_move(device, message);
+			} else if (!strncmp(message, ":SER", 4)) {
+				handle_rotator_status(device, message);
+			} else if (!strncmp(message, ":SES", 4)) {
+				handle_shutter_status(device, message);
+			} else if (!strncmp(message, ":BV", 3)) {
+				handle_battery_status(device, message);
+			}
+		}
+	}
+}
+
 
 static void dome_timer_callback(indigo_device *device) {
 	static bool need_update = true;
@@ -613,12 +671,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					device->is_connected = true;
 
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
-					PRIVATE_DATA->dome_timer = indigo_set_timer(device, 0.5, dome_timer_callback);
+					PRIVATE_DATA->dome_event = indigo_set_timer(device, 0, dome_event_handler);
 				}
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->dome_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->dome_event);
 				indigo_delete_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
