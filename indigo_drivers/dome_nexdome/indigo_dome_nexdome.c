@@ -908,7 +908,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
+		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 		PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
