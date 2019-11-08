@@ -248,6 +248,8 @@ static void handle_shutter_position(indigo_device *device, char *message) {
 static void handle_rotator_move(indigo_device *device, char *message) {
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
 }
 
@@ -268,6 +270,8 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = position / PRIVATE_DATA->steps_per_degree;
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+	DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 }
 
 static void handle_shutter_status(indigo_device *device, char *message) {
@@ -580,21 +584,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		} else if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
 			target_position = (int)(current_position + DOME_STEPS_ITEM->number.value + 360) % 360;
 		}
-
-		if(!nexdome_goto_azimuth(device, target_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = current_position;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed.");
-			return INDIGO_OK;
-		}
-
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = current_position;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		char command[NEXDOME_CMD_LEN];
+		sprintf(command, "GAR,%.0f", target_position);
+		nexdome_command(device, command);
+		nexdome_command(device, "PRR");
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
