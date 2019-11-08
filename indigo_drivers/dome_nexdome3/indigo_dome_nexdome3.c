@@ -74,11 +74,10 @@
 
 
 #define NEXDOME_POWER_PROPERTY                    (PRIVATE_DATA->power_property)
-#define NEXDOME_POWER_ROTATOR_ITEM                (NEXDOME_POWER_PROPERTY->items+0)
-#define NEXDOME_POWER_SHUTTER_ITEM                (NEXDOME_POWER_PROPERTY->items+1)
-#define NEXDOME_POWER_PROPERTY_NAME               "NEXDOME_POWER"
-#define NEXDOME_POWER_ROTATOR_ITEM_NAME           "ROTATOR_VOLTAGE"
-#define NEXDOME_POWER_SHUTTER_ITEM_NAME           "SHUTTER_VOLTAGE"
+#define NEXDOME_POWER_VOLTAGE_ITEM                (NEXDOME_POWER_PROPERTY->items+0)
+#define NEXDOME_POWER_PROPERTY_NAME               "NEXDOME_BATTERY_POWER"
+#define NEXDOME_POWER_VOLTAGE_ITEM_NAME           "VOLTAGE"
+
 
 
 typedef enum {
@@ -212,6 +211,7 @@ static bool nexdome_get_shutter_position(indigo_device *device, float *pos) {
 
 
 static bool nexdome_open_shutter(indigo_device *device) {
+
 }
 
 
@@ -301,6 +301,8 @@ static void handle_rotator_move(indigo_device *device, char *message) {
 }
 
 static void handle_shutter_move(indigo_device *device, char *message) {
+	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
 }
 
@@ -309,17 +311,54 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 }
 
 static void handle_shutter_status(indigo_device *device, char *message) {
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+	int position, max_position;
+	int open_switch, close_switch;
+	if (sscanf(message, ":SES,%d,%d,%d,%d#", &position, &max_position, &open_switch, &close_switch) != 4) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+		return;
+	}
+
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d %d %d %d", __FUNCTION__, message, position, max_position, open_switch, close_switch);
+
+	if (close_switch) {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+	} else if (open_switch) {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+	} else {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+	}
+	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
 
 static void handle_battery_status(indigo_device *device, char *message) {
+	static bool low_voltage = false;
 	int adc_value;
 	if (sscanf(message, ":BV%d#", &adc_value) != 1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
 		return;
 	}
 	/* 15 / 1024 =  0.01465 V/ADU */
 	double volts = 0.01465 * adc_value;
 
+	if (volts < VOLT_THRESHOLD) {
+		if (!low_voltage) {
+			indigo_send_message(device, "Dome power is low! (U = %.2fV)", volts);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (U = %.2fV", volts);
+		}
+		low_voltage = true;
+	} else {
+		if (low_voltage) {
+			indigo_send_message(device, "Dome power is normal! (U = %.2fV)", volts);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (U = %.2fV)", volts);
+		}
+		low_voltage = false;
+	}
+	if (fabs((volts - NEXDOME_POWER_VOLTAGE_ITEM->number.value)*100) >= 1)  {
+		NEXDOME_POWER_VOLTAGE_ITEM->number.value = volts;
+		indigo_update_property(device, NEXDOME_POWER_PROPERTY, NULL);
+	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d %.2f", __FUNCTION__, message, adc_value, volts);
 }
 
@@ -351,7 +390,7 @@ static void dome_event_handler(indigo_device *device) {
 
 static void dome_timer_callback(indigo_device *device) {
 	static bool need_update = true;
-	static bool low_voltage = false;
+
 	static nexdome_shutter_state_t prev_shutter_state = SHUTTER_STATE_UNKNOWN;
 
 	/* Check dome power */
@@ -360,25 +399,6 @@ static void dome_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_voltages(): returned error");
 	} else {
 		/* Threshold taken from INDI driver */
-		if ((v_rotator < VOLT_THRESHOLD) || (v_shutter < VOLT_THRESHOLD)) {
-			if (!low_voltage) {
-				indigo_send_message(device, "Dome power is low! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
-			}
-			low_voltage = true;
-		} else {
-			if (low_voltage) {
-				indigo_send_message(device, "Dome power is normal! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
-			}
-			low_voltage = false;
-		}
-		if ((fabs((v_rotator - NEXDOME_POWER_ROTATOR_ITEM->number.value)*100) >= 1) ||
-		   (fabs((v_shutter - NEXDOME_POWER_SHUTTER_ITEM->number.value)*100) >= 1)) {
-			NEXDOME_POWER_ROTATOR_ITEM->number.value = v_rotator;
-			NEXDOME_POWER_SHUTTER_ITEM->number.value = v_shutter;
-			indigo_update_property(device, NEXDOME_POWER_PROPERTY, NULL);
-		}
 	}
 
 	/* Handle dome rotation */
@@ -551,14 +571,12 @@ static indigo_result dome_attach(indigo_device *device) {
 		NEXDOME_CALLIBRATE_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_CALLIBRATE_ITEM, NEXDOME_CALLIBRATE_ITEM_NAME, "Callibrate", false);
 		// -------------------------------------------------------------------------------- NEXDOME_POWER_PROPERTY
-		NEXDOME_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_POWER_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Power status", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		NEXDOME_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_POWER_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Power status", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 		if (NEXDOME_POWER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_POWER_PROPERTY->hidden = false;
-		indigo_init_number_item(NEXDOME_POWER_ROTATOR_ITEM, NEXDOME_POWER_ROTATOR_ITEM_NAME, "Rotator (Volts)", 0, 500, 1, 0);
-		strcpy(NEXDOME_POWER_ROTATOR_ITEM->number.format, "%.2f");
-		indigo_init_number_item(NEXDOME_POWER_SHUTTER_ITEM, NEXDOME_POWER_SHUTTER_ITEM_NAME, "Shutter (Volts)", 0, 500, 1, 0);
-		strcpy(NEXDOME_POWER_SHUTTER_ITEM->number.format, "%.2f");
+		indigo_init_number_item(NEXDOME_POWER_VOLTAGE_ITEM, NEXDOME_POWER_VOLTAGE_ITEM_NAME, "Battery charge (Volts)", 0, 500, 1, 0);
+		strcpy(NEXDOME_POWER_VOLTAGE_ITEM->number.format, "%.2f");
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -651,9 +669,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_define_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
 
-					if(!nexdome_get_azimuth(device, &PRIVATE_DATA->current_position)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_azimuth(): returned error");
-					}
+					/* request Rotator and Shutter report to set the current values */
+					nexdome_command(device, "SRR");
+					nexdome_command(device, "SRS");
+
 					PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 					if(!nexdome_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
@@ -804,16 +823,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		bool success;
 		if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
-			success = nexdome_open_shutter(device);
+			nexdome_command(device, "OPS");
 		} else {
-			success = nexdome_close_shutter(device);
+			nexdome_command(device, "CLS");
 		}
-		if (!success) {
-			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-			return INDIGO_OK;
-		}
-		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
