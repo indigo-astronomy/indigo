@@ -379,7 +379,7 @@ void loop() {
       case R_STATE_MOVING_RIGHT:
         if (r_state != R_STATE_MOVING_RIGHT) {
           r_state = r_requested_state;
-          Serial.print(compose_message("rigth"));
+          Serial.print(compose_message("right"));
         } else {
           r_requested_state = r_state;
         }
