@@ -250,6 +250,10 @@ static void handle_rotator_move(indigo_device *device, char *message) {
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+	if (PRIVATE_DATA->callibration_requested) {
+		NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, "Going home...");
+	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
 }
 
@@ -272,6 +276,12 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+
+	if (PRIVATE_DATA->callibration_requested && at_home) {
+		NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, "At home.");
+		PRIVATE_DATA->callibration_requested = false;
+	}
 }
 
 static void handle_shutter_status(indigo_device *device, char *message) {
@@ -714,14 +724,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		indigo_property_copy_values(NEXDOME_FIND_HOME_PROPERTY, property, false);
 		if (NEXDOME_FIND_HOME_ITEM->sw.value) {
-			NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
-			if(!nexdome_find_home(device)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_find_home(%d): returned error", PRIVATE_DATA->handle);
-				indigo_set_switch(NEXDOME_FIND_HOME_PROPERTY, NEXDOME_FIND_HOME_ITEM, false);
-				NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				PRIVATE_DATA->callibration_requested = true;
-			}
+			nexdome_command(device, "GHR");
+			PRIVATE_DATA->callibration_requested = true;
 		}
 		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 		return INDIGO_OK;
