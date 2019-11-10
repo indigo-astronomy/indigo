@@ -65,6 +65,9 @@
 #define VER_AUX  0xFFFFFF
 #define VER_AUTO 0x0
 
+#define HC_NEXSTAR      0x11
+#define HC_STARSENSE    0x13
+
 #define VNDR_CELESTRON  0x1
 #define VNDR_SKYWATCHER 0x2
 #define VNDR_ALL_SUPPORTED (VNDR_CELESTRON | VNDR_SKYWATCHER)
@@ -75,6 +78,8 @@
 extern int nexstar_use_rtc;
 
 extern int nexstar_proto_version;
+extern int nexstar_hc_type;
+
 /* version check macros */
 #define RELEASE_MASK  0xFF0000
 #define REVISION_MASK 0x00FF00
@@ -84,10 +89,10 @@ extern int nexstar_proto_version;
 #define GET_REVISION(ver) ((ver & REVISION_MASK)>>8)
 #define GET_PATCH(ver)    (ver & PATCH_MASK)
 
-#define REQUIRE_VER(req_ver)      { if(req_ver > nexstar_proto_version) return RC_UNSUPPORTED; }
-#define REQUIRE_RELEASE(req_ver)  { if ((req_ver) > GET_RELEASE(nexstar_proto_version)) return RC_UNSUPPORTED; }
-#define REQUIRE_REVISION(req_ver) { if ((req_ver) > GET_REVISION(nexstar_proto_version)) return RC_UNSUPPORTED; }
-#define REQUIRE_PATCH(req_ver)    { if ((req_ver) > GET_PATCH(nexstar_proto_version)) return RC_UNSUPPORTED; }
+#define REQUIRE_VER(req_ver)      { if (nexstar_hc_type == HC_NEXSTAR && req_ver > nexstar_proto_version) return RC_UNSUPPORTED; }
+#define REQUIRE_RELEASE(req_ver)  { if (nexstar_hc_type == HC_NEXSTAR && (req_ver) > GET_RELEASE(nexstar_proto_version)) return RC_UNSUPPORTED; }
+#define REQUIRE_REVISION(req_ver) { if (nexstar_hc_type == HC_NEXSTAR && (req_ver) > GET_REVISION(nexstar_proto_version)) return RC_UNSUPPORTED; }
+#define REQUIRE_PATCH(req_ver)    { if (nexstar_hc_type == HC_NEXSTAR && (req_ver) > GET_PATCH(nexstar_proto_version)) return RC_UNSUPPORTED; }
 
 extern int nexstar_mount_vendor;
 /* vendor check macros */

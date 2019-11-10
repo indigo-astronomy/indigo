@@ -22,12 +22,12 @@
 #define Serial SerialUSB
 #endif
 
-//#define CELESTRON
-#define SKYWATCHER
+#define CELESTRON
+//#define SKYWATCHER
 
 #define RA_AXIS 16
 #define DEC_AXIS 17
-#define GSP 176
+#define GPS 176
 
 #define WRITE_BIN(data) Serial.write(data, sizeof(data)); Serial.write('#')
 #define WRITE_HEX(data) write_hex(data, sizeof(data)); Serial.write('#')
@@ -61,8 +61,9 @@ double STEP_PER_SEC = 0x1000000L / 86400.0;
 long SLEW_PER_SEC = 0x10000L;
 
 #ifdef CELESTRON
-byte _version[] = { 1, 2 };
+byte _version[] = { 1, 20 };
 byte _model = 5;
+byte _hc_type[] = { 0x13 }; // 0x11 = NexStsr, 0x13 = StarSense
 #endif
 #ifdef SKYWATCHER
 byte _version[] = { 4, 37, 7 };
@@ -167,13 +168,18 @@ void loop() {
         Serial.write(echo);
         break;
       case 'V':
-        #ifdef CELESTRON
+#ifdef CELESTRON
         WRITE_BIN(_version);
-        #endif
-        #ifdef SKYWATCHER
+#endif
+#ifdef SKYWATCHER
         WRITE_HEX(_version);
-        #endif
+#endif
         break;
+#ifdef CELESTRON
+      case 'v':
+        WRITE_BIN(_hc_type);
+      break;
+#endif
       case 'w':
         WRITE_BIN(location);
         break;
@@ -329,6 +335,10 @@ void loop() {
             else if (pass_through.destination == DEC_AXIS)
               Serial.write(dec_guiding_rate);
             break;
+          case 55:
+            if (pass_through.destination == GPS)
+              Serial.write(1);
+             break;
           case 254:
             Serial.write(1);
             Serial.write(2);
