@@ -146,6 +146,15 @@
 		59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
 		59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */; };
 		59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */; };
+		59C76F0C237872480091B966 /* nexstar.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C583721A75B1A001CA8C0 /* nexstar.h */; };
+		59C76F0D2378724A0091B966 /* nexstar.c in Sources */ = {isa = PBXBuildFile; fileRef = 598C583021A75B1A001CA8C0 /* nexstar.c */; };
+		59C76F0E2378724D0091B966 /* nex_open.c in Sources */ = {isa = PBXBuildFile; fileRef = 598C582F21A75B1A001CA8C0 /* nex_open.c */; };
+		59C76F0F237872520091B966 /* deg2str.c in Sources */ = {isa = PBXBuildFile; fileRef = 598C583121A75B1A001CA8C0 /* deg2str.c */; };
+		59C76F10237872520091B966 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C583221A75B1A001CA8C0 /* config.h */; };
+		59C76F11237872520091B966 /* nexstar_pec.c in Sources */ = {isa = PBXBuildFile; fileRef = 598C583321A75B1A001CA8C0 /* nexstar_pec.c */; };
+		59C76F12237872570091B966 /* deg2str.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C583621A75B1A001CA8C0 /* deg2str.h */; };
+		59C76F13237872570091B966 /* nex_open.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C583821A75B1A001CA8C0 /* nex_open.h */; };
+		59C76F14237872570091B966 /* nexstar_pec.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C583921A75B1A001CA8C0 /* nexstar_pec.h */; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
 		59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
@@ -288,7 +297,6 @@
 		9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0121EE35A000657C8F /* libhidapi.a */; };
 		9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 59292E5620D4224F0042E939 /* libcurl.tbd */; };
 		9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0421EE35C000657C8F /* libc++.tbd */; };
-		9DDEFC0621EE360900657C8F /* libnexstar.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59DEC8CC21ADE04D00BF7958 /* libnexstar.a */; };
 		9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B322C6465500289234 /* indigo_focuser_dsd.c */; };
 		9DE0E7C422C6465500289234 /* indigo_focuser_dsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */; };
 		9DE0E7C622C6465500289234 /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B822C6465500289234 /* Makefile.inc */; };
@@ -3379,13 +3387,6 @@
 		59DD69D21FC1DC4900AEF0DF /* indigo_dome_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_simulator.h; sourceTree = "<group>"; };
 		59DD69D31FC1DC4900AEF0DF /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59DD69D41FC1DC4900AEF0DF /* indigo_dome_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_simulator.c; sourceTree = "<group>"; };
-		59DEC8C521ADE04D00BF7958 /* deg2str.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = deg2str.h; sourceTree = "<group>"; };
-		59DEC8C621ADE04D00BF7958 /* nexstar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = nexstar.h; sourceTree = "<group>"; };
-		59DEC8C721ADE04D00BF7958 /* nexstar_pec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = nexstar_pec.h; sourceTree = "<group>"; };
-		59DEC8CA21ADE04D00BF7958 /* libnexstar.pc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libnexstar.pc; sourceTree = "<group>"; };
-		59DEC8CB21ADE04D00BF7958 /* libnexstar.la */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libnexstar.la; sourceTree = "<group>"; };
-		59DEC8CC21ADE04D00BF7958 /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libnexstar.a; sourceTree = "<group>"; };
-		59DEC8D021ADE04D00BF7958 /* libnexstar.7 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libnexstar.7; sourceTree = "<group>"; };
 		59DEC8D321AF5DAA00BF7958 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59E38B4F1F1577A000187839 /* indigo_ica_ptp_canon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_canon.h; sourceTree = "<group>"; };
 		59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_canon.m; sourceTree = "<group>"; };
@@ -3703,7 +3704,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D586C4322FB1912002D382E /* libusb-1.0.1.dylib in Frameworks */,
-				9DDEFC0621EE360900657C8F /* libnexstar.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
@@ -5138,7 +5138,6 @@
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
 			isa = PBXGroup;
 			children = (
-				59DEC8C321ADE04D00BF7958 /* build */,
 				598C57E221A75B1A001CA8C0 /* man */,
 				598C57E521A75B1A001CA8C0 /* install-sh */,
 				598C57EA21A75B1A001CA8C0 /* ltmain.sh */,
@@ -5220,17 +5219,17 @@
 		598C582E21A75B1A001CA8C0 /* src */ = {
 			isa = PBXGroup;
 			children = (
-				598C582F21A75B1A001CA8C0 /* nex_open.c */,
-				598C583021A75B1A001CA8C0 /* nexstar.c */,
-				598C583121A75B1A001CA8C0 /* deg2str.c */,
 				598C583221A75B1A001CA8C0 /* config.h */,
+				598C583721A75B1A001CA8C0 /* nexstar.h */,
+				598C583021A75B1A001CA8C0 /* nexstar.c */,
+				598C583821A75B1A001CA8C0 /* nex_open.h */,
+				598C582F21A75B1A001CA8C0 /* nex_open.c */,
+				598C583621A75B1A001CA8C0 /* deg2str.h */,
+				598C583121A75B1A001CA8C0 /* deg2str.c */,
+				598C583921A75B1A001CA8C0 /* nexstar_pec.h */,
 				598C583321A75B1A001CA8C0 /* nexstar_pec.c */,
 				598C583421A75B1A001CA8C0 /* stamp-h1 */,
 				598C583521A75B1A001CA8C0 /* config.h.in */,
-				598C583621A75B1A001CA8C0 /* deg2str.h */,
-				598C583721A75B1A001CA8C0 /* nexstar.h */,
-				598C583821A75B1A001CA8C0 /* nex_open.h */,
-				598C583921A75B1A001CA8C0 /* nexstar_pec.h */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -9838,68 +9837,6 @@
 			path = dome_simulator;
 			sourceTree = "<group>";
 		};
-		59DEC8C321ADE04D00BF7958 /* build */ = {
-			isa = PBXGroup;
-			children = (
-				59DEC8C421ADE04D00BF7958 /* include */,
-				59DEC8C821ADE04D00BF7958 /* lib */,
-				59DEC8CD21ADE04D00BF7958 /* share */,
-			);
-			path = build;
-			sourceTree = "<group>";
-		};
-		59DEC8C421ADE04D00BF7958 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				59DEC8C521ADE04D00BF7958 /* deg2str.h */,
-				59DEC8C621ADE04D00BF7958 /* nexstar.h */,
-				59DEC8C721ADE04D00BF7958 /* nexstar_pec.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		59DEC8C821ADE04D00BF7958 /* lib */ = {
-			isa = PBXGroup;
-			children = (
-				59DEC8C921ADE04D00BF7958 /* pkgconfig */,
-				59DEC8CB21ADE04D00BF7958 /* libnexstar.la */,
-				59DEC8CC21ADE04D00BF7958 /* libnexstar.a */,
-			);
-			path = lib;
-			sourceTree = "<group>";
-		};
-		59DEC8C921ADE04D00BF7958 /* pkgconfig */ = {
-			isa = PBXGroup;
-			children = (
-				59DEC8CA21ADE04D00BF7958 /* libnexstar.pc */,
-			);
-			path = pkgconfig;
-			sourceTree = "<group>";
-		};
-		59DEC8CD21ADE04D00BF7958 /* share */ = {
-			isa = PBXGroup;
-			children = (
-				59DEC8CE21ADE04D00BF7958 /* man */,
-			);
-			path = share;
-			sourceTree = "<group>";
-		};
-		59DEC8CE21ADE04D00BF7958 /* man */ = {
-			isa = PBXGroup;
-			children = (
-				59DEC8CF21ADE04D00BF7958 /* man7 */,
-			);
-			path = man;
-			sourceTree = "<group>";
-		};
-		59DEC8CF21ADE04D00BF7958 /* man7 */ = {
-			isa = PBXGroup;
-			children = (
-				59DEC8D021ADE04D00BF7958 /* libnexstar.7 */,
-			);
-			path = man7;
-			sourceTree = "<group>";
-		};
 		59EFE8A12363481D00ED5337 /* focuser_focusdreampro */ = {
 			isa = PBXGroup;
 			children = (
@@ -11002,6 +10939,7 @@
 				595F291E211E211100380EF4 /* DDHidUsageTables.h in Headers */,
 				599A63B11DEA2F4700ABC827 /* indigo_driver_json.h in Headers */,
 				59DD69CF1FC1D30300AEF0DF /* indigo_dome_driver.h in Headers */,
+				59C76F0C237872480091B966 /* nexstar.h in Headers */,
 				9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */,
 				59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
@@ -11032,6 +10970,7 @@
 				59A52DF121A33E4C000B6F27 /* libfli.h in Headers */,
 				9DB918091DFEA42E00678721 /* indigo_io.h in Headers */,
 				59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */,
+				59C76F13237872570091B966 /* nex_open.h in Headers */,
 				9DAD523E21258801002FCC79 /* indigo_guider_cgusbst4.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
 				59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */,
@@ -11043,6 +10982,7 @@
 				9DC496A322C39A170052AB3E /* indigo_aux_sqm.h in Headers */,
 				59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
+				59C76F14237872570091B966 /* nexstar_pec.h in Headers */,
 				9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */,
 				9DAD52502126E88B002FCC79 /* indigo_wheel_trutek.h in Headers */,
 				59A3217621D52C4700EC0F4A /* indigo_focuser_asi.h in Headers */,
@@ -11093,6 +11033,7 @@
 				9DBC34671DCB267700588DB9 /* indigo_wheel_asi.h in Headers */,
 				59A52F2D21A341E0000B6F27 /* altaircam.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
+				59C76F12237872570091B966 /* deg2str.h in Headers */,
 				9D73E62121FF3996003CEC15 /* utlist.h in Headers */,
 				9D73E60A21FF37DB003CEC15 /* libuvc.h in Headers */,
 				59A321B621D691D600EC0F4A /* indigo_mount_synscan_guider.h in Headers */,
@@ -11101,6 +11042,7 @@
 				59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */,
 				595F2921211E211100380EF4 /* DDHidAppleMikey.h in Headers */,
 				593A357E219DBAD500EDF481 /* indigo_filter.h in Headers */,
+				59C76F10237872520091B966 /* config.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11285,6 +11227,7 @@
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
+				59C76F0E2378724D0091B966 /* nex_open.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
 				59D6719222FDBB8E00D08A2A /* indigo_ptp_sony.c in Sources */,
 				9D73E60621FF36C4003CEC15 /* indigo_ccd_uvc_main.c in Sources */,
@@ -11321,6 +11264,7 @@
 				59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */,
 				59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */,
 				592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */,
+				59C76F0F237872520091B966 /* deg2str.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
 				595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */,
 				9D73E61D21FF37F9003CEC15 /* libuvc_init.c in Sources */,
@@ -11340,6 +11284,7 @@
 				9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */,
 				59550A4922F33FFC00C719C4 /* Makefile.inc in Sources */,
 				5911F7B41F02E1400053F3CA /* libdsi.c in Sources */,
+				59C76F0D2378724A0091B966 /* nexstar.c in Sources */,
 				595F2932211E211200380EF4 /* DDHidAppleMikey.m in Sources */,
 				9DAD52482126BD99002FCC79 /* indigo_wheel_quantum.c in Sources */,
 				59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */,
@@ -11369,6 +11314,7 @@
 				59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
 				59E38B541F1577A000187839 /* indigo_ica_ptp_canon.m in Sources */,
+				59C76F11237872520091B966 /* nexstar_pec.c in Sources */,
 				9D9EA6B61DBFA30600E11841 /* indigo_wheel_driver.c in Sources */,
 				59463C1B20DE6781004950F2 /* indigo_focuser_wemacro_bt.m in Sources */,
 				9D586C4122FB0D43002D382E /* indigo_ccd_ptp.c in Sources */,
@@ -11661,7 +11607,6 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/build/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_apogee/bin_externals/libapogee/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/lib/macOS",
 				);
@@ -11708,7 +11653,6 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/build/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_apogee/bin_externals/libapogee/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/lib/macOS",
 				);
@@ -11796,9 +11740,6 @@
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/lib/.libs",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/build/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				OTHER_LDFLAGS = "-w";
@@ -11827,9 +11768,6 @@
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/lib/.libs",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar",
-					"$(PROJECT_DIR)/indigo_drivers/mount_nexstar/externals/libnexstar/build/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				OTHER_LDFLAGS = "-w";

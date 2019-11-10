@@ -16,7 +16,7 @@
 
 /* do not check protocol version by default */
 int nexstar_proto_version = VER_AUX;
-
+int nexstar_hc_type = HC_NEXSTAR;
 int nexstar_mount_vendor = VNDR_ALL_SUPPORTED;
 
 /* do not use RTC by default */
@@ -82,17 +82,17 @@ int enforce_protocol_version(int devfd, int ver) {
 }
 
 int _write_telescope(int devfd, char *buf, int size) {
-	int result = write(devfd, buf, size);
+	int result = (int)write(devfd, buf, size);
 	debug("write", buf, size);
 	return result;
 }
 
 int _read_telescope(int devfd, char *reply, int len, char fl) {
-	char c;
+	char c = 0;
 	int res;
-	int count=0;
+	int count = 0;
 
-	while ((count < len) && ((res=read(devfd,&c,1)) != -1 )) {
+	while ((count < len) && ((res = (int)read(devfd, &c, 1)) != -1 )) {
 		if (res == 1) {
 			reply[count] = c;
 			count++;
@@ -111,7 +111,7 @@ int _read_telescope(int devfd, char *reply, int len, char fl) {
 	} else {
 		/* if the last byte is not '#', this means that the device did
 		   not respond and the next byte should be '#' (hopefully) */
-		res=read(devfd,&c,1);
+		res = (int)read(devfd,&c,1);
 		if ((res == 1) && (c == '#')) {
 			//printf("%s(): RC_DEVICE\n",__FUNCTION__);
 			debug("read FAILED", reply, count);
@@ -362,7 +362,12 @@ int tc_get_version(int dev, char *major, char *minor) {
 	if (res == 3) { /* Celestron */
 		if (major) *major = reply[0];
 		if (minor) *minor = reply[1];
-		return ((reply[0] << 16) + (reply[1] << 8));
+		int result = ((reply[0] << 16) + (reply[1] << 8));
+		nexstar_hc_type = HC_NEXSTAR;
+		if (write_telescope(dev, "v", 1) == 1 && read_telescope_vl(dev, reply, sizeof reply) == 2) {
+			nexstar_hc_type = reply[0];
+		}
+		return result;
 	} else if (res == 7) { /* SkyWatcher */
 		long maj, min, subv;
 		reply[6] = '\0';
@@ -373,7 +378,7 @@ int tc_get_version(int dev, char *major, char *minor) {
 		maj = strtol(reply, NULL, 16);
 		if (major) *major = maj;
 		if (minor) *minor = min;
-		return ((maj << 16) + (min << 8) + subv);
+		return (int)((maj << 16) + (min << 8) + subv);
 	}
 	return RC_FAILED;
 }
