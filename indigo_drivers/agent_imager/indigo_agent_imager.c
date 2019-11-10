@@ -769,6 +769,7 @@ static void sequence_process(indigo_device *device) {
 	char sequence_text[INDIGO_VALUE_SIZE], *sequence_text_pnt, *value;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 0;
+	DEVICE_PRIVATE_DATA->focus_exposure = 0;
 	strncpy(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value, INDIGO_VALUE_SIZE);
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		if (strchr(token, '='))
