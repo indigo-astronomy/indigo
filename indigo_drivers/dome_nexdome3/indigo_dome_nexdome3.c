@@ -86,6 +86,8 @@ typedef struct {
 	float steps_per_degree;
 	bool park_requested;
 	bool callibration_requested;
+	bool shutter_stop_requested;
+	bool rotator_stop_requested;
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_event;
@@ -157,11 +159,6 @@ static bool nexdome_handshake(indigo_device *device, char *firmware) {
 			return false;
 		}
 	}
-	return false;
-}
-
-
-static bool nexdome_abort(indigo_device *device) {
 	return false;
 }
 
@@ -273,8 +270,15 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 	PRIVATE_DATA->steps_per_degree = max_position / 360.0;
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = position / PRIVATE_DATA->steps_per_degree;
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+
+	if (PRIVATE_DATA->rotator_stop_requested) {
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->rotator_stop_requested = false;
+	}
+
+	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 
 	if (PRIVATE_DATA->callibration_requested && at_home) {
@@ -300,6 +304,10 @@ static void handle_shutter_status(indigo_device *device, char *message) {
 	} else if (open_switch) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+	} else if (PRIVATE_DATA->shutter_stop_requested){
+		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+		PRIVATE_DATA->shutter_stop_requested = false;
 	} else {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	}
@@ -639,20 +647,14 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
-
-		if(!nexdome_abort(device)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_abort(%d): returned error", PRIVATE_DATA->handle);
-			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			DOME_ABORT_MOTION_ITEM->sw.value = false;
-			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
-			return INDIGO_OK;
+		if (DOME_ABORT_MOTION_ITEM->sw.value) {
+			nexdome_command(device, "SWR");
+			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)
+				PRIVATE_DATA->rotator_stop_requested = true;
+			nexdome_command(device, "SWS");
+			if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE)
+				PRIVATE_DATA->shutter_stop_requested = true;
 		}
-
-		if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-			DOME_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
-		}
-
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
