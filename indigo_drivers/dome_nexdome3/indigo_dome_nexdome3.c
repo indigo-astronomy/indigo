@@ -73,6 +73,12 @@
 #define NEXDOME_HOME_POSITION_ITEM_ITEM_NAME         "POSITION"
 
 
+#define NEXDOME_MOVE_THRESHOLD_PROPERTY              (PRIVATE_DATA->move_threshold_property)
+#define NEXDOME_MOVE_THRESHOLD_ITEM                  (NEXDOME_MOVE_THRESHOLD_PROPERTY->items+0)
+#define NEXDOME_MOVE_THRESHOLD_PROPERTY_NAME         "NEXDOME_MOVE_THRESHOLD"
+#define NEXDOME_MOVE_THRESHOLD_ITEM_NAME             "THRESHOLD"
+
+
 #define NEXDOME_POWER_PROPERTY                    (PRIVATE_DATA->power_property)
 #define NEXDOME_POWER_VOLTAGE_ITEM                (NEXDOME_POWER_PROPERTY->items+0)
 #define NEXDOME_POWER_PROPERTY_NAME               "NEXDOME_BATTERY_POWER"
@@ -95,6 +101,7 @@ typedef struct {
 	indigo_property *reset_shutter_comm_property;
 	indigo_property *find_home_property;
 	indigo_property *home_position_property;
+	indigo_property *move_threshold_property;
 	indigo_property *power_property;
 } nexdome_private_data;
 
@@ -163,47 +170,6 @@ static bool nexdome_handshake(indigo_device *device, char *firmware) {
 }
 
 
-static bool nexdome_get_home_azimuth(indigo_device *device, float *azimuth) {
-	if(!azimuth) return false;
-	return false;
-}
-
-
-static bool nexdome_set_home_azimuth(indigo_device *device, float azimuth) {
-	return false;
-}
-
-
-static bool nexdome_get_park_azimuth(indigo_device *device, float *azimuth) {
-	return false;
-}
-
-
-static bool nexdome_set_park_azimuth(indigo_device *device, float azimuth) {
-	return false;
-}
-
-
-static bool nexdome_goto_azimuth(indigo_device *device, float azimuth) {
-	return false;
-}
-
-
-static bool nexdome_find_home(indigo_device *device) {
-	return false;
-}
-
-
-static bool nexdome_get_home_state(indigo_device *device, int *state) {
-	return false;
-}
-
-
-static bool nexdome_callibrate(indigo_device *device) {
-	return false;
-}
-
-
 static bool nexdome_get_reversed_flag(indigo_device *device, bool *reversed) {
 	if(!reversed) return false;
 }
@@ -211,10 +177,6 @@ static bool nexdome_get_reversed_flag(indigo_device *device, bool *reversed) {
 
 static bool nexdome_set_reversed_flag(indigo_device *device, bool reversed) {
 	return false;
-}
-
-static bool nexdome_get_voltages(indigo_device *device, float *v_rotattor, float *v_shutter) {
-	if (!v_rotattor || !v_shutter) return false;
 }
 
 
@@ -360,6 +322,21 @@ static void handle_home_poition(indigo_device *device, char *message) {
 }
 
 
+static void handle_move_threshold(indigo_device *device, char *message) {
+	int dead_zone;
+	if (sscanf(message, ":DRR%d#", &dead_zone) != 1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+		return;
+	}
+
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d", __FUNCTION__, message, dead_zone);
+	if (fabs(dead_zone - NEXDOME_MOVE_THRESHOLD_ITEM->number.value) >= 1)  {
+		NEXDOME_MOVE_THRESHOLD_ITEM->number.value = dead_zone;
+		indigo_update_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
+	}
+}
+
+
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 
 static void dome_event_handler(indigo_device *device) {
@@ -382,6 +359,8 @@ static void dome_event_handler(indigo_device *device) {
 				handle_battery_status(device, message);
 			} else if (!strncmp(message, ":HRR", 4)) {
 				handle_home_poition(device, message);
+			} else if (!strncmp(message, ":DRR", 4)) {
+				handle_move_threshold(device, message);
 			}
 		}
 	}
@@ -398,6 +377,8 @@ static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 		if (indigo_property_match(NEXDOME_HOME_POSITION_PROPERTY, property))
 			indigo_define_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
+		if (indigo_property_match(NEXDOME_MOVE_THRESHOLD_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
 		if (indigo_property_match(NEXDOME_POWER_PROPERTY, property))
 			indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
 	}
@@ -438,18 +419,25 @@ static indigo_result dome_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		NEXDOME_RESET_SHUTTER_COMM_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_RESET_SHUTTER_COMM_ITEM, NEXDOME_RESET_SHUTTER_COMM_ITEM_NAME, "Reset", false);
-		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME_PROPERTY
+		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_FIND_HOME_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_FIND_HOME_ITEM, NEXDOME_FIND_HOME_ITEM_NAME, "Find home", false);
-		// -------------------------------------------------------------------------------- NEXDOME_HOME_POSITION_PROPERTY
+		// -------------------------------------------------------------------------------- NEXDOME_MOVE_THRESHOLD
+		NEXDOME_MOVE_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_MOVE_THRESHOLD_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Move threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (NEXDOME_MOVE_THRESHOLD_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_MOVE_THRESHOLD_PROPERTY->hidden = false;
+		indigo_init_number_item(NEXDOME_MOVE_THRESHOLD_ITEM, NEXDOME_MOVE_THRESHOLD_ITEM_NAME, "Minimal move (steps, ~153 steps/°)", 0, 10000, 1, 300);
+		strcpy(NEXDOME_MOVE_THRESHOLD_ITEM->number.format, "%.0f");
+		// -------------------------------------------------------------------------------- NEXDOME_HOME_POSITION
 		NEXDOME_HOME_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_HOME_POSITION_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Home position", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (NEXDOME_HOME_POSITION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_HOME_POSITION_PROPERTY->hidden = false;
-		indigo_init_number_item(NEXDOME_HOME_POSITION_ITEM, NEXDOME_HOME_POSITION_PROPERTY_NAME, "Steps (~153 steps/°)", 0, 100000, 1, 0);
+		indigo_init_number_item(NEXDOME_HOME_POSITION_ITEM, NEXDOME_HOME_POSITION_PROPERTY_NAME, "Position (steps, ~153 steps/°)", 0, 100000, 1, 0);
 		strcpy(NEXDOME_HOME_POSITION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- NEXDOME_POWER_PROPERTY
 		NEXDOME_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_POWER_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Power status", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
@@ -548,6 +536,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_define_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
+					indigo_define_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
 
 					/* request Rotator and Shutter report to set the current values */
@@ -562,10 +551,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					nexdome_command(device, "VRR");
 					nexdome_command(device, "VRS");
 					PRIVATE_DATA->steps_per_degree = 153;
+					/*
 					if(!nexdome_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
 					}
-					/*
 					if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
 						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 					} else {
@@ -590,6 +579,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_delete_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
+				indigo_delete_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_POWER_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
@@ -698,12 +688,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			PRIVATE_DATA->park_requested = false;
 		} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
-			if(!nexdome_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
-			}
-			if(!nexdome_goto_azimuth(device, PRIVATE_DATA->park_azimuth)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
-			}
+			// handle park
 			PRIVATE_DATA->park_requested = true;
 
 			DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -760,8 +745,17 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		nexdome_command(device, "HRR");
 		indigo_update_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(NEXDOME_MOVE_THRESHOLD_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_MOVE_THRESHOLD
+		indigo_property_copy_values(NEXDOME_MOVE_THRESHOLD_PROPERTY, property, false);
+		char command[NEXDOME_CMD_LEN];
+		sprintf(command, "DWR,%.0f", NEXDOME_MOVE_THRESHOLD_ITEM->number.value);
+		nexdome_command(device, command);
+		nexdome_command(device, "DRR");
+		indigo_update_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
-	}
+}
 	return indigo_dome_change_property(device, client, property);
 }
 
@@ -774,6 +768,7 @@ static indigo_result dome_detach(indigo_device *device) {
 	indigo_release_property(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
 	indigo_release_property(NEXDOME_FIND_HOME_PROPERTY);
 	indigo_release_property(NEXDOME_HOME_POSITION_PROPERTY);
+	indigo_release_property(NEXDOME_MOVE_THRESHOLD_PROPERTY);
 	indigo_release_property(NEXDOME_POWER_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
