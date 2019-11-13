@@ -192,9 +192,9 @@ static void handle_rotator_move(indigo_device *device, char *message) {
 static void handle_shutter_move(indigo_device *device, char *message) {
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (message[1] == 'c') {
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is closing...");
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closing...");
 	} else {
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is opening...");
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is opening...");
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
 }
@@ -257,16 +257,16 @@ static void handle_shutter_status(indigo_device *device, char *message) {
 	if (close_switch) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is closed.");
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closed.");
 	} else if (open_switch) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is open.");
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is open.");
 	} else if (PRIVATE_DATA->shutter_stop_requested){
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 		PRIVATE_DATA->shutter_stop_requested = false;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome stopped.");
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter stopped.");
 	} else {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
@@ -665,9 +665,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		if (DOME_PARK_UNPARKED_ITEM->sw.value) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
+			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is unparked.");
+			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+			return INDIGO_OK;
 		} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 			if (IN_PARK_POSITION) {
 				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is parked.");
+				pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+				return INDIGO_OK;
 			} else {
 				indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
 				char command[NEXDOME_CMD_LEN];
