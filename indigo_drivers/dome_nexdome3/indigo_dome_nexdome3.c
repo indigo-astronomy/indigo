@@ -47,37 +47,20 @@
 
 #define NEXDOME_SETTINGS_GROUP                    "Settings"
 
-#define NEXDOME_REVERSED_PROPERTY                 (PRIVATE_DATA->reversed_property)
-#define NEXDOME_REVERSED_YES_ITEM                 (NEXDOME_REVERSED_PROPERTY->items+0)
-#define NEXDOME_REVERSED_NO_ITEM                  (NEXDOME_REVERSED_PROPERTY->items+1)
-#define NEXDOME_REVERSED_PROPERTY_NAME            "NEXDOME_REVERSED"
-#define NEXDOME_REVERSED_YES_ITEM_NAME            "YES"
-#define NEXDOME_REVERSED_NO_ITEM_NAME             "NO"
-
-
-#define NEXDOME_RESET_SHUTTER_COMM_PROPERTY       (PRIVATE_DATA->reset_shutter_comm_property)
-#define NEXDOME_RESET_SHUTTER_COMM_ITEM           (NEXDOME_RESET_SHUTTER_COMM_PROPERTY->items+0)
-#define NEXDOME_RESET_SHUTTER_COMM_PROPERTY_NAME  "NEXDOME_RESET_SHUTTER_COMM"
-#define NEXDOME_RESET_SHUTTER_COMM_ITEM_NAME      "RESET"
-
-
 #define NEXDOME_FIND_HOME_PROPERTY                (PRIVATE_DATA->find_home_property)
 #define NEXDOME_FIND_HOME_ITEM                    (NEXDOME_FIND_HOME_PROPERTY->items+0)
 #define NEXDOME_FIND_HOME_PROPERTY_NAME           "NEXDOME_FIND_HOME"
 #define NEXDOME_FIND_HOME_ITEM_NAME               "FIND_HOME"
-
 
 #define NEXDOME_HOME_POSITION_PROPERTY               (PRIVATE_DATA->home_position_property)
 #define NEXDOME_HOME_POSITION_ITEM                   (NEXDOME_HOME_POSITION_PROPERTY->items+0)
 #define NEXDOME_HOME_POSITION_PROPERTY_NAME          "NEXDOME_HOME_POSITION"
 #define NEXDOME_HOME_POSITION_ITEM_ITEM_NAME         "POSITION"
 
-
 #define NEXDOME_MOVE_THRESHOLD_PROPERTY              (PRIVATE_DATA->move_threshold_property)
 #define NEXDOME_MOVE_THRESHOLD_ITEM                  (NEXDOME_MOVE_THRESHOLD_PROPERTY->items+0)
 #define NEXDOME_MOVE_THRESHOLD_PROPERTY_NAME         "NEXDOME_MOVE_THRESHOLD"
 #define NEXDOME_MOVE_THRESHOLD_ITEM_NAME             "THRESHOLD"
-
 
 #define NEXDOME_POWER_PROPERTY                    (PRIVATE_DATA->power_property)
 #define NEXDOME_POWER_VOLTAGE_ITEM                (NEXDOME_POWER_PROPERTY->items+0)
@@ -97,8 +80,6 @@ typedef struct {
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_event;
-	indigo_property *reversed_property;
-	indigo_property *reset_shutter_comm_property;
 	indigo_property *find_home_property;
 	indigo_property *home_position_property;
 	indigo_property *move_threshold_property;
@@ -168,22 +149,6 @@ static bool nexdome_handshake(indigo_device *device, char *firmware) {
 	}
 	return false;
 }
-
-
-static bool nexdome_get_reversed_flag(indigo_device *device, bool *reversed) {
-	if(!reversed) return false;
-}
-
-
-static bool nexdome_set_reversed_flag(indigo_device *device, bool reversed) {
-	return false;
-}
-
-
-static bool nexdome_restart_shutter_communication(indigo_device *device) {
-	return false;
-}
-
 
 // =============================================================================
 
@@ -369,10 +334,6 @@ static void dome_event_handler(indigo_device *device) {
 
 static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(NEXDOME_REVERSED_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 		if (indigo_property_match(NEXDOME_FIND_HOME_PROPERTY, property))
 			indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 		if (indigo_property_match(NEXDOME_HOME_POSITION_PROPERTY, property))
@@ -406,19 +367,6 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
 		DOME_SYNC_PARAMETERS_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- NEXDOME_REVERSED
-		NEXDOME_REVERSED_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_REVERSED_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Reversed dome directions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (NEXDOME_REVERSED_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		NEXDOME_REVERSED_PROPERTY->hidden = false;
-		indigo_init_switch_item(NEXDOME_REVERSED_YES_ITEM, NEXDOME_REVERSED_YES_ITEM_NAME, "Yes", false);
-		indigo_init_switch_item(NEXDOME_REVERSED_NO_ITEM, NEXDOME_REVERSED_NO_ITEM_NAME, "No", false);
-		// -------------------------------------------------------------------------------- NEXDOME_RESET_SHUTTER_COMM_PROPERTY
-		NEXDOME_RESET_SHUTTER_COMM_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_RESET_SHUTTER_COMM_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Reset shutter communication", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (NEXDOME_RESET_SHUTTER_COMM_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		NEXDOME_RESET_SHUTTER_COMM_PROPERTY->hidden = false;
-		indigo_init_switch_item(NEXDOME_RESET_SHUTTER_COMM_ITEM, NEXDOME_RESET_SHUTTER_COMM_ITEM_NAME, "Reset", false);
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
@@ -522,18 +470,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s connected.", "NexDome", firmware);
 
-					bool reversed;
-					if(!nexdome_get_reversed_flag(device, &reversed)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_reversed_flag(): returned error");
-					}
-					if (reversed) {
-						indigo_set_switch(NEXDOME_REVERSED_PROPERTY, NEXDOME_REVERSED_YES_ITEM, true);
-					} else {
-						indigo_set_switch(NEXDOME_REVERSED_PROPERTY, NEXDOME_REVERSED_NO_ITEM, true);
-					}
-					indigo_define_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
-
-					indigo_define_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
@@ -575,8 +511,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		} else {
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->dome_event);
-				indigo_delete_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
@@ -699,34 +633,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(NEXDOME_REVERSED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- NEXDOME_REVERED
-		indigo_property_copy_values(NEXDOME_REVERSED_PROPERTY, property, false);
-		NEXDOME_REVERSED_PROPERTY->state = INDIGO_OK_STATE;
-		if(!nexdome_set_reversed_flag(device, NEXDOME_REVERSED_YES_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_set_reversed_flag(%d, %d): returned error", PRIVATE_DATA->handle, NEXDOME_REVERSED_YES_ITEM->sw.value);
-			NEXDOME_REVERSED_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- NEXDOME_RESET_SHUTTER_COMM
-		indigo_property_copy_values(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property, false);
-		if (NEXDOME_RESET_SHUTTER_COMM_ITEM->sw.value) {
-			NEXDOME_RESET_SHUTTER_COMM_PROPERTY->state = INDIGO_BUSY_STATE;
-			if(!nexdome_restart_shutter_communication(device)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_restart_shutter_communication(%d): returned error", PRIVATE_DATA->handle);
-				NEXDOME_RESET_SHUTTER_COMM_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				indigo_update_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
-				/* wait for XBEE to reinitialize */
-				sleep(2);
-				NEXDOME_RESET_SHUTTER_COMM_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_switch(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NEXDOME_RESET_SHUTTER_COMM_ITEM, false);
-			}
-		}
-		indigo_update_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
-		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_FIND_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		indigo_property_copy_values(NEXDOME_FIND_HOME_PROPERTY, property, false);
@@ -764,8 +670,6 @@ static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	indigo_release_property(NEXDOME_REVERSED_PROPERTY);
-	indigo_release_property(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
 	indigo_release_property(NEXDOME_FIND_HOME_PROPERTY);
 	indigo_release_property(NEXDOME_HOME_POSITION_PROPERTY);
 	indigo_release_property(NEXDOME_MOVE_THRESHOLD_PROPERTY);
