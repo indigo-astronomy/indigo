@@ -139,7 +139,7 @@ static bool nexdome_handshake(indigo_device *device, char *firmware) {
 	nexdome_command(device, "FRR");
 	/* I hope in 30 messages responce will be sent */
 	for(int i = 0; i < 30; i++) {
-		nexdome_get_message(device, response, sizeof(response));
+		if (!nexdome_get_message(device, response, sizeof(response))) return false;
 		if (!strncmp(":FR", response, 3)) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", response);
 			char *end = strchr(response, '#');
@@ -166,11 +166,11 @@ static void handle_rotator_position(indigo_device *device, char *message) {
 	}
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = position / PRIVATE_DATA->steps_per_degree;
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d", __FUNCTION__, message, position);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d", message, position);
 }
 
 static void handle_shutter_position(indigo_device *device, char *message) {
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
 }
 
 static void handle_rotator_move(indigo_device *device, char *message) {
@@ -186,12 +186,16 @@ static void handle_rotator_move(indigo_device *device, char *message) {
 		DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_PARK_PROPERTY, "Going to park position...");
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
 }
 
 static void handle_shutter_move(indigo_device *device, char *message) {
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+	if (message[1] == 'c') {
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is closing...");
+	} else {
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is opening...");
+	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
 }
 
@@ -201,7 +205,7 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
 		return;
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s, %d %d %d %d %d", __FUNCTION__, message, position, at_home, max_position, home_position, dead_zone);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d %d %d %d %d", message, position, at_home, max_position, home_position, dead_zone);
 	PRIVATE_DATA->steps_per_degree = max_position / 360.0;
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = position / PRIVATE_DATA->steps_per_degree;
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -210,14 +214,14 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 	if (PRIVATE_DATA->callibration_requested && at_home) {
 		NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(NEXDOME_FIND_HOME_PROPERTY, NEXDOME_FIND_HOME_ITEM, false);
-		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, "At home.");
+		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, "Dome is at home.");
 		PRIVATE_DATA->callibration_requested = false;
 	}
 
 	if (PRIVATE_DATA->park_requested && IN_PARK_POSITION) {
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-		indigo_update_property(device, DOME_PARK_PROPERTY, "Dome Parked.");
+		indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is parked.");
 		PRIVATE_DATA->park_requested = false;
 	}
 
@@ -249,22 +253,24 @@ static void handle_shutter_status(indigo_device *device, char *message) {
 		return;
 	}
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d %d %d %d", __FUNCTION__, message, position, max_position, open_switch, close_switch);
-
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d %d %d %d", message, position, max_position, open_switch, close_switch);
 	if (close_switch) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is closed.");
 	} else if (open_switch) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome is open.");
 	} else if (PRIVATE_DATA->shutter_stop_requested){
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 		PRIVATE_DATA->shutter_stop_requested = false;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Dome stopped.");
 	} else {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	}
-	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
 
 static void handle_battery_status(indigo_device *device, char *message) {
@@ -294,7 +300,7 @@ static void handle_battery_status(indigo_device *device, char *message) {
 		NEXDOME_POWER_VOLTAGE_ITEM->number.value = volts;
 		indigo_update_property(device, NEXDOME_POWER_PROPERTY, NULL);
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d %.2f", __FUNCTION__, message, adc_value, volts);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d %.2f", message, adc_value, volts);
 }
 
 static void handle_home_poition(indigo_device *device, char *message) {
@@ -304,7 +310,7 @@ static void handle_home_poition(indigo_device *device, char *message) {
 		return;
 	}
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d", __FUNCTION__, message, home_position);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d", message, home_position);
 	if (fabs(home_position - NEXDOME_HOME_POSITION_ITEM->number.value) >= 1)  {
 		NEXDOME_HOME_POSITION_ITEM->number.value = home_position;
 		indigo_update_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
@@ -319,7 +325,7 @@ static void handle_move_threshold(indigo_device *device, char *message) {
 		return;
 	}
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s %d", __FUNCTION__, message, dead_zone);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d", message, dead_zone);
 	if (fabs(dead_zone - NEXDOME_MOVE_THRESHOLD_ITEM->number.value) >= 1)  {
 		NEXDOME_MOVE_THRESHOLD_ITEM->number.value = dead_zone;
 		indigo_update_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
@@ -401,7 +407,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_FIND_HOME_PROPERTY->hidden = false;
-		indigo_init_switch_item(NEXDOME_FIND_HOME_ITEM, NEXDOME_FIND_HOME_ITEM_NAME, "Find home", false);
+		indigo_init_switch_item(NEXDOME_FIND_HOME_ITEM, NEXDOME_FIND_HOME_ITEM_NAME, "Find home sensor", false);
 		// -------------------------------------------------------------------------------- NEXDOME_MOVE_THRESHOLD
 		NEXDOME_MOVE_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_MOVE_THRESHOLD_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Move threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (NEXDOME_MOVE_THRESHOLD_PROPERTY == NULL)
@@ -556,7 +562,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked");
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked.");
 			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 			return INDIGO_OK;
 		}
@@ -585,7 +591,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		double target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked.");
 			nexdome_command(device, "PRR");
 			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 			return INDIGO_OK;
@@ -614,7 +620,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked");
+			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked.");
 			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 			return INDIGO_OK;
 		}
