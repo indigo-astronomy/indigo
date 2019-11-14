@@ -633,13 +633,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     }
     //======================================
     else if (command.equals("ZRR")) {
-      int eerpom_r_id;
-      EEPROM.get(EEPROM_R_ADDRESS, eerpom_r_id);
-      if (R_DATA_ID != eerpom_r_id){
-        response = ERROR_MESSAGE;
-      } else {
-        EEPROM.get(EEPROM_R_ADDRESS, r);
-      }
+      load_rotator_settings();
     }
     //======================================
     else if (command.equals("ZRS")) {
@@ -647,7 +641,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     }
     //======================================
     else if (command.equals("ZWR")) {
-      load_rotator_settings();
+      EEPROM.put(EEPROM_R_ADDRESS, r);
     }
     //======================================
     else if (command.equals("ZWS")) {
