@@ -609,7 +609,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     else if (command.startsWith("VWR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       int velocity = GET_INT_PARAM(command);
-      if (velocity < 100)
+      if (velocity < 32)
         response = ERROR_MESSAGE;
       else
         r.velocity = velocity;
@@ -618,7 +618,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
     else if (command.startsWith("VWS")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
       int velocity = GET_INT_PARAM(command);
-      if (velocity < 100)
+      if (velocity < 32)
         response = ERROR_MESSAGE;
       else
         s.velocity = velocity;
