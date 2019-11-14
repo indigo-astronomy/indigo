@@ -365,28 +365,67 @@ static void handle_acceleration(indigo_device *device, char *message) {
 		return;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, acceleration);
+
+	switch (target) {
+		case 'R':
+			NEXDOME_ACCELERATION_ROTATOR_ITEM->number.value = acceleration;
+			indigo_update_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
+			break;
+		case 'S':
+			NEXDOME_ACCELERATION_SHUTTER_ITEM->number.value = acceleration;
+			indigo_update_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
+			break;
+		default:
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Message '%s' contains wrong target '%c'.", message, target);
+	}
 }
 
 
 static void handle_velocity(indigo_device *device, char *message) {
-	int acceleration;
+	int velocity;
 	char target;
-	if (sscanf(message, ":VR%c%d#", &target, &acceleration) != 2) {
+	if (sscanf(message, ":VR%c%d#", &target, &velocity) != 2) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
 		return;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, acceleration);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, velocity);
+	switch (target) {
+		case 'R':
+			NEXDOME_VELOCITY_ROTATOR_ITEM->number.value = velocity;
+			indigo_update_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
+			break;
+		case 'S':
+			NEXDOME_VELOCITY_SHUTTER_ITEM->number.value = velocity;
+			indigo_update_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
+			break;
+		default:
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Message '%s' contains wrong target '%c'.", message, target);
+	}
 }
 
+
 static void handle_range(indigo_device *device, char *message) {
-	int acceleration;
+	int range;
 	char target;
-	if (sscanf(message, ":RR%c%d#", &target, &acceleration) != 2) {
+	if (sscanf(message, ":RR%c%d#", &target, &range) != 2) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
 		return;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, acceleration);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, range);
+	switch (target) {
+		case 'R':
+			NEXDOME_RANGE_ROTATOR_ITEM->number.value = range;
+			indigo_update_property(device, NEXDOME_RANGE_PROPERTY, NULL);
+			break;
+		case 'S':
+			NEXDOME_RANGE_SHUTTER_ITEM->number.value = range;
+			indigo_update_property(device, NEXDOME_RANGE_PROPERTY, NULL);
+			break;
+		default:
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Message '%s' contains wrong target '%c'.", message, target);
+	}
 }
+
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 
@@ -810,6 +849,48 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		nexdome_command(device, command);
 		nexdome_command(device, "HRR");
 		indigo_update_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
+		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		return INDIGO_OK;
+	} else if (indigo_property_match(NEXDOME_ACCELERATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_ACCELERATION
+		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		indigo_property_copy_values(NEXDOME_ACCELERATION_PROPERTY, property, false);
+		char command[NEXDOME_CMD_LEN];
+		sprintf(command, "AWR,%.0f", NEXDOME_ACCELERATION_ROTATOR_ITEM->number.value);
+		nexdome_command(device, command);
+		sprintf(command, "AWS,%.0f", NEXDOME_ACCELERATION_SHUTTER_ITEM->number.value);
+		nexdome_command(device, command);
+		nexdome_command(device, "ARR");
+		nexdome_command(device, "ARS");
+		indigo_update_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
+		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		return INDIGO_OK;
+	} else if (indigo_property_match(NEXDOME_VELOCITY_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_VELOCITY
+		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		indigo_property_copy_values(NEXDOME_VELOCITY_PROPERTY, property, false);
+		char command[NEXDOME_CMD_LEN];
+		sprintf(command, "VWR,%.0f", NEXDOME_VELOCITY_ROTATOR_ITEM->number.value);
+		nexdome_command(device, command);
+		sprintf(command, "VWS,%.0f", NEXDOME_VELOCITY_SHUTTER_ITEM->number.value);
+		nexdome_command(device, command);
+		nexdome_command(device, "VRR");
+		nexdome_command(device, "VRS");
+		indigo_update_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
+		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		return INDIGO_OK;
+	} else if (indigo_property_match(NEXDOME_RANGE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_RANGE
+		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		indigo_property_copy_values(NEXDOME_RANGE_PROPERTY, property, false);
+		char command[NEXDOME_CMD_LEN];
+		sprintf(command, "RWR,%.0f", NEXDOME_RANGE_ROTATOR_ITEM->number.value);
+		nexdome_command(device, command);
+		sprintf(command, "RWS,%.0f", NEXDOME_RANGE_SHUTTER_ITEM->number.value);
+		nexdome_command(device, command);
+		nexdome_command(device, "RRR");
+		nexdome_command(device, "RRS");
+		indigo_update_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_MOVE_THRESHOLD_PROPERTY, property)) {
