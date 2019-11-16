@@ -23,8 +23,11 @@
  \file indigo_dome_nexdome3.c
  */
 
-#define DRIVER_VERSION 0x00001
+#define DRIVER_VERSION 0x00002
 #define DRIVER_NAME    "indigo_dome_nexdome3"
+
+// Uncomment to be able to send custom commands -> displays NEXDOME_COMMAND property
+// #define CMD_AID
 
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +100,23 @@
 #define NEXDOME_SETTINGS_SAVE_ITEM_NAME           "SAVE_EEPROM"
 #define NEXDOME_SETTINGS_DEFAULT_ITEM_NAME        "LOAD_DEFAULT"
 
+#define NEXDOME_RAIN_PROPERTY                     (PRIVATE_DATA->rain_property)
+#define NEXDOME_RAIN_ALERT_ITEM                   (NEXDOME_RAIN_PROPERTY->items+0)
+#define NEXDOME_RAIN_PROPERTY_NAME                "NEXDOME_RAIN_SENSOR"
+#define NEXDOME_RAIN_ALERT_ITEM_NAME              "RAIN_ALERT"
+
+#define NEXDOME_XB_STATE_PROPERTY                 (PRIVATE_DATA->xb_state_property)
+#define NEXDOME_XB_STATE_ITEM                     (NEXDOME_XB_STATE_PROPERTY->items+0)
+#define NEXDOME_XB_STATE_PROPERTY_NAME            "NEXDOME_XB_STATE"
+#define NEXDOME_XB_STATE_ITEM_NAME                "XB_STATE"
+
+#ifdef CMD_AID
+#define NEXDOME_COMMAND_PROPERTY                  (PRIVATE_DATA->command_property)
+#define NEXDOME_COMMAND_ITEM                      (NEXDOME_COMMAND_PROPERTY->items+0)
+#define NEXDOME_COMMAND_PROPERTY_NAME             "NEXDOME_COMMAND"
+#define NEXDOME_COMMAND_ITEM_NAME                 "COMMAND"
+#endif
+
 // Low Voltage threshold taken from INDI
 # define VOLT_THRESHOLD (7.5)
 
@@ -119,6 +139,11 @@ typedef struct {
 	indigo_property *velocity_property;
 	indigo_property *range_property;
 	indigo_property *settings_property;
+	indigo_property *rain_property;
+	indigo_property *xb_state_property;
+#ifdef CMD_AID
+	indigo_property *command_property;
+#endif
 } nexdome_private_data;
 
 #define NEXDOME_CMD_LEN 100
@@ -188,6 +213,7 @@ static bool nexdome_handshake(indigo_device *device, char *firmware) {
 	return false;
 }
 
+
 static void request_settings(indigo_device *device) {
 	nexdome_command(device, "ARR");
 	nexdome_command(device, "ARS");
@@ -220,6 +246,7 @@ static void handle_shutter_position(indigo_device *device, char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
 }
 
+
 static void handle_rotator_move(indigo_device *device, char *message) {
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -236,6 +263,7 @@ static void handle_rotator_move(indigo_device *device, char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
 }
 
+
 static void handle_shutter_move(indigo_device *device, char *message) {
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (message[1] == 'c') {
@@ -245,6 +273,7 @@ static void handle_shutter_move(indigo_device *device, char *message) {
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
 }
+
 
 static void handle_rotator_status(indigo_device *device, char *message) {
 	int position, at_home, max_position, home_position, dead_zone;
@@ -292,6 +321,7 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 }
 
+
 static void handle_shutter_status(indigo_device *device, char *message) {
 	int position, max_position;
 	int open_switch, close_switch;
@@ -319,6 +349,7 @@ static void handle_shutter_status(indigo_device *device, char *message) {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	}
 }
+
 
 static void handle_battery_status(indigo_device *device, char *message) {
 	static bool low_voltage = false;
@@ -348,6 +379,7 @@ static void handle_battery_status(indigo_device *device, char *message) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d %.2f", message, adc_value, volts);
 }
+
 
 static void handle_home_poition(indigo_device *device, char *message) {
 	int home_position;
@@ -446,6 +478,38 @@ static void handle_range(indigo_device *device, char *message) {
 }
 
 
+static void handle_xb(indigo_device *device, char *message) {
+	char state[20];
+
+	if (sscanf(message, "XB->%s", state) != 1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
+		return;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> '%s'", message, state);
+	if (strcmp(state, NEXDOME_XB_STATE_ITEM->text.value)) {
+		strcpy(NEXDOME_XB_STATE_ITEM->text.value, state);
+		if (!strcmp(state, "Online")) {
+			NEXDOME_XB_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			NEXDOME_XB_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
+	}
+}
+
+
+static void handle_rain(indigo_device *device, char *message) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
+	if (!strncmp(message, ":Rain#", 6)) {
+		NEXDOME_RAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+		NEXDOME_RAIN_ALERT_ITEM->light.value = INDIGO_ALERT_STATE;
+	} else if (!strncmp(message, ":RainStopped#", 13)) {
+		NEXDOME_RAIN_PROPERTY->state = INDIGO_OK_STATE;
+		NEXDOME_RAIN_ALERT_ITEM->light.value = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, NEXDOME_RAIN_PROPERTY, NULL);
+}
+
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 
 static void dome_event_handler(indigo_device *device) {
@@ -477,6 +541,10 @@ static void dome_event_handler(indigo_device *device) {
 				handle_velocity(device, message);
 			} else if (!strncmp(message, ":RR", 3)) {
 				handle_range(device, message);
+			} else if (!strncmp(message, "XB->", 4)) {
+				handle_xb(device, message);
+			} else if (!strncmp(message, ":Rain", 5)) {
+				handle_rain(device, message);
 			}
 			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		}
@@ -502,6 +570,15 @@ static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 		if (indigo_property_match(NEXDOME_SETTINGS_PROPERTY, property))
 			indigo_define_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
+		if (indigo_property_match(NEXDOME_RAIN_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_RAIN_PROPERTY, NULL);
+		if (indigo_property_match(NEXDOME_XB_STATE_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
+
+#ifdef CMD_AID
+		if (indigo_property_match(NEXDOME_COMMAND_PROPERTY, property))
+			indigo_define_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
+#endif
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -591,6 +668,26 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_init_switch_item(NEXDOME_SETTINGS_LOAD_ITEM, NEXDOME_SETTINGS_LOAD_ITEM_NAME, "Load from EEPROM", false);
 		indigo_init_switch_item(NEXDOME_SETTINGS_SAVE_ITEM, NEXDOME_SETTINGS_SAVE_ITEM_NAME, "Save to EEPROM", false);
 		indigo_init_switch_item(NEXDOME_SETTINGS_DEFAULT_ITEM, NEXDOME_SETTINGS_DEFAULT_ITEM_NAME, "Load factory defaults", false);
+		// -------------------------------------------------------------------------------- NEXDOME_RAIN
+		NEXDOME_RAIN_PROPERTY = indigo_init_light_property(NULL, device->name, NEXDOME_RAIN_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Rain sensor", INDIGO_OK_STATE, 1);
+		if (NEXDOME_RAIN_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_RAIN_PROPERTY->hidden = false;
+		indigo_init_light_item(NEXDOME_RAIN_ALERT_ITEM, NEXDOME_RAIN_ALERT_ITEM_NAME, "Rain alert", INDIGO_IDLE_STATE);
+		// -------------------------------------------------------------------------------- NEXDOME_XB_STATE
+		NEXDOME_XB_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, NEXDOME_XB_STATE_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Shutter state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+		if (NEXDOME_XB_STATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_XB_STATE_PROPERTY->hidden = false;
+		indigo_init_text_item(NEXDOME_XB_STATE_ITEM, NEXDOME_XB_STATE_ITEM_NAME, "Shutter state", INDIGO_IDLE_STATE);
+#ifdef CMD_AID
+		// -------------------------------------------------------------------------------- NEXDOME_COMMAND
+		NEXDOME_COMMAND_PROPERTY = indigo_init_text_property(NULL, device->name, NEXDOME_COMMAND_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Custom command", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		if (NEXDOME_COMMAND_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NEXDOME_COMMAND_PROPERTY->hidden = false;
+		indigo_init_text_item(NEXDOME_COMMAND_ITEM, NEXDOME_COMMAND_ITEM_NAME, "Command", INDIGO_IDLE_STATE);
+#endif
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -675,6 +772,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_define_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
+					indigo_define_property(device, NEXDOME_RAIN_PROPERTY, NULL);
+					indigo_define_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
+#ifdef CMD_AID
+					indigo_define_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
+#endif
 
 					PRIVATE_DATA->steps_per_degree = 153;
 
@@ -706,7 +808,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_delete_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 				indigo_delete_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
-
+				indigo_delete_property(device, NEXDOME_RAIN_PROPERTY, NULL);
+				indigo_delete_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
+#ifdef CMD_AID
+				indigo_delete_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
+#endif
 				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
@@ -954,6 +1060,18 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
 		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		return INDIGO_OK;
+#ifdef CMD_AID
+	} else if (indigo_property_match(NEXDOME_COMMAND_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NEXDOME_COMMAND
+		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		indigo_property_copy_values(NEXDOME_COMMAND_PROPERTY, property, false);
+		char command[NEXDOME_CMD_LEN];
+		sprintf(command, "%s\n", NEXDOME_COMMAND_ITEM->text.value);
+		nexdome_command(device, command);
+		indigo_update_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
+		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		return INDIGO_OK;
+#endif
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_dome_change_property(device, client, property);
@@ -972,6 +1090,11 @@ static indigo_result dome_detach(indigo_device *device) {
 	indigo_release_property(NEXDOME_VELOCITY_PROPERTY);
 	indigo_release_property(NEXDOME_RANGE_PROPERTY);
 	indigo_release_property(NEXDOME_SETTINGS_PROPERTY);
+	indigo_release_property(NEXDOME_RAIN_PROPERTY);
+	indigo_release_property(NEXDOME_XB_STATE_PROPERTY);
+#ifdef CMD_AID
+	indigo_release_property(NEXDOME_COMMAND_PROPERTY);
+#endif
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
