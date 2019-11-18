@@ -1,4 +1,4 @@
-# Dome NexDome driver
+# NexDome dome driver (with Gerry Rozema's firmware)
 
 https://www.nexdome.com/
 
