@@ -1,4 +1,4 @@
-# Dome NexDome (with Firmware v3) driver
+# NexDome dome driver (with Firmware v.3.0.0 or newer)
 
 https://www.nexdome.com/
 
@@ -21,7 +21,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_dome_nexdome3
 
-## Status: Under development
+## Status: Untested
 
 Driver is developed and tested with:
 * Arduino NexDome v3 simulator.
