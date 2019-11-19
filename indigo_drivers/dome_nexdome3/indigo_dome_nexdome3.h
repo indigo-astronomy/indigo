@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define DOME_NEXDOME_NAME              "NexDome"
+#define DOME_NEXDOME_NAME              "NexDome3"
 
 /** Create DOME NexDome device instance
  */

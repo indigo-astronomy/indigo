@@ -270,6 +270,7 @@
 		9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD52532126FFC2002FCC79 /* indigo_wheel_xagyl.h */; };
 		9DAD52592126FFC2002FCC79 /* indigo_wheel_xagyl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */; };
 		9DADEE5A2151135E008C6FBE /* indigo_focuser_nfocus.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DADEE5621511322008C6FBE /* indigo_focuser_nfocus.c */; };
+		9DB117A12383F70D002C1AB1 /* indigo_dome_nexdome3.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB117912383F6FC002C1AB1 /* indigo_dome_nexdome3.c */; };
 		9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918001DF8546800678721 /* indigo_mount_lx200.c */; };
 		9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DB918011DF8546800678721 /* indigo_mount_lx200.h */; };
 		9DB918081DFEA42E00678721 /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
@@ -1244,7 +1245,6 @@
 		598C583921A75B1A001CA8C0 /* nexstar_pec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar_pec.h; sourceTree = "<group>"; };
 		598C583E21A890B5001CA8C0 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		598C584021A9A3C9001CA8C0 /* ASICamera2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASICamera2.h; sourceTree = "<group>"; };
-		598C584121A9A782001CA8C0 /* Makefile.old */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.old; sourceTree = "<group>"; };
 		598C584221A9A886001CA8C0 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
@@ -3599,6 +3599,20 @@
 		9DADEE5721511322008C6FBE /* indigo_focuser_nfocus_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nfocus_main.c; sourceTree = "<group>"; };
 		9DADEE5821511322008C6FBE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DADEE5921511322008C6FBE /* indigo_focuser_nfocus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_nfocus.h; sourceTree = "<group>"; };
+		9DB117912383F6FC002C1AB1 /* indigo_dome_nexdome3.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome3.c; sourceTree = "<group>"; };
+		9DB117922383F6FC002C1AB1 /* indigo_dome_nexdome3_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome3_main.c; sourceTree = "<group>"; };
+		9DB117932383F6FC002C1AB1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DB117942383F6FC002C1AB1 /* indigo_dome_nexdome3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_dome_nexdome3.h; sourceTree = "<group>"; };
+		9DB117962383F6FC002C1AB1 /* nexdome_simulator_v3_open_abort_close_abort_test.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = nexdome_simulator_v3_open_abort_close_abort_test.py; sourceTree = "<group>"; };
+		9DB117972383F6FC002C1AB1 /* nexdome_v3_command_set.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexdome_v3_command_set.txt; sourceTree = "<group>"; };
+		9DB117982383F6FC002C1AB1 /* nexdome_simulator_v3_EEPROM_test.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = nexdome_simulator_v3_EEPROM_test.py; sourceTree = "<group>"; };
+		9DB117992383F6FC002C1AB1 /* nexdome_simulator_v3_test.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = nexdome_simulator_v3_test.py; sourceTree = "<group>"; };
+		9DB1179A2383F6FC002C1AB1 /* nexdome_simulator_v3_rotate_test.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = nexdome_simulator_v3_rotate_test.py; sourceTree = "<group>"; };
+		9DB1179B2383F6FC002C1AB1 /* nexdome_simulator_v3.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexdome_simulator_v3.ino; sourceTree = "<group>"; };
+		9DB1179C2383F6FC002C1AB1 /* nexdome_simulator_v3_open_close_test.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = nexdome_simulator_v3_open_close_test.py; sourceTree = "<group>"; };
+		9DB1179E2383F6FC002C1AB1 /* email_communication.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = email_communication.txt; sourceTree = "<group>"; };
+		9DB1179F2383F6FC002C1AB1 /* Firmware-Protocol.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "Firmware-Protocol.md"; sourceTree = "<group>"; };
+		9DB117A02383F6FC002C1AB1 /* nexdome_v3_additional_commands.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexdome_v3_additional_commands.txt; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; path = dmfc_simulator.ino; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
@@ -4238,7 +4252,6 @@
 		592662A41D9590630021746A = {
 			isa = PBXGroup;
 			children = (
-				598C584121A9A782001CA8C0 /* Makefile.old */,
 				59D381C91D96A4E800E87393 /* Makefile */,
 				59F3D85E21BC074400800970 /* Makefile.inc */,
 				59D967ED21A2AF770069A64C /* Makefile.drvs */,
@@ -7388,6 +7401,7 @@
 				9D48B79B215E570600CF757E /* ccd_touptek */,
 				9D73E5F721FF36C4003CEC15 /* ccd_uvc */,
 				59B81EC82337AA2E00DFA81B /* dome_nexdome */,
+				9DB117902383F6FC002C1AB1 /* dome_nexdome3 */,
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
 				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				5941355E232403F700ED5FF4 /* focuser_efa */,
@@ -10601,6 +10615,43 @@
 			path = nfocus_simulator;
 			sourceTree = "<group>";
 		};
+		9DB117902383F6FC002C1AB1 /* dome_nexdome3 */ = {
+			isa = PBXGroup;
+			children = (
+				9DB117932383F6FC002C1AB1 /* README.md */,
+				9DB117942383F6FC002C1AB1 /* indigo_dome_nexdome3.h */,
+				9DB117912383F6FC002C1AB1 /* indigo_dome_nexdome3.c */,
+				9DB117922383F6FC002C1AB1 /* indigo_dome_nexdome3_main.c */,
+				9DB117952383F6FC002C1AB1 /* nexdome_simulator_v3 */,
+			);
+			path = dome_nexdome3;
+			sourceTree = "<group>";
+		};
+		9DB117952383F6FC002C1AB1 /* nexdome_simulator_v3 */ = {
+			isa = PBXGroup;
+			children = (
+				9DB117962383F6FC002C1AB1 /* nexdome_simulator_v3_open_abort_close_abort_test.py */,
+				9DB117972383F6FC002C1AB1 /* nexdome_v3_command_set.txt */,
+				9DB117982383F6FC002C1AB1 /* nexdome_simulator_v3_EEPROM_test.py */,
+				9DB117992383F6FC002C1AB1 /* nexdome_simulator_v3_test.py */,
+				9DB1179A2383F6FC002C1AB1 /* nexdome_simulator_v3_rotate_test.py */,
+				9DB1179B2383F6FC002C1AB1 /* nexdome_simulator_v3.ino */,
+				9DB1179C2383F6FC002C1AB1 /* nexdome_simulator_v3_open_close_test.py */,
+				9DB1179D2383F6FC002C1AB1 /* Documents */,
+			);
+			path = nexdome_simulator_v3;
+			sourceTree = "<group>";
+		};
+		9DB1179D2383F6FC002C1AB1 /* Documents */ = {
+			isa = PBXGroup;
+			children = (
+				9DB1179E2383F6FC002C1AB1 /* email_communication.txt */,
+				9DB1179F2383F6FC002C1AB1 /* Firmware-Protocol.md */,
+				9DB117A02383F6FC002C1AB1 /* nexdome_v3_additional_commands.txt */,
+			);
+			path = Documents;
+			sourceTree = "<group>";
+		};
 		9DB88E9D214BEDD900CECBCE /* dmfc_simulator */ = {
 			isa = PBXGroup;
 			children = (
@@ -11339,6 +11390,7 @@
 				9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */,
 				59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */,
 				59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */,
+				9DB117A12383F70D002C1AB1 /* indigo_dome_nexdome3.c in Sources */,
 				9DAD52592126FFC2002FCC79 /* indigo_wheel_xagyl.c in Sources */,
 				59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */,
 				9D73E61721FF37F9003CEC15 /* libuvc_frame_mjpeg.c in Sources */,

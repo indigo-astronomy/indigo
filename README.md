@@ -95,7 +95,7 @@ This is the list of requirements taken into the consideration:
 66. AstroGadget FocusDreamPro / ASCOM Jolo focuser driver added
 67. Lacerta Flat Box Controller AUX driver
 68. UVC (USB Video Class) CCD driver
-69. NexDome dome driver (untested, requires firmware v.3.0.0 or newer)
+69. NexDome v3 dome driver (untested, requires firmware v.3.0.0 or newer)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
