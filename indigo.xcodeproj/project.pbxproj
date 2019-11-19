@@ -3613,6 +3613,7 @@
 		9DB1179E2383F6FC002C1AB1 /* email_communication.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = email_communication.txt; sourceTree = "<group>"; };
 		9DB1179F2383F6FC002C1AB1 /* Firmware-Protocol.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "Firmware-Protocol.md"; sourceTree = "<group>"; };
 		9DB117A02383F6FC002C1AB1 /* nexdome_v3_additional_commands.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexdome_v3_additional_commands.txt; sourceTree = "<group>"; };
+		9DB117A223841D9D002C1AB1 /* RainbowAstro-190402.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "RainbowAstro-190402.pdf"; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; path = dmfc_simulator.ino; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
@@ -10672,6 +10673,7 @@
 				5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */,
 				5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */,
 				5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */,
+				9DB117A223841D9D002C1AB1 /* RainbowAstro-190402.pdf */,
 				591E1142215AEC3900ABADA6 /* lx200_simulator */,
 			);
 			path = mount_lx200;
