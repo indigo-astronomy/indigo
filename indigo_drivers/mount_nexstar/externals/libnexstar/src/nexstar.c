@@ -384,13 +384,13 @@ int tc_get_version(int dev, char *major, char *minor) {
 }
 
 int tc_get_tracking_mode(int dev) {
-	char reply[2];
+	char reply[3];
 
 	REQUIRE_VER(VER_2_3);
 
 	if (write_telescope(dev, "t", 1) < 1) return RC_FAILED;
 
-	if (read_telescope(dev, reply, sizeof reply) < 0) return RC_FAILED;
+	if (read_telescope_vl(dev, reply, sizeof reply) < 0) return RC_FAILED;
 	if (VENDOR_IS(VNDR_SKYWATCHER)) {
 		switch (reply[0]) {
 			case SW_TC_TRACK_OFF:      return TC_TRACK_OFF;
@@ -581,7 +581,7 @@ int tc_set_location(int dev, double lon, double lat) {
 	cmd[7] = sec;
 	cmd[8] = sign;
 
-	if (write_telescope(dev, cmd, sizeof cmd) < 1) return RC_FAILED;
+	if (write_telescope(dev, (char *)cmd, sizeof cmd) < 1) return RC_FAILED;
 
 	if (read_telescope(dev, &res, sizeof res) < 0) return RC_FAILED;
 
@@ -654,7 +654,7 @@ int tc_set_time(char dev, time_t ttime, int tz, int dst) {
 	cmd[7] = (unsigned char)tz;
 	cmd[8] = (unsigned char)dst;
 
-	if (write_telescope(dev, cmd, sizeof cmd) < 1) return RC_FAILED;
+	if (write_telescope(dev, (char *)cmd, sizeof cmd) < 1) return RC_FAILED;
 
 	if (read_telescope(dev, &res, sizeof res) < 0) return RC_FAILED;
 
@@ -669,21 +669,21 @@ int tc_set_time(char dev, time_t ttime, int tz, int dst) {
 		gmtime_r(&ttime, &tms);
 
 		/* set year */
-		if (tc_pass_through_cmd(dev, 3, 178, 132,
+		if (tc_pass_through_cmd(dev, 3, 178u, 132u,
 		                       (unsigned char)((tms.tm_year + 1900) / 256),
 		                       (unsigned char)((tms.tm_year + 1900) % 256),
 		                       0, 0, &res)) {
 			return RC_FAILED;
 		}
 		/* set month and day */
-		if (tc_pass_through_cmd(dev, 3, 178, 131,
+		if (tc_pass_through_cmd(dev, 3, 178u, 131u,
 		                       (unsigned char)(tms.tm_mon + 1),
 		                       (unsigned char)tms.tm_mday,
 		                       0, 0, &res)) {
 			return RC_FAILED;
 		}
 		/* set time */
-		if (tc_pass_through_cmd(dev, 4, 178, 179,
+		if (tc_pass_through_cmd(dev, 4, 178u, 179u,
 		                       (unsigned char)tms.tm_hour,
 		                       (unsigned char)tms.tm_min,
 		                       (unsigned char)tms.tm_sec,
