@@ -384,7 +384,7 @@ int tc_get_version(int dev, char *major, char *minor) {
 }
 
 int tc_get_tracking_mode(int dev) {
-	char reply[3];
+	char reply[8];
 
 	REQUIRE_VER(VER_2_3);
 
