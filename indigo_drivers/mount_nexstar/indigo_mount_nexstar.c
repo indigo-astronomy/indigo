@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -471,7 +471,7 @@ static void position_timer_callback(indigo_device *device) {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			char response[3];
 			if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0x37, 0, 0, 0, 1, response) == RC_OK) {
-				linked = true;
+				linked = response[0] > 0;
 			}
 		}
 	}
