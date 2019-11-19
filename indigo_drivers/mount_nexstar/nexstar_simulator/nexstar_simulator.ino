@@ -210,6 +210,9 @@ void loop() {
         break;
       case 't':
         Serial.write(tracking_mode);
+        if (_hc_type[0] == 0x13) {
+        Serial.write(1);
+        }
         Serial.write('#');
         break;
       case 'T':
