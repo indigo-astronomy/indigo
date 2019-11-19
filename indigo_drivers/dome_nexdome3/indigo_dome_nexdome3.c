@@ -679,7 +679,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		if (NEXDOME_XB_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NEXDOME_XB_STATE_PROPERTY->hidden = false;
-		indigo_init_text_item(NEXDOME_XB_STATE_ITEM, NEXDOME_XB_STATE_ITEM_NAME, "Shutter state", INDIGO_IDLE_STATE);
+		indigo_init_text_item(NEXDOME_XB_STATE_ITEM, NEXDOME_XB_STATE_ITEM_NAME, "Shutter state", "");
 #ifdef CMD_AID
 		// -------------------------------------------------------------------------------- NEXDOME_COMMAND
 		NEXDOME_COMMAND_PROPERTY = indigo_init_text_property(NULL, device->name, NEXDOME_COMMAND_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Custom command", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
