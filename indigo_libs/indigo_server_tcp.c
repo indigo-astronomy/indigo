@@ -131,7 +131,7 @@ static void start_worker_thread(int *client_socket) {
 							strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 							sha1(shaHash, websocket_key, strlen(websocket_key));
 							indigo_printf(socket, "HTTP/1.1 101 Switching Protocols\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 							indigo_printf(socket, "Upgrade: websocket\r\n");
 							indigo_printf(socket, "Connection: upgrade\r\n");
 							base64_encode((unsigned char *)websocket_key, shaHash, 20);
@@ -145,7 +145,7 @@ static void start_worker_thread(int *client_socket) {
 							indigo_detach_client(protocol_adapter);
 						} else {
 							indigo_printf(socket, "HTTP/1.1 301 OK\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 							indigo_printf(socket, "Location: /mng.html\r\n");
 							indigo_printf(socket, "Content-type: text/html\r\n");
 							indigo_printf(socket, "\r\n");
@@ -157,7 +157,7 @@ static void start_worker_thread(int *client_socket) {
 						indigo_blob_entry *entry;
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
 							indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 							if (!strcmp(entry->format, ".jpeg")) {
 								indigo_printf(socket, "Content-Type: image/jpeg\r\n");
 							} else {
@@ -202,7 +202,7 @@ static void start_worker_thread(int *client_socket) {
 							keep_alive = false;
 						} else if (resource->data) {
 							indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 							indigo_printf(socket, "Content-Type: %s\r\n", resource->content_type);
 							indigo_printf(socket, "Content-Length: %d\r\n", resource->length);
 							indigo_printf(socket, "Content-Encoding: gzip\r\n");
@@ -223,7 +223,7 @@ static void start_worker_thread(int *client_socket) {
 								keep_alive = false;
 							} else {
 								indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
-								indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								indigo_printf(socket, "Content-Type: %s\r\n", resource->content_type);
 								indigo_printf(socket, "Content-Length: %d\r\n", file_stat.st_size);
 								indigo_printf(socket, "\r\n");
