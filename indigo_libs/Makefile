@@ -91,7 +91,7 @@ version: indigo_config.h
 
 indigo_config.h:	../Makefile.inc
 	cp indigo/indigo_config.h indigo/indigo_config.h.orig
-	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo/indigo_config.h.orig >indigo/indigo_config.h
+	sed 's/INDIGO_BUILD.*/INDIGO_BUILD "$(INDIGO_BUILD)"/' indigo/indigo_config.h.orig >indigo/indigo_config.h
 
 #---------------------------------------------------------------------
 #
