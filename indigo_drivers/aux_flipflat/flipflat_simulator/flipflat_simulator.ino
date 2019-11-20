@@ -22,7 +22,14 @@
 #define Serial SerialUSB
 #endif
 
-#define OLED
+#define TFT
+#ifdef TFT
+#include <SPI.h>
+#include <TFT_eSPI.h>
+TFT_eSPI tft = TFT_eSPI();
+#endif
+
+//#define OLED
 #ifdef OLED
 #include "heltec.h"
 #endif
@@ -42,6 +49,14 @@ short light = 0;
 long motor = 0;
 
 void setup() {
+#ifdef TFT
+  tft.init();
+  tft.setRotation(1);
+  tft.setTextSize(2);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  tft.drawString("FlipFlat simulator", 0, 0);
+#endif
 #ifdef OLED
   Heltec.begin(true, false, true);
   Heltec.display->clear();
@@ -101,6 +116,15 @@ void loop() {
     } else if (!strcmp(buffer, ">V000")) {
       Serial.println("*V" DEVICE "123");
     }
+#ifdef TFT
+    tft.fillScreen(TFT_BLACK);
+    sprintf(buffer, "motor = %ld", motor);
+    tft.drawString(buffer, 0, 0);
+    sprintf(buffer, "cover = %d", cover);
+    tft.drawString(buffer, 0, 32);
+    sprintf(buffer, "light = %d %s", light, brightness);
+    tft.drawString(buffer, 0, 64);
+#endif    
 #ifdef OLED
     Heltec.display->clear();
     sprintf(buffer, "motor = %ld", motor);
