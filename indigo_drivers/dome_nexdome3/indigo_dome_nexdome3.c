@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome3.c
  */
 
-#define DRIVER_VERSION 0x00002
+#define DRIVER_VERSION 0x00003
 #define DRIVER_NAME    "indigo_dome_nexdome3"
 
 // Uncomment to be able to send custom commands -> displays NEXDOME_COMMAND property
@@ -331,14 +331,22 @@ static void handle_shutter_status(indigo_device *device, char *message) {
 	}
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d %d %d %d", message, position, max_position, open_switch, close_switch);
-	if (close_switch) {
+	if (close_switch || (position <= 0)) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closed.");
-	} else if (open_switch) {
+		if (close_switch) {
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closed.");
+		} else {
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closed, but end swich is not activated.");
+		}
+	} else if (open_switch || (position >= max_position)) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is open.");
+		if (open_switch) {
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is open.");
+		} else {
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is open, but end swich is not activated.");
+		}
 	} else if (PRIVATE_DATA->shutter_stop_requested){
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
