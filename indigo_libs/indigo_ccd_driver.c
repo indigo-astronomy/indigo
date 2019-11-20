@@ -1210,7 +1210,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				keywords++;
 			}
 		}
-		sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%d</Property>", date_time_end, INDIGO_BUILD);
+		sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%s</Property>", date_time_end, INDIGO_BUILD);
 		header += strlen(header);
 #ifdef INDIGO_LINUX
 		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
