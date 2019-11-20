@@ -23,6 +23,13 @@
 INDIGO_VERSION = 2.0
 INDIGO_BUILD = 104
 
+# Keep the suffix empty for official releases
+INDIGO_BUILD_SUFFIX = devel
+
+ifneq ($(INDIGO_BUILD_SUFFIX),)
+  INDIGO_BUILD := $(INDIGO_BUILD)-$(INDIGO_BUILD_SUFFIX)
+endif
+
 INDIGO_ROOT = $(shell pwd)
 BUILD_ROOT = $(INDIGO_ROOT)/build
 BUILD_BIN = $(BUILD_ROOT)/bin
