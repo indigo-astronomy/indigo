@@ -114,6 +114,7 @@
 #include "ccd_ptp/indigo_ccd_ptp.h"
 #include "focuser_efa/indigo_focuser_efa.h"
 #include "aux_arteskyflat/indigo_aux_arteskyflat.h"
+#include "aux_flipflat/indigo_aux_flipflat.h"
 #include "dome_nexdome/indigo_dome_nexdome.h"
 #include "dome_nexdome3/indigo_dome_nexdome3.h"
 #include "aux_usbdp/indigo_aux_usbdp.h"
@@ -157,6 +158,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_dsusb,
 	indigo_aux_fbc,
 	indigo_aux_flatmaster,
+	indigo_aux_flipflat,
 	indigo_aux_joystick,
 	indigo_aux_ppb,
 	indigo_aux_rts,

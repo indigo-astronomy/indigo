@@ -96,6 +96,7 @@ This is the list of requirements taken into the consideration:
 67. Lacerta Flat Box Controller AUX driver
 68. UVC (USB Video Class) CCD driver
 69. NexDome v3 dome driver (untested, requires firmware v.3.0.0 or newer)
+70. Optec Flip-Flap driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

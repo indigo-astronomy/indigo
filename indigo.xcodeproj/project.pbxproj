@@ -303,6 +303,7 @@
 		9DE0E7C622C6465500289234 /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B822C6465500289234 /* Makefile.inc */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
 		9DFA598B2361D94B00326A74 /* indigo_aux_flatmaster.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA59852361D92600326A74 /* indigo_aux_flatmaster.c */; };
+		9DFC61A723854DD0003977C7 /* indigo_aux_flipflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFC61A5238530FF003977C7 /* indigo_aux_flipflat.c */; };
 		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
 /* End PBXBuildFile section */
 
@@ -3698,6 +3699,13 @@
 		9DFA59872361D92600326A74 /* indigo_aux_flatmaster_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flatmaster_main.c; sourceTree = "<group>"; };
 		9DFA59882361D92600326A74 /* indigo_aux_flatmaster.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_flatmaster.h; sourceTree = "<group>"; };
 		9DFA598A2361D92600326A74 /* flatmaster_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = flatmaster_simulator.ino; sourceTree = "<group>"; };
+		9DFC619F238530FF003977C7 /* flipflat.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = flipflat.rules; sourceTree = "<group>"; };
+		9DFC61A0238530FF003977C7 /* indigo_aux_flipflat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_flipflat.h; sourceTree = "<group>"; };
+		9DFC61A1238530FF003977C7 /* indigo_aux_flipflat_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flipflat_main.c; sourceTree = "<group>"; };
+		9DFC61A3238530FF003977C7 /* flipflat_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = flipflat_simulator.ino; sourceTree = "<group>"; };
+		9DFC61A4238530FF003977C7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DFC61A5238530FF003977C7 /* indigo_aux_flipflat.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flipflat.c; sourceTree = "<group>"; };
+		9DFC61A62385332F003977C7 /* Alnitak_GenericCommandsR4.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Alnitak_GenericCommandsR4.pdf; sourceTree = "<group>"; };
 		9DFE1864213586AB00149BDE /* indigo_focuser_dmfc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dmfc.h; sourceTree = "<group>"; };
 		9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc.c; sourceTree = "<group>"; };
 		9DFE1866213586AB00149BDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -7375,6 +7383,7 @@
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				590BF1AD21EBCF7500C24DBA /* ao_sx */,
 				59B81EBF23376A1A00DFA81B /* aux_arteskyflat */,
+				9DFC619E238530FF003977C7 /* aux_flipflat */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
 				9D9691D423687AD800E0CACE /* aux_fbc */,
 				9DFA59832361D92600326A74 /* aux_flatmaster */,
@@ -10967,6 +10976,28 @@
 			path = flatmaster_simulator;
 			sourceTree = "<group>";
 		};
+		9DFC619E238530FF003977C7 /* aux_flipflat */ = {
+			isa = PBXGroup;
+			children = (
+				9DFC61A4238530FF003977C7 /* README.md */,
+				9DFC619F238530FF003977C7 /* flipflat.rules */,
+				9DFC61A0238530FF003977C7 /* indigo_aux_flipflat.h */,
+				9DFC61A5238530FF003977C7 /* indigo_aux_flipflat.c */,
+				9DFC61A1238530FF003977C7 /* indigo_aux_flipflat_main.c */,
+				9DFC61A62385332F003977C7 /* Alnitak_GenericCommandsR4.pdf */,
+				9DFC61A2238530FF003977C7 /* flipflat_simulator */,
+			);
+			path = aux_flipflat;
+			sourceTree = "<group>";
+		};
+		9DFC61A2238530FF003977C7 /* flipflat_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DFC61A3238530FF003977C7 /* flipflat_simulator.ino */,
+			);
+			path = flipflat_simulator;
+			sourceTree = "<group>";
+		};
 		9DFE1863213586AB00149BDE /* focuser_dmfc */ = {
 			isa = PBXGroup;
 			children = (
@@ -11411,6 +11442,7 @@
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				9DAD522621246C18002FCC79 /* indigo_mount_synscan_driver.c in Sources */,
 				595F291D211E211100380EF4 /* DDHidAppleRemote.m in Sources */,
+				9DFC61A723854DD0003977C7 /* indigo_aux_flipflat.c in Sources */,
 				59A242DA22A2C6AE001C38F8 /* indigo_system_ascol.c in Sources */,
 				9D73E61C21FF37F9003CEC15 /* libuvc_device.c in Sources */,
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
