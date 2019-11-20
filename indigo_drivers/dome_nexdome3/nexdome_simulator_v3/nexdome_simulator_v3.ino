@@ -116,6 +116,9 @@ int xb_state;
 
 #define EEPROM_R_ADDRESS       0
 #define EEPROM_S_ADDRESS       (EEPROM_R_ADDRESS + sizeof(rotator_config_t))
+
+#define R_MAX_STEPS            55080
+#define S_MAX_STEPS            26000
  
 typedef struct {
   int data_id;
@@ -148,14 +151,14 @@ void rotator_defaults() {
   r.accelleration_ramp = 1500;
   r.dead_zone = 300;
   r.home_position = 0;
-  r.max_steps = 55080;
+  r.max_steps = R_MAX_STEPS;
   r.velocity = 600; // ~4deg/sec
 }
 
 void shutter_defaults() {
   s.data_id = S_DATA_ID;
   s.accelleration_ramp = 1500;
-  s.max_steps = 12000;
+  s.max_steps = S_MAX_STEPS;
   s.velocity = 800; // ~5deg/sec
 }
 
@@ -167,7 +170,7 @@ String SES_response() {
   bool open_sensor = false;
   bool closed_sensor = false;
 
-  if (s_position == s.max_steps) open_sensor = true;
+  if (s_position == S_MAX_STEPS) open_sensor = true;
   if (s_position == 0) closed_sensor = true;
 
   return compose_message("SES," +
@@ -397,10 +400,9 @@ void loop() {
   if (((millis() - s_delay_start) >= 1)) {
     s_delay_start += 1; // this prevents delay drifting
     if (s_state == S_STATE_OPENING) {
-      if (s_position < s.max_steps) s_position++;
+      if ((s_position < s.max_steps) && (s_position < S_MAX_STEPS)) s_position++;
       else {
         s_state = S_STATE_OPEN;
-        s_position = s.max_steps;
         Serial.print(SES_response());
       }
     } else if (s_state == S_STATE_CLOSING) {
