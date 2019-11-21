@@ -21,19 +21,32 @@
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
 #endif
-
-#define TFT
-#ifdef TFT
+#define DISPLAY_INIT()
+#define DISPLAY_BEGIN()
+#define DISPLAY_TEXTF(line, ...)
+#define DISPLAY_END()
+#ifdef ARDUINO_TTGO_T1
+#pragma message ARDUINO_TTGO_T1
 #include <SPI.h>
 #include <TFT_eSPI.h>
 TFT_eSPI tft = TFT_eSPI();
+static char __buffer__[32];
+#define DISPLAY_INIT() tft.init(); tft.setRotation(1); tft.setTextSize(2); tft.setTextColor(TFT_GREEN, TFT_BLACK)
+#define DISPLAY_BEGIN() tft.fillScreen(TFT_BLACK)
+#define DISPLAY_TEXT(line, text) tft.drawString(text, 0, 32 * line)
+#define DISPLAY_TEXTF(line, format, ...) sprintf(__buffer__, format, __VA_ARGS__); tft.drawString(__buffer__, 0, 32 * line)
+#define DISPLAY_END()
 #endif
-
-//#define OLED
-#ifdef OLED
+#ifdef ARDUINO_WIFI_KIT_32
+#pragma message ARDUINO_WIFI_KIT_32
 #include "heltec.h"
+static char __buffer__[32];
+#define DISPLAY_INIT() Heltec.begin(true, false, true); Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT); Heltec.display->setFont(ArialMT_Plain_16)
+#define DISPLAY_BEGIN() Heltec.display->clear()
+#define DISPLAY_TEXT(line, text) Heltec.display->drawString(0, 16 * line, text)
+#define DISPLAY_TEXTF(line, format, ...) sprintf(__buffer__, format, __VA_ARGS__); Heltec.display->drawString(0, 16 * line, __buffer__)
+#define DISPLAY_END() Heltec.display->display()
 #endif
-
 
 // 10 = Flat-Man_XL
 // 15 = Flat-Man_L
@@ -49,22 +62,10 @@ short light = 0;
 long motor = 0;
 
 void setup() {
-#ifdef TFT
-  tft.init();
-  tft.setRotation(1);
-  tft.setTextSize(2);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.drawString("FlipFlat simulator", 0, 0);
-#endif
-#ifdef OLED
-  Heltec.begin(true, false, true);
-  Heltec.display->clear();
-  Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-  Heltec.display->setFont(ArialMT_Plain_16);
-  Heltec.display->drawString(0, 0, "FlipFlat simulator");
-  Heltec.display->display();
-#endif
+  DISPLAY_INIT();
+  DISPLAY_BEGIN();
+  DISPLAY_TEXT(0, "FlipFlat simulator");
+  DISPLAY_END();
   Serial.begin(9600);
   while (!Serial)
     ;
@@ -81,8 +82,8 @@ void loop() {
       motor -= timelapse;
   }
   last_millis = current_millis;
-  char buffer[32];
   if (Serial.available()) {
+    char buffer[32];
     memset(buffer, 0, sizeof(buffer));
     Serial.readBytesUntil('\n', buffer, sizeof(buffer));
     if (!strcmp(buffer, ">P000")) {
@@ -116,24 +117,10 @@ void loop() {
     } else if (!strcmp(buffer, ">V000")) {
       Serial.println("*V" DEVICE "123");
     }
-#ifdef TFT
-    tft.fillScreen(TFT_BLACK);
-    sprintf(buffer, "motor = %ld", motor);
-    tft.drawString(buffer, 0, 0);
-    sprintf(buffer, "cover = %d", cover);
-    tft.drawString(buffer, 0, 32);
-    sprintf(buffer, "light = %d %s", light, brightness);
-    tft.drawString(buffer, 0, 64);
-#endif    
-#ifdef OLED
-    Heltec.display->clear();
-    sprintf(buffer, "motor = %ld", motor);
-    Heltec.display->drawString(0, 0, buffer);
-    sprintf(buffer, "cover = %d", cover);
-    Heltec.display->drawString(0, 20, buffer);
-    sprintf(buffer, "light = %d %s", light, brightness);
-    Heltec.display->drawString(0, 40, buffer);
-    Heltec.display->display();
-#endif
+    DISPLAY_BEGIN();
+    DISPLAY_TEXTF(0, "motor = %ld", motor);
+    DISPLAY_TEXTF(1, "cover = %d", cover);
+    DISPLAY_TEXTF(2, "light = %d %s", light, brightness);
+    DISPLAY_END();
   }
 }
