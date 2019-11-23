@@ -21,10 +21,10 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 104
+INDIGO_BUILD = 105
 
 # Keep the suffix empty for official releases
-INDIGO_BUILD_SUFFIX =
+INDIGO_BUILD_SUFFIX = devel
 
 ifneq ($(INDIGO_BUILD_SUFFIX),)
   INDIGO_BUILD := $(INDIGO_BUILD)-$(INDIGO_BUILD_SUFFIX)
