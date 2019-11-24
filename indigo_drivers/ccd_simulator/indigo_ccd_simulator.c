@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -42,10 +42,6 @@
 #define TEMP_UPDATE         5.0
 #define STARS               30
 #define ECLIPSE							360
-#define GUIDER_SIN					0.8414709848078965
-#define GUIDER_COS					0.5403023058681398
-#define AO_SIN							0.529919264233205
-#define AO_COS							0.848048096156426
 
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
@@ -60,8 +56,9 @@
 
 #define GUIDER_MODE_PROPERTY				PRIVATE_DATA->guider_mode_property
 #define GUIDER_MODE_STARS_ITEM			(GUIDER_MODE_PROPERTY->items + 0)
-#define GUIDER_MODE_SUN_ITEM				(GUIDER_MODE_PROPERTY->items + 1)
-#define GUIDER_MODE_ECLIPSE_ITEM		(GUIDER_MODE_PROPERTY->items + 2)
+#define GUIDER_MODE_FLIP_STARS_ITEM	(GUIDER_MODE_PROPERTY->items + 1)
+#define GUIDER_MODE_SUN_ITEM				(GUIDER_MODE_PROPERTY->items + 2)
+#define GUIDER_MODE_ECLIPSE_ITEM		(GUIDER_MODE_PROPERTY->items + 3)
 
 #define GUIDER_SETTINGS_PROPERTY		PRIVATE_DATA->guider_settings_property
 #define GUIDER_IMAGE_NOISE_FIX_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 0)
@@ -69,6 +66,8 @@
 #define GUIDER_IMAGE_PERR_SPD_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 2)
 #define GUIDER_IMAGE_PERR_VAL_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 3)
 #define GUIDER_IMAGE_GRADIENT_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 4)
+#define GUIDER_IMAGE_ANGLE_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 5)
+#define GUIDER_IMAGE_AO_ANGLE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 6)
 
 extern unsigned short indigo_ccd_simulator_raw_image[];
 extern unsigned char indigo_ccd_simulator_rgb_image[];
@@ -233,16 +232,21 @@ static void exposure_timer_callback(indigo_device *device) {
 				if (start_time == 0)
 					start_time = time(NULL);
 				double ra_offset = GUIDER_IMAGE_PERR_VAL_ITEM->number.target * sin(GUIDER_IMAGE_PERR_SPD_ITEM->number.target * M_PI * ((time(NULL) - start_time) % 360) / 180) + PRIVATE_DATA->guider_ra_offset;
-				double x_offset = ra_offset * GUIDER_COS - PRIVATE_DATA->guider_dec_offset * GUIDER_SIN + PRIVATE_DATA->ao_ra_offset * AO_COS - PRIVATE_DATA->ao_dec_offset * AO_SIN + rand() / (double)RAND_MAX/10 - 0.1;
-				double y_offset = ra_offset * GUIDER_SIN + PRIVATE_DATA->guider_dec_offset * GUIDER_COS + PRIVATE_DATA->ao_ra_offset * AO_SIN + PRIVATE_DATA->ao_dec_offset * AO_COS + rand() / (double)RAND_MAX/10 - 0.1;
-				if (GUIDER_MODE_STARS_ITEM->sw.value) {
+				double guider_sin = sin(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
+				double guider_cos = cos(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
+				double ao_sin = sin(M_PI * GUIDER_IMAGE_AO_ANGLE_ITEM->number.target / 180.0);
+				double ao_cos = cos(M_PI * GUIDER_IMAGE_AO_ANGLE_ITEM->number.target / 180.0);
+				double x_offset = ra_offset * guider_cos - PRIVATE_DATA->guider_dec_offset * guider_sin + PRIVATE_DATA->ao_ra_offset * ao_cos - PRIVATE_DATA->ao_dec_offset * ao_sin + rand() / (double)RAND_MAX/10 - 0.1;
+				double y_offset = ra_offset * guider_sin + PRIVATE_DATA->guider_dec_offset * guider_cos + PRIVATE_DATA->ao_ra_offset * ao_sin + PRIVATE_DATA->ao_dec_offset * ao_cos + rand() / (double)RAND_MAX/10 - 0.1;
+				bool y_flip = GUIDER_MODE_FLIP_STARS_ITEM->sw.value;
+				if (GUIDER_MODE_STARS_ITEM->sw.value || GUIDER_MODE_FLIP_STARS_ITEM->sw.value) {
 					for (int i = 0; i < STARS; i++) {
 						double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
 						if (center_x < 0)
 							center_x += WIDTH;
 						if (center_x >= WIDTH)
 							center_x -= WIDTH;
-						double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
+						double center_y = (private_data->star_y[i] + (y_flip ? -y_offset : y_offset)) / vertical_bin;
 						if (center_y < 0)
 							center_y += HEIGHT;
 						if (center_y >= HEIGHT)
@@ -420,17 +424,20 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
 		} else {
 			if (device == PRIVATE_DATA->guider) {
-				GUIDER_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "GUIDER_MODE", MAIN_GROUP, "Simulation Mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+				GUIDER_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "GUIDER_MODE", MAIN_GROUP, "Simulation Mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 				indigo_init_switch_item(GUIDER_MODE_STARS_ITEM, "STARS", "Stars", true);
+				indigo_init_switch_item(GUIDER_MODE_FLIP_STARS_ITEM, "FLIP", "Stars (flipped)", false);
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_IMAGE", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_IMAGE", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 7);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "NOISE_FIX", "Noise offset", 0, 5000, 0, 500);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "NOISE_VAR", "Noise range", 1, 1000, 0, 100);
 				indigo_init_number_item(GUIDER_IMAGE_PERR_SPD_ITEM, "PER_ERR_SPD", "Periodic error speed", 0, 1, 0, 0.5);
 				indigo_init_number_item(GUIDER_IMAGE_PERR_VAL_ITEM, "PER_ERR_VAL", "Periodic error value", 0, 10, 0, 5);
 				indigo_init_number_item(GUIDER_IMAGE_GRADIENT_ITEM, "GRADIENT", "Gradient intensity", 0, 0.5, 0, 0.2);
+				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "ANGLE", "Angle", 0, 360, 0, 36);
+				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle", 0, 360, 0, 74);
 			}
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
