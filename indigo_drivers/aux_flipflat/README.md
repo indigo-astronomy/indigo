@@ -25,4 +25,6 @@ indigo_server indigo_aux_flipflat
 
 ## Comments
 
-## Status: Tested with simulator
+## Status: Stable
+
+Tested with physical Flip-Flat device
