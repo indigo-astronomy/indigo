@@ -23,8 +23,10 @@
  \file indigo_dome_nexdome3.c
  */
 
-#define DRIVER_VERSION 0x00003
+#define DRIVER_VERSION 0x00004
 #define DRIVER_NAME    "indigo_dome_nexdome3"
+
+#define FIRMWARE_VERSION_3_2 0x0302
 
 // Uncomment to be able to send custom commands -> displays NEXDOME_COMMAND property
 // #define CMD_AID
@@ -122,6 +124,7 @@
 
 typedef struct {
 	int handle;
+	int version;
 	float steps_per_degree;
 	bool park_requested;
 	bool callibration_requested;
@@ -769,8 +772,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					uint32_t value;
 					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome", INDIGO_VALUE_SIZE);
 					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					int version, revision;
+					char leftover[255];
+					sscanf(firmware, "%d.%d.%s", &version, &revision, leftover);
+					PRIVATE_DATA->version = (version<<8) + revision;
 					indigo_update_property(device, INFO_PROPERTY, NULL);
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s connected.", "NexDome", firmware);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s (%04x) connected.", "NexDome", firmware, PRIVATE_DATA->version);
 
 					indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 					indigo_define_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
@@ -884,7 +891,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		} else { /* GOTO */
 			PRIVATE_DATA->park_requested = false;
 			PRIVATE_DATA->callibration_requested = false;
-			sprintf(command, "GAR,%.0f", target_position);
+			if (PRIVATE_DATA->version < FIRMWARE_VERSION_3_2) {
+				sprintf(command, "GAR,%.0f", target_position);
+			} else {
+				sprintf(command, "GSR,%.0f", target_position * PRIVATE_DATA->steps_per_degree);
+			}
 			nexdome_command(device, command);
 		}
 		nexdome_command(device, "PRR");
