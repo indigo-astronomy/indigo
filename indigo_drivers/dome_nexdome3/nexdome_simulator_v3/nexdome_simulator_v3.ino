@@ -536,7 +536,7 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
 #ifdef VERSION_3_2
     else if (command.startsWith("GSR")) {
       if (NO_PARAMS(command)) return ERROR_MESSAGE;
-      int r_requested_poition = GET_INT_PARAM(command);
+      r_requested_position = GET_INT_PARAM(command);
       long int delta = r_position - r_requested_position;
       if (abs(delta) > r.dead_zone) {
         if (0 > delta){
