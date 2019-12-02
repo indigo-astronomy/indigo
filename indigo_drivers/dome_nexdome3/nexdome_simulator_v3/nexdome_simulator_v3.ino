@@ -25,8 +25,15 @@
 #define Serial SerialUSB
 #endif
 
+#define VERSION_3_2
+
+#ifndef VERSION_3_2
 #define R_VERSION                  "3.1.0"
 #define S_VERSION                  "3.1.1"
+#else
+#define R_VERSION                  "3.2.0"
+#define S_VERSION                  "3.2.1"
+#endif
 
 #define R_DATA_ID                  0xbab1
 #define S_DATA_ID                  0xbab2
@@ -119,7 +126,7 @@ int xb_state;
 
 #define R_MAX_STEPS            55080
 #define S_MAX_STEPS            26000
- 
+
 typedef struct {
   int data_id;
   long int accelleration_ramp;
@@ -238,7 +245,7 @@ void setup() {
   Serial.print(XB_START_MSG);
 }
 
-void loop() {  
+void loop() {
   switch (CommandReceiverState) {
     case STATE_BUFFER_CLEAR:
       if (Serial.available()) {
@@ -423,7 +430,7 @@ void loop() {
         r_position--;
       }
       else if (r_state == R_STATE_MOVING_RIGHT) {
-        r_position++;        
+        r_position++;
       }
       if (r_position > r.max_steps) {
         r_position = 0;
@@ -521,10 +528,33 @@ String NexDomeProcessCommand(char ReceivedBuffer[], int BufferLength)
             r_requested_state = R_STATE_MOVING_RIGHT;
           } else {
             r_requested_state = R_STATE_MOVING_LEFT;
-          }         
+          }
         }
       }
     }
+	//========================================
+#ifdef VERSION_3_2
+    else if (command.startsWith("GSR")) {
+      if (NO_PARAMS(command)) return ERROR_MESSAGE;
+      int r_requested_poition = GET_INT_PARAM(command);
+      long int delta = r_position - r_requested_position;
+      if (abs(delta) > r.dead_zone) {
+        if (0 > delta){
+          if (abs(delta) > r.max_steps/2){
+            r_requested_state = R_STATE_MOVING_LEFT;
+          } else {
+            r_requested_state = R_STATE_MOVING_RIGHT;
+          }
+        } else {
+          if (abs(delta) > r.max_steps/2){
+            r_requested_state = R_STATE_MOVING_RIGHT;
+          } else {
+            r_requested_state = R_STATE_MOVING_LEFT;
+          }
+        }
+      }
+    }
+#endif /* VERSION_3_2 */
     //=======================================
     else if (command.equals("GHR")) {
       r_requested_position = r.home_position;
