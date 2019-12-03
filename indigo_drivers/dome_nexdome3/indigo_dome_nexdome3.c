@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome3.c
  */
 
-#define DRIVER_VERSION 0x00004
+#define DRIVER_VERSION 0x00005
 #define DRIVER_NAME    "indigo_dome_nexdome3"
 
 #define FIRMWARE_VERSION_3_2 0x0302
@@ -913,6 +913,21 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked.");
 			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 			return INDIGO_OK;
+		}
+		/* Keep the dome in sync if needed */
+		if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+			double az;
+			char command[NEXDOME_CMD_LEN];
+			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &az) &&
+			   (PRIVATE_DATA->park_requested == false) && (PRIVATE_DATA->callibration_requested == false)) {
+				if (PRIVATE_DATA->version < FIRMWARE_VERSION_3_2) {
+					sprintf(command, "GAR,%.0f", az);
+				} else {
+					sprintf(command, "GSR,%.0f", az * PRIVATE_DATA->steps_per_degree);
+				}
+				nexdome_command(device, command);
+			}
+			nexdome_command(device, "PRR");
 		}
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
