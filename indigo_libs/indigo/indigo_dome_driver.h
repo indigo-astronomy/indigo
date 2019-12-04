@@ -283,7 +283,7 @@ extern indigo_result indigo_dome_change_property(indigo_device *device, indigo_c
 extern indigo_result indigo_dome_detach(indigo_device *device);
 /** Update dome azimuth according to mount and OTA dimensions.
  */
-extern bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double *az);
+extern bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double az_prev, double *az);
 
 #ifdef __cplusplus
 }

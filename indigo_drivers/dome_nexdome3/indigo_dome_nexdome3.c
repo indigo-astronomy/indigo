@@ -910,14 +910,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			// // pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 			double az;
 			char command[NEXDOME_CMD_LEN];
-			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &az) &&
-			   (PRIVATE_DATA->park_requested == false) && (PRIVATE_DATA->callibration_requested == false)) {
+			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) &&
+			   (PRIVATE_DATA->park_requested == false) && (PRIVATE_DATA->callibration_requested == false) && (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE)) {
 				if (DOME_PARK_PARKED_ITEM->sw.value) {
 					DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 					indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked.");
 					return INDIGO_OK;
 				}
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
 				if (PRIVATE_DATA->version < FIRMWARE_VERSION_3_2) {
 					sprintf(command, "GAR,%.0f", az);
 				} else {
