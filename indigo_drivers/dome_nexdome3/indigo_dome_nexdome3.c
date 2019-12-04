@@ -527,7 +527,7 @@ static void dome_event_handler(indigo_device *device) {
 	char message[NEXDOME_CMD_LEN];
 	while (IS_CONNECTED) {
 		if (nexdome_get_message(device, message, sizeof(message))) {
-			pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+			// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 			if (!strncmp(message, "P", 1) || !strncmp(message, ":PRR", 4)) {
 				handle_rotator_position(device, message);
 			} else if (!strncmp(message, "S", 1) || !strncmp(message, ":PRS", 4)) {
@@ -557,7 +557,7 @@ static void dome_event_handler(indigo_device *device) {
 			} else if (!strncmp(message, ":Rain", 5)) {
 				handle_rain(device, message);
 			}
-			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+			// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		}
 	}
 }
@@ -850,7 +850,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked.");
 			return INDIGO_OK;
 		}
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		double current_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value;
 		double target_position;
 
@@ -866,7 +866,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		sprintf(command, "GAR,%.0f", target_position);
 		nexdome_command(device, command);
 		nexdome_command(device, "PRR");
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
@@ -879,7 +879,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			nexdome_command(device, "PRR");
 			return INDIGO_OK;
 		}
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		char command[NEXDOME_CMD_LEN];
 		if (DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM->sw.value) {
 			sprintf(command, "PWR,%.0f", target_position * PRIVATE_DATA->steps_per_degree);
@@ -898,26 +898,26 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		nexdome_command(device, "PRR");
 
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if (DOME_PARK_PARKED_ITEM->sw.value) {
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked.");
-			return INDIGO_OK;
-		}
-
 		/* Keep the dome in sync if needed */
 		if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
-			pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+			// // pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 			double az;
 			char command[NEXDOME_CMD_LEN];
 			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &az) &&
 			   (PRIVATE_DATA->park_requested == false) && (PRIVATE_DATA->callibration_requested == false)) {
+				if (DOME_PARK_PARKED_ITEM->sw.value) {
+					DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+					indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked.");
+					return INDIGO_OK;
+				}
 				if (PRIVATE_DATA->version < FIRMWARE_VERSION_3_2) {
 					sprintf(command, "GAR,%.0f", az);
 				} else {
@@ -926,7 +926,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				nexdome_command(device, command);
 			}
 			nexdome_command(device, "PRR");
-			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+			// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		}
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
@@ -934,7 +934,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// // pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		if (DOME_ABORT_MOTION_ITEM->sw.value) {
 			nexdome_command(device, "SWR");
 			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -945,36 +945,36 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		bool success;
 		if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
 			nexdome_command(device, "OPS");
 		} else {
 			nexdome_command(device, "CLS");
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		if (DOME_PARK_UNPARKED_ITEM->sw.value) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
-			pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+			// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is unparked.");
 			return INDIGO_OK;
 		} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 			if (IN_PARK_POSITION) {
 				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+				// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 				indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is parked.");
 				return INDIGO_OK;
 			} else {
@@ -987,35 +987,35 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_FIND_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		indigo_property_copy_values(NEXDOME_FIND_HOME_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		if (NEXDOME_FIND_HOME_ITEM->sw.value) {
 			nexdome_command(device, "GHR");
 			PRIVATE_DATA->callibration_requested = true;
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_HOME_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_HOME_POSITION
 		indigo_property_copy_values(NEXDOME_HOME_POSITION_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		char command[NEXDOME_CMD_LEN];
 		sprintf(command, "HWR,%.0f", NEXDOME_HOME_POSITION_ITEM->number.value);
 		nexdome_command(device, command);
 		nexdome_command(device, "HRR");
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_ACCELERATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_ACCELERATION
 		indigo_property_copy_values(NEXDOME_ACCELERATION_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		char command[NEXDOME_CMD_LEN];
 		sprintf(command, "AWR,%.0f", NEXDOME_ACCELERATION_ROTATOR_ITEM->number.value);
 		nexdome_command(device, command);
@@ -1023,13 +1023,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		nexdome_command(device, command);
 		nexdome_command(device, "ARR");
 		nexdome_command(device, "ARS");
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_VELOCITY_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_VELOCITY
 		indigo_property_copy_values(NEXDOME_VELOCITY_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		char command[NEXDOME_CMD_LEN];
 		sprintf(command, "VWR,%.0f", NEXDOME_VELOCITY_ROTATOR_ITEM->number.value);
 		nexdome_command(device, command);
@@ -1037,13 +1037,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		nexdome_command(device, command);
 		nexdome_command(device, "VRR");
 		nexdome_command(device, "VRS");
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_RANGE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_RANGE
 		indigo_property_copy_values(NEXDOME_RANGE_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		char command[NEXDOME_CMD_LEN];
 		sprintf(command, "RWR,%.0f", NEXDOME_RANGE_ROTATOR_ITEM->number.value);
 		nexdome_command(device, command);
@@ -1051,24 +1051,24 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		nexdome_command(device, command);
 		nexdome_command(device, "RRR");
 		nexdome_command(device, "RRS");
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_MOVE_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_MOVE_THRESHOLD
 		indigo_property_copy_values(NEXDOME_MOVE_THRESHOLD_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		char command[NEXDOME_CMD_LEN];
 		sprintf(command, "DWR,%.0f", NEXDOME_MOVE_THRESHOLD_ITEM->number.value);
 		nexdome_command(device, command);
 		nexdome_command(device, "DRR");
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_SETTINGS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_SETTINGS
 		indigo_property_copy_values(NEXDOME_SETTINGS_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		if (NEXDOME_SETTINGS_LOAD_ITEM->sw.value) {
 			indigo_set_switch(NEXDOME_SETTINGS_PROPERTY, NEXDOME_SETTINGS_LOAD_ITEM, false);
 			// Load settings
@@ -1089,18 +1089,18 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			// Request settings
 			request_settings(device);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
 #ifdef CMD_AID
 	} else if (indigo_property_match(NEXDOME_COMMAND_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_COMMAND
 		indigo_property_copy_values(NEXDOME_COMMAND_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		char command[NEXDOME_CMD_LEN];
 		sprintf(command, "%s\n", NEXDOME_COMMAND_ITEM->text.value);
 		nexdome_command(device, command);
-		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+		// pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 		indigo_update_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
 		return INDIGO_OK;
 #endif
