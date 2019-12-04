@@ -380,11 +380,10 @@ time_t indigo_get_dome_utc(indigo_device *device) {
 	}
 }
 
-bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double *az) {
+bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double az_prev, double *az) {
 	bool update_needed = false;
 	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 		double threshold = DOME_SYNC_THRESHOLD_ITEM->number.value;
-		static double az_prev = 0;
 		time_t utc = indigo_get_dome_utc(device);
 		double lst = indigo_lst(&utc, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
@@ -402,7 +401,6 @@ bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, doubl
 		if (fabs(diff) >= threshold) {
 			INDIGO_DRIVER_DEBUG("dome_driver", "Update dome Az diff = %.4f, threshold = %.4f", fabs(diff), threshold);
 			update_needed = true;
-			az_prev = *az;
 		} else {
 			INDIGO_DRIVER_DEBUG("dome_driver", "No dome Az update needed diff = %.4f, threshold = %.4f", fabs(diff), threshold);
 			update_needed = false;
