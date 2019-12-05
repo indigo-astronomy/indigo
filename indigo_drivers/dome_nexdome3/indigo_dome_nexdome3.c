@@ -154,8 +154,8 @@ typedef struct {
 
 #define IN_PARK_POSITION (fabs(PRIVATE_DATA->park_azimuth - DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) <= 1)
 
-#define PROPERTY_LOCK()   // pthread_mutex_lock(&PRIVATE_DATA->property_mutex)
-#define PROPERTY_UNLOCK() // pthread_mutex_unlock(&PRIVATE_DATA->property_mutex)
+#define PROPERTY_LOCK()    pthread_mutex_lock(&PRIVATE_DATA->property_mutex)
+#define PROPERTY_UNLOCK()  pthread_mutex_unlock(&PRIVATE_DATA->property_mutex)
 
 static bool nexdome_command(indigo_device *device, const char *command) {
 	if (!command) return false;
@@ -242,8 +242,9 @@ static void handle_rotator_position(indigo_device *device, char *message) {
 			return;
 		}
 	}
-
+	PROPERTY_LOCK();
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = position / PRIVATE_DATA->steps_per_degree;
+	PROPERTY_UNLOCK();
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d", message, position);
 }
@@ -254,16 +255,22 @@ static void handle_shutter_position(indigo_device *device, char *message) {
 
 
 static void handle_rotator_move(indigo_device *device, char *message) {
+	PROPERTY_LOCK();
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+	PROPERTY_UNLOCK();
+	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 	if (PRIVATE_DATA->callibration_requested) {
+		PROPERTY_LOCK();
 		NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, "Going home...");
 	}
 	if (PRIVATE_DATA->park_requested) {
+		PROPERTY_LOCK();
 		DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+		PROPERTY_UNLOCK();
 		indigo_update_property(device, DOME_PARK_PROPERTY, "Going to park position...");
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
@@ -271,7 +278,9 @@ static void handle_rotator_move(indigo_device *device, char *message) {
 
 
 static void handle_shutter_move(indigo_device *device, char *message) {
+	PROPERTY_LOCK();
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+	PROPERTY_UNLOCK();
 	if (message[1] == 'c') {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closing...");
 	} else {
@@ -288,21 +297,26 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 		return;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d %d %d %d %d", message, position, at_home, max_position, home_position, dead_zone);
+	PROPERTY_LOCK();
 	PRIVATE_DATA->steps_per_degree = max_position / 360.0;
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = position / PRIVATE_DATA->steps_per_degree;
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-
+	PROPERTY_UNLOCK();
 	if (PRIVATE_DATA->callibration_requested && at_home) {
+		PROPERTY_LOCK();
 		NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(NEXDOME_FIND_HOME_PROPERTY, NEXDOME_FIND_HOME_ITEM, false);
+		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, "Dome is at home.");
 		PRIVATE_DATA->callibration_requested = false;
 	}
 
 	if (PRIVATE_DATA->park_requested && IN_PARK_POSITION) {
+		PROPERTY_LOCK();
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
+		PROPERTY_UNLOCK();
 		indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is parked.");
 		PRIVATE_DATA->park_requested = false;
 	}
@@ -338,24 +352,30 @@ static void handle_shutter_status(indigo_device *device, char *message) {
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d %d %d %d", message, position, max_position, open_switch, close_switch);
 	if (close_switch || (position <= 0)) {
+		PROPERTY_LOCK();
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+		PROPERTY_UNLOCK();
 		if (close_switch) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closed.");
 		} else {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is closed, but end swich is not activated.");
 		}
 	} else if (open_switch || (position >= max_position)) {
+		PROPERTY_LOCK();
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+		PROPERTY_UNLOCK();
 		if (open_switch) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is open.");
 		} else {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is open, but end swich is not activated.");
 		}
-	} else if (PRIVATE_DATA->shutter_stop_requested){
+	} else if (PRIVATE_DATA->shutter_stop_requested) {
+		PROPERTY_LOCK();
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+		PROPERTY_UNLOCK();
 		PRIVATE_DATA->shutter_stop_requested = false;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter stopped.");
 	} else {
@@ -402,10 +422,13 @@ static void handle_home_poition(indigo_device *device, char *message) {
 		return;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d", message, home_position);
+	PROPERTY_LOCK();
 	if (fabs(home_position - NEXDOME_HOME_POSITION_ITEM->number.value) >= 1)  {
 		NEXDOME_HOME_POSITION_ITEM->number.value = home_position;
+		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
 	}
+	PROPERTY_UNLOCK();
 }
 
 
@@ -416,10 +439,13 @@ static void handle_move_threshold(indigo_device *device, char *message) {
 		return;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d", message, dead_zone);
+	PROPERTY_LOCK();
 	if (fabs(dead_zone - NEXDOME_MOVE_THRESHOLD_ITEM->number.value) >= 1)  {
 		NEXDOME_MOVE_THRESHOLD_ITEM->number.value = dead_zone;
+		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
 	}
+	PROPERTY_UNLOCK();
 }
 
 
@@ -433,11 +459,15 @@ static void handle_acceleration(indigo_device *device, char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, acceleration);
 	switch (target) {
 		case 'R':
+			PROPERTY_LOCK();
 			NEXDOME_ACCELERATION_ROTATOR_ITEM->number.value = acceleration;
+			PROPERTY_UNLOCK();
 			indigo_update_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
 			break;
 		case 'S':
+			PROPERTY_LOCK();
 			NEXDOME_ACCELERATION_SHUTTER_ITEM->number.value = acceleration;
+			PROPERTY_UNLOCK();
 			indigo_update_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
 			break;
 		default:
@@ -456,11 +486,15 @@ static void handle_velocity(indigo_device *device, char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, velocity);
 	switch (target) {
 		case 'R':
+			PROPERTY_LOCK();
 			NEXDOME_VELOCITY_ROTATOR_ITEM->number.value = velocity;
+			PROPERTY_UNLOCK();
 			indigo_update_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
 			break;
 		case 'S':
+			PROPERTY_LOCK();
 			NEXDOME_VELOCITY_SHUTTER_ITEM->number.value = velocity;
+			PROPERTY_UNLOCK();
 			indigo_update_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
 			break;
 		default:
@@ -479,11 +513,15 @@ static void handle_range(indigo_device *device, char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %c %d", message, target, range);
 	switch (target) {
 		case 'R':
+			PROPERTY_LOCK();
 			NEXDOME_RANGE_ROTATOR_ITEM->number.value = range;
+			PROPERTY_UNLOCK();
 			indigo_update_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 			break;
 		case 'S':
+			PROPERTY_LOCK();
 			NEXDOME_RANGE_SHUTTER_ITEM->number.value = range;
+			PROPERTY_UNLOCK();
 			indigo_update_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 			break;
 		default:
@@ -530,7 +568,6 @@ static void dome_event_handler(indigo_device *device) {
 	char message[NEXDOME_CMD_LEN];
 	while (IS_CONNECTED) {
 		if (nexdome_get_message(device, message, sizeof(message))) {
-			// PROPERTY_LOCK();
 			if (!strncmp(message, "P", 1) || !strncmp(message, ":PRR", 4)) {
 				handle_rotator_position(device, message);
 			} else if (!strncmp(message, "S", 1) || !strncmp(message, ":PRS", 4)) {
@@ -560,7 +597,6 @@ static void dome_event_handler(indigo_device *device) {
 			} else if (!strncmp(message, ":Rain", 5)) {
 				handle_rain(device, message);
 			}
-			PROPERTY_UNLOCK();
 		}
 	}
 }
