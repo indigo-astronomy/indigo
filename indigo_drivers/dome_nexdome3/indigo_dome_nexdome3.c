@@ -192,7 +192,7 @@ static bool nexdome_get_message(indigo_device *device, char *response, int max) 
 		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Response -> %s", response != NULL ? response : "NULL");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Response -> %s", response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -205,7 +205,7 @@ static bool nexdome_handshake(indigo_device *device, char *firmware) {
 	for(int i = 0; i < 30; i++) {
 		if (!nexdome_get_message(device, response, sizeof(response))) return false;
 		if (!strncmp(":FR", response, 3)) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", response);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", response);
 			char *end = strchr(response, '#');
 			if (end) {
 				*end = '\0';
@@ -286,7 +286,7 @@ static void handle_shutter_move(indigo_device *device, char *message) {
 	} else {
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is opening...");
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s %s", __FUNCTION__, message);
 }
 
 
