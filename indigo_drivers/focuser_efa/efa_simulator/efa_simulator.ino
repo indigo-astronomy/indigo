@@ -66,8 +66,11 @@ void loop() {
   }
 #ifdef LCD
   char buffer[17];
-  sprintf(buffer, "T:%05d C:%05d", target_position, current_position);
+  sprintf(buffer, "T:%08d", target_position);
   lcd.setCursor(0, 0);
+  lcd.print(buffer);
+  sprintf(buffer, "C:%08d ", current_position);
+  lcd.setCursor(0, 1);
   lcd.print(buffer);
 #endif
   if (Serial.available() && Serial.read() == 0x3B) {
