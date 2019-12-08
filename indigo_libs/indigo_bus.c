@@ -62,8 +62,10 @@ static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
 static indigo_blob_entry *blobs[MAX_BLOBS];
 
-static pthread_mutex_t device_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
-static pthread_mutex_t client_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+static pthread_mutex_t bus_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+#define client_mutex bus_mutex
+#define device_mutex bus_mutex
+
 bool indigo_use_strict_locking = true;
 
 static pthread_mutex_t blob_mutex = PTHREAD_MUTEX_INITIALIZER;
