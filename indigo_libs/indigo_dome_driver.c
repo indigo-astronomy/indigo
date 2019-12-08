@@ -44,7 +44,7 @@ static indigo_client dummy_client = { "Client", false, NULL, INDIGO_OK, INDIGO_V
 
 static void sync_timer_callback(indigo_device *device) {
 	if (!DOME_PARK_PARKED_ITEM->sw.value) {
-		device->change_property(device, &dummy_client, DOME_EQUATORIAL_COORDINATES_PROPERTY);
+		indigo_change_property(&dummy_client, DOME_EQUATORIAL_COORDINATES_PROPERTY);
 	}
 	indigo_reschedule_timer(device, SYNC_INTERAL, &DOME_CONTEXT->sync_timer);
 }
@@ -76,7 +76,7 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = true;
 			indigo_init_switch_item(DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME, "Go to position", true);
-			indigo_init_switch_item(DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME, "Sync to poition", false);
+			indigo_init_switch_item(DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME, "Sync to position", false);
 			// -------------------------------------------------------------------------------- DOME_STEPS
 			DOME_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_STEPS_PROPERTY_NAME, DOME_MAIN_GROUP, "Relative move", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (DOME_STEPS_PROPERTY == NULL)
@@ -280,7 +280,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
 				DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, true);
-				indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM, false);
 				indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, "Can not SYNC position while folowing the mount.");
 			} else {
 				indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, NULL);
@@ -304,7 +303,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 				if (!DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden && !DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM->sw.value) {
 					DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, true);
-					indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM, false);
 					indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, "Switching to GOTO mode." );
 				}
 				indigo_add_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
