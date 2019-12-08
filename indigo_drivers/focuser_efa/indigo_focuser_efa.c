@@ -62,6 +62,7 @@ typedef struct {
 	int handle;
 	indigo_timer *timer;
 	pthread_mutex_t mutex;
+	pthread_mutex_t serial_mutex;
 	indigo_property *fans_property;
 	bool is_celestron;
 	bool is_efa;
@@ -70,6 +71,7 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *packet_in) {
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	int bits = 0;
 	int delay = 0;
 	int result = 0;
@@ -147,6 +149,7 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 					}
 					continue;
 				}
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 				return packet_in[2] == packet_out[3] && packet_in[4] == packet_out[4];
 			} else {
 				if (result == 0 || errno == EAGAIN)
@@ -162,6 +165,7 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
 		}
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	return false;
 }
 
@@ -203,6 +207,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
@@ -275,7 +280,7 @@ static void focuser_goto(indigo_device *device, long target) {
 				goto failure;
 			while (true) {
 				if (efa_command(device, check_state_packet, response_packet)) {
-					if (response_packet[5] == 0xFE)
+					if (response_packet[5] != 0x00)
 						goto failure;
 				}
 				position = focuser_position(device);
@@ -507,6 +512,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 	indigo_release_property(X_FOCUSER_FANS_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
+	pthread_mutex_destroy(&PRIVATE_DATA->serial_mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
