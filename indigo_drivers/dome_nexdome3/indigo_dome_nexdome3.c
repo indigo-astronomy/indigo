@@ -171,6 +171,7 @@ static bool nexdome_command(indigo_device *device, const char *command) {
 
 static bool nexdome_get_message(indigo_device *device, char *response, int max) {
 	char c;
+	/*
 	fd_set readout;
 	struct timeval tv;
 	FD_ZERO(&readout);
@@ -179,7 +180,7 @@ static bool nexdome_get_message(indigo_device *device, char *response, int max) 
 	tv.tv_usec = 0;
 	long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 	if (result <= 0) return false;
-
+	*/
 	pthread_mutex_lock(&PRIVATE_DATA->port_r_mutex);
 	if (response != NULL) {
 		int index = 0;
