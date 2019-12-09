@@ -131,7 +131,8 @@ typedef struct {
 	bool shutter_stop_requested;
 	bool rotator_stop_requested;
 	float park_azimuth;
-	pthread_mutex_t port_mutex;
+	pthread_mutex_t port_r_mutex;
+	pthread_mutex_t port_w_mutex;
 	pthread_mutex_t property_mutex;
 	indigo_timer *dome_event;
 	indigo_property *find_home_property;
@@ -161,21 +162,30 @@ static bool nexdome_command(indigo_device *device, const char *command) {
 	if (!command) return false;
 	char wrapped_command[NEXDOME_CMD_LEN];
 	snprintf(wrapped_command, NEXDOME_CMD_LEN, "@%s\n", command);
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->port_w_mutex);
 	indigo_write(PRIVATE_DATA->handle, wrapped_command, strlen(wrapped_command));
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_w_mutex);
 	return true;
 }
 
 
 static bool nexdome_get_message(indigo_device *device, char *response, int max) {
 	char c;
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	fd_set readout;
+	struct timeval tv;
+	FD_ZERO(&readout);
+	FD_SET(PRIVATE_DATA->handle, &readout);
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
+	long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+	if (result <= 0) return false;
+
+	pthread_mutex_lock(&PRIVATE_DATA->port_r_mutex);
 	if (response != NULL) {
 		int index = 0;
 		while (index < max) {
 			if (read(PRIVATE_DATA->handle, &c, 1) < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_r_mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				return false;
 			}
@@ -191,7 +201,7 @@ static bool nexdome_get_message(indigo_device *device, char *response, int max) 
 		}
 		response[index] = 0;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_r_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Response -> %s", response != NULL ? response : "NULL");
 	return true;
 }
@@ -650,7 +660,8 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->port_r_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->port_w_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->property_mutex, NULL);
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
@@ -770,15 +781,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			char firmware[NEXDOME_CMD_LEN] = "N/A";
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+			PROPERTY_LOCK();
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				PROPERTY_UNLOCK();
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			} else {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				PROPERTY_UNLOCK();
 				char *device_name = DEVICE_PORT_ITEM->text.value;
 				if (strncmp(device_name, "nexdome://", 10)) {
 					PRIVATE_DATA->handle = indigo_open_serial(device_name);
@@ -879,7 +890,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 #ifdef CMD_AID
 				indigo_delete_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
 #endif
-				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->port_r_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->port_w_mutex);
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
@@ -887,7 +899,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
 				}
 				indigo_global_unlock(device);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_w_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_r_mutex);
 				device->is_connected = false;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected = %d", PRIVATE_DATA->handle);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
