@@ -21,7 +21,10 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_dome_nexdome3
 
-## Status: Untested
+## Status: Stable
 
 Driver is developed and tested with:
 * Arduino NexDome v3 simulator.
+
+Driver is tesed with:
+* NexDone Dome
