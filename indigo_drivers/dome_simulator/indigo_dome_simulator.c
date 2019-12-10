@@ -23,7 +23,7 @@
  \file indigo_dome_simulator.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_dome_simulator"
 
 #include <stdlib.h>
@@ -97,7 +97,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RO_PERM;
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
+		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
+		DOME_SYNC_PARAMETERS_PROPERTY->hidden =false;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -137,13 +139,17 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if (DOME_PARK_PARKED_ITEM->sw.value) {
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked");
-			return INDIGO_OK;
-		}
 		double az;
-		if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) == INDIGO_OK) {
+		if ((DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) && indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az)) {
+			if (DOME_PARK_PARKED_ITEM->sw.value) {
+				if (DOME_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
+					DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Can not Synchronize. Dome is parked.");
+				} else {
+					indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+				}
+				return INDIGO_OK;
+			}
 			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
 			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
 			if (dif < 180) {
@@ -159,10 +165,38 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_set_timer(device, 0.5, dome_timer_callback);
 		}
+		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
+		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
+		if (DOME_PARK_PARKED_ITEM->sw.value) {
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
+			return INDIGO_OK;
+		}
+
+		PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
+		int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
+		if (dif < 180) {
+			indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
+			DOME_STEPS_ITEM->number.value = dif;
+		} else if (dif > 180) {
+			indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
+			DOME_STEPS_ITEM->number.value = 360 - dif;
+		}
+		DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
+		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		indigo_set_timer(device, 0.5, dome_timer_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
