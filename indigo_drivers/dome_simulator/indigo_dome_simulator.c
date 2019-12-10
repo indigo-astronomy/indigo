@@ -98,8 +98,8 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
-		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
-		DOME_SYNC_PARAMETERS_PROPERTY->hidden =false;
+		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
+		DOME_SLAVING_PARAMETERS_PROPERTY->hidden =false;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -140,7 +140,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		double az;
-		if ((DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) && indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az)) {
+		if ((DOME_SLAVING_ENABLE_ITEM->sw.value) && indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az)) {
 			if (DOME_PARK_PARKED_ITEM->sw.value) {
 				if (DOME_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
 					DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;

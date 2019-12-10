@@ -461,11 +461,11 @@ static void handle_move_threshold(indigo_device *device, char *message) {
 	}
 
 	PROPERTY_LOCK();
-	if (dead_zone > (DOME_SYNC_THRESHOLD_ITEM->number.value * PRIVATE_DATA->steps_per_degree)) {
-		DOME_SYNC_THRESHOLD_ITEM->number.value = dead_zone / PRIVATE_DATA->steps_per_degree;
-		DOME_SYNC_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
+	if (dead_zone > (DOME_SLAVING_THRESHOLD_ITEM->number.value * PRIVATE_DATA->steps_per_degree)) {
+		DOME_SLAVING_THRESHOLD_ITEM->number.value = dead_zone / PRIVATE_DATA->steps_per_degree;
+		DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
 		PROPERTY_UNLOCK();
-		indigo_update_property(device, DOME_SYNC_PARAMETERS_PROPERTY, "Dome synchrinization threshold updated as it can not be less than the dome minimal move.");
+		indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, "Dome synchrinization threshold updated as it can not be less than the dome minimal move.");
 	} else {
 		PROPERTY_UNLOCK();
 	}
@@ -678,8 +678,8 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
-		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
-		DOME_SYNC_PARAMETERS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
+		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
@@ -971,7 +971,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		/* Keep the dome in sync if needed */
-		if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+		if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 			PROPERTY_LOCK();
 			double az;
 			char command[NEXDOME_CMD_LEN];
@@ -1136,19 +1136,19 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_SYNC_PARAMETERS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
-		indigo_property_copy_values(DOME_SYNC_PARAMETERS_PROPERTY, property, false);
+	} else if (indigo_property_match(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
+		indigo_property_copy_values(DOME_SLAVING_PARAMETERS_PROPERTY, property, false);
 		PROPERTY_LOCK();
-		if (NEXDOME_MOVE_THRESHOLD_ITEM->number.value > (DOME_SYNC_THRESHOLD_ITEM->number.value * PRIVATE_DATA->steps_per_degree)) {
-			DOME_SYNC_THRESHOLD_ITEM->number.value = NEXDOME_MOVE_THRESHOLD_ITEM->number.value / PRIVATE_DATA->steps_per_degree;
-			DOME_SYNC_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
+		if (NEXDOME_MOVE_THRESHOLD_ITEM->number.value > (DOME_SLAVING_THRESHOLD_ITEM->number.value * PRIVATE_DATA->steps_per_degree)) {
+			DOME_SLAVING_THRESHOLD_ITEM->number.value = NEXDOME_MOVE_THRESHOLD_ITEM->number.value / PRIVATE_DATA->steps_per_degree;
+			DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
 			PROPERTY_UNLOCK();
-			indigo_update_property(device, DOME_SYNC_PARAMETERS_PROPERTY, "Requested synchronization threshold is less than the dome minimal move. Minimal move is used.");
+			indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, "Requested synchronization threshold is less than the dome minimal move. Minimal move is used.");
 		} else {
-			DOME_SYNC_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
 			PROPERTY_UNLOCK();
-			indigo_update_property(device, DOME_SYNC_PARAMETERS_PROPERTY, NULL);
+			indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(NEXDOME_SETTINGS_PROPERTY, property)) {

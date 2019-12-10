@@ -643,7 +643,7 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 
 	/* Keep the dome in sync if needed */
-	if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+	if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 		double az;
 		if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) &&
 		   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE)) {
@@ -701,8 +701,8 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
-		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
-		DOME_SYNC_PARAMETERS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
+		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- NEXDOME_REVERSED
 		NEXDOME_REVERSED_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_REVERSED_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Reversed dome directions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (NEXDOME_REVERSED_PROPERTY == NULL)

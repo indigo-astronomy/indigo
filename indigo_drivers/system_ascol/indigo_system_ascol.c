@@ -2250,7 +2250,7 @@ static void dome_update_state() {
 
 	if (update_all || (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state) ||
 	   (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
-	   (DOME_AUTO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (DOME_SLAVING_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating DOME_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
@@ -2287,18 +2287,18 @@ static void dome_update_state() {
 			DOME_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_POWER_PROPERTY, NULL);
 		}
-		if (update_all || (DOME_AUTO_SYNC_PROPERTY->state == INDIGO_BUSY_STATE)) {
-			DOME_AUTO_SYNC_PROPERTY->state = INDIGO_OK_STATE;
+		if (update_all || (DOME_SLAVING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+			DOME_SLAVING_PROPERTY->state = INDIGO_OK_STATE;
 			if ((PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP) ||
 			    (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_MINUS) ||
 			    (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_PLUS)) {
-				DOME_AUTO_SYNC_ENABLE_ITEM->sw.value = true;
-				DOME_AUTO_SYNC_DISABLE_ITEM->sw.value = false;
+				DOME_SLAVING_ENABLE_ITEM->sw.value = true;
+				DOME_SLAVING_DISABLE_ITEM->sw.value = false;
 			} else {
-				DOME_AUTO_SYNC_ENABLE_ITEM->sw.value = false;
-				DOME_AUTO_SYNC_DISABLE_ITEM->sw.value = true;
+				DOME_SLAVING_ENABLE_ITEM->sw.value = false;
+				DOME_SLAVING_DISABLE_ITEM->sw.value = true;
 			}
-			indigo_update_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
+			indigo_update_property(device, DOME_SLAVING_PROPERTY, NULL);
 		}
 	}
 
@@ -2377,7 +2377,7 @@ static void dome_handle_power(indigo_device *device) {
 static void dome_handle_auto_mode(indigo_device *device) {
 	int res = ASCOL_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+	if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 		res = ascol_DOAM(PRIVATE_DATA->dev_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOAM(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else {
@@ -2386,14 +2386,14 @@ static void dome_handle_auto_mode(indigo_device *device) {
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if(res == ASCOL_OK) {
-		DOME_AUTO_SYNC_PROPERTY->state = INDIGO_BUSY_STATE;
+		DOME_SLAVING_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
-		DOME_AUTO_SYNC_ENABLE_ITEM->sw.value = !DOME_AUTO_SYNC_ENABLE_ITEM->sw.value;
-		DOME_AUTO_SYNC_DISABLE_ITEM->sw.value = !DOME_AUTO_SYNC_DISABLE_ITEM->sw.value;
-		DOME_AUTO_SYNC_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_SLAVING_ENABLE_ITEM->sw.value = !DOME_SLAVING_ENABLE_ITEM->sw.value;
+		DOME_SLAVING_DISABLE_ITEM->sw.value = !DOME_SLAVING_DISABLE_ITEM->sw.value;
+		DOME_SLAVING_PROPERTY->state = INDIGO_ALERT_STATE;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_DOAM(%d) /ascol_DOST() = %d", PRIVATE_DATA->dev_id, res);
 	}
-	indigo_update_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
+	indigo_update_property(device, DOME_SLAVING_PROPERTY, NULL);
 }
 
 
@@ -2624,10 +2624,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			dome_handle_power(device);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_AUTO_SYNC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DOME_AUTO_SYNC_PROPERTY
+	} else if (indigo_property_match(DOME_SLAVING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_SLAVING_PROPERTY
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(DOME_AUTO_SYNC_PROPERTY, property, false);
+			indigo_property_copy_values(DOME_SLAVING_PROPERTY, property, false);
 			dome_handle_auto_mode(device);
 		}
 		return INDIGO_OK;

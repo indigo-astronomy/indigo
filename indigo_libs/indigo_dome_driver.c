@@ -95,18 +95,18 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 			indigo_init_sexagesimal_number_item(DOME_HORIZONTAL_COORDINATES_AZ_ITEM, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, "Azimuth (0 to 360°)", 0, 360, 0, 0);
 			indigo_init_sexagesimal_number_item(DOME_HORIZONTAL_COORDINATES_ALT_ITEM, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, "Altitude (0 to 90°)", 0, 90, 0, 0);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->count = 1;
-			// -------------------------------------------------------------------------------- DOME_AUTO_SYNC
-			DOME_AUTO_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_AUTO_SYNC_PROPERTY_NAME, DOME_MAIN_GROUP, "Synchronize dome with mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);;
-			if (DOME_AUTO_SYNC_PROPERTY == NULL)
+			// -------------------------------------------------------------------------------- DOME_SLAVING
+			DOME_SLAVING_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_SLAVING_PROPERTY_NAME, DOME_MAIN_GROUP, "Slave dome to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);;
+			if (DOME_SLAVING_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(DOME_AUTO_SYNC_ENABLE_ITEM, DOME_AUTO_SYNC_ENABLE_ITEM_NAME, "Enable", false);
-			indigo_init_switch_item(DOME_AUTO_SYNC_DISABLE_ITEM, DOME_AUTO_SYNC_DISABLE_ITEM_NAME, "Disable", true);
+			indigo_init_switch_item(DOME_SLAVING_ENABLE_ITEM, DOME_SLAVING_ENABLE_ITEM_NAME, "Enable", false);
+			indigo_init_switch_item(DOME_SLAVING_DISABLE_ITEM, DOME_SLAVING_DISABLE_ITEM_NAME, "Disable", true);
 			// -------------------------------------------------------------------------------- DOME_SYNC
-			DOME_SYNC_PARAMETERS_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SYNC_PARAMETERS_PROPERTY_NAME, DOME_MAIN_GROUP, "Auto Sync Parameteres", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-			if (DOME_SYNC_PARAMETERS_PROPERTY == NULL)
+			DOME_SLAVING_PARAMETERS_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SLAVING_PARAMETERS_PROPERTY_NAME, DOME_MAIN_GROUP, "Slaving parameteres", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			if (DOME_SLAVING_PARAMETERS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			DOME_SYNC_PARAMETERS_PROPERTY->hidden = true;
-			indigo_init_number_item(DOME_SYNC_THRESHOLD_ITEM, DOME_SYNC_THRESHOLD_ITEM_NAME, "Sync threshold (0 to 20°)", 0, 20, 0, 1);
+			DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
+			indigo_init_number_item(DOME_SLAVING_THRESHOLD_ITEM, DOME_SLAVING_THRESHOLD_ITEM_NAME, "Minimal move threshold (0 to 20°)", 0, 20, 0, 1);
 			// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 			DOME_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_MAIN_GROUP, "Abort motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (DOME_ABORT_MOTION_PROPERTY == NULL)
@@ -183,10 +183,10 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 			indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property))
 			indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		if (indigo_property_match(DOME_AUTO_SYNC_PROPERTY, property))
-			indigo_define_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
-		if (indigo_property_match(DOME_SYNC_PARAMETERS_PROPERTY, property))
-			indigo_define_property(device, DOME_SYNC_PARAMETERS_PROPERTY, NULL);
+		if (indigo_property_match(DOME_SLAVING_PROPERTY, property))
+			indigo_define_property(device, DOME_SLAVING_PROPERTY, NULL);
+		if (indigo_property_match(DOME_SLAVING_PARAMETERS_PROPERTY, property))
+			indigo_define_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 		if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property))
 			indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		if (indigo_property_match(DOME_SHUTTER_PROPERTY, property))
@@ -220,8 +220,8 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_define_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
-			indigo_define_property(device, DOME_SYNC_PARAMETERS_PROPERTY, NULL);
+			indigo_define_property(device, DOME_SLAVING_PROPERTY, NULL);
+			indigo_define_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 			indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
@@ -230,7 +230,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_UTC_TIME_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SNOOP_DEVICES_PROPERTY, NULL);
-			if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+			if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 				indigo_add_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 				indigo_add_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
 			}
@@ -245,8 +245,8 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_delete_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_delete_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
-			indigo_delete_property(device, DOME_SYNC_PARAMETERS_PROPERTY, NULL);
+			indigo_delete_property(device, DOME_SLAVING_PROPERTY, NULL);
+			indigo_delete_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_PARK_PROPERTY, NULL);
@@ -277,7 +277,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, property, false);
 		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
-			if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+			if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 				DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, true);
 				indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, "Can not SYNC position while folowing the mount.");
@@ -292,14 +292,14 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- DOME_AUTO_SYNC
-	} else if (indigo_property_match(DOME_AUTO_SYNC_PROPERTY, property)) {
-		indigo_property_copy_values(DOME_AUTO_SYNC_PROPERTY, property, false);
-		DOME_AUTO_SYNC_PROPERTY->state = INDIGO_OK_STATE;
+		// -------------------------------------------------------------------------------- DOME_SLAVING
+	} else if (indigo_property_match(DOME_SLAVING_PROPERTY, property)) {
+		indigo_property_copy_values(DOME_SLAVING_PROPERTY, property, false);
+		DOME_SLAVING_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_remove_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 			indigo_remove_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-			if (DOME_AUTO_SYNC_ENABLE_ITEM->sw.value) {
+			if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 				if (!DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden && !DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM->sw.value) {
 					DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, true);
@@ -308,15 +308,15 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 				indigo_add_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 				indigo_add_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
 			}
-			indigo_update_property(device, DOME_AUTO_SYNC_PROPERTY, NULL);
+			indigo_update_property(device, DOME_SLAVING_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- DOME_SYNC_PARAMETERS
-	} else if (indigo_property_match(DOME_SYNC_PARAMETERS_PROPERTY, property)) {
-		indigo_property_copy_values(DOME_SYNC_PARAMETERS_PROPERTY, property, false);
-		DOME_SYNC_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
+		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
+	} else if (indigo_property_match(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
+		indigo_property_copy_values(DOME_SLAVING_PARAMETERS_PROPERTY, property, false);
+		DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
-			indigo_update_property(device, DOME_SYNC_PARAMETERS_PROPERTY, NULL);
+			indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_DIMENSION
@@ -330,8 +330,8 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, DOME_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, DOME_DIRECTION_PROPERTY);
-			indigo_save_property(device, NULL, DOME_AUTO_SYNC_PROPERTY);
-			indigo_save_property(device, NULL, DOME_SYNC_PARAMETERS_PROPERTY);
+			indigo_save_property(device, NULL, DOME_SLAVING_PROPERTY);
+			indigo_save_property(device, NULL, DOME_SLAVING_PARAMETERS_PROPERTY);
 			indigo_save_property(device, NULL, DOME_GEOGRAPHIC_COORDINATES_PROPERTY);
 		}
 		// -------------------------------------------------------------------------------- SNOOP_DEVICES
@@ -357,8 +357,8 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 	indigo_release_property(DOME_STEPS_PROPERTY);
 	indigo_release_property(DOME_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_release_property(DOME_HORIZONTAL_COORDINATES_PROPERTY);
-	indigo_release_property(DOME_AUTO_SYNC_PROPERTY);
-	indigo_release_property(DOME_SYNC_PARAMETERS_PROPERTY);
+	indigo_release_property(DOME_SLAVING_PROPERTY);
+	indigo_release_property(DOME_SLAVING_PARAMETERS_PROPERTY);
 	indigo_release_property(DOME_ABORT_MOTION_PROPERTY);
 	indigo_release_property(DOME_SHUTTER_PROPERTY);
 	indigo_release_property(DOME_PARK_PROPERTY);
@@ -381,7 +381,7 @@ time_t indigo_get_dome_utc(indigo_device *device) {
 bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double az_prev, double *az) {
 	bool update_needed = false;
 	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		double threshold = DOME_SYNC_THRESHOLD_ITEM->number.value;
+		double threshold = DOME_SLAVING_THRESHOLD_ITEM->number.value;
 		time_t utc = indigo_get_dome_utc(device);
 		double lst = indigo_lst(&utc, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);

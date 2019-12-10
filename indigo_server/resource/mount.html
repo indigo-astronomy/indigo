@@ -573,7 +573,7 @@
 					targetCoordinates = [h2deg(property.item("RA").target), property.item("DEC").target];
 					updateMap();
 				}
-				if (property.name == "DOME_AUTO_SYNC") {
+				if (property.name == "DOME_SLAVING") {
 					values = {};
 					values["ENABLED"] = true;
 					changeProperty(property.device, property.name, values);
