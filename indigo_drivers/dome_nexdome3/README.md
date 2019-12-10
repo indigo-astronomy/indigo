@@ -24,7 +24,7 @@ indigo_server indigo_dome_nexdome3
 ## Status: Stable
 
 Driver is developed and tested with:
-* Arduino NexDome v3 simulator.
+* Arduino NexDome v3.0.0 and v3.2.0 simulator
 
 Driver is tesed with:
-* NexDone Dome
+* NexDome Dome
