@@ -1300,7 +1300,7 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 }
 
 static bool set_string_property(indigo_device *device, uint16_t code, char *value) {
-	uint8_t buffer[PTP_MAX_CHARS + 4], *target = buffer + 2 * sizeof(uint32_t);
+	uint8_t buffer[PTP_MAX_CHARS + 2 * sizeof(uint32_t)], *target = buffer + 2 * sizeof(uint32_t);
 	strncpy((char *)target, value, PTP_MAX_CHARS);
 	target += strlen((char *)target) + 1;
 	uint32_t size = *((uint32_t *)buffer) = (uint32_t)(target - buffer);
