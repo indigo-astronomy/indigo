@@ -28,12 +28,12 @@
 
 #include <indigo/indigo_driver.h>
 
-#define PRIVATE_DATA    ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 	0x0001
-#define DRIVER_NAME 		"indigo_ccd_ptp"
+#define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
+#define DRIVER_VERSION              0x0002
+#define DRIVER_NAME                 "indigo_ccd_ptp"
 
-#define PTP_TIMEOUT									10000
-#define PTP_MAX_BULK_TRANSFER_SIZE	8388608
+#define PTP_TIMEOUT                 10000
+#define PTP_MAX_BULK_TRANSFER_SIZE  8388608
 
 typedef enum {
 	ptp_container_command =	0x0001,
