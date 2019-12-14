@@ -179,7 +179,8 @@ static void handle_connection(indigo_device *device) {
 		indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 			indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
-		indigo_attach_device(PRIVATE_DATA->focuser);
+		if (PRIVATE_DATA->focuser)
+			indigo_attach_device(PRIVATE_DATA->focuser);
 	} else {
 		for (int i = 0; PRIVATE_DATA->properties[i].property; i++)
 			indigo_release_property(PRIVATE_DATA->properties[i].property);
