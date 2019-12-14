@@ -21,3 +21,12 @@ INDIGO Astronomy open-source license.
 indigo_server indigo_ccd_ptp
 
 ## Status: Under development - very early phase
+
+Driver is developed and tested with:
+* Canon EOS 1100D
+* Canon EOS 1000D
+* Nikon D7000
+
+## NOTE: If you have trouble connecting to your camera with Linux please make sure the following programs are not running:
+* gvfs-gphoto2-volume-monitor
+* gvfsd-gphoto2
