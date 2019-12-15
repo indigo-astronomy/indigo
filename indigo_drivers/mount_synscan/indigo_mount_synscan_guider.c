@@ -166,6 +166,8 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 				strcpy(DEVICE_BAUDRATE_ITEM->text.value, "115200-8N1");
 			indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, "Trying to change baudrate");
 			result = synscan_open(device);
+			if (result)
+				result = synscan_configure(device);
 		}
 	}
 	if (result) {
