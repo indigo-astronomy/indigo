@@ -73,7 +73,11 @@ typedef struct {
 	bool canSetPolarscopeBrightness;
 	long raFeatures;
 	long decFeatures;
-	
+
+	//  Home position
+	AxisPosition raHomePosition;
+	AxisPosition decHomePosition;
+
 	//  Zero position
 	long raZeroPos;
 	long decZeroPos;
