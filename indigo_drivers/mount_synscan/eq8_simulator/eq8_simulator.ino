@@ -37,6 +37,8 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #define STEPS_PER_REVOLUTION  (60 * WORM_STEPS)
 #define FEATURES              HAS_ENCODER | HAS_PPEC | HAS_HOME_INDEXER | HAS_COMMON_SLEW_START | HAS_HALF_CURRENT_TRACKING
 
+#define PCDIRECT
+
 #define HEX(c)                (((c) < 'A') ? ((c) - '0') : ((c) - 'A') + 10)
 
 enum MOTOR_STATUS {
@@ -82,8 +84,12 @@ static char hexa[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 
 
 static uint32_t axis_timer[2] = { 0, 0 };
 static uint32_t axis_t1[2] = { 25, 25 };
+#ifdef PCDIRECT
+static uint16_t axis_status[2] = { INITIALIZED, INITIALIZED };
+#else
 static uint16_t axis_status[2] = { 0, 0 };
-static uint32_t axis_position[2] = { 0x800000, 0x800000 };
+#endif
+static uint32_t axis_position[2] = { 0x800000, 0x834BC0 };
 static uint32_t axis_increment[2] = { 0, 0 };
 static uint32_t axis_target[2] = { 0, 0 };
 static bool axis_increment_set[2] = { 0, 0 };

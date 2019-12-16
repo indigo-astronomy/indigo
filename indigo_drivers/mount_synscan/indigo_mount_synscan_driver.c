@@ -30,14 +30,6 @@ const double SIDEREAL_RATE = (360.0 * 3600.0) / 86164.090530833;
 const double LUNAR_RATE = 14.511415;
 const double SOLAR_RATE = 15.0;
 
-
-//  Home position (arbitrary constant) is defined as:
-//      HA == 6 (vertical shaft)
-//      -/+90 degrees (pointing at pole)
-static const AxisPosition RA_HOME_POSITION = 0x800000;
-static const AxisPosition DEC_HOME_POSITION = 0x800000;
-
-
 #define GET_RELEASE(v)          (int)((v) & 0xFF)
 #define GET_REVISION(v)				(int)(((v) >> 8) & 0xFF)
 #define GET_MODEL(v)				(int)(((v) >> 16) & 0xFF)
@@ -228,8 +220,10 @@ bool synscan_configure(indigo_device* device) {
 			indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, (PRIVATE_DATA->raFeatures & kInPPECTraining) || (PRIVATE_DATA->decFeatures & kInPPECTraining) ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
 
 		//  Determine ZERO positions
-		PRIVATE_DATA->raZeroPos = RA_HOME_POSITION - (PRIVATE_DATA->raTotalSteps / 4);     //  HA == 0 (horizontal shaft, rotated clockwise)
-		PRIVATE_DATA->decZeroPos = DEC_HOME_POSITION - (PRIVATE_DATA->decTotalSteps / 4);  //  DEC has ZERO both east and west sides. This is the EAST zero.
+		PRIVATE_DATA->raHomePosition = 0x800000;
+		PRIVATE_DATA->decHomePosition = 0x800000 + (PRIVATE_DATA->decTotalSteps / 4);
+		PRIVATE_DATA->raZeroPos = PRIVATE_DATA->raHomePosition - (PRIVATE_DATA->raTotalSteps / 4);     //  HA == 0 (horizontal shaft, rotated clockwise)
+		PRIVATE_DATA->decZeroPos = PRIVATE_DATA->decHomePosition - (PRIVATE_DATA->decTotalSteps / 4);  //  DEC has ZERO both east and west sides. This is the EAST zero.
 
 		//  We do not redefine the ZERO positions for SOUTHERN HEMISPHERE because the mount does not redefine the direction and only understands
 		//  step counts that increase going in an anti-clockwise direction. Therefore, we take account of southern hemisphere changes in the
@@ -240,7 +234,7 @@ bool synscan_configure(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Worm Steps:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raWormSteps, PRIVATE_DATA->decWormSteps);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Timer Freq:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raTimerFreq, PRIVATE_DATA->decTimerFreq);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  HS Factor:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raHighSpeedFactor, PRIVATE_DATA->decHighSpeedFactor);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Home Pos:  RA == %10lu   DEC == %10lu", RA_HOME_POSITION, DEC_HOME_POSITION);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Home Pos:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raHomePosition, PRIVATE_DATA->decHomePosition);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Zero Pos:  RA == %10lu   DEC == %10lu", PRIVATE_DATA->raZeroPos, PRIVATE_DATA->decZeroPos);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Features:  RA == %10lx   DEC == %10lx", PRIVATE_DATA->raFeatures, PRIVATE_DATA->decFeatures);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Encoders:  %s", PRIVATE_DATA->raFeatures & kHasEncoder ? "YES" : "NO");
@@ -993,15 +987,15 @@ void synscan_save_position(indigo_device *device) {
 }
 
 bool synscan_restore_position(indigo_device *device, enum AxisID axis, bool remove) {
-	long ra_pos = RA_HOME_POSITION, dec_pos = DEC_HOME_POSITION;
+	long ra_pos = PRIVATE_DATA->raHomePosition, dec_pos = PRIVATE_DATA->decHomePosition;
 	char path[INDIGO_VALUE_SIZE];
 	char buffer[INDIGO_VALUE_SIZE] = "";
 	snprintf(path, INDIGO_VALUE_SIZE, "%s/.indigo/synscan-%s.park", getenv("HOME"), MOUNT_INFO_MODEL_ITEM->text.value);
 	int handle = open(path, O_RDONLY, 0);
 	if (handle > 0) {
 		if (!(read(handle, buffer, INDIGO_VALUE_SIZE) > 0 && sscanf(buffer, "%lx %lx", &ra_pos, &dec_pos) == 2)) {
-			ra_pos = RA_HOME_POSITION;
-			dec_pos = DEC_HOME_POSITION;
+			ra_pos = PRIVATE_DATA->raHomePosition;
+			dec_pos = PRIVATE_DATA->decHomePosition;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse saved position: %s (%s)", buffer, strerror(errno));
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Position restored: %s", buffer);

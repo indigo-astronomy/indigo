@@ -946,8 +946,8 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset coordinates");
-	synscan_init_axis_position(device, kAxisRA, 0x800000);
-	synscan_init_axis_position(device, kAxisDEC, 0x800000);
+	synscan_init_axis_position(device, kAxisRA, PRIVATE_DATA->raHomePosition);
+	synscan_init_axis_position(device, kAxisDEC, PRIVATE_DATA->decHomePosition);
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Try to get reliable home index signal");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset home position index");
@@ -1149,8 +1149,8 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Reset mount positions");
-	synscan_init_axis_position(device, kAxisRA, 0x800000);
-	synscan_init_axis_position(device, kAxisDEC, 0x800000 + MOUNT_AUTOHOME_DEC_OFFSET_ITEM->number.target / 360.0 *  PRIVATE_DATA->decTotalSteps);
+	synscan_init_axis_position(device, kAxisRA, PRIVATE_DATA->raHomePosition);
+	synscan_init_axis_position(device, kAxisDEC, PRIVATE_DATA->decHomePosition + MOUNT_AUTOHOME_DEC_OFFSET_ITEM->number.target / 360.0 *  PRIVATE_DATA->decTotalSteps);
 	
 	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	MOUNT_AUTOHOME_PROPERTY->state = INDIGO_OK_STATE;
