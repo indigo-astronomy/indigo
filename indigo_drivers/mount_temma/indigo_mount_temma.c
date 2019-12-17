@@ -616,6 +616,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of pier switched : East -> West");
 				}
 			}
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property)) {
@@ -671,6 +672,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				// show ok
 				ZENITH_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, ZENITH_PROPERTY, NULL);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			}
 		}
 		return INDIGO_OK;
