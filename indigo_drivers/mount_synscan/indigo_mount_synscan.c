@@ -151,22 +151,19 @@ static indigo_result mount_attach(indigo_device *device) {
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
-	indigo_result result = INDIGO_OK;
-	if ((result = indigo_mount_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (IS_CONNECTED) {
-			if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property))
-				indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property))
-				indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_USE_ENCODERS_PROPERTY, property))
-				indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property))
-				indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_AUTOHOME_SETTINGS_PROPERTY, property))
-				indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
-		}
+	if (IS_CONNECTED) {
+		if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property))
+			indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property))
+			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_USE_ENCODERS_PROPERTY, property))
+			indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property))
+			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_AUTOHOME_SETTINGS_PROPERTY, property))
+			indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 	}
-	return result;
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -185,8 +182,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		//  Talk to the mount - see if its there - read configuration data
 		//  Once we have it all, update the property to OK or ALERT state
 		//  This can be done by a background timer thread
-		synscan_mount_connect(device);
-		//  Falls through to base code to complete connection
+		return synscan_mount_connect(device);
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
@@ -436,7 +432,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		synscan_guider_connect(device);
+		return synscan_guider_connect(device);
 	}
 	else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA

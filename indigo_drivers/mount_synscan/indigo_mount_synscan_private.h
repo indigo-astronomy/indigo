@@ -15,7 +15,7 @@
 //#include "indigo_timer.h"
 #include "indigo_mount_synscan_driver.h"
 
-#define DRIVER_VERSION			0x000E
+#define DRIVER_VERSION			0x000F
 #define DRIVER_NAME					"indigo_mount_synscan"
 
 #define PRIVATE_DATA        ((synscan_private_data *)device->private_data)
