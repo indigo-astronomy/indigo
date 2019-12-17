@@ -174,19 +174,21 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 	//  Open and configure the mount
 	if (PRIVATE_DATA->device_count == 0) {
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		result = synscan_open(device);
-		if (result)
+		if (result) {
 			result = synscan_configure(device);
-		if (!result && !PRIVATE_DATA->udp) {
-			synscan_close(device);
-			if (strcmp(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1"))
-				strcpy(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1");
-			else
-				strcpy(DEVICE_BAUDRATE_ITEM->text.value, "115200-8N1");
-			indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, "Trying to change baudrate");
-			result = synscan_open(device);
-			if (result)
-				result = synscan_configure(device);
+			if (!result && !PRIVATE_DATA->udp) {
+				synscan_close(device);
+				if (strcmp(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1"))
+					strcpy(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1");
+				else
+					strcpy(DEVICE_BAUDRATE_ITEM->text.value, "115200-8N1");
+				indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, "Trying to change baudrate");
+				result = synscan_open(device);
+				if (result)
+					result = synscan_configure(device);
+			}
 		}
 	}
 	if (result) {
@@ -209,20 +211,21 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_update_property(device, CONNECTION_PROPERTY, "Failed to connect to mount");
 	}
+	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 	//  Unlock the driver
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
-void synscan_mount_connect(indigo_device* device) {
+indigo_result synscan_mount_connect(indigo_device* device) {
 	//  Ignore if we are already processing a connection change
 	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
-		return;
+		return INDIGO_OK;
 
 	//  Handle connect/disconnect commands
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//  CONNECT to the mount
 		indigo_set_timer(device, 0, &synscan_connect_timer_callback);
-		return;
+		return INDIGO_OK;
 	} else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
 		//  DISCONNECT from mount
 		indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
@@ -238,6 +241,7 @@ void synscan_mount_connect(indigo_device* device) {
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	return indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
 static void mount_slew_timer_callback(indigo_device* device) {

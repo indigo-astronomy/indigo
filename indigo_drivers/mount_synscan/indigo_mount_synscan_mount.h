@@ -13,7 +13,7 @@
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_guider_driver.h>
 
-void synscan_mount_connect(indigo_device* device);
+indigo_result synscan_mount_connect(indigo_device* device);
 
 //  Manual slewing
 void mount_handle_motion_ra(indigo_device *device);
