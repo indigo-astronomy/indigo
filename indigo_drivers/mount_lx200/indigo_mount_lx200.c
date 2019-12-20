@@ -64,6 +64,7 @@
 #define MOUNT_TYPE_AVALON_ITEM          (MOUNT_TYPE_PROPERTY->items+5)
 #define MOUNT_TYPE_AP_ITEM          		(MOUNT_TYPE_PROPERTY->items+6)
 #define MOUNT_TYPE_ON_STEP_ITEM         (MOUNT_TYPE_PROPERTY->items+7)
+#define MOUNT_TYPE_RAINBOW_ITEM         (MOUNT_TYPE_PROPERTY->items+8)
 
 #define MOUNT_TYPE_PROPERTY_NAME				"X_MOUNT_TYPE"
 #define MOUNT_TYPE_DETECT_ITEM_NAME			"DETECT"
@@ -73,7 +74,8 @@
 #define MOUNT_TYPE_GEMINI_ITEM_NAME			"GEMINI"
 #define MOUNT_TYPE_AVALON_ITEM_NAME			"AVALON"
 #define MOUNT_TYPE_AP_ITEM_NAME					"AP"
-#define MOUNT_TYPE_ON_STEP_ITEM_NAME		"OnStep"
+#define MOUNT_TYPE_ON_STEP_ITEM_NAME		"ONSTEP"
+#define MOUNT_TYPE_RAINBOW_ITEM_NAME		"RAINBOW"
 
 typedef struct {
 	bool parked;
@@ -96,7 +98,10 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 static bool meade_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (strncmp(name, "lx200://", 8)) {
-		PRIVATE_DATA->handle = indigo_open_serial(name);
+		if (MOUNT_TYPE_RAINBOW_ITEM->sw.value)
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+		else
+			PRIVATE_DATA->handle = indigo_open_serial(name);
 	} else {
 		char *host = name + 8;
 		char *colon = strchr(host, ':');
@@ -355,7 +360,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		ALIGNMENT_MODE_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
-		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
 		if (MOUNT_TYPE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_TYPE_DETECT_ITEM, MOUNT_TYPE_DETECT_ITEM_NAME, "Autodetect", true);
@@ -366,6 +371,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_AVALON_ITEM, MOUNT_TYPE_AVALON_ITEM_NAME, "Avalon StarGO", false);
 		indigo_init_switch_item(MOUNT_TYPE_AP_ITEM, MOUNT_TYPE_AP_ITEM_NAME, "Astro-Physics GTO", false);
 		indigo_init_switch_item(MOUNT_TYPE_ON_STEP_ITEM, MOUNT_TYPE_ON_STEP_ITEM_NAME, "OnStep", false);
+		indigo_init_switch_item(MOUNT_TYPE_RAINBOW_ITEM, MOUNT_TYPE_RAINBOW_ITEM_NAME, "RainbowAstro", false);
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -592,6 +598,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					meade_get_observatory(device);
 					meade_get_coords(device);
 					meade_get_utc(device);
+				} else if (MOUNT_TYPE_RAINBOW_ITEM->sw.value) {
+					
 				} else {
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 					MOUNT_UTC_TIME_PROPERTY->hidden = true;

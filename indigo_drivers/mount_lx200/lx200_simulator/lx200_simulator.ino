@@ -21,19 +21,31 @@
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
 #endif
-
-//#define LCD
-#define OLED
-
-#include <stdarg.h>
-
-#ifdef LCD
-#include <LiquidCrystal.h>
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+#define DISPLAY_INIT()
+#define DISPLAY_BEGIN()
+#define DISPLAY_TEXTF(line, ...)
+#define DISPLAY_END()
+#ifdef ARDUINO_TTGO_T1
+#pragma message ARDUINO_TTGO_T1
+#include <SPI.h>
+#include <TFT_eSPI.h>
+TFT_eSPI tft = TFT_eSPI();
+static char __buffer__[32];
+#define DISPLAY_INIT() tft.init(); tft.setRotation(1); tft.setTextSize(2); tft.setTextColor(TFT_GREEN, TFT_BLACK)
+#define DISPLAY_BEGIN() tft.fillScreen(TFT_BLACK)
+#define DISPLAY_TEXT(line, text) tft.drawString(text, 0, 32 * line)
+#define DISPLAY_TEXTF(line, format, ...) sprintf(__buffer__, format, __VA_ARGS__); tft.drawString(__buffer__, 0, 32 * line)
+#define DISPLAY_END()
 #endif
-
-#ifdef OLED
+#ifdef ARDUINO_WIFI_KIT_32
+#pragma message ARDUINO_WIFI_KIT_32
 #include "heltec.h"
+static char __buffer__[32];
+#define DISPLAY_INIT() Heltec.begin(true, false, true); Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT); Heltec.display->setFont(ArialMT_Plain_10)
+#define DISPLAY_BEGIN() Heltec.display->clear()
+#define DISPLAY_TEXT(line, text) Heltec.display->drawString(0, 16 * line, text)
+#define DISPLAY_TEXTF(line, format, ...) sprintf(__buffer__, format, __VA_ARGS__); Heltec.display->drawString(0, 16 * line, __buffer__)
+#define DISPLAY_END() Heltec.display->display()
 #endif
 
 #define DEC_PER_SEC 1440
@@ -132,46 +144,17 @@ void update_state() {
   time_minute = m % 60;
   time_hour = h % 24;
   time_lapse %= 1000;
-#ifdef LCD
-  char buffer[17];
-  sprintf(buffer, "%02d%02d%02d %02d%02d%02d %c%c", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60, dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60, is_tracking ? 'T' : 't', is_slewing ? 'S' : 's');
-  lcd.setCursor(0, 0);
-  lcd.print(buffer);
-  sprintf(buffer, "%02d%02d%02d %c %c%c %c %c%c", time_hour, time_minute, time_second, slew_rate, (ra_slew < 0 ? 'E' : ra_slew > 0 ? 'W' : '0'), (dec_slew < 0 ? 'S' : dec_slew > 0 ? 'N' : '0'), tracking_rate, high_precision ? 'H' : 'h', is_parked ? 'P' : 'p');
-  //sprintf(buffer, "%02d%02d%02d %02d%02d%02d", target_ra / 360000L, (target_ra / 6000L) % 60, (target_ra / 100L) % 60, target_dec / 360000L, (target_dec / 6000L) % 60, (target_dec / 100L) % 60);
-  lcd.setCursor(0, 1);
-  lcd.print(buffer);
-#endif
-#ifdef OLED
-  char buffer[32];
-  Heltec.display->clear();
-  sprintf(buffer, "%02d:%02d:%02d %02d:%02d:%02d", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60, dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
-  Heltec.display->drawString(0, 0, buffer);
-  sprintf(buffer, "%02d:%02d:%02d", time_hour, time_minute, time_second);
-  Heltec.display->drawString(0, 20, buffer);
-  sprintf(buffer, "%c%c%c%c %c %c%c %c", high_precision ? 'H' : 'h', is_parked ? 'P' : 'p', is_tracking ? 'T' : 't', is_slewing ? 'S' : 's', slew_rate, (ra_slew < 0 ? 'E' : ra_slew > 0 ? 'W' : '0'), (dec_slew < 0 ? 'S' : dec_slew > 0 ? 'N' : '0'), tracking_rate);
-  Heltec.display->drawString(0, 40, buffer);
-  Heltec.display->display();
-#endif
+  DISPLAY_BEGIN();
+  DISPLAY_TEXTF(0, "%02d%02d%02d %02d%02d%02d %c%c", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60, dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60, is_tracking ? 'T' : 't', is_slewing ? 'S' : 's');
+  DISPLAY_TEXTF(1, "%02d%02d%02d %c %c%c %c %c%c", time_hour, time_minute, time_second, slew_rate, (ra_slew < 0 ? 'E' : ra_slew > 0 ? 'W' : '0'), (dec_slew < 0 ? 'S' : dec_slew > 0 ? 'N' : '0'), tracking_rate, high_precision ? 'H' : 'h', is_parked ? 'P' : 'p');
+  DISPLAY_END();
 }
 
 void setup() {
-#ifdef LCD
-  lcd.begin(16, 2);
-  lcd.setCursor(0, 0);
-  lcd.print("LX200 simulator");
-  lcd.setCursor(0, 1);
-  lcd.print("Not connected");
-#endif
-#ifdef OLED
-  Heltec.begin(true, false, true);
-  Heltec.display->clear();
-  Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-  Heltec.display->setFont(ArialMT_Plain_16);
-  Heltec.display->drawString(0, 0, "LX200 simulator");
-  Heltec.display->drawString(0, 20, "Not connected");
-  Heltec.display->display();
-#endif
+  DISPLAY_INIT();
+  DISPLAY_BEGIN();
+  DISPLAY_TEXT(0, "LX200 simulator");
+  DISPLAY_END();
   if (is_rainbow) {
     Serial.begin(115200);
     strcpy(latitude, "-127*20'10.0");
@@ -310,7 +293,7 @@ void loop() {
         Serial.print(buffer);
       } else if (!strcmp(buffer, "GR")) {
         if (is_rainbow) {
-          sprintf(buffer, ":%02d:%02d:%02d.0#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);          
+          sprintf(buffer, ":GR%02d:%02d:%02d.0#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);          
         } else if (high_precision) {
           sprintf(buffer, "%02d:%02d:%02d#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);
         } else {
@@ -341,7 +324,7 @@ void loop() {
         Serial.print(buffer);
       } else if (!strcmp(buffer, "GD")) {
         if (is_rainbow) {
-          sprintf(buffer, ":%+03d*%02d'%02d.0#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
+          sprintf(buffer, ":GD%+03d*%02d'%02d.0#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
         } else if (high_precision) {
           sprintf(buffer, "%+03d*%02d'%02d#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
         } else {
