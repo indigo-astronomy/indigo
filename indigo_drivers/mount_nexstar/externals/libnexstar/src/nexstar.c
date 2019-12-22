@@ -782,6 +782,21 @@ char *get_model_name(int id, char *name, int len) {
 	return NULL;
 }
 
+int tc_get_side_of_pier(int dev, char *side) {
+	if(VENDOR(VNDR_CELESTRON)) {
+		unsigned char reply[2];
+		REQUIRE_VER(VER_4_15);
+		if (write_telescope(dev, "p", 1) < 1)
+			return RC_FAILED;
+		if (read_telescope(dev, (char *)reply, sizeof reply) < 0)
+			return RC_FAILED;
+		*side = reply[0];
+		return RC_OK;
+	}
+	return RC_UNSUPPORTED;
+}
+
+
 /******************************************************************
  The following commands are not officially documented by Celestron.
  They are reverse engineered, more information can be found here:
