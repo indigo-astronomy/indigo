@@ -59,6 +59,7 @@
 #define VER_2_3  0x20300
 #define VER_3_1  0x30100
 #define VER_4_10 0x40A00
+#define VER_4_15 0x40F00
 #define VER_3_37_8 0x32508
 #define VER_4_37_8 0x42508
 /* All protocol versions */
@@ -165,6 +166,8 @@ int tc_slew_fixed(int dev, char axis, char direction, char rate);
 int tc_slew_variable(int dev, char axis, char direction, float rate);
 
 char *get_model_name(int id, char *name, int len);
+
+int tc_get_side_of_pier(int dev, char *side);
 
 /* Reverse engineered commands */
 /*
