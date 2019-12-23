@@ -1707,6 +1707,8 @@ static void update_property(indigo_device *device, indigo_property *property,
 
 	for (int p = 0; p < property->count; p++) {
 		if (property->items[p].sw.value) {
+			property->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, property, NULL);
 			rc = gphoto2_set_key_val_char(widget,
 						      property->items[p].name,
 						      device);
