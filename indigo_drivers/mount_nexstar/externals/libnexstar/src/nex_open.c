@@ -22,8 +22,14 @@ int parse_devname(char *device, char *host, int *port) {
 	char *strp;
 	int n;
 
-	n=sscanf(device,"tcp://%s",host);
-	if (n < 1) return 0;
+	n = sscanf(device,"tcp://%s",host);
+	if (n < 1) {
+		n = sscanf(device,"nexstar://%s",host);
+		if (n < 1) {
+			return 0;
+		}
+	}
+
 	strp = host;	
 	strsep(&strp, ":");
 	if (strp == NULL) {

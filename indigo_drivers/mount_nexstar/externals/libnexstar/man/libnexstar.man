@@ -50,14 +50,17 @@ or may behave erratically.
 .B #define RC_UNSUPPORTED (-5)
 /* unsupported command */
 
+.B #define RC_UNCERTAIN (-6)
+/* Alignment may be poor */
+
 .SH CALLS
 
 .SS TELESCOPE COMMUNICATION
 .TP
 .B int open_telescope(char *dev_file);
 Opens serial port to communicate with the telescope and configures it accordingly.
-If the dev_file has "tcp://" prefix the rest of the string is interpreted as an IP
-address and port where to connect to (like "tcp://localhost:9999").
+If the dev_file has "tcp://" or "nexstar://" prefix the rest of the string is interpreted as an hostname or IP
+address and port where to connect to (like "nexstar://localhost:9999").
 On success it returns a file descriptor of the device, on error -1 is returned.
 
 NOTE: To be used with TCP you need to run nexbridge on the remote computer.
@@ -116,6 +119,20 @@ On success the guessed vendor ID is returned (VNDR_CELESTRON or VNDR_SKYWATCHER)
 
 NOTE: SkyWather mounts with firmware before 4.37.8 will be threated as Celestron in this case enforce_vendor_protocol() can be used.
 .TP
+.B int get_mount_capabilities(int dev, uint32_t *caps, int *vendor);
+This function returns mount capabilities in
+.B *caps
+as a bitmap of the following capabilities CAN_SYNC, CAN_GET_SET_BACKLASH, CAN_GET_SET_GUIDE_RATE, CAN_SLEW, CAN_GET_ORIENTATION, CAN_ALIGN, CAN_GET_SET_PEC.
+If the corresponding bit is set then this capability is supported.
+.B *vendor
+is used as a hint so that the vendor is not guessed, but the one provided is used to determine mount capabilitiies. If
+.B *vendor
+is 0, the vendor is guessed and
+.B *vendor
+is set to it on exit. If
+.B vendor
+is NULL the vendor is guessed but not returned. On success the finction returns 0, on error -1.
+.TP
 .B int enforce_vendor_protocol(int vendor);
 This function enforces protocol of the specified vendor to be used overriding the guessed one.
 Valid vendor IDs are VNDR_CELESTRON and VNDR_SKYWATCHER. This way the commands not supported
@@ -128,7 +145,7 @@ ID is returned otherwise it returns -1.
 If the telescope alignment process is complete 1 is returned. If it is not complete 0 is returned.
 On error -1 is returned.
 .TP
-.B int tc_get_orientation(int dev);
+.B int tc_get_side_of_pier(int dev);
 Get the telescope orientation. Character 'E' or 'W' is returned for East and West respectively. If no response received, -1
 is returned.
 .TP
@@ -340,6 +357,38 @@ On success 0 is returned, on error -1. If backlash is out of range -2 is returne
 Send a pass through command to a specific device. This function is meant for an internal
 library use and should not be used, unless you know exactly what you are doing.
 Calling this function with wrong parameters can be dangerous and can break the telescope!
+
+.SS ALIGNMENT COMMANDS
+The following commands are specific for SkyWatcher (Hand Control Firmware 4.39.05 or newer). They are used for mount alignment.
+One, two and three star aligment procedure is supported.
+.TP
+.B int tc_set_alignment_point(int dev, int point_num, double ra, double de);
+Set alignment point number [1,2,3]
+.B point_num
+with right ascension
+.B ra
+and Declination
+.B de.
+The coordinates provided should be the real coordinates of the current mount position. For example one should train
+the telescope manually to star1 with known coordinates and issue
+.B tc_set_alignment_point(mount, 1, star1_ra, star1_de)
+to set alignment point 1. Then train the telescope to another star (star2) and issue
+.B tc_set_alignmnt_point(mount, 2, star2_ra, star2_de).
+Then one can perform 2 point alignment.
+On success 0 is returned, on error -1, in case of non-valid coordinates or point nuber -2 is returned.
+If the command is not supported -5 is returned.
+.TP
+.B int tc_align(int dev, int num_points);
+Perform one, two or three point alignment depending on
+.B num_points
+using the data provided by calling tc_set_alignmnt_point(). For one point alignment atleast point 1 data should be set.
+For two point aliggnment at least points 1 and 2 should be set. For three point alignment the data all three points should be set.
+If the alignment did not succeed 0 is returned. If the aligment is successful 0 is returned.
+In case the alignment is uncertain (possibly bad) -6 is returned.
+On error -1 is returned, if
+.B num_points
+is not in the range [1,2,3] -2 is returned. If the command is not supported -5 is returned.
+
 
 .SS PERIODIC ERROR CORRECTION COMMANDS
 The following commands are not officially documented by Celestron. Please note that these
