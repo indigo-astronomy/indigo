@@ -16,7 +16,7 @@
 
 /* do not check protocol version by default */
 int nexstar_proto_version = VER_AUX;
-int nexstar_hc_type = HC_NEXSTAR;
+int nexstar_hc_type = HC_UNSPECIFIED;
 int nexstar_mount_vendor = VNDR_ALL_SUPPORTED;
 
 /* do not use RTC by default */
@@ -141,8 +141,67 @@ int guess_mount_vendor(int dev) {
 	return RC_FAILED;
 }
 
-int enforce_vendor_protocol(int vendor) {
+int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
+	int guessed_vendor;
+	int firmware_version;
 
+	if (caps) {
+		*caps = 0;
+	} else {
+		return RC_FAILED;
+	}
+
+	if (vendor == NULL) {
+		guessed_vendor = guess_mount_vendor(dev);
+	} else if (*vendor == 0) {
+		guessed_vendor = guess_mount_vendor(dev);
+		*vendor = guessed_vendor;
+	} else {
+		guessed_vendor = *vendor;
+	}
+
+	firmware_version = tc_get_version(dev, NULL, NULL);
+
+	if ((guessed_vendor < 0) || (firmware_version < 0)) return RC_FAILED;
+
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3)) {
+		*caps |= CAN_SYNC;
+	} else if (firmware_version >= VER_4_10) {
+		*caps |= CAN_SYNC;
+	}
+
+	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_3_1)) {
+		/* Not sure about this but recent mounts will work so 3.1 is fair */
+		*caps |= CAN_GET_SET_BACKLASH;
+	}
+
+	if (firmware_version >= VER_3_1) {
+		/* Not sure about this but recent mounts will work so 3.1 is fair */
+		*caps |= CAN_GET_SET_GUIDE_RATE;
+	}
+
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 3)) {
+		*caps |= CAN_SLEW;
+	} else if (firmware_version >= VER_1_6) {
+		*caps |= CAN_SLEW;
+	}
+
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3)) {
+		*caps |= CAN_GET_ORIENTATION;
+	}
+
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 39) && (GET_REVISION(firmware_version) >= 5)) {
+		*caps |= CAN_ALIGN;
+	}
+
+	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_4_10)) {
+		/* Not sure about this but recent mounts will work so 4.10 is fair */
+		*caps |= CAN_GET_SET_PEC;
+	}
+	return RC_OK;
+}
+
+int enforce_vendor_protocol(int vendor) {
 	if (!(vendor & VNDR_ALL_SUPPORTED)) return RC_FAILED;
 	nexstar_mount_vendor = vendor;
 	return vendor;
@@ -279,12 +338,15 @@ int tc_check_align(int dev) {
 	return reply[0];
 }
 
-int tc_get_orientation(int dev) {
+int tc_get_side_of_pier(int dev) {
 	char reply[2];
 
-	REQUIRE_VENDOR(VNDR_SKYWATCHER);
-	REQUIRE_RELEASE(3);
-	REQUIRE_REVISION(37);
+	if (VENDOR(VNDR_SKYWATCHER)) {
+		REQUIRE_RELEASE(3);
+		REQUIRE_REVISION(37);
+	} else {
+		REQUIRE_VER(VER_4_15);
+	}
 
 	if (write_telescope(dev, "p", 1) < 1) return RC_FAILED;
 
@@ -782,21 +844,6 @@ char *get_model_name(int id, char *name, int len) {
 	return NULL;
 }
 
-int tc_get_side_of_pier(int dev, char *side) {
-	if(VENDOR(VNDR_CELESTRON)) {
-		unsigned char reply[2];
-		REQUIRE_VER(VER_4_15);
-		if (write_telescope(dev, "p", 1) < 1)
-			return RC_FAILED;
-		if (read_telescope(dev, (char *)reply, sizeof reply) < 0)
-			return RC_FAILED;
-		*side = reply[0];
-		return RC_OK;
-	}
-	return RC_UNSUPPORTED;
-}
-
-
 /******************************************************************
  The following commands are not officially documented by Celestron.
  They are reverse engineered, more information can be found here:
@@ -914,6 +961,54 @@ int tc_pass_through_cmd(int dev, char msg_len, char dest_id, char cmd_id,
 	return RC_OK;
 }
 
+/*****************************************
+ Alignent: SKYWATCHER ONLY
+ *****************************************/
+int tc_set_alignment_point(int dev, int point_num, double ra, double de) {
+	const char numc[3] = {'1','2','3'};
+	char nex[30];
+	char reply;
+
+	REQUIRE_VENDOR(VNDR_SKYWATCHER);
+	REQUIRE_VER(VER_4_39_5);
+
+	if ((point_num < 1) || (point_num > 3)) return RC_PARAMS;
+	if ((ra < -0.1) || (ra > 360.1)) return RC_PARAMS;
+	if ((de < -90.1) || (de > 90.1)) return RC_PARAMS;
+
+	nex[0] = 'a';
+	nex[1] = numc[point_num-1];
+	dd2pnex(ra, de, nex + 2);
+	if (write_telescope(dev, nex, 19) < 1) return RC_FAILED;
+
+	if (read_telescope(dev, &reply, sizeof reply) < 0) return RC_FAILED;
+
+	return RC_OK;
+}
+
+int tc_align(int dev, int num_points) {
+	const char numc[3] = {'1','2','3'};
+	char cmd[2];
+	char reply[2];
+
+	REQUIRE_VENDOR(VNDR_SKYWATCHER);
+	REQUIRE_VER(VER_4_39_5);
+
+	if ((num_points < 1) || (num_points > 3)) return RC_PARAMS;
+
+	cmd[0] = 'A';
+	cmd[1] = numc[num_points-1];
+
+	if (write_telescope(dev, cmd, 2) < 2) return RC_FAILED;
+
+	if (read_telescope(dev, reply, sizeof reply) < 0) return RC_FAILED;
+
+	if (reply[0]=='1') return RC_OK;
+	if (reply[0]=='0') return RC_FAILED;
+	if (reply[0]=='?') return RC_UNCERTAIN;
+
+	return RC_FAILED;
+}
 
 /******************************************
  conversion:	nexstar <-> decimal degrees

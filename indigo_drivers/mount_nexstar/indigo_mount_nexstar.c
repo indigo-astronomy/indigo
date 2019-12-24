@@ -466,9 +466,11 @@ static void position_timer_callback(indigo_device *device) {
 	}
 
 	if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
-		res = tc_get_side_of_pier(dev_id, &side_of_pier);
+		res = tc_get_side_of_pier(dev_id);
 		if (res < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, res, strerror(errno));
+		} else {
+			side_of_pier = res;
 		}
 	}
 
@@ -483,7 +485,7 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 	}
-	
+
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
@@ -506,7 +508,7 @@ static void position_timer_callback(indigo_device *device) {
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		}
 	}
-	
+
 	if (PRIVATE_DATA->gps) {
 		nexstar_private_data *private_data = PRIVATE_DATA;
 		indigo_device *device = private_data->gps;
@@ -660,21 +662,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					/* check for side of pier support & GPS */
 					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 					MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
-					if (vendor_id == VNDR_CELESTRON) {
-						char side_of_pier;
-						int res = tc_get_side_of_pier(dev_id, &side_of_pier);
-						if (res < 0) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, res, strerror(errno));
-							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
-						} else {
-							if (side_of_pier == 'W') {
-								MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-								indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
-							} else if (side_of_pier == 'E') {
-								MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-								indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-							}
+
+					int res = tc_get_side_of_pier(dev_id);
+					if (res < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, res, strerror(errno));
+						MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
+					} else {
+						char side_of_pier = res;
+						if (side_of_pier == 'W') {
+							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+						} else if (side_of_pier == 'E') {
+							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 						}
+					}
+
+					if (vendor_id == VNDR_CELESTRON) {
 						char response[3];
 						if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0xFE, 0, 0, 0, 2, response) == RC_OK) {
 							sprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value + strlen(MOUNT_INFO_FIRMWARE_ITEM->text.value), " (GPS %d.%d)", response[0], response[1]);
@@ -1125,7 +1129,7 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 		return INDIGO_OK;
 
 	INDIGO_DEBUG(tc_debug = indigo_debug);
-	
+
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
