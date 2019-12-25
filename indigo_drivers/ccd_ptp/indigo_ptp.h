@@ -282,7 +282,7 @@ typedef struct {
 	uint32_t transaction_id;
 	union {
 		uint32_t params[5];
-		uint8_t data[512 - PTP_CONTAINER_HDR_SIZE];
+		uint8_t data[1024 - PTP_CONTAINER_HDR_SIZE];
 	} payload;
 } ptp_container;
 
