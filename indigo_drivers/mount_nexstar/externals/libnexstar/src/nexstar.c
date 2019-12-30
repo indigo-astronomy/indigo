@@ -144,6 +144,7 @@ int guess_mount_vendor(int dev) {
 int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 	int guessed_vendor;
 	int firmware_version;
+	int mount_model;
 
 	if (caps) {
 		*caps = 0;
@@ -161,6 +162,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 	}
 
 	firmware_version = tc_get_version(dev, NULL, NULL);
+	mount_model = tc_get_model(dev);
 
 	if ((guessed_vendor < 0) || (firmware_version < 0)) return RC_FAILED;
 
@@ -186,7 +188,8 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 		*caps |= CAN_SLEW;
 	}
 
-	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3)) {
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3) &&
+	    (mount_model <= 128)) {
 		*caps |= CAN_GET_ORIENTATION;
 	}
 
@@ -197,6 +200,12 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_4_10)) {
 		/* Not sure about this but recent mounts will work so 4.10 is fair */
 		*caps |= CAN_GET_SET_PEC;
+	}
+
+	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_4_15) &&
+		((mount_model == 5) || (mount_model == 6) || (mount_model == 10) ||
+		(mount_model == 14) || (mount_model == 20))) {
+		*caps |= CAN_GET_ORIENTATION;
 	}
 	return RC_OK;
 }
