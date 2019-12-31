@@ -25,7 +25,7 @@
  \file indigo_mount_temma.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_temma"
 
 #include <stdlib.h>
@@ -53,25 +53,25 @@
 
 #define CCD_ADVANCED_GROUP         "Advanced"
 
-#define CORRECTION_SPEED_PROPERTY					(PRIVATE_DATA->correction_speed_property)
+#define CORRECTION_SPEED_PROPERTY			(PRIVATE_DATA->correction_speed_property)
 #define CORRECTION_SPEED_RA_ITEM          (CORRECTION_SPEED_PROPERTY->items+0)
 #define CORRECTION_SPEED_DEC_ITEM         (CORRECTION_SPEED_PROPERTY->items+1)
 
-#define CORRECTION_SPEED_PROPERTY_NAME		"X_CORRECTION_SPEED"
+#define CORRECTION_SPEED_PROPERTY_NAME	  "TEMMA_CORRECTION_SPEED"
 #define CORRECTION_SPEED_RA_ITEM_NAME     "RA"
 #define CORRECTION_SPEED_DEC_ITEM_NAME    "DEC"
 
-#define HIGHSPEED_PROPERTY                (PRIVATE_DATA->highspeed_property)
-#define HIGHSPEED_LOW_ITEM                (HIGHSPEED_PROPERTY->items+0)
-#define HIGHSPEED_HIGH_ITEM               (HIGHSPEED_PROPERTY->items+1)
-#define HIGHSPEED_PROPERTY_NAME           "X_HIGHSPEED"
-#define HIGHSPEED_LOW_ITEM_NAME           "LOW"
-#define HIGHSPEED_HIGH_ITEM_NAME          "HIGH"
+#define HIGH_SPEED_PROPERTY                (PRIVATE_DATA->high_speed_property)
+#define HIGH_SPEED_LOW_ITEM                (HIGH_SPEED_PROPERTY->items+0)
+#define HIGH_SPEED_HIGH_ITEM               (HIGH_SPEED_PROPERTY->items+1)
+#define HIGH_SPEED_PROPERTY_NAME           "TEMMA_HIGH_SPEED"
+#define HIGH_SPEED_LOW_ITEM_NAME           "LOW"
+#define HIGH_SPEED_HIGH_ITEM_NAME          "HIGH"
 
 #define ZENITH_PROPERTY                   (PRIVATE_DATA->zenith_property)
 #define ZENITH_EAST_ITEM                  (ZENITH_PROPERTY->items+0)
 #define ZENITH_WEST_ITEM                  (ZENITH_PROPERTY->items+1)
-#define ZENITH_PROPERTY_NAME              "X_ZENITH"
+#define ZENITH_PROPERTY_NAME              "TEMMA_ZENITH"
 #define ZENITH_EAST_ITEM_NAME             "EAST"
 #define ZENITH_WEST_ITEM_NAME             "WEST"
 
@@ -79,8 +79,8 @@
 #define TEMMA_GET_POSITION					"E"
 #define TEMMA_GET_GOTO_STATE				"s"
 #define TEMMA_GET_CORRECTION_SPEED	"lg"
-#define TEMMA_SET_VOLTAGE_12V_OR_LOWSPEED		"v1"
-#define TEMMA_SET_VOLTAGE_24V_OR_HIGHSPEED		"v2"
+#define TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED		"v1"
+#define TEMMA_SET_VOLTAGE_24V_OR_HIGH_SPEED		"v2"
 #define TEMMA_SET_STELLAR_RATE			"LL"
 #define TEMMA_SET_SOLAR_RATE				"LK"
 #define TEMMA_GOTO_STOP							"PS"
@@ -114,7 +114,7 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	char product[128];
 	indigo_property *correction_speed_property;
-	indigo_property *highspeed_property;
+	indigo_property *high_speed_property;
 	indigo_property *zenith_property;
 } temma_private_data;
 
@@ -218,8 +218,8 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 						break;
 					case '1':
 					case '2':
-						HIGHSPEED_LOW_ITEM->sw.value = buffer[1] == '1';
-						HIGHSPEED_HIGH_ITEM->sw.value = buffer[1] == '2';
+						HIGH_SPEED_LOW_ITEM->sw.value = buffer[1] == '1';
+						HIGH_SPEED_HIGH_ITEM->sw.value = buffer[1] == '2';
 						break;
 				};
 				break;
@@ -339,12 +339,12 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(CORRECTION_SPEED_RA_ITEM, CORRECTION_SPEED_RA_ITEM_NAME, "RA speed (10% - 90%)", 10, 90, 1, 50);
 		indigo_init_number_item(CORRECTION_SPEED_DEC_ITEM, CORRECTION_SPEED_DEC_ITEM_NAME, "Dec speed (10% - 90%)", 10, 90, 1, 50);
-		// HIGHSPEED
-		HIGHSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHSPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "High-speed or High-voltage config", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (HIGHSPEED_PROPERTY == NULL)
+		// HIGH_SPEED
+		HIGH_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGH_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "High-speed or High-voltage config", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (HIGH_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(HIGHSPEED_LOW_ITEM, HIGHSPEED_LOW_ITEM_NAME, "12V or Low-speed", true);
-		indigo_init_switch_item(HIGHSPEED_HIGH_ITEM, HIGHSPEED_HIGH_ITEM_NAME, "24V or High-speed", false);
+		indigo_init_switch_item(HIGH_SPEED_LOW_ITEM, HIGH_SPEED_LOW_ITEM_NAME, "12V or Low-speed", true);
+		indigo_init_switch_item(HIGH_SPEED_HIGH_ITEM, HIGH_SPEED_HIGH_ITEM_NAME, "24V or High-speed", false);
 		// ZENITH
 		ZENITH_PROPERTY = indigo_init_switch_property(NULL, device->name, ZENITH_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Sync zenith", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (ZENITH_PROPERTY == NULL)
@@ -363,8 +363,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	if (IS_CONNECTED) {
 		if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property))
 			indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(HIGHSPEED_PROPERTY, property))
-			indigo_define_property(device, HIGHSPEED_PROPERTY, NULL);
+		if (indigo_property_match(HIGH_SPEED_PROPERTY, property))
+			indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
 		if (indigo_property_match(ZENITH_PROPERTY, property))
 			indigo_define_property(device, ZENITH_PROPERTY, NULL);
 	}
@@ -394,13 +394,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					temma_set_lst(device);
 					temma_set_latitude(device);
 					// TemmaPC set to 24V when TEMMA_GET_VERSION (`v`) command sent.
-					temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOWSPEED, false);
+					temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
 					temma_command(device, TEMMA_GET_POSITION, true);
 					temma_command(device, TEMMA_GET_CORRECTION_SPEED, true);
 					temma_command(device, TEMMA_GET_GOTO_STATE, true);
 					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 					indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-					indigo_define_property(device, HIGHSPEED_PROPERTY, NULL);
+					indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
 					indigo_define_property(device, ZENITH_PROPERTY, NULL);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
@@ -422,7 +422,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				temma_close(device);
 			}
 			indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-			indigo_delete_property(device, HIGHSPEED_PROPERTY, NULL);
+			indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
 			indigo_delete_property(device, ZENITH_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -632,22 +632,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(HIGHSPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- HIGHSPEED
+	} else if (indigo_property_match(HIGH_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- HIGH_SPEED
 		if (IS_CONNECTED) {
-			indigo_property_copy_values(HIGHSPEED_PROPERTY, property, false);
-			if (HIGHSPEED_LOW_ITEM->sw.value || HIGHSPEED_HIGH_ITEM->sw.value) {
+			indigo_property_copy_values(HIGH_SPEED_PROPERTY, property, false);
+			if (HIGH_SPEED_LOW_ITEM->sw.value || HIGH_SPEED_HIGH_ITEM->sw.value) {
 				// show busy
-				HIGHSPEED_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, HIGHSPEED_PROPERTY, NULL);
-				if (HIGHSPEED_LOW_ITEM->sw.value) {
-					temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOWSPEED, false);
-				} else if (HIGHSPEED_HIGH_ITEM->sw.value) {
-					temma_command(device, TEMMA_SET_VOLTAGE_24V_OR_HIGHSPEED, false);
+				HIGH_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
+				if (HIGH_SPEED_LOW_ITEM->sw.value) {
+					temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
+				} else if (HIGH_SPEED_HIGH_ITEM->sw.value) {
+					temma_command(device, TEMMA_SET_VOLTAGE_24V_OR_HIGH_SPEED, false);
 				}
 				// show ok
-				HIGHSPEED_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, HIGHSPEED_PROPERTY, NULL);
+				HIGH_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
 			}
 		}
 		return INDIGO_OK;
@@ -690,7 +690,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(CORRECTION_SPEED_PROPERTY);
-	indigo_release_property(HIGHSPEED_PROPERTY);
+	indigo_release_property(HIGH_SPEED_PROPERTY);
 	indigo_release_property(ZENITH_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
