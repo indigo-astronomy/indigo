@@ -71,6 +71,7 @@ typedef struct {
 	int slew_rate;
 	int st4_ra_rate, st4_dec_rate;
 	int vendor_id;
+	uint32_t capabilities;
 	pthread_mutex_t serial_mutex;
 	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
@@ -607,6 +608,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 					PRIVATE_DATA->vendor_id = vendor_id;
 
+					int res = get_mount_capabilities(dev_id, &PRIVATE_DATA->capabilities, &vendor_id);
+					if (res != RC_OK) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_mount_capabilities(%d) = %d", dev_id, res);
+					}
+
 					int model_id = tc_get_model(dev_id);
 					if (model_id < 0) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_model(%d) = %d (%s)", dev_id, model_id, strerror(errno));
@@ -663,18 +669,19 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 					MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 
-					int res = tc_get_side_of_pier(dev_id);
-					if (res < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, res, strerror(errno));
-						MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
-					} else {
-						char side_of_pier = res;
-						if (side_of_pier == 'W') {
-							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
-						} else if (side_of_pier == 'E') {
-							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+					if (PRIVATE_DATA->capabilities & CAN_GET_ORIENTATION) {
+						int side_of_pier = tc_get_side_of_pier(dev_id);
+						if (side_of_pier < 0) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, side_of_pier, strerror(errno));
+							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
+						} else {
+							if (side_of_pier == 'W') {
+								MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+								indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+							} else if (side_of_pier == 'E') {
+								MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+								indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+							}
 						}
 					}
 
