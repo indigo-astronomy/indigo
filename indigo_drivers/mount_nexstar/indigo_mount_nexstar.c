@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -669,7 +669,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 					MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 
-					if (PRIVATE_DATA->capabilities & CAN_GET_ORIENTATION) {
+					if (PRIVATE_DATA->capabilities & CAN_GET_SIDE_OF_PIER) {
 						int side_of_pier = tc_get_side_of_pier(dev_id);
 						if (side_of_pier < 0) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, side_of_pier, strerror(errno));
