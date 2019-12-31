@@ -189,7 +189,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 	}
 
 	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3) &&
-	    (mount_model <= 128)) {
+	    (mount_model < 128)) {
 		*caps |= CAN_GET_SIDE_OF_PIER;
 	}
 
