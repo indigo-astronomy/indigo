@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 #define FIT_FORMAT_AMATEUR_CCD
 
