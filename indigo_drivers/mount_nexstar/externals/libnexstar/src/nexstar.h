@@ -46,9 +46,9 @@
 #define CAN_GET_SET_BACKLASH   0x0002
 #define CAN_GET_SET_GUIDE_RATE 0x0004
 #define CAN_SLEW               0x0008
-#define CAN_GET_ORIENTATION    0x000F
 #define CAN_ALIGN              0x0010
 #define CAN_GET_SET_PEC        0x0020
+#define CAN_GET_SIDE_OF_PIER    0x0040
 
 /* return codes */
 #define RC_OK            0	/* success */

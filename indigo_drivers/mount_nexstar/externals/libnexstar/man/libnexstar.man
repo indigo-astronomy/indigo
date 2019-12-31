@@ -122,7 +122,7 @@ NOTE: SkyWather mounts with firmware before 4.37.8 will be threated as Celestron
 .B int get_mount_capabilities(int dev, uint32_t *caps, int *vendor);
 This function returns mount capabilities in
 .B *caps
-as a bitmap of the following capabilities CAN_SYNC, CAN_GET_SET_BACKLASH, CAN_GET_SET_GUIDE_RATE, CAN_SLEW, CAN_GET_ORIENTATION, CAN_ALIGN, CAN_GET_SET_PEC.
+as a bitmap of the following capabilities CAN_SYNC, CAN_GET_SET_BACKLASH, CAN_GET_SET_GUIDE_RATE, CAN_SLEW, CAN_GET_SIDE_OF_PIER, CAN_ALIGN, CAN_GET_SET_PEC.
 If the corresponding bit is set then this capability is supported.
 .B *vendor
 is used as a hint so that the vendor is not guessed, but the one provided is used to determine mount capabilitiies. If
