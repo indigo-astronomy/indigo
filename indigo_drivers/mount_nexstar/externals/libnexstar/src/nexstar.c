@@ -164,7 +164,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 	firmware_version = tc_get_version(dev, NULL, NULL);
 	mount_model = tc_get_model(dev);
 
-	if ((guessed_vendor < 0) || (firmware_version < 0)) return RC_FAILED;
+	if ((guessed_vendor < 0) || (firmware_version < 0) || (mount_model < 0)) return RC_FAILED;
 
 	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3)) {
 		*caps |= CAN_SYNC;
