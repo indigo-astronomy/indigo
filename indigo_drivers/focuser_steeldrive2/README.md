@@ -19,6 +19,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_steeldrive2
 
-## Status: Under development
+## Status: Stable
 
 Tested with physical device.
