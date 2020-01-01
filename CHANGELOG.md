@@ -1,4 +1,4 @@
-## [2.0.108] - Wed Jan  1 2020
+## [2.0-108] - Wed Jan  1 2020
 
 ### Overall:
 - webGUI: readonly switch support added
