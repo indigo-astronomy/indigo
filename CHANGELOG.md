@@ -1,3 +1,7 @@
+# Changelog
+
+All notable changes to INDIGO framewark will be documented in this file.
+
 ## [2.0-108] - Wed Jan  1 2020
 
 ### Overall:
