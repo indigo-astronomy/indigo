@@ -18,7 +18,7 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 ## Use
 
-indigo_server indigo_focuser_asi
+`indigo_server indigo_focuser_asi`
 
 ## Status: Stable
 
@@ -35,7 +35,7 @@ Please follow these steps:
 
 1. Connect the power to EAF.
 2. Connect the EAF to your Mac via USB cable.
-3. Power OFF and then power ON your Mac.
+3. Power OFF and then power ON your Mac while the focuser is connected.
 4. The EAF should be discovered -> `indigo_focuser_asi: 'EAF #0' attached`
 
 This seems to be a MacOS issue. Looks like this procedure fixes some device permissions.
