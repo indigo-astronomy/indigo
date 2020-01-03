@@ -1142,14 +1142,14 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(clock_t start = clock());
 		time_t timer;
 		struct tm* tm_info;
-        char date_time_end[21], date_time_start[21], fits_date_obs[21];
+		char date_time_end[21], date_time_start[21], fits_date_obs[21];
 		time(&timer);
 		tm_info = gmtime(&timer);
 		strftime(date_time_end, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
 		timer -= CCD_EXPOSURE_ITEM->number.target;
 		tm_info = gmtime(&timer);
 		strftime(date_time_start, 21, "%Y-%m-%dT%H:%M:%SZ", tm_info);
-        strftime(fits_date_obs, 21, "%Y-%m-%dT%H:%M:%S", tm_info);
+		strftime(fits_date_obs, 21, "%Y-%m-%dT%H:%M:%S", tm_info);
 		char *header = data;
 		strcpy(header, "XISF0100");
 		header += 16;
@@ -1175,46 +1175,46 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		header += strlen(header);
 		sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
-        header += strlen(header);
-        sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs );
+		header += strlen(header);
+		sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs );
 		header += strlen(header);
 		sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
 		header += strlen(header);
-        sprintf(header, "<FITSKeyword name='INSTRUME' value='%s' comment='Instrument'/>", device->name);
-        header += strlen(header);
+		sprintf(header, "<FITSKeyword name='INSTRUME' value='%s' comment='Instrument'/>", device->name);
+		header += strlen(header);
 		sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
 		header += strlen(header);
-        sprintf(header, "<FITSKeyword name='XBINNING' value='%d' comment='Binning factor, X-axis'/><FITSKeyword name='YBINNING' value='%d' comment='Binning factor, Y-axis'/>", horizontal_bin, vertical_bin);
-        header += strlen(header);
+		sprintf(header, "<FITSKeyword name='XBINNING' value='%d' comment='Binning factor, X-axis'/><FITSKeyword name='YBINNING' value='%d' comment='Binning factor, Y-axis'/>", horizontal_bin, vertical_bin);
+		header += strlen(header);
 		sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%s'/>", indigo_dtoa(CCD_EXPOSURE_ITEM->number.target, b1));
 		header += strlen(header);
-        sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.2f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
-        header += strlen(header);
-        sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
+		sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.2f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
 		header += strlen(header);
-        sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
-        header += strlen(header);
+		sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
+		header += strlen(header);
+		sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+		header += strlen(header);
 
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
-            header += strlen(header);
-            sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value );
-            header += strlen(header);
+			header += strlen(header);
+			sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value );
+			header += strlen(header);
 
 		}
 		if (!CCD_GAIN_PROPERTY->hidden) {
 			sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAIN_ITEM->number.value, b1));
 			header += strlen(header);
-            sprintf(header, "<FITSKeyword name='GAIN' value='%20.2f' comment='Gain'/>", CCD_GAIN_ITEM->number.value);
-            header += strlen(header);
+			sprintf(header, "<FITSKeyword name='GAIN' value='%20.2f' comment='Gain'/>", CCD_GAIN_ITEM->number.value);
+			header += strlen(header);
 		}
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 			if (!strncmp(item->text.value, "FILTER=", 7)) {
 				sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value='%s'/>", item->text.value + 7);
 				header += strlen(header);
-                sprintf(header, "<FITSKeyword name='FILTER' value='%s'/>", item->text.value + 7);
-                header += strlen(header);
+				sprintf(header, "<FITSKeyword name='FILTER' value='%s'/>", item->text.value + 7);
+				header += strlen(header);
 			} else if (!strncmp(item->text.value, "FOCUS=", 6)) {
 				sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value + 6);
 				header += strlen(header);
