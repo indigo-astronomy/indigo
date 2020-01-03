@@ -938,6 +938,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		struct tm* tm_info;
 		char date_time_end[20];
 		time(&timer);
+		timer -= CCD_EXPOSURE_ITEM->number.target;
 		tm_info = gmtime(&timer);
 		strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
 		char *header = data;
