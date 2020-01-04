@@ -121,6 +121,7 @@
 #include "aux_flatmaster/indigo_aux_flatmaster.h"
 #include "focuser_focusdreampro/indigo_focuser_focusdreampro.h"
 #include "aux_fbc/indigo_aux_fbc.h"
+#include "mount_rainbow/indigo_mount_rainbow.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -226,6 +227,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_ioptron,
 	indigo_mount_lx200,
 	indigo_mount_nexstar,
+	indigo_mount_rainbow,
 	indigo_mount_simulator,
 	indigo_mount_synscan,
 	indigo_mount_synscan,
