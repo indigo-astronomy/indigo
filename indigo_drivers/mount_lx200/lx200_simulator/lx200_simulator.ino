@@ -20,11 +20,26 @@
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
+#define LCD
 #endif
+
 #define DISPLAY_INIT()
 #define DISPLAY_BEGIN()
+#define DISPLAY_TEXT(line, text)
 #define DISPLAY_TEXTF(line, ...)
 #define DISPLAY_END()
+#ifdef ARDUINO_SAM_DUE
+#ifdef LCD
+#include <LiquidCrystal.h>
+static LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+static char __buffer__[32];
+#define DISPLAY_INIT() lcd.begin(16, 2);
+#define DISPLAY_BEGIN() 
+#define DISPLAY_TEXT(line, text) lcd.setCursor(0, line); lcd.print(text);
+#define DISPLAY_TEXTF(line, format, ...) sprintf(__buffer__, format, __VA_ARGS__); lcd.setCursor(0, line); lcd.print(__buffer__);
+#define DISPLAY_END()
+#endif
+#endif
 #ifdef ARDUINO_TTGO_T1
 #pragma message ARDUINO_TTGO_T1
 #include <SPI.h>
@@ -56,7 +71,6 @@ bool is_10micron = false;
 bool is_gemini = false;
 bool is_avalon = false;
 bool is_onestep = false;
-bool is_rainbow = true;
 
 int date_day = 1;
 int date_month = 1;
@@ -69,7 +83,7 @@ int time_offset = 2;
 int time_dst = 1;
 
 char latitude[16] = "+48*08";
-char longitude[16] = "+17*06";
+char longitude[16] = "-17*06";
 
 bool high_precision = true;
 
@@ -155,15 +169,7 @@ void setup() {
   DISPLAY_BEGIN();
   DISPLAY_TEXT(0, "LX200 simulator");
   DISPLAY_END();
-  if (is_rainbow) {
-    Serial.begin(115200);
-    strcpy(latitude, "-127*20'10.0");
-    strcpy(longitude, "+36*20'60.0");
-  } else {
-    Serial.begin(9600);
-    strcpy(latitude, "+48*08");
-    strcpy(longitude, "+17*06");
-  }
+	Serial.begin(9600);
   Serial.setTimeout(1000);
   while (!Serial)
     ;
@@ -215,52 +221,28 @@ void loop() {
       } else if (!strncmp(buffer, "SH", 2)) {
         time_dst = atoi(buffer + 2);
       } else if (!strcmp(buffer, "GH")) {
-        if (is_rainbow) {
-          if (is_parked)
-            Serial.print(":GHO#");
-          else
-            Serial.print(":GH0#");          
-        } else {
-          sprintf(buffer, "%d#", time_dst);
-          Serial.print(buffer);
-        }
+				sprintf(buffer, "%d#", time_dst);
+				Serial.print(buffer);
       } else if (!strncmp(buffer, "SL", 2)) {
 				time_hour = atoi(buffer + 2);
 				time_minute = atoi(buffer + 5);
 				time_second = atoi(buffer + 8);
 				Serial.print("1");
       } else if (!strcmp(buffer, "GL")) {
-        if (is_rainbow)
-          sprintf(buffer, ":%02d:%02d:%02d#", time_hour, time_minute, time_second);
-        else
-        Serial.print(buffer);
-          sprintf(buffer, "%02d:%02d:%02d#", time_hour, time_minute, time_second);
+				sprintf(buffer, "%02d:%02d:%02d#", time_hour, time_minute, time_second);
+				Serial.print(buffer);
       } else if (!strncmp(buffer, "Sg", 2)) {
         strcpy(longitude, buffer + 2);
-        if (!is_rainbow)
-          Serial.print("1");
+				Serial.print("1");
       } else if (!strcmp(buffer, "Gg")) {
-        if (is_rainbow) {
-          Serial.print(":Gg");
-          Serial.print(longitude);
-          Serial.print("#");
-        } else {
-          Serial.print(longitude);
-          Serial.print("#");
-        }
+				Serial.print(longitude);
+				Serial.print("#");
       } else if (!strncmp(buffer, "St", 2)) {
         strcpy(latitude, buffer + 2);
-        if (!is_rainbow)
-          Serial.print("1");
+				Serial.print("1");
       } else if (!strcmp(buffer, "Gt")) {
-        if (is_rainbow) {
-          Serial.print(":Gt");
-          Serial.print(latitude);
-          Serial.print("#");
-        } else {
-          Serial.print(latitude);
-          Serial.print("#");
-        }
+				Serial.print(latitude);
+				Serial.print("#");
       } else if (!strcmp(buffer, "U0")) {
 				high_precision = false;
       } else if (!strcmp(buffer, "U1")) {
@@ -292,9 +274,7 @@ void loop() {
         }
         Serial.print(buffer);
       } else if (!strcmp(buffer, "GR")) {
-        if (is_rainbow) {
-          sprintf(buffer, ":GR%02d:%02d:%02d.0#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);          
-        } else if (high_precision) {
+        if (high_precision) {
           sprintf(buffer, "%02d:%02d:%02d#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);
         } else {
           sprintf(buffer, "%02d:%04.1f#", ra / 360000L, ((ra / 600L) % 600) / 10.0);
@@ -323,9 +303,7 @@ void loop() {
         }
         Serial.print(buffer);
       } else if (!strcmp(buffer, "GD")) {
-        if (is_rainbow) {
-          sprintf(buffer, ":GD%+03d*%02d'%02d.0#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
-        } else if (high_precision) {
+				if (high_precision) {
           sprintf(buffer, "%+03d*%02d'%02d#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
         } else {
           sprintf(buffer, "%+03d*%02d#", dec / 360000L, (abs(dec) / 600L) % 60);
@@ -337,11 +315,7 @@ void loop() {
         Serial.print("M31 EX GAL MAG 3.5 SZ178.0'#");
       } else if (!strcmp(buffer, "MS")) {
         is_slewing = true;
-        if (is_rainbow) {
-          Serial.print(":MM0#");
-        } else {
-          Serial.print("0");
-        }
+				Serial.print("0");
       } else if (!strcmp(buffer, "D")) {
         if (is_slewing)
           Serial.print("*#");
@@ -393,8 +367,6 @@ void loop() {
         is_tracking = false;
         is_slewing = true;
         is_parked = true;
-        if (is_rainbow)
-          Serial.print(":CHO#");
       } else if (!strcmp(buffer, "PO") || !strcmp(buffer, "hW") || !strcmp(buffer, "X370")) {
         is_tracking = true;
         is_slewing = false;
