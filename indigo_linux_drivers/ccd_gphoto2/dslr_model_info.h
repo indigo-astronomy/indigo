@@ -56,6 +56,7 @@ static struct dslr_model_info {
   { "CANON EOS KISS N", 3456, 2304, 6.4 },
   { "CANON EOS KISS M", 6000, 4000, 3.71 },
   { "CANON EOS KISS F", 3888, 2592, 5.7 },
+  { "CANON EOS 90D", 6960, 4640, 3.2 },
   { "CANON EOS 9000D", 6000, 4000, 3.71 },
   { "CANON EOS 80D", 6000, 4000, 3.71 },
   { "CANON EOS 800D", 6000, 4000, 3.71 },
