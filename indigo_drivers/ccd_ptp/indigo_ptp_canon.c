@@ -180,7 +180,7 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_DriveMode: return DSLR_CAPTURE_MODE_PROPERTY_NAME;
 		case ptp_property_canon_Aperture: return DSLR_APERTURE_PROPERTY_NAME;
 		case ptp_property_canon_ShutterSpeed: return DSLR_SHUTTER_PROPERTY_NAME;
-		case ptp_property_canon_ImageFormat: return CCD_MODE_PROPERTY_NAME;
+		case ptp_property_canon_ImageFormat: return DSLR_COMPRESSION_PROPERTY_NAME;
 		case ptp_property_canon_WhiteBalance: return DSLR_WHITE_BALANCE_PROPERTY_NAME;
 		case ptp_property_canon_ISOSpeed: return DSLR_ISO_PROPERTY_NAME;
 		case ptp_property_canon_MeteringMode: return DSLR_EXPOSURE_METERING_PROPERTY_NAME;
@@ -220,7 +220,7 @@ char *ptp_property_canon_code_label(uint16_t code) {
 		case ptp_property_canon_DriveMode: return "Capture mode";
 		case ptp_property_canon_Aperture: return "Aperture";
 		case ptp_property_canon_ShutterSpeed: return "Shutter";
-		case ptp_property_canon_ImageFormat: return "Capture mode";
+		case ptp_property_canon_ImageFormat: return "Compression";
 		case ptp_property_canon_WhiteBalance: return "White balance";
 		case ptp_property_canon_ISOSpeed: return "ISO";
 		case ptp_property_canon_MeteringMode: return "Exposure metering";
@@ -536,6 +536,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				case 0x10060002:
 					strcpy(label, "CRW + ");
 					break;
+				case 0x10060003:
+					strcpy(label, "CRAW + ");
+					break;
 				case 0x10060004:
 					strcpy(label, "RAW + ");
 					break;
@@ -600,6 +603,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					break;
 				case 0x10060002:
 					strcat(label, "CRW");
+					break;
+				case 0x10060003:
+					strcat(label, "CRAW");
 					break;
 				case 0x10060004:
 					strcat(label, "RAW");
