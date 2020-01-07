@@ -55,7 +55,7 @@ static bool gps_open(indigo_device *device) {
 	if (strncmp(name, "gps://", 6)) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
 	} else {
-		char *host = name + 8;
+		char *host = name + 6;
 		char *colon = strchr(host, ':');
 		if (colon == NULL) {
 			PRIVATE_DATA->handle = indigo_open_tcp(host, 9999);
