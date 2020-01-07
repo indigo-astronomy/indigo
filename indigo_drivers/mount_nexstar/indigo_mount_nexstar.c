@@ -740,6 +740,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->parked = true;  /* a but premature but need to cancel other movements from now on until unparked */
 			PRIVATE_DATA->park_in_progress = true;
 
+			/*
 			double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
 			time_t utc = indigo_get_mount_utc(device);
 			double ra = (indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value) * 15;
@@ -750,6 +751,21 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_rade_p(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+			}
+			*/
+
+			/* Celestron and SkyWatcher do not go to real ALT and AZ on EQ mounts,
+			   they infact go to HA and DEC. So we can use tc_goto_azalt_p() directly
+			*/
+			double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
+			double ha =  MOUNT_PARK_POSITION_HA_ITEM->number.value * 15;
+			if (ha < 0) ha += 360.0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Going to park position: HA = %.5f Dec = %.5f", ha, dec);
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, ha, dec);
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			if (res != RC_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 			}
 
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
