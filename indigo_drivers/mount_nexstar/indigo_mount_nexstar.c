@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -36,6 +36,7 @@
 #include <errno.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_novas.h>
 
 #include "indigo_mount_nexstar.h"
 #include "nexstar.h"
@@ -558,6 +559,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_PARK_POSITION
+		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
@@ -566,6 +569,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
+
 		//MOUNT_PARK_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
 		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
@@ -736,12 +740,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->parked = true;  /* a but premature but need to cancel other movements from now on until unparked */
 			PRIVATE_DATA->park_in_progress = true;
 
-			double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+			double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
+			time_t utc = indigo_get_mount_utc(device);
+			double ra = (indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value) * 15;
+			if (ra < 0) ra += 360.0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Going to park position: Ra = %.5f Dec = %.5f", ra, dec);
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, 0, lat > 0 ? 90 : -90);
+			int res = tc_goto_rade_p(PRIVATE_DATA->dev_id, ra, dec);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_rade_p(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 			}
 
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
