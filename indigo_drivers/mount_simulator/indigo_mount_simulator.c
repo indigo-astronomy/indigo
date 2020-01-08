@@ -24,7 +24,7 @@
  \file indigo_mount_simulator.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_mount_simulator"
 
 #include <stdlib.h>
@@ -58,6 +58,9 @@ static void position_timer_callback(indigo_device *device) {
 		if (PRIVATE_DATA->slew_in_progress) {
 			if (diffRA == 0 && diffDec == 0) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+					PRIVATE_DATA->ha = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+				}
 				PRIVATE_DATA->slew_in_progress = false;
 				if (PRIVATE_DATA->parking) {
 					PRIVATE_DATA->parking = false;
