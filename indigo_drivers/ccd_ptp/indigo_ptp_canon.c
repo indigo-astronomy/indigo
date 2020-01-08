@@ -552,7 +552,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcpy(label, "CR2 + ");
 					break;
 				default:
-					sprintf(label, "Unknown (0x%x) +", (code >> 32) & 0xFFFFFFFF);
+					sprintf(label, "Unknown (0x%lx) +", (code >> 32) & 0xFFFFFFFF);
 					break;
 			}
 			switch (code & 0xFFFFFFFF) {
@@ -623,7 +623,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcat(label, "CR2");
 					break;
 				default:
-					sprintf(label, "Unknown (0x%x)", code & 0xFFFFFFFF);
+					sprintf(label, "Unknown (0x%lx)", code & 0xFFFFFFFF);
 					break;
 			}
 			return label;
