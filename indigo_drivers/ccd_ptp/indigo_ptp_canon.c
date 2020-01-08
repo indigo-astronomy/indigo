@@ -536,6 +536,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				case 0x10060002:
 					strcpy(label, "CRW + ");
 					break;
+				case 0x10060003:
+					strcpy(label, "CRAW + ");
+					break;
 				case 0x10060004:
 					strcpy(label, "RAW + ");
 					break;
@@ -547,6 +550,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					break;
 				case 0x10060006:
 					strcpy(label, "CR2 + ");
+					break;
+				default:
+					sprintf(label, "Unknown (0x%x) +", (code >> 32) & 0xFFFFFFFF);
 					break;
 			}
 			switch (code & 0xFFFFFFFF) {
@@ -601,6 +607,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				case 0x10060002:
 					strcat(label, "CRW");
 					break;
+				case 0x10060003:
+					strcat(label, "CRAW");
+					break;
 				case 0x10060004:
 					strcat(label, "RAW");
 					break;
@@ -612,6 +621,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					break;
 				case 0x10060006:
 					strcat(label, "CR2");
+					break;
+				default:
+					sprintf(label, "Unknown (0x%x)", code & 0xFFFFFFFF);
 					break;
 			}
 			return label;
