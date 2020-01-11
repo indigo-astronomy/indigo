@@ -23,7 +23,7 @@
  \file indigo_ccd_ica.m
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_ccd_ica"
 
 #import <Cocoa/Cocoa.h>
@@ -919,6 +919,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
+    indigo_delete_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
