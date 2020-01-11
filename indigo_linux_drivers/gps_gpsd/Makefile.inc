@@ -1,0 +1,2 @@
+CFLAFS += -I
+LDFLAGS += -lgps
