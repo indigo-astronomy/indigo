@@ -97,6 +97,7 @@ This is the list of requirements taken into the consideration:
 68. UVC (USB Video Class) CCD driver
 69. NexDome v3 dome driver (untested, requires firmware v.3.0.0 or newer)
 70. Optec Flip-Flap driver
+71. GPS Service Daemon (GPSD) driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
@@ -109,7 +110,7 @@ This is the list of requirements taken into the consideration:
 ### Prerequisites
 #### Ubuntu / Debian / Raspbian
 
-`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils`
+`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils libgps-dev`
 
 It is advised to remove libraw1394-dev
 
@@ -117,7 +118,7 @@ It is advised to remove libraw1394-dev
 
 #### Fedora
 
-`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel libgphoto2-devel git curl`
+`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel libgphoto2-devel git curl libgpsd-devel`
 
 It is advised to remove libraw1394-devel
 
