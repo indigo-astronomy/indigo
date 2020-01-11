@@ -24,7 +24,7 @@
  \file indigo_gps_simulator.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"idnigo_gps_simulator"
 
 #include <stdlib.h>
@@ -106,7 +106,7 @@ static void gps_timer_callback(indigo_device *device) {
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
 			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 		}
 
@@ -151,7 +151,7 @@ static void gps_timer_callback(indigo_device *device) {
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
 			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 		}
 	}
@@ -192,6 +192,10 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			if (!device->is_connected) {
 				if (gps_open(device)) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 					device->is_connected = true;
 					/* start updates */
 					PRIVATE_DATA->gps_timer = indigo_set_timer(device, 0, gps_timer_callback);

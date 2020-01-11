@@ -24,7 +24,7 @@
  \file indigo_gps_gpsd.c
  */
 
-#define DRIVER_VERSION	0x0001
+#define DRIVER_VERSION	0x0002
 #define DRIVER_NAME	"indigo_gps_gpsd"
 
 #include <stdlib.h>
@@ -143,7 +143,7 @@ static void gps_refresh_callback(indigo_device *device)
 		GPS_UTC_TIME_PROPERTY->state		   = INDIGO_BUSY_STATE;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		GPS_STATUS_PROPERTY->state		   = INDIGO_BUSY_STATE;
-		GPS_ADVANCED_STATUS_PROPERTY->state	   = INDIGO_BUSY_STATE;
+		GPS_ADVANCED_STATUS_PROPERTY->state	   = INDIGO_OK_STATE;
 
 		GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 		GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -171,14 +171,14 @@ static void gps_refresh_callback(indigo_device *device)
 		}
 		if (PRIVATE_DATA->gps_data.set & MODE_SET) {
 			if (PRIVATE_DATA->gps_data.fix.mode == MODE_NO_FIX)
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_OK_STATE;
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
 			if (PRIVATE_DATA->gps_data.fix.mode == MODE_2D)
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
 			if (PRIVATE_DATA->gps_data.fix.mode == MODE_3D)
 				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
 
 			if (PRIVATE_DATA->gps_data.fix.mode == MODE_NOT_SEEN)
-				GPS_STATUS_PROPERTY->state = INDIGO_IDLE_STATE;
+				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 			else
 				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -229,10 +229,10 @@ static indigo_result gps_change_property(indigo_device *device,
 				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
 				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 				indigo_set_timer(device, 0, gps_refresh_callback);

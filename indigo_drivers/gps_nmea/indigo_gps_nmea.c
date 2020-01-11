@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
@@ -285,10 +285,10 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
 					GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
-					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 					GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 					sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 					indigo_set_timer(device, 0, gps_refresh_callback);
