@@ -48,17 +48,30 @@ typedef struct {
 static bool gpsd_open(indigo_device *device)
 {
 	int rc;
+	char *text = DEVICE_PORT_ITEM->text.value;
+	char host_name[INDIGO_NAME_SIZE] = {0};
+	char port[15] = {0};
 
-	rc = gps_open("localhost", "5555", &PRIVATE_DATA->gps_data);
+	if (!strncmp(text, "gpsd://", 7)) {
+		text += 7; // just skip 'gpsd://' prefix
+	}
+	char *colon = strchr(text, ':');
+	if (colon == NULL) {
+		strcpy(host_name, text);
+		strcpy(port, "2947");
+	} else {
+		strncpy(host_name, text, colon - text);
+		strcpy(port, colon + 1);
+	}
+
+	rc = gps_open(host_name, port, &PRIVATE_DATA->gps_data);
 	if (rc) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to '%s:%d'",
-				    "localhost", 2947);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to gpsd://%s:%s", host_name, port);
 		return false;
 	}
 	(void)gps_stream(&PRIVATE_DATA->gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to '%s:%d'",
-			  "localhost", 2947);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to gpsd://%s:%s", host_name, port);
 	return true;
 }
 
@@ -70,11 +83,9 @@ static void gpsd_close(indigo_device *device)
 	(void)gps_stream(&PRIVATE_DATA->gps_data, WATCH_DISABLE, NULL);
 	rc = gps_close(&PRIVATE_DATA->gps_data);
 	if (rc)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disconnect from "
-				    "'%s:%d'", "localhost", 2947);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disconnect from gpsd.");
 	else
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from '%s:%d'",
-				  "localhost", 2947);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from gpsd.");
 }
 
 
@@ -85,7 +96,10 @@ static indigo_result gps_attach(indigo_device *device)
 
 	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		SIMULATION_PROPERTY->hidden = true;
-		DEVICE_PORT_PROPERTY->hidden = true;
+		DEVICE_PORT_PROPERTY->hidden = false;
+		strcpy(DEVICE_PORT_PROPERTY->label, "GPS daemon host");
+		strcpy(DEVICE_PORT_ITEM->label, "Hostname (host:port)");
+		strcpy(DEVICE_PORT_ITEM->text.value, "gpsd://localhost:2947");
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		DEVICE_BAUDRATE_PROPERTY->hidden = true;
 		GPS_ADVANCED_PROPERTY->hidden = false;
