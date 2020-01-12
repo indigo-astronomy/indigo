@@ -1448,7 +1448,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)cameraDevice:(ICCameraDevice*)camera didAddItem:(ICCameraItem*)item {
   if (item.class == ICCameraFile.class) {
     ICCameraFile *file = (ICCameraFile *)item;
-    if (file.wasAddedAfterContentCatalogCompleted) {
+    if (_remainingCount > 0) {
       objectAdded = true;
       [camera requestDownloadFile:file options:@{ ICDeleteAfterSuccessfulDownload: self.deleteDownloadedImage ? @TRUE : @FALSE, ICOverwrite: @TRUE, ICDownloadsDirectoryURL: [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:true] } downloadDelegate:self didDownloadSelector:@selector(didDownloadFile:error:options:contextInfo:) contextInfo:nil];
     }
