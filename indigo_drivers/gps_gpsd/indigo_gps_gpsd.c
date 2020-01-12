@@ -48,19 +48,33 @@ typedef struct {
 static bool gpsd_open(indigo_device *device)
 {
 	int rc;
+	char *text = DEVICE_PORT_ITEM->text.value;
+	char host_name[INDIGO_NAME_SIZE] = {0};
+	char port[15] = {0};
 
-	rc = gps_open("localhost", "2947", &PRIVATE_DATA->gps_data);
+	if (!strncmp(text, "gpsd://", 7)) {
+		text += 7; // just skip 'gpsd://' prefix
+	}
+	char *colon = strchr(text, ':');
+	if (colon == NULL) {
+		strcpy(host_name, text);
+		strcpy(port, "2947");
+	} else {
+		strncpy(host_name, text, colon - text);
+		strcpy(port, colon + 1);
+	}
+
+	rc = gps_open(host_name, port, &PRIVATE_DATA->gps_data);
 	if (rc) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to '%s:%d'",
-				    "localhost", 2947);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to gpsd://%s:%s", host_name, port);
 		return false;
 	}
 	(void)gps_stream(&PRIVATE_DATA->gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to '%s:%d'",
-			  "localhost", 2947);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to gpsd://%s:%s", host_name, port);
 	return true;
 }
+
 
 static void gpsd_close(indigo_device *device)
 {
@@ -69,12 +83,11 @@ static void gpsd_close(indigo_device *device)
 	(void)gps_stream(&PRIVATE_DATA->gps_data, WATCH_DISABLE, NULL);
 	rc = gps_close(&PRIVATE_DATA->gps_data);
 	if (rc)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disconnect from "
-				    "'%s:%d'", "localhost", 2947);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disconnect from gpsd.");
 	else
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from '%s:%d'",
-				  "localhost", 2947);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from gpsd.");
 }
+
 
 static indigo_result gps_attach(indigo_device *device)
 {
@@ -83,7 +96,10 @@ static indigo_result gps_attach(indigo_device *device)
 
 	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		SIMULATION_PROPERTY->hidden = true;
-		DEVICE_PORT_PROPERTY->hidden = true;
+		DEVICE_PORT_PROPERTY->hidden = false;
+		strcpy(DEVICE_PORT_PROPERTY->label, "GPS daemon host");
+		strcpy(DEVICE_PORT_ITEM->label, "Hostname (host:port)");
+		strcpy(DEVICE_PORT_ITEM->text.value, "gpsd://localhost:2947");
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		DEVICE_BAUDRATE_PROPERTY->hidden = true;
 		GPS_ADVANCED_PROPERTY->hidden = false;
@@ -98,6 +114,7 @@ static indigo_result gps_attach(indigo_device *device)
 	return INDIGO_FAILED;
 }
 
+
 static void gps_refresh_callback(indigo_device *device)
 {
 	assert(device != NULL);
@@ -107,43 +124,39 @@ static void gps_refresh_callback(indigo_device *device)
 	int rc;
 
 	while (IS_CONNECTED) {
-
 		recv_data = gps_waiting(&PRIVATE_DATA->gps_data, 200000);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_waiting: %d", recv_data);
 		if (!recv_data) {
 			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-			goto sleep_cont;
+			/* Waiting for too long will result in buffereing and reading old
+			   messages thus the the displayed time will progressively fall behind
+			 */
+			indigo_usleep(100);
+			continue;
 		}
 
-		rc = gps_read(&PRIVATE_DATA->gps_data);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_read: bytes %d, set: %lu",
-				    rc, PRIVATE_DATA->gps_data.set);
+		char message[2000];
+		rc = gps_read(&PRIVATE_DATA->gps_data, NULL, 0);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_read: bytes %d, set: %lu", rc, PRIVATE_DATA->gps_data.set);
 		if (rc == -1) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "gps_read error: '%s'",
-					    gps_errstr(rc));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "gps_read error: '%s'", gps_errstr(rc));
 			GPS_STATUS_PROPERTY->state = INDIGO_ALERT_STATE;
-			goto sleep_cont;
+			indigo_usleep(ONE_SECOND_DELAY);
+			continue;
 		}
 
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set TIME_SET: %d",
-				    PRIVATE_DATA->gps_data.set & TIME_SET);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set LATLON_SET: %d",
-				    PRIVATE_DATA->gps_data.set & LATLON_SET);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set ALTITUDE_SET: %d",
-				    PRIVATE_DATA->gps_data.set & ALTITUDE_SET);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set MODE_SET: %d",
-				    PRIVATE_DATA->gps_data.set & MODE_SET);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set DOP_SET: %d",
-				    PRIVATE_DATA->gps_data.set & DOP_SET);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set STATUS_SET: %d",
-				    PRIVATE_DATA->gps_data.set & STATUS_SET);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set SATELLITE_SET: %d",
-				    PRIVATE_DATA->gps_data.set & SATELLITE_SET);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set TIME_SET: %d", PRIVATE_DATA->gps_data.set & TIME_SET);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set LATLON_SET: %d", PRIVATE_DATA->gps_data.set & LATLON_SET);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set ALTITUDE_SET: %d", PRIVATE_DATA->gps_data.set & ALTITUDE_SET);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set MODE_SET: %d", PRIVATE_DATA->gps_data.set & MODE_SET);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set DOP_SET: %d", PRIVATE_DATA->gps_data.set & DOP_SET);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set STATUS_SET: %d", PRIVATE_DATA->gps_data.set & STATUS_SET);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set SATELLITE_SET: %d", PRIVATE_DATA->gps_data.set & SATELLITE_SET);
 
-		GPS_UTC_TIME_PROPERTY->state		   = INDIGO_BUSY_STATE;
+		GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		GPS_STATUS_PROPERTY->state		   = INDIGO_BUSY_STATE;
-		GPS_ADVANCED_STATUS_PROPERTY->state	   = INDIGO_OK_STATE;
+		GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+		GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 
 		GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 		GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -152,21 +165,18 @@ static void gps_refresh_callback(indigo_device *device)
 		if (PRIVATE_DATA->gps_data.set & TIME_SET) {
 			char isotime[INDIGO_VALUE_SIZE] = {0};
 
-			indigo_timetoisogm(PRIVATE_DATA->gps_data.fix.time,
+			indigo_timetoisogm(PRIVATE_DATA->gps_data.fix.time.tv_sec,
 					   isotime, sizeof(isotime));
 			strncpy(GPS_UTC_ITEM->text.value, isotime, INDIGO_VALUE_SIZE);
 			GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (PRIVATE_DATA->gps_data.set & LATLON_SET) {
-			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value =
-				PRIVATE_DATA->gps_data.fix.longitude;
-			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value	=
-				PRIVATE_DATA->gps_data.fix.latitude;
+			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = PRIVATE_DATA->gps_data.fix.longitude;
+			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = PRIVATE_DATA->gps_data.fix.latitude;
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (PRIVATE_DATA->gps_data.set & ALTITUDE_SET) {
-			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value =
-				PRIVATE_DATA->gps_data.fix.altitude;
+			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = PRIVATE_DATA->gps_data.fix.altitude;
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (PRIVATE_DATA->gps_data.set & MODE_SET) {
@@ -183,18 +193,13 @@ static void gps_refresh_callback(indigo_device *device)
 				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (PRIVATE_DATA->gps_data.set & DOP_SET) {
-			GPS_ADVANCED_STATUS_PDOP_ITEM->number.value =
-				PRIVATE_DATA->gps_data.dop.pdop;
-			GPS_ADVANCED_STATUS_HDOP_ITEM->number.value =
-				PRIVATE_DATA->gps_data.dop.hdop;
-			GPS_ADVANCED_STATUS_VDOP_ITEM->number.value =
-				PRIVATE_DATA->gps_data.dop.vdop;
+			GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = PRIVATE_DATA->gps_data.dop.pdop;
+			GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = PRIVATE_DATA->gps_data.dop.hdop;
+			GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = PRIVATE_DATA->gps_data.dop.vdop;
 		}
 		if (PRIVATE_DATA->gps_data.set & SATELLITE_SET) {
-			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value =
-				PRIVATE_DATA->gps_data.satellites_used;
-			GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value =
-				PRIVATE_DATA->gps_data.satellites_visible;
+			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = PRIVATE_DATA->gps_data.satellites_used;
+			GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = PRIVATE_DATA->gps_data.satellites_visible;
 			if (PRIVATE_DATA->gps_data.set & DOP_SET)
 				GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -203,18 +208,12 @@ static void gps_refresh_callback(indigo_device *device)
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 		if (GPS_ADVANCED_ENABLED_ITEM->sw.value)
-			indigo_update_property(device,
-					       GPS_ADVANCED_STATUS_PROPERTY, NULL);
-
-	sleep_cont:
-		indigo_usleep(ONE_SECOND_DELAY);
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 	}
 }
 
 
-static indigo_result gps_change_property(indigo_device *device,
-					 indigo_client *client,
-					 indigo_property *property)
+static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property)
 {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -252,6 +251,7 @@ static indigo_result gps_change_property(indigo_device *device,
 	return indigo_gps_change_property(device, client, property);
 }
 
+
 static indigo_result gps_detach(indigo_device *device)
 {
 	assert(device != NULL);
@@ -266,8 +266,7 @@ static indigo_result gps_detach(indigo_device *device)
 static gpsd_private_data *private_data = NULL;
 static indigo_device *gps = NULL;
 
-indigo_result indigo_gps_gpsd(indigo_driver_action action,
-			      indigo_driver_info *info)
+indigo_result indigo_gps_gpsd(indigo_driver_action action, indigo_driver_info *info)
 {
 	static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(
 		GPS_GPSD_NAME,
