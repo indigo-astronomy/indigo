@@ -1110,8 +1110,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 					void *buffer = NULL;
 					if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
 						const char *ext = strchr(filename, '.');
-						if (ptp_check_jpeg_ext(ext) && ptp_canon_check_compression_has_raw(device)) {
-							// jpeg is secondary image
+						if (ptp_check_jpeg_ext(ext) && ptp_canon_check_dual_compression(device)) {
 							if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 								indigo_process_dslr_preview_image(device, buffer, (int)length);
 							}
@@ -1403,9 +1402,13 @@ bool ptp_canon_exposure(indigo_device *device) {
 	if (result) {
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		if (CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_canon_check_dual_compression(device)) {
+			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		}
 		while (true) {
 			ptp_canon_get_event(device);
-			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
+			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
 				break;
 			indigo_usleep(100000);
 		}
@@ -1524,6 +1527,6 @@ bool ptp_canon_set_host_time(indigo_device *device) {
 	return false;
 }
 
-bool ptp_canon_check_compression_has_raw(indigo_device *device) {
+bool ptp_canon_check_dual_compression(indigo_device *device) {
 	return (CANON_PRIVATE_DATA->image_format >> 32) & 0xFFFFFFFF;
 }

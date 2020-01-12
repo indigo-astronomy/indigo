@@ -29,7 +29,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION              0x0004
+#define DRIVER_VERSION              0x0005
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -387,7 +387,7 @@ typedef struct {
 	bool (* zoom)(indigo_device *device);
 	bool (* focus)(indigo_device *device, int steps);
 	bool (* set_host_time)(indigo_device *device);
-	bool (* check_compression_has_raw)(indigo_device *device);
+	bool (* check_dual_compression)(indigo_device *device);
 	indigo_timer *event_checker;
 	pthread_mutex_t message_mutex;
 	int message_property_index;
