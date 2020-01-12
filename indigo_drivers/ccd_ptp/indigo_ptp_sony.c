@@ -77,7 +77,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		case ptp_property_sony_ShutterSpeed: return DSLR_SHUTTER_PROPERTY_NAME;
 		case ptp_property_sony_AspectRatio: return DSLR_ASPECT_RATIO_PROPERTY_NAME;
 		case ptp_property_sony_ISO:	return DSLR_ISO_PROPERTY_NAME;
-		case ptp_property_sony_ImageSize: return DSLR_IMAGE_SIZE_PROPERTY_NAME;
+		case ptp_property_sony_ImageSize: return CCD_MODE_PROPERTY_NAME;
 		case ptp_property_sony_PictureEffect: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
 	}
 	return ptp_property_code_name(code);
@@ -550,6 +550,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 	}
 	uint64_t mode = SONY_PRIVATE_DATA->mode;
 	switch (code) {
+		case ptp_property_sony_ImageSize:
+			target->count = 3;
+			break;
 		case ptp_property_ExposureBiasCompensation:
 			target->count = 3;
 			target->value.sw.values[0] = SONY_ITERATE_DOWN;
@@ -602,7 +605,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 
 static void ptp_check_event(indigo_device *device) {
 	ptp_get_event(device);
-	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->event_checker);
+	indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
 }
 
 bool ptp_sony_initialise(indigo_device *device) {
@@ -720,7 +723,7 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 					for (int i = 0; i < property->property->count; i++) {
 						indigo_item *item = property->property->items + i;
 						if (item->sw.value) {
-							value = atoll(item->name);
+							value = strtol(item->name, NULL, 16);
 							break;
 						}
 					}

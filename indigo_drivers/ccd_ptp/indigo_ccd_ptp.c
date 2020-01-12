@@ -531,7 +531,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->lock = ptp_nikon_lock;
 						private_data->af = NULL;
 						private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_zoom : NULL;
-						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus: NULL;
+						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus : NULL;
 						private_data->set_host_time = ptp_set_host_time;
 						private_data->check_compression_has_raw = ptp_nikon_check_compression_has_raw;
 					} else if (descriptor.idVendor == SONY_VID) {
@@ -546,7 +546,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->fix_property = NULL;
 						private_data->set_property = ptp_sony_set_property;
 						private_data->exposure = ptp_sony_exposure;
-						private_data->liveview = ptp_sony_liveview;
+						private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_sony_liveview : NULL;
 						private_data->lock = NULL;
 						private_data->af = ptp_sony_af;
 						private_data->zoom = NULL;
