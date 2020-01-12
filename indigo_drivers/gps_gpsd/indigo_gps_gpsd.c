@@ -192,11 +192,14 @@ static void gps_refresh_callback(indigo_device *device)
 			else
 				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		if (PRIVATE_DATA->gps_data.set & DOP_SET) {
+		/* DOP_SET does not seem to be set even when there is DOP data */
+		if (!isnan(PRIVATE_DATA->gps_data.dop.pdop))
 			GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = PRIVATE_DATA->gps_data.dop.pdop;
+		if (!isnan(PRIVATE_DATA->gps_data.dop.hdop))
 			GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = PRIVATE_DATA->gps_data.dop.hdop;
+		if (!isnan(PRIVATE_DATA->gps_data.dop.vdop))
 			GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = PRIVATE_DATA->gps_data.dop.vdop;
-		}
+
 		if (PRIVATE_DATA->gps_data.set & SATELLITE_SET) {
 			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = PRIVATE_DATA->gps_data.satellites_used;
 			GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = PRIVATE_DATA->gps_data.satellites_visible;
