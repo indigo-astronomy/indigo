@@ -1141,7 +1141,7 @@ bool ptp_get_event(indigo_device *device) {
 
 static void ptp_check_event(indigo_device *device) {
 	ptp_get_event(device);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
 }
 
 bool ptp_initialise(indigo_device *device) {
@@ -1174,7 +1174,6 @@ bool ptp_initialise(indigo_device *device) {
 bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
 	switch (code) {
 		case ptp_event_ObjectAdded: {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ptp_event_ObjectAdded %d", params[0]);
 			void *buffer = NULL;
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL)) {
 				uint32_t size;
@@ -1184,11 +1183,10 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				source = ptp_decode_string(source + 40 , filename);
 				free(buffer);
 				buffer = NULL;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  %s %dB", filename, size);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", params[0], size, filename);
 				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
 					const char *ext = strchr(filename, '.');
-					if (ptp_check_jpeg_ext(ext) && PRIVATE_DATA->check_compression_has_raw != NULL && PRIVATE_DATA->check_compression_has_raw(device)) {
-						// jpeg is secondary image
+					if (PRIVATE_DATA->check_dual_compression != NULL && PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
 						if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 							indigo_process_dslr_preview_image(device, buffer, size);
 						}
@@ -1205,7 +1203,8 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 		}
 		case ptp_event_DevicePropChanged: {
 			void *buffer = NULL;
-			uint16_t code = params[0];
+			code = params[0];
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_DevicePropChanged: code=%s (%04x)", PRIVATE_DATA->property_code_name(code), code);
 			for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 				if (PRIVATE_DATA->info_properties_supported[i] == code) {
 					if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, code, &buffer, NULL)) {
@@ -1218,6 +1217,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				free(buffer);
 		}
 		default:
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x): +%d skipped", PRIVATE_DATA->event_code_label(code), code);
 			return false;
 	}
 }

@@ -514,7 +514,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_zoom : NULL;
 						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_focus : NULL;
 						private_data->set_host_time = ptp_canon_set_host_time;
-						private_data->check_compression_has_raw = ptp_canon_check_compression_has_raw;
+						private_data->check_dual_compression = ptp_canon_check_dual_compression;
 					} else if (descriptor.idVendor == NIKON_VID) {
 						private_data->operation_code_label = ptp_operation_nikon_code_label;
 						private_data->response_code_label = ptp_response_nikon_code_label;
@@ -533,7 +533,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_zoom : NULL;
 						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus : NULL;
 						private_data->set_host_time = ptp_set_host_time;
-						private_data->check_compression_has_raw = ptp_nikon_check_compression_has_raw;
+						private_data->check_dual_compression = ptp_nikon_check_dual_compression;
 					} else if (descriptor.idVendor == SONY_VID) {
 						private_data->operation_code_label = ptp_operation_sony_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -552,7 +552,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->zoom = NULL;
 						private_data->focus = NULL;
 						private_data->set_host_time = NULL;
-						private_data->check_compression_has_raw = ptp_sony_check_compression_has_raw;
+						private_data->check_dual_compression = ptp_sony_check_dual_compression;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
@@ -571,7 +571,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->zoom = NULL;
 						private_data->focus = NULL;
 						private_data->set_host_time = ptp_set_host_time;
-						private_data->check_compression_has_raw = NULL;
+						private_data->check_dual_compression = NULL;
 					}
 					libusb_ref_device(dev);
 					indigo_device *device = malloc(sizeof(indigo_device));

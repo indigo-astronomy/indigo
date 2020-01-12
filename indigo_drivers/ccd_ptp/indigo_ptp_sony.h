@@ -71,7 +71,7 @@ typedef struct {
 	uint64_t focus_state;
 	uint64_t focus_mode;
 	uint64_t shutter_speed;
-	bool has_raw;
+	bool is_dual_compression;
 } sony_private_data;
 
 
@@ -87,6 +87,6 @@ extern bool ptp_sony_set_property(indigo_device *device, ptp_property *property)
 extern bool ptp_sony_exposure(indigo_device *device);
 extern bool ptp_sony_liveview(indigo_device *device);
 extern bool ptp_sony_af(indigo_device *device);
-extern bool ptp_sony_check_compression_has_raw(indigo_device *device);
+extern bool ptp_sony_check_dual_compression(indigo_device *device);
 
 #endif /* indigo_ptp_sony_h */

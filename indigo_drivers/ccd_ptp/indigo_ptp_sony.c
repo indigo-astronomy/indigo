@@ -596,7 +596,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			SONY_PRIVATE_DATA->focus_state = target->value.number.value;
 			break;
 		case ptp_property_CompressionSetting:
-			SONY_PRIVATE_DATA->has_raw = target-> value.number.value == 16 || target-> value.number.value == 19;
+			SONY_PRIVATE_DATA->is_dual_compression = target-> value.number.value == 19;
 			break;
 	}
 	ptp_update_property(device, target);
@@ -692,8 +692,31 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 			return true;
 		}
 		case ptp_event_sony_ObjectAdded: {
-			code = ptp_event_ObjectAdded;
-			break;
+			void *buffer = NULL;
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL)) {
+				uint32_t size;
+				char filename[PTP_MAX_CHARS];
+				uint8_t *source = buffer;
+				source = ptp_decode_uint32(source + 8, &size);
+				source = ptp_decode_string(source + 40 , filename);
+				free(buffer);
+				buffer = NULL;
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", params[0], size, filename);
+				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
+					const char *ext = strchr(filename, '.');
+					if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
+						if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+							indigo_process_dslr_preview_image(device, buffer, size);
+						}
+						ptp_sony_handle_event(device, code, params);
+					} else {
+						indigo_process_dslr_image(device, buffer, size, ext);
+					}
+				}
+			}
+			if (buffer)
+				free(buffer);
+			return true;
 		}
 	}
 	return ptp_handle_event(device, code, params);
@@ -797,6 +820,17 @@ bool ptp_sony_exposure(indigo_device *device) {
 			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));
 			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
 		}
+		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		if (CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_sony_check_dual_compression(device)) {
+			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		}
+		while (true) {
+			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
+				break;
+			indigo_usleep(100000);
+		}
 		return true;
 	}
 	return false;
@@ -857,6 +891,6 @@ bool ptp_sony_af(indigo_device *device) {
 	return false;
 }
 
-bool ptp_sony_check_compression_has_raw(indigo_device *device) {
-	return SONY_PRIVATE_DATA->has_raw;
+bool ptp_sony_check_dual_compression(indigo_device *device) {
+	return SONY_PRIVATE_DATA->is_dual_compression;
 }

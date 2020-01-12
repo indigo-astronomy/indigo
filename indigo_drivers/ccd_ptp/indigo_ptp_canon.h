@@ -359,6 +359,6 @@ extern bool ptp_canon_af(indigo_device *device);
 extern bool ptp_canon_zoom(indigo_device *device);
 extern bool ptp_canon_focus(indigo_device *device, int steps);
 extern bool ptp_canon_set_host_time(indigo_device *device);
-extern bool ptp_canon_check_compression_has_raw(indigo_device *device);
+extern bool ptp_canon_check_dual_compression(indigo_device *device);
 
 #endif /* indigo_ptp_canon_h */
