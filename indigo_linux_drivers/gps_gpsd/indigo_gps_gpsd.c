@@ -135,7 +135,8 @@ static void gps_refresh_callback(indigo_device *device)
 			continue;
 		}
 
-		rc = gps_read(&PRIVATE_DATA->gps_data);
+		char message[2000];
+		rc = gps_read(&PRIVATE_DATA->gps_data, NULL, 0);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_read: bytes %d, set: %lu", rc, PRIVATE_DATA->gps_data.set);
 		if (rc == -1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "gps_read error: '%s'", gps_errstr(rc));
@@ -164,7 +165,7 @@ static void gps_refresh_callback(indigo_device *device)
 		if (PRIVATE_DATA->gps_data.set & TIME_SET) {
 			char isotime[INDIGO_VALUE_SIZE] = {0};
 
-			indigo_timetoisogm(PRIVATE_DATA->gps_data.fix.time,
+			indigo_timetoisogm(PRIVATE_DATA->gps_data.fix.time.tv_sec,
 					   isotime, sizeof(isotime));
 			strncpy(GPS_UTC_ITEM->text.value, isotime, INDIGO_VALUE_SIZE);
 			GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
