@@ -8,7 +8,7 @@ Single device is present on startup (no hot-plug support).
 
 ## Supported platforms
 
-This driver depends on 3rd party library and is supported on Linux (Intel 32/64 bit and ARM v6/7/8).
+This driver is platform independant.
 
 ## License
 
@@ -20,5 +20,3 @@ indigo_server indigo_gps_gpsd
 
 ## Status: Under Development
 
-## NOTE!
-For the time being this driver requires gpsd running on localhost:2947

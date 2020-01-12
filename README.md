@@ -110,7 +110,7 @@ This is the list of requirements taken into the consideration:
 ### Prerequisites
 #### Ubuntu / Debian / Raspbian
 
-`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils libgps-dev`
+`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils`
 
 It is advised to remove libraw1394-dev
 
@@ -118,7 +118,7 @@ It is advised to remove libraw1394-dev
 
 #### Fedora
 
-`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel libgphoto2-devel git curl libgpsd-devel`
+`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel libgphoto2-devel git curl`
 
 It is advised to remove libraw1394-devel
 
