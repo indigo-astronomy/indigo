@@ -29,7 +29,7 @@
 #include <arpa/inet.h>     /* for htons() and friends */
 #endif /* HAVE_ARPA_INET_H */
 #include <unistd.h>
-#ifdef HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IP_H
 #include <netinet/ip.h>
 #endif /* HAVE_NETINET_IN_H */
 #ifdef HAVE_WINSOCK2_H
@@ -195,7 +195,7 @@ socket_t netlib_localsocket(const char *sockfile, int socktype)
 		      sockfile,
 		      sizeof(saddr.sun_path));
 
-	if (connect(sock, (struct sockaddr *)&saddr, SUN_LEN(&saddr)) < 0) {
+	if (connect(sock, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
 	    (void)close(sock);
 	    return -2;
 	}

@@ -48,7 +48,7 @@
 
 #define HAVE_NETINET_IN_H 1
 
-#define HAVE_NETINET_IP_H 1
+//#define HAVE_NETINET_IP_H 1
 
 #define HAVE_SYS_SYSMACROS_H 1
 
