@@ -711,6 +711,10 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 						ptp_sony_handle_event(device, code, params);
 					} else {
 						indigo_process_dslr_image(device, buffer, size, ext);
+						if (PRIVATE_DATA->image_buffer)
+							free(PRIVATE_DATA->image_buffer);
+						PRIVATE_DATA->image_buffer = buffer;
+						buffer = NULL;
 					}
 				}
 			}

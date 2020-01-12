@@ -1192,6 +1192,10 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 						}
 					} else {
 						indigo_process_dslr_image(device, buffer, size, ext);
+						if (PRIVATE_DATA->image_buffer)
+							free(PRIVATE_DATA->image_buffer);
+						PRIVATE_DATA->image_buffer = buffer;
+						buffer = NULL;
 					}
 					if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
 						ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);

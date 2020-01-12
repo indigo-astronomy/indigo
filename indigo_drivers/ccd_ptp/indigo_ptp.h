@@ -393,6 +393,7 @@ typedef struct {
 	int message_property_index;
 	bool abort_capture;
 	uint32_t last_error;
+	void *image_buffer;
 } ptp_private_data;
 
 extern void ptp_dump_container(int line, const char *function, indigo_device *device, ptp_container *container);

@@ -305,6 +305,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_release_property(PRIVATE_DATA->properties[i].property);
 			}
 			memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
+			if (PRIVATE_DATA->image_buffer) {
+				free(PRIVATE_DATA->image_buffer);
+				PRIVATE_DATA->image_buffer = NULL;
+			}
 			indigo_global_unlock(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
