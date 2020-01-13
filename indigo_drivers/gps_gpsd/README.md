@@ -1,4 +1,4 @@
-# GPS Service Daemon (GPSD)
+# GPS Service Daemon (GPSD) Client driver
 
 https://gpsd.gitlab.io/gpsd/
 
@@ -20,4 +20,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_gps_gpsd
 
-## Status: Under Development
+## Status: Stable
+
+## MOTE!
+This driver does not configure or control GPS Service Daemon (GPSD). It just handles the data received from a running GPSD.

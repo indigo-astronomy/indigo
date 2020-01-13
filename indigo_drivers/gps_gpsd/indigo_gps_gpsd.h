@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define GPS_GPSD_NAME   "GPS Service Daemon (GPSD)"
+#define GPS_GPSD_NAME   "GPSD Client"
 
 /** Create GPS GPSD device instance
  */
