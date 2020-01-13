@@ -272,7 +272,7 @@ static indigo_device *gps = NULL;
 indigo_result indigo_gps_gpsd(indigo_driver_action action, indigo_driver_info *info)
 {
 	static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(
-		GPS_GPSD_NAME,
+		GPS_GPSD_DEVICE_NAME,
 		gps_attach,
 		indigo_gps_enumerate_properties,
 		gps_change_property,
@@ -282,8 +282,7 @@ indigo_result indigo_gps_gpsd(indigo_driver_action action, indigo_driver_info *i
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, GPS_GPSD_NAME, __FUNCTION__, DRIVER_VERSION,
-			false, last_action);
+	SET_DRIVER_INFO(info, GPS_GPSD_DRIVER_DESCRIPTION, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
