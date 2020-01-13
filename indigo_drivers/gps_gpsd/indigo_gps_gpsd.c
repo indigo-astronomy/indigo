@@ -125,7 +125,7 @@ static void gps_refresh_callback(indigo_device *device)
 
 	while (IS_CONNECTED) {
 		recv_data = gps_waiting(&PRIVATE_DATA->gps_data, 200000);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_waiting: %d", recv_data);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_waiting(): %d", recv_data);
 		if (!recv_data) {
 			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 			/* Waiting for too long will result in buffereing and reading old
@@ -137,9 +137,9 @@ static void gps_refresh_callback(indigo_device *device)
 
 		char message[2000];
 		rc = gps_read(&PRIVATE_DATA->gps_data, NULL, 0);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_read: bytes %d, set: %lu", rc, PRIVATE_DATA->gps_data.set);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gps_read(): bytes read %d, set: %lu", rc, PRIVATE_DATA->gps_data.set);
 		if (rc == -1) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "gps_read error: '%s'", gps_errstr(rc));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "gps_read(): %s", gps_errstr(rc));
 			GPS_STATUS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_usleep(ONE_SECOND_DELAY);
 			continue;
