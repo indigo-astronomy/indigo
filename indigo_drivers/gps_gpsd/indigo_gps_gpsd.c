@@ -97,6 +97,7 @@ static indigo_result gps_attach(indigo_device *device)
 	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 		strcpy(DEVICE_PORT_PROPERTY->label, "GPS daemon host");
 		strcpy(DEVICE_PORT_ITEM->label, "Hostname (host:port)");
 		strcpy(DEVICE_PORT_ITEM->text.value, "gpsd://localhost:2947");

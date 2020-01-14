@@ -122,6 +122,7 @@
 #include "focuser_focusdreampro/indigo_focuser_focusdreampro.h"
 #include "aux_fbc/indigo_aux_fbc.h"
 #include "mount_rainbow/indigo_mount_rainbow.h"
+#include "gps_gpsd/indigo_gps_gpsd.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -216,8 +217,9 @@ driver_entry_point static_drivers[] = {
 #ifdef INDIGO_MACOS
 	indigo_focuser_wemacro_bt,
 #endif
-	indigo_gps_simulator,
+	indigo_gps_gpsd,
 	indigo_gps_nmea,
+	indigo_gps_simulator,
 	indigo_guider_asi,
 	indigo_guider_cgusbst4,
 #ifdef INDIGO_MACOS
