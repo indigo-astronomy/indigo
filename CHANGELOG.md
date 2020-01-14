@@ -18,7 +18,7 @@ All notable changes to INDIGO framewark will be documented in this file.
     - Sony fixes
     - capture sequence standardized
     - image caching fixed
-	- Canon compression fix
+	- Canon CRAW support added
 - indigo_ccd_ica:
     - bug fixes for MacOS Catalina
     - Avoid AF property behaviour fixed
