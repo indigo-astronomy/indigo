@@ -210,8 +210,8 @@ if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIG
 
 ## INDIGO Imaging Client - Example
 
-The following code is a working example of INDIGO client that connects to "*indigosky.local:7624*", and uses camera named "**CCD Imager Simulator @ indigosky**"
-to take 10 exposures and save the images in FITS format.
+The following code is a working example of INDIGO client that connects to "*indigosky.local:7624*", and uses camera named "**CCD Imager Simulator @ indigosky**" to take 10 exposures, 3 seconds each and save the images in FITS format. Please make sure that **indigo_ccd_simulator** driver is loaded on *indigosky* otherwise the example will not work because it does not check if the camera is present for simplicity.
+
 ```C
 #include <stdio.h>
 #include <stdlib.h>
@@ -342,7 +342,7 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 
 	indigo_start();
-	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	indigo_set_log_level(INDIGO_LOG_INFO);
 
 	indigo_server_entry *server;
 	indigo_attach_client(&test);
