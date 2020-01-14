@@ -18,10 +18,11 @@ All notable changes to INDIGO framewark will be documented in this file.
     - Sony fixes
     - capture sequence standardized
     - image caching fixed
-	- Canon CRAW support added
+    - Canon CRAW support added
 - indigo_ccd_ica:
     - bug fixes for MacOS Catalina
     - Avoid AF property behaviour fixed
+- indigo_ccd_fli: fix reopen issue
 - indigo_mount_nexstar: park position can be specified by user
 - indigo_mount_simulator: fix RA move when not tracking
 

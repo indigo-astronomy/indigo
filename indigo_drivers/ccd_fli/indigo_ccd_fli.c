@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x000a
+#define DRIVER_VERSION 0x000b
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -769,12 +769,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (device->is_connected) {
-				device->is_connected = false;
 				PRIVATE_DATA->can_check_temperature = false;
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 				indigo_delete_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 				fli_close(device);
+				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
