@@ -202,6 +202,11 @@
 		59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */; };
 		9D1880B31E534B5E002F75D7 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
+		9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */; };
+		9D35EA2B23CDB27D00B6A41F /* indigo_gps_gpsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D35EA0023CDB27D00B6A41F /* indigo_gps_gpsd.c */; };
+		9D35EA2C23CDB27D00B6A41F /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9D35EA0123CDB27D00B6A41F /* Makefile.inc */; };
+		9D35EA3E23CDB53D00B6A41F /* libgps.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D35EA3D23CDB53D00B6A41F /* libgps.a */; };
+		9D35EA3F23CDB56100B6A41F /* libgps.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D35EA3D23CDB53D00B6A41F /* libgps.a */; };
 		9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */; };
 		9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */; };
 		9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D48B79F215E570600CF757E /* indigo_ccd_touptek.c */; };
@@ -220,7 +225,6 @@
 		9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */; };
 		9D73E60421FF36C4003CEC15 /* indigo_ccd_uvc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E5F821FF36C4003CEC15 /* indigo_ccd_uvc.c */; };
 		9D73E60521FF36C4003CEC15 /* indigo_ccd_uvc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E5FA21FF36C4003CEC15 /* indigo_ccd_uvc.h */; };
-		9D73E60621FF36C4003CEC15 /* indigo_ccd_uvc_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E5FB21FF36C4003CEC15 /* indigo_ccd_uvc_main.c */; };
 		9D73E60A21FF37DB003CEC15 /* libuvc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E60721FF37DA003CEC15 /* libuvc.h */; };
 		9D73E60B21FF37DB003CEC15 /* libuvc_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E60821FF37DA003CEC15 /* libuvc_internal.h */; };
 		9D73E60C21FF37DB003CEC15 /* libuvc_config.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E60921FF37DB003CEC15 /* libuvc_config.h */; };
@@ -3441,6 +3445,52 @@
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D2696E422A56BD8008BE82C /* steeldrive2_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = steeldrive2_simulator.ino; sourceTree = "<group>"; };
 		9D2696E522A56BD8008BE82C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_gpsd.h; sourceTree = "<group>"; };
+		9D35E9D623CDB27D00B6A41F /* hex.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = hex.c; sourceTree = "<group>"; };
+		9D35E9D723CDB27D00B6A41F /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = json.c; sourceTree = "<group>"; };
+		9D35E9D823CDB27D00B6A41F /* gps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gps.h; sourceTree = "<group>"; };
+		9D35E9D923CDB27D00B6A41F /* libgpsmm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = libgpsmm.cpp; sourceTree = "<group>"; };
+		9D35E9DA23CDB27D00B6A41F /* gps_json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gps_json.h; sourceTree = "<group>"; };
+		9D35E9DB23CDB27D00B6A41F /* netlib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = netlib.c; sourceTree = "<group>"; };
+		9D35E9DC23CDB27D00B6A41F /* ais_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ais_json.c; sourceTree = "<group>"; };
+		9D35E9DD23CDB27D00B6A41F /* gpsdclient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gpsdclient.h; sourceTree = "<group>"; };
+		9D35E9DE23CDB27D00B6A41F /* libgps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libgps.h; sourceTree = "<group>"; };
+		9D35E9DF23CDB27D00B6A41F /* compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = compiler.h; sourceTree = "<group>"; };
+		9D35E9E023CDB27D00B6A41F /* libgpsmm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libgpsmm.h; sourceTree = "<group>"; };
+		9D35E9E123CDB27D00B6A41F /* timespec_str.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = timespec_str.c; sourceTree = "<group>"; };
+		9D35E9E223CDB27D00B6A41F /* libgps_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libgps_json.c; sourceTree = "<group>"; };
+		9D35E9E323CDB27D00B6A41F /* rtcm2_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = rtcm2_json.c; sourceTree = "<group>"; };
+		9D35E9E423CDB27D00B6A41F /* os_compat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = os_compat.h; sourceTree = "<group>"; };
+		9D35E9E523CDB27D00B6A41F /* libgps_shm.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libgps_shm.c; sourceTree = "<group>"; };
+		9D35E9E623CDB27D00B6A41F /* libgpsd_core.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libgpsd_core.c; sourceTree = "<group>"; };
+		9D35E9E723CDB27D00B6A41F /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9D35E9E823CDB27D00B6A41F /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = matrix.h; sourceTree = "<group>"; };
+		9D35E9E923CDB27D00B6A41F /* bits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = bits.c; sourceTree = "<group>"; };
+		9D35E9EA23CDB27D00B6A41F /* ais_json.i */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c.preprocessed; path = ais_json.i; sourceTree = "<group>"; };
+		9D35E9EB23CDB27D00B6A41F /* sockaddr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sockaddr.h; sourceTree = "<group>"; };
+		9D35E9EC23CDB27D00B6A41F /* json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = json.h; sourceTree = "<group>"; };
+		9D35E9ED23CDB27D00B6A41F /* strfuncs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = strfuncs.h; sourceTree = "<group>"; };
+		9D35E9EE23CDB27D00B6A41F /* os_compat.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_compat.c; sourceTree = "<group>"; };
+		9D35E9EF23CDB27D00B6A41F /* rtcm3_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = rtcm3_json.c; sourceTree = "<group>"; };
+		9D35E9F023CDB27D00B6A41F /* timespec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = timespec.h; sourceTree = "<group>"; };
+		9D35E9F123CDB27D00B6A41F /* gpsd_config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gpsd_config.h; sourceTree = "<group>"; };
+		9D35E9F223CDB27D00B6A41F /* libgps_sock.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libgps_sock.c; sourceTree = "<group>"; };
+		9D35E9F323CDB27D00B6A41F /* libgps_core.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libgps_core.c; sourceTree = "<group>"; };
+		9D35E9F423CDB27D00B6A41F /* libgps.pc.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libgps.pc.in; sourceTree = "<group>"; };
+		9D35E9F523CDB27D00B6A41F /* gpsdclient.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gpsdclient.c; sourceTree = "<group>"; };
+		9D35E9F623CDB27D00B6A41F /* gpsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gpsd.h; sourceTree = "<group>"; };
+		9D35E9F723CDB27D00B6A41F /* ppsthread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ppsthread.h; sourceTree = "<group>"; };
+		9D35E9F823CDB27D00B6A41F /* gpsutils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gpsutils.c; sourceTree = "<group>"; };
+		9D35E9F923CDB27D00B6A41F /* gps_maskdump.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gps_maskdump.c; sourceTree = "<group>"; };
+		9D35E9FA23CDB27D00B6A41F /* shared_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = shared_json.c; sourceTree = "<group>"; };
+		9D35E9FB23CDB27D00B6A41F /* libgps_dbus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libgps_dbus.c; sourceTree = "<group>"; };
+		9D35E9FC23CDB27D00B6A41F /* bits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bits.h; sourceTree = "<group>"; };
+		9D35E9FD23CDB27D00B6A41F /* driver_nmea2000.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = driver_nmea2000.h; sourceTree = "<group>"; };
+		9D35E9FE23CDB27D00B6A41F /* indigo_gps_gpsd_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_gpsd_main.c; sourceTree = "<group>"; };
+		9D35E9FF23CDB27D00B6A41F /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D35EA0023CDB27D00B6A41F /* indigo_gps_gpsd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_gpsd.c; sourceTree = "<group>"; };
+		9D35EA0123CDB27D00B6A41F /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		9D35EA3D23CDB53D00B6A41F /* libgps.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgps.a; sourceTree = "<group>"; };
 		9D38D13821F09CDE00549B67 /* indigo.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = indigo.css; sourceTree = "<group>"; };
 		9D38D13921F09CDE00549B67 /* guider.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = guider.png; sourceTree = "<group>"; };
 		9D38D13A21F09CDE00549B67 /* imager.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = imager.png; sourceTree = "<group>"; };
@@ -3733,6 +3783,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D35EA3F23CDB56100B6A41F /* libgps.a in Frameworks */,
 				9D586C4322FB1912002D382E /* libusb-1.0.1.dylib in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */,
@@ -3746,6 +3797,7 @@
 				59A5302521A35264000B6F27 /* libqhy.a in Frameworks */,
 				599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */,
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
+				9D35EA3E23CDB53D00B6A41F /* libgps.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
 				594222A322E34C99009DAD5C /* libnovas.a in Frameworks */,
@@ -7437,6 +7489,7 @@
 				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
 				9D2696E222A56BD8008BE82C /* focuser_steeldrive2 */,
 				59C4C87F20CEF107007EE330 /* focuser_wemacro */,
+				9D35E9D223CDB27D00B6A41F /* gps_gpsd */,
 				59DD69C41FC1CF5B00AEF0DF /* gps_nmea */,
 				59CBD47A1FAF6C65000DAFDB /* gps_simulator */,
 				593AD1001EF8396A00C059BC /* guider_asi */,
@@ -10051,6 +10104,75 @@
 			path = steeldrive2_simulator;
 			sourceTree = "<group>";
 		};
+		9D35E9D223CDB27D00B6A41F /* gps_gpsd */ = {
+			isa = PBXGroup;
+			children = (
+				9D35E9FF23CDB27D00B6A41F /* README.md */,
+				9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */,
+				9D35EA0023CDB27D00B6A41F /* indigo_gps_gpsd.c */,
+				9D35E9FE23CDB27D00B6A41F /* indigo_gps_gpsd_main.c */,
+				9D35EA0123CDB27D00B6A41F /* Makefile.inc */,
+				9D35E9D423CDB27D00B6A41F /* externals */,
+			);
+			path = gps_gpsd;
+			sourceTree = "<group>";
+		};
+		9D35E9D423CDB27D00B6A41F /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				9D35E9D523CDB27D00B6A41F /* libgps */,
+			);
+			path = externals;
+			sourceTree = "<group>";
+		};
+		9D35E9D523CDB27D00B6A41F /* libgps */ = {
+			isa = PBXGroup;
+			children = (
+				9D35EA3D23CDB53D00B6A41F /* libgps.a */,
+				9D35E9D623CDB27D00B6A41F /* hex.c */,
+				9D35E9D723CDB27D00B6A41F /* json.c */,
+				9D35E9D823CDB27D00B6A41F /* gps.h */,
+				9D35E9D923CDB27D00B6A41F /* libgpsmm.cpp */,
+				9D35E9DA23CDB27D00B6A41F /* gps_json.h */,
+				9D35E9DB23CDB27D00B6A41F /* netlib.c */,
+				9D35E9DC23CDB27D00B6A41F /* ais_json.c */,
+				9D35E9DD23CDB27D00B6A41F /* gpsdclient.h */,
+				9D35E9DE23CDB27D00B6A41F /* libgps.h */,
+				9D35E9DF23CDB27D00B6A41F /* compiler.h */,
+				9D35E9E023CDB27D00B6A41F /* libgpsmm.h */,
+				9D35E9E123CDB27D00B6A41F /* timespec_str.c */,
+				9D35E9E223CDB27D00B6A41F /* libgps_json.c */,
+				9D35E9E323CDB27D00B6A41F /* rtcm2_json.c */,
+				9D35E9E423CDB27D00B6A41F /* os_compat.h */,
+				9D35E9E523CDB27D00B6A41F /* libgps_shm.c */,
+				9D35E9E623CDB27D00B6A41F /* libgpsd_core.c */,
+				9D35E9E723CDB27D00B6A41F /* Makefile */,
+				9D35E9E823CDB27D00B6A41F /* matrix.h */,
+				9D35E9E923CDB27D00B6A41F /* bits.c */,
+				9D35E9EA23CDB27D00B6A41F /* ais_json.i */,
+				9D35E9EB23CDB27D00B6A41F /* sockaddr.h */,
+				9D35E9EC23CDB27D00B6A41F /* json.h */,
+				9D35E9ED23CDB27D00B6A41F /* strfuncs.h */,
+				9D35E9EE23CDB27D00B6A41F /* os_compat.c */,
+				9D35E9EF23CDB27D00B6A41F /* rtcm3_json.c */,
+				9D35E9F023CDB27D00B6A41F /* timespec.h */,
+				9D35E9F123CDB27D00B6A41F /* gpsd_config.h */,
+				9D35E9F223CDB27D00B6A41F /* libgps_sock.c */,
+				9D35E9F323CDB27D00B6A41F /* libgps_core.c */,
+				9D35E9F423CDB27D00B6A41F /* libgps.pc.in */,
+				9D35E9F523CDB27D00B6A41F /* gpsdclient.c */,
+				9D35E9F623CDB27D00B6A41F /* gpsd.h */,
+				9D35E9F723CDB27D00B6A41F /* ppsthread.h */,
+				9D35E9F823CDB27D00B6A41F /* gpsutils.c */,
+				9D35E9F923CDB27D00B6A41F /* gps_maskdump.c */,
+				9D35E9FA23CDB27D00B6A41F /* shared_json.c */,
+				9D35E9FB23CDB27D00B6A41F /* libgps_dbus.c */,
+				9D35E9FC23CDB27D00B6A41F /* bits.h */,
+				9D35E9FD23CDB27D00B6A41F /* driver_nmea2000.h */,
+			);
+			path = libgps;
+			sourceTree = "<group>";
+		};
 		9D3BBBA421147E2700800FB0 /* agent_lx200_server */ = {
 			isa = PBXGroup;
 			children = (
@@ -11118,6 +11240,7 @@
 				9DAD522721246C18002FCC79 /* indigo_mount_synscan.h in Headers */,
 				59A52FB721A34251000B6F27 /* dc1394.h in Headers */,
 				59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */,
+				9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */,
 				9DAD522821246C18002FCC79 /* indigo_mount_synscan_protocol.h in Headers */,
@@ -11343,7 +11466,6 @@
 				59C76F0E2378724D0091B966 /* nex_open.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
 				59D6719222FDBB8E00D08A2A /* indigo_ptp_sony.c in Sources */,
-				9D73E60621FF36C4003CEC15 /* indigo_ccd_uvc_main.c in Sources */,
 				9D73E61E21FF37F9003CEC15 /* libuvc_stream.c in Sources */,
 				9DE0E7C622C6465500289234 /* Makefile.inc in Sources */,
 				9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */,
@@ -11368,6 +11490,7 @@
 				59DD69D71FC1DC4900AEF0DF /* indigo_dome_simulator.c in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
+				9D35EA2B23CDB27D00B6A41F /* indigo_gps_gpsd.c in Sources */,
 				59A321A321D6291E00EC0F4A /* indigo_focuser_asi.c in Sources */,
 				5911B6D922633DBE00D6B9EC /* indigo_agent_guider.c in Sources */,
 				5951E149235CDC0400D2DEF1 /* indigo_aux_usbdp.c in Sources */,
@@ -11433,6 +11556,7 @@
 				59463C1B20DE6781004950F2 /* indigo_focuser_wemacro_bt.m in Sources */,
 				9D586C4122FB0D43002D382E /* indigo_ccd_ptp.c in Sources */,
 				59A321B821D691D600EC0F4A /* indigo_mount_synscan_guider.c in Sources */,
+				9D35EA2C23CDB27D00B6A41F /* Makefile.inc in Sources */,
 				595AA1CD1FC5ED8A00350E7B /* indigo_agent_snoop.c in Sources */,
 				9D9EA6B41DBFA30600E11841 /* indigo_guider_driver.c in Sources */,
 				595F2926211E211200380EF4 /* DDHidMouse.m in Sources */,
@@ -11725,10 +11849,11 @@
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_apogee/bin_externals/libapogee/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/gps_gpsd/externals/libgps",
 				);
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include ${inherited}";
+				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
 				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
 			};
 			name = Debug;
@@ -11771,10 +11896,11 @@
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_apogee/bin_externals/libapogee/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/gps_gpsd/externals/libgps",
 				);
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include ${inherited}";
+				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
 				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
 			};
 			name = Release;
