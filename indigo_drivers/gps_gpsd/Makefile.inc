@@ -21,7 +21,6 @@
 #---------------------------------------------------------------------
 
 SDK_DIR = externals/libgps
-INSTALL_SDK = install_sdk
 MAKE_SDK = $(SDK_LIB_A)
 SDK_INCLUDE = -I $(SDK_DIR)
 SDK_LIB_A = $(SDK_DIR)/libgps.a
