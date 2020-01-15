@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Version: 0.1
+Revision: 15.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -9,9 +9,9 @@ e-mail: *rumen@skyarchive.org*
 
 INDIGO is a platform for the communication between software entities over a software **bus**. These entities are typically either in a **device** or a **client** role, but there are special entities often referred as **agents** which are in both **device** and **client** role. A piece of code registering one or more **devices** on the **bus** is referred as the **driver**.
 
-INDIGO is asynchronous in its nature, so to be able to communicate over the **bus**, the client and device have to register a structure containing pointers to **callback functions** which are called by the INDIGO bus upon specific events.
+INDIGO is asynchronous in its nature, so to be able to communicate over the **bus**, the client and device have to register a structure containing pointers to **callback functions** which are called by the INDIGO **bus** upon specific events.
 
-The communication between different entities attached to the bus is done by INDIGO **messages** which contain **property** events. Properties on the other hand contain one or more **items** of a specified type. One can think of the properties as both set of variables and routines. Set of variables as they may store values like the *width* and *height* of the CCD frame or routines like *start 1 second exposure*. Messages sent over the INDIGO bus are abstraction of INDI messages.
+The communication between different entities attached to the **bus** is done by INDIGO **messages** which contain **property** events. Properties on the other hand contain one or more **items** of a specified type. One can think of the properties as both set of variables and routines. Set of variables as they may store values like the *width* and *height* of the CCD frame or routines like *start 1 second exposure*. Messages sent over the INDIGO **bus** are abstraction of INDI messages.
 
 The messages sent from the **device** to a **client** may contain one of the following events:
 - **definition** of a property - lets the client know that the property can be used, the message contains the property definition: name, type, list of items etc...
@@ -24,7 +24,7 @@ The messages sent from a **client** to the **device** can be:
 
 There are three classes of properties: mandatory, optional, and device specific. Each device class has a set of mandatory properties that should always be defined, a set of optional properties that may or may not be defined and a set of **device** specific properties which may not exist if there is no need. The list of the well known properties is available in [PROPERTIES.md](https://github.com/indigo-astronomy/indigo/blob/master/PROPERTIES.md).
 
-Different instances of the INDIGO bus can be connected in a hierarchical structure, but from a **driver** or a **client** point of view it is fully transparent.
+Different instances of the INDIGO **bus** can be connected in a hierarchical structure, but from a **driver** or a **client** point of view it is fully transparent.
 
 INDIGO uses XML or JSON transport protocols for message passing. The description of the INDIGO protocols used for communication is available in [PROTOCOLS.md](https://github.com/indigo-astronomy/indigo/blob/master/PROTOCOLS.md).
 
@@ -37,8 +37,8 @@ A basic common API shared by both **driver** and **client** roles is defined in 
 - *indigo_client* - definition of a client containing both client private data and pointers to callback functions
 
 The **bus** instance should be initialized and started by *indigo_start()* call and stopped by *indigo_stop()* call.
-A **client** should be attached to the buss by *indigo_attach_client()* or *indigo_detach_client()* call.
-There are two calls that can be used by the **client** to send messages to the **device**:
+A **client** should be attached to the **bus** by calling *indigo_attach_client()* and detached with *indigo_detach_client()* call.
+There are two functions that can be used by the **client** to send messages to the **device**:
 - *indigo_enumerate_properties()* - send request for definition of available properties
 - *indigo_change_property()* - request for change of property item values
 
@@ -50,13 +50,13 @@ For structure definitions and function prototypes please refer to [indigo_bus.h]
 
 ## Anatomy of the INDIGO client
 
-The indigo client should define several callbacks which will be called by the bus on one of the events:
-- **attach** - called when client is attached to the bus
+The indigo client should define several callbacks which will be called by the **bus** on one of the events:
+- **attach** - called when client is attached to the **bus**
 - **define property** - called when the device broadcasts property definition
 - **update property** - called when the device broadcasts property value change
 - **delete property** - called when the device broadcasts property removal
 - **send message** - called when the device broadcasts a human readable text message
-- **detach** - called when client is detached from the bus
+- **detach** - called when client is detached from the **bus**
 
 Here is an example of callbacks that we will use in this example:
 
@@ -286,9 +286,9 @@ static indigo_result my_update_property(indigo_client *client,
 
 ## Several Notes About the Drivers
 
-There are three groups of structures and functions – for management of standard **local dynamic drivers** (loaded as dynamic libraries and connected to the local **bus**), **local executable drivers** (loaded as executable, e.g. legacy INDI drivers, connected to the local bus over pipes) and **remote servers** (connected to the local bus over a network). The above example uses the third approach using **remote servers**.
+There are three groups of structures and functions – for management of standard **local dynamic drivers** (loaded as dynamic libraries and connected to the local **bus**), **local executable drivers** (loaded as executable, e.g. legacy INDI drivers, connected to the local **bus** over pipes) and **remote servers** (connected to the local **bus** over a network). The above example uses the third approach using **remote servers**.
 
-In INDIGO drivers are dynamically loaded and unloaded. This means that device can be attached to the bus or detached at any given time. The client should be able to handle these events for one more reason: most USB devices are hot-plug devices. Which means that these devices will be attached to the bus when plugged to the host computer and detached from the bus when unplugged (provided the corresponding driver is loaded).
+In INDIGO drivers are dynamically loaded and unloaded. This means that device can be attached to the **bus** or detached at any given time. The client should be able to handle these events for one more reason: most USB devices are hot-plug devices. Which means that these devices will be attached to the **bus** when plugged to the host computer and detached from the **bus** when unplugged (provided the corresponding driver is loaded).
 
 ## Notes About the Automatic Service Discovery
 
