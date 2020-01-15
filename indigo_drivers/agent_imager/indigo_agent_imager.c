@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -780,10 +780,32 @@ static void sequence_process(indigo_device *device) {
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->focus_exposure = 0;
 	strncpy(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value, INDIGO_VALUE_SIZE);
+	bool autofocus_requested = strstr(sequence_text, "focus") != NULL;
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		if (strchr(token, '='))
 			continue;
+		int batch_index = atoi(token);
+		if (batch_index < 1 || batch_index > SEQUENCE_SIZE)
+			continue;
 		AGENT_IMAGER_STATS_BATCHES_ITEM->number.value++;
+		if (strstr(AGENT_IMAGER_SEQUENCE_PROPERTY->items[batch_index].text.value, "focus") != NULL) {
+			autofocus_requested = true;
+		}
+	}
+	if (autofocus_requested) {
+		if (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0) {
+			AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_send_message(device, "Autofocus requested, but no star is selected!");
+		}
+		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] == 0) {
+			AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_send_message(device, "Autofocus requested, but no focuser is selected!");
+		}
+		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_ALERT_STATE) {
+			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			return;
+		}
 	}
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	strncpy(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value, INDIGO_VALUE_SIZE);
