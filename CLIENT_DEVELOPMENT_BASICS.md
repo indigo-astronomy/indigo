@@ -284,6 +284,22 @@ static indigo_result my_update_property(indigo_client *client,
 }
 ```
 
+## Several Notes About the Drivers
+
+There are three groups of structures and functions – for management of standard **local dynamic drivers** (loaded as dynamic libraries and connected to the local **bus**), **local executable drivers** (loaded as executable, e.g. legacy INDI drivers, connected to the local bus over pipes) and **remote servers** (connected to the local bus over a network). The above example uses the third approach using **remote servers**.
+
+In INDIGO drivers are dynamically loaded and unloaded. This means that device can be attached to the bus or detached at any given time. The client should be able to handle these events for one more reason: most USB devices are hot-plug devices. Which means that these devices will be attached to the bus when plugged to the host computer and detached from the bus when unplugged (provided the corresponding driver is loaded).
+
+## Notes About the Automatic Service Discovery
+
+INDIGO server provides automatic service discovery using mDNS/DNS-SD (known as Bonjour in Apple ecosystem, and Avahi on Linux). This makes it easy for the client to identify INDIGO services. The INDIGO services can by identified by **_indigo._tcp**. There are several libraries that will allow the client to browse for INDIGO services available on the local network:
+
+- MacOS, Linux & Windows - **[QtZeroConf](https://github.com/jbagg/QtZeroConf)**, uses Qt framework ([INDIGO Control Panel](https://github.com/indigo-astronomy/control-panel) can be used as an example)
+- Linux - **[Avahi](https://www.avahi.org/doxygen/html/index.html)**
+- MacOS, Windows - **[Bonjour](https://developer.apple.com/bonjour/)**
+
+Dealing with the service discovery is beyond the scope of this document.
+
 ## INDIGO Imaging Client - Example
 
 The following code is a working example of INDIGO client that connects to "*indigosky.local:7624*", and uses camera named "**CCD Imager Simulator @ indigosky**" to take 10 exposures, 3 seconds each and save the images in FITS format. Please make sure that **indigo_ccd_simulator** driver is loaded on *indigosky* otherwise the example will not work because it does not check if the camera is present for simplicity.
@@ -433,17 +449,14 @@ int main(int argc, const char * argv[]) {
 }
 ```
 
-## Several Notes About the Drivers
-
-There are three groups of structures and functions – for management of standard **local dynamic drivers** (loaded as dynamic libraries and connected to the local **bus**), **local executable drivers** (loaded as executable, e.g. legacy INDI drivers, connected to the local bus over pipes) and **remote servers** (connected to the local bus over a network). The above example uses the third approach using **remote servers**.
-
 ## More Client Examples
+
 An open source examples of client API usage are the following pieces of code:
 
-[indigo_test/client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_test/client.c) - Basic API example
+1. [indigo_test/client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_test/client.c) - Basic API example
 
-[indigo_tools/indigo_prop_tool.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c) - Command line property management tool
+1. [indigo_tools/indigo_prop_tool.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c) - Command line property management tool
 
-[INDIGO Control Panel](https://github.com/indigo-astronomy/control-panel) - Official Linux and Windows Control panel using QT framework
+1. [INDIGO Control Panel](https://github.com/indigo-astronomy/control-panel) - Official Linux and Windows Control panel using QT framework
 
-[PixInsight INDIGO client project](https://github.com/PixInsight/PCL/tree/master/src/modules/processes/contrib/kkretzschmar/INDIClient)
+1. [PixInsight INDIGO client project](https://github.com/PixInsight/PCL/tree/master/src/modules/processes/contrib/kkretzschmar/INDIClient)
