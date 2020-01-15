@@ -9,7 +9,7 @@ e-mail: *rumen@skyarchive.org*
 
 INDIGO is a platform for the communication between software entities over a software **bus**. These entities are typically either in a **device** or a **client** role, but there are special entities often referred as **agents** which are in both **device** and **client** role. A piece of code registering one or more **devices** on the **bus** is referred as the **driver**.
 
-INDIGO is asynchronous in its nature so to be able to communicate over the **bus**, the client and device have to register a structure containing pointers to **callback functions** which are called by the INDIGO bus upon specific events.
+INDIGO is asynchronous in its nature, so to be able to communicate over the **bus**, the client and device have to register a structure containing pointers to **callback functions** which are called by the INDIGO bus upon specific events.
 
 The communication between different entities attached to the bus is done by INDIGO **messages** which contain **property** events. Properties on the other hand contain one or more **items** of a specified type. One can think of the properties as both set of variables and routines. Set of variables as they may store values like the *width* and *height* of the CCD frame or routines like *start 1 second exposure*. Messages sent over the INDIGO bus are abstraction of INDI messages.
 
@@ -64,7 +64,7 @@ Here is an example of callbacks that we will use in this example:
 static indigo_result my_attach(indigo_client *client) {
 	indigo_log("attached to INDIGO bus...");
 
-	/* Request property definitions */
+	// Request property definitions
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 
 	return INDIGO_OK;
@@ -73,17 +73,17 @@ static indigo_result my_attach(indigo_client *client) {
 static indigo_result my_define_property(indigo_client *client,
 	indigo_device *device, indigo_property *property, const char *message) {
 
-		// do something useful here ;)
+	// do something useful here ;)
 
-		return INDIGO_OK;
+	return INDIGO_OK;
 }
 
 static indigo_result my_update_property(indigo_client *client,
 	indigo_device *device, indigo_property *property, const char *message) {
 
-		// do something useful here
+	// do something useful here
 
-		return INDIGO_OK;
+	return INDIGO_OK;
 }
 
 static indigo_result my_detach(indigo_client *client) {
@@ -110,9 +110,11 @@ static indigo_client my_client = {
 	my_detach
 };
 ```  
+
 Please note we do not care about **delete property** and **send message** events in our example so we set them to *NULL*.
 
 Now as we have everything set up and ready to go we need our *main()* function:
+
 ```C
 int main(int argc, const char * argv[]) {
 	/* We need to pass argv and argc to INDIGO */
@@ -148,6 +150,21 @@ int main(int argc, const char * argv[]) {
 ## Device and Property Handling
 
 Devices, Properties and property items are treated as strings and should be matched with *strcmp()* call.
+
+```C
+if (!strcmp(device->name, "CCD Imager Simulator @ indigosky") {
+	...
+}
+...
+if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) {
+	...
+}
+```
+
+### Properties
+
+Standard property names are defined in [indigo_names.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_names.h)
+
 Properties can be in one of the four states:
 - *INDIGO_IDLE_STATE* - the values may not be initialized
 - *INDIGO_OK_STATE* - the property item values are valid and it is save to read or set them
@@ -157,11 +174,17 @@ Properties can be in one of the four states:
 Each property has predefined type which is one of the following:
 - *INDIGO_TEXT_VECTOR* - strings of limited width
 -	*INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
--	*INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state
--	*INDIGO_LIGHT_VECTOR* - status values with four possible values INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE and INDIGO_ALERT_STATE
+-	*INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
+-	*INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
 -	*INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
 
+Properties have permissions assigned to them:
+- *INDIGO_RO_PERM* - Read only permission, which means that the client can not modify their item values
+- *INDIGO_RW_PERM* - Read and write permission, client can read the value and can change it
+- *INDIGO_WO_PERM* - Write only permission, client can change it but can not read its value (can be used for passwords)
+
 In case the client needs to check the values of some property item of a specified device it is always a good idea to check if the property is in OK state:
+
 ```C
 if (!strcmp(device->name, "CCD Imager Simulator @ indigosky") &&
     !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) &&
@@ -169,9 +192,11 @@ if (!strcmp(device->name, "CCD Imager Simulator @ indigosky") &&
 			...
 }
 ```
+
 The above code snippet checks if the image from "CCD Imager Simulator @ indigosky" camera is ready to be used.
 
 And if the client needs to change some item value this code may help:
+
 ```C
 static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
 static bool values[] = { true };
@@ -184,11 +209,13 @@ indigo_change_switch_property(
 	values
 );
 ```
+
 The above code snippet requests the CCD driver to change the image format in to FITS by setting the fits switch item to true.
 
-## Binary Large Objects aka Image Properties
+### Binary Large Objects aka Image Properties
 
 Binary Large OBject (BLOB) properties are a special case. They usually contain image data and they should be handled differently. Their updates are not received by default. The client should enable updates for each BLOB property. It is a good idea to do so in the **define property** callback like so:
+
 ```C
 if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 	if (device->version >= INDIGO_VERSION_2_0)
@@ -197,9 +224,11 @@ if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
 }
 ```
+
 In the above example the VERSION of the protocol is checked and if it is INDIGO the new more efficient way of blob transfer is requested - *INDIGO_ENABLE_BLOB_URL*. If it is legacy INDI protocol the old method is requested - *INDIGO_ENABLE_BLOB_ALSO*. To disable blob transfer again one should use *INDIGO_ENABLE_BLOB_NEVER*.
 
-On the other hand if the BLOB transfer is *INDIGO_ENABLE_BLOB_URL* the data is not transferred, but only the location where it can be retrieved in raw binary form without any encoding and decoding. This is necessary because INDIGO (and INDI) are text based protocols but the BLOB data is binary. To overcome this INDI uses base64 data encoding to transfer BLOBs. This approach leads to a significant slowdown as data is 30% bigger and the BLOBS are encoded in the driver and decoded in the client. For INDI compatibility INDIGO uses this approach if the client or the server are legacy INDI. This mode is enabled by *INDIGO_ENABLE_BLOB_ALSO*. Due to these differences the INDIGO BLOB data should be retrieved explicitly by the client by using *indigo_populate_http_blob_item()* call:
+On the other hand if the BLOB transfer is *INDIGO_ENABLE_BLOB_URL* the data is not transferred, but only the location where it can be retrieved in raw binary form without any encoding and decoding. This is the default INDIGO way of BLOB transfer. The fact that INDIGO (and INDI) are text based protocols but the BLOB data is binary poses a problem. To overcome this INDI uses Base64 data encoding to transfer BLOBs. This approach leads to a significant slowdown because the transferred data is approximately 30% larger than the raw data and additional encoding and decoding is performed in the driver and the client. INDIGO uses this way of transfer for INDI compatibility, if the client or the server are only legacy INDI capable. This legacy mode is enabled by *INDIGO_ENABLE_BLOB_ALSO*. Due to these differences the INDIGO BLOB data should be retrieved explicitly by the client by using *indigo_populate_http_blob_item()* call:
+
 ```C
 if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (*property->items[0].blob.url) {
@@ -207,6 +236,53 @@ if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIG
 		}
 }
 ```  
+
+### Devices
+There are several things to be considered while handling devices.
+
+First thing is the device interface (aka device type like CCD, Focuser, Mount etc...). This determines what are the mandatory properties of each device, but there are several properties mandatory for every INDIGO device.
+Each INDIGO device has a read only property 'INFO' (*INFO_PROPERTY_NAME*), which contains items with the basic information of the device like name, version, serial number etc. However probably the most important item is 'DEVICE_INTERFACE' (*INFO_DEVICE_INTERFACE_ITEM_NAME*) which determines the device type. This is a sting containing an integer number with a bitmap of the supported interfaces (devices). It is a bitmap because there are devices that host more than one device in a single package like CCD camera with a guider port. However, unlike INDI, INDIGO always exposes one device per each logical device, so in the case of CCD + Guider, INDIGO will present one guider device and one CCD. There is a catch with 'DEVICE_INTERFACE' item, because 'INFO' is a text property and the integer bitmap is in decimal string format, and should be converted to int with *atoi()* before checking the bits.
+```C
+uint32_t device_interface;
+
+if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
+	indigo_item *item = indigo_get_item(property, INFO_DEVICE_INTERFACE_ITEM_NAME);
+	device_interface = atoi(item->text.value);
+}
+
+if (device_interface & INDIGO_INTERFACE_CCD) {
+	// The device is CCD camera
+}
+```    
+
+The second important thing to consider about devices is that they need to be in connected state in order to be used. There is a switch property with one of many rule 'CONNECTION' (*CONNECTION_PROPERTY_NAME*) available to every device. It has two items: 'CONNECTED' (*CONNECTION_CONNECTED_ITEM_NAME*) and 'DISCONNECTED' (*CONNECTION_DISCONNECTED_ITEM_NAME*). So if the device is in connected state `CONNECTION.CONNECTED == 1`, if in disconnected `CONNECTION.DISCONNECTED == 1`.
+In order to connect the device the client should request `CONNECTION.CONNECTED = 1`, and to disconnect respectively `CONNECTION.DISCONNECTED = 1`. To make the life easier there are utility functions for this - *indigo_device_connect()* and *indigo_device_disconnect()* For example:
+
+```C
+indigo_device_connect(client, "CCD Imager Simulator @ indigosky");
+...
+indigo_device_disconnect(client, "CCD Imager Simulator @ indigosky");
+```
+
+Please remember calling these functions only requests connection or disconnection. The client has to wait for 'CONNECTION' property update and to check the state and item values as shown below:
+
+```C
+static indigo_result my_update_property(indigo_client *client,
+	indigo_device *device, indigo_property *property, const char *message) {
+	...
+	if (!strcmp(property->device, "CCD Imager Simulator @ indigosky") &&
+		!strcmp(property->name, CONNECTION_PROPERTY_NAME) &&
+		property->state == INDIGO_OK_STATE) {
+
+		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
+			// "CCD Imager Simulator @ indigosky" is connected
+		} else {
+			// "CCD Imager Simulator @ indigosky" is disconnected
+		}
+	}
+	...
+}
+```
 
 ## INDIGO Imaging Client - Example
 
