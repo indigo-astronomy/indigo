@@ -139,6 +139,7 @@ typedef struct {
 	int focuser_position;
 	indigo_frame_digest reference;
 	double drift_x, drift_y;
+	int bin_x, bin_y;
 	int stack_size;
 	pthread_mutex_t mutex;
 	double focus_exposure;
@@ -1339,6 +1340,15 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			pthread_mutex_lock(&CLIENT_PRIVATE_DATA->mutex);
 			setup_download(FILTER_CLIENT_CONTEXT->device);
 			pthread_mutex_unlock(&CLIENT_PRIVATE_DATA->mutex);
+		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
+					CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+				} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
+					CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+				}
+			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
@@ -1432,6 +1442,21 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			pthread_mutex_lock(&CLIENT_PRIVATE_DATA->mutex);
 			setup_download(FILTER_CLIENT_CONTEXT->device);
 			pthread_mutex_unlock(&CLIENT_PRIVATE_DATA->mutex);
+		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
+			indigo_property *agent_selection_property = CLIENT_PRIVATE_DATA->agent_selection_property;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
+					double ratio = CLIENT_PRIVATE_DATA->bin_x / item->number.target;
+					agent_selection_property->items[0].number.value = agent_selection_property->items[0].number.target *= ratio;
+					CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+				} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
+					double ratio = CLIENT_PRIVATE_DATA->bin_y / item->number.target;
+					agent_selection_property->items[1].number.value = agent_selection_property->items[1].number.target *= ratio;
+					CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+				}
+			}
+			indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_selection_property, NULL);
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
