@@ -1,7 +1,7 @@
 # INDI conversion
 
 * INDI Standard Properties: <https://indilib.org/develop/developer-manual/101-standard-properties.html>
-* INDIGO Properties: <https://github.com/indigo-astronomy/indigo/blob/master/PROPERTIES.md>
+* INDIGO Properties: <https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROPERTIES.md>
 
 ## Common properties
 
