@@ -59,12 +59,74 @@ The **dynamic drivers** and the **static drivers** are orders of magnitude more 
 In INDIGO the drivers can be used remotely using the INDIGO server or the **clients** can load them locally which makes the communication even faster sacrificing the network capability. However this is not exactly correct as the **client** can also act as a **server** for the locally connected devices and some remote **client** can also use these devices.
 
 ## Anatomy of the INDIGO driver
+Like every software program the INDIGO drivers have and entry point. As **executable drivers** are standalone programs their entry point is *int main()*, but this is not the case with **dynamic drivers** and **static drivers**. They need to have a function called with the name of the driver for example if the driver is a CCD driver by convention the driver name should start with **indigo_ccd_** flowed by the model or the vendor name or abbreviation for example **indigo_ccd_atik** - the driver for Atik cameras has an entry point *indigo_ccd_atik()* or **indigo_ccd_asi** - the driver for ZWO ASI cameras has an entry point *indigo_ccd_asi()*. The prototype of the driver entry point is:
 
-TBD
+```C
+indigo_result indigo_XXX_YYY(indigo_driver_action action, indigo_driver_info *info);
+```
+It accepts 2 parameters *action* which can be *INDIGO_DRIVER_INIT*, *INDIGO_DRIVER_SHUTDOWN* or *INDIGO_DRIVER_INFO*. The framework calls this function with those parameters at driver loading, unloading and when only driver info is requested. it is a good idea to populate *indigo_driver_info* sructure at every call. Here is an example code how this function may look like for the Atik filter wheel driver(**indigo_wheel_atik**):
+
+```C
+indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "Atik Filter Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
+
+	if (action == last_action)
+		return INDIGO_OK;
+
+	switch (action) {
+	case INDIGO_DRIVER_INIT:
+		last_action = action;
+
+		/* Initialize the exported devices here with indigo_attach_device(),
+		   if the driver does not support hot-plug or register hot-plug
+		   callback which will be called when device is connected.
+		*/
+
+		break;
+
+	case INDIGO_DRIVER_SHUTDOWN:
+		last_action = action;
+
+		/* Detach devices if hot-plug is not supported with indigo_detach_device()
+		   or deregister the hot-plug callback in case hot-plug is supported.
+		   and release all driver resources.
+		*/
+
+		break;
+
+	case INDIGO_DRIVER_INFO:
+		/* info is already initialized at the beginning */
+		break;
+	}
+
+	return INDIGO_OK;
+}
+```
+
+The main function for the **executable driver** is pretty much a boiler plate code that connects to the INDIGO **bus** and calls the driver entrypoint with *INDIGO_DRIVER_INIT* and when done it calls it again with *INDIGO_DRIVER_SHUTDOWN*:
+
+```C
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	indigo_wheel_atik(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_wheel_atik(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
+}
+```
+
+**TBD**
 
 ## Device and Property Handling
 
-TBD
+**TBD**
 
 ### Properties
 
@@ -88,15 +150,15 @@ Properties have permissions assigned to them:
 - *INDIGO_RW_PERM* - Read and write permission, client can read the value and can change it
 - *INDIGO_WO_PERM* - Write only permission, client can change it but can not read its value (can be used for passwords)
 
-TBD
+**TBD**
 
 ### Binary Large Objects aka Image Properties
 
-TBD
+**TBD**
 
 ### Devices
 
-TBD
+**TBD**
 
 ## INDIGO driver - Example
 
