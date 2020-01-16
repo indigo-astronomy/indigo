@@ -8,11 +8,11 @@ To be able to communicate over the *bus*, software entity have to register provi
 
 Messages sent over the *bus* are abstraction of INDI messages. The messages sent from a device to a client are *definition of a property*, *update of property item values* and *deletion of a property*. The messages sent from a client to a device are *request for definition of available properties*, *request for change of property item values*.
 
-For the list of the *well known* properties (but *device* can define specific properties as well) see [PROPERTIES.md](https://github.com/indigo-astronomy/indigo/blob/master/PROPERTIES.md).
+For the list of the *well known* properties (but *device* can define specific properties as well) see [PROPERTIES.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROPERTIES.md).
 
 Different busses can be connected to a hierarchical structure, but from a *driver* or a *client* point of view it is fully transparent.
 
-For the description of XML and JSON INDIGO protocols used for communication between different INDIGO busses see [PROTOCOLS.md](https://github.com/indigo-astronomy/indigo/blob/master/PROTOCOLS.md).
+For the description of XML and JSON INDIGO protocols used for communication between different INDIGO busses see [PROTOCOLS.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROTOCOLS.md).
 
 ## A common API
 
