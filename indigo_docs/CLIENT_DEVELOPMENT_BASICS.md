@@ -19,7 +19,7 @@ The messages sent from the **device** to a **client** may contain one of the fol
 - **deletion** of a property - lets the client know that the property is removed and can not be used any more.
 
 The messages sent from a **client** to the **device** can be:
-- **request for definition** of available properties - client can request the definitions of one or all available properties associated with the device.
+- **request for enumeration** of available properties - client can request the definitions of one or all available properties associated with the device.
 - **request for change** of property item values - client can request change of the values of one or several property items.
 
 There are three classes of properties: mandatory, optional, and device specific. Each device class has a set of mandatory properties that should always be defined, a set of optional properties that may or may not be defined and a set of **device** specific properties which may not exist if there is no need. The list of the well known properties is available in [PROPERTIES.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROPERTIES.md).
