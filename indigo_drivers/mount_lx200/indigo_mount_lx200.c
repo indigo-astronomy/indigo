@@ -429,6 +429,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_TRACKING_PROPERTY->hidden = false;
 					MOUNT_PARK_PROPERTY->count = 1;
 					MOUNT_PARK_PARKED_ITEM->sw.value = false;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					PRIVATE_DATA->parked = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
 					if (meade_command(device, ":GVF#", response, sizeof(response), 0)) {
@@ -469,6 +470,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 					MOUNT_UTC_TIME_PROPERTY->hidden = true;
 					MOUNT_TRACKING_PROPERTY->hidden = true;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					meade_get_coords(device);
 					if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value == 0 && MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value == 0) {
 						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
@@ -484,6 +486,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 					MOUNT_UTC_TIME_PROPERTY->hidden = false;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "10Micron");
 					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
 					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -506,6 +509,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 					MOUNT_UTC_TIME_PROPERTY->hidden = false;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
 					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
 					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -528,6 +532,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 					MOUNT_UTC_TIME_PROPERTY->hidden = true;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
 					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
 					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -550,6 +555,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 					MOUNT_UTC_TIME_PROPERTY->hidden = false;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "AstroPhysics");
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
 					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -565,6 +571,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 					MOUNT_UTC_TIME_PROPERTY->hidden = false;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					MOUNT_PEC_PROPERTY->hidden = false;
 					MOUNT_PARK_PROPERTY->count = 1;
 					MOUNT_PARK_PARKED_ITEM->sw.value = false;
@@ -598,6 +605,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 					MOUNT_UTC_TIME_PROPERTY->hidden = true;
 					MOUNT_TRACKING_PROPERTY->hidden = true;
+					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					MOUNT_PARK_PROPERTY->hidden = true;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
 					meade_get_coords(device);

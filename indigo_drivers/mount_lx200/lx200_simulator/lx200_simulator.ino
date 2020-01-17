@@ -69,7 +69,7 @@ static char __buffer__[32];
 bool is_meade = false;
 bool is_10micron = false;
 bool is_gemini = false;
-bool is_avalon = false;
+bool is_avalon = true;
 bool is_onestep = false;
 
 int date_day = 1;
@@ -102,6 +102,9 @@ char slew_rate = 'M';
 bool is_slewing = false;
 bool is_tracking = true;
 bool is_parked = false;
+
+char ra_guiding_speed[3] = "50";
+char dec_guiding_speed[3] = "50";
 
 int focuser_position = 0;
 int focuser_move = 0;
@@ -424,6 +427,22 @@ void loop() {
       } else if (!strncmp(buffer, "Ck", 2)) {
         ra = atof(buffer + 2) * 360000L;
         dec = atof(buffer + 9) * 360000L;
+      } else if (!strncmp(buffer, "X20", 3) {
+        strncpy(ra_guiding_speed, buffer + 3, 2);
+      } else if (!strncmp(buffer, "X21", 3) {
+        strncpy(dec_guiding_speed, buffer + 3, 2);
+      } else if (!strcmp(buffer, "X22") {
+        Serial.print(ra_guiding_speed);
+        Serial.print("b");
+        Serial.print(dec_guiding_speed);
+        Serial.print("#");
+      } else if (!strcmp(buffer, "X361") {
+        target_ra = 0;
+        target_dec = 90L * 360000L;
+        is_tracking = false;
+        is_slewing = true;
+        is_parked = false;
+        Serial.print("pA#");
       }
     }
   }
