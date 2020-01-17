@@ -427,16 +427,16 @@ void loop() {
       } else if (!strncmp(buffer, "Ck", 2)) {
         ra = atof(buffer + 2) * 360000L;
         dec = atof(buffer + 9) * 360000L;
-      } else if (!strncmp(buffer, "X20", 3) {
+      } else if (!strncmp(buffer, "X20", 3)) {
         strncpy(ra_guiding_speed, buffer + 3, 2);
-      } else if (!strncmp(buffer, "X21", 3) {
+      } else if (!strncmp(buffer, "X21", 3)) {
         strncpy(dec_guiding_speed, buffer + 3, 2);
-      } else if (!strcmp(buffer, "X22") {
+      } else if (!strcmp(buffer, "X22")) {
         Serial.print(ra_guiding_speed);
         Serial.print("b");
         Serial.print(dec_guiding_speed);
         Serial.print("#");
-      } else if (!strcmp(buffer, "X361") {
+      } else if (!strcmp(buffer, "X361")) {
         target_ra = 0;
         target_dec = 90L * 360000L;
         is_tracking = false;
