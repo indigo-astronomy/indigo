@@ -227,7 +227,7 @@ static indigo_result atik_wheel_detach(indigo_device *device) {
 	return indigo_wheel_detach(device);
 }
 ```  
-In the example above we handle only  **device attach** **change property** and **device detach** handled, we do not have any custom properties so we will relay on the base class handler and we do not have any blobs so we will ifnore them. We need to provide our callbacks in the *indigo_device* structure. There is an initializer macro, where we also provide the device name:  
+In the example above we handle only  **device attach**, **change property** and **device detach** handled, we do not have any custom properties so we will relay on the base class handler for the property enumeration and we do not have any BLOBSs so we will ignore them. We need to provide our callbacks in the *indigo_device* structure. There is an initializer macro, where we also provide the device name:
 
 ```C
 static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
