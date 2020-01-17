@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 16.01.2020 (early draft)
+Revision: 17.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -45,7 +45,46 @@ There are four functions that cam be used by the **device** to send messages to 
 - *indigo_delete_property()* - property is not needed any more and shall not be used
 - *indigo_send_message()*  - broadcast a human readable text message
 
+Properties and items within the driver are defined with a group of functions:
+- *indigo_init_XXX_property()*
+- *indigo_init_XXX_item()*
+
+and released with:
+- *indigo_release_property()*
+
 For structure definitions and function prototypes please refer to [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_bus.h) and [indigo_driver.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_driver.h).
+
+
+## Properties
+
+Standard property names are defined in [indigo_names.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_names.h)
+
+Properties can be in one of the four states:
+- *INDIGO_IDLE_STATE* - the values may not be initialized
+- *INDIGO_OK_STATE* - the property item values are valid and it is save to read or set them
+- *INDIGO_BUSY_STATE* - the values are not reliable, some operation is in progress (like exposure is in progress)
+- *INDIGO_ALERT_STATE* - the values are not reliable, some operation has failed or the values set are not valid
+
+Each property has predefined type which is one of the following:
+- *INDIGO_TEXT_VECTOR* - strings of limited width
+-	*INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
+-	*INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
+-	*INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
+-	*INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
+
+Properties have permissions assigned to them:
+- *INDIGO_RO_PERM* - Read only permission, which means that the client can not modify their item values
+- *INDIGO_RW_PERM* - Read and write permission, client can read the value and can change it
+- *INDIGO_WO_PERM* - Write only permission, client can change it but can not read its value (can be used for passwords)
+
+The properties have a *hidden* flag, if set to *true* the property will not be enumerated, This is useful for non mandatory standard properties which are defined in the base device class but not applicable for some specific device. There are many examples for this in the INDIGO driver base.
+
+In general the life cycle of a property is:
+1. *indigo_init_XXX_property()*, *indigo_init_XXX_item()* ... *indigo_init_XXX_item()* - allocate resources and initialize the property
+2. *indigo_define_property()* - notify clients of a new property
+3. *indigo_update_property()* - notify clients of a value change or the state is changed etc.
+4. *indigo_delete_property()* - notify clients that the property can not be used any more
+5. *indigo_release_property()* - release the driver resources used by the propriety
 
 ## Types of INDIGO drivers
 
@@ -59,6 +98,7 @@ The **dynamic drivers** and the **static drivers** are orders of magnitude more 
 In INDIGO the drivers can be used remotely using the INDIGO server or the **clients** can load them locally which makes the communication even faster sacrificing the network capability. However this is not exactly correct as the **client** can also act as a **server** for the locally connected devices and some remote **client** can also use these devices.
 
 ## Anatomy of the INDIGO driver
+### Driver entry point
 Like every software program the INDIGO drivers have and entry point. As **executable drivers** are standalone programs their entry point is *int main()*, but this is not the case with **dynamic drivers** and **static drivers**. They need to have a function called with the name of the driver for example if the driver is a CCD driver by convention the driver name should start with **indigo_ccd_** flowed by the model or the vendor name or abbreviation for example **indigo_ccd_atik** - the driver for Atik cameras has an entry point *indigo_ccd_atik()* or **indigo_ccd_asi** - the driver for ZWO ASI cameras has an entry point *indigo_ccd_asi()*. The prototype of the driver entry point is:
 
 ```C
@@ -121,46 +161,118 @@ int main(int argc, const char * argv[]) {
 	return 0;
 }
 ```
+### Device initialization and attaching
 
-**TBD**
+As mentioned above the devices that the driver will handle should be initialized and attached to the INDIGO **bus**. As indigo is asynchronous the device should register several callbacks to handle several events:
+- **device attach** - device is attached to the bus
+- **enumerate properties** - client requests enumerate (define) properties
+- **change property** - client requests property change
+- **enable BLOB** - client requests enableBLOB mode change (BLOBs are explained in [CLIENT_DEVELOPMENT_BASICS.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/CLIENT_DEVELOPMENT_BASICS.md))
+- **device detach** - device is detached from the bus
 
-## Device and Property Handling
+For each of this event a callback should be registered and if ignored the callback shall be set to *NULL*, however there are predefined callbacks for each device class that can be used if the driver does not need to handle this event. Also if the device does not need to handle some event it can be left to the base class handler. It is important to note that if the device registers its own callback it should call the base class callback for all not handled cases.
+The following example illustrates this:
 
-**TBD**
+```C
+static indigo_result atik_wheel_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_wheel_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
 
-### Properties
+static indigo_result atik_wheel_change_property(indigo_device *device,
+	indigo_client *client, indigo_property *property) {
 
-Standard property names are defined in [indigo_names.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_names.h)
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 
-Properties can be in one of the four states:
-- *INDIGO_IDLE_STATE* - the values may not be initialized
-- *INDIGO_OK_STATE* - the property item values are valid and it is save to read or set them
-- *INDIGO_BUSY_STATE* - the values are not reliable, some operation is in progress (like exposure is in progress)
-- *INDIGO_ALERT_STATE* - the values are not reliable, some operation has failed or the values set are not valid
+			... // connect device here
 
-Each property has predefined type which is one of the following:
-- *INDIGO_TEXT_VECTOR* - strings of limited width
--	*INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
--	*INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
--	*INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
--	*INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			// disconnect device here
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		// do not return here, let the baseclass callback do its job...
+	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
+		// -------------------------------------------------------------- WHEEL_SLOT
+		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 
-Properties have permissions assigned to them:
-- *INDIGO_RO_PERM* - Read only permission, which means that the client can not modify their item values
-- *INDIGO_RW_PERM* - Read and write permission, client can read the value and can change it
-- *INDIGO_WO_PERM* - Write only permission, client can change it but can not read its value (can be used for passwords)
+		... // change wheel slot here
 
-**TBD**
+		// notify the clients about the property update
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		// we fully handled the situation so we can return
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------
+	}
+	// let the base calss do its job
+	return indigo_wheel_change_property(device, client, property);
+}
 
-### Binary Large Objects aka Image Properties
+static indigo_result atik_wheel_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_wheel_detach(device);
+}
+```  
+In the example above we handle only  **device attach** **change property** and **device detach** handled, we do not have any custom properties so we will relay on the base class handler and we do not have any blobs so we will ifnore them. We need to provide our callbacks in the *indigo_device* structure. There is an initializer macro, where we also provide the device name:  
 
-**TBD**
+```C
+static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+	"ATIK Filter Wheel",
+	atik_wheel_attach,
+	indigo_wheel_enumerate_properties,
+	atik_wheel_change_property,
+	NULL,
+	atik_wheel_detach
+);
+```
 
-### Devices
+Now as we have everything set up we need to attach our device. Here is an example code to do this:
 
-**TBD**
+```C
+device = malloc(sizeof(indigo_device));
+assert(device != NULL);
+memcpy(device, &wheel_template, sizeof(indigo_device));
+
+... // if the driver has private data here device->private_data should be initialized too
+
+indigo_attach_device(device);
+```
+
+And once we are done with the device we need release all the resources:
+
+```C
+indigo_detach_device(device);
+... // release private data if any with free(device->private_data);
+free(device);
+device = NULL;
+```
+
+Attaching and detaching of the devices can be done either in the driver entrypoint for not hot-plug devices or in the hot-plug callback for hot-plug devices.
+There are many examples for that in the available INDIGO drivers.
+
+There is one important note, in order to use the property macros like *CONNECTION_PROPERTY*, *WHEEL_SLOT_PROPERTY* or items like *CONNECTION_CONNECTED_ITEM* the parameter names of the callbacks must be *device*, *client* and *property*. These macros are defined in the header files of the base classes for convenience.
+
+In case your device needs custom properties there are many device drivers that use such. A good and simple example for this is [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
 ## INDIGO driver - Example
+
+This example is a working device driver handling Atik Filer Wheels. They are hot-plug devices, therefore the driver attaches and detaches the device in the hot-plug callback function. This driver is chosen as the device is really simple yet supports hot-plug, this way the more complex hot-plug support is illustrated with a simpler code. Another simple driver without a hot-plug is the mentioned above [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
+
+### The Atik Filter Wheel driver
 
 Driver header file **indigo_wheel_atik.h**:
 
