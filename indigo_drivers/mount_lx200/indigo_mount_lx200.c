@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -533,8 +533,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_UTC_TIME_PROPERTY->hidden = true;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
 					MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
+					MOUNT_HOME_PROPERTY->hidden = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
-					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "AvalonGO");
 					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 					MOUNT_PARK_PROPERTY->count = 2;
 					PRIVATE_DATA->parked = false;
@@ -546,6 +547,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						} else {
 							indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 							PRIVATE_DATA->parked = true;
+						}
+					}
+					if (meade_command(device, ":X22#", response, sizeof(response), 0)) {
+						int ra, dec;
+						if (sscanf(response, "%db%d#", &ra, &dec) == 2) {
+							MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target = ra;
+							MOUNT_GUIDE_RATE_DEC_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.target = dec;
+							MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+						} else {
+							MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
 					}
 					meade_get_observatory(device);
@@ -1053,11 +1064,41 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_PEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PEC
 		indigo_property_copy_values(MOUNT_PEC_PROPERTY, property, false);
-		MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
 		if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
-			meade_command(device, MOUNT_PEC_ENABLED_ITEM->sw.value ? "$QZ+" : "$QZ-", NULL, 0, 0);
+			if (meade_command(device, MOUNT_PEC_ENABLED_ITEM->sw.value ? "$QZ+" : "$QZ-", NULL, 0, 0))
+				MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_GUIDE_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
+		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
+		MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
+			sprintf(command, ":X20%02d#", (int)(MOUNT_GUIDE_RATE_RA_ITEM->number.target));
+			if (meade_command(device, command, NULL, 0, 0)) {
+				sprintf(command, ":X21%02d#", (int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.target));
+				if (meade_command(device, command, NULL, 0, 0)) {
+					MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		}
+		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_HOME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_HOME
+		indigo_property_copy_values(MOUNT_HOME_PROPERTY, property, false);
+		MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (MOUNT_HOME_ITEM->sw.value) {
+			if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
+				if (meade_command(device, ":X361#", response, sizeof(response), 0) && strcmp(response, "pA") == 0) {
+					MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+			MOUNT_HOME_ITEM->sw.value = false;
+		}
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
