@@ -268,6 +268,66 @@ There is one important note, in order to use the property macros like *CONNECTIO
 
 In case your device needs custom properties there are many device drivers that use such. A good and simple example for this is [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
+## Timers and timely operations
+
+Timers in INDIGO are managed with several calls:
+
+- *indigo_set_timer()* - schedule callback to be called after a certain amount of time.
+- *indigo_reschedule_timer()* - reschedule already scheduled timer, can be used for recurring operations.
+- *indigo_cancel_timer()* - cancel a scheduled timer.
+
+The timer callback should be a void function that accepts pointer to *indigo_device*. The following function illustrates how to poll the Atik filter wheel until the desired filter is set:
+
+```C
+static void wheel_timer_callback(indigo_device *device) {
+	libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		indigo_set_timer(device, 0.5, wheel_timer_callback);
+	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+```
+
+When the filter change request is sent, the timer can be scheduled to fire after 0.5 seconds by calling *indigo_set_timer()* and start polling:
+
+```C
+indigo_set_timer(device, 0.5, wheel_timer_callback);
+```
+
+However there is a better way to use timers that gives more flexibility (like rescheduling and canceling the timer). Preserving the timer object gives this flexibility:
+
+```C
+indigo_timer *wheel_timer;
+...
+wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+```
+
+Using the timer object the above callback can be rewritten by using *indigo_reschedule_timer()*:
+
+```C
+static void wheel_timer_callback(indigo_device *device) {
+	libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		indigo_reschedule_timer(device, 0.5, &wheel_timer);
+	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+```
+
+And finally the scheduled timer can be canceled by calling:
+
+```C
+indigo_cancel_timer(device, &wheel_timer);
+```
+
+Rather than using a global timer objects, as shown above, it is a good idea to store them in the device private data. Good example for this is [indigo_wheel_asi.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/wheel_asi/indigo_wheel_asi.c).
+
 ## INDIGO driver - Example
 
 This example is a working device driver handling Atik Filer Wheels. They are hot-plug devices, therefore the driver attaches and detaches the device in the hot-plug callback function. This driver is chosen as the device is really simple yet supports hot-plug, this way the more complex hot-plug support is illustrated with a simpler code. Another simple driver without a hot-plug is the mentioned above [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
