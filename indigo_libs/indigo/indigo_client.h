@@ -123,6 +123,11 @@ void indigo_service_name(const char *host, int port, char *name);
  */
 extern indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server);
 
+/** If connected to the server returns true else returns false and last_error (if not NULL) will contain the last error
+    reported within client thread. Last_error should have length of 256.
+ */
+extern bool indigo_connection_status(indigo_server_entry *server, char *last_error);
+
 /** Disconnect and stop thread for remote server.
  */
 extern indigo_result indigo_disconnect_server(indigo_server_entry *server);
