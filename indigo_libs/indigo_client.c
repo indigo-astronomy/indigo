@@ -445,6 +445,20 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
 	return INDIGO_OK;
 }
 
+bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
+	bool connected = false;
+
+	if (last_error[0] != 0) last_error[0] = 0;
+	if (server == NULL) return false;
+
+	pthread_mutex_lock(&mutex);
+	if (server->socket > 0) connected = true;
+	if (last_error != NULL) strncpy(last_error, server->last_error, 256);
+	pthread_mutex_unlock(&mutex);
+
+	return connected;
+}
+
 indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 	assert(server != NULL);
 	pthread_mutex_lock(&mutex);
