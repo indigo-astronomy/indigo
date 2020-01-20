@@ -79,7 +79,6 @@ static indigo_result test_update_property(indigo_client *client, indigo_device *
 		} else {
 			if (connected) {
 				indigo_log("disconnected...");
-				indigo_stop();
 				connected = false;
 			}
 		}
@@ -134,10 +133,10 @@ int main(int argc, const char * argv[]) {
 #if defined(INDIGO_WINDOWS)
 	//freopen("indigo.log", "w", stderr);
 #endif
-	
+
 	indigo_start();
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
-	
+
 	indigo_server_entry *server;
 	indigo_attach_client(&test);
 	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
@@ -149,4 +148,3 @@ int main(int argc, const char * argv[]) {
 	indigo_stop();
 	return 0;
 }
-
