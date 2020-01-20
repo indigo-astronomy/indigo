@@ -384,6 +384,9 @@ static void *server_thread(indigo_server_entry *server) {
 		if (address)
 			freeaddrinfo(address);
 		if (server->socket > 0) {
+			pthread_mutex_lock(&mutex);
+			server->last_error[0] = '\0';
+			pthread_mutex_unlock(&mutex);
 			if (*server->name == 0) {
 				indigo_service_name(server->host, server->port, server->name);
 			}
