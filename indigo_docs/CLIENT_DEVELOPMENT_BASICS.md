@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 15.01.2020 (draft)
+Revision: 20.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -367,7 +367,6 @@ static indigo_result test_update_property(indigo_client *client,
 		} else {
 			if (connected) {
 				indigo_log("disconnected...");
-				indigo_stop();
 				connected = false;
 			}
 		}
