@@ -331,16 +331,30 @@ static void *server_thread(indigo_server_entry *server) {
 		pthread_mutex_unlock(&mutex);
 		struct addrinfo hints = { 0 }, *address = NULL;
 		int result;
+		/* server->socket > 0 is indication if connected,
+		   we need a buffer as between socket() and connect()
+		   server->socket > 0 but it is not connected.
+		*/
+		int socket_buffer;
 		hints.ai_family = AF_INET;
 		if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
 			INDIGO_LOG(indigo_error("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
+			pthread_mutex_lock(&mutex);
 			strncpy(server->last_error, gai_strerror(result), sizeof(server->last_error));
-		} else if ((server->socket = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
+			pthread_mutex_unlock(&mutex);
+		} else if ((socket_buffer = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
 			INDIGO_LOG(indigo_error("Can't create socket (%s)", strerror(errno)));
+			pthread_mutex_lock(&mutex);
 			strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
+			server->socket = socket_buffer;
+			pthread_mutex_unlock(&mutex);
 		} else {
 			((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
-			if (connect(server->socket, address->ai_addr, address->ai_addrlen) < 0) {
+			result = connect(socket_buffer, address->ai_addr, address->ai_addrlen);
+			pthread_mutex_lock(&mutex);
+			server->socket = socket_buffer;
+			pthread_mutex_unlock(&mutex);
+			if (result < 0) {
 				char text[INET_ADDRSTRLEN];
 #if defined(INDIGO_WINDOWS)
 				if (is_pre_vista()) {
@@ -361,8 +375,8 @@ static void *server_thread(indigo_server_entry *server) {
 				inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
 #endif
 				INDIGO_LOG(indigo_error("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
-				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
 				pthread_mutex_lock(&mutex);
+				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
 				reset_socket(server, 0);
 				pthread_mutex_unlock(&mutex);
 			}
@@ -453,7 +467,7 @@ bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
 
 	pthread_mutex_lock(&mutex);
 	if (server->socket > 0) connected = true;
-	if (last_error != NULL) strncpy(last_error, server->last_error, 256);
+	if (last_error != NULL) strncpy(last_error, server->last_error, sizeof(server->last_error));
 	pthread_mutex_unlock(&mutex);
 
 	return connected;
