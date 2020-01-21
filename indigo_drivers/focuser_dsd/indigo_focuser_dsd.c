@@ -683,12 +683,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				} else {
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					char *name = DEVICE_PORT_ITEM->text.value;
-					if (strncmp(name, "dsd://", 8)) {
+					if (strncmp(name, "dsd://", 6)) {
 						PRIVATE_DATA->handle = indigo_open_serial(name);
 						/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
 						sleep(2);
 					} else {
-						char *host = name + 8;
+						char *host = name + 6;
 						char *colon = strchr(host, ':');
 						if (colon == NULL) {
 							PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);

@@ -61,10 +61,10 @@ static bool rainbow_command(indigo_device *device, char *command, char *response
 
 static bool rainbow_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (strncmp(name, "rainbow://", 8)) {
+	if (strncmp(name, "rainbow://", 10)) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
 	} else {
-		char *host = name + 8;
+		char *host = name + 10;
 		char *colon = strchr(host, ':');
 		if (colon == NULL) {
 			PRIVATE_DATA->handle = indigo_open_tcp(host, 4030);
