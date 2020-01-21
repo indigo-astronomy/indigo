@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 18.01.2020 (draft)
+Revision: 21.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -86,7 +86,7 @@ In general the life cycle of a property is:
 4. *indigo_delete_property()* - notify clients that the property can not be used any more
 5. *indigo_release_property()* - release the driver resources used by the propriety
 
-## Types of INDIGO drivers
+## Types of INDIGO Drivers
 
 There are three types of INDIGO drivers. The build system of INDIGO automatically produces the three of them:
 - **dynamic driver** - driver that can be loaded and unloaded at any given time
@@ -97,8 +97,8 @@ The **dynamic drivers** and the **static drivers** are orders of magnitude more 
 
 In INDIGO the drivers can be used remotely using the INDIGO server or the **clients** can load them locally which makes the communication even faster sacrificing the network capability. However this is not exactly correct as the **client** can also act as a **server** for the locally connected devices and some remote **client** can also use these devices.
 
-## Anatomy of the INDIGO driver
-### Driver entry point
+## Anatomy of the INDIGO Driver
+### Driver Entry Point
 Like every software program the INDIGO drivers have and entry point. As **executable drivers** are standalone programs their entry point is *int main()*, but this is not the case with **dynamic drivers** and **static drivers**. They need to have a function called with the name of the driver for example if the driver is a CCD driver by convention the driver name should start with **indigo_ccd_** flowed by the model or the vendor name or abbreviation for example **indigo_ccd_atik** - the driver for Atik cameras has an entry point *indigo_ccd_atik()* or **indigo_ccd_asi** - the driver for ZWO ASI cameras has an entry point *indigo_ccd_asi()*. The prototype of the driver entry point is:
 
 ```C
@@ -161,7 +161,7 @@ int main(int argc, const char * argv[]) {
 	return 0;
 }
 ```
-### Device initialization and attaching
+### Device Initialization and Attaching
 
 As mentioned above the devices that the driver will handle should be initialized and attached to the INDIGO **bus**. As indigo is asynchronous the device should register several callbacks to handle several events:
 - **device attach** - device is attached to the bus
@@ -268,7 +268,7 @@ There is one important note, in order to use the property macros like *CONNECTIO
 
 In case your device needs custom properties there are many device drivers that use such. A good and simple example for this is [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
-## Timers and timely operations
+## Timers and Timely Operations
 
 Timers in INDIGO are managed with several calls:
 
@@ -328,7 +328,60 @@ indigo_cancel_timer(device, &wheel_timer);
 
 Rather than using a global timer objects, as shown above, it is a good idea to store them in the device private data. Good example for this is [indigo_wheel_asi.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/wheel_asi/indigo_wheel_asi.c).
 
-## INDIGO driver - Example
+## Driver Communication With The Hardware
+
+Most of the devices use USB connection, for communicating with them the standard libusb library is used. Lubusb is well documented and will not be covered in this document.
+
+Other devices use serial communication over RS-232 port or over TCP or UDP network protocols. For those devices INDIGO provides communication utility functions defined in [indigo_io.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_io.h).
+
+Open functions:
+
+- *indigo_open_serial()* - open serial communication at 9600-8N1
+- *indigo_open_serial_with_config()* - open serial connection with configuration string of the form "9600-8N1"
+- *indigo_open_tcp()* - open TCP network communication channel
+- *indigo_open_udp()* - open UDP network communication channel
+
+Input functions:
+
+- *indigo_read()* - read buffer from the device
+- *indigo_read_line()* - read line from the device
+- *indigo_scanf()* - read formatted input from the device
+
+Output functions:
+- *indigo_write()* - write buffer to the device
+- *indigo_printf()* - print formatted string to the device
+
+Note that there is no close in INDIGO, as the standard *close()* and *shutdown()* calls can be used. Actually standard *read()* and *write()* calls can also be used, just INDIGO IO functions make the life a bit easier.
+
+Some devices can be accessed over RS, TCP and UDP. In this case there is a convention that must be followed. Port names can be prefixed with **tcp://** for TCP connections or **udp://** for UDP connections, or any other string of the form **xxx://** for some specific protocol, anything else is considered a serial port", in case only TCP or UDP is supported the prefix can be omitted. For example drivers like lx200 and nexstar accept **lx200://** and **nexstar://** respectively to indicate the TCP connection. The TCP or UDP port can be specified by **:port** suffix, but if omitted the standard port fir the device should be assumed. Here is an example code for that:
+
+```C
+char *name = DEVICE_PORT_ITEM->text.value;
+if (strncmp(name, "tcp://", 6)) {
+	/* no tcp prefix -> it is serial */
+	PRIVATE_DATA->handle = indigo_open_serial(name);
+} else {
+	char *host = name + 6;
+	char *colon = strchr(host, ':');
+	if (colon == NULL) {
+		/* no port specified -> use default */
+		PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
+	} else {
+		/* split hostname and port */
+		char host_name[INDIGO_NAME_SIZE];
+		strncpy(host_name, host, colon - host);
+		host_name[colon - host] = 0;
+		int port = atoi(colon + 1);
+		PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
+	}
+}
+```
+
+Many hardware vendors provide their own Software Development Kit (SDK) for their products in this case the communication with the devices can be done using the SDK provided by the hardware vendor.
+
+Examples for all types of communication are available in the [INDIGO driver base](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/).
+
+## INDIGO Driver - Example
 
 This example is a working device driver handling Atik Filer Wheels. They are hot-plug devices, therefore the driver attaches and detaches the device in the hot-plug callback function. This driver is chosen as the device is really simple yet supports hot-plug, this way the more complex hot-plug support is illustrated with a simpler code. Another simple driver without a hot-plug is the mentioned above [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
