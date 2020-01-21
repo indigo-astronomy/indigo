@@ -54,10 +54,11 @@ and released with:
 
 For structure definitions and function prototypes please refer to [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_bus.h) and [indigo_driver.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_driver.h).
 
-
 ## Properties
 
 Standard property names are defined in [indigo_names.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_names.h)
+
+### Property States, Types and Permissions
 
 Properties can be in one of the four states:
 - *INDIGO_IDLE_STATE* - the values may not be initialized
@@ -67,10 +68,10 @@ Properties can be in one of the four states:
 
 Each property has predefined type which is one of the following:
 - *INDIGO_TEXT_VECTOR* - strings of limited width
--	*INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
--	*INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
--	*INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
--	*INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
+- *INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
+- *INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
+- *INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
+- *INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
 
 Properties have permissions assigned to them:
 - *INDIGO_RO_PERM* - Read only permission, which means that the client can not modify their item values
@@ -79,12 +80,54 @@ Properties have permissions assigned to them:
 
 The properties have a *hidden* flag, if set to *true* the property will not be enumerated, This is useful for non mandatory standard properties which are defined in the base device class but not applicable for some specific device. There are many examples for this in the INDIGO driver base.
 
+### Property Life Cycle
+
 In general the life cycle of a property is:
 1. *indigo_init_XXX_property()*, *indigo_init_XXX_item()* ... *indigo_init_XXX_item()* - allocate resources and initialize the property
 2. *indigo_define_property()* - notify clients of a new property
 3. *indigo_update_property()* - notify clients of a value change or the state is changed etc.
 4. *indigo_delete_property()* - notify clients that the property can not be used any more
 5. *indigo_release_property()* - release the driver resources used by the propriety
+
+### State Description and State Transitions
+
+As mentioned above properties can be in one of the 4 states: <span style="color:grey">**IDLE**</span>, <span style="color:green">**OK**</span>, <span style="color:orange">**BUSY**</span> and <span style="color:red">**ALERT**</span>.
+
+State <span style="color:grey">**IDLE**</span> is rarely used, it is intended for properties that are not always applicable. For example some focusers have temperature sensor that can be plugged and unplugged while device is connected. If the sensor is plugged and gives readings the property showing the temperature must be <span style="color:green">**OK**</span>, and if the the sensor is unplugged it must be in <span style="color:grey">**IDLE**</span> state.
+
+State <span style="color:green">**OK**</span> is used when the property is in established stable state without any errors. For example image is retrieved from the camera and can be read by the client.
+
+State <span style="color:orange">**BUSY**</span> is used for lengthy operations in progress. For example while exposure is in progress, the image data property must be <span style="color:orange">**BUSY**</span>.
+
+State <span style="color:red">**ALERT**</span> indicates an error. For example image download from the camera failed.
+
+Pretty much all possible state transitions are permitted in INDIGO. The normal and most common state transition in INDIGO is:
+
+- <span style="color:green">**OK**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:green">**OK**</span>
+
+If the operation is instant, <span style="color:orange">**BUSY**</span> state can be skipped for example setting a variable:
+
+- <span style="color:green">**OK**</span> -> <span style="color:green">**OK**</span>
+
+However in case of error the state transition can be:
+
+- <span style="color:green">**OK**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:red">**ALERT**</span>
+
+And respectively for instant operations:
+
+- <span style="color:green">**OK**</span> -> <span style="color:red">**ALERT**</span>
+
+
+In case of error recovery the following state transitions are allowed:
+- <span style="color:red">**ALERT**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:green">**OK**</span>-> <span style="color:red">**ALERT**</span> -> <span style="color:green">**OK**</span>
+
+If the error is persistent on retry the state transtions can be:
+- <span style="color:red">**ALERT**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:red">**ALERT**</span>
+- <span style="color:red">**ALERT**</span> -> <span style="color:red">**ALERT**</span>
+
+In case of a persistent error on retry <span style="color:red">**ALERT**</span> -> <span style="color:green">**OK**</span> -> <span style="color:red">**ALERT**</span> is **NOT** permitted!
+
+It is **MANDATORY** to use the property states as intended. The states are used by the client software to determine errors, and when the data in the property is valid. Using property states improperly will result in erratic behavior of the client, like reading wrong data etc.
 
 ## Types of INDIGO Drivers
 
