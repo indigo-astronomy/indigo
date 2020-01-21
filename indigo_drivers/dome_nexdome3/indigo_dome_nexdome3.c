@@ -797,7 +797,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					/* To be on the safe side -> Wait for 1 seconds! */
 					sleep(1);
 				} else {
-					char *host = device_name + 8;
+					char *host = device_name + 10;
 					char *colon = strchr(host, ':');
 					if (colon == NULL) {
 						PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
