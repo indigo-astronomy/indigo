@@ -121,11 +121,11 @@ And respectively for instant operations:
 In case of error recovery the following state transitions are allowed:
 - <span style="color:red">**ALERT**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:green">**OK**</span>-> <span style="color:red">**ALERT**</span> -> <span style="color:green">**OK**</span>
 
-If the error is persistent on retry the state transtions can be:
+If the error is persistent on update retry the state transtions can be:
 - <span style="color:red">**ALERT**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:red">**ALERT**</span>
 - <span style="color:red">**ALERT**</span> -> <span style="color:red">**ALERT**</span>
 
-In case of a persistent error on retry <span style="color:red">**ALERT**</span> -> <span style="color:green">**OK**</span> -> <span style="color:red">**ALERT**</span> is **NOT** permitted!
+In case of a persistent error on update retry <span style="color:red">**ALERT**</span> -> <span style="color:green">**OK**</span> -> <span style="color:red">**ALERT**</span> is **NOT** permitted!
 
 It is **MANDATORY** to use the property states as intended. The states are used by the client software to determine errors, and when the data in the property is valid. Using property states improperly will result in erratic behavior of the client, like reading wrong data etc.
 
