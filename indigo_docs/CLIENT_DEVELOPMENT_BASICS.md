@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 20.01.2020 (draft)
+Revision: 21.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -44,27 +44,14 @@ There are two functions that can be used by the **client** to send messages to t
 
 In order to communicate over TCP the client must use the following calls:
 - *indigo_connect_server()* - connect to remote indigo service
+- *indigo_connection_status()* - check connection status returns *true* of connected (introduced in INDIGO 2.0-112)
 - *indigo_disconnect_server()* - disconnect from the remote service
 
-For structure definitions and function prototypes please refer to [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_bus.h) and [indigo_client.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_client.h).
+Because of the asynchronous nature of INDIGO *indigo_connect_server()* is asynchronous too. When it returns success it means that the connection request has been successful, but not that the connection is established. *indigo_connect_server()* will try to keep the connection alive and reconnect until *indigo_disconnect_server()* is called. In case if there is a need to monitor connection status, as of INDIGO 2.0-112 there is a function *indigo_connection_status()* that returns *true* if connected and *false* if not. The optional *last_error* parameter will contain the message of the last error.
 
-As INDIGO is asynchronous *indigo_connect_server()* is asynchronous too. When it returns success it means that the connect request has been successful, but not the connection itself. So if there is a need to monitor connection status, as of INDIGO 2.0-112 there is a function *indigo_connection_status()* that returns *true* if connection is successful and *false* if not. The optional *last_error* parameter will contain the message of the last error. It can be used like this:
-```C
-char last_error_message[256];
-if (indigo_connection_status(server, last_error_message)) {
-	/* Connected everything is ok */
-} else {
-	/* If not connected yet, last_error_message will be empty sting,
-	   if connect failed it will contain the reason.
-	*/
-	if (last_error_message[0] == '\0') {
-		/* not connected yet, should wait a bit more */
-	} else {
-		/* connect failed for reason stored in last_error_message */
-	}
-}
-```
-NOTE! We do not encourage developers to use *indigo_connection_status()*. The clients should be designed to be asynchronous, however if INDIGO is adopted in an existing project which needs this call, it absolutely okay to use it.
+**NOTE!** We **DO NOT encourage** developers to use *indigo_connection_status()* in their new projects, however it is **absolutely safe** to use it. This function is added upon several requests from existing projects which adopt INDIGO and their logic requires this information. We encourage developers to design asynchronous clients abstracted from the connection status.
+
+For structure definitions and function prototypes please refer to [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_bus.h) and [indigo_client.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_client.h).
 
 ## Anatomy of the INDIGO client
 
@@ -162,6 +149,24 @@ int main(int argc, const char * argv[]) {
 	indigo_stop();
 
 	return 0;
+}
+```
+
+In case the connection status has to be monitored by the client (not encouraged to do so) *indigo_connection_status()* should be used. The code may look something like this:
+
+```C
+char last_error_message[256];
+if (indigo_connection_status(server, last_error_message)) {
+	/* Connected everything is ok */
+} else {
+	/* If not connected yet, last_error_message will be empty sting,
+	   if connect failed it will contain the reason.
+	*/
+	if (last_error_message[0] == '\0') {
+		/* not connected yet, should wait a bit more */
+	} else {
+		/* connect failed for reason stored in last_error_message */
+	}
 }
 ```
 
