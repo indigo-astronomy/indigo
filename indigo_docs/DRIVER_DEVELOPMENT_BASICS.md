@@ -89,19 +89,20 @@ In general the life cycle of a property is:
 4. *indigo_delete_property()* - notify clients that the property can not be used any more
 5. *indigo_release_property()* - release the driver resources used by the propriety
 
-### State Description and State Transitions
+### State Descriptions and State Transitions
 
 As mentioned above properties can be in one of the 4 states: <span style="color:grey">**IDLE**</span>, <span style="color:green">**OK**</span>, <span style="color:orange">**BUSY**</span> and <span style="color:red">**ALERT**</span>.
 
 State <span style="color:grey">**IDLE**</span> is rarely used, it is intended for properties that are not always applicable. For example some focusers have temperature sensor that can be plugged and unplugged while device is connected. If the sensor is plugged and gives readings the property showing the temperature must be <span style="color:green">**OK**</span>, and if the the sensor is unplugged it must be in <span style="color:grey">**IDLE**</span> state.
+In this state the property data is not reliable.
 
-State <span style="color:green">**OK**</span> is used when the property is in established stable state without any errors. For example image is retrieved from the camera and can be read by the client.
+State <span style="color:green">**OK**</span> is used when the property is in established stable state without any errors. For example image is retrieved from the camera and can be read by the client. <span style="color:green">**OK**</span> state is the only state when the property data is valid.
 
-State <span style="color:orange">**BUSY**</span> is used for lengthy operations in progress. For example while exposure is in progress, the image data property must be <span style="color:orange">**BUSY**</span>.
+State <span style="color:orange">**BUSY**</span> is used for lengthy operations still in progress. For example if the exposure is in progress, the image data property must be <span style="color:orange">**BUSY**</span>. In this state the property data can be valid but it is transient. Good example for this is a mount slewing to coordinates. The property will contain the current position but it is not final.
 
-State <span style="color:red">**ALERT**</span> indicates an error. For example image download from the camera failed.
+State <span style="color:red">**ALERT**</span> indicates an error. For example image download from the camera failed. In this state the property data must be considered garbage.
 
-Pretty much all possible state transitions are permitted in INDIGO. The normal and most common state transition in INDIGO is:
+Pretty much all possible state transitions are permitted in INDIGO but the normal and most common state transition is:
 
 - <span style="color:green">**OK**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:green">**OK**</span>
 
@@ -117,9 +118,9 @@ And respectively for instant operations:
 
 - <span style="color:green">**OK**</span> -> <span style="color:red">**ALERT**</span>
 
-
 In case of error recovery the following state transitions are allowed:
-- <span style="color:red">**ALERT**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:green">**OK**</span>-> <span style="color:red">**ALERT**</span> -> <span style="color:green">**OK**</span>
+- <span style="color:red">**ALERT**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:green">**OK**</span>
+- <span style="color:red">**ALERT**</span> -> <span style="color:green">**OK**</span>
 
 If the error is persistent on update retry the state transtions can be:
 - <span style="color:red">**ALERT**</span> -> <span style="color:orange">**BUSY**</span> -> <span style="color:red">**ALERT**</span>
@@ -187,6 +188,7 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 	return INDIGO_OK;
 }
 ```
+One of the few synchronous parts of INDIGO are the driver entry points. They are executed synchronously and if they block or take too long to return, this will block or slowdown the entire INDIGO **bus**. For that reason the driver entry point functions must return immediately. If a timely operation should be performed, it must be started in a background thread or process. The easiest way to achieve this is via *indigo_async()* call.
 
 The main function for the **executable driver** is pretty much a boiler plate code that connects to the INDIGO **bus** and calls the driver entrypoint with *INDIGO_DRIVER_INIT* and when done it calls it again with *INDIGO_DRIVER_SHUTDOWN*:
 
@@ -204,6 +206,7 @@ int main(int argc, const char * argv[]) {
 	return 0;
 }
 ```
+
 ### Device Initialization and Attaching
 
 As mentioned above the devices that the driver will handle should be initialized and attached to the INDIGO **bus**. As indigo is asynchronous the device should register several callbacks to handle several events:
