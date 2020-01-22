@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 21.01.2020 (draft)
+Revision: 22.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -234,6 +234,9 @@ indigo_change_switch_property(
 ```
 
 The above code snippet requests the CCD driver to change the image format in to FITS by setting the fits switch item to true.
+
+### Value vs Target in the Numeric Properties
+The items of the numeric INDIGO properties have several fields like *min*, *max* etc. However the most used are *target* and *value*. If a client requests a value change, the update response from the driver will have the requested value stored in *target* and the *value* set to the current value (as read from the device). For example if the client requests CCD to be cooled to -20<sup>0</sup>C and the current CCD temperature is +10<sup>0</sup>C, the property update to the client will have *target* set to -20<sup>0</sup>C and *value* set to +10<sup>0</sup>C.
 
 ### Binary Large Objects aka Image Properties
 
