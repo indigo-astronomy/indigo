@@ -130,6 +130,26 @@ In case of a persistent error on update retry <span style="color:red">**ALERT**<
 
 It is **MANDATORY** to use the property states as intended. The states are used by the client software to determine errors, and when the data in the property is valid. Using property states improperly will result in erratic behavior of the client, like reading wrong data etc.
 
+### Item Value vs Item Target
+Items of the numeric INDIGO properties have several fields like *min*, *max* etc. However the most used by the driver are *target* and *value*. If a client requests change of some property item, the requested value should be stored in *target* filed on the drivers end, and the *value* should be set to the current value (as read from the device). For example if the client requests CCD to be cooled to -20<sup>0</sup>C and the current CCD temperature is +10<sup>0</sup>C the update to the client should have *target* set to -20<sup>0</sup>C and *value* set to +10<sup>0</sup>C. On the other hand when a property update is received from the client both *value* and *target* are set to the requested value. So in general the driver may not need to update the *target*, but only the *value*. Both values can also be used to determine if the operation is complete, like in the presented Atik filter wheel driver:
+```C
+/* get the current filter */
+libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+
+/* assign current value to the item value */
+WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+
+/* if target == value => requested filter is set and we change property state to OK */
+if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
+	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+}
+...
+/* no matter if we are done or not we let the clients know what is \
+   going on with the request.
+*/
+indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+```
+
 ## Types of INDIGO Drivers
 
 There are three types of INDIGO drivers. The build system of INDIGO automatically produces the three of them:
@@ -314,7 +334,7 @@ There is one important note, in order to use the property macros like *CONNECTIO
 
 In case your device needs custom properties there are many device drivers that use such. A good and simple example for this is [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
-## Timers and Timely Operations
+### Timers and Timely Operations
 
 Timers in INDIGO are managed with several calls:
 
@@ -374,7 +394,7 @@ indigo_cancel_timer(device, &wheel_timer);
 
 Rather than using a global timer objects, as shown above, it is a good idea to store them in the device private data. Good example for this is [indigo_wheel_asi.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/wheel_asi/indigo_wheel_asi.c).
 
-## Driver Communication With The Hardware
+### Communication with the Hardware
 
 Most of the devices use USB connection, for communicating with them the standard libusb library is used. Lubusb is well documented and will not be covered in this document.
 
