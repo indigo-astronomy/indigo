@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -129,7 +129,7 @@ static void temperature_timer_callback(indigo_device *device) {
 	// temp = ctemp;
 	// ctemp += 0.12;
 	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
 		if (has_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
