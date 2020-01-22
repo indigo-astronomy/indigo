@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 21.01.2020 (draft)
+Revision: 22.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -131,7 +131,7 @@ In case of a persistent error on update retry <span style="color:red">**ALERT**<
 It is **MANDATORY** to use the property states as intended. The states are used by the client software to determine errors, and when the data in the property is valid. Using property states improperly will result in erratic behavior of the client, like reading wrong data etc.
 
 ### Item Value vs Item Target
-Items of the numeric INDIGO properties have several fields like *min*, *max* etc. However the most used by the driver are *target* and *value*. If a client requests change of some property item, the requested value should be stored in *target* filed on the drivers end, and the *value* should be set to the current value (as read from the device). For example if the client requests CCD to be cooled to -20<sup>0</sup>C and the current CCD temperature is +10<sup>0</sup>C the update to the client should have *target* set to -20<sup>0</sup>C and *value* set to +10<sup>0</sup>C. On the other hand when a property update is received from the client both *value* and *target* are set to the requested value. So in general the driver may not need to update the *target*, but only the *value*. Both values can also be used to determine if the operation is complete, like in the presented Atik filter wheel driver:
+The items of the numeric INDIGO properties have several fields like *min*, *max* etc. However the most used by the driver are *target* and *value*. If a client requests change of some property item, the requested value should be stored in the *target* filed on the drivers end, and the *value* should be set to the current value (as read from the device). For example if the client requests CCD to be cooled to -20<sup>0</sup>C and the current CCD temperature is +10<sup>0</sup>C the update to the client must have *target* set to -20<sup>0</sup>C and *value* set to +10<sup>0</sup>C. On the other hand when a property update is received from the client both *value* and *target* are set to the requested value. So in general the driver does not need to update the *target*, but only the *value*. Comparing *target* and *value* can be used to determine if the operation is complete, as shown in the Atik filter wheel driver:
 ```C
 /* get the current filter */
 libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
