@@ -819,6 +819,9 @@ bool ptp_open(indigo_device *device) {
 		int interface_number = interface->altsetting->bInterfaceNumber;
 		rc = libusb_claim_interface(handle, interface_number);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface_number, rc < 0 ? libusb_error_name(rc) : "OK");
+		if (rc == LIBUSB_ERROR_ACCESS) {
+			indigo_send_message(device, "The camera is probably used by another program!");
+		}
 // Doesn't work with Sony!!!
 //		int alt_settings = config_descriptor->interface->altsetting->bAlternateSetting;
 //		rc = libusb_set_interface_alt_setting(handle, interface_number, alt_settings);
@@ -850,7 +853,7 @@ bool ptp_open(indigo_device *device) {
 	if (config_descriptor)
 		libusb_free_config_descriptor(config_descriptor);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	return true;
+	return rc >= 0;
 }
 
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {

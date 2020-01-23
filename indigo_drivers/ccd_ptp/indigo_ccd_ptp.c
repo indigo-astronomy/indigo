@@ -169,6 +169,9 @@ static void handle_connection(indigo_device *device) {
 			indigo_global_unlock(device);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+	} else {
+		indigo_global_unlock(device);
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
