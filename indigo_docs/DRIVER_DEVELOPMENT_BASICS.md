@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 22.01.2020 (draft)
+Revision: 24.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -44,6 +44,8 @@ There are four functions that cam be used by the **device** to send messages to 
 - *indigo_update_property()* - one or more item values of the property are changed
 - *indigo_delete_property()* - property is not needed any more and shall not be used
 - *indigo_send_message()*  - broadcast a human readable text message
+
+Calls *indigo_define_property()*, *indigo_update_property()* and *indigo_delete_property()* can also send an optional human readable text message associated with the event. A common use for this message is in case of failure. For example, if the client request fails, the driver must set the property state to indicate error (ALERT state) and optionally can send the reason for the failure as a text message along with the update.
 
 Properties and items within the driver are defined with a group of functions:
 - *indigo_init_XXX_property()*

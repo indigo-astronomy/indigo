@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 22.01.2020 (draft)
+Revision: 24.01.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -63,7 +63,7 @@ The indigo client should define several callbacks which will be called by the **
 - **send message** - called when the device broadcasts a human readable text message
 - **detach** - called when client is detached from the **bus**
 
-Here is an example of callbacks that we will use in this example:
+Every **define property**, **delete property** and **update property** have an optional human readable message associated with them. In case of an error this message may contain the reason of the failure. If there is no message associated with the event it will be set to *NULL*. Here are some templates of the callbacks that we will use in the client example:
 
 ```C
 static indigo_result my_attach(indigo_client *client) {
