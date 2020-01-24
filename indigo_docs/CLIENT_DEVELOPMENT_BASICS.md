@@ -101,12 +101,13 @@ Once the callbacks are defined the *indigo_client* structure should be defined a
 
 ```C
 static indigo_client my_client = {
-	"MyClient",                     // client name
-	false,                          // is this a remote client "no" - this is us
-	NULL,                           // we do not have client specific data
-	INDIGO_OK,                      // result of last bus operation - we just initialize it with ok
-	INDIGO_VERSION_CURRENT,         // the client speaks current indigo version
-	NULL,                           // BLOB mode records -> Set this to NULL
+	"MyClient",                 // client name
+	false,                      // is this a remote client "no" - this is us
+	NULL,                       // we do not have client specific data
+	INDIGO_OK,                  // result of last bus operation
+	                            // - we just initialize it with ok
+	INDIGO_VERSION_CURRENT,     // the client speaks current indigo version
+	NULL,                       // BLOB mode records -> Set this to NULL
 	my_attach,
 	my_define_property,
 	my_update_property,
@@ -256,10 +257,12 @@ In the above example the VERSION of the protocol is checked and if it is INDIGO 
 On the other hand if the BLOB transfer is *INDIGO_ENABLE_BLOB_URL* the data is not transferred, but only the location where it can be retrieved in raw binary form without any encoding and decoding. This is the default INDIGO way of BLOB transfer. The fact that INDIGO (and INDI) are text based protocols but the BLOB data is binary poses a problem. To overcome this INDI uses Base64 data encoding to transfer BLOBs. This approach leads to a significant slowdown because the transferred data is approximately 30% larger than the raw data and additional encoding and decoding is performed in the driver and the client. INDIGO uses this way of transfer for INDI compatibility, if the client or the server are only legacy INDI capable. This legacy mode is enabled by *INDIGO_ENABLE_BLOB_ALSO*. Due to these differences the INDIGO BLOB data should be retrieved explicitly by the client by using *indigo_populate_http_blob_item()* call:
 
 ```C
-if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-		if (*property->items[0].blob.url) {
-			indigo_populate_http_blob_item(&property->items[0]);
-		}
+if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) &&
+   (property->state == INDIGO_OK_STATE)) {
+
+    if (*property->items[0].blob.url) {
+    	indigo_populate_http_blob_item(&property->items[0]);
+    }
 }
 ```  
 
@@ -268,18 +271,20 @@ There are several things to be considered while handling devices.
 
 First thing is the device interface (aka device type like CCD, Focuser, Mount etc...). This determines what are the mandatory properties of each device, but there are several properties mandatory for every INDIGO device.
 Each INDIGO device has a read only property 'INFO' (*INFO_PROPERTY_NAME*), which contains items with the basic information of the device like name, version, serial number etc. However probably the most important item is 'DEVICE_INTERFACE' (*INFO_DEVICE_INTERFACE_ITEM_NAME*) which determines the device type. This is a sting containing an integer number with a bitmap of the supported interfaces (devices). It is a bitmap because there are devices that host more than one device in a single package like CCD camera with a guider port. However, unlike INDI, INDIGO always exposes one device per each logical device, so in the case of CCD + Guider, INDIGO will present one guider device and one CCD. There is a catch with 'DEVICE_INTERFACE' item, because 'INFO' is a text property and the integer bitmap is in decimal string format, and should be converted to int with *atoi()* before checking the bits.
+
 ```C
 uint32_t device_interface;
 
 if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
-	indigo_item *item = indigo_get_item(property, INFO_DEVICE_INTERFACE_ITEM_NAME);
+	indigo_item *item;
+	item = indigo_get_item(property, INFO_DEVICE_INTERFACE_ITEM_NAME);
 	device_interface = atoi(item->text.value);
 }
 
 if (device_interface & INDIGO_INTERFACE_CCD) {
 	// The device is CCD camera
 }
-```    
+```
 
 The second important thing to consider about devices is that they need to be in connected state in order to be used. There is a switch property with one of many rule 'CONNECTION' (*CONNECTION_PROPERTY_NAME*) available to every device. It has two items: 'CONNECTED' (*CONNECTION_CONNECTED_ITEM_NAME*) and 'DISCONNECTED' (*CONNECTION_DISCONNECTED_ITEM_NAME*). So if the device is in connected state `CONNECTION.CONNECTED == 1`, if in disconnected `CONNECTION.DISCONNECTED == 1`.
 In order to connect the device the client should request `CONNECTION.CONNECTED = 1`, and to disconnect respectively `CONNECTION.DISCONNECTED = 1`. To make the life easier there are utility functions for this - *indigo_device_connect()* and *indigo_device_disconnect()* For example:
@@ -410,7 +415,8 @@ static indigo_result test_update_property(indigo_client *client,
 		char name[32];
 		sprintf(name, "img_%02d.fits", count);
 		FILE *f = fopen(name, "wb");
-		fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
+		fwrite(property->items[0].blob.value,
+		       property->items[0].blob.size, 1, f);
 		fclose(f);
 		indigo_log("image saved to %s...", name);
 		free(property->items[0].blob.value);

@@ -134,12 +134,18 @@ It is **MANDATORY** to use the property states as intended. The states are used 
 The items of the numeric INDIGO properties have several fields like *min*, *max* etc. However the most used by the driver are *target* and *value*. If a client requests change of some property item, the requested value should be stored in the *target* filed on the drivers end, and the *value* should be set to the current value (as read from the device). For example if the client requests CCD to be cooled to -20<sup>0</sup>C and the current CCD temperature is +10<sup>0</sup>C the update to the client must have *target* set to -20<sup>0</sup>C and *value* set to +10<sup>0</sup>C. On the other hand when a property update is received from the client both *value* and *target* are set to the requested value. So in general the driver does not need to update the *target*, but only the *value*. Comparing *target* and *value* can be used to determine if the operation is complete, as shown in the Atik filter wheel driver:
 ```C
 /* get the current filter */
-libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+libatik_wheel_query(
+	PRIVATE_DATA->handle,
+	&PRIVATE_DATA->slot_count,
+	&PRIVATE_DATA->current_slot
+);
 
 /* assign current value to the item value */
 WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 
-/* if target == value => requested filter is set and we change property state to OK */
+/* if target == value => requested filter is set and
+   we change property state to OK
+*/
 if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 }
@@ -166,15 +172,25 @@ In INDIGO the drivers can be used remotely using the INDIGO server or the **clie
 Like every software program the INDIGO drivers have and entry point. As **executable drivers** are standalone programs their entry point is *int main()*, but this is not the case with **dynamic drivers** and **static drivers**. They need to have a function called with the name of the driver for example if the driver is a CCD driver by convention the driver name should start with **indigo_ccd_** flowed by the model or the vendor name or abbreviation for example **indigo_ccd_atik** - the driver for Atik cameras has an entry point *indigo_ccd_atik()* or **indigo_ccd_asi** - the driver for ZWO ASI cameras has an entry point *indigo_ccd_asi()*. The prototype of the driver entry point is:
 
 ```C
-indigo_result indigo_XXX_YYY(indigo_driver_action action, indigo_driver_info *info);
+indigo_result indigo_XXX_YYY(indigo_driver_action action,
+	indigo_driver_info *info);
 ```
+
 It accepts 2 parameters *action* which can be *INDIGO_DRIVER_INIT*, *INDIGO_DRIVER_SHUTDOWN* or *INDIGO_DRIVER_INFO*. The framework calls this function with those parameters at driver loading, unloading and when only driver info is requested. it is a good idea to populate *indigo_driver_info* sructure at every call. Here is an example code how this function may look like for the Atik filter wheel driver(**indigo_wheel_atik**):
 
 ```C
-indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_wheel_atik(indigo_driver_action action,
+	indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Atik Filter Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(
+		info,
+		"Atik Filter Wheel",
+		__FUNCTION__,
+		DRIVER_VERSION,
+		false,
+		last_action
+	);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -193,9 +209,9 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
 
-		/* Detach devices if hot-plug is not supported with indigo_detach_device()
-		   or deregister the hot-plug callback in case hot-plug is supported.
-		   and release all driver resources.
+		/* Detach devices if hot-plug is not supported with
+		   indigo_detach_device() or deregister the hot-plug callback
+		   in case hot-plug is supported and release all driver resources.
 		*/
 
 		break;
@@ -257,7 +273,7 @@ static indigo_result atik_wheel_change_property(indigo_device *device,
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------- CONNECTION
+		// ---------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 
@@ -270,7 +286,7 @@ static indigo_result atik_wheel_change_property(indigo_device *device,
 		}
 		// do not return here, let the baseclass callback do its job...
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
-		// -------------------------------------------------------------- WHEEL_SLOT
+		// ---------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 
 		... // change wheel slot here
@@ -279,7 +295,7 @@ static indigo_result atik_wheel_change_property(indigo_device *device,
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		// we fully handled the situation so we can return
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------
+		// ---------------------------------------------------------------------
 	}
 	// let the base calss do its job
 	return indigo_wheel_change_property(device, client, property);
@@ -292,7 +308,8 @@ static indigo_result atik_wheel_detach(indigo_device *device) {
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
-```  
+```
+
 In the example above we handle only  **device attach**, **change property** and **device detach** handled, we do not have any custom properties so we will relay on the base class handler for the property enumeration and we do not have any BLOBSs so we will ignore them. We need to provide our callbacks in the *indigo_device* structure. There is an initializer macro, where we also provide the device name:
 
 ```C
@@ -313,8 +330,9 @@ device = malloc(sizeof(indigo_device));
 assert(device != NULL);
 memcpy(device, &wheel_template, sizeof(indigo_device));
 
-... // if the driver has private data here device->private_data should be initialized too
-
+... /* if the driver has private data here
+       device->private_data should be initialized too
+    */
 indigo_attach_device(device);
 ```
 
@@ -322,12 +340,12 @@ And once we are done with the device we need release all the resources:
 
 ```C
 indigo_detach_device(device);
-... // release private data if any with free(device->private_data);
+... /* release private data if any with free(device->private_data); */
 free(device);
 device = NULL;
 ```
 
-Attaching and detaching of the devices can be done either in the driver entrypoint for not hot-plug devices or in the hot-plug callback for hot-plug devices.
+Attaching and detaching of the devices can be done either in the driver entry point for not hot-plug devices or in the hot-plug callback for hot-plug devices.
 There are many examples for that in the available INDIGO drivers.
 
 There is one important note, in order to use the property macros like *CONNECTION_PROPERTY*, *WHEEL_SLOT_PROPERTY* or items like *CONNECTION_CONNECTED_ITEM* the parameter names of the callbacks must be *device*, *client* and *property*. These macros are defined in the header files of the base classes for convenience.
@@ -346,7 +364,12 @@ The timer callback should be a void function that accepts pointer to *indigo_dev
 
 ```C
 static void wheel_timer_callback(indigo_device *device) {
-	libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+	libatik_wheel_query(
+		PRIVATE_DATA->handle,
+		&PRIVATE_DATA->slot_count,
+		&PRIVATE_DATA->current_slot
+	);
+
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -375,7 +398,12 @@ Using the timer object the above callback can be rewritten by using *indigo_resc
 
 ```C
 static void wheel_timer_callback(indigo_device *device) {
-	libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+	libatik_wheel_query(
+		PRIVATE_DATA->handle,
+		&PRIVATE_DATA->slot_count,
+		&PRIVATE_DATA->current_slot
+	);
+
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -473,7 +501,8 @@ extern "C" {
 /** Register Atik filter wheel hot-plug callback
  */
 
-extern indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_wheel_atik(indigo_driver_action action,
+	indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
@@ -524,10 +553,15 @@ typedef struct {
 	int slot_count, current_slot;
 } atik_private_data;
 
-// ------------------------------------------- INDIGO Wheel device implementation
+// ------------------------------------------ INDIGO Wheel device implementation
 
 static void wheel_timer_callback(indigo_device *device) {
-	libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+	libatik_wheel_query(
+		PRIVATE_DATA->handle,
+		&PRIVATE_DATA->slot_count,
+		&PRIVATE_DATA->current_slot
+	);
+
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -554,10 +588,11 @@ static indigo_result wheel_change_property(indigo_device *device,
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------- CONNECTION
+		// ---------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if ((PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL)) != NULL) {
+			PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL);
+			if ((PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
 				while (true) {
 					libatik_wheel_query(
@@ -565,9 +600,11 @@ static indigo_result wheel_change_property(indigo_device *device,
 						&PRIVATE_DATA->slot_count,
 						&PRIVATE_DATA->current_slot
 					);
-					if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9)
-						break;
-					  indigo_usleep(ONE_SECOND_DELAY);
+					if (PRIVATE_DATA->slot_count > 0 &&
+						  PRIVATE_DATA->slot_count <= 9) {
+							break;
+						}
+					indigo_usleep(ONE_SECOND_DELAY);
 				}
 				WHEEL_SLOT_ITEM->number.max =
 				WHEEL_SLOT_NAME_PROPERTY->count =
@@ -577,28 +614,35 @@ static indigo_result wheel_change_property(indigo_device *device,
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_set_switch(
+					CONNECTION_PROPERTY,
+					CONNECTION_DISCONNECTED_ITEM,
+					true
+				);
 			}
 		} else {
 			hid_close(PRIVATE_DATA->handle);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
-		// -------------------------------------------------------------- WHEEL_SLOT
+		// ---------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 ||
 			WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
+		} else if(WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			libatik_wheel_set(PRIVATE_DATA->handle, (int)WHEEL_SLOT_ITEM->number.value);
+			libatik_wheel_set(
+				PRIVATE_DATA->handle,
+				(int)WHEEL_SLOT_ITEM->number.value
+			);
 			indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------
+		// ---------------------------------------------------------------------
 	}
 	return indigo_wheel_change_property(device, client, property);
 }
@@ -611,7 +655,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	return indigo_wheel_detach(device);
 }
 
-// ------------------------------------------------------------ hot-plug support
+// --------------------------------------------------------- hot-plug support
 
 static indigo_device *device = NULL;
 
@@ -657,11 +701,20 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev,
 
 static libusb_hotplug_callback_handle callback_handle;
 
-indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_wheel_atik(indigo_driver_action action,
+	indigo_driver_info *info) {
+
 	atik_log = indigo_debug;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Atik Filter Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(
+		info,
+		"Atik Filter Wheel",
+		__FUNCTION__,
+		DRIVER_VERSION,
+		false,
+		last_action
+	);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -674,7 +727,7 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(
 			NULL,
-			LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
+			LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED|LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
 			LIBUSB_HOTPLUG_ENUMERATE,
 			ATIK_VENDOR_ID,
 			ATIK_PRODUC_ID,
@@ -683,8 +736,11 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 			NULL,
 			&callback_handle
 		);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME,
-			"libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"libusb_hotplug_register_callback ->  %s",
+			rc < 0 ? libusb_error_name(rc) : "OK"
+		);
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
