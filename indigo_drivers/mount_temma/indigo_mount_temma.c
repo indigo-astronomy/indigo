@@ -203,9 +203,15 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 					PRIVATE_DATA->currentDec = -(d + m / 60.0 + s / 600.0);
 				else
 					PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
-				PRIVATE_DATA->pierSide = buffer[13];
-				MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'E';
-				MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'W';
+				if ( buffer[13] == 'E' || buffer[13] == 'W' ) {
+					// pier side
+					PRIVATE_DATA->pierSide = buffer[13];
+					MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'E';
+					MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'W';
+				}
+				else if ( buffer[13] == 'F' ) {
+					// fulfilled
+				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->pierSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
 				break;
 			}
@@ -225,7 +231,7 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				break;
 			}
 			case 's': {
-				PRIVATE_DATA->isBusy = buffer[0] == '1';
+				PRIVATE_DATA->isBusy = buffer[1] == '1';
 				break;
 			}
 			case 'l': {
