@@ -260,18 +260,21 @@ static void handle_set_property(indigo_device *device) {
 
 static void handle_streaming(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+	PRIVATE_DATA->abort_capture = false;
 	CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	if (PRIVATE_DATA->liveview(device))
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	else {
 		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
 
 static void handle_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+	PRIVATE_DATA->abort_capture = false;
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	if (PRIVATE_DATA->exposure(device))
