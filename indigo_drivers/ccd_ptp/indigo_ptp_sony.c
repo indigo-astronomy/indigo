@@ -844,7 +844,9 @@ bool ptp_sony_liveview(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size;
 	int retry_count = 0;
-	while (!PRIVATE_DATA->abort_capture) {
+	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value-- != 0) {
+		if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+			CCD_STREAMING_COUNT_ITEM->number.value = -1;
 		if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, 0xffffc002, &buffer, &size)) {
 			uint8_t *start = (uint8_t *)buffer;
 			while (size > 0) {
@@ -853,7 +855,13 @@ bool ptp_sony_liveview(indigo_device *device) {
 					size -= 2;
 					while (size > 0) {
 						if (end[0] == 0xFF && end[1] == 0xD9) {
+							CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 							indigo_process_dslr_image(device, start, (int)(end - start), ".jpeg");
+							if (PRIVATE_DATA->image_buffer)
+								free(PRIVATE_DATA->image_buffer);
+							PRIVATE_DATA->image_buffer = buffer;
+							buffer = NULL;
 							retry_count = 0;
 							break;
 						}
@@ -875,7 +883,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 		buffer = NULL;
 		indigo_usleep(100000);
 	}
-	return true;
+	return !PRIVATE_DATA->abort_capture;
 }
 
 bool ptp_sony_af(indigo_device *device) {

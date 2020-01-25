@@ -1428,8 +1428,6 @@ bool ptp_canon_liveview(indigo_device *device) {
 				CCD_STREAMING_COUNT_ITEM->number.value = -1;
 			indigo_usleep(100000);
 			void *buffer = NULL;
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer, NULL)) {
 				uint8_t *source = buffer;
 				uint32_t length, type;
@@ -1440,7 +1438,13 @@ bool ptp_canon_liveview(indigo_device *device) {
 						break;
 					}
 					if (type == 1) {
+						CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 						indigo_process_dslr_image(device, source, length, ".jpeg");
+						if (PRIVATE_DATA->image_buffer)
+							free(PRIVATE_DATA->image_buffer);
+						PRIVATE_DATA->image_buffer = buffer;
+						buffer = NULL;
 						break;
 					}
 					source += length - 8;
@@ -1452,8 +1456,9 @@ bool ptp_canon_liveview(indigo_device *device) {
 		}
 		set_number_property(device, ptp_property_canon_EVFOutputDevice, 0);
 		//set_property(device, ptp_property_canon_EVFMode, 0);
+		return !PRIVATE_DATA->abort_capture;
 	}
-	return true;
+	return false;
 }
 
 bool ptp_canon_lock(indigo_device *device) {
