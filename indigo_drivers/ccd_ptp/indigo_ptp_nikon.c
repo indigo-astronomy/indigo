@@ -971,13 +971,14 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
+	bool result = ptp_set_property(device, property);
 	if (property->code == ptp_property_CompressionSetting) {
 		if (PRIVATE_DATA->model.product == 0x043a || PRIVATE_DATA->model.product == 0x043c || PRIVATE_DATA->model.product == 0x0440 || PRIVATE_DATA->model.product == 0x0441 || PRIVATE_DATA->model.product == 0x0442 || PRIVATE_DATA->model.product == 0x0443)
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 8 && property->value.sw.value <= 13;
 		else
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 5 && property->value.sw.value <= 7;
 	}
-	return ptp_set_property(device, property);
+	return result;
 }
 
 bool ptp_nikon_exposure(indigo_device *device) {
