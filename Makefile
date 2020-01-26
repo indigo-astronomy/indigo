@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 112
+INDIGO_BUILD = 113
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
@@ -330,10 +330,10 @@ debs-remote:
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
 
 debs-docker:
-	sh tools/build_debs.sh "i386/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb"
-	sh tools/build_debs.sh "amd64/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb"
-	sh tools/build_debs.sh "arm32v7/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb"
-	sh tools/build_debs.sh "arm64v8/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb"
+#	sh tools/build_debs.sh "i386/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb"
+#	sh tools/build_debs.sh "amd64/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb"
+	sh tools/build_debs.sh "arm32v7/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb"
+	sh tools/build_debs.sh "arm64v8/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb"
 
 init-repo:
 	aptly repo create -distribution=indigo -component=main indigo-release
