@@ -2,6 +2,22 @@
 
 All notable changes to INDIGO framewark will be documented in this file.
 
+## [2.0-112] - Sun Jan 26 2020
+
+### Overall:
+- Developer documentation added
+
+### New Drivers:
+- indigo_gps_gpsd: GPSD client driver
+
+### Driver fixes:
+- indigo_mount_temma: bug fixes
+- infigo_ccd_atik: SDK updated
+- indigo_focuser_dmfc, indigo_aux_upb: focuser speed limits fixed
+- indigo_mount_lx200: AvalonGO support improved
+- indigo_ccd_ptp: LiveView buffer race fixed
+
+
 ## [2.0-110] - Tue Jan 14 2020
 
 ### Overall:
