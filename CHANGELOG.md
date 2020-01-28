@@ -7,9 +7,6 @@ All notable changes to INDIGO framewark will be documented in this file.
 ### Overall:
 - Developer documentation added
 
-### New Drivers:
-- indigo_gps_gpsd: GPSD client driver
-
 ### Driver fixes:
 - indigo_mount_temma: bug fixes
 - infigo_ccd_atik: SDK updated
