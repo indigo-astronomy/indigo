@@ -415,15 +415,15 @@ static void check_versions(indigo_device *device) {
 	while (true) {
 		pthread_mutex_lock(&install_property_mutex);
 		bool redefine = false;
-		if (install_property) {
-			indigo_delete_property(device, install_property, NULL);
-			indigo_release_property(install_property);
-			redefine = true;
-		}
-		install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
-		install_property->count = 0;
 		char *line = execute_query("s_rpi_ctrl.sh --list-available-versions");
-		if (line) {
+		if (line && strlen(line) > 0) {
+			if (install_property) {
+				indigo_delete_property(device, install_property, NULL);
+				indigo_release_property(install_property);
+				redefine = true;
+			}
+			install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
+			install_property->count = 0;
 			char *pnt, *versions[10] = { strtok_r(line, " ", &pnt) };
 			int count = 1;
 			while ((versions[count] = strtok_r(NULL, " ", &pnt))) {
