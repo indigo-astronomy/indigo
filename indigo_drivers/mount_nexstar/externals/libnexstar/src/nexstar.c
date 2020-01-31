@@ -202,11 +202,12 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 		*caps |= CAN_GET_SET_PEC;
 	}
 
-	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_4_15) &&
+	if ((guessed_vendor == VNDR_CELESTRON) && ((firmware_version >= VER_4_15) || (nexstar_hc_type == HC_STARSENSE)) &&
 		((mount_model == 5) || (mount_model == 6) || (mount_model == 10) ||
 		(mount_model == 14) || (mount_model == 20))) {
 		*caps |= CAN_GET_SIDE_OF_PIER;
 	}
+
 	return RC_OK;
 }
 
