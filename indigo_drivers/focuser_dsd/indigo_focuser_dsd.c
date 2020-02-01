@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -54,13 +54,23 @@
 #define DSD_STEP_MODE_FULL_ITEM         (DSD_STEP_MODE_PROPERTY->items+0)
 #define DSD_STEP_MODE_HALF_ITEM         (DSD_STEP_MODE_PROPERTY->items+1)
 #define DSD_STEP_MODE_FOURTH_ITEM       (DSD_STEP_MODE_PROPERTY->items+2)
-#define DSD_STEP_MODE_EIHTH_ITEM        (DSD_STEP_MODE_PROPERTY->items+3)
+#define DSD_STEP_MODE_EIGTH_ITEM        (DSD_STEP_MODE_PROPERTY->items+3)
+#define DSD_STEP_MODE_16TH_ITEM         (DSD_STEP_MODE_PROPERTY->items+4)
+#define DSD_STEP_MODE_32TH_ITEM         (DSD_STEP_MODE_PROPERTY->items+5)
+#define DSD_STEP_MODE_64TH_ITEM         (DSD_STEP_MODE_PROPERTY->items+6)
+#define DSD_STEP_MODE_128TH_ITEM        (DSD_STEP_MODE_PROPERTY->items+7)
+#define DSD_STEP_MODE_256TH_ITEM        (DSD_STEP_MODE_PROPERTY->items+8)
 
 #define DSD_STEP_MODE_PROPERTY_NAME     "DSD_STEP_MODE"
 #define DSD_STEP_MODE_FULL_ITEM_NAME    "FULL"
 #define DSD_STEP_MODE_HALF_ITEM_NAME    "HALF"
 #define DSD_STEP_MODE_FOURTH_ITEM_NAME  "FOURTH"
-#define DSD_STEP_MODE_EIHTH_ITEM_NAME   "EIGTH"
+#define DSD_STEP_MODE_EIGTH_ITEM_NAME   "EIGTH"
+#define DSD_STEP_MODE_16TH_ITEM_NAME    "16TH"
+#define DSD_STEP_MODE_32TH_ITEM_NAME    "32TH"
+#define DSD_STEP_MODE_64TH_ITEM_NAME    "64TH"
+#define DSD_STEP_MODE_128TH_ITEM_NAME   "128TH"
+#define DSD_STEP_MODE_256TH_ITEM_NAME   "256TH"
 
 #define DSD_COILS_MODE_PROPERTY              (PRIVATE_DATA->coils_mode_property)
 #define DSD_COILS_MODE_IDLE_OFF_ITEM         (DSD_COILS_MODE_PROPERTY->items+0)
@@ -118,7 +128,12 @@ typedef enum {
 	STEP_MODE_FULL = 1,
 	STEP_MODE_HALF = 2,
 	STEP_MODE_FOURTH = 4,
-	STEP_MODE_EIGTH = 8
+	STEP_MODE_EIGTH = 8,
+	STEP_MODE_16TH = 16,
+	STEP_MODE_32TH = 32,
+	STEP_MODE_64TH = 64,
+	STEP_MODE_128TH = 128,
+	STEP_MODE_256TH = 256
 } stepmode_t;
 
 #define NO_TEMP_READING                (-127)
@@ -546,6 +561,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
+		strcpy(DEVICE_BAUDRATE_ITEM->text.value, "9600");
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 5;
 
@@ -575,14 +593,20 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
-		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
 		if (DSD_STEP_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DSD_STEP_MODE_PROPERTY->hidden = false;
 		indigo_init_switch_item(DSD_STEP_MODE_FULL_ITEM, DSD_STEP_MODE_FULL_ITEM_NAME, "Full step", false);
 		indigo_init_switch_item(DSD_STEP_MODE_HALF_ITEM, DSD_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
 		indigo_init_switch_item(DSD_STEP_MODE_FOURTH_ITEM, DSD_STEP_MODE_FOURTH_ITEM_NAME, "1/4 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_EIHTH_ITEM, DSD_STEP_MODE_EIHTH_ITEM_NAME, "1/8 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_EIGTH_ITEM, DSD_STEP_MODE_EIGTH_ITEM_NAME, "1/8 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_16TH_ITEM, DSD_STEP_MODE_16TH_ITEM_NAME, "1/16 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_32TH_ITEM, DSD_STEP_MODE_32TH_ITEM_NAME, "1/32 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_64TH_ITEM, DSD_STEP_MODE_64TH_ITEM_NAME, "1/64 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_128TH_ITEM, DSD_STEP_MODE_128TH_ITEM_NAME, "1/128 step", false);
+		indigo_init_switch_item(DSD_STEP_MODE_256TH_ITEM, DSD_STEP_MODE_256TH_ITEM_NAME, "1/256 step", false);
+
 		// -------------------------------------------------------------------------- COILS_MODE_PROPERTY
 		DSD_COILS_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_COILS_MODE_PROPERTY_NAME, "Advanced", "Coils Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (DSD_COILS_MODE_PROPERTY == NULL)
@@ -629,7 +653,22 @@ static void update_step_mode_switches(indigo_device * device) {
 		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_FOURTH_ITEM, true);
 		break;
 	case STEP_MODE_EIGTH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_EIHTH_ITEM, true);
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_EIGTH_ITEM, true);
+		break;
+	case STEP_MODE_16TH:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_16TH_ITEM, true);
+		break;
+	case STEP_MODE_32TH:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_32TH_ITEM, true);
+		break;
+	case STEP_MODE_64TH:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_64TH_ITEM, true);
+		break;
+	case STEP_MODE_128TH:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_128TH_ITEM, true);
+		break;
+	case STEP_MODE_256TH:
+		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_256TH_ITEM, true);
 		break;
 	default:
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
@@ -684,7 +723,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					char *name = DEVICE_PORT_ITEM->text.value;
 					if (strncmp(name, "dsd://", 6)) {
-						PRIVATE_DATA->handle = indigo_open_serial(name);
+						PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 						/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
 						sleep(2);
 					} else {
@@ -758,6 +797,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						/* DSD does not have reverse motion, so we set it to be sure we know its state */
 						dsd_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 
+						/* DSD version < 3 suports steps from full to 1/8 */
+						if (PRIVATE_DATA->focuser_version < 3) DSD_STEP_MODE_PROPERTY->count = 4;
 						update_step_mode_switches(device);
 						indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 
@@ -993,8 +1034,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			mode = STEP_MODE_HALF;
 		} else if(DSD_STEP_MODE_FOURTH_ITEM->sw.value) {
 			mode = STEP_MODE_FOURTH;
-		} else if(DSD_STEP_MODE_EIHTH_ITEM->sw.value) {
+		} else if(DSD_STEP_MODE_EIGTH_ITEM->sw.value) {
 			mode = STEP_MODE_EIGTH;
+		} else if(DSD_STEP_MODE_16TH_ITEM->sw.value) {
+			mode = STEP_MODE_16TH;
+		} else if(DSD_STEP_MODE_32TH_ITEM->sw.value) {
+			mode = STEP_MODE_32TH;
+		} else if(DSD_STEP_MODE_64TH_ITEM->sw.value) {
+			mode = STEP_MODE_64TH;
+		} else if(DSD_STEP_MODE_128TH_ITEM->sw.value) {
+			mode = STEP_MODE_128TH;
+		} else if(DSD_STEP_MODE_256TH_ITEM->sw.value) {
+			mode = STEP_MODE_256TH;
 		}
 		if (!dsd_set_step_mode(device, mode)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
