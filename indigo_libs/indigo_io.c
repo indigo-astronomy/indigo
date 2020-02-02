@@ -113,7 +113,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 	char copy[32];
 	strncpy(copy, baudrate, sizeof(copy));
 
-	/* firmat is 9600-8N1, so split baudrate from the rest */
+	/* format is 9600-8N1, so split baudrate from the rest */
 	mode = strchr(copy, '-');
 	if (mode == NULL) {
 		errno = EINVAL;
