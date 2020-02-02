@@ -4,7 +4,7 @@ https://deepskydad.com
 
 ## Supported devices
 
-AF1 and AF2 focusers.
+AF1, AF2, AF3 focusers.
 
 This driver supports up to 8 devices, no hot plug support. By default the driver exposes one device.
 In order to change that one should export environment variable FOCUSER_DSD_DEVICE_NUMBER and set it to the desired number. For example:
@@ -27,3 +27,7 @@ indigo_server indigo_focuser_dsd
 
 Driver is developed and tested with:
 * DSD AF1
+
+## NOTES:
+* AF1 and AF2 use baud rate 9600 bps (default)
+* AF3 uses 115200 bps (should be specified)
