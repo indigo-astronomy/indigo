@@ -1,4 +1,4 @@
-# Deep Sky Dad AF1/AF2 focuser driver
+# Deep Sky Dad AF1, AF2 and AF3 focuser driver
 
 https://deepskydad.com
 
