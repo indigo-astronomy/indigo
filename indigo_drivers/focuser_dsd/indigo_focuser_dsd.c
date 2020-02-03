@@ -488,7 +488,7 @@ static void temperature_timer_callback(indigo_device *device) {
 	}
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
 		if (has_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
