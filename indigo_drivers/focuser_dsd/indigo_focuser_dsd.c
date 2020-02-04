@@ -1290,6 +1290,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, DSD_MODEL_HINT_PROPERTY);
 			indigo_save_property(device, NULL, DSD_STEP_MODE_PROPERTY);
 			indigo_save_property(device, NULL, DSD_COILS_MODE_PROPERTY);
 			indigo_save_property(device, NULL, DSD_CURRENT_CONTROL_PROPERTY);
