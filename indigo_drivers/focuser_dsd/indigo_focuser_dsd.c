@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -48,7 +48,19 @@
 
 #include "indigo_focuser_dsd.h"
 
+#define DSD_AF1_AF2_BAUDRATE            "9600"
+#define DSD_AF3_BAUDRATE                "115200"
+
 #define PRIVATE_DATA                    ((dsd_private_data *)device->private_data)
+
+#define DSD_MODEL_HINT_PROPERTY         (PRIVATE_DATA->model_hint_property)
+#define DSD_MODEL_AF1_2_ITEM            (DSD_MODEL_HINT_PROPERTY->items+0)
+#define DSD_MODEL_AF3_ITEM              (DSD_MODEL_HINT_PROPERTY->items+1)
+
+#define DSD_MODEL_HINT_PROPERTY_NAME    "DSD_MODEL_HINT"
+#define DSD_MODEL_AF1_2_ITEM_NAME       "AF1_2"
+#define DSD_MODEL_AF3_ITEM_NAME         "AF3"
+
 
 #define DSD_STEP_MODE_PROPERTY          (PRIVATE_DATA->step_mode_property)
 #define DSD_STEP_MODE_FULL_ITEM         (DSD_STEP_MODE_PROPERTY->items+0)
@@ -109,7 +121,7 @@ typedef struct {
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
-	indigo_property *step_mode_property, *coils_mode_property, *current_control_property, *timings_property;
+	indigo_property *step_mode_property, *coils_mode_property, *current_control_property, *timings_property, *model_hint_property;
 } dsd_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
@@ -576,6 +588,7 @@ static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_clie
 		if (indigo_property_match(DSD_TIMINGS_PROPERTY, property))
 			indigo_define_property(device, DSD_TIMINGS_PROPERTY, NULL);
 	}
+	indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
@@ -593,7 +606,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		strcpy(DEVICE_BAUDRATE_ITEM->text.value, "9600");
+		strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE, INDIGO_VALUE_SIZE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 5;
 
@@ -622,6 +635,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
+		// -------------------------------------------------------------------------- DSD_MODEL_HINT_PROPERTY
+		DSD_MODEL_HINT_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_MODEL_HINT_PROPERTY_NAME, MAIN_GROUP, "Focuser model hint", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (DSD_MODEL_HINT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(DSD_MODEL_AF1_2_ITEM, DSD_MODEL_AF1_2_ITEM_NAME, "AF1/AF2", true);
+		indigo_init_switch_item(DSD_MODEL_AF3_ITEM, DSD_MODEL_AF3_ITEM_NAME, "AF3", false);
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
 		if (DSD_STEP_MODE_PROPERTY == NULL)
@@ -659,6 +678,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_number_item(DSD_TIMINGS_COILS_TOUT_ITEM, DSD_TIMINGS_COILS_TOUT_ITEM_NAME, "Coils power timeout (ms)", 9, 999999, 1000, 60000);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -936,6 +956,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
+	} else if (indigo_property_match(DSD_MODEL_HINT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSD_MODEL_HINT
+		indigo_property_copy_values(DSD_MODEL_HINT_PROPERTY, property, false);
+		DSD_MODEL_HINT_PROPERTY->state = INDIGO_OK_STATE;
+		if (DSD_MODEL_AF3_ITEM->sw.value) {
+			strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF3_BAUDRATE, INDIGO_VALUE_SIZE);
+		} else {
+			strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE, INDIGO_VALUE_SIZE);
+		}
+		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
+		indigo_update_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		if (!IS_CONNECTED) return INDIGO_OK;
@@ -1278,6 +1310,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(DSD_TIMINGS_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+
+	indigo_delete_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
+	indigo_release_property(DSD_MODEL_HINT_PROPERTY);
 	return indigo_focuser_detach(device);
 }
 
