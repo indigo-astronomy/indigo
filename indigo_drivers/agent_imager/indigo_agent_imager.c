@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -282,8 +282,10 @@ static bool capture_raw_frame(indigo_device *device) {
 		return false;
 	}
 	if (AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0) {
+		if (strchr(remote_image_property->device, '@'))
+			indigo_populate_http_blob_item(remote_image_property->items);
 		indigo_raw_header *header = (indigo_raw_header *)(remote_image_property->items->blob.value);
-		if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48) {
+		if (header && (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48)) {
 			if (AGENT_IMAGER_STATS_FRAME_ITEM->number.value == 0) {
 				indigo_result result;
 				indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
