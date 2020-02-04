@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -168,14 +168,18 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			double time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
 			local_exposure_property->items[0].number.value = time;
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_exposure_property);
-			for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000 && AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE; i++)
+			for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 				indigo_usleep(1000);
-			if (remote_exposure_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_release_property(local_exposure_property);
+				return false;
+			}
+			if (remote_exposure_property->state != INDIGO_BUSY_STATE) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
 				indigo_release_property(local_exposure_property);
 				return INDIGO_ALERT_STATE;
 			}
-			while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
+			while ((remote_exposure_property->state == INDIGO_BUSY_STATE || remote_image_property->state == INDIGO_BUSY_STATE) && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				if (time > 1) {
 					  indigo_usleep(ONE_SECOND_DELAY);
 					time -= 1;
@@ -184,9 +188,15 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					time -= 0.01;
 				}
 			}
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_release_property(local_exposure_property);
+				return false;
+			}
 			if (remote_exposure_property->state == INDIGO_OK_STATE) {
+				if (strchr(remote_image_property->device, '@'))
+					indigo_populate_http_blob_item(remote_image_property->items);
 				indigo_raw_header *header = (indigo_raw_header *)(remote_image_property->items->blob.value);
-				if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48) {
+				if (header && (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48)) {
 					if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
 						indigo_result result;
 						indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
@@ -438,6 +448,10 @@ static void calibrate_process(indigo_device *device) {
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Clearing DEC backlash");
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
+					if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+						DEVICE_PRIVATE_DATA->phase = FAILED;
+						break;
+					}
 					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) {
 						DEVICE_PRIVATE_DATA->phase = FAILED;
 						break;
@@ -745,10 +759,12 @@ static void guide_process(indigo_device *device) {
 
 static void abort_process(indigo_device *device) {
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value <= 0)
+		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value <= 0) {
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			AGENT_GUIDER_STATS_PHASE_ITEM->number.value = FAILED;
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_property *abort_property = indigo_init_switch_property(NULL, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_ABORT_EXPOSURE_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (abort_property) {
 			indigo_init_switch_item(abort_property->items, CCD_ABORT_EXPOSURE_ITEM_NAME, "", true);
@@ -933,6 +949,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
+			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			abort_process(device);
 			AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
