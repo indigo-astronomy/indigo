@@ -1183,7 +1183,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
-			if (!dsd_set_hold_current(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
+			if (!dsd_set_hold_current_multiplier(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
