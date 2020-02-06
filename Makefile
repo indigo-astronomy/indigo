@@ -212,6 +212,9 @@ ifeq ($(ARCH_DETECTED),arm)
 	install -d $(INSTALL_ROOT)/usr/bin
 	install -m 0755 tools/rpi_ctrl.sh $(INSTALL_ROOT)/usr/bin
 endif
+	install -m 0755 systemd/indigo-environment $(INSTALL_ROOT)/usr/bin
+	install -d $(INSTALL_ROOT)/lib/systemd/system
+	install -m 0644 systemd/indigo-environment.service $(INSTALL_ROOT)/lib/systemd/system
 	install -d $(INSTALL_ROOT)/DEBIAN
 	printf "Package: indigo\n" > $(INSTALL_ROOT)/DEBIAN/control
 	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
@@ -236,8 +239,12 @@ endif
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
 ifeq ($(ARCH_DETECTED),arm)
 	cat tools/rpi_ctrl_fix.sh > $(INSTALL_ROOT)/DEBIAN/postinst
-	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
 endif
+	echo "#!/bin/bash" >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "# Configure INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "systemctl enable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "systemctl start indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
+	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
 	rm -f $(INSTALL_ROOT).deb
 	fakeroot dpkg --build $(INSTALL_ROOT)
 #	rm -rf $(INSTALL_ROOT)

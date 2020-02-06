@@ -1,0 +1,10 @@
+[Unit]
+Description=INDIGO Environmet Setup
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/indigo-environment
+
+[Install]
+WantedBy=multi-user.target
