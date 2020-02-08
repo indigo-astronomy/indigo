@@ -32,6 +32,7 @@
 #include <indigo/indigo_guider_driver.h>
 #include <indigo/indigo_wheel_driver.h>
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,7 +40,12 @@ extern "C" {
 /** Register QHY CCD hot-plug callback
  */
 
-extern indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info);
+#define INDIGO_CCD_QHY indigo_ccd_qhy
+#define DRIVER_NAME "indigo_ccd_qhy"
+#define DRIVER_DESCRIPTION "QHY Camera"
+#define USE_LOG4Z
+
+extern indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }

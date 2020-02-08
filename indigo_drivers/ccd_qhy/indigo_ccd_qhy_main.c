@@ -39,10 +39,10 @@ int main(int argc, const char * argv[]) {
 	record->mode = INDIGO_ENABLE_BLOB_ALSO;
 	protocol_adapter->enable_blob_mode_records = record;
 	indigo_start();
-	indigo_ccd_qhy(INDIGO_DRIVER_INIT, NULL);
+	INDIGO_CCD_QHY(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_ccd_qhy(INDIGO_DRIVER_SHUTDOWN, NULL);
+	INDIGO_CCD_QHY(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
