@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 113-3
+INDIGO_BUILD = 113-4
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
@@ -237,15 +237,14 @@ endif
 	printf "rm -f /usr/local/lib/libaltaircam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
 	printf "rm -rf /usr/local/etc/apogee\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
-ifeq ($(ARCH_DETECTED),arm)
-	cat tools/rpi_ctrl_fix.sh > $(INSTALL_ROOT)/DEBIAN/postinst
-else
 	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/postinst
-endif
 	echo >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "# Configure INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl enable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl start indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
+ifeq ($(ARCH_DETECTED),arm)
+	tail -n +2 tools/rpi_ctrl_fix.sh >> $(INSTALL_ROOT)/DEBIAN/postinst
+endif
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
 	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/prerm
 	echo >>$(INSTALL_ROOT)/DEBIAN/prerm
