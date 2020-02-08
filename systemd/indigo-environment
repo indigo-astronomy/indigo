@@ -1,0 +1,2 @@
+#!/bin/bash
+/bin/echo 192 >/sys/module/usbcore/parameters/usbfs_memory_mb

@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 113-1
+INDIGO_BUILD = 113-4
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
@@ -212,6 +212,9 @@ ifeq ($(ARCH_DETECTED),arm)
 	install -d $(INSTALL_ROOT)/usr/bin
 	install -m 0755 tools/rpi_ctrl.sh $(INSTALL_ROOT)/usr/bin
 endif
+	install -m 0755 systemd/indigo-environment $(INSTALL_ROOT)/usr/bin
+	install -d $(INSTALL_ROOT)/lib/systemd/system
+	install -m 0644 systemd/indigo-environment.service $(INSTALL_ROOT)/lib/systemd/system
 	install -d $(INSTALL_ROOT)/DEBIAN
 	printf "Package: indigo\n" > $(INSTALL_ROOT)/DEBIAN/control
 	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
@@ -234,10 +237,22 @@ endif
 	printf "rm -f /usr/local/lib/libaltaircam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
 	printf "rm -rf /usr/local/etc/apogee\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/postinst
+	echo >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "# Configure INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "systemctl enable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "systemctl start indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
 ifeq ($(ARCH_DETECTED),arm)
-	cat tools/rpi_ctrl_fix.sh > $(INSTALL_ROOT)/DEBIAN/postinst
-	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
+	tail -n +2 tools/rpi_ctrl_fix.sh >> $(INSTALL_ROOT)/DEBIAN/postinst
 endif
+	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
+	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/prerm
+	echo >>$(INSTALL_ROOT)/DEBIAN/prerm
+	echo "# Disable INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/prerm
+	echo "systemctl stop indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
+	echo "systemctl disable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
+	chmod a+x $(INSTALL_ROOT)/DEBIAN/prerm
+
 	rm -f $(INSTALL_ROOT).deb
 	fakeroot dpkg --build $(INSTALL_ROOT)
 #	rm -rf $(INSTALL_ROOT)
