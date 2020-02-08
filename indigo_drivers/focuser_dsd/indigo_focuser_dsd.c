@@ -869,10 +869,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						update_step_mode_switches(device);
 						indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
 
-						update_coils_mode_switches(device);
-						indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
-
 						if (PRIVATE_DATA->focuser_version < 3) {
+							update_coils_mode_switches(device);
+							indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
+
 							if (!dsd_get_move_current(device, &value)) {
 								INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
 							}
@@ -1183,7 +1183,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
-			if (!dsd_set_hold_current(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
+			if (!dsd_set_hold_current_multiplier(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
