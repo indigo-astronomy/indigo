@@ -683,6 +683,93 @@
 		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
 		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
 		5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Gemini-5-2.1.pdf"; sourceTree = "<group>"; };
+		597E4F7623EEE637007E0BF8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		597E4F7A23EEE637007E0BF8 /* QHY21.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY21.HEX; sourceTree = "<group>"; };
+		597E4F7B23EEE637007E0BF8 /* QHY290.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY290.img; sourceTree = "<group>"; };
+		597E4F7C23EEE637007E0BF8 /* QHY247.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY247.img; sourceTree = "<group>"; };
+		597E4F7D23EEE637007E0BF8 /* QHY20.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY20.HEX; sourceTree = "<group>"; };
+		597E4F7E23EEE637007E0BF8 /* QHY22.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY22.HEX; sourceTree = "<group>"; };
+		597E4F7F23EEE637007E0BF8 /* QHY16200A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY16200A.HEX; sourceTree = "<group>"; };
+		597E4F8023EEE637007E0BF8 /* QHY23.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY23.HEX; sourceTree = "<group>"; };
+		597E4F8123EEE637007E0BF8 /* QHY2E.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY2E.HEX; sourceTree = "<group>"; };
+		597E4F8223EEE637007E0BF8 /* QHY27.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY27.HEX; sourceTree = "<group>"; };
+		597E4F8323EEE637007E0BF8 /* IMG50.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IMG50.HEX; sourceTree = "<group>"; };
+		597E4F8423EEE637007E0BF8 /* QHY268.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY268.img; sourceTree = "<group>"; };
+		597E4F8523EEE637007E0BF8 /* IC16200A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IC16200A.HEX; sourceTree = "<group>"; };
+		597E4F8623EEE637007E0BF8 /* QHY5III174.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III174.img; sourceTree = "<group>"; };
+		597E4F8723EEE637007E0BF8 /* QHY294.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY294.img; sourceTree = "<group>"; };
+		597E4F8823EEE637007E0BF8 /* QHY367PRO.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY367PRO.img; sourceTree = "<group>"; };
+		597E4F8923EEE637007E0BF8 /* QHY8.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY8.HEX; sourceTree = "<group>"; };
+		597E4F8A23EEE637007E0BF8 /* IMG2P.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IMG2P.HEX; sourceTree = "<group>"; };
+		597E4F8B23EEE637007E0BF8 /* QHY224.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY224.img; sourceTree = "<group>"; };
+		597E4F8C23EEE637007E0BF8 /* QHY5II.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY5II.HEX; sourceTree = "<group>"; };
+		597E4F8D23EEE637007E0BF8 /* QHY178.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY178.img; sourceTree = "<group>"; };
+		597E4F8E23EEE637007E0BF8 /* IMG2S.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IMG2S.HEX; sourceTree = "<group>"; };
+		597E4F8F23EEE637007E0BF8 /* QHY42PRO.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY42PRO.img; sourceTree = "<group>"; };
+		597E4F9023EEE637007E0BF8 /* IC16803.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IC16803.HEX; sourceTree = "<group>"; };
+		597E4F9123EEE637007E0BF8 /* QHY2020.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY2020.img; sourceTree = "<group>"; };
+		597E4F9223EEE637007E0BF8 /* miniCam5.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = miniCam5.HEX; sourceTree = "<group>"; };
+		597E4F9323EEE637007E0BF8 /* QHY550.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY550.img; sourceTree = "<group>"; };
+		597E4F9423EEE637007E0BF8 /* IMG0H.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IMG0H.HEX; sourceTree = "<group>"; };
+		597E4F9523EEE637007E0BF8 /* QHY4040.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY4040.img; sourceTree = "<group>"; };
+		597E4F9623EEE637007E0BF8 /* QHY183.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY183.img; sourceTree = "<group>"; };
+		597E4F9723EEE637007E0BF8 /* QHY9S.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY9S.HEX; sourceTree = "<group>"; };
+		597E4F9823EEE637007E0BF8 /* QHY168.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY168.img; sourceTree = "<group>"; };
+		597E4F9923EEE637007E0BF8 /* QHY695A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY695A.HEX; sourceTree = "<group>"; };
+		597E4F9A23EEE637007E0BF8 /* QHY600.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY600.img; sourceTree = "<group>"; };
+		597E4F9B23EEE637007E0BF8 /* QHY16000.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY16000.HEX; sourceTree = "<group>"; };
+		597E4F9C23EEE637007E0BF8 /* QHY165.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY165.img; sourceTree = "<group>"; };
+		597E4F9D23EEE637007E0BF8 /* QHY8M.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY8M.HEX; sourceTree = "<group>"; };
+		597E4F9E23EEE637007E0BF8 /* QHY367.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY367.img; sourceTree = "<group>"; };
+		597E4F9F23EEE637007E0BF8 /* QHY6060.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY6060.img; sourceTree = "<group>"; };
+		597E4FA023EEE637007E0BF8 /* QHY09000A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY09000A.HEX; sourceTree = "<group>"; };
+		597E4FA123EEE637007E0BF8 /* QHY5III290.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III290.img; sourceTree = "<group>"; };
+		597E4FA223EEE637007E0BF8 /* QHY8L.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY8L.HEX; sourceTree = "<group>"; };
+		597E4FA323EEE637007E0BF8 /* QHY174.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY174.img; sourceTree = "<group>"; };
+		597E4FA423EEE637007E0BF8 /* QHY411.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY411.img; sourceTree = "<group>"; };
+		597E4FA523EEE637007E0BF8 /* QHY163.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY163.img; sourceTree = "<group>"; };
+		597E4FA623EEE637007E0BF8 /* QHY90A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY90A.HEX; sourceTree = "<group>"; };
+		597E4FA723EEE637007E0BF8 /* QHY16803A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY16803A.HEX; sourceTree = "<group>"; };
+		597E4FA823EEE637007E0BF8 /* QHY814A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY814A.HEX; sourceTree = "<group>"; };
+		597E4FA923EEE637007E0BF8 /* QHY8PRO.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY8PRO.HEX; sourceTree = "<group>"; };
+		597E4FAA23EEE637007E0BF8 /* QHY0204.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY0204.img; sourceTree = "<group>"; };
+		597E4FAB23EEE637007E0BF8 /* IC8300.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IC8300.HEX; sourceTree = "<group>"; };
+		597E4FAC23EEE637007E0BF8 /* QHY28.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY28.HEX; sourceTree = "<group>"; };
+		597E4FAD23EEE637007E0BF8 /* QHY5III178.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III178.img; sourceTree = "<group>"; };
+		597E4FAE23EEE637007E0BF8 /* QHY5.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY5.HEX; sourceTree = "<group>"; };
+		597E4FAF23EEE637007E0BF8 /* QHY5LOADER.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY5LOADER.HEX; sourceTree = "<group>"; };
+		597E4FB023EEE637007E0BF8 /* QHY160002AD.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY160002AD.HEX; sourceTree = "<group>"; };
+		597E4FB123EEE637007E0BF8 /* IC90A.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = IC90A.HEX; sourceTree = "<group>"; };
+		597E4FB223EEE637007E0BF8 /* QHY15.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY15.HEX; sourceTree = "<group>"; };
+		597E4FB323EEE637007E0BF8 /* QHY29.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY29.HEX; sourceTree = "<group>"; };
+		597E4FB423EEE637007E0BF8 /* QHY411ERIS.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY411ERIS.img; sourceTree = "<group>"; };
+		597E4FB523EEE637007E0BF8 /* QHY6.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY6.HEX; sourceTree = "<group>"; };
+		597E4FB623EEE637007E0BF8 /* QHY5III224.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III224.img; sourceTree = "<group>"; };
+		597E4FB723EEE637007E0BF8 /* POLEMASTER.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = POLEMASTER.HEX; sourceTree = "<group>"; };
+		597E4FB823EEE637007E0BF8 /* QHY7.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY7.HEX; sourceTree = "<group>"; };
+		597E4FB923EEE637007E0BF8 /* QHY5III185.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III185.img; sourceTree = "<group>"; };
+		597E4FBA23EEE637007E0BF8 /* QHY16.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY16.HEX; sourceTree = "<group>"; };
+		597E4FBB23EEE637007E0BF8 /* QHY12.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY12.HEX; sourceTree = "<group>"; };
+		597E4FBC23EEE637007E0BF8 /* QHY2PRO.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY2PRO.HEX; sourceTree = "<group>"; };
+		597E4FBD23EEE637007E0BF8 /* QHY42.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY42.img; sourceTree = "<group>"; };
+		597E4FBE23EEE637007E0BF8 /* QHY2.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY2.HEX; sourceTree = "<group>"; };
+		597E4FBF23EEE637007E0BF8 /* QHY11.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY11.HEX; sourceTree = "<group>"; };
+		597E4FC023EEE637007E0BF8 /* QHY128.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY128.img; sourceTree = "<group>"; };
+		597E4FC123EEE637007E0BF8 /* QHY10.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY10.HEX; sourceTree = "<group>"; };
+		597E4FC223EEE637007E0BF8 /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		597E4FC423EEE637007E0BF8 /* qhyccderr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccderr.h; sourceTree = "<group>"; };
+		597E4FC523EEE637007E0BF8 /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
+		597E4FC623EEE637007E0BF8 /* qhyccdstruct.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccdstruct.h; sourceTree = "<group>"; };
+		597E4FC723EEE637007E0BF8 /* qhyccdcamdef.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccdcamdef.h; sourceTree = "<group>"; };
+		597E4FC823EEE637007E0BF8 /* qhyccd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccd.h; sourceTree = "<group>"; };
+		597E4FC923EEE637007E0BF8 /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
+		597E4FCA23EEE637007E0BF8 /* 85-qhyccd.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "85-qhyccd.rules"; sourceTree = "<group>"; };
+		597E4FCD23EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
+		597E4FD023EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
+		597E4FD223EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
+		597E4FD423EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
+		597E4FD623EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
+		597E4FD723EEE637007E0BF8 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		598000F922E44A0B00021D67 /* build_debs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_debs.sh; sourceTree = "<group>"; };
 		598000FC22E4E6BD00021D67 /* libapogee.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapogee.a; sourceTree = "<group>"; };
 		598000FF22E4E6BD00021D67 /* libapogee.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapogee.a; sourceTree = "<group>"; };
@@ -2009,6 +2096,7 @@
 		59CBD47E1FAF6C80000DAFDB /* indigo_gps_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_simulator_main.c; sourceTree = "<group>"; };
 		59CC779B1F27BCF2003AD2DB /* indigo_ica_ptp_sony.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_sony.h; sourceTree = "<group>"; };
 		59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_sony.m; sourceTree = "<group>"; };
+		59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
 		59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_upb.rules"; sourceTree = "<group>"; };
 		59D1EA032190B907001901BE /* indigo_dome_azimuth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_azimuth.h; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_libs/indigo/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
@@ -4603,6 +4691,189 @@
 				595F2917211E211100380EF4 /* DDHidQueue.m */,
 			);
 			path = DDHidLib;
+			sourceTree = "<group>";
+		};
+		597E4F7423EEE637007E0BF8 /* ccd_qhy2 */ = {
+			isa = PBXGroup;
+			children = (
+				59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */,
+				597E4F7623EEE637007E0BF8 /* README.md */,
+				597E4FD723EEE637007E0BF8 /* Makefile.inc */,
+				597E4F7723EEE637007E0BF8 /* bin_externals */,
+			);
+			path = ccd_qhy2;
+			sourceTree = "<group>";
+		};
+		597E4F7723EEE637007E0BF8 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				597E4F7823EEE637007E0BF8 /* qhyccd */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		597E4F7823EEE637007E0BF8 /* qhyccd */ = {
+			isa = PBXGroup;
+			children = (
+				597E4F7923EEE637007E0BF8 /* firmware */,
+				597E4FC223EEE637007E0BF8 /* CMakeLists.txt */,
+				597E4FC323EEE637007E0BF8 /* include */,
+				597E4FC923EEE637007E0BF8 /* RELEASE */,
+				597E4FCA23EEE637007E0BF8 /* 85-qhyccd.rules */,
+				597E4FCB23EEE637007E0BF8 /* lib */,
+			);
+			path = qhyccd;
+			sourceTree = "<group>";
+		};
+		597E4F7923EEE637007E0BF8 /* firmware */ = {
+			isa = PBXGroup;
+			children = (
+				597E4F7A23EEE637007E0BF8 /* QHY21.HEX */,
+				597E4F7B23EEE637007E0BF8 /* QHY290.img */,
+				597E4F7C23EEE637007E0BF8 /* QHY247.img */,
+				597E4F7D23EEE637007E0BF8 /* QHY20.HEX */,
+				597E4F7E23EEE637007E0BF8 /* QHY22.HEX */,
+				597E4F7F23EEE637007E0BF8 /* QHY16200A.HEX */,
+				597E4F8023EEE637007E0BF8 /* QHY23.HEX */,
+				597E4F8123EEE637007E0BF8 /* QHY2E.HEX */,
+				597E4F8223EEE637007E0BF8 /* QHY27.HEX */,
+				597E4F8323EEE637007E0BF8 /* IMG50.HEX */,
+				597E4F8423EEE637007E0BF8 /* QHY268.img */,
+				597E4F8523EEE637007E0BF8 /* IC16200A.HEX */,
+				597E4F8623EEE637007E0BF8 /* QHY5III174.img */,
+				597E4F8723EEE637007E0BF8 /* QHY294.img */,
+				597E4F8823EEE637007E0BF8 /* QHY367PRO.img */,
+				597E4F8923EEE637007E0BF8 /* QHY8.HEX */,
+				597E4F8A23EEE637007E0BF8 /* IMG2P.HEX */,
+				597E4F8B23EEE637007E0BF8 /* QHY224.img */,
+				597E4F8C23EEE637007E0BF8 /* QHY5II.HEX */,
+				597E4F8D23EEE637007E0BF8 /* QHY178.img */,
+				597E4F8E23EEE637007E0BF8 /* IMG2S.HEX */,
+				597E4F8F23EEE637007E0BF8 /* QHY42PRO.img */,
+				597E4F9023EEE637007E0BF8 /* IC16803.HEX */,
+				597E4F9123EEE637007E0BF8 /* QHY2020.img */,
+				597E4F9223EEE637007E0BF8 /* miniCam5.HEX */,
+				597E4F9323EEE637007E0BF8 /* QHY550.img */,
+				597E4F9423EEE637007E0BF8 /* IMG0H.HEX */,
+				597E4F9523EEE637007E0BF8 /* QHY4040.img */,
+				597E4F9623EEE637007E0BF8 /* QHY183.img */,
+				597E4F9723EEE637007E0BF8 /* QHY9S.HEX */,
+				597E4F9823EEE637007E0BF8 /* QHY168.img */,
+				597E4F9923EEE637007E0BF8 /* QHY695A.HEX */,
+				597E4F9A23EEE637007E0BF8 /* QHY600.img */,
+				597E4F9B23EEE637007E0BF8 /* QHY16000.HEX */,
+				597E4F9C23EEE637007E0BF8 /* QHY165.img */,
+				597E4F9D23EEE637007E0BF8 /* QHY8M.HEX */,
+				597E4F9E23EEE637007E0BF8 /* QHY367.img */,
+				597E4F9F23EEE637007E0BF8 /* QHY6060.img */,
+				597E4FA023EEE637007E0BF8 /* QHY09000A.HEX */,
+				597E4FA123EEE637007E0BF8 /* QHY5III290.img */,
+				597E4FA223EEE637007E0BF8 /* QHY8L.HEX */,
+				597E4FA323EEE637007E0BF8 /* QHY174.img */,
+				597E4FA423EEE637007E0BF8 /* QHY411.img */,
+				597E4FA523EEE637007E0BF8 /* QHY163.img */,
+				597E4FA623EEE637007E0BF8 /* QHY90A.HEX */,
+				597E4FA723EEE637007E0BF8 /* QHY16803A.HEX */,
+				597E4FA823EEE637007E0BF8 /* QHY814A.HEX */,
+				597E4FA923EEE637007E0BF8 /* QHY8PRO.HEX */,
+				597E4FAA23EEE637007E0BF8 /* QHY0204.img */,
+				597E4FAB23EEE637007E0BF8 /* IC8300.HEX */,
+				597E4FAC23EEE637007E0BF8 /* QHY28.HEX */,
+				597E4FAD23EEE637007E0BF8 /* QHY5III178.img */,
+				597E4FAE23EEE637007E0BF8 /* QHY5.HEX */,
+				597E4FAF23EEE637007E0BF8 /* QHY5LOADER.HEX */,
+				597E4FB023EEE637007E0BF8 /* QHY160002AD.HEX */,
+				597E4FB123EEE637007E0BF8 /* IC90A.HEX */,
+				597E4FB223EEE637007E0BF8 /* QHY15.HEX */,
+				597E4FB323EEE637007E0BF8 /* QHY29.HEX */,
+				597E4FB423EEE637007E0BF8 /* QHY411ERIS.img */,
+				597E4FB523EEE637007E0BF8 /* QHY6.HEX */,
+				597E4FB623EEE637007E0BF8 /* QHY5III224.img */,
+				597E4FB723EEE637007E0BF8 /* POLEMASTER.HEX */,
+				597E4FB823EEE637007E0BF8 /* QHY7.HEX */,
+				597E4FB923EEE637007E0BF8 /* QHY5III185.img */,
+				597E4FBA23EEE637007E0BF8 /* QHY16.HEX */,
+				597E4FBB23EEE637007E0BF8 /* QHY12.HEX */,
+				597E4FBC23EEE637007E0BF8 /* QHY2PRO.HEX */,
+				597E4FBD23EEE637007E0BF8 /* QHY42.img */,
+				597E4FBE23EEE637007E0BF8 /* QHY2.HEX */,
+				597E4FBF23EEE637007E0BF8 /* QHY11.HEX */,
+				597E4FC023EEE637007E0BF8 /* QHY128.img */,
+				597E4FC123EEE637007E0BF8 /* QHY10.HEX */,
+			);
+			path = firmware;
+			sourceTree = "<group>";
+		};
+		597E4FC323EEE637007E0BF8 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FC423EEE637007E0BF8 /* qhyccderr.h */,
+				597E4FC523EEE637007E0BF8 /* config.h */,
+				597E4FC623EEE637007E0BF8 /* qhyccdstruct.h */,
+				597E4FC723EEE637007E0BF8 /* qhyccdcamdef.h */,
+				597E4FC823EEE637007E0BF8 /* qhyccd.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		597E4FCB23EEE637007E0BF8 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FCC23EEE637007E0BF8 /* macOS */,
+				597E4FCE23EEE637007E0BF8 /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		597E4FCC23EEE637007E0BF8 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FCD23EEE637007E0BF8 /* libqhyccd.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		597E4FCE23EEE637007E0BF8 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FCF23EEE637007E0BF8 /* x64 */,
+				597E4FD123EEE637007E0BF8 /* x86 */,
+				597E4FD323EEE637007E0BF8 /* arm */,
+				597E4FD523EEE637007E0BF8 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		597E4FCF23EEE637007E0BF8 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FD023EEE637007E0BF8 /* libqhyccd.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		597E4FD123EEE637007E0BF8 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FD223EEE637007E0BF8 /* libqhyccd.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		597E4FD323EEE637007E0BF8 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FD423EEE637007E0BF8 /* libqhyccd.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		597E4FD523EEE637007E0BF8 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				597E4FD623EEE637007E0BF8 /* libqhyccd.a */,
+			);
+			path = arm64;
 			sourceTree = "<group>";
 		};
 		598000FA22E4E6BD00021D67 /* lib */ = {
@@ -7479,6 +7750,7 @@
 				59FC2E90210CA26D00730343 /* ccd_mi */,
 				9D586C3C22FB0C16002D382E /* ccd_ptp */,
 				59F654681EE47371007B8C93 /* ccd_qhy */,
+				597E4F7423EEE637007E0BF8 /* ccd_qhy2 */,
 				9DF7E64B1F6AA0E600156652 /* ccd_qsi */,
 				59F4EC6F1E941CF400CC7772 /* ccd_sbig */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,

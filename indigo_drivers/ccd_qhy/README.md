@@ -31,6 +31,9 @@ Driver is developed and tested with:
 * QHY 9M & CFW
 
 ## NOTES
+
+THIS DRIVER IS MUTUALLY EXCLUSIVE WITH indigo_ccd_qhy2!!!
+
 ### Firmware path (MacOS only)
 On MacOS the firmware of the cameras is expected to be in "/usr/local/lib/qhy/firmware". If it is on other
 location INDIGO_FIRMWARE_BASE environment variable should be set to point to that location (without "firmware").

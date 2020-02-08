@@ -25,8 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0006
-#define DRIVER_NAME "indigo_ccd_qhy"
+#define DRIVER_VERSION 0x0007
 
 #include <stdlib.h>
 #include <string.h>
@@ -49,7 +48,10 @@
 
 #include "indigo_ccd_qhy.h"
 #include "qhyccd.h"
+
+#ifdef USE_LOG4Z
 #include "log4z.h"
+#endif
 
 #define MAX_SID_LEN                255
 #define QHY_MAX_FORMATS            4
@@ -1561,7 +1563,7 @@ static void process_plug_event() {
 	check_wheel = IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT);
 	//if (IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT) == QHYCCD_SUCCESS)
 	//	check_wheel = IsQHYCCDCFWPlugged(handle);
-	indigo_get_usb_path(libusb_get_device(handle), dev_usbpath);
+	indigo_get_usb_path(libusb_get_device((libusb_device_handle *)handle), dev_usbpath);
 	CloseQHYCCD(handle);
 
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
@@ -1660,12 +1662,14 @@ static void *plug_thread_func(void *sid) {
 		strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 1024);
 	}
 	OSXInitQHYCCDFirmware(firmware_base_dir);
+	indigo_usleep(3000000);
 	process_plug_event();
 	pthread_exit(NULL);
 	return NULL;
 }
 
 static void *unplug_thread_func(void *sid) {
+	indigo_usleep(3000000);
 	process_unplug_event();
 	pthread_exit(NULL);
 	return NULL;
@@ -1756,18 +1760,17 @@ static void remove_all_devices() {
 
 static libusb_hotplug_callback_handle callback_handle;
 
-indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	int rc;
-	SET_DRIVER_INFO(info, "QHY Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-
+	SET_DRIVER_INFO(info, DRIVER_DESCRIPTION, __FUNCTION__, DRIVER_VERSION, true, last_action);
 	if (action == last_action)
 		return INDIGO_OK;
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			SetQHYCCDLogLevel(LOG_LEVEL_FATAL);
+			SetQHYCCDLogLevel(6);
 			rc = InitQHYCCDResource();
 			if (rc != QHYCCD_SUCCESS) return INDIGO_FAILED;
 			indigo_start_usb_event_handler();
