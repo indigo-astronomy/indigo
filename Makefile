@@ -178,6 +178,12 @@ ifeq ($(OS_DETECTED),Linux)
 	sudo udevadm control --reload-rules
 endif
 
+indigo-environment-install:
+	install -m 0755 systemd/indigo-environment /usr/bin
+	install -m 0644 systemd/indigo-environment.service /lib/systemd/system
+	systemctl enable indigo-environment
+	systemctl start indigo-environment
+
 uninstall: reconfigure init
 	@sudo $(MAKE)	-C indigo_libs uninstall
 	@sudo $(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
