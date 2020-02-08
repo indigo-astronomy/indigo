@@ -4696,8 +4696,8 @@
 		597E4F7423EEE637007E0BF8 /* ccd_qhy2 */ = {
 			isa = PBXGroup;
 			children = (
-				59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */,
 				597E4F7623EEE637007E0BF8 /* README.md */,
+				59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */,
 				597E4FD723EEE637007E0BF8 /* Makefile.inc */,
 				597E4F7723EEE637007E0BF8 /* bin_externals */,
 			);
