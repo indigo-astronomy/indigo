@@ -176,6 +176,11 @@ endif
 	@sudo $(MAKE)	-C indigo_tools install
 ifeq ($(OS_DETECTED),Linux)
 	sudo udevadm control --reload-rules
+	@$(MAKE)	    -C tools/fxload -f Makefile
+	@sudo install -d /sbin
+	@sudo install -d /usr/sbin
+	@sudo install -m 0755 tools/fxload/fxload /sbin
+	@sudo install -m 0755 tools/fxload/fxload /usr/sbin
 endif
 
 indigo-environment-install:
@@ -214,10 +219,15 @@ package: reconfigure init all
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 	@$(MAKE)	-C indigo_server install
 	@$(MAKE)	-C indigo_tools install
+	@$(MAKE)	-C tools/fxload -f Makefile
 ifeq ($(ARCH_DETECTED),arm)
 	install -d $(INSTALL_ROOT)/usr/bin
 	install -m 0755 tools/rpi_ctrl.sh $(INSTALL_ROOT)/usr/bin
 endif
+	install -d $(INSTALL_ROOT)/sbin
+	install -d $(INSTALL_ROOT)/usr/sbin
+	install -m 0755 tools/fxload/fxload $(INSTALL_ROOT)/sbin
+	install -m 0755 tools/fxload/fxload $(INSTALL_ROOT)/usr/sbin
 	install -m 0755 systemd/indigo-environment $(INSTALL_ROOT)/usr/bin
 	install -d $(INSTALL_ROOT)/lib/systemd/system
 	install -m 0644 systemd/indigo-environment.service $(INSTALL_ROOT)/lib/systemd/system
@@ -227,10 +237,10 @@ endif
 	printf "Installed-Size: $(shell echo `du -s $(INSTALL_ROOT) | cut -f1`)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	printf "Replaces: libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Replaces: fxload,libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Homepage: http://www.indigo-astronomy.org\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	printf "Depends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Depends: libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Description: INDIGO Framework and drivers\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf " INDIGO is a system of standards and frameworks for multiplatform and distributed astronomy software development designed to scale with your needs.\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	cat $(INSTALL_ROOT)/DEBIAN/control
