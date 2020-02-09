@@ -224,9 +224,7 @@ ifeq ($(ARCH_DETECTED),arm)
 	install -d $(INSTALL_ROOT)/usr/bin
 	install -m 0755 tools/rpi_ctrl.sh $(INSTALL_ROOT)/usr/bin
 endif
-	install -d $(INSTALL_ROOT)/sbin
 	install -d $(INSTALL_ROOT)/usr/sbin
-	install -m 0755 tools/fxload/fxload $(INSTALL_ROOT)/sbin
 	install -m 0755 tools/fxload/fxload $(INSTALL_ROOT)/usr/sbin
 	install -m 0755 systemd/indigo-environment $(INSTALL_ROOT)/usr/bin
 	install -d $(INSTALL_ROOT)/lib/systemd/system
