@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 
 #include <stdlib.h>
 #include <string.h>
@@ -1655,26 +1655,33 @@ static void process_unplug_event() {
 }
 
 
-#ifdef __APPLE__
+//#ifdef __APPLE__
 static void *plug_thread_func(void *sid) {
+	#ifdef __APPLE__
 	char firmware_base_dir[1024] = "/usr/local/lib/qhy";
 	if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
 		strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 1024);
 	}
 	OSXInitQHYCCDFirmware(firmware_base_dir);
 	indigo_usleep(3000000);
+	#else
+	indigo_usleep(1000000);
+	#endif /* __APPLE__ */
 	process_plug_event();
 	pthread_exit(NULL);
 	return NULL;
 }
 
 static void *unplug_thread_func(void *sid) {
+	#ifdef __APPLE__
 	indigo_usleep(3000000);
+	#else
+	indigo_usleep(1000000);
+	#endif /* __APPLE__ */
 	process_unplug_event();
 	pthread_exit(NULL);
 	return NULL;
 }
-#endif /* __APPLE__ */
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -1691,31 +1698,15 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hotplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			#ifdef __APPLE__
-				/* This is ugly hack but otherwise QHY5IIL does not work!!!
-				   The camera does not respond in the hotpliug callback on MacOS,
-				   so the thread waits the callback to complete and initializes
-				   the camera.
-				 */
 				if (!indigo_async(plug_thread_func, NULL)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
 				}
-			#else
-				process_plug_event();
-			#endif /* __APPLE__ */
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			#ifdef __APPLE__
-				/* This is ugly hack but otherwise QHY5IIL does not work!!!
-				   See the note in LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED case.
-				*/
 				if (!indigo_async(unplug_thread_func, NULL)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
 				}
-			#else
-				process_unplug_event();
-			#endif /* __APPLE__ */
 			break;
 		}
 	}
