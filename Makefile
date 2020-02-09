@@ -235,8 +235,6 @@ endif
 	printf "Installed-Size: $(shell echo `du -s $(INSTALL_ROOT) | cut -f1`)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	#printf "Provides: fxload\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	#printf "Conflicts: fxload\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Replaces: fxload,libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Homepage: http://www.indigo-astronomy.org\n" >> $(INSTALL_ROOT)/DEBIAN/control
@@ -361,10 +359,10 @@ debs-remote:
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
 
 debs-docker:
-	#sh tools/build_debs.sh "i386/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb"
-	#sh tools/build_debs.sh "amd64/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb"
+	sh tools/build_debs.sh "i386/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb"
+	sh tools/build_debs.sh "amd64/debian:stretch-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb"
 	sh tools/build_debs.sh "arm32v7/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb"
-	#sh tools/build_debs.sh "arm64v8/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb"
+	sh tools/build_debs.sh "arm64v8/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb"
 
 init-repo:
 	aptly repo create -distribution=indigo -component=main indigo-release
