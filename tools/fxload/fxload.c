@@ -1,9 +1,8 @@
 /*
- * Copyright © 2001 Stephen Williams (steve@icarus.com)
- * Copyright © 2001-2002 David Brownell (dbrownell@users.sourceforge.net)
- * Copyright © 2008 Roger Williams (rawqux@users.sourceforge.net)
- * Copyright © 2012 Pete Batard (pete@akeo.ie)
- * Copyright © 2013 Federico Manzan (f.manzan@gmail.com)
+ * Copyright (c) 2001 Stephen Williams (steve@icarus.com)
+ * Copyright (c) 2001-2002 David Brownell (dbrownell@users.sourceforge.net)
+ * Copyright (c) 2008 Roger Williams (rawqux@users.sourceforge.net)
+ * Copyright (c) 2012 Steve Magnani (steve@digidescorp.com)
  *
  *    This source code is free software; you can redistribute it
  *    and/or modify it in source code form under the terms of the GNU
@@ -21,289 +20,291 @@
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <sys/types.h>
-#include <getopt.h>
+/*
+ * This program supports loading firmware into a target USB device
+ * that is discovered and referenced by the hotplug usb agent. It can
+ * also do other useful things, like set the permissions of the device
+ * and create a symbolic link for the benefit of applications that are
+ * looking for the device.
+ *
+ *     -I <path>       -- Download this firmware (intel hex)
+ *     -t <type>       -- uController type: an21, fx, fx2, fx2lp, fx3
+ *     -s <path>       -- use this second stage loader
+ *     -c <byte>       -- Download to EEPROM, with this config byte
+ *
+ *     -L <path>       -- Create a symbolic link to the device.
+ *     -m <mode>       -- Set the permissions on the device after download.
+ *     -D <path>       -- Use this device, instead of $DEVICE
+ *
+ *     -V              -- Print version ID for program
+ *
+ * This program is intended to be started by hotplug scripts in
+ * response to a device appearing on the bus. It therefore also
+ * expects these environment variables which are passed by hotplug to
+ * its sub-scripts:
+ *
+ *     DEVICE=<path>
+ *         This is the path to the device is /proc/bus/usb. It is the
+ *         complete path to the device, that I can pass to open and
+ *         manipulate as a USB device.
+ */
 
-#include <libusb-1.0/libusb.h>
-#include "ezusb.h"
+# include  <stdlib.h>
+# include  <stdio.h>
+# include  <getopt.h>
+# include  <string.h>
 
-#if !defined(_WIN32) || defined(__CYGWIN__ )
+# include  <sys/types.h>
+# include  <sys/stat.h>
+# include  <fcntl.h>
+# include  <unistd.h>
+
+# include  "ezusb.h"
+
+#ifndef	FXLOAD_VERSION
+#	define FXLOAD_VERSION (__DATE__ " (development)")
+#endif
+
+#include <errno.h>
 #include <syslog.h>
-static bool dosyslog = false;
-#include <strings.h>
-#define _stricmp strcasecmp
-#endif
+#include <stdarg.h>
 
-#ifndef FXLOAD_VERSION
-#define FXLOAD_VERSION (__DATE__ " (libusb)")
-#endif
 
-#ifndef ARRAYSIZE
-#define ARRAYSIZE(A) (sizeof(A)/sizeof((A)[0]))
-#endif
+static int dosyslog=0;
 
 void logerror(const char *format, ...)
-	__attribute__ ((format (__printf__, 1, 2)));
+    __attribute__ ((format (__printf__, 1, 2)));
 
 void logerror(const char *format, ...)
 {
-	va_list ap;
-	va_start(ap, format);
+    va_list ap;
+    va_start(ap, format);
 
-#if !defined(_WIN32) || defined(__CYGWIN__ )
-	if (dosyslog)
-		vsyslog(LOG_ERR, format, ap);
-	else
-#endif
-		vfprintf(stderr, format, ap);
-	va_end(ap);
+    if(dosyslog)
+	vsyslog(LOG_ERR, format, ap);
+    else
+	vfprintf(stderr, format, ap);
+    va_end(ap);
 }
 
-static int print_usage(int error_code) {
-	fprintf(stderr, "\nUsage: fxload [-v] [-V] [-t type] [-d vid:pid] [-p bus,addr] [-s loader] -i firmware\n");
-	fprintf(stderr, "  -i <path>       -- Firmware to upload\n");
-	fprintf(stderr, "  -s <path>       -- Second stage loader\n");
-	fprintf(stderr, "  -t <type>       -- Target type: an21, fx, fx2, fx2lp, fx3\n");
-	fprintf(stderr, "  -d <vid:pid>    -- Target device, as an USB VID:PID\n");
-	fprintf(stderr, "  -p <bus,addr>   -- Target device, as a libusb bus number and device address path\n");
-	fprintf(stderr, "  -v              -- Increase verbosity\n");
-	fprintf(stderr, "  -q              -- Decrease verbosity (silent mode)\n");
-	fprintf(stderr, "  -V              -- Print program version\n");
-	return error_code;
-}
-
-#define FIRMWARE 0
-#define LOADER 1
 int main(int argc, char*argv[])
 {
-	fx_known_device known_device[] = FX_KNOWN_DEVICES;
-	const char *path[] = { NULL, NULL };
-	const char *device_id = NULL;
-	const char *device_path = getenv("DEVICE");
-	const char *type = NULL;
-	const char *fx_name[FX_TYPE_MAX] = FX_TYPE_NAMES;
-	const char *ext, *img_name[] = IMG_TYPE_NAMES;
-	int fx_type = FX_TYPE_UNDEFINED, img_type[ARRAYSIZE(path)];
-	int opt, status;
-	unsigned int i, j;
-	unsigned vid = 0, pid = 0;
-	unsigned busnum = 0, devaddr = 0, _busnum, _devaddr;
-	libusb_device *dev, **devs;
-	libusb_device_handle *device = NULL;
-	struct libusb_device_descriptor desc;
+      const char	*link_path = 0;
+      const char	*ihex_path = 0;
+      const char	*device_path = getenv("DEVICE");
+      const char	*type = 0;
+      const char	*stage1 = 0;
+      mode_t		mode = 0;
+      int		opt;
+      int		config = -1;
 
-	while ((opt = getopt(argc, argv, "qvV?hd:p:i:I:s:S:t:")) != EOF)
-		switch (opt) {
+      while ((opt = getopt (argc, argv, "2vV?D:I:L:c:lm:s:t:")) != EOF)
+      switch (opt) {
 
-		case 'd':
-			device_id = optarg;
-			if (sscanf(device_id, "%x:%x" , &vid, &pid) != 2 ) {
-				fputs ("please specify VID & PID as \"vid:pid\" in hexadecimal format\n", stderr);
-				return -1;
-			}
-			break;
+	  case '2':		// original version of "-t fx2"
+	    type = "fx2";
+	    break;
 
-		case 'p':
-			device_path = optarg;
-			if (sscanf(device_path, "%u,%u", &busnum, &devaddr) != 2 ) {
-				fputs ("please specify bus number & device number as \"bus,dev\" in decimal format\n", stderr);
-				return -1;
-			}
-			break;
+	  case 'D':
+	    device_path = optarg;
+	    break;
 
-		case 'i':
-		case 'I':
-			path[FIRMWARE] = optarg;
-			break;
+	  case 'I':
+	    ihex_path = optarg;
+	    break;
 
-		case 's':
-		case 'S':
-			path[LOADER] = optarg;
-			break;
+	  case 'L':
+	    link_path = optarg;
+	    break;
 
-		case 'V':
-			puts(FXLOAD_VERSION);
-			return 0;
+	  case 'V':
+	    puts (FXLOAD_VERSION);
+	    return 0;
 
-		case 't':
-			type = optarg;
-			break;
+	  case 'c':
+	    config = strtoul (optarg, 0, 0);
+	    if (config < 0 || config > 255) {
+		logerror("illegal config byte: %s\n", optarg);
+		goto usage;
+	    }
+	    break;
 
-		case 'v':
-			verbose++;
-			break;
+	  case 'l':
+	    openlog(argv[0], LOG_CONS|LOG_NOWAIT|LOG_PERROR, LOG_USER);
+	    dosyslog=1;
+	    break;
 
-		case 'q':
-			verbose--;
-			break;
+	  case 'm':
+	    mode = strtoul(optarg,0,0);
+	    mode &= 0777;
+	    break;
 
-		case '?':
-		case 'h':
-		default:
-			return print_usage(-1);
+	  case 's':
+	    stage1 = optarg;
+	    break;
 
-	}
+	  case 't':
+	    if (strcmp (optarg, "an21")		// original AnchorChips parts
+		    && strcmp (optarg, "fx")	// updated Cypress versions
+		    && strcmp (optarg, "fx2")	// Cypress USB 2.0 versions
+		    && strcmp (optarg, "fx2lp")	// updated FX2
+		    && strcmp (optarg, "fx3")	// Cypress USB 3.0 versions
+		    ) {
+		logerror("illegal microcontroller type: %s\n", optarg);
+		goto usage;
+	    }
+	    type = optarg;
+	    break;
 
-	if (path[FIRMWARE] == NULL) {
-		logerror("no firmware specified!\n");
-		return print_usage(-1);
-	}
-	if ((device_id != NULL) && (device_path != NULL)) {
-		logerror("only one of -d or -p can be specified\n");
-		return print_usage(-1);
-	}
+	  case 'v':
+	    verbose++;
+	    break;
 
-	/* determine the target type */
-	if (type != NULL) {
-		for (i=0; i<FX_TYPE_MAX; i++) {
-			if (strcmp(type, fx_name[i]) == 0) {
-				fx_type = i;
-				break;
-			}
-		}
-		if (i >= FX_TYPE_MAX) {
-			logerror("illegal microcontroller type: %s\n", type);
-			return print_usage(-1);
-		}
-	}
+	  case '?':
+	  default:
+	    goto usage;
 
-	/* open the device using libusb */
-	status = libusb_init(NULL);
-	if (status < 0) {
-		logerror("libusb_init() failed: %s\n", libusb_error_name(status));
+      }
+
+      if (config >= 0) {
+	    if (type == 0) {
+		logerror("must specify microcontroller type %s",
+				"to write EEPROM!\n");
+		goto usage;
+	    }
+	    if (!stage1 || !ihex_path) {
+		logerror("need 2nd stage loader and firmware %s",
+				"to write EEPROM!\n");
+		goto usage;
+	    }
+	    if (link_path || mode) {
+		logerror("links and modes not set up when writing EEPROM\n");
+		goto usage;
+	    }
+      }
+
+      if (!device_path) {
+	    logerror("no device specified!\n");
+usage:
+	    fputs ("usage: ", stderr);
+	    fputs (argv [0], stderr);
+	    fputs (" [-vV] [-l] [-t type] [-D devpath]\n", stderr);
+	    fputs ("\t\t[-I firmware_hexfile] ", stderr);
+	    fputs ("[-s loader] [-c config_byte]\n", stderr);
+	    fputs ("\t\t[-L link] [-m mode]\n", stderr);
+	    fputs ("... [-D devpath] overrides DEVICE= in env\n", stderr);
+	    fputs ("... device types:  one of an21, fx, fx2, fx2lp, fx3\n", stderr);
+	    fputs ("... at least one of -I, -L, -m is required\n", stderr);
+	    return -1;
+      }
+
+      if (ihex_path) {
+	    int fd = open(device_path, O_RDWR);
+	    int status;
+
+	    if (fd == -1) {
+		logerror("%s : %s\n", strerror(errno), device_path);
 		return -1;
-	}
-	//libusb_set_option(NULL, 0, verbose);
+	    }
 
-	/* try to pick up missing parameters from known devices */
-	if ((type == NULL) || (device_id == NULL) || (device_path != NULL)) {
-		if (libusb_get_device_list(NULL, &devs) < 0) {
-			logerror("libusb_get_device_list() failed: %s\n", libusb_error_name(status));
-			goto err;
-		}
-		for (i=0; (dev=devs[i]) != NULL; i++) {
-			_busnum = libusb_get_bus_number(dev);
-			_devaddr = libusb_get_device_address(dev);
-			if ((type != NULL) && (device_path != NULL)) {
-				// if both a type and bus,addr were specified, we just need to find our match
-				if ((libusb_get_bus_number(dev) == busnum) && (libusb_get_device_address(dev) == devaddr))
-					break;
-			} else {
-				status = libusb_get_device_descriptor(dev, &desc);
-				if (status >= 0) {
-					if (verbose >= 3) {
-						logerror("examining %04x:%04x (%d,%d)\n",
-							desc.idVendor, desc.idProduct, _busnum, _devaddr);
-					}
-					for (j=0; j<ARRAYSIZE(known_device); j++) {
-						if ((desc.idVendor == known_device[j].vid)
-							&& (desc.idProduct == known_device[j].pid)) {
-							if (// nothing was specified
-								((type == NULL) && (device_id == NULL) && (device_path == NULL)) ||
-								// vid:pid was specified and we have a match
-								((type == NULL) && (device_id != NULL) && (vid == desc.idVendor) && (pid == desc.idProduct)) ||
-								// bus,addr was specified and we have a match
-								((type == NULL) && (device_path != NULL) && (busnum == _busnum) && (devaddr == _devaddr)) ||
-								// type was specified and we have a match
-								((type != NULL) && (device_id == NULL) && (device_path == NULL) && (fx_type == known_device[j].type)) ) {
-								fx_type = known_device[j].type;
-								vid = desc.idVendor;
-								pid = desc.idProduct;
-								busnum = _busnum;
-								devaddr = _devaddr;
-								break;
-							}
-						}
-					}
-					if (j < ARRAYSIZE(known_device)) {
-						if (verbose)
-							logerror("found device '%s' [%04x:%04x] (%d,%d)\n",
-								known_device[j].designation, vid, pid, busnum, devaddr);
-						break;
-					}
-				}
-			}
-		}
-		if (dev == NULL) {
-			libusb_free_device_list(devs, 1);
-			libusb_exit(NULL);
-			logerror("could not find a known device - please specify type and/or vid:pid and/or bus,dev\n");
-			return print_usage(-1);
-		}
-		status = libusb_open(dev, &device);
-		libusb_free_device_list(devs, 1);
-		if (status < 0) {
-			logerror("libusb_open() failed: %s\n", libusb_error_name(status));
-			goto err;
-		}
-	} else if (device_id != NULL) {
-		device = libusb_open_device_with_vid_pid(NULL, (uint16_t)vid, (uint16_t)pid);
-		if (device == NULL) {
-			logerror("libusb_open() failed\n");
-			goto err;
-		}
-	}
+	    if (type == 0) {
+		type = "fx";	/* an21-compatible for most purposes */
+	    }
 
-	/* We need to claim the first interface */
-	libusb_set_auto_detach_kernel_driver(device, 1);
-	status = libusb_claim_interface(device, 0);
-	if (status != LIBUSB_SUCCESS) {
-		libusb_close(device);
-		logerror("libusb_claim_interface failed: %s\n", libusb_error_name(status));
-		goto err;
-	}
+	    if (verbose)
+		logerror("microcontroller type: %s\n", type);
 
-	if (verbose)
-		logerror("microcontroller type: %s\n", fx_name[fx_type]);
+	    if (stage1) {
+		/* first stage:  put loader into internal memory */
+		if (verbose)
+		    logerror("1st stage:  load 2nd stage loader\n");
+		status = ezusb_load_ram (fd, stage1, type, 0);
+		if (status != 0)
+		    return status;
 
-	for (i=0; i<ARRAYSIZE(path); i++) {
-		if (path[i] != NULL) {
-			ext = path[i] + strlen(path[i]) - 4;
-			if ((_stricmp(ext, ".hex") == 0) || (strcmp(ext, ".ihx") == 0))
-				img_type[i] = IMG_TYPE_HEX;
-			else if (_stricmp(ext, ".iic") == 0)
-				img_type[i] = IMG_TYPE_IIC;
-			else if (_stricmp(ext, ".bix") == 0)
-				img_type[i] = IMG_TYPE_BIX;
-			else if (_stricmp(ext, ".img") == 0)
-				img_type[i] = IMG_TYPE_IMG;
-			else {
-				logerror("%s is not a recognized image type\n", path[i]);
-				goto err;
-			}
-		}
-		if (verbose && path[i] != NULL)
-			logerror("%s: type %s\n", path[i], img_name[img_type[i]]);
-	}
-
-	if (path[LOADER] == NULL) {
+		/* second stage ... write either EEPROM, or RAM.  */
+		if (config >= 0)
+		    status = ezusb_load_eeprom (fd, ihex_path, type, config);
+		else
+		    status = ezusb_load_ram (fd, ihex_path, type, 1);
+		if (status != 0)
+		    return status;
+	    } else {
 		/* single stage, put into internal memory */
-		if (verbose > 1)
-			logerror("single stage: load on-chip memory\n");
-		status = ezusb_load_ram(device, path[FIRMWARE], fx_type, img_type[FIRMWARE], 0);
-	} else {
-		/* two-stage, put loader into internal memory */
-		if (verbose > 1)
-			logerror("1st stage: load 2nd stage loader\n");
-		status = ezusb_load_ram(device, path[LOADER], fx_type, img_type[LOADER], 0);
-		if (status == 0) {
-			/* two-stage, put firmware into internal memory */
-			if (verbose > 1)
-				logerror("2nd state: load on-chip memory\n");
-			status = ezusb_load_ram(device, path[FIRMWARE], fx_type, img_type[FIRMWARE], 1);
-		}
-	}
+		if (verbose)
+		    logerror("single stage:  load on-chip memory\n");
+		status = ezusb_load_ram (fd, ihex_path, type, 0);
+		if (status != 0)
+		    return status;
+	    }
 
-	libusb_release_interface(device, 0);
-	libusb_close(device);
-	libusb_exit(NULL);
-	return status;
-err:
-	libusb_exit(NULL);
-	return -1;
+	    /* some firmware won't renumerate, but typically it will.
+	     * link and chmod only make sense without renumeration...
+	     */
+      }
+
+      if (link_path) {
+	    int rc = unlink(link_path);
+	    rc = symlink(device_path, link_path);
+	    if (rc == -1) {
+		  logerror("%s : %s\n", strerror(errno), link_path);
+		  return -1;
+	    }
+      }
+
+      if (mode != 0) {
+	    int rc = chmod(device_path, mode);
+	    if (rc == -1) {
+		  logerror("%s : %s\n", strerror(errno), link_path);
+		  return -1;
+	    }
+      }
+
+      if (!ihex_path && !link_path && !mode) {
+	    logerror("missing request! (firmware, link, or mode)\n");
+	    return -1;
+      }
+
+      return 0;
 }
+
+
+/*
+ * $Log: main.c,v $
+ * Revision 1.10  2008/10/13 21:25:29  dbrownell
+ * Whitespace fixes.
+ *
+ * Revision 1.9  2008/10/13 21:23:23  dbrownell
+ * From Roger Williams <roger@qux.com>:  FX2LP support
+ *
+ * Revision 1.8  2005/01/11 03:58:02  dbrownell
+ * From Dirk Jagdmann <doj@cubic.org>:  optionally output messages to
+ * syslog instead of stderr.
+ *
+ * Revision 1.7  2002/04/12 00:28:22  dbrownell
+ * support "-t an21" to program EEPROMs for those microcontrollers
+ *
+ * Revision 1.6  2002/04/02 05:26:15  dbrownell
+ * version display now noiseless (-V);
+ * '-?' (usage info) convention now explicit
+ *
+ * Revision 1.5  2002/02/26 20:10:28  dbrownell
+ * - "-s loader" option for 2nd stage loader
+ * - "-c byte" option to write EEPROM with 2nd stage
+ * - "-V" option to dump version code
+ *
+ * Revision 1.4  2002/01/17 14:19:28  dbrownell
+ * fix warnings
+ *
+ * Revision 1.3  2001/12/27 17:54:04  dbrownell
+ * forgot an important character :)
+ *
+ * Revision 1.2  2001/12/27 17:43:29  dbrownell
+ * fail on firmware download errors; add "-v" flag
+ *
+ * Revision 1.1  2001/06/12 00:00:50  stevewilliams
+ *  Added the fxload program.
+ *  Rework root makefile and hotplug.spec to install in prefix
+ *  location without need of spec file for install.
+ *
+ */
