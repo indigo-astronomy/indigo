@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 113-5
+INDIGO_BUILD = 113-6
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
@@ -235,8 +235,8 @@ endif
 	printf "Installed-Size: $(shell echo `du -s $(INSTALL_ROOT) | cut -f1`)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	printf "Provides: fxload\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	printf "Conflicts: fxload\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	#printf "Provides: fxload\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	#printf "Conflicts: fxload\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Replaces: fxload,libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Homepage: http://www.indigo-astronomy.org\n" >> $(INSTALL_ROOT)/DEBIAN/control
