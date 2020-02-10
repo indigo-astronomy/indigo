@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -638,8 +638,7 @@ static bool autofocus(indigo_device *device) {
 		indigo_usleep(200000);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		return false;
-	capture_raw_frame(device);
-	return true;
+	return capture_raw_frame(device);
 }
 
 static void autofocus_process(indigo_device *device) {
