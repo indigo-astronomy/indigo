@@ -110,6 +110,30 @@ void trim_spaces(char * str) {
 }
 
 
+int process_quotes(char *value) {
+	char buf[INDIGO_VALUE_SIZE];
+	char *ptr;
+
+	if (!value) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	strncpy(buf, value, INDIGO_VALUE_SIZE);
+	ptr = value;
+	for (int i = 0; i < strlen(buf); i++) {
+		if ((buf[i] == '\\') && (buf[i+1] == '\"')) {
+			*ptr++ = '\"';
+			i++;
+		} else if (buf[i] != '\"') {
+			*ptr++ = buf[i];
+		}
+	}
+	*ptr = '\0';
+	return 0;
+}
+
+
 int parse_list_property_string(const char *prop_string, property_list_request *plr) {
 	int res;
 	char format[1024];
@@ -157,6 +181,7 @@ int parse_set_property_string(const char *prop_string, property_change_request *
 		sprintf(format, "%%%d[^;];%%%d[^\r]s", INDIGO_VALUE_SIZE, REMINDER_MAX_SIZE);
 		res = sscanf(remainder, format, scr->value_string[scr->item_count-1], remainder);
 		trim_spaces(scr->value_string[scr->item_count-1]);
+		process_quotes(scr->value_string[scr->item_count-1]);
 		if (res == 1) {
 			finished = true;
 			break;
