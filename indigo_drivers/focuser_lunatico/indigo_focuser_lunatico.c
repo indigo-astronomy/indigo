@@ -1412,12 +1412,13 @@ static void create_device(int device_index, int port_index, char *name_ext) {
 	);
 
 	if (port_index >= MAX_PORTS) return;
+	if (device_index >= MAX_DEVICES) return;
+	if (device_data[device_index].handle != 0) return;
 	if (device_data[device_index].port[port_index] != NULL) return;
 
 	device_data[device_index].private_data[port_index] = malloc(sizeof(lunatico_private_data));
 	assert(device_data[device_index].private_data[port_index] != NULL);
 	memset(device_data[device_index].private_data[port_index], 0, sizeof(lunatico_private_data));
-	device_data[device_index].private_data[port_index]->handle = -1;
 	device_data[device_index].private_data[port_index]->port_index = port_index;
 	device_data[device_index].private_data[port_index]->shared_data = (void *)&device_data[device_index];
 
@@ -1432,6 +1433,7 @@ static void create_device(int device_index, int port_index, char *name_ext) {
 
 static void delete_device(int device_index, int port_index) {
 	if (port_index >= MAX_PORTS) return;
+	if (device_index >= MAX_DEVICES) return;
 
 	if (device_data[device_index].port[port_index] != NULL) {
 		indigo_detach_device(device_data[device_index].port[port_index]);
@@ -1442,7 +1444,6 @@ static void delete_device(int device_index, int port_index) {
 		free(device_data[device_index].private_data[port_index]);
 		device_data[device_index].private_data[port_index] = NULL;
 	}
-	memset(&device_data[device_index], 0, sizeof(lunatico_device_data));
 }
 
 
