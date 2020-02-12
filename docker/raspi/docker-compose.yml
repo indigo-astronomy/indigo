@@ -1,0 +1,14 @@
+version: "2"
+services:
+  indigo:
+    privileged: true
+    build: .
+    volumes:
+    - /dev/:/dev/:rw
+    - ./config/dhcpcd.conf:/etc/dhcpcd.conf:rw
+    - ./config/hostapd.conf:/etc/hostapd.conf:rw
+    - ./config/wpa_supplicant.conf:/etc/wpa_supplicant/wpa_supplicant.conf:rw
+    - ./config/dnsmasq.leases:/var/lib/misc/dnsmasq.leases:rw
+    ports:
+    - "7624:7624"
+    network_mode: "host"

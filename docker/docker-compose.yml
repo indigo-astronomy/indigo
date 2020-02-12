@@ -1,0 +1,10 @@
+version: "2"
+services:
+  indigo:
+    privileged: true
+    build: .
+    volumes:
+    - /dev/:/dev/:rw
+    ports:
+    - "7624:7624"
+    network_mode: "host"

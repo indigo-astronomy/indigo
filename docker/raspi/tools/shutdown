@@ -1,0 +1,19 @@
+#!/bin/sh
+
+COMMAND=$(basename $0)
+
+if [ $COMMAND = "shutdown" ]; then
+    echo s > /proc/sysrq-trigger
+    sleep 1s
+    echo o > /proc/sysrq-trigger
+fi
+if [ $COMMAND = "poweroff" ]; then
+    echo s > /proc/sysrq-trigger
+    sleep 1s
+    echo o > /proc/sysrq-trigger
+fi
+if [ $COMMAND = "reboot" ]; then
+    echo s > /proc/sysrq-trigger
+    sleep 1s
+    echo b > /proc/sysrq-trigger
+fi
