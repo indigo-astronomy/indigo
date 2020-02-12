@@ -54,10 +54,12 @@
 #define PRIVATE_DATA                    ((dsd_private_data *)device->private_data)
 
 #define LA_MODEL_HINT_PROPERTY          (PRIVATE_DATA->model_hint_property)
-#define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_HINT_PROPERTY->items+0)
-#define LA_MODEL_PLATIPUS_ITEM              (LA_MODEL_HINT_PROPERTY->items+1)
+#define LA_MODEL_AUTO_ITEM              (LA_MODEL_HINT_PROPERTY->items+0)
+#define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_HINT_PROPERTY->items+1)
+#define LA_MODEL_PLATIPUS_ITEM          (LA_MODEL_HINT_PROPERTY->items+2)
 
 #define LA_MODEL_HINT_PROPERTY_NAME     "LUNATICO_MODEL_HINT"
+#define LA_MODEL_AUTO_ITEM_NAME         "AUTO_DETECT"
 #define LA_MODEL_ARMADILLO_ITEM_NAME    "ARMADILLO"
 #define LA_MODEL_PLATIPUS_ITEM_NAME     "PLATIPUS"
 
@@ -116,6 +118,14 @@
 
 typedef struct {
 	int handle;
+	int count_open;
+	int device_index;
+	pthread_mutex_t port_mutex;
+} lunatico_shared_data;
+
+typedef struct {
+	int handle;
+	lunatico_shared_data *shared;
 	int focuser_index;
 	int focuser_version;
 	int current_position, target_position, max_position, backlash;
@@ -124,6 +134,7 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	indigo_property *step_mode_property, *coils_mode_property, *current_control_property, *timings_property, *model_hint_property;
 } dsd_private_data;
+
 
 
 static void create_device(int index, char *name_ext);
@@ -642,10 +653,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
 		// -------------------------------------------------------------------------- LA_MODEL_HINT_PROPERTY
-		LA_MODEL_HINT_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_HINT_PROPERTY_NAME, MAIN_GROUP, "Focuser model hint", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		LA_MODEL_HINT_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_HINT_PROPERTY_NAME, MAIN_GROUP, "Focuser model hint", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (LA_MODEL_HINT_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Armadillo (2 ports)", true);
+		indigo_init_switch_item(LA_MODEL_AUTO_ITEM, LA_MODEL_AUTO_ITEM_NAME, "Auto detect (on connect)", true);
+		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Armadillo (2 ports)", false);
 		indigo_init_switch_item(LA_MODEL_PLATIPUS_ITEM, LA_MODEL_PLATIPUS_ITEM_NAME, "Platipus (3 ports)", false);
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
@@ -1328,6 +1340,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 // --------------------------------------------------------------------------------
 #define MAX_DEVICES 3
 static dsd_private_data *private_data[MAX_DEVICES] = {NULL};
+static lunatico_shared_data *shared_data[MAX_DEVICES] = {NULL};
 static indigo_device *focuser[MAX_DEVICES] = {NULL};
 
 
