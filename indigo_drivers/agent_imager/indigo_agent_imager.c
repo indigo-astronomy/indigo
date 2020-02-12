@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -134,7 +134,7 @@ typedef struct {
 	indigo_property *agent_stats_property;
 	indigo_property *agent_sequence;
 	indigo_property *agent_sequence_state;
-	char current_folder[INDIGO_VALUE_SIZE], current_type[16];
+	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
 	int focuser_position;
 	indigo_frame_digest reference;
@@ -889,7 +889,7 @@ static void abort_process(indigo_device *device) {
 }
 
 static void setup_download(indigo_device *device) {
-	if (*DEVICE_PRIVATE_DATA->current_folder && *DEVICE_PRIVATE_DATA->current_type) {
+	if (*DEVICE_PRIVATE_DATA->current_folder) {
 		indigo_delete_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
 		DIR *folder;
 		struct dirent *entry;
@@ -897,7 +897,7 @@ static void setup_download(indigo_device *device) {
 		if (folder) {
 			int index = 1;
 			while ((entry = readdir(folder)) != NULL && index <= DOWNLOAD_MAX_COUNT) {
-				if (strstr(entry->d_name, DEVICE_PRIVATE_DATA->current_type)) {
+				if (strstr(entry->d_name, ".fits") || strstr(entry->d_name, ".xisf") || strstr(entry->d_name, ".raw") || strstr(entry->d_name, ".jpeg")) {
 					indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + index, entry->d_name, entry->d_name, false);
 					index++;
 				}
@@ -1191,7 +1191,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					break;
 				}
 				*AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.url = 0;
-				strcpy(AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.format, DEVICE_PRIVATE_DATA->current_type);
+				*AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.format = 0;
+				char *file_type = strrchr(file_name, '.');
+				if (file_type)
+					strcpy(AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.format, file_type);
 				AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
 				AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1320,27 +1323,6 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			pthread_mutex_lock(&CLIENT_PRIVATE_DATA->mutex);
 			setup_download(FILTER_CLIENT_CONTEXT->device);
 			pthread_mutex_unlock(&CLIENT_PRIVATE_DATA->mutex);
-		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
-			*CLIENT_PRIVATE_DATA->current_type = 0;
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_RAW_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".raw");
-					break;
-				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_FITS_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".fits");
-					break;
-				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_XISF_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".xisf");
-					break;
-				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".jpeg");
-					break;
-				}
-			}
-			pthread_mutex_lock(&CLIENT_PRIVATE_DATA->mutex);
-			setup_download(FILTER_CLIENT_CONTEXT->device);
-			pthread_mutex_unlock(&CLIENT_PRIVATE_DATA->mutex);
 		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -1416,27 +1398,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				indigo_item *item = property->items + i;
 				if (strcmp(item->name, CCD_LOCAL_MODE_DIR_ITEM_NAME) == 0) {
 					strncpy(CLIENT_PRIVATE_DATA->current_folder, item->text.value, INDIGO_VALUE_SIZE);
-					break;
-				}
-			}
-			pthread_mutex_lock(&CLIENT_PRIVATE_DATA->mutex);
-			setup_download(FILTER_CLIENT_CONTEXT->device);
-			pthread_mutex_unlock(&CLIENT_PRIVATE_DATA->mutex);
-		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
-			*CLIENT_PRIVATE_DATA->current_type = 0;
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_RAW_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".raw");
-					break;
-				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_FITS_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".fits");
-					break;
-				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_XISF_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".xisf");
-					break;
-				} else if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME) == 0) {
-					strcpy(CLIENT_PRIVATE_DATA->current_type, ".jpeg");
 					break;
 				}
 			}
