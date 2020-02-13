@@ -822,12 +822,13 @@ static bool lunatico_open(indigo_device *device) {
 
 static void lunatico_close(indigo_device *device) {
 
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
 	if (!DEVICE_CONNECTED) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		close(PRIVATE_DATA->handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
 		indigo_global_unlock(device);
 		PRIVATE_DATA->handle = 0;
 	}
@@ -847,54 +848,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (!DEVICE_CONNECTED) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				} else {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					char *name = DEVICE_PORT_ITEM->text.value;
-					if (strncmp(name, "dsd://", 6)) {
-						PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-						/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
-						sleep(2);
-					} else {
-						char *host = name + 6;
-						char *colon = strchr(host, ':');
-						if (colon == NULL) {
-							PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
-						} else {
-							char host_name[INDIGO_NAME_SIZE];
-							strncpy(host_name, host, colon - host);
-							host_name[colon - host] = 0;
-							int port = atoi(colon + 1);
-							PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-						}
-					}
-					if ( PRIVATE_DATA->handle < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, " indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
-						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-						indigo_global_unlock(device);
-						return INDIGO_OK;
-					} else if (!dsd_get_position(device, &position)) {  // check if it is DSD Focuser first
-						int res = close(PRIVATE_DATA->handle);
-						if (res < 0) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-						} else {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-						}
-						indigo_global_unlock(device);
+				if (lunatico_open(device)) {
+					/* if (!dsd_get_position(device, &position)) {  // check if it is DSD Focuser first
+						lunatico_close(device);
 						clear_connected_flag(device);
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Deep Sky Dad AF did not respond");
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, "Deep Sky Dad AF did not respond");
-						return INDIGO_OK;;
+						return INDIGO_OK;
+					*/
+					if (0) {
 					} else { // Successfully connected
 						char board[DSD_CMD_LEN] = "N/A";
 						char firmware[DSD_CMD_LEN] = "N/A";
@@ -1028,15 +992,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_delete_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
 				indigo_delete_property(device, DSD_TIMINGS_PROPERTY, NULL);
 
-				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-				int res = close(PRIVATE_DATA->handle);
-				if (res < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-				}
-				indigo_global_unlock(device);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				lunatico_close(device);
 				clear_connected_flag(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1388,12 +1344,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
+	lunatico_close(device);
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(DSD_STEP_MODE_PROPERTY);
 	indigo_release_property(DSD_COILS_MODE_PROPERTY);
 	indigo_release_property(DSD_CURRENT_CONTROL_PROPERTY);
 	indigo_release_property(DSD_TIMINGS_PROPERTY);
-	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, LA_MODEL_HINT_PROPERTY, NULL);
