@@ -242,7 +242,8 @@ static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
 	if(!board || !firmware) return false;
 
 	char response[DSD_CMD_LEN]={0};
-	if (dsd_command(device, "[GFRM]", response, sizeof(response), 100)) {
+	if (dsd_command(device, "!seletek version#", response, sizeof(response), 100)) {
+		// !seletek version:2510#
 		int parsed = sscanf(response, "(Board=%[^','], Version=%[^')'])", board, firmware);
 		if (parsed != 2) return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "[GFRM] -> %s = %s %s", response, board, firmware);
