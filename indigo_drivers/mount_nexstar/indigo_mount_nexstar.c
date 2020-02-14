@@ -597,6 +597,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (mount_open(device)) {
 					int dev_id = PRIVATE_DATA->dev_id;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
