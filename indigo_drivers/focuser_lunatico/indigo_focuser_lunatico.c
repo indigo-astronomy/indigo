@@ -48,8 +48,7 @@
 
 #include "indigo_focuser_lunatico.h"
 
-#define DSD_AF1_AF2_BAUDRATE            "9600"
-#define DSD_AF3_BAUDRATE                "115200"
+#define DEFAULT_BAUDRATE            "115200"
 
 #define MAX_PORTS  3
 #define MAX_DEVICES 4
@@ -176,7 +175,7 @@ typedef enum {
 
 #define NO_TEMP_READING                (-127)
 
-static bool dsd_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
+static bool lunatico_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
 	char c;
 	struct timeval tv;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -238,15 +237,27 @@ static bool dsd_command(indigo_device *device, const char *command, char *respon
 }
 
 
-static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
+static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
 	if(!board || !firmware) return false;
 
+	const char *operative[3] = { "", "Bootloader", "Error" };
+	const char *models[5] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly" };
+	int fwmaj, fwmin, model, oper, data;
 	char response[DSD_CMD_LEN]={0};
-	if (dsd_command(device, "!seletek version#", response, sizeof(response), 100)) {
+	if (lunatico_command(device, "!seletek version#", response, sizeof(response), 100)) {
 		// !seletek version:2510#
-		int parsed = sscanf(response, "(Board=%[^','], Version=%[^')'])", board, firmware);
-		if (parsed != 2) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "[GFRM] -> %s = %s %s", response, board, firmware);
+		int parsed = sscanf(response, "!seletek version:%d#", &data);
+		if (parsed != 1) return false;
+		oper = data / 10000;		// 0 normal, 1 bootloader
+		model = ( data / 1000 ) % 10;	// 1 seletek, etc.
+		fwmaj = ( data / 100 ) % 10;
+		fwmin = ( data % 100 );
+		if ( oper >= 2 ) oper = 2;
+		if ( model >= 4 ) model = 0;
+		sprintf(board, "%s", models[model]);
+		sprintf(firmware, "%d.%d", fwmaj, fwmin);
+
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s = %s %s", response, board, firmware);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
@@ -254,14 +265,21 @@ static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
 }
 
 
-static bool dsd_command_get_value(indigo_device *device, const char *command, uint32_t *value) {
-	if (!value) return false;
+static bool lunatico_command_get_result(indigo_device *device, const char *command, uint32_t *result) {
+	if (!result) return false;
 
 	char response[DSD_CMD_LEN]={0};
-	if (dsd_command(device, command, response, sizeof(response), 100)) {
-		int parsed = sscanf(response, "(%d)", value);
+	char response_prefix[DSD_CMD_LEN];
+	char format[DSD_CMD_LEN];
+
+	if (lunatico_command(device, command, response, sizeof(response), 100)) {
+		strncpy(response_prefix, command, DSD_CMD_LEN);
+		char *p = strrchr(response_prefix, '#');
+		if (p) *p = ':';
+		sprintf(format, "%s%%d#", response_prefix);
+		int parsed = sscanf(response, format, result);
 		if (parsed != 1) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *result);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
@@ -269,27 +287,76 @@ static bool dsd_command_get_value(indigo_device *device, const char *command, ui
 }
 
 
-static bool dsd_command_set_value(indigo_device *device, const char *command, uint32_t value) {
-	char command_string[DSD_CMD_LEN];
+static bool lunatico_command_set_value(indigo_device *device, const char *command_format, uint32_t value) {
+	char command[DSD_CMD_LEN];
 	char response[DSD_CMD_LEN];
+	char response_prefix[DSD_CMD_LEN];
+	char expected_format[DSD_CMD_LEN];
+	int res = -1;
 
-	snprintf(command_string, DSD_CMD_LEN, command, value);
-	if(!dsd_command(device, command_string, response, sizeof(response), 100)) return false;
+	snprintf(command, DSD_CMD_LEN, command_format, value);
+	if (lunatico_command(device, command, response, sizeof(response), 100)) {
+		strncpy(response_prefix, command, DSD_CMD_LEN);
+		char *p = strrchr(response_prefix, '#');
+		if (p) *p = ':';
+		sprintf(expected_format, "%s%%d#", response_prefix);
+		int parsed = sscanf(response, expected_format, &res);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, res);
+	}
 
-	if(strcmp(response, "(OK)") == 0) {
+	if (res == 0) {
 		return true;
 	}
 	return false;
 }
 
+/*
+static bool lunatico_command_set_value2(indigo_device *device, const char *command_format, uint32_t value1, uint32_t value2) {
+	char command[DSD_CMD_LEN];
+	char response[DSD_CMD_LEN];
+	char response_prefix[DSD_CMD_LEN];
+	char expected_format[DSD_CMD_LEN];
+	int res = -1;
 
-static bool dsd_stop(indigo_device *device) {
-	return dsd_command(device, "[STOP]", NULL, 0, 100);
+	snprintf(command, DSD_CMD_LEN, command_format, value1, value2);
+	if (lunatico_command(device, command, response, sizeof(response), 100)) {
+		strncpy(response_prefix, command, DSD_CMD_LEN);
+		char *p = strrchr(response_prefix, '#');
+		if (p) *p = ':';
+		sprintf(expected_format, "%s%%d#", response_prefix);
+		int parsed = sscanf(response, expected_format, &res);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, res);
+	}
+
+	if (res == 0) {
+		return true;
+	}
+	return false;
+}
+*/
+
+
+static bool lunatico_stop(indigo_device *device) {
+	char command[DSD_CMD_LEN];
+	int res;
+
+	snprintf(command, DSD_CMD_LEN, "!step stop %d#", get_port_index(device));
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
 }
 
 
-static bool dsd_sync_position(indigo_device *device, uint32_t pos) {
-	return dsd_command_set_value(device, "[SPOS%06d]", pos);
+static bool lunatico_sync_position(indigo_device *device, uint32_t position) {
+	char command[DSD_CMD_LEN];
+	int res;
+
+	snprintf(command, DSD_CMD_LEN, "!step setpos %d %d#", get_port_index(device), position);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
 }
 
 
@@ -298,7 +365,7 @@ static bool dsd_set_reverse(indigo_device *device, bool enabled) {
 	char response[DSD_CMD_LEN];
 
 	snprintf(command, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
-	if(!dsd_command(device, command, response, sizeof(response), 100)) return false;
+	if(!lunatico_command(device, command, response, sizeof(response), 100)) return false;
 
 	if(strcmp(response, "(OK)") == 0) {
 		return true;
@@ -307,86 +374,129 @@ static bool dsd_set_reverse(indigo_device *device, bool enabled) {
 }
 
 
-static bool dsd_get_position(indigo_device *device, uint32_t *pos) {
-	return dsd_command_get_value(device, "[GPOS]", pos);
+static bool lunatico_get_position(indigo_device *device, uint32_t *pos) {
+	char command[DSD_CMD_LEN]={0};
+
+	sprintf(command, "!step getpos %d#", get_port_index(device));
+	return lunatico_command_get_result(device, command, pos);
 }
 
 
-static bool dsd_goto_position(indigo_device *device, uint32_t position) {
+static bool lunatico_goto_position(indigo_device *device, uint32_t position) {
 	char command[DSD_CMD_LEN];
-	char response[DSD_CMD_LEN] = {0};
+	int res;
 
-	snprintf(command, DSD_CMD_LEN, "[STRG%06d]", position);
+	snprintf(command, DSD_CMD_LEN, "!step goto %d %d %d#", get_port_index(device), position, 0);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
+}
 
-	// Set Position First
-	if (!dsd_command(device, command, response, sizeof(response), 100)) return false;
 
-	if(strcmp(response, "!101)") == 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Move failed");
-		return false;
+static bool lunatico_goto_position_relative(indigo_device *device, uint32_t position) {
+	char command[DSD_CMD_LEN];
+	int res;
+
+	snprintf(command, DSD_CMD_LEN, "!step gopr %d %d#", get_port_index(device), position);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
+}
+
+
+static bool lunatico_is_moving(indigo_device *device, bool *is_moving) {
+	char command[DSD_CMD_LEN];
+	int res;
+
+	snprintf(command, DSD_CMD_LEN, "!step ismoving %d#", get_port_index(device));
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+
+	if (res == 0) *is_moving = false;
+	else *is_moving = true;
+
+	return true;
+}
+
+static bool lunatico_get_temperature(indigo_device *device, int sensor_index, double *temperature) {
+	if (!temperature) return false;
+
+	char command[DSD_CMD_LEN];
+	int value;
+	double idC1 = 261;
+	double idC2 = 250;
+	double idF = 1.8;
+
+	snprintf(command, DSD_CMD_LEN, "!read temps %d#", sensor_index);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+
+	if (sensor_index != 0) { // not insternal
+		idC1 = 192;
+		idC2 = 0;
+		idF = 1.7;
 	}
 
-	// Start motion toward position
-	return dsd_command(device, "[SMOV]", NULL, 0, 100);
+	*temperature = (((value - idC1) * idF) - idC2) / 10;
+	return true;
 }
+
 
 
 static bool dsd_get_step_mode(indigo_device *device, stepmode_t *mode) {
 	uint32_t _mode;
-	bool res = dsd_command_get_value(device, "[GSTP]", &_mode);
+	bool res = lunatico_command_get_result(device, "[GSTP]", &_mode);
 	*mode = _mode;
 	return res;
 }
 
 
 static bool dsd_set_step_mode(indigo_device *device, stepmode_t mode) {
-	return dsd_command_set_value(device, "[SSTP%d]", mode);
+	return lunatico_command_set_value(device, "[SSTP%d]", mode);
 }
 
 
 static bool dsd_get_max_move(indigo_device *device, uint32_t *move) {
-	return dsd_command_get_value(device, "[GMXM]", move);
+	return lunatico_command_get_result(device, "[GMXM]", move);
 }
 
 
 static bool dsd_set_max_move(indigo_device *device, uint32_t move) {
-	return dsd_command_set_value(device, "[SMXM%d]", move);
+	return lunatico_command_set_value(device, "[SMXM%d]", move);
 }
 
 
 static bool dsd_get_max_position(indigo_device *device, uint32_t *position) {
-	return dsd_command_get_value(device, "[GMXP]", position);
+	return lunatico_command_get_result(device, "[GMXP]", position);
 }
 
 
 static bool dsd_set_max_position(indigo_device *device, uint32_t position) {
-	return dsd_command_set_value(device, "[SMXP%d]", position);
+	return lunatico_command_set_value(device, "[SMXP%d]", position);
 }
 
 
 static bool dsd_get_settle_buffer(indigo_device *device, uint32_t *buffer) {
-	return dsd_command_get_value(device, "[GBUF]", buffer);
+	return lunatico_command_get_result(device, "[GBUF]", buffer);
 }
 
 
 static bool dsd_set_settle_buffer(indigo_device *device, uint32_t buffer) {
-	return dsd_command_set_value(device, "[SBUF%06d]", buffer);
+	return lunatico_command_set_value(device, "[SBUF%06d]", buffer);
 }
 
 
 static bool dsd_get_coils_timeout(indigo_device *device, uint32_t *to) {
-	return dsd_command_get_value(device, "[GIDC]", to);
+	return lunatico_command_get_result(device, "[GIDC]", to);
 }
 
 
 static bool dsd_set_coils_timeout(indigo_device *device, uint32_t to) {
-	return dsd_command_set_value(device, "[SIDC%06d]", to);
+	return lunatico_command_set_value(device, "[SIDC%06d]", to);
 }
 
 
 static bool dsd_get_coils_mode(indigo_device *device, coilsmode_t *mode) {
 	uint32_t _mode;
-	bool res = dsd_command_get_value(device, "[GCLM]", &_mode);
+	bool res = lunatico_command_get_result(device, "[GCLM]", &_mode);
 	*mode = _mode;
 	return res;
 }
@@ -394,91 +504,72 @@ static bool dsd_get_coils_mode(indigo_device *device, coilsmode_t *mode) {
 
 static bool dsd_set_coils_mode(indigo_device *device, coilsmode_t mode) {
 	if (mode > 2) return false;
-	return dsd_command_set_value(device, "[SCLM%d]", mode);
+	return lunatico_command_set_value(device, "[SCLM%d]", mode);
 }
 
 
 /* Available on AF version < 3 */
 static bool dsd_get_move_current(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GCMV%]", current);
+	return lunatico_command_get_result(device, "[GCMV%]", current);
 }
 
 
 /* Available on AF version < 3 */
 static bool dsd_set_move_current(indigo_device *device, uint32_t current) {
 	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SCMV%d%%]", current);
+	return lunatico_command_set_value(device, "[SCMV%d%%]", current);
 }
 
 
 /* Available on AF version < 3 */
 static bool dsd_get_hold_current(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GCHD%]", current);
+	return lunatico_command_get_result(device, "[GCHD%]", current);
 }
 
 
 /* Available on AF version < 3 */
 static bool dsd_set_hold_current(indigo_device *device, uint32_t current) {
 	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SCHD%d%%]", current);
+	return lunatico_command_set_value(device, "[SCHD%d%%]", current);
 }
 
 
 /* Available on AF version 3 */
 static bool dsd_get_move_current_multiplier(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GMMM]", current);
+	return lunatico_command_get_result(device, "[GMMM]", current);
 }
 
 
 /* Available on AF version 3 */
 static bool dsd_set_move_current_multiplier(indigo_device *device, uint32_t current) {
 	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SMMM%d]", current);
+	return lunatico_command_set_value(device, "[SMMM%d]", current);
 }
 
 
 /* Available on AF version 3 */
 static bool dsd_get_hold_current_multiplier(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GMHM]", current);
+	return lunatico_command_get_result(device, "[GMHM]", current);
 }
 
 
 /* Available on AF version 3 */
 static bool dsd_set_hold_current_multiplier(indigo_device *device, uint32_t current) {
 	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SMHM%d]", current);
+	return lunatico_command_set_value(device, "[SMHM%d]", current);
 }
 
 
 static bool dsd_get_speed(indigo_device *device, uint32_t *speed) {
-	return dsd_command_get_value(device, "[GSPD]", speed);
+	return lunatico_command_get_result(device, "[GSPD]", speed);
 }
 
 
 static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
 	if (speed > 5) return false;
-	return dsd_command_set_value(device, "[SSPD%d]", speed);
+	return lunatico_command_set_value(device, "[SSPD%d]", speed);
 }
 
-
-static bool dsd_is_moving(indigo_device *device, bool *is_moving) {
-	return dsd_command_get_value(device, "[GMOV]", (uint32_t *)is_moving);
-}
-
-
-static bool dsd_get_temperature(indigo_device *device, double *temperature) {
-	if ((PRIVATE_DATA->focuser_version < 2) || (!temperature)) return false;
-
-	char response[DSD_CMD_LEN]={0};
-	if (dsd_command(device, "[GTMC]", response, sizeof(response), 100)) {
-		int parsed = sscanf(response, "(%lf)", temperature);
-		if (parsed != 1) return false;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[GTMC] -> %s = %lf", response, *temperature);
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
-	return false;
-}
 
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -486,14 +577,14 @@ static void focuser_timer_callback(indigo_device *device) {
 	bool moving;
 	uint32_t position;
 
-	if (!dsd_is_moving(device, &moving)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_is_moving(%d) failed", PRIVATE_DATA->handle);
+	if (!lunatico_is_moving(device, &moving)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_is_moving(%d) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
-	if (!dsd_get_position(device, &position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+	if (!lunatico_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -518,12 +609,12 @@ static void temperature_timer_callback(indigo_device *device) {
 	bool moving = false;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	if (!dsd_get_temperature(device, &temp)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle, temp);
+	if (!lunatico_get_temperature(device, 1, &temp)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle, temp);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "lunatico_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
 	}
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
@@ -578,8 +669,8 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
 
 	uint32_t current_position;
-	if (!dsd_get_position(device, &current_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+	if (!lunatico_get_position(device, &current_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 	}
 	PRIVATE_DATA->current_position = (double)current_position;
 
@@ -591,8 +682,8 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
-	if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+	if (!lunatico_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -633,7 +724,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE, INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 5;
 
@@ -850,7 +941,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (lunatico_open(device)) {
-					/* if (!dsd_get_position(device, &position)) {  // check if it is DSD Focuser first
+					/* if (!lunatico_get_position(device, &position)) {  // check if it is DSD Focuser first
 						lunatico_close(device);
 						clear_connected_flag(device);
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Deep Sky Dad AF did not respond");
@@ -864,7 +955,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						char board[DSD_CMD_LEN] = "N/A";
 						char firmware[DSD_CMD_LEN] = "N/A";
 						uint32_t value;
-						if (dsd_get_info(device, board, firmware)) {
+						if (lunatico_get_info(device, board, firmware)) {
 							strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 							strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 							indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -897,7 +988,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 							strncpy(DSD_CURRENT_CONTROL_HOLD_ITEM->label, "Hold current multiplier (%)", INDIGO_VALUE_SIZE);
 						}
 
-						dsd_get_position(device, &position);
+						lunatico_get_position(device, &position);
 						FOCUSER_POSITION_ITEM->number.value = (double)position;
 
 						if (!dsd_get_max_position(device, &PRIVATE_DATA->max_position)) {
@@ -967,10 +1058,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 						PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 
-						if (PRIVATE_DATA->focuser_version > 1) {
+						if (PRIVATE_DATA->focuser_version > -1) {
 							FOCUSER_MODE_PROPERTY->hidden = false;
 							FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-							dsd_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
+							lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
 							PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
 							FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 							FOCUSER_COMPENSATION_ITEM->number.min = -10000;
@@ -1033,20 +1124,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				if (!lunatico_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				if(!dsd_sync_position(device, PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				if(!lunatico_sync_position(device, PRIVATE_DATA->target_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				uint32_t position;
-				if (!dsd_get_position(device, &position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+				if (!lunatico_get_position(device, &position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (double)position;
@@ -1095,8 +1186,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			uint32_t position;
-			if (!dsd_get_position(device, &position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+			if (!lunatico_get_position(device, &position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 			} else {
 				PRIVATE_DATA->current_position = (double)position;
 			}
@@ -1115,8 +1206,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+			if (!lunatico_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
@@ -1131,13 +1222,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
 
-		if (!dsd_stop(device)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_stop(%d) failed", PRIVATE_DATA->handle);
+		if (!lunatico_stop(device)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_stop(%d) failed", PRIVATE_DATA->handle);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		uint32_t position;
-		if (!dsd_get_position(device, &position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+		if (!lunatico_get_position(device, &position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			PRIVATE_DATA->current_position = (double)position;
