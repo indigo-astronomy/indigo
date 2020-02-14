@@ -59,7 +59,7 @@ static bool moonlite_command(indigo_device *device, char *command, char *respons
 	char c;
 	struct timeval tv;
 	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
+	tv.tv_usec = 1000000;
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (response != NULL) {
 		int index = 0;
