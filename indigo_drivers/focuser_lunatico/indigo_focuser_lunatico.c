@@ -382,8 +382,19 @@ static bool lunatico_set_stop_current(indigo_device *device, uint32_t current) {
 
 
 static bool lunatico_set_speed(indigo_device *device, uint32_t speed) {
-	if (speed > 5) return false;
-	return lunatico_command_set_value(device, "[SSPD%d]", speed);
+	char command[LUNATICO_CMD_LEN];
+	int res;
+
+	int speed_us = (int)(500000 - ((speed - 1) * 50));
+    if ((speed_us < 50) || (speed_us > 500000 )) {
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Speed out of range %d", speed);
+        return false;
+    }
+
+	snprintf(command, LUNATICO_CMD_LEN, "!step speedrangeus %d %d %d#", get_port_index(device), speed_us, speed_us);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
 }
 
 
@@ -553,8 +564,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		FOCUSER_SPEED_PROPERTY->hidden = false;
 		FOCUSER_SPEED_ITEM->number.min = 1;
-		FOCUSER_SPEED_ITEM->number.max = 5;
+		FOCUSER_SPEED_ITEM->number.max = 10000;
 		FOCUSER_SPEED_ITEM->number.step = 1;
+		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 9800;
 
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 100;
@@ -584,15 +596,15 @@ static indigo_result focuser_attach(indigo_device *device) {
 		if (LA_STEP_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		LA_STEP_MODE_PROPERTY->hidden = false;
-		indigo_init_switch_item(LA_STEP_MODE_FULL_ITEM, LA_STEP_MODE_FULL_ITEM_NAME, "Full step", false);
+		indigo_init_switch_item(LA_STEP_MODE_FULL_ITEM, LA_STEP_MODE_FULL_ITEM_NAME, "Full step", true);
 		indigo_init_switch_item(LA_STEP_MODE_HALF_ITEM, LA_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
 
 		//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
 		LA_CURRENT_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, LA_CURRENT_CONTROL_PROPERTY_NAME, "Advanced", "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (LA_CURRENT_CONTROL_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(LA_CURRENT_CONTROL_MOVE_ITEM, LA_CURRENT_CONTROL_MOVE_ITEM_NAME, "Move current (%)", 10, 100, 1, 50);
-		indigo_init_number_item(LA_CURRENT_CONTROL_HOLD_ITEM, LA_CURRENT_CONTROL_HOLD_ITEM_NAME, "Hold current (%)", 10, 100, 1, 50);
+		indigo_init_number_item(LA_CURRENT_CONTROL_MOVE_ITEM, LA_CURRENT_CONTROL_MOVE_ITEM_NAME, "Move current (%)", 0, 100, 1, 1000);
+		indigo_init_number_item(LA_CURRENT_CONTROL_HOLD_ITEM, LA_CURRENT_CONTROL_HOLD_ITEM_NAME, "Hold current (%)", 0, 100, 1, 0);
 		//---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		indigo_define_property(device, LA_MODEL_HINT_PROPERTY, NULL);
@@ -689,9 +701,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
 					//PRIVATE_DATA->focuser_version = 3;
-
-					FOCUSER_SPEED_ITEM->number.max = 3;
-					LA_STEP_MODE_PROPERTY->count = 2;
 
 					lunatico_get_position(device, &position);
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
