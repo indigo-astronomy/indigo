@@ -61,19 +61,21 @@ typedef enum {
 	INDIGO_INTERFACE_MOUNT     = (1 << 0), 			   					///< Mount interface
 	INDIGO_INTERFACE_CCD       = (1 << 1),    							///< CCD interface
 	INDIGO_INTERFACE_GUIDER    = (1 << 2),    							///< Guider interface
-	INDIGO_INTERFACE_FOCUSER   = (1 << 3),   								///< Focuser interface
+	INDIGO_INTERFACE_FOCUSER   = (1 << 3),   							///< Focuser interface
 	INDIGO_INTERFACE_WHEEL     = (1 << 4),    							///< Filter wheel interface
 	INDIGO_INTERFACE_DOME      = (1 << 5),    							///< Dome interface
 	INDIGO_INTERFACE_GPS       = (1 << 6),    							///< GPS interface
 	INDIGO_INTERFACE_AO        = (1 << 8),    							///< Adaptive Optics Interface
+	INDIGO_INTERFACE_ROTATOR   = (1 << 12),   							///< Rotator interface
 	INDIGO_INTERFACE_AUX       = (1 << 15),    							///< Auxiliary interface
 	INDIGO_INTERFACE_AUX_JOYSTICK  = (1 << 15) | (1 << 16),	///< Joystick AUX interface
 	INDIGO_INTERFACE_AUX_SHUTTER   = (1 << 15) | (1 << 17),	///< Shutter AUX interface
 	INDIGO_INTERFACE_AUX_POWERBOX  = (1 << 15) | (1 << 18),	///< Powerbox AUX interface
 	INDIGO_INTERFACE_AUX_SQM       = (1 << 15) | (1 << 19),	///< SQM AUX interface
 	INDIGO_INTERFACE_AUX_DUSTCAP   = (1 << 15) | (1 << 20), ///< Dust Cap AUX Interface
-	INDIGO_INTERFACE_AUX_LIGHTBOX  = (1 << 15) | (1 << 21),  ///< Light Box AUX Interface
-	INDIGO_INTERFACE_AUX_WEATHER   = (1 << 15) | (1 << 22)   ///< Weather AUX interface
+	INDIGO_INTERFACE_AUX_LIGHTBOX  = (1 << 15) | (1 << 21), ///< Light Box AUX Interface
+	INDIGO_INTERFACE_AUX_WEATHER   = (1 << 15) | (1 << 22), ///< Weather AUX interface
+	INDIGO_INTERFACE_AUX_GPIO      = (1 << 15) | (1 << 23)  ///< General purpose IO AUX interface
 } indigo_device_interface;
 
 /** Property, device or client version.
@@ -214,7 +216,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 			double max;                     ///< item max value (for number properties)
 			double step;                    ///< item increment value (for number properties)
 			double value;                   ///< item value (for number properties)
-			double target;									///< item target value (for number properties)
+			double target;                  ///< item target value (for number properties)
 		} number;
 		/** Switch property item specific fields.
 		 */
