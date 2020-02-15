@@ -702,7 +702,13 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					indigo_release_property(shutter_property);
 				}
 			}
-			abort_guiding(FILTER_CLIENT_CONTEXT->device);
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
+					if (property->items[i].sw.value) {
+						abort_guiding(FILTER_CLIENT_CONTEXT->device);
+					}
+				}
+			}
 		}
 	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
