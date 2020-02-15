@@ -110,7 +110,6 @@ static ptp_camera_model CAMERA[] = {
   { SONY_VID, 0x079e, "Sony Alpha A99II", ptp_flag_lv, 7952, 5304, 4.51 },
   { SONY_VID, 0x07a4, "Sony Alpha A6500", ptp_flag_lv, 6000, 4000, 3.92 },
   { SONY_VID, 0x07c6, "Sony Alpha A5000", 0, 5456, 3632, 4.25 },
-  { SONY_VID, 0x094f, "Sony Alpha A5000", 0, 5456, 3632, 4.25 },
   { SONY_VID, 0x094c, "Sony Alpha A7", ptp_flag_lv, 6000, 4000, 5.98 },
   { SONY_VID, 0x094d, "Sony Alpha A7R", ptp_flag_lv, 7360, 4912, 4.9 },
   { SONY_VID, 0x094e, "Sony Alpha A6000", ptp_flag_lv, 6000, 4000, 3.92 },
@@ -123,7 +122,9 @@ static ptp_camera_model CAMERA[] = {
   { SONY_VID, 0x0a71, "Sony Alpha A7SII", 0, 4240, 2832, 8.39 },
   { SONY_VID, 0x0c2a, "Sony Alpha A9", ptp_flag_lv, 6000, 4000, 5.98 },
   { SONY_VID, 0x0c33, "Sony Alpha A7RIII", ptp_flag_lv, 7952, 5304, 4.5 },
+  { SONY_VID, 0x0c33, "Sony Alpha A7RIII", ptp_flag_lv, 7952, 5304, 4.5 },
   { SONY_VID, 0x0c34, "Sony Alpha A7III", ptp_flag_lv, 6000, 4000, 5.98 },
+  { SONY_VID, 0x0ccc, "Sony Alpha A7RIV", ptp_flag_lv, 9504, 6336, 3.76 },
   { 0 },
 };
 

@@ -157,6 +157,8 @@ static struct dslr_model_info {
   { "SONY ALPHA A9", 6000, 4000, 5.98 },
   { "SONY ALPHA A7SII", 4240, 2832, 8.39 },
   { "SONY ALPHA A7S", 4240, 2832, 8.4 },
+  { "SONY ALPHA A7RIV", 9504, 6336, 3.76 },
+  { "SONY ALPHA A7RIII", 7952, 5304, 4.5 },
   { "SONY ALPHA A7RIII", 7952, 5304, 4.5 },
   { "SONY ALPHA A7RII", 7952, 5304, 4.5 },
   { "SONY ALPHA A7R", 7360, 4912, 4.9 },
