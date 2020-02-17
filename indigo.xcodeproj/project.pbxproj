@@ -190,6 +190,7 @@
 		59E5A2A323C125A300E8BBBF /* indigo_mount_rainbow.c in Sources */ = {isa = PBXBuildFile; fileRef = 59E5A29823C1238400E8BBBF /* indigo_mount_rainbow.c */; };
 		59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */; };
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
+		59F1AD1223FB15B300008F02 /* indigo_focuser_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */; };
 		59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */; };
 		59F654721EE47516007B8C93 /* indigo_ccd_qhy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */; };
 		59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */; };
@@ -3507,6 +3508,10 @@
 		59EFE8A42363481E00ED5337 /* indigo_focuser_focusdreampro.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_focusdreampro.h; sourceTree = "<group>"; };
 		59EFE8A52363481E00ED5337 /* indigo_focuser_focusdreampro_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_focusdreampro_main.c; sourceTree = "<group>"; };
 		59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_data.c; sourceTree = "<group>"; };
+		59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lunatico.c; sourceTree = "<group>"; };
+		59F1AD0F23FB15A400008F02 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59F1AD1023FB15A400008F02 /* indigo_focuser_lunatico_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lunatico_main.c; sourceTree = "<group>"; };
+		59F1AD1123FB15A400008F02 /* indigo_focuser_lunatico.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_lunatico.h; sourceTree = "<group>"; };
 		59F3D85E21BC074400800970 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sbig.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59F4EC711E941D1700CC7772 /* indigo_ccd_sbig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sbig.h; sourceTree = "<group>"; };
@@ -7768,6 +7773,7 @@
 				9DFE1863213586AB00149BDE /* focuser_dmfc */,
 				9DE0E7B222C6465500289234 /* focuser_dsd */,
 				59FE347D2188699F004FB5D4 /* focuser_lakeside */,
+				59F1AD0D23FB15A400008F02 /* focuser_lunatico */,
 				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
 				9D4F473B215A4440006110FD /* focuser_moonlite */,
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
@@ -10244,6 +10250,17 @@
 			path = indigo_drivers/focuser_focusdreampro;
 			sourceTree = SOURCE_ROOT;
 		};
+		59F1AD0D23FB15A400008F02 /* focuser_lunatico */ = {
+			isa = PBXGroup;
+			children = (
+				59F1AD0F23FB15A400008F02 /* README.md */,
+				59F1AD1123FB15A400008F02 /* indigo_focuser_lunatico.h */,
+				59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */,
+				59F1AD1023FB15A400008F02 /* indigo_focuser_lunatico_main.c */,
+			);
+			path = focuser_lunatico;
+			sourceTree = "<group>";
+		};
 		59F4EC6F1E941CF400CC7772 /* ccd_sbig */ = {
 			isa = PBXGroup;
 			children = (
@@ -11891,6 +11908,7 @@
 				9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */,
 				9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */,
 				59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */,
+				59F1AD1223FB15B300008F02 /* indigo_focuser_lunatico.c in Sources */,
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 				9D73E61821FF37F9003CEC15 /* libuvc_frame.c in Sources */,
 				9D73E61A21FF37F9003CEC15 /* libuvc_ctrl_gen.c in Sources */,

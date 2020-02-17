@@ -123,6 +123,7 @@
 #include "aux_fbc/indigo_aux_fbc.h"
 #include "mount_rainbow/indigo_mount_rainbow.h"
 #include "gps_gpsd/indigo_gps_gpsd.h"
+#include "focuser_lunatico/indigo_focuser_lunatico.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -203,6 +204,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_focusdreampro,
 	indigo_focuser_fli,
 	indigo_focuser_lakeside,
+	indigo_focuser_lunatico,
 	indigo_focuser_mjkzz,
 #ifdef INDIGO_MACOS
 	indigo_focuser_mjkzz_bt,
