@@ -1206,6 +1206,83 @@
  */
 #define FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME		"MAX_POSITION"
 
+//----------------------------------------------------------------------
+/** ROTATOR_ON_POSITION_SET property name.
+ */
+#define ROTATOR_ON_POSITION_SET_PROPERTY_NAME	"ROTATOR_ON_POSITION_SET"
+
+/** ROTATOR_ON_POSITION_SET.GOTO property item name.
+ */
+#define ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME	"GOTO"
+
+/** ROTATOR_ON_POSITION_SET.SYNC property item name.
+ */
+#define ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME		"SYNC"
+
+//----------------------------------------------------------------------
+/** ROTATOR_POSITION property name.
+ */
+#define ROTATOR_POSITION_PROPERTY_NAME				"ROTATOR_POSITION"
+
+/** ROTATOR_POSITION.POSITION property item name.
+ */
+#define ROTATOR_POSITION_ITEM_NAME						"POSITION"
+
+
+/** ROTATOR_DIRECTION property name.
+ */
+#define ROTATOR_DIRECTION_PROPERTY_NAME					"ROTATOR_DIRECTION"
+
+/** ROTATOR_DIRECTION.NORMAL property item name.
+ */
+#define ROTATOR_DIRECTION_NORMAL_ITEM_NAME				"NORMAL"
+
+/** ROTATOR_DIRECTION.REVERSED property item name.
+ */
+#define ROTATOR_DIRECTION_REVERSED_ITEM_NAME       "REVERSED"
+
+
+
+//----------------------------------------------------------------------
+/** ROTATOR_ABORT_MOTION property name.
+ */
+#define ROTATOR_ABORT_MOTION_PROPERTY_NAME		"ROTATOR_ABORT_MOTION"
+
+/** ROTATOR_ABORT_MOTION.ABORT_MOTION property item name.
+ */
+#define ROTATOR_ABORT_MOTION_ITEM_NAME				"ABORT_MOTION"
+
+//----------------------------------------------------------------------
+/** ROTATOR_BACKLASH property name.
+ */
+#define ROTATOR_BACKLASH_PROPERTY_NAME			"ROTATOR_BACKLASH"
+
+/** ROTATOR_BACKLASH.BACKLASH property item name.
+ */
+#define ROTATOR_BACKLASH_ITEM_NAME					"BACKLASH"
+
+//----------------------------------------------------------------------
+/** ROTATOR_LIMITS property name.
+ */
+#define ROTATOR_LIMITS_PROPERTY_NAME						"ROTATOR_LIMITS"
+
+/** ROTATOR_LIMITS.MIN_POSITION property item name.
+ */
+#define ROTATOR_LIMITS_MIN_POSITION_ITEM_NAME					"MIN_POSITION"
+
+/** ROTATOR_LIMITS.MIN_POSITION property item name.
+ */
+#define ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME		"MAX_POSITION"
+
+//----------------------------------------------------------------------
+/** ROTATOR_STEPS_PER_REVOLUTION property name.
+ */
+#define ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME						"ROTATOR_STEPS_PER_REVOLUTION"
+
+/** ROTATOR_STEPS_PER_REVOLUTION.STEPS_PER_REVOLUTION property item name.
+ */
+#define ROTATOR_STEPS_PER_REVOLUTION_ITEM_NAME		"STEPS_PER_REVOLUTION"
+
 
 //----------------------------------------------------------------------
 
