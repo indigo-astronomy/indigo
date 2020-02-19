@@ -94,17 +94,25 @@
 #define LA_CURRENT_CONTROL_MOVE_ITEM_NAME   "MOVE_CURRENT"
 #define LA_CURRENT_CONTROL_HOLD_ITEM_NAME   "STOP_CURRENT"
 
+#define LA_TEMPERATURE_SENSOR_PROPERTY      (PORT_DATA.temperature_sensor_property)
+#define LA_TEMPERATURE_SENSOR_INTERNAL_ITEM (LA_TEMPERATURE_SENSOR_PROPERTY->items+0)
+#define LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM (LA_TEMPERATURE_SENSOR_PROPERTY->items+1)
+
+#define LA_TEMPERATURE_SENSOR_PROPERTY_NAME        "LA_TEMPERATURE_SENSOR"
+#define LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME   "INTERNAL"
+#define LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME   "EXTERNAL"
+
 
 typedef struct {
 	int current_position, target_position, max_position, backlash;
 	indigo_timer *focuser_timer;
-	indigo_property *step_mode_property, *current_control_property, *model_hint_property;
+	indigo_property *step_mode_property, *current_control_property, *model_hint_property, *temperature_sensor_property;
 } lunatico_port_data;
 
 typedef struct {
 	int handle;
 	int count_open;
-	int device_index;
+	int temperature_sensor_index;
 	int focuser_version;
 	double prev_temp;
 	indigo_timer *temperature_timer;
@@ -398,7 +406,6 @@ static bool lunatico_set_speed(indigo_device *device, uint32_t speed) {
 }
 
 
-
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 static void focuser_timer_callback(indigo_device *device) {
 	bool moving;
@@ -436,12 +443,12 @@ static void temperature_timer_callback(indigo_device *device) {
 	bool moving = false;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	if (!lunatico_get_temperature(device, 1, &temp)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle, temp);
+	if (!lunatico_get_temperature(device, PRIVATE_DATA->temperature_sensor_index, &temp)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_temperature(%d) -> %f failed", PRIVATE_DATA->handle, temp);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "lunatico_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "lunatico_get_temperature(%d) -> %f succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
 	}
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
@@ -528,6 +535,8 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 			indigo_define_property(device, LA_STEP_MODE_PROPERTY, NULL);
 		if (indigo_property_match(LA_CURRENT_CONTROL_PROPERTY, property))
 			indigo_define_property(device, LA_CURRENT_CONTROL_PROPERTY, NULL);
+		if (indigo_property_match(LA_TEMPERATURE_SENSOR_PROPERTY, property))
+			indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 	}
 	indigo_define_property(device, LA_MODEL_HINT_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -551,7 +560,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 5;
 
-		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		if (get_port_index(device) == 0) FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 10000;
@@ -598,13 +607,19 @@ static indigo_result focuser_attach(indigo_device *device) {
 		LA_STEP_MODE_PROPERTY->hidden = false;
 		indigo_init_switch_item(LA_STEP_MODE_FULL_ITEM, LA_STEP_MODE_FULL_ITEM_NAME, "Full step", true);
 		indigo_init_switch_item(LA_STEP_MODE_HALF_ITEM, LA_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
-
 		//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
 		LA_CURRENT_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, LA_CURRENT_CONTROL_PROPERTY_NAME, "Advanced", "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (LA_CURRENT_CONTROL_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(LA_CURRENT_CONTROL_MOVE_ITEM, LA_CURRENT_CONTROL_MOVE_ITEM_NAME, "Move current (%)", 0, 100, 1, 1000);
 		indigo_init_number_item(LA_CURRENT_CONTROL_HOLD_ITEM, LA_CURRENT_CONTROL_HOLD_ITEM_NAME, "Hold current (%)", 0, 100, 1, 0);
+		//--------------------------------------------------------------------------- TEMPERATURE_SENSOR_PROPERTY
+		LA_TEMPERATURE_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_TEMPERATURE_SENSOR_PROPERTY_NAME, "Advanced", "Temperature Sensor in use", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (LA_TEMPERATURE_SENSOR_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(LA_TEMPERATURE_SENSOR_INTERNAL_ITEM, LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME, "Internal sensor", true);
+		indigo_init_switch_item(LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM, LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME, "External Sensor", false);
+		if (get_port_index(device) != 0) LA_TEMPERATURE_SENSOR_PROPERTY->hidden = true;
 		//---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		indigo_define_property(device, LA_MODEL_HINT_PROPERTY, NULL);
@@ -720,6 +735,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					}
 					indigo_define_property(device, LA_CURRENT_CONTROL_PROPERTY, NULL);
 
+					indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
+					PRIVATE_DATA->temperature_sensor_index = 0;
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					set_connected_flag(device);
@@ -732,6 +749,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_cancel_timer(device, &PORT_DATA.focuser_timer);
 				indigo_delete_property(device, LA_STEP_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, LA_CURRENT_CONTROL_PROPERTY, NULL);
+				indigo_delete_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 				lunatico_close(device);
 				clear_connected_flag(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -915,6 +933,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 		indigo_update_property(device, LA_CURRENT_CONTROL_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(LA_TEMPERATURE_SENSOR_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- LA_TEMPERATURE_SENSOR
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(LA_TEMPERATURE_SENSOR_PROPERTY, property, false);
+		LA_TEMPERATURE_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
+		if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
+			PRIVATE_DATA->temperature_sensor_index = 0;
+		} else {
+			PRIVATE_DATA->temperature_sensor_index = 1;
+		}
+		indigo_update_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
@@ -950,6 +980,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_save_property(device, NULL, LA_MODEL_HINT_PROPERTY);
 			indigo_save_property(device, NULL, LA_STEP_MODE_PROPERTY);
 			indigo_save_property(device, NULL, LA_CURRENT_CONTROL_PROPERTY);
+			indigo_save_property(device, NULL, LA_TEMPERATURE_SENSOR_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -963,6 +994,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(LA_STEP_MODE_PROPERTY);
 	indigo_release_property(LA_CURRENT_CONTROL_PROPERTY);
+	indigo_release_property(LA_TEMPERATURE_SENSOR_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, LA_MODEL_HINT_PROPERTY, NULL);
