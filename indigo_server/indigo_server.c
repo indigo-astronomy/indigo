@@ -124,6 +124,7 @@
 #include "mount_rainbow/indigo_mount_rainbow.h"
 #include "gps_gpsd/indigo_gps_gpsd.h"
 #include "focuser_lunatico/indigo_focuser_lunatico.h"
+#include "rotator_simulator/indigo_rotator_simulator.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -236,6 +237,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_synscan,
 	indigo_mount_synscan,
 	indigo_mount_temma,
+	indigo_rotator_simulator,
 	indigo_wheel_asi,
 	indigo_wheel_atik,
 	indigo_wheel_fli,
