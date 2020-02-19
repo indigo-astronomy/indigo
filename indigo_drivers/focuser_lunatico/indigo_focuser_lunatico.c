@@ -110,6 +110,18 @@
 #define LA_WIRING_LUNATICO_ITEM_NAME   "LUNATICO"
 #define LA_WIRING_MOONLITE_ITEM_NAME   "MOONLITE"
 
+#define LA_MOTOR_TYPE_PROPERTY         (PORT_DATA.wiring_property)
+#define LA_MOTOR_TYPE_UNIPOLAR_ITEM    (LA_MOTOR_TYPE_PROPERTY->items+0)
+#define LA_MOTOR_TYPE_BIPOLAR_ITEM     (LA_MOTOR_TYPE_PROPERTY->items+1)
+#define LA_MOTOR_TYPE_DC_ITEM          (LA_MOTOR_TYPE_PROPERTY->items+2)
+#define LA_MOTOR_TYPE_STEP_DIR_ITEM    (LA_MOTOR_TYPE_PROPERTY->items+3)
+
+#define LA_MOTOR_TYPE_PROPERTY_NAME        "LA_MOTOR_TYPE"
+#define LA_MOTOR_TYPE_UNIPOLAR_ITEM_NAME   "UNIPOLAR"
+#define LA_MOTOR_TYPE_BIPOLAR_ITEM_NAME    "BIPOLAR"
+#define LA_MOTOR_TYPE_DC_ITEM_NAME         "DC"
+#define LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME   "STEP_DIR"
+
 typedef struct {
 	int current_position, target_position, max_position, backlash;
 	indigo_timer *focuser_timer;
@@ -585,6 +597,8 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 			indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 		if (indigo_property_match(LA_WIRING_PROPERTY, property))
 			indigo_define_property(device, LA_WIRING_PROPERTY, NULL);
+		if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property))
+			indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 	}
 	indigo_define_property(device, LA_MODEL_HINT_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -674,6 +688,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(LA_WIRING_LUNATICO_ITEM, LA_WIRING_LUNATICO_ITEM_NAME, "Lunatico", true);
 		indigo_init_switch_item(LA_WIRING_MOONLITE_ITEM, LA_WIRING_MOONLITE_ITEM_NAME, "RF/Moonlite", false);
+		//--------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
+		LA_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MOTOR_TYPE_PROPERTY_NAME, "Advanced", "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (LA_MOTOR_TYPE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(LA_MOTOR_TYPE_UNIPOLAR_ITEM, LA_MOTOR_TYPE_UNIPOLAR_ITEM_NAME, "Unipolar", true);
+		indigo_init_switch_item(LA_MOTOR_TYPE_BIPOLAR_ITEM, LA_MOTOR_TYPE_BIPOLAR_ITEM_NAME, "Bipolar", false);
+		indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", true);
+		indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
 		//---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		indigo_define_property(device, LA_MODEL_HINT_PROPERTY, NULL);
@@ -793,9 +815,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					PRIVATE_DATA->temperature_sensor_index = 0;
 
 					if (!lunatico_set_wiring(device, MW_LUNATICO_NORMAL)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
 					}
 					indigo_define_property(device, LA_WIRING_PROPERTY, NULL);
+
+					if (!lunatico_set_motor_type(device, MT_UNIPOLAR)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_motor_type(%d) failed", PRIVATE_DATA->handle);
+					}
+					indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					set_connected_flag(device);
@@ -810,6 +837,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_delete_property(device, LA_CURRENT_CONTROL_PROPERTY, NULL);
 				indigo_delete_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 				indigo_delete_property(device, LA_WIRING_PROPERTY, NULL);
+				indigo_delete_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 				lunatico_close(device);
 				clear_connected_flag(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1050,6 +1078,30 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, LA_WIRING_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
+		if (!IS_CONNECTED) return INDIGO_OK;
+		bool res = true;
+		indigo_property_copy_values(LA_MOTOR_TYPE_PROPERTY, property, false);
+		LA_MOTOR_TYPE_PROPERTY->state = INDIGO_OK_STATE;
+		if (LA_MOTOR_TYPE_UNIPOLAR_ITEM->sw.value) {
+				res = lunatico_set_motor_type(device, MT_UNIPOLAR);
+		} else if (LA_MOTOR_TYPE_BIPOLAR_ITEM->sw.value) {
+				res = lunatico_set_motor_type(device, MT_BIPOLAR);
+		} else if (LA_MOTOR_TYPE_DC_ITEM->sw.value) {
+				res = lunatico_set_motor_type(device, MT_DC);
+		} else if (LA_MOTOR_TYPE_STEP_DIR_ITEM->sw.value) {
+				res = lunatico_set_motor_type(device, MT_STEP_DIR);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor type");
+			LA_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (res == false) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_motor_type() failed");
+			LA_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
@@ -1087,6 +1139,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_save_property(device, NULL, LA_CURRENT_CONTROL_PROPERTY);
 			indigo_save_property(device, NULL, LA_TEMPERATURE_SENSOR_PROPERTY);
 			indigo_save_property(device, NULL, LA_WIRING_PROPERTY);
+			indigo_save_property(device, NULL, LA_MOTOR_TYPE_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -1102,6 +1155,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(LA_CURRENT_CONTROL_PROPERTY);
 	indigo_release_property(LA_TEMPERATURE_SENSOR_PROPERTY);
 	indigo_release_property(LA_WIRING_PROPERTY);
+	indigo_release_property(LA_MOTOR_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, LA_MODEL_HINT_PROPERTY, NULL);
