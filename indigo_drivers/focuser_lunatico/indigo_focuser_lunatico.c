@@ -123,7 +123,11 @@
 #define LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME   "STEP_DIR"
 
 typedef struct {
-	int current_position, target_position, max_position, backlash;
+	int current_position,
+	    target_position,
+	    min_position,
+	    max_position,
+	    backlash;
 	indigo_timer *focuser_timer;
 	indigo_property *step_mode_property,
 	                *current_control_property,
@@ -137,7 +141,6 @@ typedef struct {
 	int handle;
 	int count_open;
 	int temperature_sensor_index;
-	int focuser_version;
 	double prev_temp;
 	indigo_timer *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -464,6 +467,28 @@ static bool lunatico_set_stop_power(indigo_device *device, double power_percent)
 }
 
 
+static bool lunatico_set_limits(indigo_device *device, uint32_t min, uint32_t max) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!step setswlimits %d %d %d#", get_port_index(device), min, max);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
+}
+
+
+static bool lunatico_delete_limits(indigo_device *device) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!step delswlimits %d#", get_port_index(device));
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
+}
+
+
 static bool lunatico_set_speed(indigo_device *device, uint32_t speed) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
@@ -642,13 +667,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		if (get_port_index(device) == 0) FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 10000;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 1000000;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 100000;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min;
 
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.step = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min;
 
 		FOCUSER_SPEED_PROPERTY->hidden = false;
 		FOCUSER_SPEED_ITEM->number.min = 1;
@@ -666,7 +691,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
-		//FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
@@ -808,12 +832,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
-					//PRIVATE_DATA->focuser_version = 3;
 
 					lunatico_get_position(device, &position);
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
 
-					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PORT_DATA.max_position;
+					if (!lunatico_delete_limits(device)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_delete_limits(%d) failed", PRIVATE_DATA->handle);
+					}
 
 					if (!lunatico_set_step(device, 0)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_step(%d) failed", PRIVATE_DATA->handle);
@@ -937,13 +962,26 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 		if (!IS_CONNECTED) return INDIGO_OK;
+		int res = true;
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		PORT_DATA.max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+		PORT_DATA.min_position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
 
-		// TODO
-
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PORT_DATA.max_position;
+		if (PORT_DATA.max_position < PORT_DATA.min_position) {
+			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, "Minimum value can not be bigger then maximum");
+			return INDIGO_OK;
+		}
+		if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target == FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max &&
+			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target == FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min) {
+			res = lunatico_delete_limits(device);
+		} else {
+			res = lunatico_set_limits(device, PORT_DATA.min_position, PORT_DATA.max_position);
+		}
+		if (!res) {
+			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
