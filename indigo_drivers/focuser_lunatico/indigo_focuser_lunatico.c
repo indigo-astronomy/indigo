@@ -182,7 +182,7 @@ typedef enum {
 	MT_STEP_DIR = 3
 } motor_types_t;
 
-#define NO_TEMP_READING                (-127)
+#define NO_TEMP_READING                (-25)
 
 static bool lunatico_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
 	char c;
