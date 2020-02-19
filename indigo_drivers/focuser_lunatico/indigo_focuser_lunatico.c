@@ -110,7 +110,7 @@
 #define LA_WIRING_LUNATICO_ITEM_NAME   "LUNATICO"
 #define LA_WIRING_MOONLITE_ITEM_NAME   "MOONLITE"
 
-#define LA_MOTOR_TYPE_PROPERTY         (PORT_DATA.wiring_property)
+#define LA_MOTOR_TYPE_PROPERTY         (PORT_DATA.motor_type_property)
 #define LA_MOTOR_TYPE_UNIPOLAR_ITEM    (LA_MOTOR_TYPE_PROPERTY->items+0)
 #define LA_MOTOR_TYPE_BIPOLAR_ITEM     (LA_MOTOR_TYPE_PROPERTY->items+1)
 #define LA_MOTOR_TYPE_DC_ITEM          (LA_MOTOR_TYPE_PROPERTY->items+2)
@@ -129,7 +129,8 @@ typedef struct {
 	                *current_control_property,
 	                *model_hint_property,
 	                *temperature_sensor_property,
-	                *wiring_property;
+	                *wiring_property,
+	                *motor_type_property;
 } lunatico_port_data;
 
 typedef struct {
@@ -694,7 +695,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(LA_MOTOR_TYPE_UNIPOLAR_ITEM, LA_MOTOR_TYPE_UNIPOLAR_ITEM_NAME, "Unipolar", true);
 		indigo_init_switch_item(LA_MOTOR_TYPE_BIPOLAR_ITEM, LA_MOTOR_TYPE_BIPOLAR_ITEM_NAME, "Bipolar", false);
-		indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", true);
+		indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", false);
 		indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
 		//---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
