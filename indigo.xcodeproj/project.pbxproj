@@ -239,6 +239,9 @@
 		9D73E61D21FF37F9003CEC15 /* libuvc_init.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61421FF37F9003CEC15 /* libuvc_init.c */; };
 		9D73E61E21FF37F9003CEC15 /* libuvc_stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61521FF37F9003CEC15 /* libuvc_stream.c */; };
 		9D73E62121FF3996003CEC15 /* utlist.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D73E62021FF3996003CEC15 /* utlist.h */; };
+		9D743A5923FD573E0093319F /* indigo_rotator_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D743A5623FD56EF0093319F /* indigo_rotator_simulator.c */; };
+		9D743A5B23FD57F80093319F /* indigo_rotator_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D743A5A23FD57F80093319F /* indigo_rotator_driver.c */; };
+		9D743A5D23FD58080093319F /* indigo_rotator_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D743A5C23FD58070093319F /* indigo_rotator_driver.h */; };
 		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
 		9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
 		9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */; };
@@ -3683,6 +3686,12 @@
 		9D73E61521FF37F9003CEC15 /* libuvc_stream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libuvc_stream.c; sourceTree = "<group>"; };
 		9D73E62021FF3996003CEC15 /* utlist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = utlist.h; sourceTree = "<group>"; };
 		9D73E62221FF4D72003CEC15 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		9D743A5523FD56EF0093319F /* indigo_rotator_simulator_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_simulator_main.c; sourceTree = "<group>"; };
+		9D743A5623FD56EF0093319F /* indigo_rotator_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_simulator.c; sourceTree = "<group>"; };
+		9D743A5723FD56EF0093319F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D743A5823FD56EF0093319F /* indigo_rotator_simulator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_simulator.h; sourceTree = "<group>"; };
+		9D743A5A23FD57F80093319F /* indigo_rotator_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_driver.c; sourceTree = "<group>"; };
+		9D743A5C23FD58070093319F /* indigo_rotator_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_driver.h; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -7677,6 +7686,7 @@
 			children = (
 				9DCB034622E9B9DE00A7A2E5 /* indigo */,
 				59D967EE21A2EA930069A64C /* Makefile */,
+				9D743A5A23FD57F80093319F /* indigo_rotator_driver.c */,
 				59D381A81D9592A400E87393 /* indigo_bus.c */,
 				9DB918061DFEA42E00678721 /* indigo_io.c */,
 				9D97F81E1D9E9E4F00582EAF /* indigo_version.c */,
@@ -7796,6 +7806,7 @@
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
 				590B59CE1F7853F400086FD2 /* mount_temma */,
+				9D743A5423FD56EF0093319F /* rotator_simulator */,
 				9DC782F521A6FCC7009859FD /* system_ascol */,
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
 				9DBC34611DCB265A00588DB9 /* wheel_asi */,
@@ -10895,6 +10906,17 @@
 			path = ccd_uvc;
 			sourceTree = "<group>";
 		};
+		9D743A5423FD56EF0093319F /* rotator_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9D743A5723FD56EF0093319F /* README.md */,
+				9D743A5823FD56EF0093319F /* indigo_rotator_simulator.h */,
+				9D743A5623FD56EF0093319F /* indigo_rotator_simulator.c */,
+				9D743A5523FD56EF0093319F /* indigo_rotator_simulator_main.c */,
+			);
+			path = rotator_simulator;
+			sourceTree = "<group>";
+		};
 		9D85FAE021E38E3900ECDF82 /* agent_alignment */ = {
 			isa = PBXGroup;
 			children = (
@@ -11248,6 +11270,7 @@
 		9DCB034622E9B9DE00A7A2E5 /* indigo */ = {
 			isa = PBXGroup;
 			children = (
+				9D743A5C23FD58070093319F /* indigo_rotator_driver.h */,
 				599C9A281D998345008BBCC1 /* indigo_config.h */,
 				9D658B941DE4A8BC006C9CC5 /* indigo_names.h */,
 				59D381A71D95926E00E87393 /* indigo_bus.h */,
@@ -11483,6 +11506,7 @@
 				9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */,
 				59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
+				9D743A5D23FD58080093319F /* indigo_rotator_driver.h in Headers */,
 				59463C1920DE6781004950F2 /* indigo_focuser_wemacro_bt.h in Headers */,
 				59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */,
 				59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */,
@@ -11830,6 +11854,7 @@
 				9DAD52482126BD99002FCC79 /* indigo_wheel_quantum.c in Sources */,
 				59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */,
 				9DADEE5A2151135E008C6FBE /* indigo_focuser_nfocus.c in Sources */,
+				9D743A5B23FD57F80093319F /* indigo_rotator_driver.c in Sources */,
 				9D73E61621FF37F9003CEC15 /* libuvc_ctrl.c in Sources */,
 				59CC779D1F27BD07003AD2DB /* indigo_ica_ptp_sony.m in Sources */,
 				9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */,
@@ -11891,6 +11916,7 @@
 				593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */,
 				595F2930211E211200380EF4 /* DDHidDevice.m in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
+				9D743A5923FD573E0093319F /* indigo_rotator_simulator.c in Sources */,
 				59A242E322A2C6CE001C38F8 /* libascol.c in Sources */,
 				9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */,
 				595F291A211E211100380EF4 /* DDHidEvent.m in Sources */,
