@@ -529,6 +529,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	if ((!moving) || (PORT_DATA.current_position == PORT_DATA.target_position)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		PORT_DATA.focuser_timer = NULL;
 	} else {
 		indigo_reschedule_timer(device, 0.5, &(PORT_DATA.focuser_timer));
 	}
@@ -802,7 +803,6 @@ static void lunatico_close(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "PRIVATE_DATA->temperature_timer == %p", PRIVATE_DATA->temperature_timer);
 		close(PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
 		indigo_global_unlock(device);
@@ -884,6 +884,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_cancel_timer(device, &PORT_DATA.focuser_timer);
 				if (get_port_index(device) == 0) {
 					indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "PRIVATE_DATA->temperature_timer == %p", PRIVATE_DATA->temperature_timer);
 				}
 				indigo_delete_property(device, LA_STEP_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
