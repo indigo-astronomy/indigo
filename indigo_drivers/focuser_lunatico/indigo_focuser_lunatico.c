@@ -67,13 +67,11 @@
 #define PRIVATE_DATA                    ((lunatico_private_data *)device->private_data)
 #define PORT_DATA                       (PRIVATE_DATA->port_data[get_port_index(device)])
 
-#define LA_MODEL_HINT_PROPERTY          (PORT_DATA.model_hint_property)
-#define LA_MODEL_AUTO_ITEM              (LA_MODEL_HINT_PROPERTY->items+0)
-#define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_HINT_PROPERTY->items+1)
-#define LA_MODEL_PLATIPUS_ITEM          (LA_MODEL_HINT_PROPERTY->items+2)
+#define LA_MODEL_PROPERTY               (PORT_DATA.model_hint_property)
+#define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_PROPERTY->items+0)
+#define LA_MODEL_PLATIPUS_ITEM          (LA_MODEL_PROPERTY->items+1)
 
-#define LA_MODEL_HINT_PROPERTY_NAME     "LUNATICO_MODEL_HINT"
-#define LA_MODEL_AUTO_ITEM_NAME         "AUTO_DETECT"
+#define LA_MODEL_PROPERTY_NAME          "LUNATICO_MODEL"
 #define LA_MODEL_ARMADILLO_ITEM_NAME    "ARMADILLO"
 #define LA_MODEL_PLATIPUS_ITEM_NAME     "PLATIPUS"
 
@@ -141,6 +139,7 @@ typedef struct {
 	int handle;
 	int count_open;
 	int temperature_sensor_index;
+	int port_count;
 	double prev_temp;
 	indigo_timer *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -274,7 +273,7 @@ static bool lunatico_get_info(indigo_device *device, char *board, char *firmware
 }
 
 
-static bool lunatico_command_get_result(indigo_device *device, const char *command, uint32_t *result) {
+static bool lunatico_command_get_result(indigo_device *device, const char *command, int32_t *result) {
 	if (!result) return false;
 
 	char response[LUNATICO_CMD_LEN]={0};
@@ -343,11 +342,14 @@ static bool lunatico_sync_position(indigo_device *device, uint32_t position) {
 }
 
 
-static bool lunatico_get_position(indigo_device *device, uint32_t *pos) {
+static bool lunatico_get_position(indigo_device *device, int32_t *pos) {
 	char command[LUNATICO_CMD_LEN]={0};
+	bool res;
 
 	sprintf(command, "!step getpos %d#", get_port_index(device));
-	return lunatico_command_get_result(device, command, pos);
+	res = lunatico_command_get_result(device, command, pos);
+	if ((res == false) || (*pos < 0)) return false;
+	else return true;
 }
 
 
@@ -379,6 +381,7 @@ static bool lunatico_is_moving(indigo_device *device, bool *is_moving) {
 
 	snprintf(command, LUNATICO_CMD_LEN, "!step ismoving %d#", get_port_index(device));
 	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res < 0) return false;
 
 	if (res == 0) *is_moving = false;
 	else *is_moving = true;
@@ -511,14 +514,15 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 static void focuser_timer_callback(indigo_device *device) {
 	bool moving;
 	uint32_t position;
+	bool success;
 
-	if (!lunatico_is_moving(device, &moving)) {
+	if (!(success = lunatico_is_moving(device, &moving))) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_is_moving(%d) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
-	if (!lunatico_get_position(device, &position)) {
+	if ((success) && (!(success = lunatico_get_position(device, &position)))) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -526,13 +530,17 @@ static void focuser_timer_callback(indigo_device *device) {
 		PORT_DATA.current_position = (double)position;
 	}
 
-	FOCUSER_POSITION_ITEM->number.value = PORT_DATA.current_position;
-	if ((!moving) || (PORT_DATA.current_position == PORT_DATA.target_position)) {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		PORT_DATA.focuser_timer = NULL;
+	if (success) {
+		FOCUSER_POSITION_ITEM->number.value = PORT_DATA.current_position;
+		if ((!moving) || (PORT_DATA.current_position == PORT_DATA.target_position)) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			PORT_DATA.focuser_timer = NULL;
+		} else {
+			indigo_reschedule_timer(device, 0.5, &(PORT_DATA.focuser_timer));
+		}
 	} else {
-		indigo_reschedule_timer(device, 0.5, &(PORT_DATA.focuser_timer));
+		PORT_DATA.focuser_timer = NULL;
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -644,7 +652,7 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 		if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property))
 			indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 	}
-	indigo_define_property(device, LA_MODEL_HINT_PROPERTY, NULL);
+	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
@@ -705,14 +713,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
-		// -------------------------------------------------------------------------- LA_MODEL_HINT_PROPERTY
-		LA_MODEL_HINT_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_HINT_PROPERTY_NAME, MAIN_GROUP, "Focuser model hint", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (LA_MODEL_HINT_PROPERTY == NULL)
+		// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
+		LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (LA_MODEL_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(LA_MODEL_AUTO_ITEM, LA_MODEL_AUTO_ITEM_NAME, "Auto detect (on connect)", true);
-		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Armadillo (2 ports)", false);
+		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Armadillo (2 ports)", true);
 		indigo_init_switch_item(LA_MODEL_PLATIPUS_ITEM, LA_MODEL_PLATIPUS_ITEM_NAME, "Platipus (3 ports)", false);
-		if (get_port_index(device) != 0) LA_MODEL_HINT_PROPERTY->hidden = true;
+		if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (LA_STEP_MODE_PROPERTY == NULL)
@@ -749,7 +756,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
 		//---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		indigo_define_property(device, LA_MODEL_HINT_PROPERTY, NULL);
+		indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -836,7 +843,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
 
-					lunatico_get_position(device, &position);
+					if (!lunatico_get_position(device, &position)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
+					}
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
 
 					if (!lunatico_delete_limits(device)) {
@@ -902,16 +911,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
-	} else if (indigo_property_match(LA_MODEL_HINT_PROPERTY, property)) {
+	} else if (indigo_property_match(LA_MODEL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_MODEL_HINT
-		indigo_property_copy_values(LA_MODEL_HINT_PROPERTY, property, false);
-		LA_MODEL_HINT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
+		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_MODEL_PLATIPUS_ITEM->sw.value) {
 			create_port_device(0, 2, "Third");
 		} else {
 			delete_port_device(0, 2);
 		}
-		indigo_update_property(device, LA_MODEL_HINT_PROPERTY, NULL);
+		indigo_update_property(device, LA_MODEL_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
@@ -1225,7 +1234,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, LA_MODEL_HINT_PROPERTY);
+			indigo_save_property(device, NULL, LA_MODEL_PROPERTY);
 			indigo_save_property(device, NULL, LA_STEP_MODE_PROPERTY);
 			indigo_save_property(device, NULL, LA_POWER_CONTROL_PROPERTY);
 			indigo_save_property(device, NULL, LA_TEMPERATURE_SENSOR_PROPERTY);
@@ -1249,8 +1258,8 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(LA_MOTOR_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
-	indigo_delete_property(device, LA_MODEL_HINT_PROPERTY, NULL);
-	indigo_release_property(LA_MODEL_HINT_PROPERTY);
+	indigo_delete_property(device, LA_MODEL_PROPERTY, NULL);
+	indigo_release_property(LA_MODEL_PROPERTY);
 	return indigo_focuser_detach(device);
 }
 
@@ -1258,7 +1267,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 // --------------------------------------------------------------------------------
 
 static int device_number = 0;
-
 
 static void create_port_device(int device_index, int port_index, char *name_ext) {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
