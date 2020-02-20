@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** INDIGO Lunatico Armadillo/Platipus focuser driver
+/** INDIGO Lunatico Armadillo, Platypus etc. focuser driver
  \file indigo_focuser_lunatico.h
  */
 

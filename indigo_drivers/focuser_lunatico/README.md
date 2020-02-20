@@ -1,10 +1,10 @@
-# Lunatico Astronomy Armadillo/Platipus focuser driver
+# Lunatico Astronomy Armadillo/Platypus focuser driver
 
 https://www.lunatico.es
 
 ## Supported devices
 
-Armadillo and Platipus focusers.
+Seletek, Armadillo, Platypus and Limpet focusers.
 
 No hot plug support.
 
