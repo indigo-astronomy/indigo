@@ -273,6 +273,34 @@ static bool lunatico_get_info(indigo_device *device, char *board, char *firmware
 }
 
 
+static bool lunatico_check_port_existance(indigo_device *device, bool *exists) {
+	if(!exists) return false;
+
+	int model, oper, data;
+	char response[LUNATICO_CMD_LEN]={0};
+	if (lunatico_command(device, "!seletek version#", response, sizeof(response), 100)) {
+		int parsed = sscanf(response, "!seletek version:%d#", &data);
+		oper = data / 10000;
+		if (oper == 2) return false;
+
+		model = ( data / 1000 ) % 10;	// 1 seletek, etc.
+		if ( model >= 4 ) model = 0;
+
+		/* if devce is "Seletek", "Armadillo" or "Platypus" */
+		if (model >= 1 && model <= 3) {
+			if (get_port_index(device) >= model) *exists = false;
+			else *exists = true;
+		} else {
+			*exists = false;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s, device exists = %d", response, *exists);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+
 static bool lunatico_command_get_result(indigo_device *device, const char *command, int32_t *result) {
 	if (!result) return false;
 
@@ -796,24 +824,44 @@ static bool lunatico_open(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			indigo_global_unlock(device);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
 		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+
+	bool exists = false;
+	/* check if the current port exists */
+	lunatico_check_port_existance(device, &exists);
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (!exists) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Port does not exist on this hardware");
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		indigo_update_property(device, CONNECTION_PROPERTY, "Port does not exist on this hardware");
+		if (--PRIVATE_DATA->count_open == 0) {
+			close(PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
+			indigo_global_unlock(device);
+			PRIVATE_DATA->handle = 0;
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+		return false;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return true;
 }
 
-static void lunatico_close(indigo_device *device) {
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
+static void lunatico_close(indigo_device *device) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
 	if (!DEVICE_CONNECTED) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		close(PRIVATE_DATA->handle);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
 		indigo_global_unlock(device);
 		PRIVATE_DATA->handle = 0;
 	}
@@ -899,7 +947,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_cancel_timer(device, &PORT_DATA.focuser_timer);
 				if (get_port_index(device) == 0) {
 					indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "PRIVATE_DATA->temperature_timer == %p", PRIVATE_DATA->temperature_timer);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PRIVATE_DATA->temperature_timer == %p", PRIVATE_DATA->temperature_timer);
 				}
 				indigo_delete_property(device, LA_STEP_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
@@ -1286,7 +1334,7 @@ static void create_port_device(int device_index, int port_index, char *name_ext)
 		device_data[device_index].private_data = malloc(sizeof(lunatico_private_data));
 		assert(device_data[device_index].private_data != NULL);
 		memset(device_data[device_index].private_data, 0, sizeof(lunatico_private_data));
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "ADD: PRIVATE_DATA");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
 	device_data[device_index].port[port_index] = malloc(sizeof(indigo_device));
@@ -1296,7 +1344,7 @@ static void create_port_device(int device_index, int port_index, char *name_ext)
 	sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", FOCUSER_LUNATICO_NAME, name_ext);
 	set_port_index(device_data[device_index].port[port_index], port_index);
 	indigo_attach_device(device_data[device_index].port[port_index]);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "ADD: Device with portindex = %d", get_port_index(device_data[device_index].port[port_index]));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: Device with port index = %d", get_port_index(device_data[device_index].port[port_index]));
 }
 
 
@@ -1306,7 +1354,7 @@ static void delete_port_device(int device_index, int port_index) {
 
 	if (device_data[device_index].port[port_index] != NULL) {
 		indigo_detach_device(device_data[device_index].port[port_index]);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "REMOVE: Device with portindex = %d", get_port_index(device_data[device_index].port[port_index]));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: Device with port index = %d", get_port_index(device_data[device_index].port[port_index]));
 		free(device_data[device_index].port[port_index]);
 		device_data[device_index].port[port_index] = NULL;
 	}
@@ -1318,7 +1366,7 @@ static void delete_port_device(int device_index, int port_index) {
 	if (device_data[device_index].private_data != NULL) {
 		free(device_data[device_index].private_data);
 		device_data[device_index].private_data = NULL;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "REMOVE: PRIVATE_DATA");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: PRIVATE_DATA");
 	}
 }
 
