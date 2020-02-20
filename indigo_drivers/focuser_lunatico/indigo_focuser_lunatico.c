@@ -166,7 +166,8 @@ typedef enum {
 	MODEL_SELETEK = 1,
 	MODEL_ARMADILLO = 2,
 	MODEL_PLATYPUS = 3,
-	MODEL_DRAGONFLY = 4
+	MODEL_DRAGONFLY = 4,
+	MODEL_LIMPET = 5
 } lunatico_model_t;
 
 typedef enum {
@@ -256,7 +257,7 @@ static bool lunatico_get_info(indigo_device *device, char *board, char *firmware
 	if(!board || !firmware) return false;
 
 	const char *operative[3] = { "", "Bootloader", "Error" };
-	const char *models[5] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly" };
+	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
 	int fwmaj, fwmin, model, oper, data;
 	char response[LUNATICO_CMD_LEN]={0};
 	if (lunatico_command(device, "!seletek version#", response, sizeof(response), 100)) {
@@ -264,11 +265,11 @@ static bool lunatico_get_info(indigo_device *device, char *board, char *firmware
 		int parsed = sscanf(response, "!seletek version:%d#", &data);
 		if (parsed != 1) return false;
 		oper = data / 10000;		// 0 normal, 1 bootloader
-		model = ( data / 1000 ) % 10;	// 1 seletek, etc.
-		fwmaj = ( data / 100 ) % 10;
-		fwmin = ( data % 100 );
-		if ( oper >= 2 ) oper = 2;
-		if ( model >= 4 ) model = 0;
+		model = (data / 1000) % 10;	// 1 seletek, etc.
+		fwmaj = (data / 100) % 10;
+		fwmin = (data % 100);
+		if (oper >= 2) oper = 2;
+		if (model > 5) model = 0;
 		sprintf(board, "%s", models[model]);
 		sprintf(firmware, "%d.%d", fwmaj, fwmin);
 
@@ -287,18 +288,21 @@ static bool lunatico_check_port_existance(indigo_device *device, bool *exists) {
 	char response[LUNATICO_CMD_LEN]={0};
 	if (lunatico_command(device, "!seletek version#", response, sizeof(response), 100)) {
 		int parsed = sscanf(response, "!seletek version:%d#", &data);
+		if (parsed != 1) return false;
+
 		oper = data / 10000;
 		if (oper == 2) return false;
 
-		model = ( data / 1000 ) % 10;	// 1 seletek, etc.
-		if ( model >= 4 ) model = 0;
+		model = (data / 1000) % 10;	// 1 seletek, etc.
+		if (model > 5) model = 0;
 
-		/* if devce is "Seletek", "Armadillo" or "Platypus" */
+		/* if devce is "Seletek", "Armadillo" etc... */
 		if (model == MODEL_SELETEK && get_port_index(device) < 2) *exists = true;
 		else if (model == MODEL_ARMADILLO && get_port_index(device) < 2) *exists = true;
 		else if (model == MODEL_PLATYPUS && get_port_index(device) < 3) *exists = true;
+		else if (model == MODEL_LIMPET && get_port_index(device) < 1) *exists = true;
 		else *exists = false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s, device exists = %d", response, *exists);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s, port exists = %d", response, *exists);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
@@ -814,13 +818,13 @@ static bool lunatico_open(indigo_device *device) {
 			char *host = name + 6;
 			char *colon = strchr(host, ':');
 			if (colon == NULL) {
-				PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
+				PRIVATE_DATA->handle = indigo_open_udp(host, 10000);
 			} else {
 				char host_name[INDIGO_NAME_SIZE];
 				strncpy(host_name, host, colon - host);
 				host_name[colon - host] = 0;
 				int port = atoi(colon + 1);
-				PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
+				PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
 			}
 		}
 		if (PRIVATE_DATA->handle < 0) {
