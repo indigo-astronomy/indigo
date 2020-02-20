@@ -163,6 +163,13 @@ static void delete_port_device(int device_index, int port_index);
 #define LUNATICO_CMD_LEN 100
 
 typedef enum {
+	MODEL_SELETEK = 1,
+	MODEL_ARMADILLO = 2,
+	MODEL_PLATYPUS = 3,
+	MODEL_DRAGONFLY = 4
+} lunatico_model_t;
+
+typedef enum {
 	STEP_MODE_FULL = 0,
 	STEP_MODE_HALF = 1,
 } stepmode_t;
@@ -287,12 +294,10 @@ static bool lunatico_check_port_existance(indigo_device *device, bool *exists) {
 		if ( model >= 4 ) model = 0;
 
 		/* if devce is "Seletek", "Armadillo" or "Platypus" */
-		if (model >= 1 && model <= 3) {
-			if (get_port_index(device) >= model) *exists = false;
-			else *exists = true;
-		} else {
-			*exists = false;
-		}
+		if (model == MODEL_SELETEK && get_port_index(device) < 2) *exists = true;
+		else if (model == MODEL_ARMADILLO && get_port_index(device) < 2) *exists = true;
+		else if (model == MODEL_PLATYPUS && get_port_index(device) < 3) *exists = true;
+		else *exists = false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s, device exists = %d", response, *exists);
 		return true;
 	}
@@ -745,7 +750,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (LA_MODEL_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Armadillo (2 ports)", true);
+		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Seletek/Armadillo (2 ports)", true);
 		indigo_init_switch_item(LA_MODEL_PLATIPUS_ITEM, LA_MODEL_PLATIPUS_ITEM_NAME, "Platipus (3 ports)", false);
 		if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
