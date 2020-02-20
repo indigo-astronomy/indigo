@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** INDIGO DSD Lunatico Armadillo/Platipus focuser main
+/** INDIGO DSD Lunatico Armadillo, Platypus etc. focuser main
  \file indigo_focuser_lunatico_main.c
  */
 

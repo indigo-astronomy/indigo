@@ -19,12 +19,11 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** INDIGO Lunatico Armadillo/Platipus focuser driver
+/** INDIGO Lunatico Armadillo, Platypus etc. focuser driver
  \file indigo_focuser_lunatico.c
  */
 
 #define DRIVER_VERSION 0x0001
-//#define DRIVER_NAME    "indigo_focuser_lunatico"
 
 #include <stdlib.h>
 #include <string.h>
@@ -69,11 +68,11 @@
 
 #define LA_MODEL_PROPERTY               (PORT_DATA.model_hint_property)
 #define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_PROPERTY->items+0)
-#define LA_MODEL_PLATIPUS_ITEM          (LA_MODEL_PROPERTY->items+1)
+#define LA_MODEL_PLATYPUS_ITEM          (LA_MODEL_PROPERTY->items+1)
 
 #define LA_MODEL_PROPERTY_NAME          "LUNATICO_MODEL"
 #define LA_MODEL_ARMADILLO_ITEM_NAME    "ARMADILLO"
-#define LA_MODEL_PLATIPUS_ITEM_NAME     "PLATIPUS"
+#define LA_MODEL_PLATYPUS_ITEM_NAME     "PLATYPUS"
 
 
 #define LA_STEP_MODE_PROPERTY          (PORT_DATA.step_mode_property)
@@ -755,7 +754,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		if (LA_MODEL_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Seletek/Armadillo (2 ports)", true);
-		indigo_init_switch_item(LA_MODEL_PLATIPUS_ITEM, LA_MODEL_PLATIPUS_ITEM_NAME, "Platipus (3 ports)", false);
+		indigo_init_switch_item(LA_MODEL_PLATYPUS_ITEM, LA_MODEL_PLATYPUS_ITEM_NAME, "Platypus (3 ports)", false);
 		if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -972,7 +971,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- LA_MODEL_HINT
 		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
 		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
-		if (LA_MODEL_PLATIPUS_ITEM->sw.value) {
+		if (LA_MODEL_PLATYPUS_ITEM->sw.value) {
 			create_port_device(0, 2, "Third");
 		} else {
 			delete_port_device(0, 2);
