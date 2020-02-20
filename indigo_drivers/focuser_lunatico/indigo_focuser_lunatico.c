@@ -693,9 +693,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_STEPS_ITEM->number.min = 0;
 		FOCUSER_STEPS_ITEM->number.step = 1;
 
-		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
-		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+		if (get_port_index(device) == 0) {
+			FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+			FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+			FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+		}
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
@@ -788,13 +790,8 @@ static bool lunatico_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
-		PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-		PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
-	} else {
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return true;
 }
 
@@ -805,7 +802,6 @@ static void lunatico_close(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
-		indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "PRIVATE_DATA->temperature_timer == %p", PRIVATE_DATA->temperature_timer);
 		close(PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
@@ -871,6 +867,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					}
 					indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 
+					if (get_port_index(device) == 0) {
+						lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
+						PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
+						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
+					}
+
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					set_connected_flag(device);
 
@@ -880,6 +882,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			if (DEVICE_CONNECTED) {
 				indigo_cancel_timer(device, &PORT_DATA.focuser_timer);
+				if (get_port_index(device) == 0) {
+					indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				}
 				indigo_delete_property(device, LA_STEP_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
 				indigo_delete_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
