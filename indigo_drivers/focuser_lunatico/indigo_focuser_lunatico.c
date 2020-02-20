@@ -489,15 +489,16 @@ static bool lunatico_delete_limits(indigo_device *device) {
 }
 
 
-static bool lunatico_set_speed(indigo_device *device, uint32_t speed) {
+static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
 
-	int speed_us = (int)(500000 - ((speed - 1) * 50));
-    if ((speed_us < 50) || (speed_us > 500000 )) {
-        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Speed out of range %d", speed);
-        return false;
-    }
+	if (speed_khz <= 0.00001) return false;
+	int speed_us = (int)(1000 / speed_khz);
+	if ((speed_us < 50) || (speed_us > 500000 )) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Speed out of range %.3f", speed_khz);
+		return false;
+	}
 
 	snprintf(command, LUNATICO_CMD_LEN, "!step speedrangeus %d %d %d#", get_port_index(device), speed_us, speed_us);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
@@ -682,10 +683,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_BACKLASH_ITEM->number.min = FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = 0;
 
 		FOCUSER_SPEED_PROPERTY->hidden = false;
-		FOCUSER_SPEED_ITEM->number.min = 1;
-		FOCUSER_SPEED_ITEM->number.max = 10000;
-		FOCUSER_SPEED_ITEM->number.step = 1;
-		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 9800;
+		FOCUSER_SPEED_ITEM->number.min = .002;
+		FOCUSER_SPEED_ITEM->number.max = 20;
+		FOCUSER_SPEED_ITEM->number.step = 0.1;
+		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 0.1;
+		strcpy(FOCUSER_SPEED_ITEM->label, "Speed (kHz)");
 
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 100;
@@ -867,6 +869,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					}
 					indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 
+					if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
+					}
+
 					if (get_port_index(device) == 0) {
 						lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
 						PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
@@ -1001,7 +1007,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 
-		if (!lunatico_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.target)) {
+		if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
 			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
