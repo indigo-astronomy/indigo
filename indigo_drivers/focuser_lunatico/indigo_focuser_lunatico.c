@@ -191,6 +191,7 @@ typedef enum {
 
 #define NO_TEMP_READING                (-25)
 
+
 static bool lunatico_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
 	char c;
 	char buff[LUNATICO_CMD_LEN];
@@ -225,6 +226,7 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 			}
 		}
 	}
+
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (sleep > 0)
@@ -351,31 +353,6 @@ static bool lunatico_command_get_result(indigo_device *device, const char *comma
 }
 
 
-static bool lunatico_command_set_value(indigo_device *device, const char *command_format, uint32_t value) {
-	char command[LUNATICO_CMD_LEN];
-	char response[LUNATICO_CMD_LEN];
-	char response_prefix[LUNATICO_CMD_LEN];
-	char expected_format[LUNATICO_CMD_LEN];
-	int res = -1;
-
-	snprintf(command, LUNATICO_CMD_LEN, command_format, value);
-	if (lunatico_command(device, command, response, sizeof(response), 100)) {
-		strncpy(response_prefix, command, LUNATICO_CMD_LEN);
-		char *p = strrchr(response_prefix, '#');
-		if (p) *p = ':';
-		sprintf(expected_format, "%s%%d#", response_prefix);
-		int parsed = sscanf(response, expected_format, &res);
-		if (parsed != 1) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, res);
-	}
-
-	if (res == 0) {
-		return true;
-	}
-	return false;
-}
-
-
 static bool lunatico_stop(indigo_device *device) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
@@ -478,6 +455,7 @@ static bool lunatico_set_step(indigo_device *device, stepmode_t mode) {
 	return true;
 }
 
+
 static bool lunatico_set_wiring(indigo_device *device, wiring_t wiring) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
@@ -567,6 +545,88 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
+static bool lunatico_open(indigo_device *device) {
+	if (DEVICE_CONNECTED) return false;
+
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (PRIVATE_DATA->count_open++ == 0) {
+		if (indigo_try_global_lock(device) != INDIGO_OK) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+		char *name = DEVICE_PORT_ITEM->text.value;
+		if (strncmp(name, "lunatico://", 11)) {
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
+			PRIVATE_DATA->udp = false;
+		} else {
+			char *host = name + 11;
+			char *colon = strchr(host, ':');
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connecting to host: %s", host);
+			if (colon == NULL) {
+				PRIVATE_DATA->handle = indigo_open_udp(host, 10000);
+				PRIVATE_DATA->udp = true;
+			} else {
+				char host_name[INDIGO_NAME_SIZE];
+				strncpy(host_name, host, colon - host);
+				host_name[colon - host] = 0;
+				int port = atoi(colon + 1);
+				PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
+				PRIVATE_DATA->udp = true;
+			}
+		}
+		if (PRIVATE_DATA->handle < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_global_unlock(device);
+			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+
+	bool exists = false;
+	/* check if the current port exists */
+	lunatico_check_port_existance(device, &exists);
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (!exists) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Port does not exist on this hardware");
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		indigo_update_property(device, CONNECTION_PROPERTY, "Port does not exist on this hardware");
+		if (--PRIVATE_DATA->count_open == 0) {
+			close(PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
+			indigo_global_unlock(device);
+			PRIVATE_DATA->handle = 0;
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+		return false;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	return true;
+}
+
+
+static void lunatico_close(indigo_device *device) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
+	if (!DEVICE_CONNECTED) return;
+
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (--PRIVATE_DATA->count_open == 0) {
+		close(PRIVATE_DATA->handle);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
+		indigo_global_unlock(device);
+		PRIVATE_DATA->handle = 0;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+}
+
+
 static void focuser_timer_callback(indigo_device *device) {
 	bool moving;
 	uint32_t position;
@@ -816,88 +876,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
-}
-
-
-static bool lunatico_open(indigo_device *device) {
-	if (DEVICE_CONNECTED) return false;
-
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (PRIVATE_DATA->count_open++ == 0) {
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
-		char *name = DEVICE_PORT_ITEM->text.value;
-		if (strncmp(name, "lunatico://", 11)) {
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-			PRIVATE_DATA->udp = false;
-		} else {
-			char *host = name + 11;
-			char *colon = strchr(host, ':');
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connecting to host: %s", host);
-			if (colon == NULL) {
-				PRIVATE_DATA->handle = indigo_open_udp(host, 10000);
-				PRIVATE_DATA->udp = true;
-			} else {
-				char host_name[INDIGO_NAME_SIZE];
-				strncpy(host_name, host, colon - host);
-				host_name[colon - host] = 0;
-				int port = atoi(colon + 1);
-				PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
-				PRIVATE_DATA->udp = true;
-			}
-		}
-		if (PRIVATE_DATA->handle < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_global_unlock(device);
-			PRIVATE_DATA->count_open--;
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-
-	bool exists = false;
-	/* check if the current port exists */
-	lunatico_check_port_existance(device, &exists);
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (!exists) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Port does not exist on this hardware");
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		indigo_update_property(device, CONNECTION_PROPERTY, "Port does not exist on this hardware");
-		if (--PRIVATE_DATA->count_open == 0) {
-			close(PRIVATE_DATA->handle);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
-			indigo_global_unlock(device);
-			PRIVATE_DATA->handle = 0;
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		return false;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	return true;
-}
-
-
-static void lunatico_close(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
-	if (!DEVICE_CONNECTED) return;
-
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (--PRIVATE_DATA->count_open == 0) {
-		close(PRIVATE_DATA->handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
-		indigo_global_unlock(device);
-		PRIVATE_DATA->handle = 0;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
 
 
