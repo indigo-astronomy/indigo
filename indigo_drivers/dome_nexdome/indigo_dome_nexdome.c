@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome.c
  */
 
-#define DRIVER_VERSION 0x00003
+#define DRIVER_VERSION 0x00004
 #define DRIVER_NAME	"indigo_dome_nexdome"
 
 #include <stdlib.h>
@@ -767,25 +767,16 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			} else {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				char *device_name = DEVICE_PORT_ITEM->text.value;
-				if (strncmp(device_name, "nexdome://", 10)) {
+				if (!indigo_is_device_url(device_name, "nexdome")) {
 					PRIVATE_DATA->handle = indigo_open_serial(device_name);
 					/* To be on the safe side -> Wait for 1 seconds! */
 					sleep(1);
 				} else {
-					char *host = device_name + 10;
-					char *colon = strchr(host, ':');
-					if (colon == NULL) {
-						PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
-					} else {
-						char host_name[INDIGO_NAME_SIZE];
-						strncpy(host_name, host, colon - host);
-						host_name[colon - host] = 0;
-						int port = atoi(colon + 1);
-						PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-					}
+					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+					PRIVATE_DATA->handle = intigo_open_network_device(device_name, 8080, &proto);
 				}
 				if ( PRIVATE_DATA->handle < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, " indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 					device->is_connected = false;
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
