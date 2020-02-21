@@ -380,7 +380,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 			indigo_update_property(device, property, line);
 		} else {
 			property->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, property, "No reply from %s", buffer);
+			indigo_update_property(device, property, "No reply from rpi_ctrl.sh");
 		}
 		if (line)
 			free(line);
@@ -522,7 +522,7 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
 		if (line) {
-			char *pnt, *token = strtok_r(line, " ", &pnt);
+			char *pnt, *token = strtok_r(line, "\t", &pnt);
 			if (token)
 				strncpy(wifi_ap_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
 			token = strtok_r(NULL, " ", &pnt);
@@ -535,7 +535,7 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
 		if (line) {
-			char *pnt, *token = strtok_r(line, " ", &pnt);
+			char *pnt, *token = strtok_r(line, "\t", &pnt);
 			if (token)
 				strncpy(wifi_infrastructure_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
 			free(line);

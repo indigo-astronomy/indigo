@@ -268,9 +268,9 @@ __get-wifi-server() {
     [[ -z ${WIFI_AP_PW} ]] && __ALERT "'wpa_passphrase' not found in ${CONF_HOSTAPD}"
 
     if [[ ${OPT_VERBOSE} -eq 1 ]]; then
-	{ echo "${WIFI_AP_SSID} ${WIFI_AP_PW}"; exit 0; }
+	{ echo -e "${WIFI_AP_SSID}\t${WIFI_AP_PW}"; exit 0; }
     elif [[ "${mode}" == "wifi-server" ]]; then
-	{ echo "${WIFI_AP_SSID} ${WIFI_AP_PW}"; exit 0; }
+	{ echo -e "${WIFI_AP_SSID}"; exit 0; }
     fi
 
     exit 1;
@@ -338,7 +338,7 @@ __get-wifi-client() {
     WIFI_CN_PW=$(echo ${WIFI_CN_PW} | tr -d '"')
 
     if [[ ${OPT_VERBOSE} -eq 1 ]]; then
-	{ echo "${WIFI_CN_SSID} ${WIFI_CN_PW}"; exit 0; }
+	{ echo -e "${WIFI_CN_SSID}\t${WIFI_CN_PW}"; exit 0; }
     elif [[ "${mode}" == "wifi-client" ]]; then
 	{ echo "${WIFI_CN_SSID}"; exit 0; }
     fi
