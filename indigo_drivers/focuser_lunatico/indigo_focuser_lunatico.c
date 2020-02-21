@@ -566,15 +566,14 @@ static bool lunatico_open(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connecting to host: %s", host);
 			if (colon == NULL) {
 				PRIVATE_DATA->handle = indigo_open_udp(host, 10000);
-				PRIVATE_DATA->udp = true;
 			} else {
 				char host_name[INDIGO_NAME_SIZE];
 				strncpy(host_name, host, colon - host);
 				host_name[colon - host] = 0;
 				int port = atoi(colon + 1);
 				PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
-				PRIVATE_DATA->udp = true;
 			}
+			PRIVATE_DATA->udp = true;
 		}
 		if (PRIVATE_DATA->handle < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
