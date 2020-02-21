@@ -311,7 +311,7 @@ bool indigo_is_device_url(const char *name, const char *prefix) {
 	return ((!strncmp(name, "tcp://", 6)) || (!strncmp(name, "udp://", 6)));
 }
 
-int intigo_open_network_device(const char *url, int default_port, indigo_network_protocol *protocol_hint) {
+int indigo_open_network_device(const char *url, int default_port, indigo_network_protocol *protocol_hint) {
 	int port = default_port;
 	char host_name[INDIGO_NAME_SIZE];
 
