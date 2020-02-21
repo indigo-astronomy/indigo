@@ -777,7 +777,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
 						sleep(2);
 					} else {
-						indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
+						indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
 						PRIVATE_DATA->handle = intigo_open_network_device(name, 8080, &proto);
 					}
 					if ( PRIVATE_DATA->handle < 0) {
