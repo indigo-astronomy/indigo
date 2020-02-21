@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
@@ -52,19 +52,13 @@ typedef struct {
 static bool gps_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (strncmp(name, "gps://", 6)) {
+	if (!indigo_is_device_url(name, "gps")) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %s", DEVICE_PORT_ITEM->text.value, DEVICE_BAUDRATE_ITEM->text.value);
 		PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
 	} else {
-		char *host = name + 6;
-		char *colon = strchr(host, ':');
-		if (colon == NULL) {
-			PRIVATE_DATA->handle = indigo_open_tcp(host, 9999);
-		} else {
-			char host_name[INDIGO_NAME_SIZE];
-			strncpy(host_name, host, colon - host);
-			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening netwotk device on host: %s", DEVICE_PORT_ITEM->text.value);
+		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+		PRIVATE_DATA->handle = intigo_open_network_device(name, 9999, &proto);
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
@@ -118,7 +112,7 @@ static void gps_refresh_callback(indigo_device *device) {
 	char **tokens;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader started");
 	while (IS_CONNECTED && PRIVATE_DATA->handle > 0) {
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		if (indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0 && (tokens = parse(buffer))) {
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
 				int time = atoi(tokens[1]);
@@ -237,7 +231,7 @@ static void gps_refresh_callback(indigo_device *device) {
 				}
 			}
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		//pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader finished");
 }
