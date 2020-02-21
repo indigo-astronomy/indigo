@@ -558,11 +558,11 @@ static bool lunatico_open(indigo_device *device) {
 		}
 		char *name = DEVICE_PORT_ITEM->text.value;
 		if (!indigo_is_device_url(name, "lunatico")) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "PORT #############");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %d", DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 			PRIVATE_DATA->udp = false;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "NET #############");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening netwotk device on host: %s", DEVICE_PORT_ITEM->text.value);
 			indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
 			PRIVATE_DATA->handle = intigo_open_network_device(name, 10000, &proto);
 			PRIVATE_DATA->udp = true;
