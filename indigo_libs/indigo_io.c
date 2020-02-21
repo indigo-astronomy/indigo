@@ -300,7 +300,18 @@ int indigo_open_udp(const char *host, int port) {
 	return sock;
 }
 
-int intigo_open_network_device(char *url, int default_port, indigo_network_protocol *protocol_hint) {
+bool indigo_is_device_url(const char *name, const char *prefix) {
+	if (!name) return false;
+
+	if (prefix) {
+		char prefix_full[INDIGO_NAME_SIZE];
+		sprintf(prefix_full, "%s://", prefix);
+		return ((!strncmp(name, "tcp://", 6)) || (!strncmp(name, "udp://", 6)) || (!strncmp(name, prefix_full, strlen(prefix_full))));
+	}
+	return ((!strncmp(name, "tcp://", 6)) || (!strncmp(name, "udp://", 6)));
+}
+
+int intigo_open_network_device(const char *url, int default_port, indigo_network_protocol *protocol_hint) {
 	int port = default_port;
 	char host_name[INDIGO_NAME_SIZE];
 
