@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -772,25 +772,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				} else {
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					char *name = DEVICE_PORT_ITEM->text.value;
-					if (strncmp(name, "dsd://", 6)) {
+					if (!indigo_is_device_url(name, "dsd")) {
 						PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 						/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
 						sleep(2);
 					} else {
-						char *host = name + 6;
-						char *colon = strchr(host, ':');
-						if (colon == NULL) {
-							PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
-						} else {
-							char host_name[INDIGO_NAME_SIZE];
-							strncpy(host_name, host, colon - host);
-							host_name[colon - host] = 0;
-							int port = atoi(colon + 1);
-							PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-						}
+						indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
+						PRIVATE_DATA->handle = intigo_open_network_device(name, 8080, &proto);
 					}
 					if ( PRIVATE_DATA->handle < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, " indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1351,7 +1342,6 @@ indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info
 			if (device_number < 1) device_number = 1;
 			if (device_number > MAX_DEVICES) device_number = MAX_DEVICES;
 		}
-
 
 		for (int index = 0; index < device_number; index++) {
 			private_data[index] = malloc(sizeof(dsd_private_data));
