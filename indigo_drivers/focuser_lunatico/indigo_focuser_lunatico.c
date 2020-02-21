@@ -139,6 +139,7 @@ typedef struct {
 	int count_open;
 	int temperature_sensor_index;
 	int port_count;
+	bool udp;
 	double prev_temp;
 	indigo_timer *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -192,6 +193,7 @@ typedef enum {
 
 static bool lunatico_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
 	char c;
+	char buff[LUNATICO_CMD_LEN];
 	struct timeval tv;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	// flush
@@ -208,10 +210,19 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
 		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
+		if (PRIVATE_DATA->udp) {
+			result = read(PRIVATE_DATA->handle, buff, LUNATICO_CMD_LEN);
+			if (result < 1) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
+			break;
+		} else {
+			result = read(PRIVATE_DATA->handle, &c, 1);
+			if (result < 1) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
 		}
 	}
 	// write command
@@ -233,18 +244,27 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result <= 0)
 				break;
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				return false;
-			}
-			response[index++] = c;
-
-			if (c == ')')
+			if (PRIVATE_DATA->udp) {
+				result = read(PRIVATE_DATA->handle, response, LUNATICO_CMD_LEN);
+				if (result < 1) {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+					return false;
+				}
+				index = result;
 				break;
+			} else {
+				result = read(PRIVATE_DATA->handle, &c, 1);
+				if (result < 1) {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+					return false;
+				}
+				response[index++] = c;
+				if (c == '#') break;
+			}
 		}
-		response[index] = 0;
+		response[index] = '\0';
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
@@ -813,17 +833,21 @@ static bool lunatico_open(indigo_device *device) {
 		char *name = DEVICE_PORT_ITEM->text.value;
 		if (strncmp(name, "lunatico://", 11)) {
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
+			PRIVATE_DATA->udp = false;
 		} else {
-			char *host = name + 6;
+			char *host = name + 11;
 			char *colon = strchr(host, ':');
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connecting to host: %s", host);
 			if (colon == NULL) {
 				PRIVATE_DATA->handle = indigo_open_udp(host, 10000);
+				PRIVATE_DATA->udp = true;
 			} else {
 				char host_name[INDIGO_NAME_SIZE];
 				strncpy(host_name, host, colon - host);
 				host_name[colon - host] = 0;
 				int port = atoi(colon + 1);
 				PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
+				PRIVATE_DATA->udp = true;
 			}
 		}
 		if (PRIVATE_DATA->handle < 0) {
