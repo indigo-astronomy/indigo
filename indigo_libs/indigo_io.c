@@ -315,6 +315,8 @@ int intigo_open_network_device(const char *url, int default_port, indigo_network
 	int port = default_port;
 	char host_name[INDIGO_NAME_SIZE];
 
+	INDIGO_DEBUG(indigo_debug("Trying to open TCP or UDP..."));
+
 	if (!url || !protocol_hint) return -1;
 
 	char *found = strstr(url, "://");
@@ -335,6 +337,8 @@ int intigo_open_network_device(const char *url, int default_port, indigo_network
 	} else {
 		strncpy(host_name, host, INDIGO_NAME_SIZE);
 	}
+
+	INDIGO_DEBUG(indigo_debug("Trying to open: '%s', port = %d, protocol = %d", host_name, port, *protocol_hint));
 
 	switch (*protocol_hint) {
 		case INDIGO_PROTOCOL_TCP: return indigo_open_tcp(host_name, port);
