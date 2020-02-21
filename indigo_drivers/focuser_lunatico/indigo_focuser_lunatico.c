@@ -557,26 +557,16 @@ static bool lunatico_open(indigo_device *device) {
 			return false;
 		}
 		char *name = DEVICE_PORT_ITEM->text.value;
-		if (strncmp(name, "lunatico://", 11)) {
+		if (!is_device_url(name)) {
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 			PRIVATE_DATA->udp = false;
 		} else {
-			char *host = name + 11;
-			char *colon = strchr(host, ':');
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connecting to host: %s", host);
-			if (colon == NULL) {
-				PRIVATE_DATA->handle = indigo_open_udp(host, 10000);
-			} else {
-				char host_name[INDIGO_NAME_SIZE];
-				strncpy(host_name, host, colon - host);
-				host_name[colon - host] = 0;
-				int port = atoi(colon + 1);
-				PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
-			}
+			indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
+			PRIVATE_DATA->handle = intigo_open_network_device(name, 10000, &proto);
 			PRIVATE_DATA->udp = true;
 		}
 		if (PRIVATE_DATA->handle < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_open_serial(%s): failed", DEVICE_PORT_ITEM->text.value);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -593,10 +583,10 @@ static bool lunatico_open(indigo_device *device) {
 	lunatico_check_port_existance(device, &exists);
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (!exists) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Port does not exist on this hardware");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce or port does not exist on this hardware");
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		indigo_update_property(device, CONNECTION_PROPERTY, "Port does not exist on this hardware");
+		indigo_update_property(device, CONNECTION_PROPERTY, "No response or port does not exist on this hardware");
 		if (--PRIVATE_DATA->count_open == 0) {
 			close(PRIVATE_DATA->handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
