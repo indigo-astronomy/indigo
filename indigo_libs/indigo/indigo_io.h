@@ -68,7 +68,7 @@ extern bool indigo_is_device_url(const char *name, const char *prefix);
 /** Open TCP or UDP connection depending on the URL prefix tcp:// or udp:// for any other prefix protocol_hint is used.
     If no port is provided in the URL default port is used. protocol_hint will be set to actual protocol used for the connection.
  */
-extern int intigo_open_network_device(const char *url, int default_port, indigo_network_protocol *protocol_hint);
+extern int indigo_open_network_device(const char *url, int default_port, indigo_network_protocol *protocol_hint);
 
 /** Read buffer.
  */

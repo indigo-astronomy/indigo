@@ -58,7 +58,7 @@ static bool gps_open(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening netwotk device on host: %s", DEVICE_PORT_ITEM->text.value);
 		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		PRIVATE_DATA->handle = intigo_open_network_device(name, 9999, &proto);
+		PRIVATE_DATA->handle = indigo_open_network_device(name, 9999, &proto);
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);

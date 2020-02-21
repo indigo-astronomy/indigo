@@ -564,7 +564,7 @@ static bool lunatico_open(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening netwotk device on host: %s", DEVICE_PORT_ITEM->text.value);
 			indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
-			PRIVATE_DATA->handle = intigo_open_network_device(name, 10000, &proto);
+			PRIVATE_DATA->handle = indigo_open_network_device(name, 10000, &proto);
 			PRIVATE_DATA->udp = true;
 		}
 		if (PRIVATE_DATA->handle < 0) {

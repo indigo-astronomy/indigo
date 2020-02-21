@@ -449,7 +449,7 @@ Output functions:
 
 Note that there is no close in INDIGO, as the standard *close()* and *shutdown()* calls can be used. Actually standard *read()* and *write()* calls can also be used, just INDIGO IO functions make the life a bit easier.
 
-Some devices can be accessed over RS, TCP and UDP. In this case there is a convention that must be followed. Port names can be prefixed with **tcp://** for TCP connections or **udp://** for UDP connections, or any other string of the form **xxx://** for some specific protocol, anything else is considered a serial port", in case only TCP or UDP is supported the prefix can be omitted. For example drivers like lx200 and nexstar accept **lx200://** and **nexstar://** respectively to indicate the TCP connection. The TCP or UDP port can be specified by **:port** suffix, but if omitted the standard port fir the device should be assumed. Here is an example code for that:
+Some devices can be accessed over Serial port, TCP and UDP. In this case there is a convention that must be followed. Port names can be prefixed with **tcp://** for TCP connections or **udp://** for UDP connections, or any other string of the form **xxx://** for some specific protocol, anything else is considered a serial port", in case only TCP or UDP is supported the prefix can be omitted. For example drivers like lx200 and nexstar accept **lx200://** and **nexstar://** respectively to indicate the TCP connection. The TCP or UDP port can be specified by **:port** suffix, but if omitted the standard port for the device should be assumed. Here is an example code for that:
 
 ```C
 char *name = DEVICE_PORT_ITEM->text.value;
@@ -472,6 +472,25 @@ if (strncmp(name, "tcp://", 6)) {
 	}
 }
 ```
+
+In INDIGO version 2.0-114 two utility functions are added to simplify the above example:
+- *indigo_is_device_url()* - returns true if prefix is **tcp://**, **udp://** or the given prefix
+- *indigo_open_network_device()* - opens device as a network device
+
+Using these functions the code will look like this:
+
+```C
+char *name = DEVICE_PORT_ITEM->text.value;
+if (!indigo_is_device_url(name, "nexdome")) {
+	PRIVATE_DATA->handle = indigo_open_serial(name);
+} else {
+	indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+	PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
+}
+```
+
+The above example will consider **tcp://**, **udp://** and **nexdome://** prefixes as network hosts. If the given prefix is NULL only **tcp://** and **udp://** prefixes will be considered network devices. Anything else will be considered local device.
+If no port is specified in the *DEVICE_PORT_ITEM*, the default port will be used - *8080* in this example. According to the protocol hint, **nexdome://** prefix will use TCP protocol. However if the prefix is **udp://** - UDP protocol will be used and *proto* will be set to *INDIGO_PROTOCOL_UDP* after *indigo_open_network_device()* returns.
 
 Many hardware vendors provide their own Software Development Kit (SDK) for their products in this case the communication with the devices can be done using the SDK provided by the hardware vendor.
 

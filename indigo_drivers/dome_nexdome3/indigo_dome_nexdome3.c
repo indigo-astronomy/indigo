@@ -798,7 +798,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					sleep(1);
 				} else {
 					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-					PRIVATE_DATA->handle = intigo_open_network_device(device_name, 8080, &proto);
+					PRIVATE_DATA->handle = indigo_open_network_device(device_name, 8080, &proto);
 				}
 				if ( PRIVATE_DATA->handle < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
