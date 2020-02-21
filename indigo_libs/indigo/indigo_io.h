@@ -35,8 +35,6 @@
 extern "C" {
 #endif
 
-#define is_device_url(name) (strstr(name, "://"))
-
 typedef enum {
 	INDIGO_PROTOCOL_TCP = 0,
 	INDIGO_PROTOCOL_UDP = 1
@@ -63,10 +61,14 @@ extern int indigo_open_tcp(const char *host, int port);
  */
 extern int indigo_open_udp(const char *host, int port);
 
+/** Check if the specified name begins with "tcp://", "udp://" or "prefix://". prefix can be null.
+ */
+extern bool indigo_is_device_url(const char *name, const char *prefix);
+
 /** Open TCP or UDP connection depending on the URL prefix tcp:// or udp:// for any other prefix protocol_hint is used.
     If no port is provided in the URL default port is used. protocol_hint will be set to actual protocol used for the connection.
  */
-int intigo_open_network_device(char *url, int default_port, indigo_network_protocol *protocol_hint);
+extern int intigo_open_network_device(const char *url, int default_port, indigo_network_protocol *protocol_hint);
 
 /** Read buffer.
  */
