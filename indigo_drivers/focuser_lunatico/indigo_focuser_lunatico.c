@@ -63,14 +63,18 @@
 #define get_port_index(dev)              ((dev)->gp_bits & PORT_INDEX_MASK)
 #define set_port_index(dev, index)       ((dev)->gp_bits = ((dev)->gp_bits & ~PORT_INDEX_MASK) | (PORT_INDEX_MASK & index))
 
+#define device_exists(device_index, port_index) (device_data[device_index].port[port_index] != NULL)
+
 #define PRIVATE_DATA                    ((lunatico_private_data *)device->private_data)
 #define PORT_DATA                       (PRIVATE_DATA->port_data[get_port_index(device)])
 
 #define LA_MODEL_PROPERTY               (PORT_DATA.model_hint_property)
-#define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_PROPERTY->items+0)
-#define LA_MODEL_PLATYPUS_ITEM          (LA_MODEL_PROPERTY->items+1)
+#define LA_MODEL_LIMPET_ITEM            (LA_MODEL_PROPERTY->items+0)
+#define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_PROPERTY->items+1)
+#define LA_MODEL_PLATYPUS_ITEM          (LA_MODEL_PROPERTY->items+2)
 
 #define LA_MODEL_PROPERTY_NAME          "LUNATICO_MODEL"
+#define LA_MODEL_LIMPET_ITEM_NAME       "LIMPET"
 #define LA_MODEL_ARMADILLO_ITEM_NAME    "ARMADILLO"
 #define LA_MODEL_PLATYPUS_ITEM_NAME     "PLATYPUS"
 
@@ -546,14 +550,15 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 static bool lunatico_open(indigo_device *device) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
 	if (DEVICE_CONNECTED) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
+			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			PRIVATE_DATA->count_open--;
 			return false;
 		}
 		char *name = DEVICE_PORT_ITEM->text.value;
@@ -598,13 +603,14 @@ static bool lunatico_open(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		return false;
 	}
+	set_connected_flag(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return true;
 }
 
 
 static void lunatico_close(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
 	if (!DEVICE_CONNECTED) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -614,6 +620,7 @@ static void lunatico_close(indigo_device *device) {
 		indigo_global_unlock(device);
 		PRIVATE_DATA->handle = 0;
 	}
+	clear_connected_flag(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
 
@@ -821,10 +828,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
 		// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
-		LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (LA_MODEL_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Seletek/Armadillo (2 ports)", true);
+		indigo_init_switch_item(LA_MODEL_LIMPET_ITEM, LA_MODEL_LIMPET_ITEM_NAME, "Limpet (1 port)", true);
+		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Seletek/Armadillo (2 ports)", false);
 		indigo_init_switch_item(LA_MODEL_PLATYPUS_ITEM, LA_MODEL_PLATYPUS_ITEM_NAME, "Platypus (3 ports)", false);
 		if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
@@ -938,8 +946,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					}
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					set_connected_flag(device);
-
 					PORT_DATA.focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
 				}
 			}
@@ -956,17 +962,21 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_delete_property(device, LA_WIRING_PROPERTY, NULL);
 				indigo_delete_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 				lunatico_close(device);
-				clear_connected_flag(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
 	} else if (indigo_property_match(LA_MODEL_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_MODEL_HINT
+		// -------------------------------------------------------------------------------- LA_MODEL
 		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
 		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_MODEL_PLATYPUS_ITEM->sw.value) {
+			create_port_device(0, 1, "Exp");
 			create_port_device(0, 2, "Third");
-		} else {
+		} else if (LA_MODEL_ARMADILLO_ITEM->sw.value) {
+			create_port_device(0, 1, "Exp");
+			delete_port_device(0, 2);
+		} else if (LA_MODEL_LIMPET_ITEM->sw.value) {
+			delete_port_device(0, 1);
 			delete_port_device(0, 2);
 		}
 		indigo_update_property(device, LA_MODEL_PROPERTY, NULL);
@@ -1384,9 +1394,7 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-
 		create_port_device(0, 0, "Main");
-		create_port_device(0, 1, "Ext");
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
