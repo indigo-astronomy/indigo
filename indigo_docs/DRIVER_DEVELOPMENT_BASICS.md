@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 24.01.2020 (draft)
+Revision: 22.02.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
