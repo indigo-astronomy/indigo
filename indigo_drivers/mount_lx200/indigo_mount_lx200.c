@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -95,20 +95,11 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 
 static bool meade_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (strncmp(name, "lx200://", 8)) {
+	if (!indigo_is_device_url(name, "lx200")) {
 		PRIVATE_DATA->handle = indigo_open_serial(name);
 	} else {
-		char *host = name + 8;
-		char *colon = strchr(host, ':');
-		if (colon == NULL) {
-			PRIVATE_DATA->handle = indigo_open_tcp(host, 4030);
-		} else {
-			char host_name[INDIGO_NAME_SIZE];
-			strncpy(host_name, host, colon - host);
-			host_name[colon - host] = 0;
-			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-		}
+		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
