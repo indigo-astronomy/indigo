@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -223,7 +223,7 @@ static void ieq_get_utc(indigo_device *device) {
 static bool ieq_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (strncmp(name, "ieq://", 6)) {
+	if (!indigo_is_device_url(name, "ieq")) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
 		if (PRIVATE_DATA->handle >= 0) {
 			if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4 || strlen(response) > 5) {
@@ -232,17 +232,8 @@ static bool ieq_open(indigo_device *device) {
 			}
 		}
 	} else {
-		char *host = name + 6;
-		char *colon = strchr(host, ':');
-		if (colon == NULL) {
-			PRIVATE_DATA->handle = indigo_open_tcp(host, 4030);
-		} else {
-			char host_name[INDIGO_NAME_SIZE];
-			strncpy(host_name, host, colon - host);
-			host_name[colon - host] = 0;
-			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-		}
+		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
@@ -1334,7 +1325,7 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 
 	SET_DRIVER_INFO(info, "iOptron Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
 
