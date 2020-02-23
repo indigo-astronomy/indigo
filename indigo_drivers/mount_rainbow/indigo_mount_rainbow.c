@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -61,20 +61,11 @@ static bool rainbow_command(indigo_device *device, char *command, char *response
 
 static bool rainbow_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (strncmp(name, "rainbow://", 10)) {
+	if (!indigo_is_device_url(name, "rainbow")) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
 	} else {
-		char *host = name + 10;
-		char *colon = strchr(host, ':');
-		if (colon == NULL) {
-			PRIVATE_DATA->handle = indigo_open_tcp(host, 4030);
-		} else {
-			char host_name[INDIGO_NAME_SIZE];
-			strncpy(host_name, host, colon - host);
-			host_name[colon - host] = 0;
-			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
-		}
+		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
