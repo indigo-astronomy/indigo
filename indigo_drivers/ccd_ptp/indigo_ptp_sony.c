@@ -125,6 +125,7 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 				case 0x800d: return "Self-timer 5s 5x";
 				case 0x800e: return "Self-timer 2s 3x";
 				case 0x800f: return "Self-timer 2s 5x";
+				case 0x8010: return "Continuous Hi+ Speed";
 				case 33591: return "Bracket 1/3EV 3x cont.";
 				case 0x8537: return "Bracket 1/3EV 5x cont.";
 				case 0x8937: return "Bracket 1/3EV 9x cont.";
