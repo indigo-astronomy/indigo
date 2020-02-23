@@ -1224,7 +1224,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				free(buffer);
 		}
 		default:
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x): +%d skipped", PRIVATE_DATA->event_code_label(code), code);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x)", PRIVATE_DATA->event_code_label(code), code);
 			return false;
 	}
 }
