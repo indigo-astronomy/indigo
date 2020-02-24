@@ -49,6 +49,8 @@
 
 #define DEFAULT_BAUDRATE            "115200"
 
+#define ROTATOR_SPEED 1
+
 #define MAX_PORTS  3
 #define MAX_DEVICES 4
 
@@ -136,13 +138,24 @@
 #define LA_MOTOR_TYPE_DC_ITEM_NAME         "DC"
 #define LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME   "STEP_DIR"
 
+typedef enum {
+	TYPE_FOCUSER = 0,
+	TYPE_ROTATOR = 1,
+	TYPE_AUX     = 2
+} device_type_t;
+
+const char *port_name[3] = { "Main", "Exp", "Third" };
+
 typedef struct {
 	int current_position,
 	    target_position,
 	    min_position,
 	    max_position,
 	    backlash;
+	device_type_t device_type;
+	double r_target_position, r_current_position;
 	indigo_timer *focuser_timer;
+	indigo_timer *rotator_timer;
 	indigo_property *step_mode_property,
 	                *current_control_property,
 	                *model_property,
@@ -174,10 +187,10 @@ static void compensate_focus(indigo_device *device, double new_temp);
 
 static lunatico_device_data device_data[MAX_DEVICES] = {0};
 
-static void create_port_device(int device_index, int port_index, char *name_ext);
+static void create_port_device(int device_index, int port_index, device_type_t type);
 static void delete_port_device(int device_index, int port_index);
 
-/* Deepsky Dad Commands ======================================================================== */
+/* Linatico Astronomia device Commands ======================================================================== */
 
 #define LUNATICO_CMD_LEN 100
 
@@ -192,7 +205,7 @@ typedef enum {
 typedef enum {
 	STEP_MODE_FULL = 0,
 	STEP_MODE_HALF = 1,
-} stepmode_t;
+} step_mode_t;
 
 typedef enum {
 	MW_LUNATICO_NORMAL = 0,
@@ -464,7 +477,7 @@ static bool lunatico_get_temperature(indigo_device *device, int sensor_index, do
 }
 
 
-static bool lunatico_set_step(indigo_device *device, stepmode_t mode) {
+static bool lunatico_set_step(indigo_device *device, step_mode_t mode) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
 
@@ -560,6 +573,98 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
+}
+
+
+// -------------------------------------------------------------------------------- INDIGO rotator device implementation
+
+static void rotator_timer_callback(indigo_device *device) {
+	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
+		ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_target_position = PORT_DATA.r_current_position;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	} else {
+		if (PORT_DATA.r_current_position < PORT_DATA.r_target_position) {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			if (PORT_DATA.r_target_position - PORT_DATA.r_current_position > ROTATOR_SPEED)
+				ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position = (PORT_DATA.r_current_position + ROTATOR_SPEED);
+			else
+				ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position = PORT_DATA.r_target_position;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_reschedule_timer(device, 0.2, &PORT_DATA.rotator_timer);
+		} else if (PORT_DATA.r_current_position > PORT_DATA.r_target_position){
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			if (PORT_DATA.r_current_position - PORT_DATA.r_target_position > ROTATOR_SPEED)
+				ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position = (PORT_DATA.r_current_position - ROTATOR_SPEED);
+			else
+				ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position = PORT_DATA.r_target_position;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_reschedule_timer(device, 0.2, &PORT_DATA.rotator_timer);
+		} else {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		}
+	}
+}
+
+static indigo_result rotator_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_rotator_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// --------------------------------------------------------------------------------
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_rotator_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(ROTATOR_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_POSITION
+		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
+		if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			PORT_DATA.r_target_position = ROTATOR_POSITION_ITEM->number.target;
+			PORT_DATA.r_current_position = ROTATOR_POSITION_ITEM->number.value;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		} else {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position;
+			PORT_DATA.r_target_position = ROTATOR_POSITION_ITEM->number.target;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			PORT_DATA.rotator_timer = indigo_set_timer(device, 0.2, rotator_timer_callback);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
+		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
+		if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		}
+		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_rotator_change_property(device, client, property);
+}
+
+static indigo_result rotator_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_rotator_detach(device);
 }
 
 
@@ -1006,10 +1111,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
 		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_MODEL_PLATYPUS_ITEM->sw.value) {
-			create_port_device(0, 1, "Exp");
-			create_port_device(0, 2, "Third");
+			create_port_device(0, 1, TYPE_FOCUSER);
+			create_port_device(0, 2, TYPE_ROTATOR);
 		} else if (LA_MODEL_ARMADILLO_ITEM->sw.value) {
-			create_port_device(0, 1, "Exp");
+			create_port_device(0, 1, TYPE_FOCUSER);
 			delete_port_device(0, 2);
 		} else if (LA_MODEL_LIMPET_ITEM->sw.value) {
 			delete_port_device(0, 1);
@@ -1200,7 +1305,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(LA_STEP_MODE_PROPERTY, property, false);
 		LA_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		stepmode_t mode;
+		step_mode_t mode;
 		if(LA_STEP_MODE_FULL_ITEM->sw.value) {
 			mode = STEP_MODE_FULL;
 		} else if(LA_STEP_MODE_HALF_ITEM->sw.value) {
@@ -1371,7 +1476,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 static int device_number = 0;
 
-static void create_port_device(int device_index, int port_index, char *name_ext) {
+static void create_port_device(int device_index, int port_index, device_type_t device_type) {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_LUNATICO_NAME,
 		focuser_attach,
@@ -1381,9 +1486,24 @@ static void create_port_device(int device_index, int port_index, char *name_ext)
 		focuser_detach
 	);
 
+	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
+		ROTATOR_LUNATICO_NAME,
+		rotator_attach,
+		indigo_rotator_enumerate_properties,
+		rotator_change_property,
+		NULL,
+		rotator_detach
+	);
+
 	if (port_index >= MAX_PORTS) return;
 	if (device_index >= MAX_DEVICES) return;
-	if (device_data[device_index].port[port_index] != NULL) return;
+	if (device_data[device_index].port[port_index] != NULL) {
+		if ((device_data[device_index].private_data) && (device_data[device_index].private_data->port_data[port_index].device_type == device_type)) {
+				return;
+		} else {
+				delete_port_device(device_index, device_index);
+		}
+	}
 
 	if (device_data[device_index].private_data == NULL) {
 		device_data[device_index].private_data = malloc(sizeof(lunatico_private_data));
@@ -1394,10 +1514,17 @@ static void create_port_device(int device_index, int port_index, char *name_ext)
 
 	device_data[device_index].port[port_index] = malloc(sizeof(indigo_device));
 	assert(device_data[device_index].port[port_index] != NULL);
-	memcpy(device_data[device_index].port[port_index], &focuser_template, sizeof(indigo_device));
-	device_data[device_index].port[port_index]->private_data = device_data[device_index].private_data;
-	sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", FOCUSER_LUNATICO_NAME, name_ext);
+	if (device_type == TYPE_FOCUSER) {
+		memcpy(device_data[device_index].port[port_index], &focuser_template, sizeof(indigo_device));
+		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", FOCUSER_LUNATICO_NAME, port_name[port_index]);
+		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_FOCUSER;
+	} else {
+		memcpy(device_data[device_index].port[port_index], &rotator_template, sizeof(indigo_device));
+		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", ROTATOR_LUNATICO_NAME, port_name[port_index]);
+		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_ROTATOR;
+	}
 	set_port_index(device_data[device_index].port[port_index], port_index);
+	device_data[device_index].port[port_index]->private_data = device_data[device_index].private_data;
 	indigo_attach_device(device_data[device_index].port[port_index]);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: Device with port index = %d", get_port_index(device_data[device_index].port[port_index]));
 }
@@ -1438,7 +1565,7 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		create_port_device(0, 0, "Main");
+		create_port_device(0, 0, TYPE_FOCUSER);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
