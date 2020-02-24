@@ -68,7 +68,7 @@
 #define PRIVATE_DATA                    ((lunatico_private_data *)device->private_data)
 #define PORT_DATA                       (PRIVATE_DATA->port_data[get_port_index(device)])
 
-#define LA_MODEL_PROPERTY               (PORT_DATA.model_hint_property)
+#define LA_MODEL_PROPERTY               (PORT_DATA.model_property)
 #define LA_MODEL_LIMPET_ITEM            (LA_MODEL_PROPERTY->items+0)
 #define LA_MODEL_ARMADILLO_ITEM         (LA_MODEL_PROPERTY->items+1)
 #define LA_MODEL_PLATYPUS_ITEM          (LA_MODEL_PROPERTY->items+2)
@@ -77,6 +77,19 @@
 #define LA_MODEL_LIMPET_ITEM_NAME       "LIMPET"
 #define LA_MODEL_ARMADILLO_ITEM_NAME    "ARMADILLO"
 #define LA_MODEL_PLATYPUS_ITEM_NAME     "PLATYPUS"
+
+#define LA_PORT_EXP_CONFIG_PROPERTY    (PORT_DATA.port_exp_config)
+#define LA_PORT_EXP_FOCUSER_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+0)
+#define LA_PORT_EXP_ROTATOR_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+1)
+
+#define LA_PORT_THIRD_CONFIG_PROPERTY    (PORT_DATA.port_third_config)
+#define LA_PORT_THIRD_FOCUSER_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+0)
+#define LA_PORT_THIRD_ROTATOR_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+1)
+
+#define LA_PORT_EXP_CONFIG_PROPERTY_NAME    "LUNATICO_PORT_EXP_CONFIG"
+#define LA_PORT_THIRD_CONFIG_PROPERTY_NAME  "LUNATICO_PORT_THIRD_CONFIG"
+#define LA_PORT_CONFIG_FOCUSER_ITEM_NAME    "FOCUSER"
+#define LA_PORT_CONFIG_ROTATOR_ITEM_NAME    "ROTATOR"
 
 
 #define LA_STEP_MODE_PROPERTY          (PORT_DATA.step_mode_property)
@@ -132,7 +145,9 @@ typedef struct {
 	indigo_timer *focuser_timer;
 	indigo_property *step_mode_property,
 	                *current_control_property,
-	                *model_hint_property,
+	                *model_property,
+	                *port_exp_config,
+	                *port_third_config,
 	                *temperature_sensor_property,
 	                *wiring_property,
 	                *motor_type_property;
@@ -766,7 +781,12 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 		if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property))
 			indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 	}
-	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
+	if (indigo_property_match(LA_MODEL_PROPERTY, property))
+		indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
+	if (indigo_property_match(LA_PORT_EXP_CONFIG_PROPERTY, property))
+		indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
+	if (indigo_property_match(LA_PORT_THIRD_CONFIG_PROPERTY, property))
+		indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
@@ -835,6 +855,20 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(LA_MODEL_ARMADILLO_ITEM, LA_MODEL_ARMADILLO_ITEM_NAME, "Seletek/Armadillo (2 ports)", false);
 		indigo_init_switch_item(LA_MODEL_PLATYPUS_ITEM, LA_MODEL_PLATYPUS_ITEM_NAME, "Platypus (3 ports)", false);
 		if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
+		LA_PORT_EXP_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_EXP_CONFIG_PROPERTY_NAME, "Port Configuration", "Exp port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (LA_PORT_EXP_CONFIG_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(LA_PORT_EXP_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
+		indigo_init_switch_item(LA_PORT_EXP_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
+		if (get_port_index(device) != 0) LA_PORT_EXP_CONFIG_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
+		LA_PORT_THIRD_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_THIRD_CONFIG_PROPERTY_NAME, "Port Configuration", "Third port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (LA_PORT_THIRD_CONFIG_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(LA_PORT_THIRD_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
+		indigo_init_switch_item(LA_PORT_THIRD_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
+		if (get_port_index(device) != 0) LA_PORT_THIRD_CONFIG_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (LA_STEP_MODE_PROPERTY == NULL)
@@ -872,6 +906,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		//---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
+		indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
+		indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1294,6 +1330,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, LA_MODEL_PROPERTY);
+			indigo_save_property(device, NULL, LA_PORT_EXP_CONFIG_PROPERTY);
+			indigo_save_property(device, NULL, LA_PORT_THIRD_CONFIG_PROPERTY);
 			indigo_save_property(device, NULL, LA_STEP_MODE_PROPERTY);
 			indigo_save_property(device, NULL, LA_POWER_CONTROL_PROPERTY);
 			indigo_save_property(device, NULL, LA_TEMPERATURE_SENSOR_PROPERTY);
@@ -1319,6 +1357,12 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 	indigo_delete_property(device, LA_MODEL_PROPERTY, NULL);
 	indigo_release_property(LA_MODEL_PROPERTY);
+
+	indigo_delete_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
+	indigo_release_property(LA_PORT_EXP_CONFIG_PROPERTY);
+
+	indigo_delete_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
+	indigo_release_property(LA_PORT_THIRD_CONFIG_PROPERTY);
 	return indigo_focuser_detach(device);
 }
 
