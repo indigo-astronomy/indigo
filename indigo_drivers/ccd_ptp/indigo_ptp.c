@@ -271,14 +271,20 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 				return "Time";
 			if (code == 1)
 				return "1/8000s";
+			if (code == 2)
+				return "1/4000s";
 			if (code == 3)
 				return "1/3200s";
 			if (code == 6)
 				return "1/1600s";
 			if (code == 12)
 				return "1/800s";
+			if (code == 13)
+				return "1/750s";
 			if (code == 15)
 				return "1/640s";
+			if (code == 28)
+				return "1/350s";
 			if (code == 80)
 				return "1/125s";
 			if (code < 100) {
@@ -286,7 +292,15 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 				return label;
 			}
 			if (code < 10000) {
-				sprintf(label, "1/%gs", round(10000.0 / code));
+				double fraction = 10000.0 / code;
+				double integral_part = 0.0;
+				double fraction_part = modf(fraction, &integral_part);
+				if (fraction_part >= 0.1 && integral_part < 10) {
+					// for 1/2.5s, 1/1.6s, 1/1.3s
+					sprintf(label, "1/%.1fs", fraction);
+				} else {
+					sprintf(label, "1/%gs", round(fraction));
+				}
 				return label;
 			}
 			sprintf(label, "%gs", code / 10000.0);
