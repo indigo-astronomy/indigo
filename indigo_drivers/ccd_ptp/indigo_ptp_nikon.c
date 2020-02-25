@@ -38,6 +38,45 @@
 
 #define NIKON_PRIVATE_DATA	((nikon_private_data *)(PRIVATE_DATA->vendor_private_data))
 
+// Nikon D3XXX series
+#define NIKON_PRODUCT_D3100 0x0427
+#define NIKON_PRODUCT_D3200 0x042c
+#define NIKON_PRODUCT_D3300 0x0433
+#define NIKON_PRODUCT_D3400 0x043d
+#define NIKON_PRODUCT_D3500 0x0445
+
+// Nikon EXPEED 5 series
+#define NIKON_PRODUCT_D5    0x043a
+#define NIKON_PRODUCT_D500  0x043c
+#define NIKON_PRODUCT_D7500 0x0440
+#define NIKON_PRODUCT_D850  0x0441
+// Nikon EXPEED 6 series
+#define NIKON_PRODUCT_Z7    0x0442
+#define NIKON_PRODUCT_Z6    0x0443
+#define NIKON_PRODUCT_Z50   0x0444
+
+#define IS_NIKON_D3XXX_SERIES() \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3100 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3200 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3300 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3400 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3500
+
+#define IS_NIKON_EXPEED5_SERIES() \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D5 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D500 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D7500 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D850
+
+#define IS_NIKON_EXPEED6_SERIES() \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z7 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z6 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z50
+
+#define IS_NIKON_EXPEED5_OR_LATER() \
+	IS_NIKON_EXPEED5_SERIES() || \
+	IS_NIKON_EXPEED6_SERIES()
+
 char *ptp_operation_nikon_code_label(uint16_t code) {
 	switch (code) {
 		case ptp_operation_nikon_GetProfileAllData: return "GetProfileAllData_Nikon";
@@ -435,7 +474,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 	static char label[PTP_MAX_CHARS];
 	switch (property) {
 		case ptp_property_CompressionSetting: {
-			if (PRIVATE_DATA->model.product == 0x043a || PRIVATE_DATA->model.product == 0x043c || PRIVATE_DATA->model.product == 0x0440 || PRIVATE_DATA->model.product == 0x0441 || PRIVATE_DATA->model.product == 0x0442 || PRIVATE_DATA->model.product == 0x0443) {
+			if (IS_NIKON_EXPEED5_OR_LATER()) {
 				switch (code) { case 0: return "JPEG basic"; case 1: return "JPEG basic *"; case 2: return "JPEG normal"; case 3: return "JPEG normal *"; case 4: return "JPEG fine"; case 5: return "JPEG  fine *"; case 6: return "TIFF (RGB)"; case 7: return "NEF"; case 8: return "NEF + JPEG basic"; case 9: return "NEF + JPEG basic *"; case 10: return "NEF + JPEG normal"; case 11: return "NEF + JPEG normal *"; case 12: return "NEF + JPEG fine"; case 13: return "NEF + JPEG fine *"; }
 			} else {
 				switch (code) { case 0: return "JPEG Basic"; case 1: return "JPEG Norm"; case 2: return "JPEG Fine"; case 3:return "TIFF-RGB"; case 4: return "RAW"; case 5: return "RAW + JPEG Basic"; case 6: return "RAW + JPEG Norm"; case 7: return "RAW + JPEG Fine"; }
@@ -451,7 +490,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			return label;
 		}
 		case ptp_property_StillCaptureMode: {
-			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; }
+			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; }
 			break;
 		}
 		case ptp_property_FocusMeteringMode: {
@@ -571,7 +610,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_nikon_ActivePicCtrlItem: {
-			switch (code) { case 0: return "Undefined"; case 1: return "Standard"; case 2: return "Neutral"; case 3: return "Vivid"; case 4: return "Monochrome"; case 5: return "Portrait"; case 6: return "Landscape"; case 7: return "Flat"; case 201: return "Custom 1"; case 202: return "Custom 2"; case 203: return "Custom 3"; case 204: return "Custom 4"; case 205: return "Custom 5"; case 206: return "Custom 6"; case 207: return "Custom 7"; case 208: return "Custom 8"; case 209: return "Custom 9"; }
+			switch (code) { case 0: return "Undefined"; case 1: return "Standard"; case 2: return "Neutral"; case 3: return "Vivid"; case 4: return "Monochrome"; case 5: return "Portrait"; case 6: return "Landscape"; case 7: return "Flat"; case 8: return "Auto"; case 101: return "Dream"; case 102: return "Morning"; case 103: return "Pop"; case 104: return "Sunday"; case 105: return "Somber"; case 106: return "Dramatic"; case 107: return "Silence"; case 108: return "Bleached"; case 109: return "Melancholic"; case 110: return "Pure"; case 111: return "Denim"; case 112: return "Toy"; case 113: return "Sepia"; case 114: return "Blue"; case 115: return "Red"; case 116: return "Pink"; case 117: return "Charcoal"; case 118: return "Graphite"; case 119: return "Binary"; case 120: return "Carbon"; case 201: return "Custom 1"; case 202: return "Custom 2"; case 203: return "Custom 3"; case 204: return "Custom 4"; case 205: return "Custom 5"; case 206: return "Custom 6"; case 207: return "Custom 7"; case 208: return "Custom 8"; case 209: return "Custom 9"; }
 			break;
 		}
 		case ptp_property_nikon_EffectMode: {
@@ -657,7 +696,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 	if (!ptp_initialise(device))
 		return false;
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
-	if (PRIVATE_DATA->model.product == 0x0427 || PRIVATE_DATA->model.product == 0x042c || PRIVATE_DATA->model.product == 0x0433 || PRIVATE_DATA->model.product == 0x043d || PRIVATE_DATA->model.product == 0x0445) {
+	if (IS_NIKON_D3XXX_SERIES()) {
 		static uint32_t operations[] = { ptp_operation_nikon_GetVendorPropCodes, ptp_operation_nikon_CheckEvent, ptp_operation_nikon_Capture, ptp_operation_nikon_AfDrive, ptp_operation_nikon_SetControlMode, ptp_operation_nikon_DeviceReady, ptp_operation_nikon_AfCaptureSDRAM, ptp_operation_nikon_DelImageSDRAM, ptp_operation_nikon_GetPreviewImg, ptp_operation_nikon_StartLiveView, ptp_operation_nikon_EndLiveView, ptp_operation_nikon_GetLiveViewImg, ptp_operation_nikon_MfDrive, ptp_operation_nikon_ChangeAfArea, ptp_operation_nikon_AfDriveCancel, 0 };
 		ptp_append_uint16_32_array(PRIVATE_DATA->info_operations_supported, operations);
 		INDIGO_LOG(indigo_log("operations:"));
@@ -960,7 +999,7 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			return true;
 		}
 		case ptp_property_CompressionSetting: {
-			if (PRIVATE_DATA->model.product == 0x043a || PRIVATE_DATA->model.product == 0x043c || PRIVATE_DATA->model.product == 0x0440 || PRIVATE_DATA->model.product == 0x0441 || PRIVATE_DATA->model.product == 0x0442 || PRIVATE_DATA->model.product == 0x0443)
+			if (IS_NIKON_EXPEED5_OR_LATER())
 				NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 8 && property->value.sw.value <= 13;
 			else
 				NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 5 && property->value.sw.value <= 7;
@@ -973,7 +1012,7 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
 	bool result = ptp_set_property(device, property);
 	if (property->code == ptp_property_CompressionSetting) {
-		if (PRIVATE_DATA->model.product == 0x043a || PRIVATE_DATA->model.product == 0x043c || PRIVATE_DATA->model.product == 0x0440 || PRIVATE_DATA->model.product == 0x0441 || PRIVATE_DATA->model.product == 0x0442 || PRIVATE_DATA->model.product == 0x0443)
+		if (IS_NIKON_EXPEED5_OR_LATER())
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 8 && property->value.sw.value <= 13;
 		else
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 5 && property->value.sw.value <= 7;

@@ -271,14 +271,20 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 				return "Time";
 			if (code == 1)
 				return "1/8000s";
+			if (code == 2)
+				return "1/4000s";
 			if (code == 3)
 				return "1/3200s";
 			if (code == 6)
 				return "1/1600s";
 			if (code == 12)
 				return "1/800s";
+			if (code == 13)
+				return "1/750s";
 			if (code == 15)
 				return "1/640s";
+			if (code == 28)
+				return "1/350s";
 			if (code == 80)
 				return "1/125s";
 			if (code < 100) {
@@ -286,7 +292,15 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 				return label;
 			}
 			if (code < 10000) {
-				sprintf(label, "1/%gs", round(10000.0 / code));
+				double fraction = 10000.0 / code;
+				double integral_part = 0.0;
+				double fraction_part = modf(fraction, &integral_part);
+				if (fraction_part >= 0.1 && integral_part < 10) {
+					// for 1/2.5s, 1/1.6s, 1/1.3s
+					sprintf(label, "1/%.1fs", fraction);
+				} else {
+					sprintf(label, "1/%gs", round(fraction));
+				}
 				return label;
 			}
 			sprintf(label, "%gs", code / 10000.0);
@@ -856,6 +870,39 @@ bool ptp_open(indigo_device *device) {
 	return rc >= 0;
 }
 
+uint32_t ptp_type_size(ptp_type type) {
+	switch (type) {
+	case ptp_int8_type:
+	case ptp_uint8_type:
+		return 1;
+	case ptp_int16_type:
+	case ptp_uint16_type:
+		return 2;
+	case ptp_int32_type:
+	case ptp_uint32_type:
+		return 4;
+	case ptp_int64_type:
+	case ptp_uint64_type:
+		return 8;
+	case ptp_int128_type:
+	case ptp_uint128_type:
+		return 16;
+	// array of integers
+	case ptp_aint8_type:
+	case ptp_auint8_type:
+	case ptp_aint16_type:
+	case ptp_auint16_type:
+	case ptp_aint32_type:
+	case ptp_auint32_type:
+	case ptp_aint64_type:
+	case ptp_auint64_type:
+	case ptp_aint128_type:
+	case ptp_auint128_type:
+	default:
+		return 0;
+	}
+}
+
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->handle == NULL)
@@ -1253,7 +1300,7 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 				uint8_t *end = ptp_encode_string(property->value.sw_str.value, buffer);
 				return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, buffer, (uint32_t)(end - buffer));
 			}
-			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, sizeof(uint32_t));
+			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, &property->value.number.value, ptp_type_size(property->type));
 		}
 		case INDIGO_NUMBER_VECTOR: {
 			property->value.number.value = property->property->items->number.target;
