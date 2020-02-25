@@ -73,7 +73,7 @@
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z6 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z50
 
-#define IS_NIKON_EXSPEED5_OR_LATER() \
+#define IS_NIKON_EXPEED5_OR_LATER() \
 	IS_NIKON_EXPEED5_SERIES() || \
 	IS_NIKON_EXPEED6_SERIES()
 
@@ -474,7 +474,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 	static char label[PTP_MAX_CHARS];
 	switch (property) {
 		case ptp_property_CompressionSetting: {
-			if (IS_NIKON_EXSPEED5_OR_LATER()) {
+			if (IS_NIKON_EXPEED5_OR_LATER()) {
 				switch (code) { case 0: return "JPEG basic"; case 1: return "JPEG basic *"; case 2: return "JPEG normal"; case 3: return "JPEG normal *"; case 4: return "JPEG fine"; case 5: return "JPEG  fine *"; case 6: return "TIFF (RGB)"; case 7: return "NEF"; case 8: return "NEF + JPEG basic"; case 9: return "NEF + JPEG basic *"; case 10: return "NEF + JPEG normal"; case 11: return "NEF + JPEG normal *"; case 12: return "NEF + JPEG fine"; case 13: return "NEF + JPEG fine *"; }
 			} else {
 				switch (code) { case 0: return "JPEG Basic"; case 1: return "JPEG Norm"; case 2: return "JPEG Fine"; case 3:return "TIFF-RGB"; case 4: return "RAW"; case 5: return "RAW + JPEG Basic"; case 6: return "RAW + JPEG Norm"; case 7: return "RAW + JPEG Fine"; }
@@ -999,7 +999,7 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			return true;
 		}
 		case ptp_property_CompressionSetting: {
-			if (IS_NIKON_EXSPEED5_OR_LATER())
+			if (IS_NIKON_EXPEED5_OR_LATER())
 				NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 8 && property->value.sw.value <= 13;
 			else
 				NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 5 && property->value.sw.value <= 7;
@@ -1012,7 +1012,7 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
 	bool result = ptp_set_property(device, property);
 	if (property->code == ptp_property_CompressionSetting) {
-		if (IS_NIKON_EXSPEED5_OR_LATER())
+		if (IS_NIKON_EXPEED5_OR_LATER())
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 8 && property->value.sw.value <= 13;
 		else
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 5 && property->value.sw.value <= 7;
