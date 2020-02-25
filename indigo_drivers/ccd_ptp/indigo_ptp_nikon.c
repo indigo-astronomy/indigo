@@ -490,7 +490,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			return label;
 		}
 		case ptp_property_StillCaptureMode: {
-			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; }
+			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; }
 			break;
 		}
 		case ptp_property_FocusMeteringMode: {
@@ -610,7 +610,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_nikon_ActivePicCtrlItem: {
-			switch (code) { case 0: return "Undefined"; case 1: return "Standard"; case 2: return "Neutral"; case 3: return "Vivid"; case 4: return "Monochrome"; case 5: return "Portrait"; case 6: return "Landscape"; case 7: return "Flat"; case 201: return "Custom 1"; case 202: return "Custom 2"; case 203: return "Custom 3"; case 204: return "Custom 4"; case 205: return "Custom 5"; case 206: return "Custom 6"; case 207: return "Custom 7"; case 208: return "Custom 8"; case 209: return "Custom 9"; }
+			switch (code) { case 0: return "Undefined"; case 1: return "Standard"; case 2: return "Neutral"; case 3: return "Vivid"; case 4: return "Monochrome"; case 5: return "Portrait"; case 6: return "Landscape"; case 7: return "Flat"; case 8: return "Auto"; case 101: return "Dream"; case 102: return "Morning"; case 103: return "Pop"; case 104: return "Sunday"; case 105: return "Somber"; case 106: return "Dramatic"; case 107: return "Silence"; case 108: return "Bleached"; case 109: return "Melancholic"; case 110: return "Pure"; case 111: return "Denim"; case 112: return "Toy"; case 113: return "Sepia"; case 114: return "Blue"; case 115: return "Red"; case 116: return "Pink"; case 117: return "Charcoal"; case 118: return "Graphite"; case 119: return "Binary"; case 120: return "Carbon"; case 201: return "Custom 1"; case 202: return "Custom 2"; case 203: return "Custom 3"; case 204: return "Custom 4"; case 205: return "Custom 5"; case 206: return "Custom 6"; case 207: return "Custom 7"; case 208: return "Custom 8"; case 209: return "Custom 9"; }
 			break;
 		}
 		case ptp_property_nikon_EffectMode: {
