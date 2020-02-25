@@ -577,8 +577,27 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 
 
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
+static int degrees_to_steps(double degrees, int steps_rev) {
+	double deg = degrees;
+	while (deg >= 180) deg -= 360;
+	deg += 180;
+	int steps = (int)(deg * steps_rev/360.0);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "CALC: degrees = %.3f, deg = %.3f, steps_rev = %d, steps = %d", degrees, deg, steps_rev, steps);
+	return steps;
+}
+
+static int steps_to_degrees(double steps, int steps_rev) {
+	double st = steps;
+	while (st >= steps_rev) st -= steps_rev;
+	st -= steps_rev/2;
+	int degrees = (int)(st * 360 / steps_rev);
+	while (degrees < 0) degrees += 360;
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "CALC: steps = %.3f, st = %.3f, steps_rev = %d, degrees = %d", steps, st, steps_rev, degrees);
+	return degrees;
+}
 
 static void rotator_timer_callback(indigo_device *device) {
+	steps_to_degrees(degrees_to_steps(PORT_DATA.r_current_position, (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value), (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value);
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
 		ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_target_position = PORT_DATA.r_current_position;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -611,6 +630,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_rotator_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_rotator_enumerate_properties(device, NULL, NULL);
