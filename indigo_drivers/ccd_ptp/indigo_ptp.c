@@ -810,11 +810,12 @@ bool ptp_open(indigo_device *device) {
 		libusb_free_config_descriptor(config_descriptor);
 		config_descriptor = NULL;
 	}
-	if (rc >= 0 && config_descriptor) {
-		int configuration_value = config_descriptor->bConfigurationValue;
-		rc = libusb_set_configuration(handle, configuration_value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_set_configuration(%d) -> %s", configuration_value, rc < 0 ? libusb_error_name(rc) : "OK");
-	}
+// Already sent OpenSession
+//	if (rc >= 0 && config_descriptor) {
+//		int configuration_value = config_descriptor->bConfigurationValue;
+//		rc = libusb_set_configuration(handle, configuration_value);
+//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_set_configuration(%d) -> %s", configuration_value, rc < 0 ? libusb_error_name(rc) : "OK");
+//	}
 	if (rc >= 0 && interface) {
 		int interface_number = interface->altsetting->bInterfaceNumber;
 		rc = libusb_claim_interface(handle, interface_number);
