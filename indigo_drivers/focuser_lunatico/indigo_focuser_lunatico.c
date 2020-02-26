@@ -656,6 +656,18 @@ static void lunatico_close(indigo_device *device) {
 
 static int lunatico_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
+	// -------------------------------------------------------------------------------- SIMULATION
+	SIMULATION_PROPERTY->hidden = true;
+	// -------------------------------------------------------------------------------- DEVICE_PORT
+	DEVICE_PORT_PROPERTY->hidden = false;
+	// -------------------------------------------------------------------------------- DEVICE_PORTS
+	DEVICE_PORTS_PROPERTY->hidden = false;
+	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
+	DEVICE_BAUDRATE_PROPERTY->hidden = false;
+	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
+	// --------------------------------------------------------------------------------
+	INFO_PROPERTY->count = 5;
+
 	LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (LA_MODEL_PROPERTY == NULL)
 		return INDIGO_FAILED;
@@ -829,6 +841,35 @@ static void lunatico_delete_properties(indigo_device *device) {
 	indigo_delete_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 }
 
+
+static void configure_ports(indigo_device *device) {
+	device_type_t exp_device_type, third_device_type;
+
+	if (LA_PORT_EXP_FOCUSER_ITEM->sw.value) {
+		exp_device_type = TYPE_FOCUSER;
+	} else {
+		exp_device_type = TYPE_ROTATOR;
+	}
+
+	if (LA_PORT_THIRD_FOCUSER_ITEM->sw.value) {
+		third_device_type = TYPE_FOCUSER;
+	} else {
+		third_device_type = TYPE_ROTATOR;
+	}
+
+	if (LA_MODEL_PLATYPUS_ITEM->sw.value) {
+		create_port_device(0, 1, exp_device_type);
+		create_port_device(0, 2, third_device_type);
+	} else if (LA_MODEL_ARMADILLO_ITEM->sw.value) {
+		create_port_device(0, 1, exp_device_type);
+		delete_port_device(0, 2);
+	} else if (LA_MODEL_LIMPET_ITEM->sw.value) {
+		delete_port_device(0, 1);
+		delete_port_device(0, 2);
+	}
+}
+
+
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
 static int degrees_to_steps(double degrees, int steps_rev) {
 	double deg = degrees;
@@ -943,6 +984,27 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
+	} else if (indigo_property_match(LA_MODEL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- LA_MODEL
+		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
+		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
+		configure_ports(device);
+		indigo_update_property(device, LA_MODEL_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(LA_PORT_EXP_CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
+		indigo_property_copy_values(LA_PORT_EXP_CONFIG_PROPERTY, property, false);
+		LA_PORT_EXP_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+		configure_ports(device);
+		indigo_update_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(LA_PORT_THIRD_CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
+		indigo_property_copy_values(LA_PORT_THIRD_CONFIG_PROPERTY, property, false);
+		LA_PORT_THIRD_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+		configure_ports(device);
+		indigo_update_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
@@ -1127,17 +1189,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORTS
-		DEVICE_PORTS_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
-		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
-		// --------------------------------------------------------------------------------
-		INFO_PROPERTY->count = 5;
 
 		if (get_port_index(device) == 0) FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 
@@ -1182,34 +1233,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
-}
-
-
-static void configure_ports(indigo_device *device) {
-	device_type_t exp_device_type, third_device_type;
-
-	if (LA_PORT_EXP_FOCUSER_ITEM->sw.value) {
-		exp_device_type = TYPE_FOCUSER;
-	} else {
-		exp_device_type = TYPE_ROTATOR;
-	}
-
-	if (LA_PORT_THIRD_FOCUSER_ITEM->sw.value) {
-		third_device_type = TYPE_FOCUSER;
-	} else {
-		third_device_type = TYPE_ROTATOR;
-	}
-
-	if (LA_MODEL_PLATYPUS_ITEM->sw.value) {
-		create_port_device(0, 1, exp_device_type);
-		create_port_device(0, 2, third_device_type);
-	} else if (LA_MODEL_ARMADILLO_ITEM->sw.value) {
-		create_port_device(0, 1, exp_device_type);
-		delete_port_device(0, 2);
-	} else if (LA_MODEL_LIMPET_ITEM->sw.value) {
-		delete_port_device(0, 1);
-		delete_port_device(0, 2);
-	}
 }
 
 
