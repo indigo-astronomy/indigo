@@ -724,7 +724,6 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", false);
 	indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
 	//---------------------------------------------------------------------------
-	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
 	indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
 	indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
@@ -936,6 +935,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_rotator_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1235,6 +1235,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1727,7 +1728,7 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
 		if(indigo_is_driver_loaded(CONFLICTING_DRIVER) && (action == INDIGO_DRIVER_INIT)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is loaded. This may result in errors", CONFLICTING_DRIVER);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
 			last_action = INDIGO_DRIVER_SHUTDOWN;
 			return INDIGO_FAILED;
 		}
