@@ -83,6 +83,19 @@ static bool is_pre_vista() {
 static int used_driver_slots = 0;
 static int used_subprocess_slots = 0;
 
+
+bool indigo_is_driver_loaded(char *driver_name) {
+	assert(driver_name != NULL);
+	for (int dc = 0; dc < used_driver_slots;  dc++) {
+		if (!strncmp(indigo_available_drivers[dc].name, driver_name, INDIGO_NAME_SIZE)) {
+			INDIGO_DEBUG(indigo_debug("Looked up driver %s is loaded", driver_name));
+			return true;
+		}
+	}
+	INDIGO_DEBUG(indigo_debug("Looked up driver %s is NOT loaded", driver_name));
+	return false;
+}
+
 static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle, bool init, indigo_driver_entry **driver) {
 	int empty_slot = used_driver_slots; /* the first slot after the last used is a good candidate */
 	pthread_mutex_lock(&mutex);
