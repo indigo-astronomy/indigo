@@ -935,7 +935,6 @@ static indigo_result rotator_attach(indigo_device *device) {
 	if (indigo_rotator_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		return indigo_rotator_enumerate_properties(device, NULL, NULL);
 	}
@@ -1727,6 +1726,11 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+		if(indigo_is_driver_loaded(CONFLICTING_DRIVER) && (action == INDIGO_DRIVER_INIT)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is loaded. This may result in errors", CONFLICTING_DRIVER);
+			last_action = INDIGO_DRIVER_SHUTDOWN;
+			return INDIGO_FAILED;
+		}
 		create_port_device(0, 0, DEFAULT_DEVICE);
 		break;
 
