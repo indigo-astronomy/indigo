@@ -835,16 +835,13 @@ bool ptp_open(indigo_device *device) {
 				int address = ep[i].bEndpointAddress;
 				if ((address & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN) {
 					PRIVATE_DATA->ep_in = address;
-					libusb_clear_halt(handle, address);
 				} else if ((address & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT) {
 					PRIVATE_DATA->ep_out = address;
-					libusb_clear_halt(handle, address);
 				}
 			} else if (ep[i].bmAttributes == LIBUSB_TRANSFER_TYPE_INTERRUPT) {
 				int address = ep[i].bEndpointAddress;
 				if ((address & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN) {
 					PRIVATE_DATA->ep_int = address;
-					libusb_clear_halt(handle, address);
 				}
 			}
 		}
