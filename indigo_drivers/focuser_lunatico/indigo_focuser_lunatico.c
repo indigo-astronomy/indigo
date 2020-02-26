@@ -880,6 +880,7 @@ static int degrees_to_steps(double degrees, int steps_rev) {
 	return steps;
 }
 
+
 static int steps_to_degrees(double steps, int steps_rev) {
 	double st = steps;
 	while (st >= steps_rev) st -= steps_rev;
@@ -889,6 +890,7 @@ static int steps_to_degrees(double steps, int steps_rev) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "CALC: steps = %.3f, st = %.3f, steps_rev = %d, degrees = %d", steps, st, steps_rev, degrees);
 	return degrees;
 }
+
 
 static void rotator_timer_callback(indigo_device *device) {
 	steps_to_degrees(degrees_to_steps(PORT_DATA.r_current_position, (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value), (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value);
@@ -920,10 +922,12 @@ static void rotator_timer_callback(indigo_device *device) {
 	}
 }
 
+
 static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	lunatico_enumerate_properties(device, client, property);
 	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }
+
 
 static indigo_result rotator_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -937,6 +941,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 	}
 	return INDIGO_FAILED;
 }
+
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -1042,6 +1047,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	}
 	return indigo_rotator_change_property(device, client, property);
 }
+
 
 static indigo_result rotator_detach(indigo_device *device) {
 	lunatico_detach(device);
@@ -1713,7 +1719,7 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Lunatico Astronomia Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -1721,7 +1727,7 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		create_port_device(0, 0, TYPE_FOCUSER);
+		create_port_device(0, 0, DEFAULT_DEVICE);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:

@@ -34,8 +34,18 @@
 extern "C" {
 #endif
 
+#ifdef LUNATICO_ROTATOR_DRIVER
+#define DRIVER_ENTRY_POINT       indigo_rotator_lunatico
+#define DRIVER_NAME              "indigo_rotator_lunatico"
+#define DRIVER_INFO              "Lunatico Astronomia Rotator"
+#define DEFAULT_DEVICE           TYPE_ROTATOR
+#else /* FOCUSER */
 #define DRIVER_ENTRY_POINT       indigo_focuser_lunatico
 #define DRIVER_NAME              "indigo_focuser_lunatico"
+#define DRIVER_INFO              "Lunatico Astronomia Focuser"
+#define DEFAULT_DEVICE           TYPE_FOCUSER
+#endif
+
 #define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
 #define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
 
