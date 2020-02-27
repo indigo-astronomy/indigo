@@ -24,4 +24,7 @@
  */
 
 #include "indigo_focuser_lunatico.h"
-#include "shared/indigo_lunatico_main_shared.c"
+
+#define DRIVER_ENTRY_POINT       indigo_focuser_lunatico
+
+#include "shared/lunatico_main_shared.c"

@@ -23,4 +23,7 @@
  \file indigo_rotator_lunatico_main.c
  */
 #include "indigo_rotator_lunatico.h"
-#include "../focuser_lunatico/shared/indigo_lunatico_main_shared.c"
+
+#define DRIVER_ENTRY_POINT       indigo_rotator_lunatico
+
+#include "../focuser_lunatico/shared/lunatico_main_shared.c"
