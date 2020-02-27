@@ -973,6 +973,7 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 			lunatico_save_properties(device);
 		}
 	}
+	return INDIGO_OK;
 }
 
 
