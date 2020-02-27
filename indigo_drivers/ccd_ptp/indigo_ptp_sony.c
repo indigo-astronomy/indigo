@@ -39,6 +39,7 @@
 #define SONY_PRIVATE_DATA	((sony_private_data *)(PRIVATE_DATA->vendor_private_data))
 #define SONY_ITERATE_DOWN	0xFFFF0000FFFFFFFFULL
 #define SONY_ITERATE_UP		0xFFFF000000000000ULL
+#define SONY_ISO_AUTO     0xFFFFFFULL
 
 char *ptp_operation_sony_code_label(uint16_t code) {
 	switch (code) {
@@ -329,6 +330,7 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			switch (code) {
 				case SONY_ITERATE_DOWN: return "-";
 				case SONY_ITERATE_UP: return "+";
+				case SONY_ISO_AUTO: return "Auto";
 			}
 			sprintf(label, "%d", (int)code);
 			return label;
@@ -626,7 +628,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			SONY_PRIVATE_DATA->focus_state = target->value.number.value;
 			break;
 		case ptp_property_CompressionSetting:
-			SONY_PRIVATE_DATA->is_dual_compression = target-> value.number.value == 19;
+			SONY_PRIVATE_DATA->is_dual_compression = target-> value.number.value == 18 || target-> value.number.value == 19 || target-> value.number.value == 20;
 			break;
 	}
 	ptp_update_property(device, target);
@@ -862,9 +864,18 @@ bool ptp_sony_exposure(indigo_device *device) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
+		bool complete_detected = false;
 		while (true) {
 			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
 				break;
+			// SONY a9 does not notify ObjectAdded
+			ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
+			if ( ! complete_detected && property && property->value.number.value > 0x8000) {
+				// CaptureCompleted
+				complete_detected = property->value.number.value == 0x8001;
+				uint32_t dummy[1] = {0xffffc001};
+				ptp_sony_handle_event(device, ptp_event_sony_ObjectAdded, dummy);
+			}
 			indigo_usleep(100000);
 		}
 		return true;
