@@ -34,13 +34,7 @@
 extern "C" {
 #endif
 
-#define DRIVER_ENTRY_POINT       indigo_focuser_lunatico
-#define DRIVER_NAME              "indigo_focuser_lunatico"
-#define CONFLICTING_DRIVER       "indigo_rotator_lunatico"
-#define DRIVER_INFO              "Lunatico Astronomia Focuser"
-#define DEFAULT_DEVICE           TYPE_FOCUSER
-
-extern indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_focuser_lunatico(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }

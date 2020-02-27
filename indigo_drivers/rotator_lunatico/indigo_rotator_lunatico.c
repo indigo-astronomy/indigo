@@ -22,6 +22,7 @@
 /** INDIGO Lunatico Armadillo, Platypus etc. rotator driver
  \file indigo_rotator_lunatico.c
  */
+
 #include "indigo_rotator_lunatico.h"
 
 #define DRIVER_ENTRY_POINT       indigo_rotator_lunatico
