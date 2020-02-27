@@ -26,7 +26,27 @@
 #ifndef rotator_lunatico_h
 #define rotator_lunatico_h
 
-#define LUNATICO_ROTATOR_DRIVER
-#include "../focuser_lunatico/indigo_focuser_lunatico.h"
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_rotator_driver.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define DRIVER_ENTRY_POINT       indigo_rotator_lunatico
+#define DRIVER_NAME              "indigo_rotator_lunatico"
+#define CONFLICTING_DRIVER       "indigo_focuser_lunatico"
+#define DRIVER_INFO              "Lunatico Astronomia Rotator"
+#define DEFAULT_DEVICE           TYPE_ROTATOR
+
+#define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
+#define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
+
+extern indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* rotator_lunatico_h */
