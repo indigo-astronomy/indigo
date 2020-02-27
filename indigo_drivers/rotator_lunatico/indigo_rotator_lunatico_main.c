@@ -23,4 +23,4 @@
  \file indigo_rotator_lunatico_main.c
  */
 #include "indigo_rotator_lunatico.h"
-#include "../focuser_lunatico/indigo_focuser_lunatico_main.c"
+#include "../focuser_lunatico/shared/indigo_lunatico_main_shared.c"

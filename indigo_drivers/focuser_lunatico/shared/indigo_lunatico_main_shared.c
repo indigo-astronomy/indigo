@@ -19,8 +19,24 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** INDIGO Lunatico Armadillo, Platypus etc. rotator driver
- \file indigo_rotator_lunatico.c
+/** INDIGO DSD Lunatico Armadillo, Platypus etc. focuser main
+ \file indigo_focuser_lunatico_main.c
  */
-#include "indigo_rotator_lunatico.h"
-#include "../focuser_lunatico/shared/indigo_lunatico_shared.c"
+
+#include <stdio.h>
+#include <string.h>
+
+#include <indigo/indigo_driver_xml.h>
+
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	DRIVER_ENTRY_POINT(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	DRIVER_ENTRY_POINT(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
+}
