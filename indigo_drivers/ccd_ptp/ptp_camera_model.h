@@ -8,6 +8,9 @@
 static ptp_camera_model CAMERA[] = {
   { 0x045e, 0x0a00, "Microsoft Lumia", 0, 0, 0, 0 },
   { 0x05ac, 0x12a8, "Apple iPhone", 0, 0, 0, 0 },
+  { CANON_VID, 0x30eb, "Canon EOS 20D", ptp_flag_lv, 3504, 2336, 6.4 },
+  { CANON_VID, 0x30ee, "Canon EOS 350D", ptp_flag_lv, 3456, 2304, 6.4 },
+  { CANON_VID, 0x3101, "Canon EOS 5D", ptp_flag_lv, 4368, 2912, 8.2 },
   { CANON_VID, 0x3110, "Canon EOS 400D", 0, 3888, 2592, 5.7 },
   { CANON_VID, 0x3113, "Canon EOS 30D", 0, 3504, 2336, 6.4 },
   { CANON_VID, 0x3145, "Canon EOS 450D", ptp_flag_lv, 4272, 2848, 5.19 },
@@ -56,6 +59,7 @@ static ptp_camera_model CAMERA[] = {
   { CANON_VID, 0x32da, "Canon EOS R", ptp_flag_lv, 6720, 4480, 5.35 },
   { CANON_VID, 0x32e1, "Canon EOS 2000D", ptp_flag_lv, 6000, 4000, 3.71 },
   { CANON_VID, 0x32ea, "Canon EOS 90D", ptp_flag_lv, 6960, 4640, 3.2 },
+  { CANON_VID, 0xFFFF, "Canon Camera", ptp_flag_lv, 0, 0, 0 },
   { NIKON_VID, 0x0406, "Nikon D70", 0, 3008, 2000, 7.87 },
   { NIKON_VID, 0x0408, "Nikon D2X", 0, 4288, 2848, 5.52 },
   { NIKON_VID, 0x040a, "Nikon D50", 0, 3008, 2000, 7.87 },
@@ -106,6 +110,7 @@ static ptp_camera_model CAMERA[] = {
   { NIKON_VID, 0x0443, "Nikon Z 6", ptp_flag_lv, 6048, 4024, 5.9 },
   { NIKON_VID, 0x0444, "Nikon Z 50", ptp_flag_lv, 5568, 3712, 4.2 },
   { NIKON_VID, 0x0445, "Nikon D3500", ptp_flag_lv, 6000, 4000, 3.92 },
+  { NIKON_VID, 0xFFFF, "Nikon Camera", ptp_flag_lv, 0, 0, 0 },
   { SONY_VID, 0x079b, "Sony Alpha A68", ptp_flag_lv, 6000, 4000, 3.92 },
   { SONY_VID, 0x079c, "Sony Alpha A6300", ptp_flag_lv, 6000, 4000, 3.92 },
   { SONY_VID, 0x079e, "Sony Alpha A99II", ptp_flag_lv, 7952, 5304, 4.51 },
@@ -126,6 +131,7 @@ static ptp_camera_model CAMERA[] = {
   { SONY_VID, 0x0c33, "Sony Alpha A7RIII", ptp_flag_lv, 7952, 5304, 4.5 },
   { SONY_VID, 0x0c34, "Sony Alpha A7III", ptp_flag_lv, 6000, 4000, 5.98 },
   { SONY_VID, 0x0ccc, "Sony Alpha A7RIV", ptp_flag_lv, 9504, 6336, 3.76 },
+  { SONY_VID, 0xFFFF, "Sony Camera", ptp_flag_lv, 0, 0, 0 },
   { 0 },
 };
 
