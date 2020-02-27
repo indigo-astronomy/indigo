@@ -20,10 +20,13 @@
 // 2.0 by Rumen G. Bogdanovski
 
 /** INDIGO Lunatico Armadillo, Platypus etc. focuser driver
- \file indigo_focuser_lunatico.c
+ \file lunatico_shared.c
  */
 
 #define DRIVER_VERSION 0x0001
+
+#define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
+#define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
 
 #include <stdlib.h>
 #include <string.h>

@@ -23,4 +23,11 @@
  \file indigo_rotator_lunatico.c
  */
 #include "indigo_rotator_lunatico.h"
-#include "../focuser_lunatico/shared/indigo_lunatico_shared.c"
+
+#define DRIVER_ENTRY_POINT       indigo_rotator_lunatico
+#define DRIVER_NAME              "indigo_rotator_lunatico"
+#define CONFLICTING_DRIVER       "indigo_focuser_lunatico"
+#define DRIVER_INFO              "Lunatico Astronomia Rotator"
+#define DEFAULT_DEVICE           TYPE_ROTATOR
+
+#include "../focuser_lunatico/shared/lunatico_shared.c"

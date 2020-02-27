@@ -20,7 +20,7 @@
 // 2.0 by Rumen G. Bogdanovski
 
 /** INDIGO DSD Lunatico Armadillo, Platypus etc. focuser main
- \file indigo_focuser_lunatico_main.c
+ \file lunatico_main_shared.c
  */
 
 #include <stdio.h>
