@@ -872,7 +872,7 @@ bool ptp_sony_exposure(indigo_device *device) {
 			ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
 			if ( ! complete_detected && property && property->value.number.value > 0x8000) {
 				// CaptureCompleted
-				complete_detected = property->value.number.value== 0x8001;
+				complete_detected = property->value.number.value == 0x8001;
 				uint32_t dummy[1] = {0xffffc001};
 				ptp_sony_handle_event(device, ptp_event_sony_ObjectAdded, dummy);
 			}
