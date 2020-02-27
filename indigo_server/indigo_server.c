@@ -628,10 +628,12 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 			}
 			if (drivers_property->items[i].sw.value) {
 				if (driver) {
-					if (driver->dl_handle == NULL && !driver->initialized)
+					if (driver->dl_handle != NULL && !driver->initialized)
 						drivers_property->items[i].sw.value = driver->initialized = driver->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
+						if (!driver->initialized) indigo_remove_driver(driver);
 				} else {
-					drivers_property->items[i].sw.value = indigo_load_driver(name, true, NULL) == INDIGO_OK;
+					drivers_property->items[i].sw.value = indigo_load_driver(name, true, &driver) == INDIGO_OK;
+					if (driver && !driver->initialized) indigo_remove_driver(driver);
 				}
 			} else if (driver) {
 				if (driver->dl_handle) {
@@ -707,7 +709,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						}
 					}
 					unload_property->state = INDIGO_OK_STATE;
-					indigo_update_property(device, unload_property, "Driver %s unoaded", name);
+					indigo_update_property(device, unload_property, "Driver %s unloaded", name);
 					return INDIGO_OK;
 				}
 			unload_property->state = INDIGO_ALERT_STATE;
@@ -1063,7 +1065,7 @@ static void server_main() {
 	}
 
 	indigo_server_add_file_resource("/log", "indigo.log", "text/plain; charset=UTF-8");
-	
+
 	if (!command_line_drivers) {
 		for (static_drivers_count = 0; static_drivers[static_drivers_count]; static_drivers_count++) {
 			indigo_add_driver(static_drivers[static_drivers_count], false, NULL);
