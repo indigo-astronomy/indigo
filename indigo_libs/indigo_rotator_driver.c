@@ -87,7 +87,7 @@ indigo_result indigo_rotator_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			ROTATOR_LIMITS_PROPERTY->hidden = true;
 			indigo_init_number_item(ROTATOR_LIMITS_MIN_POSITION_ITEM, ROTATOR_LIMITS_MIN_POSITION_ITEM_NAME, "Minimum position (°)", -90, 360, 1, -90);
-			indigo_init_number_item(ROTATOR_LIMITS_MAX_POSITION_ITEM, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME, "Maximum (°)", -90, 360, 1, 360);
+			indigo_init_number_item(ROTATOR_LIMITS_MAX_POSITION_ITEM, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME, "Maximum position (°)", -90, 360, 1, 360);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
