@@ -895,8 +895,9 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_STEP_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_STEP_MODE_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(LA_STEP_MODE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+
 		LA_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		step_mode_t mode;
 		if(LA_STEP_MODE_FULL_ITEM->sw.value) {
@@ -912,8 +913,8 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_POWER_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_POWER_CONTROL_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(LA_POWER_CONTROL_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		LA_POWER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 
 		if (!lunatico_set_move_power(device, LA_POWER_CONTROL_MOVE_ITEM->number.value)) {
@@ -933,8 +934,8 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_TEMPERATURE_SENSOR_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_TEMPERATURE_SENSOR
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(LA_TEMPERATURE_SENSOR_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		LA_TEMPERATURE_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
 			PORT_DATA.temperature_sensor_index = 0;
@@ -945,9 +946,9 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		bool res = true;
 		indigo_property_copy_values(LA_MOTOR_TYPE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		LA_MOTOR_TYPE_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_MOTOR_TYPE_UNIPOLAR_ITEM->sw.value) {
 				res = lunatico_set_motor_type(device, MT_UNIPOLAR);
@@ -1155,9 +1156,9 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_WIRING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		bool res = true;
 		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
 			if(ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
@@ -1425,9 +1426,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
-		if (!IS_CONNECTED) return INDIGO_OK;
 		bool res = true;
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
 			if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
@@ -1488,9 +1489,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
-		if (!IS_CONNECTED) return INDIGO_OK;
 		int res = true;
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		PORT_DATA.max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 		PORT_DATA.min_position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
@@ -1513,8 +1514,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 
 		if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
@@ -1632,9 +1633,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_WIRING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		bool res = true;
 		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
 			if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
