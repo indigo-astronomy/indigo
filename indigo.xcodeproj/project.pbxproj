@@ -25,6 +25,7 @@
 		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
 		592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */; };
+		593287A62409AD1000ED61C0 /* indigo_rotator_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */; };
 		59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 59399D892177D316002886CA /* indigo_focuser_optec.c */; };
 		593A357E219DBAD500EDF481 /* indigo_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 593A357A219DB4BA00EDF481 /* indigo_filter.h */; };
 		593A3580219DBE5E00EDF481 /* indigo_filter.c in Sources */ = {isa = PBXBuildFile; fileRef = 593A357B219DB4BA00EDF481 /* indigo_filter.c */; };
@@ -574,6 +575,12 @@
 		592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz.c; sourceTree = "<group>"; };
 		592E79172168DD7A00E856F3 /* indigo_focuser_mjkzz_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz_main.c; sourceTree = "<group>"; };
 		592E79182168DDC700E856F3 /* MJKZZ.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = MJKZZ.pdf; sourceTree = "<group>"; };
+		5932879D2409AC3E00ED61C0 /* lunatico_main_shared.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lunatico_main_shared.c; path = shared/lunatico_main_shared.c; sourceTree = "<group>"; };
+		5932879E2409AC3E00ED61C0 /* lunatico_shared.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lunatico_shared.c; path = shared/lunatico_shared.c; sourceTree = "<group>"; };
+		593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_lunatico.c; sourceTree = "<group>"; };
+		593287A32409ACC700ED61C0 /* indigo_rotator_lunatico_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_lunatico_main.c; sourceTree = "<group>"; };
+		593287A42409ACC700ED61C0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		593287A52409ACC700ED61C0 /* indigo_rotator_lunatico.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_lunatico.h; sourceTree = "<group>"; };
 		59399D892177D316002886CA /* indigo_focuser_optec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec.c; sourceTree = "<group>"; };
 		59399D8A2177D316002886CA /* indigo_focuser_optec_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec_main.c; sourceTree = "<group>"; };
 		59399D8B2177D316002886CA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4518,6 +4525,17 @@
 			path = mjkzz_simulator;
 			sourceTree = "<group>";
 		};
+		593287A12409ACC700ED61C0 /* rotator_lunatico */ = {
+			isa = PBXGroup;
+			children = (
+				593287A42409ACC700ED61C0 /* README.md */,
+				593287A52409ACC700ED61C0 /* indigo_rotator_lunatico.h */,
+				593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */,
+				593287A32409ACC700ED61C0 /* indigo_rotator_lunatico_main.c */,
+			);
+			path = rotator_lunatico;
+			sourceTree = "<group>";
+		};
 		59399D882177D316002886CA /* focuser_optec */ = {
 			isa = PBXGroup;
 			children = (
@@ -7806,6 +7824,7 @@
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
 				590B59CE1F7853F400086FD2 /* mount_temma */,
+				593287A12409ACC700ED61C0 /* rotator_lunatico */,
 				9D743A5423FD56EF0093319F /* rotator_simulator */,
 				9DC782F521A6FCC7009859FD /* system_ascol */,
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
@@ -10264,6 +10283,8 @@
 		59F1AD0D23FB15A400008F02 /* focuser_lunatico */ = {
 			isa = PBXGroup;
 			children = (
+				5932879D2409AC3E00ED61C0 /* lunatico_main_shared.c */,
+				5932879E2409AC3E00ED61C0 /* lunatico_shared.c */,
 				59F1AD0F23FB15A400008F02 /* README.md */,
 				59F1AD1123FB15A400008F02 /* indigo_focuser_lunatico.h */,
 				59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */,
@@ -11839,6 +11860,7 @@
 				595F2923211E211200380EF4 /* NSXReturnThrowError.m in Sources */,
 				59F654721EE47516007B8C93 /* indigo_ccd_qhy.cpp in Sources */,
 				59A321B721D691D600EC0F4A /* indigo_mount_synscan_mount.c in Sources */,
+				593287A62409AD1000ED61C0 /* indigo_rotator_lunatico.c in Sources */,
 				590BF1AC21EBBBEE00C24DBA /* indigo_ao_driver.c in Sources */,
 				9DBC34661DCB267700588DB9 /* indigo_wheel_asi.c in Sources */,
 				59019E0B1DE0AC7400CCB3ED /* indigo_client.c in Sources */,
