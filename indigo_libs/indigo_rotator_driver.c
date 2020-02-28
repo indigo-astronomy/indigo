@@ -157,13 +157,29 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_STEPS_PER_REVOLUTION
-} else if (indigo_property_match(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
-			indigo_property_copy_values(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property, false);
-			ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->state = INDIGO_OK_STATE;
-			if (IS_CONNECTED) {
-				indigo_update_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
-			}
-			return INDIGO_OK;
+	} else if (indigo_property_match(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
+		indigo_property_copy_values(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property, false);
+		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- ROTATOR_BACKLASH
+	} else if (indigo_property_match(ROTATOR_BACKLASH_PROPERTY, property)) {
+		indigo_property_copy_values(ROTATOR_BACKLASH_PROPERTY, property, false);
+		ROTATOR_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- ROTATOR_LIMITS_PROPERTY
+	} else if (indigo_property_match(ROTATOR_LIMITS_PROPERTY, property)) {
+		indigo_property_copy_values(ROTATOR_LIMITS_PROPERTY, property, false);
+		ROTATOR_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
