@@ -58,6 +58,7 @@ static ptp_camera_model CAMERA[] = {
   { CANON_VID, 0x32d9, "Canon EOS 4000D", ptp_flag_lv, 5184, 3456, 4.3 },
   { CANON_VID, 0x32da, "Canon EOS R", ptp_flag_lv, 6720, 4480, 5.35 },
   { CANON_VID, 0x32e1, "Canon EOS 2000D", ptp_flag_lv, 6000, 4000, 3.71 },
+  { CANON_VID, 0x32e2, "Canon EOS RP", ptp_flag_lv, 6240, 4160, 5.75 },
   { CANON_VID, 0x32ea, "Canon EOS 90D", ptp_flag_lv, 6960, 4640, 3.2 },
   { CANON_VID, 0xFFFF, "Canon Camera", ptp_flag_lv, 0, 0, 0 },
   { NIKON_VID, 0x0406, "Nikon D70", 0, 3008, 2000, 7.87 },
