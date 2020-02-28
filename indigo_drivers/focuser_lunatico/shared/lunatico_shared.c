@@ -153,11 +153,13 @@ typedef struct {
 	    f_target_position,
 	    min_position,
 	    max_position,
-	    backlash;
+	    backlash,
+	    temperature_sensor_index;
 	device_type_t device_type;
-	double r_target_position, r_current_position;
+	double r_target_position, r_current_position, prev_temp;
 	indigo_timer *focuser_timer;
 	indigo_timer *rotator_timer;
+	indigo_timer *temperature_timer;
 	indigo_property *step_mode_property,
 	                *current_control_property,
 	                *model_property,
@@ -171,11 +173,8 @@ typedef struct {
 typedef struct {
 	int handle;
 	int count_open;
-	int temperature_sensor_index;
 	int port_count;
 	bool udp;
-	double prev_temp;
-	indigo_timer *temperature_timer;
 	pthread_mutex_t port_mutex;
 	lunatico_port_data port_data[MAX_PORTS];
 } lunatico_private_data;
@@ -738,7 +737,7 @@ static int lunatico_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_INTERNAL_ITEM, LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME, "Internal sensor", true);
 	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM, LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME, "External Sensor", false);
-	if (get_port_index(device) != 0) LA_TEMPERATURE_SENSOR_PROPERTY->hidden = true;
+	if (PORT_DATA.device_type != TYPE_FOCUSER) LA_TEMPERATURE_SENSOR_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- WIRING_PROPERTY
 	LA_WIRING_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_WIRING_PROPERTY_NAME, "Advanced", "Motor wiring", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (LA_WIRING_PROPERTY == NULL)
@@ -812,7 +811,7 @@ static void lunatico_init_device(indigo_device *device) {
 	indigo_define_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
 
 	indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
-	PRIVATE_DATA->temperature_sensor_index = 0;
+	PORT_DATA.temperature_sensor_index = 0;
 
 	if (!lunatico_set_wiring(device, MW_LUNATICO_NORMAL)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
@@ -938,9 +937,9 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		indigo_property_copy_values(LA_TEMPERATURE_SENSOR_PROPERTY, property, false);
 		LA_TEMPERATURE_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
-			PRIVATE_DATA->temperature_sensor_index = 0;
+			PORT_DATA.temperature_sensor_index = 0;
 		} else {
-			PRIVATE_DATA->temperature_sensor_index = 1;
+			PORT_DATA.temperature_sensor_index = 1;
 		}
 		indigo_update_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1072,16 +1071,13 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 					if (!lunatico_get_position(device, &position)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 					}
-					ROTATOR_POSITION_ITEM->number.value = (double)position;
-
-					if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
+					ROTATOR_POSITION_ITEM->number.value = steps_to_degrees(position, (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value);
+					if (!lunatico_sync_position(device, degrees_to_steps(ROTATOR_POSITION_ITEM->number.value, (int)ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value))) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d) failed", PRIVATE_DATA->handle);
 					}
 
-					if (get_port_index(device) == 0) {
-						//lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
-						//PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-						//PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
+					if (!lunatico_set_speed(device, 0.1)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
 					}
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1092,10 +1088,6 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		} else {
 			if (DEVICE_CONNECTED) {
 				indigo_cancel_timer(device, &PORT_DATA.rotator_timer);
-				if (get_port_index(device) == 0) {
-					//indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-					//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PRIVATE_DATA->temperature_timer == %p", PRIVATE_DATA->temperature_timer);
-				}
 				lunatico_delete_properties(device);
 				lunatico_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1245,7 +1237,7 @@ static void temperature_timer_callback(indigo_device *device) {
 	bool moving = false;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	if (!lunatico_get_temperature(device, PRIVATE_DATA->temperature_sensor_index, &temp)) {
+	if (!lunatico_get_temperature(device, PORT_DATA.temperature_sensor_index, &temp)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_temperature(%d) -> %f failed", PRIVATE_DATA->handle, temp);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -1268,21 +1260,21 @@ static void temperature_timer_callback(indigo_device *device) {
 		compensate_focus(device, temp);
 	} else {
 		/* reset temp so that the compensation starts when auto mode is selected */
-		PRIVATE_DATA->prev_temp = NO_TEMP_READING;
+		PORT_DATA.prev_temp = NO_TEMP_READING;
 	}
 
-	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
+	indigo_reschedule_timer(device, 3, &(PORT_DATA.temperature_timer));
 }
 
 
 static void compensate_focus(indigo_device *device, double new_temp) {
 	int compensation;
-	double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
+	double temp_difference = new_temp - PORT_DATA.prev_temp;
 
 	/* we do not have previous temperature reading */
-	if (PRIVATE_DATA->prev_temp <= NO_TEMP_READING) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PRIVATE_DATA->prev_temp = %f", PRIVATE_DATA->prev_temp);
-		PRIVATE_DATA->prev_temp = new_temp;
+	if (PORT_DATA.prev_temp <= NO_TEMP_READING) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PORT_DATA.prev_temp = %f", PORT_DATA.prev_temp);
+		PORT_DATA.prev_temp = new_temp;
 		return;
 	}
 
@@ -1323,7 +1315,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
-	PRIVATE_DATA->prev_temp = new_temp;
+	PORT_DATA.prev_temp = new_temp;
 	FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -1343,7 +1335,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 
-		if (get_port_index(device) == 0) FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1;
@@ -1373,11 +1365,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_STEPS_ITEM->number.min = 0;
 		FOCUSER_STEPS_ITEM->number.step = 1;
 
-		if (get_port_index(device) == 0) {
-			FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-			FOCUSER_COMPENSATION_ITEM->number.min = -10000;
-			FOCUSER_COMPENSATION_ITEM->number.max = 10000;
-		}
+		FOCUSER_MODE_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
@@ -1414,11 +1405,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
 					}
 
-					if (get_port_index(device) == 0) {
-						lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
-						PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
-					}
+					lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
+					PORT_DATA.prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
+					PORT_DATA.temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					PORT_DATA.focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
@@ -1427,10 +1416,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			if (DEVICE_CONNECTED) {
 				indigo_cancel_timer(device, &PORT_DATA.focuser_timer);
-				if (get_port_index(device) == 0) {
-					indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PRIVATE_DATA->temperature_timer == %p", PRIVATE_DATA->temperature_timer);
-				}
+				indigo_cancel_timer(device, &PORT_DATA.temperature_timer);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PORT_DATA.temperature_timer == %p", PORT_DATA.temperature_timer);
 				lunatico_delete_properties(device);
 				lunatico_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
