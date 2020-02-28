@@ -146,7 +146,7 @@ typedef enum {
 	TYPE_AUX     = 2
 } device_type_t;
 
-const char *port_name[3] = { "Main", "Exp", "Third" };
+static const char *port_name[3] = { "Main", "Exp", "Third" };
 
 typedef struct {
 	int f_current_position,
