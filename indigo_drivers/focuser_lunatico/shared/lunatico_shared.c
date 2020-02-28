@@ -797,11 +797,6 @@ static void lunatico_init_device(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_delete_limits(%d) failed", PRIVATE_DATA->handle);
 	}
 
-	if (!lunatico_set_step(device, 0)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_step(%d) failed", PRIVATE_DATA->handle);
-	}
-	indigo_define_property(device, LA_STEP_MODE_PROPERTY, NULL);
-
 	if (!lunatico_set_move_power(device, LA_POWER_CONTROL_MOVE_ITEM->number.value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_move_power(%d) failed", PRIVATE_DATA->handle);
 	}
@@ -810,18 +805,39 @@ static void lunatico_init_device(indigo_device *device) {
 	}
 	indigo_define_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
 
-	indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
-	PORT_DATA.temperature_sensor_index = 0;
 
-	if (!lunatico_set_wiring(device, MW_LUNATICO_NORMAL)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
+	if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
+		PORT_DATA.temperature_sensor_index = 0;
+	} else {
+		PORT_DATA.temperature_sensor_index = 1;
 	}
+	indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
+
 	indigo_define_property(device, LA_WIRING_PROPERTY, NULL);
 
-	if (!lunatico_set_motor_type(device, MT_UNIPOLAR)) {
+	bool success;
+	if (LA_MOTOR_TYPE_UNIPOLAR_ITEM->sw.value) {
+			success = lunatico_set_motor_type(device, MT_UNIPOLAR);
+	} else if (LA_MOTOR_TYPE_BIPOLAR_ITEM->sw.value) {
+			success = lunatico_set_motor_type(device, MT_BIPOLAR);
+	} else if (LA_MOTOR_TYPE_DC_ITEM->sw.value) {
+			success = lunatico_set_motor_type(device, MT_DC);
+	} else if (LA_MOTOR_TYPE_STEP_DIR_ITEM->sw.value) {
+			success = lunatico_set_motor_type(device, MT_STEP_DIR);
+	}
+	if (!success) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_motor_type(%d) failed", PRIVATE_DATA->handle);
 	}
 	indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
+
+	step_mode_t mode = STEP_MODE_FULL;
+	if(LA_STEP_MODE_HALF_ITEM->sw.value) {
+		mode = STEP_MODE_HALF;
+	}
+	if (!lunatico_set_step(device, mode)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_step(%d, %d) failed", PRIVATE_DATA->handle, mode);
+	}
+	indigo_define_property(device, LA_STEP_MODE_PROPERTY, NULL);
 }
 
 
@@ -1079,6 +1095,24 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 
 					if (!lunatico_set_speed(device, 0.1)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
+					}
+
+					bool success = false;
+					if (LA_WIRING_LUNATICO_ITEM->sw.value) {
+						if(ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
+							success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
+						} else {
+							success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
+						}
+					} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
+						if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
+							success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
+						} else {
+							success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
+						}
+					}
+					if (!success) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
 					}
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1404,6 +1438,34 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 					if (!lunatico_set_speed(device, FOCUSER_SPEED_ITEM->number.target)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
+					}
+
+					bool success = false;
+					if (LA_WIRING_LUNATICO_ITEM->sw.value) {
+						if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
+							success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
+						} else {
+							success= lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
+						}
+					} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
+						if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
+							success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
+						} else {
+							success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
+						}
+					}
+					if (!success) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
+					}
+
+					if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value == FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max &&
+						FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value == FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min) {
+						success = lunatico_delete_limits(device);
+					} else {
+						success = lunatico_set_limits(device, FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value, FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value);
+					}
+					if (!success) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits(%d) failed", PRIVATE_DATA->handle);
 					}
 
 					lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
