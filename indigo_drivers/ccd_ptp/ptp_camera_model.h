@@ -125,7 +125,7 @@ static ptp_camera_model CAMERA[] = {
   { SONY_VID, 0x096f, "Sony Alpha A7III", ptp_flag_lv, 6000, 4000, 5.98 },
   { SONY_VID, 0x0a6a, "Sony Alpha 7II", ptp_flag_lv, 6000, 4000, 5.98 },
   { SONY_VID, 0x0a6b, "Sony Alpha A7RII", ptp_flag_lv, 7952, 5304, 4.5 },
-  { SONY_VID, 0x0a71, "Sony Alpha A7SII", 0, 4240, 2832, 8.39 },
+  { SONY_VID, 0x0a71, "Sony Alpha A7SII", ptp_flag_lv, 4240, 2832, 8.39 },
   { SONY_VID, 0x0c2a, "Sony Alpha A9", ptp_flag_lv, 6000, 4000, 5.98 },
   { SONY_VID, 0x0c33, "Sony Alpha A7RIII", ptp_flag_lv, 7952, 5304, 4.5 },
   { SONY_VID, 0x0c33, "Sony Alpha A7RIII", ptp_flag_lv, 7952, 5304, 4.5 },
