@@ -84,16 +84,16 @@ static int used_driver_slots = 0;
 static int used_subprocess_slots = 0;
 
 
-bool indigo_is_driver_loaded(char *driver_name) {
+bool indigo_driver_initialized(char *driver_name) {
 	assert(driver_name != NULL);
 	for (int dc = 0; dc < used_driver_slots;  dc++) {
 		if (!strncmp(indigo_available_drivers[dc].name, driver_name, INDIGO_NAME_SIZE) &&
 		    indigo_available_drivers[dc].initialized) {
-			INDIGO_DEBUG(indigo_debug("Looked up driver %s is loaded", driver_name));
+			INDIGO_DEBUG(indigo_debug("Looked up driver %s is initialized", driver_name));
 			return true;
 		}
 	}
-	INDIGO_DEBUG(indigo_debug("Looked up driver %s is NOT loaded", driver_name));
+	INDIGO_DEBUG(indigo_debug("Looked up driver %s is NOT initialized", driver_name));
 	return false;
 }
 

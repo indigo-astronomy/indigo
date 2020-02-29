@@ -79,10 +79,10 @@ extern indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS]
  */
 extern indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry **driver);
 
-/** Check if the driver is loaded, This function is not protected by mutex so it must be called in synchronized sections.
+/** Check if the driver is initialized, This function is not protected by mutex so it must be called in synchronized sections.
     Its intended useage is in driver entrypoints.
  */
-extern bool indigo_is_driver_loaded(char *driver_name);
+extern bool indigo_driver_initialized(char *driver_name);
 
 /** Remove statically linked driver or remove & unload dynamically linked driver
  */
