@@ -408,6 +408,7 @@ void loop() {
   if (current_millis - last_millis > 0) {
     process_axis_timer(0);
     process_axis_timer(1);
+    last_millis = current_millis;
   }  
   if (Serial.available()) {
     char buffer[16];
