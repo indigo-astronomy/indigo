@@ -1017,6 +1017,17 @@ static double steps_to_degrees(int steps, int steps_rev, double min) {
 	return degrees;
 }
 
+static void lunatico_sync_to_current(indigo_device *device) {
+	double steps = degrees_to_steps(
+		ROTATOR_POSITION_ITEM->number.value,
+		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+	);
+	if (!lunatico_sync_position(device, steps)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d) failed", PRIVATE_DATA->handle);
+	}
+}
+
 
 static void rotator_timer_callback(indigo_device *device) {
 	bool moving;
@@ -1100,17 +1111,8 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 						ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
 						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
 					);
-					if (!lunatico_sync_position(
-							device,
-							degrees_to_steps(
-								ROTATOR_POSITION_ITEM->number.value,
-								ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-								ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-							)
-						)
-					) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d) failed", PRIVATE_DATA->handle);
-					}
+
+					lunatico_sync_to_current(device);
 
 					if (!lunatico_set_speed(device, 0.1)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_speed(%d) failed", PRIVATE_DATA->handle);
@@ -1300,19 +1302,20 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		if (!success) {
 			ROTATOR_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (!lunatico_sync_position(
-				device,
-				degrees_to_steps(
-					ROTATOR_POSITION_ITEM->number.value,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				)
-			)
-		) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d) failed", PRIVATE_DATA->handle);
-		}
+
+		lunatico_sync_to_current(device);
 
 		indigo_update_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- ROTATOR_STEPS_PER_REVOLUTION
+	} else if (indigo_property_match(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
+		indigo_property_copy_values(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->state = INDIGO_OK_STATE;
+
+		lunatico_sync_to_current(device);
+
+		indigo_update_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
