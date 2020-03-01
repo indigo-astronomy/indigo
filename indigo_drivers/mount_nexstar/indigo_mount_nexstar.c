@@ -369,7 +369,7 @@ static bool mount_set_utc_from_host(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	/* set mount time to local time and UTC offset */
 	int res = tc_set_time(PRIVATE_DATA->dev_id, timenow, offset, 0);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tc_set_time: '%02d/%02d/%04d %02d:%02d:%02d +%d'", tm_timenow.tm_mday, tm_timenow.tm_mon+1, tm_timenow.tm_year+1900, tm_timenow.tm_hour, tm_timenow.tm_min, tm_timenow.tm_sec, offset, res);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tc_set_time: '%02d/%02d/%04d %02d:%02d:%02d %+d'", tm_timenow.tm_mday, tm_timenow.tm_mon+1, tm_timenow.tm_year+1900, tm_timenow.tm_hour, tm_timenow.tm_min, tm_timenow.tm_sec, offset, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
