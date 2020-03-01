@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -72,6 +72,7 @@ typedef struct {
 	int slew_rate;
 	int st4_ra_rate, st4_dec_rate;
 	int vendor_id;
+	int tracking_mode;
 	uint32_t capabilities;
 	pthread_mutex_t serial_mutex;
 	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
@@ -146,7 +147,7 @@ static void mount_handle_tracking(indigo_device *device) {
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-		res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
+		res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, PRIVATE_DATA->tracking_mode);
 		if (res != RC_OK) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
@@ -657,6 +658,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 
 					/* initialize tracking prop */
+					PRIVATE_DATA->tracking_mode = TC_TRACK_EQ;
 					int mode = tc_get_tracking_mode(dev_id);
 					if (mode < 0) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d (%s)", dev_id, mode, strerror(errno));
@@ -666,6 +668,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 					} else {
+						PRIVATE_DATA->tracking_mode = mode;
 						MOUNT_TRACKING_OFF_ITEM->sw.value = false;
 						MOUNT_TRACKING_ON_ITEM->sw.value = true;
 						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
@@ -778,7 +781,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparking...");
 
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			int res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
+			int res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, PRIVATE_DATA->tracking_mode);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
