@@ -535,6 +535,10 @@ int tc_set_tracking_mode(int dev, char mode) {
 				_mode = NX_TC_TRACK_EQ_SOUTH;
 				break;
 
+			case NX_TC_TRACK_RA_DEC:
+				_mode = NX_TC_TRACK_RA_DEC;
+				break;
+
 			case TC_TRACK_EQ:
 				res = tc_get_location(dev, NULL, &lat);
 				if (res < 0) return res;
@@ -803,14 +807,44 @@ char *get_model_name(int id, char *name, int len) {
 		case 12:
 			strncpy(name,"NexStar 6/8 SE",len);
 			return name;
+		case 13:
+			strncpy(name,"CGE Pro",len);
+			return name;
 		case 14:
-			strncpy(name,"CGEM",len);
+			strncpy(name,"CGEM DX",len);
+			return name;
+		case 15:
+			strncpy(name,"LCM",len);
+			return name;
+		case 16:
+			strncpy(name,"Sky Prodigy",len);
+			return name;
+		case 17:
+			strncpy(name,"CPC Deluxe",len);
+			return name;
+		case 18:
+			strncpy(name,"GT 16",len);
+			return name;
+		case 19:
+			strncpy(name,"StarSeeker",len);
 			return name;
 		case 20:
 			strncpy(name,"Advanced VX",len);
 			return name;
+		case 21:
+			strncpy(name,"Cosmos",len);
+			return name;
 		case 22:
 			strncpy(name,"Nexstar Evolution",len);
+			return name;
+		case 23:
+			strncpy(name,"CGX",len);
+			return name;
+		case 24:
+			strncpy(name,"CGXL",len);
+			return name;
+		case 25:
+			strncpy(name,"Astrofi",len);
 			return name;
 		default:
 			name[0]='\0';

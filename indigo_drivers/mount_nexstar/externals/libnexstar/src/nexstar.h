@@ -10,6 +10,7 @@
 #define NX_TC_TRACK_ALT_AZ   1
 #define NX_TC_TRACK_EQ_NORTH 2
 #define NX_TC_TRACK_EQ_SOUTH 3
+#define NX_TC_TRACK_RA_DEC   4
 
 #define SW_TC_TRACK_OFF      0
 #define SW_TC_TRACK_ALT_AZ   1
@@ -20,8 +21,8 @@
 #define TC_TRACK_ALT_AZ      1
 #define TC_TRACK_EQ_NORTH    2
 #define TC_TRACK_EQ_SOUTH    3
-#define TC_TRACK_EQ          4
-#define TC_TRACK_EQ_PEC      5
+#define TC_TRACK_EQ          10
+#define TC_TRACK_EQ_PEC      11
 
 #define TC_DIR_POSITIVE 1
 #define TC_DIR_NEGATIVE 0
@@ -48,7 +49,7 @@
 #define CAN_SLEW               0x0008
 #define CAN_ALIGN              0x0010
 #define CAN_GET_SET_PEC        0x0020
-#define CAN_GET_SIDE_OF_PIER    0x0040
+#define CAN_GET_SIDE_OF_PIER   0x0040
 
 /* return codes */
 #define RC_OK            0	/* success */
