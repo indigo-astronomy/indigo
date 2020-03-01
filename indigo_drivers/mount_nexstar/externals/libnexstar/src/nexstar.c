@@ -179,7 +179,15 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 
 	if (firmware_version >= VER_3_1) {
 		/* Not sure about this but recent mounts will work so 3.1 is fair */
-		*caps |= CAN_GET_SET_GUIDE_RATE;
+		if ((guessed_vendor == VNDR_CELESTRON) &&
+			((mount_model == 5) || (mount_model == 6) || (mount_model == 10) ||
+			(mount_model == 14) || (mount_model == 20))) {
+			*caps |= CAN_GET_SET_GUIDE_RATE;
+		}
+		if ((guessed_vendor == VNDR_SKYWATCHER) &&
+			(mount_model < 128)) {
+			*caps |= CAN_GET_SET_GUIDE_RATE;
+		}
 	}
 
 	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 3)) {

@@ -638,23 +638,28 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 
 					/* initialize guidingrate prop */
-					int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
-					if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) offset = 0; /* there is no offset for Sky-Watcher */
+					if (PRIVATE_DATA->capabilities & CAN_GET_SET_GUIDE_RATE) {
+						MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
+						int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
+						if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) offset = 0; /* there is no offset for Sky-Watcher */
 
-					int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
-					if (st4_ra_rate < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_ra_rate, strerror(errno));
+						int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
+						if (st4_ra_rate < 0) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_ra_rate, strerror(errno));
+							MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+						} else {
+							MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
+							PRIVATE_DATA->st4_ra_rate = st4_ra_rate + offset;
+							int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
+							if (st4_dec_rate < 0) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_dec_rate, strerror(errno));
+							} else {
+								MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
+								PRIVATE_DATA->st4_dec_rate = st4_dec_rate + offset;
+							}
+						}
 					} else {
-						MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
-						PRIVATE_DATA->st4_ra_rate = st4_ra_rate + offset;
-					}
-
-					int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
-					if (st4_dec_rate < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_dec_rate, strerror(errno));
-					} else {
-						MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
-						PRIVATE_DATA->st4_dec_rate = st4_dec_rate + offset;
+						MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					}
 
 					/* initialize tracking prop */
