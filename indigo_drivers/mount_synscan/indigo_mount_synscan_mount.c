@@ -575,22 +575,20 @@ void mount_handle_tracking_rate(indigo_device* device) {
 
 static void mount_tracking_timer_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
-	char* message = "";
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		//  Start tracking at the configured rate
 		double axisRate = synscan_tracking_rate(device);
 		synscan_slew_axis_at_rate(device, kAxisRA, axisRate);
 		PRIVATE_DATA->raAxisMode = kAxisModeTracking;
-		message = "Tracking started.";
-	}
-	else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking started");
+	} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 		synscan_stop_axis(device, kAxisRA);
 		synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
 		PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-		message = "Tracking stopped.";
+		indigo_send_message(device, "Tracking stopped");
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
-	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, message);
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
