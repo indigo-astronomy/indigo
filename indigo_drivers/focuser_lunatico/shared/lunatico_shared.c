@@ -960,23 +960,23 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
-		bool res = true;
+		bool success = true;
 		indigo_property_copy_values(LA_MOTOR_TYPE_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 		LA_MOTOR_TYPE_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_MOTOR_TYPE_UNIPOLAR_ITEM->sw.value) {
-				res = lunatico_set_motor_type(device, MT_UNIPOLAR);
+				success = lunatico_set_motor_type(device, MT_UNIPOLAR);
 		} else if (LA_MOTOR_TYPE_BIPOLAR_ITEM->sw.value) {
-				res = lunatico_set_motor_type(device, MT_BIPOLAR);
+				success = lunatico_set_motor_type(device, MT_BIPOLAR);
 		} else if (LA_MOTOR_TYPE_DC_ITEM->sw.value) {
-				res = lunatico_set_motor_type(device, MT_DC);
+				success = lunatico_set_motor_type(device, MT_DC);
 		} else if (LA_MOTOR_TYPE_STEP_DIR_ITEM->sw.value) {
-				res = lunatico_set_motor_type(device, MT_STEP_DIR);
+				success = lunatico_set_motor_type(device, MT_STEP_DIR);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor type");
 			LA_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (res == false) {
+		if (!success) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_motor_type() failed");
 			LA_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -1275,29 +1275,57 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(LA_WIRING_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
-		bool res = true;
-		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
+	} else if (indigo_property_match(ROTATOR_DIRECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_DIRECTION_PROPERTY
+		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
-		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
+		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		bool success = true;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
 			if(ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-				res = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
+				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 			} else {
-				res = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
+				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
 			}
 		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
 			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
-				res = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
+				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
 			} else {
-				res = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
+				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
+			}
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
+			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (!success) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
+			ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(LA_WIRING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
+		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
+		bool success = true;
+		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
+			if(ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
+				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
+			} else {
+				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
+			}
+		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
+			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
+				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
+			} else {
+				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
 			}
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
 			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (res == false) {
+		if (!success) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
 			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -1616,27 +1644,27 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
-		bool res = true;
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		bool success = true;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
 			if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				res = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
+				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 			} else {
-				res = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
+				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
 			}
 		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
 			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				res = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
+				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
 			} else {
-				res = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
+				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
 			}
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (res == false) {
+		if (!success) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -1679,7 +1707,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
-		int res = true;
+		int success = true;
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1693,11 +1721,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target == FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max &&
 			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target == FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min) {
-			res = lunatico_delete_limits(device);
+			success = lunatico_delete_limits(device);
 		} else {
-			res = lunatico_set_limits(device, min_position, max_position);
+			success = lunatico_set_limits(device, min_position, max_position);
 		}
-		if (!res) {
+		if (!success) {
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
@@ -1825,27 +1853,27 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_WIRING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
-		bool res = true;
+		bool success = true;
 		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
 			if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				res = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
+				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 			} else {
-				res = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
+				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
 			}
 		} else if (LA_WIRING_MOONLITE_ITEM->sw.value) {
 			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-				res = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
+				success = lunatico_set_wiring(device, MW_MOONLITE_NORMAL);
 			} else {
-				res = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
+				success = lunatico_set_wiring(device, MW_MOONLITE_REVERSED);
 			}
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported Motor wiring");
 			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (res == false) {
+		if (!success) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring() failed");
 			LA_WIRING_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
