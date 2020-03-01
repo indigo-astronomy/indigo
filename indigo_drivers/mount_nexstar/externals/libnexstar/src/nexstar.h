@@ -50,6 +50,7 @@
 #define CAN_ALIGN              0x0010
 #define CAN_GET_SET_PEC        0x0020
 #define CAN_GET_SIDE_OF_PIER   0x0040
+#define TRUE_EQ_MOUNT				   0x0080
 
 /* return codes */
 #define RC_OK            0	/* success */
