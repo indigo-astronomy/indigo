@@ -1075,9 +1075,22 @@ static indigo_result rotator_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_rotator_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// --------------------------------------------------------------------------------
+		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.min = 100;
+		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.max = 100000;
+		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value = ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.target = 3600;
 		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->hidden = false;
+		// --------------------------------------------------------------------------------
 		ROTATOR_DIRECTION_PROPERTY->hidden = false;
+		// --------------------------------------------------------------------------------
 		ROTATOR_BACKLASH_PROPERTY->hidden = false;
+		// --------------------------------------------------------------------------------
+		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = -180;
+		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = -180;
+		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 360;
+		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.min = -180;
+		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = 180;
+		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max = 360;
 		ROTATOR_LIMITS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
@@ -1136,23 +1149,20 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_wiring(%d) failed", PRIVATE_DATA->handle);
 					}
 
-					if (ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value == ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max &&
-						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value == ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min) {
+					int min_steps = degrees_to_steps(
+						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value,
+						ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+					);
+					int max_steps = degrees_to_steps(
+						ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value,
+						ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+					);
+					if (max_steps == min_steps) {
 						success = lunatico_delete_limits(device);
 					} else {
-						success = lunatico_set_limits(
-							device,
-							degrees_to_steps(
-								ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value,
-								ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-								ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-							),
-							degrees_to_steps(
-								ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value,
-								ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-								ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-							)
-						);
+						success = lunatico_set_limits(device, min_steps, max_steps);
 					}
 					if (!success) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits(%d) failed", PRIVATE_DATA->handle);
@@ -1176,26 +1186,27 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		double current_position = ROTATOR_POSITION_ITEM->number.value;
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
-		bool forbidden = false;
+
+		int min_steps = degrees_to_steps(
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value,
+			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+		);
+		int max_steps = degrees_to_steps(
+			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value,
+			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+		);
+		int steps_position = degrees_to_steps(
+			ROTATOR_POSITION_ITEM->number.target,
+			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+		);
+
 		/* Make sure we do not go in the forbidden area */
-		if (ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target == ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max &&
-		    ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target == ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min) {
-			// EMPTY HERE!!!!
-		} else if (ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value >= ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value) {
-			if (ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value < ROTATOR_POSITION_ITEM->number.target ||
-			    ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value > ROTATOR_POSITION_ITEM->number.target) {
-				ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = current_position;
-				forbidden = true;
-			}
-		} else {
-			if (ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value < ROTATOR_POSITION_ITEM->number.target &&
-			    ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value > ROTATOR_POSITION_ITEM->number.target) {
-				ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = current_position;
-				forbidden = true;
-			}
-		}
-		if (forbidden) {
+		if ((max_steps != min_steps) && (steps_position > max_steps || steps_position < min_steps)) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			ROTATOR_POSITION_ITEM->number.value = current_position;
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Requested position is not in the limits.");
 			return INDIGO_OK;
 		}
@@ -1207,12 +1218,6 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			PORT_DATA.r_target_position = ROTATOR_POSITION_ITEM->number.target;
 			ROTATOR_POSITION_ITEM->number.value = PORT_DATA.r_current_position;
-			uint32_t steps_position =
-				degrees_to_steps(
-					ROTATOR_POSITION_ITEM->number.target,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				);
 			if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (!lunatico_goto_position(device, steps_position, (uint32_t)ROTATOR_BACKLASH_ITEM->number.value)) {
@@ -1303,29 +1308,25 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(ROTATOR_LIMITS_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 		ROTATOR_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-		double max_position = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target;
-		double min_position = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target;
 
 		bool success;
-		if (ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target == ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max &&
-			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target == ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min) {
+		int min_steps = degrees_to_steps(
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value,
+			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+		);
+		int max_steps = degrees_to_steps(
+			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value,
+			ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
+		);
+		if (max_steps == min_steps) {
 			success = lunatico_delete_limits(device);
 		} else {
-			success = lunatico_set_limits(
-				device,
-				degrees_to_steps(
-					min_position,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				),
-				degrees_to_steps(
-					max_position,
-					ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.value,
-					ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value
-				)
-			);
+			success = lunatico_set_limits(device, min_steps, max_steps);
 		}
 		if (!success) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_limits(%d) failed", PRIVATE_DATA->handle);
 			ROTATOR_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 
