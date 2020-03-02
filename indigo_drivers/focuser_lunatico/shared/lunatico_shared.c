@@ -27,6 +27,7 @@
 
 #define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
 #define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
+#define AUX_LUNATICO_NAME        "Powerbox/GPIO Lunatico"
 
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +49,7 @@
 
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_client.h>
+#include <indigo/indigo_aux_driver.h>
 
 #define DEFAULT_BAUDRATE            "115200"
 
@@ -85,15 +87,18 @@
 #define LA_PORT_EXP_CONFIG_PROPERTY    (PORT_DATA.port_exp_config)
 #define LA_PORT_EXP_FOCUSER_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+0)
 #define LA_PORT_EXP_ROTATOR_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+1)
+#define LA_PORT_EXP_AUX_GPIO_ITEM      (LA_PORT_EXP_CONFIG_PROPERTY->items+2)
 
 #define LA_PORT_THIRD_CONFIG_PROPERTY    (PORT_DATA.port_third_config)
 #define LA_PORT_THIRD_FOCUSER_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+0)
 #define LA_PORT_THIRD_ROTATOR_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+1)
+#define LA_PORT_THIRD_AUX_GPIO_ITEM      (LA_PORT_THIRD_CONFIG_PROPERTY->items+2)
 
 #define LA_PORT_EXP_CONFIG_PROPERTY_NAME    "LUNATICO_PORT_EXP_CONFIG"
 #define LA_PORT_THIRD_CONFIG_PROPERTY_NAME  "LUNATICO_PORT_THIRD_CONFIG"
 #define LA_PORT_CONFIG_FOCUSER_ITEM_NAME    "FOCUSER"
 #define LA_PORT_CONFIG_ROTATOR_ITEM_NAME    "ROTATOR"
+#define LA_PORT_CONFIG_AUX_GPIO_ITEM_NAME   "AUX_GPIO"
 
 
 #define LA_STEP_MODE_PROPERTY          (PORT_DATA.step_mode_property)
@@ -658,14 +663,18 @@ static void configure_ports(indigo_device *device) {
 
 	if (LA_PORT_EXP_FOCUSER_ITEM->sw.value) {
 		exp_device_type = TYPE_FOCUSER;
-	} else {
+	} else if (LA_PORT_EXP_ROTATOR_ITEM->sw.value){
 		exp_device_type = TYPE_ROTATOR;
+	} else {
+		exp_device_type = TYPE_AUX;
 	}
 
 	if (LA_PORT_THIRD_FOCUSER_ITEM->sw.value) {
 		third_device_type = TYPE_FOCUSER;
-	} else {
+	} else if (LA_PORT_THIRD_ROTATOR_ITEM->sw.value) {
 		third_device_type = TYPE_ROTATOR;
+	} else {
+		third_device_type = TYPE_AUX;
 	}
 
 	if (LA_MODEL_PLATYPUS_ITEM->sw.value) {
@@ -703,18 +712,20 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_MODEL_PLATYPUS_ITEM, LA_MODEL_PLATYPUS_ITEM_NAME, "Platypus (3 ports)", false);
 	if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
-	LA_PORT_EXP_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_EXP_CONFIG_PROPERTY_NAME, "Port Configuration", "Exp port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	LA_PORT_EXP_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_EXP_CONFIG_PROPERTY_NAME, "Port Configuration", "Exp port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (LA_PORT_EXP_CONFIG_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_PORT_EXP_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
 	indigo_init_switch_item(LA_PORT_EXP_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
+	indigo_init_switch_item(LA_PORT_EXP_AUX_GPIO_ITEM, LA_PORT_CONFIG_AUX_GPIO_ITEM_NAME, "Powerbox/GPIO", false);
 	if (get_port_index(device) != 0) LA_PORT_EXP_CONFIG_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
-	LA_PORT_THIRD_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_THIRD_CONFIG_PROPERTY_NAME, "Port Configuration", "Third port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	LA_PORT_THIRD_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_THIRD_CONFIG_PROPERTY_NAME, "Port Configuration", "Third port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (LA_PORT_THIRD_CONFIG_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_PORT_THIRD_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
 	indigo_init_switch_item(LA_PORT_THIRD_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
+	indigo_init_switch_item(LA_PORT_THIRD_AUX_GPIO_ITEM, LA_PORT_CONFIG_AUX_GPIO_ITEM_NAME, "Powerbox/GPIO", false);
 	if (get_port_index(device) != 0) LA_PORT_THIRD_CONFIG_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 	LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -723,12 +734,14 @@ static int lunatico_init_properties(indigo_device *device) {
 	LA_STEP_MODE_PROPERTY->hidden = false;
 	indigo_init_switch_item(LA_STEP_MODE_FULL_ITEM, LA_STEP_MODE_FULL_ITEM_NAME, "Full step", true);
 	indigo_init_switch_item(LA_STEP_MODE_HALF_ITEM, LA_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
+	if (PORT_DATA.device_type == TYPE_AUX) LA_STEP_MODE_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
 	LA_POWER_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, LA_POWER_CONTROL_PROPERTY_NAME, "Advanced", "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 	if (LA_POWER_CONTROL_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(LA_POWER_CONTROL_MOVE_ITEM, LA_POWER_CONTROL_MOVE_ITEM_NAME, "Move power (%)", 0, 100, 1, 100);
 	indigo_init_number_item(LA_POWER_CONTROL_STOP_ITEM, LA_POWER_CONTROL_STOP_ITEM_NAME, "Stop power (%)", 0, 100, 1, 0);
+	if (PORT_DATA.device_type == TYPE_AUX) LA_POWER_CONTROL_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- TEMPERATURE_SENSOR_PROPERTY
 	LA_TEMPERATURE_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_TEMPERATURE_SENSOR_PROPERTY_NAME, "Advanced", "Temperature Sensor in use", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (LA_TEMPERATURE_SENSOR_PROPERTY == NULL)
@@ -742,6 +755,7 @@ static int lunatico_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_WIRING_LUNATICO_ITEM, LA_WIRING_LUNATICO_ITEM_NAME, "Lunatico", true);
 	indigo_init_switch_item(LA_WIRING_MOONLITE_ITEM, LA_WIRING_MOONLITE_ITEM_NAME, "RF/Moonlite", false);
+	if (PORT_DATA.device_type == TYPE_AUX) LA_WIRING_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
 	LA_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MOTOR_TYPE_PROPERTY_NAME, "Advanced", "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 	if (LA_MOTOR_TYPE_PROPERTY == NULL)
@@ -750,6 +764,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_MOTOR_TYPE_BIPOLAR_ITEM, LA_MOTOR_TYPE_BIPOLAR_ITEM_NAME, "Bipolar", false);
 	indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", false);
 	indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
+	if (PORT_DATA.device_type == TYPE_AUX) LA_MOTOR_TYPE_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
 	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
 	indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
@@ -991,7 +1006,69 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 	return INDIGO_OK;
 }
 
+// ---------------------------------------------------------------------------------
+//***********************************************************************************
 
+static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	lunatico_enumerate_properties(device, client, property);
+	return indigo_aux_enumerate_properties(device, NULL, NULL);
+}
+
+
+static indigo_result aux_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO | INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
+		// --------------------------------------------------------------------------------
+		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_aux_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+
+static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		int position;
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (!DEVICE_CONNECTED) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				if (lunatico_open(device)) {
+					lunatico_init_device(device);
+
+					// init here
+
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		} else {
+			if (DEVICE_CONNECTED) {
+				lunatico_delete_properties(device);
+				lunatico_close(device);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+		// --------------------------------------------------------------------------------
+	}
+	lunatico_common_update_property(device, client, property);
+	return indigo_aux_change_property(device, client, property);
+}
+
+
+static indigo_result aux_detach(indigo_device *device) {
+	lunatico_detach(device);
+	return indigo_aux_detach(device);
+}
+
+
+//***********************************************************************************
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
 static int degrees_to_steps(double degrees, int steps_rev, double min) {
 	double deg = degrees;
@@ -1914,6 +1991,15 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 		rotator_detach
 	);
 
+	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
+		AUX_LUNATICO_NAME,
+		aux_attach,
+		aux_enumerate_properties,
+		aux_change_property,
+		NULL,
+		aux_detach
+	);
+
 	if (port_index >= MAX_PORTS) return;
 	if (device_index >= MAX_DEVICES) return;
 	if (device_data[device_index].port[port_index] != NULL) {
@@ -1937,10 +2023,14 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 		memcpy(device_data[device_index].port[port_index], &focuser_template, sizeof(indigo_device));
 		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", FOCUSER_LUNATICO_NAME, port_name[port_index]);
 		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_FOCUSER;
-	} else {
+	} else if (device_type == TYPE_ROTATOR) {
 		memcpy(device_data[device_index].port[port_index], &rotator_template, sizeof(indigo_device));
 		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", ROTATOR_LUNATICO_NAME, port_name[port_index]);
 		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_ROTATOR;
+	} else {
+		memcpy(device_data[device_index].port[port_index], &aux_template, sizeof(indigo_device));
+		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", AUX_LUNATICO_NAME, port_name[port_index]);
+		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_AUX;
 	}
 	set_port_index(device_data[device_index].port[port_index], port_index);
 	device_data[device_index].port[port_index]->private_data = device_data[device_index].private_data;
