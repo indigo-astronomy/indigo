@@ -27,7 +27,7 @@
 
 #define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
 #define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
-#define AUX_LUNATICO_NAME        "Powerbox/GPIO Lunatico"
+#define AUX_LUNATICO_NAME        "Powerbox Lunatico"
 
 #include <stdlib.h>
 #include <string.h>
