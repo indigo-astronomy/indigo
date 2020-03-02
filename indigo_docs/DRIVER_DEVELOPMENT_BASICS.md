@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 22.02.2020 (draft)
+Revision: 02.03.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -495,6 +495,40 @@ If no port is specified in the *DEVICE_PORT_ITEM*, the default port will be used
 Many hardware vendors provide their own Software Development Kit (SDK) for their products in this case the communication with the devices can be done using the SDK provided by the hardware vendor.
 
 Examples for all types of communication are available in the [INDIGO driver base](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/).
+
+### Conflicting Drivers
+
+In some situations some drivers may interfere with each other like different implementations of the driver for the same hardware. Loading both drivers may result in erratic behavior and both drivers should not be loaded. For that reason INDIGO version 2.0-114 introduces a function that can be used to check if some drivers are already initialized:
+
+ - *indigo_driver_initialized()* - checks if the specified driver is initialized and returns true if it is.
+
+In the following example the usage of *indigo_driver_initialized()* is illustrated, here *indigo_rotator_lunatico* driver will not load if *indigo_focuser_lunatico* is already loaded. However this will not prevent *indigo_focuser_lunatico* from loading if *indigo_rotator_lunatico* is loaded. For that reason reciprocal actions must be taken in *indigo_focuser_lunatico*.
+
+ ```C
+indigo_result indigo_rotator_lunatico(indigo_driver_action action, indigo_driver_info *info) {
+	...
+	switch (action) {
+	case INDIGO_DRIVER_INIT:
+		last_action = action;
+		if (indigo_driver_initialized("indigo_focuser_lunatico")) {
+			INDIGO_DRIVER_LOG(
+				DRIVER_NAME,
+				"Conflicting driver %s is already loaded", "indigo_focuser_lunatico"
+			);
+			last_action = INDIGO_DRIVER_SHUTDOWN;
+			return INDIGO_FAILED;
+		}
+		...
+		break;
+	case INDIGO_DRIVER_SHUTDOWN:
+		...
+		break;
+	case INDIGO_DRIVER_INFO:
+		break;
+	}
+	return INDIGO_OK;
+}
+ ```
 
 ## INDIGO Driver - Example
 
