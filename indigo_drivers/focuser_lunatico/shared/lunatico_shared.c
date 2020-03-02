@@ -901,7 +901,6 @@ static void lunatico_init_device(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_step(%d, %d) failed", PRIVATE_DATA->handle, mode);
 	}
 	indigo_define_property(device, LA_STEP_MODE_PROPERTY, NULL);
-	indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 }
 
 
@@ -1116,7 +1115,14 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (lunatico_open(device)) {
-					lunatico_init_device(device);
+					char board[LUNATICO_CMD_LEN] = "N/A";
+					char firmware[LUNATICO_CMD_LEN] = "N/A";
+					if (lunatico_get_info(device, board, firmware)) {
+						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+					}
+					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 					set_power_outlets(device);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				}
