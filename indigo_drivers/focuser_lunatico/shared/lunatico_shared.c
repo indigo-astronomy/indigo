@@ -148,14 +148,16 @@
 #define AUX_GROUP	"Powerbox"
 
 #define AUX_OUTLET_NAMES_PROPERTY      (PORT_DATA.outlet_names_property)
-#define AUX_OUTLET_NAME_1_ITEM	       (AUX_OUTLET_NAMES_PROPERTY->items + 0)
-#define AUX_OUTLET_NAME_2_ITEM	       (AUX_OUTLET_NAMES_PROPERTY->items + 1)
-#define AUX_OUTLET_NAME_3_ITEM	       (AUX_OUTLET_NAMES_PROPERTY->items + 2)
+#define AUX_OUTLET_NAME_1_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 0)
+#define AUX_OUTLET_NAME_2_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 1)
+#define AUX_OUTLET_NAME_3_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 2)
 
-#define AUX_POWER_OUTLET_PROPERTY	     (PORT_DATA.power_outlet_property)
-#define AUX_POWER_OUTLET_1_ITEM		     (AUX_POWER_OUTLET_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_2_ITEM		     (AUX_POWER_OUTLET_PROPERTY->items + 1)
-#define AUX_POWER_OUTLET_3_ITEM		     (AUX_POWER_OUTLET_PROPERTY->items + 2)
+#define AUX_OUTLET_NAMES_PROPERTY_NAME "LA_AUX_OUTLET_NAMES"
+
+#define AUX_POWER_OUTLET_PROPERTY      (PORT_DATA.power_outlet_property)
+#define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_3_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 2)
 
 
 typedef enum {
@@ -792,7 +794,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	if (PORT_DATA.device_type == TYPE_AUX) LA_MOTOR_TYPE_PROPERTY->hidden = true;
 
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
-	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "LA_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "DB9 Pin 2", "Power #1");
@@ -1060,8 +1062,7 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 	return INDIGO_OK;
 }
 
-// ---------------------------------------------------------------------------------
-//***********************************************************************************
+// --------------------------------------------------------------------------------- INDIGO AUX Powerbox device implementation
 
 static bool set_power_outlets(indigo_device *device) {
 	bool success = true;
@@ -1126,7 +1127,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		}
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
-	// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
+		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
@@ -1165,7 +1166,6 @@ static indigo_result aux_detach(indigo_device *device) {
 }
 
 
-//***********************************************************************************
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
 static int degrees_to_steps(double degrees, int steps_rev, double min) {
 	double deg = degrees;
