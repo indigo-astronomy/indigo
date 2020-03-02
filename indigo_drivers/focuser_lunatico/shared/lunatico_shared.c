@@ -145,6 +145,19 @@
 #define LA_MOTOR_TYPE_DC_ITEM_NAME         "DC"
 #define LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME   "STEP_DIR"
 
+#define AUX_GROUP	"Powerbox"
+
+#define AUX_OUTLET_NAMES_PROPERTY      (PORT_DATA.outlet_names_property)
+#define AUX_OUTLET_NAME_1_ITEM	       (AUX_OUTLET_NAMES_PROPERTY->items + 0)
+#define AUX_OUTLET_NAME_2_ITEM	       (AUX_OUTLET_NAMES_PROPERTY->items + 1)
+#define AUX_OUTLET_NAME_3_ITEM	       (AUX_OUTLET_NAMES_PROPERTY->items + 2)
+
+#define AUX_POWER_OUTLET_PROPERTY	     (PORT_DATA.power_outlet_property)
+#define AUX_POWER_OUTLET_1_ITEM		     (AUX_POWER_OUTLET_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_2_ITEM		     (AUX_POWER_OUTLET_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_3_ITEM		     (AUX_POWER_OUTLET_PROPERTY->items + 2)
+
+
 typedef enum {
 	TYPE_FOCUSER = 0,
 	TYPE_ROTATOR = 1,
@@ -170,7 +183,9 @@ typedef struct {
 	                *port_third_config,
 	                *temperature_sensor_property,
 	                *wiring_property,
-	                *motor_type_property;
+	                *motor_type_property,
+									*outlet_names_property,
+	                *power_outlet_property;
 } lunatico_port_data;
 
 typedef struct {
@@ -580,6 +595,16 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 }
 
 
+static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool enable) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d#", get_port_index(device), enable ? 1 : 0);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
+}
+
 // --------------------------------------------------------------------------------- Common stuff
 
 static bool lunatico_open(indigo_device *device) {
@@ -765,10 +790,28 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", false);
 	indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
 	if (PORT_DATA.device_type == TYPE_AUX) LA_MOTOR_TYPE_PROPERTY->hidden = true;
+
+	// -------------------------------------------------------------------------------- OUTLET_NAMES
+	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "LA_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "DB9 Pin 2", "Power #1");
+	indigo_init_text_item(AUX_OUTLET_NAME_2_ITEM, AUX_POWER_OUTLET_NAME_2_ITEM_NAME, "DB9 Pin 3", "Power #2");
+	indigo_init_text_item(AUX_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "DB9 Pin 4", "Power #3");
+	if (PORT_DATA.device_type != TYPE_AUX) AUX_OUTLET_NAMES_PROPERTY->hidden = true;
+	// -------------------------------------------------------------------------------- POWER OUTLETS
+	AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
+	if (AUX_POWER_OUTLET_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Power #1", false);
+	indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #2", false);
+	indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #3", false);
+	if (PORT_DATA.device_type != TYPE_AUX) AUX_POWER_OUTLET_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
 	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
 	indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
 	indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
+	indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -785,6 +828,8 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 			indigo_define_property(device, LA_WIRING_PROPERTY, NULL);
 		if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property))
 			indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
+		if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property))
+			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	}
 	if (indigo_property_match(LA_MODEL_PROPERTY, property))
 		indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
@@ -792,6 +837,8 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 		indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
 	if (indigo_property_match(LA_PORT_THIRD_CONFIG_PROPERTY, property))
 		indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
+	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
+		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -851,6 +898,7 @@ static void lunatico_init_device(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_step(%d, %d) failed", PRIVATE_DATA->handle, mode);
 	}
 	indigo_define_property(device, LA_STEP_MODE_PROPERTY, NULL);
+	indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 }
 
 
@@ -865,6 +913,7 @@ static indigo_result lunatico_detach(indigo_device *device) {
 	indigo_release_property(LA_TEMPERATURE_SENSOR_PROPERTY);
 	indigo_release_property(LA_WIRING_PROPERTY);
 	indigo_release_property(LA_MOTOR_TYPE_PROPERTY);
+	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, LA_MODEL_PROPERTY, NULL);
@@ -875,6 +924,9 @@ static indigo_result lunatico_detach(indigo_device *device) {
 
 	indigo_delete_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
 	indigo_release_property(LA_PORT_THIRD_CONFIG_PROPERTY);
+
+	indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
 	return INDIGO_OK;
 }
 
@@ -888,6 +940,7 @@ static void lunatico_save_properties(indigo_device *device) {
 	indigo_save_property(device, NULL, LA_TEMPERATURE_SENSOR_PROPERTY);
 	indigo_save_property(device, NULL, LA_WIRING_PROPERTY);
 	indigo_save_property(device, NULL, LA_MOTOR_TYPE_PROPERTY);
+	indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
 }
 
 
@@ -897,6 +950,7 @@ static void lunatico_delete_properties(indigo_device *device) {
 	indigo_delete_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 	indigo_delete_property(device, LA_WIRING_PROPERTY, NULL);
 	indigo_delete_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 }
 
 
@@ -1009,6 +1063,24 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 // ---------------------------------------------------------------------------------
 //***********************************************************************************
 
+static bool set_power_outlets(indigo_device *device) {
+	bool success = true;
+	if (!lunatico_enable_power_outlet(device, 2, AUX_POWER_OUTLET_1_ITEM->sw.value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	}
+	if (!lunatico_enable_power_outlet(device, 3, AUX_POWER_OUTLET_2_ITEM->sw.value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	}
+	if (!lunatico_enable_power_outlet(device, 4, AUX_POWER_OUTLET_3_ITEM->sw.value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	}
+	return success;
+}
+
+
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	lunatico_enumerate_properties(device, client, property);
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
@@ -1042,9 +1114,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (lunatico_open(device)) {
 					lunatico_init_device(device);
-
-					// init here
-
+					set_power_outlets(device);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
@@ -1055,8 +1125,35 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
-		// --------------------------------------------------------------------------------
+	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
+		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
+		if (IS_CONNECTED) {
+			indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		}
+		snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_POWER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_3_ITEM->text.value);
+		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		}
+		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
+		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+
+		if (set_power_outlets(device) == true) {
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		return INDIGO_OK;
 	}
+	// --------------------------------------------------------------------------------
 	lunatico_common_update_property(device, client, property);
 	return indigo_aux_change_property(device, client, property);
 }
