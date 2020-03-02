@@ -600,8 +600,9 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool enable) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
+	if (pin < 1 || pin > 3) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d#", get_port_index(device), enable ? 1 : 0);
+	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d %d#", get_port_index(device), pin, enable ? 1 : 0);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
@@ -807,7 +808,7 @@ static int lunatico_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Power #1", false);
 	indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #2", false);
-	indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #3", false);
+	indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_3_ITEM_NAME, "Power #3", false);
 	if (PORT_DATA.device_type != TYPE_AUX) AUX_POWER_OUTLET_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
 	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
@@ -1066,15 +1067,16 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 
 static bool set_power_outlets(indigo_device *device) {
 	bool success = true;
-	if (!lunatico_enable_power_outlet(device, 2, AUX_POWER_OUTLET_1_ITEM->sw.value)) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d, %d, %d", AUX_POWER_OUTLET_1_ITEM->sw.value, AUX_POWER_OUTLET_2_ITEM->sw.value, AUX_POWER_OUTLET_3_ITEM->sw.value);
+	if (!lunatico_enable_power_outlet(device, 1, AUX_POWER_OUTLET_1_ITEM->sw.value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
 		success = false;
 	}
-	if (!lunatico_enable_power_outlet(device, 3, AUX_POWER_OUTLET_2_ITEM->sw.value)) {
+	if (!lunatico_enable_power_outlet(device, 2, AUX_POWER_OUTLET_2_ITEM->sw.value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
 		success = false;
 	}
-	if (!lunatico_enable_power_outlet(device, 4, AUX_POWER_OUTLET_3_ITEM->sw.value)) {
+	if (!lunatico_enable_power_outlet(device, 3, AUX_POWER_OUTLET_3_ITEM->sw.value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
 		success = false;
 	}
