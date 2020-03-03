@@ -23,7 +23,7 @@
  \file lunatico_shared.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 
 #define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
 #define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
@@ -190,6 +190,7 @@ typedef struct {
 	indigo_timer *focuser_timer;
 	indigo_timer *rotator_timer;
 	indigo_timer *temperature_timer;
+	indigo_timer *sensors_timer;
 	indigo_property *step_mode_property,
 	                *current_control_property,
 	                *model_property,
@@ -620,6 +621,22 @@ static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool en
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
+}
+
+
+static bool lunatico_read_sensor(indigo_device *device, int pin, int *sensor_value) {
+	if (!sensor_value) return false;
+
+	char command[LUNATICO_CMD_LEN];
+	int value;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!read an %d %d#", get_port_index(device), pin);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*sensor_value = value;
+		return true;
+	}
+	return false;
 }
 
 // --------------------------------------------------------------------------------- Common stuff
@@ -1106,6 +1123,45 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 
 // --------------------------------------------------------------------------------- INDIGO AUX Powerbox device implementation
 
+static void sensors_timer_callback(indigo_device *device) {
+	int sensor_value;
+	bool success;
+
+	AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
+
+	if (!(success = lunatico_read_sensor(device, 5, &sensor_value))) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
+		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		AUX_GPIO_SENSOR_1_ITEM->number.value = (double)sensor_value;
+	}
+
+	if ((success) && (!(success = lunatico_read_sensor(device, 6, &sensor_value)))) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
+		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		AUX_GPIO_SENSOR_2_ITEM->number.value = (double)sensor_value;
+	}
+
+	if ((success) && (!(success = lunatico_read_sensor(device, 7, &sensor_value)))) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
+		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		AUX_GPIO_SENSOR_3_ITEM->number.value = (double)sensor_value;
+	}
+
+	if ((success) && (!(success = lunatico_read_sensor(device, 8, &sensor_value)))) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
+		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		AUX_GPIO_SENSOR_4_ITEM->number.value = (double)sensor_value;
+	}
+
+	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+	indigo_reschedule_timer(device, 3, &PORT_DATA.sensors_timer);
+}
+
+
 static bool set_power_outlets(indigo_device *device) {
 	bool success = true;
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d, %d, %d", AUX_POWER_OUTLET_1_ITEM->sw.value, AUX_POWER_OUTLET_2_ITEM->sw.value, AUX_POWER_OUTLET_3_ITEM->sw.value);
@@ -1167,11 +1223,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 					set_power_outlets(device);
+					PORT_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
+				indigo_cancel_timer(device, &PORT_DATA.sensors_timer);
 				lunatico_delete_properties(device);
 				lunatico_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1241,7 +1299,7 @@ static int degrees_to_steps(double degrees, int steps_rev, double min) {
 	int steps = (int)(deg * steps_rev / 360.0);
 	while (steps < 0) steps += steps_rev;
 	while (steps >= steps_rev) steps -= steps_rev;
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s(): %.3f deg => %d steps (deg = %.3f, steps_rev = %d, min = %.3f)", __FUNCTION__, degrees, steps, deg, steps_rev, min);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s(): %.3f deg => %d steps (deg = %.3f, steps_rev = %d, min = %.3f)", __FUNCTION__, degrees, steps, deg, steps_rev, min);
 	return steps;
 }
 
@@ -1254,7 +1312,7 @@ static double steps_to_degrees(int steps, int steps_rev, double min) {
 	double degrees = st * 360.0 / steps_rev;
 	while (degrees < 0) degrees += 360;
 	while (degrees >= 360) degrees -= 360;
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s(): %d steps => %.3f deg (st = %d, steps_rev = %d, min = %.3f)", __FUNCTION__, steps, degrees, st, steps_rev, min);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s(): %d steps => %.3f deg (st = %d, steps_rev = %d, min = %.3f)", __FUNCTION__, steps, degrees, st, steps_rev, min);
 	return degrees;
 }
 
