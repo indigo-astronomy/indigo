@@ -29,6 +29,8 @@ indigo_server indigo_focuser_lunatico
 Driver is developed and tested with:
 * Armadillo controller
 
-## NOTE:
-This driver can not be loaded if *indigo_rotator_lunatico* is loaded as both drivers have the same functionality.
-The only difference is that "Main" port of *indigo_rotator_lunatico* driver is configured as Rotator.
+## NOTES:
+
+* This driver can not be loaded if *indigo_rotator_lunatico* is loaded as both drivers have the same functionality. The only difference is that "Main" port of *indigo_rotator_lunatico* driver is configured as Rotator.
+
+* In devices with female DB9 connectors, pins are horizontally flipped. In Software pin 1 corresponds to pin 5 on female DB9, pin 6 corresponds to pin 9 etc. There is no such flipping for the devices with male DB9 connectors.
