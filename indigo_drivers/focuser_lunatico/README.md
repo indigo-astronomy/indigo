@@ -1,4 +1,4 @@
-# Lunatico Astronomy Limpet/Armadillo/Platypus focuser/rotator driver
+# Lunatico Astronomy Limpet/Armadillo/Platypus Focuser/Rotator/Powerbox/GPIO driver
 
 https://www.lunatico.es
 
@@ -8,9 +8,9 @@ Seletek, Armadillo, Platypus and Limpet controllers.
 
 No hot plug support. All devices are present at startup:
 
-* **Limpet** - One focuser is present.
-* **Seletek** and **Armadillo** - One focuser is present on "Main" port and "Exp" can be configured as rotator or focuser.
-* **Platypus** - One focuser is present on "Main" port, while "Exp" and "Third" can be configured as rotator or focuser.
+* **Limpet** - One Focuser is present.
+* **Seletek** and **Armadillo** - One Focuser is present on "Main" port and "Exp" can be configured as Rotator, Focuser or Powerbox/GPIO.
+* **Platypus** - One Focuser is present on "Main" port, while "Exp" and "Third" can be configured as Rotator, Rocuser or Powerbox/GPIO.
 
 ## Supported platforms
 
@@ -31,4 +31,4 @@ Driver is developed and tested with:
 
 ## NOTE:
 This driver can not be loaded if *indigo_rotator_lunatico* is loaded as both drivers have the same functionality.
-The only difference is that "Main" port of *indigo_rotator_lunatico* driver is configured as rotator.
+The only difference is that "Main" port of *indigo_rotator_lunatico* driver is configured as Rotator.
