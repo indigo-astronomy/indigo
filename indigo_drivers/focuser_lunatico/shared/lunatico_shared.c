@@ -145,19 +145,31 @@
 #define LA_MOTOR_TYPE_DC_ITEM_NAME         "DC"
 #define LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME   "STEP_DIR"
 
-#define AUX_GROUP	"Powerbox"
+#define AUX_POWERBOX_GROUP	"Powerbox"
 
 #define AUX_OUTLET_NAMES_PROPERTY      (PORT_DATA.outlet_names_property)
 #define AUX_OUTLET_NAME_1_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 0)
 #define AUX_OUTLET_NAME_2_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 1)
 #define AUX_OUTLET_NAME_3_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 2)
 
-#define AUX_OUTLET_NAMES_PROPERTY_NAME "LA_AUX_OUTLET_NAMES"
-
 #define AUX_POWER_OUTLET_PROPERTY      (PORT_DATA.power_outlet_property)
 #define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
 #define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
 #define AUX_POWER_OUTLET_3_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 2)
+
+#define AUX_SENSORS_GROUP	"Sensors"
+
+#define AUX_SENSOR_NAMES_PROPERTY      (PORT_DATA.sensor_names_property)
+#define AUX_SENSOR_NAME_1_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 0)
+#define AUX_SENSOR_NAME_2_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 1)
+#define AUX_SENSOR_NAME_3_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 2)
+#define AUX_SENSOR_NAME_4_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 3)
+
+#define AUX_GPIO_SENSORS_PROPERTY     (PORT_DATA.sensors_property)
+#define AUX_GPIO_SENSOR_1_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 0)
+#define AUX_GPIO_SENSOR_2_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 1)
+#define AUX_GPIO_SENSOR_3_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 2)
+#define AUX_GPIO_SENSOR_4_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 3)
 
 
 typedef enum {
@@ -186,8 +198,10 @@ typedef struct {
 	                *temperature_sensor_property,
 	                *wiring_property,
 	                *motor_type_property,
-									*outlet_names_property,
-	                *power_outlet_property;
+	                *outlet_names_property,
+	                *power_outlet_property,
+	                *sensor_names_property,
+	                *sensors_property;
 } lunatico_port_data;
 
 typedef struct {
@@ -731,8 +745,8 @@ static int lunatico_init_properties(indigo_device *device) {
 	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 5;
-
-	LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	// --------------------------------------------------------------------------------
+	LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, "Configuration", "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (LA_MODEL_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_MODEL_LIMPET_ITEM, LA_MODEL_LIMPET_ITEM_NAME, "Limpet (1 port)", true);
@@ -740,7 +754,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_MODEL_PLATYPUS_ITEM, LA_MODEL_PLATYPUS_ITEM_NAME, "Platypus (3 ports)", false);
 	if (get_port_index(device) != 0) LA_MODEL_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
-	LA_PORT_EXP_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_EXP_CONFIG_PROPERTY_NAME, "Port Configuration", "Exp port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	LA_PORT_EXP_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_EXP_CONFIG_PROPERTY_NAME, "Configuration", "Exp port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (LA_PORT_EXP_CONFIG_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_PORT_EXP_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
@@ -748,7 +762,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_PORT_EXP_AUX_GPIO_ITEM, LA_PORT_CONFIG_AUX_GPIO_ITEM_NAME, "Powerbox/GPIO", false);
 	if (get_port_index(device) != 0) LA_PORT_EXP_CONFIG_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
-	LA_PORT_THIRD_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_THIRD_CONFIG_PROPERTY_NAME, "Port Configuration", "Third port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	LA_PORT_THIRD_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_THIRD_CONFIG_PROPERTY_NAME, "Configuration", "Third port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (LA_PORT_THIRD_CONFIG_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_PORT_THIRD_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
@@ -793,9 +807,8 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_MOTOR_TYPE_DC_ITEM, LA_MOTOR_TYPE_DC_ITEM_NAME, "DC", false);
 	indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
 	if (PORT_DATA.device_type == TYPE_AUX) LA_MOTOR_TYPE_PROPERTY->hidden = true;
-
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
-	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "DB9 Pin 2", "Power #1");
@@ -803,18 +816,37 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_text_item(AUX_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "DB9 Pin 4", "Power #3");
 	if (PORT_DATA.device_type != TYPE_AUX) AUX_OUTLET_NAMES_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- POWER OUTLETS
-	AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
+	AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
 	if (AUX_POWER_OUTLET_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Power #1", false);
 	indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #2", false);
 	indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_3_ITEM_NAME, "Power #3", false);
 	if (PORT_DATA.device_type != TYPE_AUX) AUX_POWER_OUTLET_PROPERTY->hidden = true;
+	// -------------------------------------------------------------------------------- SENSOR_NAMES
+	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
+	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_text_item(AUX_SENSOR_NAME_1_ITEM, AUX_GPIO_SENSOR_NAME_1_ITEM_NAME, "DB9 Pin 6", "Sensor #1");
+	indigo_init_text_item(AUX_SENSOR_NAME_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "DB9 Pin 7", "Sensor #2");
+	indigo_init_text_item(AUX_SENSOR_NAME_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "DB9 Pin 8", "Sensor #3");
+	indigo_init_text_item(AUX_SENSOR_NAME_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "DB9 Pin 9", "Sensor #4");
+	if (PORT_DATA.device_type != TYPE_AUX) AUX_SENSOR_NAMES_PROPERTY->hidden = true;
+	// -------------------------------------------------------------------------------- GPIO_SENSORS
+	AUX_GPIO_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_SENSORS_PROPERTY_NAME, AUX_SENSORS_GROUP, "GPIO sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
+	if (AUX_GPIO_SENSORS_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(AUX_GPIO_SENSOR_1_ITEM, AUX_GPIO_SENSOR_NAME_1_ITEM_NAME, "Sensor #1", 0, 1024, 1, 0);
+	indigo_init_number_item(AUX_GPIO_SENSOR_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "Sensor #2", 0, 1024, 1, 0);
+	indigo_init_number_item(AUX_GPIO_SENSOR_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "Sensor #3", 0, 1024, 1, 0);
+	indigo_init_number_item(AUX_GPIO_SENSOR_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "Sensor #4", 0, 1024, 1, 0);
+	if (PORT_DATA.device_type != TYPE_AUX) AUX_GPIO_SENSORS_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
 	indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
 	indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
 	indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
 	indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -833,6 +865,8 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 			indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 		if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property))
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
+			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	}
 	if (indigo_property_match(LA_MODEL_PROPERTY, property))
 		indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
@@ -842,6 +876,8 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 		indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
 	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+	if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property))
+		indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -916,6 +952,7 @@ static indigo_result lunatico_detach(indigo_device *device) {
 	indigo_release_property(LA_WIRING_PROPERTY);
 	indigo_release_property(LA_MOTOR_TYPE_PROPERTY);
 	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
+	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, LA_MODEL_PROPERTY, NULL);
@@ -929,6 +966,9 @@ static indigo_result lunatico_detach(indigo_device *device) {
 
 	indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
+
+	indigo_delete_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
+	indigo_release_property(AUX_SENSOR_NAMES_PROPERTY);
 	return INDIGO_OK;
 }
 
@@ -943,6 +983,7 @@ static void lunatico_save_properties(indigo_device *device) {
 	indigo_save_property(device, NULL, LA_WIRING_PROPERTY);
 	indigo_save_property(device, NULL, LA_MOTOR_TYPE_PROPERTY);
 	indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
+	indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
 }
 
 
@@ -953,6 +994,7 @@ static void lunatico_delete_properties(indigo_device *device) {
 	indigo_delete_property(device, LA_WIRING_PROPERTY, NULL);
 	indigo_delete_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 }
 
 
@@ -1123,6 +1165,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
 					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 					set_power_outlets(device);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				}
@@ -1161,6 +1204,22 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
+		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
+		if (IS_CONNECTED) {
+			indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+		}
+		snprintf(AUX_GPIO_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_1_ITEM->text.value);
+		snprintf(AUX_GPIO_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_2_ITEM->text.value);
+		snprintf(AUX_GPIO_SENSOR_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_3_ITEM->text.value);
+		snprintf(AUX_GPIO_SENSOR_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_4_ITEM->text.value);
+		AUX_SENSOR_NAMES_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+		}
+		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
+		return INDIGO_OK;
 	}
 	// --------------------------------------------------------------------------------
 	lunatico_common_update_property(device, client, property);
@@ -1198,6 +1257,7 @@ static double steps_to_degrees(int steps, int steps_rev, double min) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s(): %d steps => %.3f deg (st = %d, steps_rev = %d, min = %.3f)", __FUNCTION__, steps, degrees, st, steps_rev, min);
 	return degrees;
 }
+
 
 static void lunatico_sync_to_current(indigo_device *device) {
 	double steps = degrees_to_steps(
