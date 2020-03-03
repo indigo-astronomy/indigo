@@ -168,7 +168,7 @@ static void mount_handle_tracking(indigo_device *device) {
 			res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, tracking_mode);
 			if (res != RC_OK) {
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d (%s)", PRIVATE_DATA->dev_id, tracking_mode, res, strerror(errno));
 			}
 		} else {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -490,27 +490,26 @@ static void position_timer_callback(indigo_device *device) {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	}
 
-	int mode = tc_get_tracking_mode(dev_id);
-	if (mode < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d (%s)", dev_id, mode, strerror(errno));
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (mode == TC_TRACK_OFF) {
-		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_AUTO_ITEM->sw.value) {
-			if (mode == TC_TRACK_ALT_AZ) {
-				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
-			} else {
-				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+		int mode = tc_get_tracking_mode(dev_id);
+		if (mode < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d (%s)", dev_id, mode, strerror(errno));
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (mode != TC_TRACK_OFF) {
+			if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_AUTO_ITEM->sw.value) {
+				if (mode == TC_TRACK_ALT_AZ) {
+					indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+				} else {
+					indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+				}
+				TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_send_message(device, "Tracking mode detected");
 			}
-			TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Tracking mode detected");
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	}
-
+	
 	if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
 		res = tc_get_side_of_pier(dev_id);
 		if (res < 0) {
