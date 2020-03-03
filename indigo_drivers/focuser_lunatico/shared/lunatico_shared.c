@@ -151,11 +151,13 @@
 #define AUX_OUTLET_NAME_1_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 0)
 #define AUX_OUTLET_NAME_2_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 1)
 #define AUX_OUTLET_NAME_3_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 2)
+#define AUX_OUTLET_NAME_4_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 3)
 
 #define AUX_POWER_OUTLET_PROPERTY      (PORT_DATA.power_outlet_property)
 #define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
 #define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
 #define AUX_POWER_OUTLET_3_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 2)
+#define AUX_POWER_OUTLET_4_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 3)
 
 #define AUX_SENSORS_GROUP	"Sensors"
 
@@ -615,7 +617,7 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool enable) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
-	if (pin < 1 || pin > 3) return false;
+	if (pin < 1 || pin > 4) return false;
 
 	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d %d#", get_port_index(device), pin, enable ? 1 : 0);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
@@ -629,6 +631,8 @@ static bool lunatico_read_sensor(indigo_device *device, int pin, int *sensor_val
 
 	char command[LUNATICO_CMD_LEN];
 	int value;
+
+	if (pin < 5 || pin > 8) return false;
 
 	snprintf(command, LUNATICO_CMD_LEN, "!read an %d %d#", get_port_index(device), pin);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
@@ -825,20 +829,22 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_MOTOR_TYPE_STEP_DIR_ITEM, LA_MOTOR_TYPE_STEP_DIR_ITEM_NAME, "Step-dir", false);
 	if (PORT_DATA.device_type == TYPE_AUX) LA_MOTOR_TYPE_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
-	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "DB9 Pin 2", "Power #1");
-	indigo_init_text_item(AUX_OUTLET_NAME_2_ITEM, AUX_POWER_OUTLET_NAME_2_ITEM_NAME, "DB9 Pin 3", "Power #2");
-	indigo_init_text_item(AUX_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "DB9 Pin 4", "Power #3");
+	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "DB9 Pin 1", "Power #1");
+	indigo_init_text_item(AUX_OUTLET_NAME_2_ITEM, AUX_POWER_OUTLET_NAME_2_ITEM_NAME, "DB9 Pin 2", "Power #2");
+	indigo_init_text_item(AUX_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "DB9 Pin 3", "Power #3");
+	indigo_init_text_item(AUX_OUTLET_NAME_4_ITEM, AUX_POWER_OUTLET_NAME_4_ITEM_NAME, "DB9 Pin 4", "Power #4");
 	if (PORT_DATA.device_type != TYPE_AUX) AUX_OUTLET_NAMES_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- POWER OUTLETS
-	AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
+	AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 	if (AUX_POWER_OUTLET_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Power #1", false);
 	indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #2", false);
 	indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_3_ITEM_NAME, "Power #3", false);
+	indigo_init_switch_item(AUX_POWER_OUTLET_4_ITEM, AUX_POWER_OUTLET_4_ITEM_NAME, "Power #4", false);
 	if (PORT_DATA.device_type != TYPE_AUX) AUX_POWER_OUTLET_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- SENSOR_NAMES
 	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
@@ -1129,28 +1135,31 @@ static void sensors_timer_callback(indigo_device *device) {
 
 	AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
 
-	if (!(success = lunatico_read_sensor(device, 5, &sensor_value))) {
+	/* NOTE: Pins are hrizontally flipped on the newer devices with female DB9 connectors.
+	   We reverse them here, so that there is no issue for the users with these devices.
+	*/
+	if (!(success = lunatico_read_sensor(device, 8, &sensor_value))) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		AUX_GPIO_SENSOR_1_ITEM->number.value = (double)sensor_value;
 	}
 
-	if ((success) && (!(success = lunatico_read_sensor(device, 6, &sensor_value)))) {
+	if ((success) && (!(success = lunatico_read_sensor(device, 7, &sensor_value)))) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		AUX_GPIO_SENSOR_2_ITEM->number.value = (double)sensor_value;
 	}
 
-	if ((success) && (!(success = lunatico_read_sensor(device, 7, &sensor_value)))) {
+	if ((success) && (!(success = lunatico_read_sensor(device, 6, &sensor_value)))) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		AUX_GPIO_SENSOR_3_ITEM->number.value = (double)sensor_value;
 	}
 
-	if ((success) && (!(success = lunatico_read_sensor(device, 8, &sensor_value)))) {
+	if ((success) && (!(success = lunatico_read_sensor(device, 5, &sensor_value)))) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_sensor(%d) failed", PRIVATE_DATA->handle);
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -1164,16 +1173,22 @@ static void sensors_timer_callback(indigo_device *device) {
 
 static bool set_power_outlets(indigo_device *device) {
 	bool success = true;
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d, %d, %d", AUX_POWER_OUTLET_1_ITEM->sw.value, AUX_POWER_OUTLET_2_ITEM->sw.value, AUX_POWER_OUTLET_3_ITEM->sw.value);
-	if (!lunatico_enable_power_outlet(device, 1, AUX_POWER_OUTLET_1_ITEM->sw.value)) {
+	/* NOTE: Pins are hrizontally flipped on the newer devices with female DB9 connectors.
+	   We reverse them here, so that there is no issue for the users with these devices.
+	*/
+	if (!lunatico_enable_power_outlet(device, 4, AUX_POWER_OUTLET_1_ITEM->sw.value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
 		success = false;
 	}
-	if (!lunatico_enable_power_outlet(device, 2, AUX_POWER_OUTLET_2_ITEM->sw.value)) {
+	if (!lunatico_enable_power_outlet(device, 3, AUX_POWER_OUTLET_2_ITEM->sw.value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
 		success = false;
 	}
-	if (!lunatico_enable_power_outlet(device, 3, AUX_POWER_OUTLET_3_ITEM->sw.value)) {
+	if (!lunatico_enable_power_outlet(device, 2, AUX_POWER_OUTLET_3_ITEM->sw.value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	}
+	if (!lunatico_enable_power_outlet(device, 1, AUX_POWER_OUTLET_4_ITEM->sw.value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_enable_power_outlet(%d) failed", PRIVATE_DATA->handle);
 		success = false;
 	}
@@ -1244,6 +1259,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
 		snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
 		snprintf(AUX_POWER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_3_ITEM->text.value);
+		snprintf(AUX_POWER_OUTLET_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_4_ITEM->text.value);
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
