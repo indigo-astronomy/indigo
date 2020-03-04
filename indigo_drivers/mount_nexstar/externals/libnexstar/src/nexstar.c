@@ -178,8 +178,8 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 	}
 
 	if ((guessed_vendor == VNDR_CELESTRON) &&
-		((mount_model == 5) || (mount_model == 6) || (mount_model == 10) ||
-		(mount_model == 14) || (mount_model == 20))) {
+		((mount_model == 5) || (mount_model == 6) || (mount_model == 10) || (mount_model == 13) ||
+		(mount_model == 14) || (mount_model == 20) || (mount_model == 23) || (mount_model == 24))) {
 		*caps |= TRUE_EQ_MOUNT;
 	}
 	if ((guessed_vendor == VNDR_SKYWATCHER) &&
