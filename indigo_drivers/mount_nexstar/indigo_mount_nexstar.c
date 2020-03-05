@@ -265,7 +265,10 @@ static bool mount_set_location(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	if (res != RC_OK) {
+	if (res == RC_FORBIDDEN) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = RC_FORBIDDEN (Can not set location while aligned)", PRIVATE_DATA->dev_id);
+		indigo_send_message(device, "StarSense controller can not set location while aligned.");
+	} else if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		return false;
 	}
@@ -340,8 +343,10 @@ static void mount_handle_utc(indigo_device *device) {
 	/* set mount time to local time */
 	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, offset, 0);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-
-	if (res != RC_OK) {
+	if (res == RC_FORBIDDEN) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN (Can not set time when aligned)", PRIVATE_DATA->dev_id);
+		indigo_send_message(device, "StarSense controller can not set time while aligned.");
+	} if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Can not set mount date/time.");
@@ -371,8 +376,10 @@ static bool mount_set_utc_from_host(indigo_device *device) {
 	int res = tc_set_time(PRIVATE_DATA->dev_id, timenow, offset, 0);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tc_set_time: '%02d/%02d/%04d %02d:%02d:%02d %+d'", tm_timenow.tm_mday, tm_timenow.tm_mon+1, tm_timenow.tm_year+1900, tm_timenow.tm_hour, tm_timenow.tm_min, tm_timenow.tm_sec, offset, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-
-	if (res != RC_OK) {
+	if (res == RC_FORBIDDEN) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN (Can not set time when aligned)", PRIVATE_DATA->dev_id);
+		indigo_send_message(device, "StarSense controller can not set time while aligned.");
+	} else if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		return false;
 	}

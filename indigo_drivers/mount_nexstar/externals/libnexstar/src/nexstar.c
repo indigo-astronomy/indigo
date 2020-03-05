@@ -345,12 +345,7 @@ int _tc_sync_rade(int dev, double ra, double de, char precise) {
 
 int tc_check_align(int dev) {
 	char reply[2];
-	/*
-	// Starsense returns not aligned even if aligned so just return aligned.
-	if (nexstar_hc_type == HC_STARSENSE) {
-		return 1;
-	}
-	*/
+
 	REQUIRE_VER(VER_1_2);
 
 	if (write_telescope(dev, "J", 1) < 1) return RC_FAILED;
