@@ -60,6 +60,7 @@
 #define RC_DATA        (-4)	/* invalid data */
 #define RC_UNSUPPORTED (-5) /* Unsupported command */
 #define RC_UNCERTAIN   (-6) /* Alignment may be poor */
+#define RC_FORBIDDEN   (-7) /* Operation is forbidden */
 
 #define DEG2RAD (3.1415926535897932384626433832795/180.0)
 #define RAD2DEG (180.0/3.1415926535897932384626433832795)

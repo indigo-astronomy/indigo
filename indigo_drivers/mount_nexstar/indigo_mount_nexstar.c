@@ -128,7 +128,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, "Mount is not aligned, please align it first.");
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Mount is not aligned, please align it first.");
-		return;
+		//return;
 	}
 
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -509,7 +509,7 @@ static void position_timer_callback(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
-	
+
 	if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
 		res = tc_get_side_of_pier(dev_id);
 		if (res < 0) {
@@ -716,7 +716,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 
 					/* initialize tracking prop */
-					
+
 					if (PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT) {
 						TRACKING_MODE_PROPERTY->hidden = true;
 						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);

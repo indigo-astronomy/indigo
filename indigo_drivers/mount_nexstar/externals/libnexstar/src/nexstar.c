@@ -345,11 +345,12 @@ int _tc_sync_rade(int dev, double ra, double de, char precise) {
 
 int tc_check_align(int dev) {
 	char reply[2];
-
-	/* Starsense returns not aligned even if aligned so just return aligned. */
+	/*
+	// Starsense returns not aligned even if aligned so just return aligned.
 	if (nexstar_hc_type == HC_STARSENSE) {
 		return 1;
 	}
+	*/
 	REQUIRE_VER(VER_1_2);
 
 	if (write_telescope(dev, "J", 1) < 1) return RC_FAILED;
@@ -648,6 +649,15 @@ int tc_set_location(int dev, double lon, double lat) {
 	unsigned char deg, min, sec, sign;
 
 	REQUIRE_VER(VER_2_3);
+	// Starsense HC breaks with this comand when aligned? or always?
+	if (nexstar_hc_type == HC_STARSENSE) {
+		int aligned = tc_check_align(dev);
+		if (aligned < 0) {
+			return aligned;
+		} else if (aligned == 1) {
+			return RC_FORBIDDEN;
+		}
+	}
 
 	cmd[0] = 'W';
 	dd2dms(lat, &deg, &min, &sec, (char *)&sign);
@@ -716,6 +726,15 @@ int tc_set_time(char dev, time_t ttime, int tz, int dst) {
 	time_t ltime;
 
 	REQUIRE_VER(VER_2_3);
+	// Starsense HC loses alignment if time is set
+	if (nexstar_hc_type == HC_STARSENSE) {
+		int aligned = tc_check_align(dev);
+		if (aligned < 0) {
+			return aligned;
+		} else if (aligned == 1) {
+			return RC_FORBIDDEN;
+		}
+	}
 
 	timezone = tz;
 	if (tz < 0) tz += 256;
