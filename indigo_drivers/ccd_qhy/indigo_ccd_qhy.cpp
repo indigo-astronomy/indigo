@@ -1761,6 +1761,11 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			SetQHYCCDLogLevel(6);
 			rc = InitQHYCCDResource();
 			if (rc != QHYCCD_SUCCESS) return INDIGO_FAILED;

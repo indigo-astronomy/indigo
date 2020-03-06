@@ -28,6 +28,7 @@
 #define ccd_qhy_h
 
 #include <indigo/indigo_driver.h>
+#include <indigo/indigo_client.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_guider_driver.h>
 #include <indigo/indigo_wheel_driver.h>
@@ -42,6 +43,7 @@ extern "C" {
 
 #define INDIGO_CCD_QHY indigo_ccd_qhy
 #define DRIVER_NAME "indigo_ccd_qhy"
+#define CONFLICTING_DRIVER "indigo_ccd_qhy2"
 #define DRIVER_DESCRIPTION "QHY Camera"
 #define USE_LOG4Z
 
