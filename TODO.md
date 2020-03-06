@@ -8,8 +8,8 @@
 
 1. introduction
 2. users guide for indigo_server and command line client
-3. developers guide for drivers
-4. developers guide for client apps
+3. developers guide for drivers __DONE__
+4. developers guide for client apps __DONE__
 
 ### Framework
 
@@ -62,8 +62,11 @@
 #### Dome
 2. UNIVERSAL dome driver
 3. Maxdome II
+3. Lunatico Astronomia Dragonfly dome driver
 
 #### AUX
-
+1. Lunatico Astronomia AAG CloudWatcher driver
+2. Lunatico Astronomia Dragonfly GPIO driver
 
 #### AO
+1. a-Box AO driver
