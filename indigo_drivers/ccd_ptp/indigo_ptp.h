@@ -420,7 +420,8 @@ extern uint8_t *ptp_decode_uint128(uint8_t *source, char *target);
 extern uint8_t *ptp_decode_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count);
 extern uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count);
 extern uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device);
-extern uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_property *target);
+extern uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *device, ptp_property *target);
+extern uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_property *target);
 
 extern uint8_t *ptp_encode_string(char *source, uint8_t *target);
 extern uint8_t *ptp_encode_uint8(uint8_t source, uint8_t *target);
@@ -451,6 +452,7 @@ extern bool ptp_check_jpeg_ext(const char *ext);
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_2_0(device, code, out_1, out_2) ptp_transaction(device, code, 2, out_1, out_2, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_3_0(device, code, out_1, out_2, out_3) ptp_transaction(device, code, 3, out_1, out_2, out_3, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+#define ptp_transaction_3_0_i(device, code, out_1, out_2, out_3, data_in, data_size) ptp_transaction(device, code, 3, out_1, out_2, out_3, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
 #define ptp_transaction_0_0_i(device, code, data_in, data_size) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
 #define ptp_transaction_1_0_i(device, code, out_1, data_in, data_size) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, data_in, data_size)
 #define ptp_transaction_1_1(device, code, out_1, in_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, in_1, NULL, NULL, NULL, NULL, NULL, NULL)
