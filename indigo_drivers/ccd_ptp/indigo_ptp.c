@@ -554,11 +554,17 @@ uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device) {
 	return source;
 }
 
-uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_property *target) {
+#define CHECK_SENTINEL() if (sentinel <= source) { INDIGO_LOG(indigo_log("check_sentinel failed.")); return sentinel; }
+
+uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *device, ptp_property *target) {
+	uint8_t *sentinel = source + size;
 	source = ptp_decode_uint16(source, &target->code);
 	source = ptp_decode_uint16(source, &target->type);
 	source = ptp_decode_uint8(source, &target->writable);
 	switch (target->type) {
+		case ptp_undef_type: {
+			return source;
+		}
 		case ptp_uint8_type: {
 			uint8_t value;
 			source = ptp_decode_uint8(source + sizeof(uint8_t), &value);
@@ -628,6 +634,7 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 			INDIGO_LOG(indigo_log("Unsupported type=%x", target->type));
 			assert(false);
 	}
+	CHECK_SENTINEL();
 	source = ptp_decode_uint8(source, &target->form);
 	switch (target->form) {
 		case ptp_none_form:
@@ -785,6 +792,69 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 		PRIVATE_DATA->fix_property(device, target);
 	ptp_update_property(device, target);
 	return source;
+}
+
+uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_property *target) {
+	switch (target->type) {
+		case ptp_undef_type: {
+			return source;
+		}
+		case ptp_uint8_type: {
+			uint8_t value;
+			source = ptp_decode_uint8(source, &value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_int8_type: {
+			int8_t value;
+			source = ptp_decode_uint8(source, (uint8_t *)&value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_uint16_type: {
+			uint16_t value;
+			source = ptp_decode_uint16(source, &value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_int16_type: {
+			int16_t value;
+			source = ptp_decode_uint16(source, (uint16_t *)&value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_uint32_type: {
+			uint32_t value;
+			source = ptp_decode_uint32(source, &value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_int32_type: {
+			int32_t value;
+			source = ptp_decode_uint32(source, (uint32_t *)&value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_uint64_type:
+		case ptp_int64_type: {
+			int64_t value;
+			source = ptp_decode_uint64(source, (uint64_t *)&value);
+			target->value.number.value = value;
+			break;
+		}
+		case ptp_uint128_type:
+		case ptp_int128_type: {
+			source = ptp_decode_uint128(source, target->value.text.value);
+			break;
+		}
+		case ptp_str_type: {
+			source += *source *2 + 1;
+			source = ptp_decode_string(source, target->value.text.value);
+			break;
+		}
+		default:
+			assert(false);
+	}
 }
 
 ptp_property *ptp_property_supported(indigo_device *device, uint16_t code) {
@@ -1224,9 +1294,11 @@ bool ptp_initialise(indigo_device *device) {
 			free(buffer);
 		buffer = NULL;
 		uint16_t *properties = PRIVATE_DATA->info_properties_supported;
+		uint32_t size = 0;
 		for (int i = 0; properties[i]; i++) {
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, NULL)) {
-				ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, &size)) {
+ptp_debug_dump(buffer, size);
+				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
 			}
 			if (buffer)
 				free(buffer);
@@ -1280,10 +1352,11 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 			void *buffer = NULL;
 			code = params[0];
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_DevicePropChanged: code=%s (%04x)", PRIVATE_DATA->property_code_name(code), code);
+			uint32_t size = 0;
 			for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 				if (PRIVATE_DATA->info_properties_supported[i] == code) {
-					if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, code, &buffer, NULL)) {
-						ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
+					if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, code, &buffer, &size)) {
+						ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
 					}
 					break;
 				}

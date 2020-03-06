@@ -177,6 +177,8 @@ static struct dslr_model_info {
   { "SONY ALPHA A5100", 6000, 4000, 3.92 },
   { "SONY ALPHA A5000", 5456, 3632, 4.25 },
   { "SONY ALPHA 7II", 6000, 4000, 5.98 },
+  { "FUJIFILM X-T3", 6240, 4160, 3.77 },
+  { "FUJIFILM GFX 50S", 8256, 6192, 5.3 },
   { NULL, 0, 0, 0 },
 };
 

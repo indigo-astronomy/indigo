@@ -652,8 +652,9 @@ static bool ptp_refresh_property(indigo_device *device, ptp_property *property) 
 	bool result = false;
 	if (property) {
 		void *buffer = NULL;
-		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, property->code, &buffer, NULL)) {
-			result = ptp_decode_property(buffer, device, property);
+		uint32_t size = 0;
+		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, property->code, &buffer, &size)) {
+			result = ptp_decode_property(buffer, size, device, property);
 		}
 		if (buffer)
 			free(buffer);
@@ -678,9 +679,10 @@ static void ptp_check_event(indigo_device *device) {
 		if (buffer)
 			free(buffer);
 	} else {
+		uint32_t size = 0;
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, PRIVATE_DATA->info_properties_supported[i], &buffer, NULL)) {
-				ptp_decode_property(buffer, device, PRIVATE_DATA->properties + i);
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, PRIVATE_DATA->info_properties_supported[i], &buffer, &size)) {
+				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
 			}
 			if (buffer)
 				free(buffer);
@@ -715,10 +717,11 @@ bool ptp_nikon_initialise(indigo_device *device) {
 			int index = 0;
 			for (index = 0; target[index]; index++)
 				;
+			uint32_t size = 0;
 			for (int i = 0; properties[i]; i++) {
 				target[index] = properties[i];
-				if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, target[index], &buffer, NULL)) {
-					ptp_decode_property(buffer, device, PRIVATE_DATA->properties + index);
+				if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, target[index], &buffer, &size)) {
+					ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + index);
 				}
 				if (buffer)
 					free(buffer);
