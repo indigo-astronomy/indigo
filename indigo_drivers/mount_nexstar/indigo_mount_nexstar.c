@@ -128,7 +128,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, "Mount is not aligned, please align it first.");
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Mount is not aligned, please align it first.");
-		//return;
+		return;
 	}
 
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
