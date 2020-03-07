@@ -1,7 +1,10 @@
 # Changelog
 
-All notable changes to INDIGO framewark will be documented in this file.  ##
-[2.0-114] - ??  ### Overall:
+All notable changes to INDIGO framewark will be documented in this file.
+
+## [2.0-114] - Sat Mar 7 2020
+
+### Overall:
 - indigo_server: several fixes
 - indigo_prop_tool: fix quotes management in set value
 - indigo_framework:
