@@ -30,5 +30,9 @@
 #define CONFLICTING_DRIVER       "indigo_focuser_lunatico"
 #define DRIVER_INFO              "Lunatico Astronomia Rotator"
 #define DEFAULT_DEVICE           TYPE_ROTATOR
+#define DRIVER_VERSION 					 0x0002
 
 #include "../focuser_lunatico/shared/lunatico_shared.c"
+
+//fake metainfo
+//SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
