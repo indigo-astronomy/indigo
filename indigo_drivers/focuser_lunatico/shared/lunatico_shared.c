@@ -23,8 +23,6 @@
  \file lunatico_shared.c
  */
 
-#define DRIVER_VERSION 0x0002
-
 #define FOCUSER_LUNATICO_NAME    "Focuser Lunatico"
 #define ROTATOR_LUNATICO_NAME    "Rotator Lunatico"
 #define AUX_LUNATICO_NAME        "Powerbox Lunatico"
