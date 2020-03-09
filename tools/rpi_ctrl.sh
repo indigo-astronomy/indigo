@@ -383,7 +383,7 @@ __list-available-versions() {
 
     # List current installed version and candidate version or older versions. In total 3 versions are listed.
     echo $(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -oPm1 "(?<=Installed:\s).*") \
-	 $(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -E -oe '\s\s[0-9]+.[0-9]+\-[0-9]+' | tr -d '[:blank:]' | head -n 2)
+	 $(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -E -oe '\s\s[0-9]+.[0-9]+\-[0-9]+(\-[0-9]+)?' | tr -d '[:blank:]' | head -n 2)
 }
 
 ###############################################
