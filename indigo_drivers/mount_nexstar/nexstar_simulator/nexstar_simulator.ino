@@ -63,7 +63,7 @@ long SLEW_PER_SEC = 0x10000L;
 #ifdef CELESTRON
 byte _version[] = { 4, 15 };
 byte _model = 5;
-byte _hc_type[] = { 0x11 }; // 0x11 = NexStsr, 0x13 = StarSense
+byte _hc_type[] = { 0x13 }; // 0x11 = NexStsr, 0x13 = StarSense
 #endif
 #ifdef SKYWATCHER
 byte _version[] = { 4, 37, 7 };

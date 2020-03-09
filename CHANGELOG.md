@@ -2,6 +2,14 @@
 
 All notable changes to INDIGO framewark will be documented in this file.
 
+## [2.0-116] - Mon Mar 9 2020
+
+### Overall:
+- indigosky fixes
+
+### Driver fixes:
+- lunatico drivers: show proper description
+
 ## [2.0-114] - Sat Mar 7 2020
 
 ### Overall:
