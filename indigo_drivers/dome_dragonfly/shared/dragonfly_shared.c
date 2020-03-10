@@ -46,6 +46,7 @@
 
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_client.h>
+#include <indigo/indigo_dome_driver.h>
 #include <indigo/indigo_aux_driver.h>
 
 #define DEFAULT_BAUDRATE            "115200"
@@ -109,9 +110,8 @@
 
 
 typedef enum {
-	TYPE_FOCUSER = 0,
-	TYPE_ROTATOR = 1,
-	TYPE_AUX     = 2
+	TYPE_DOME    = 0,
+	TYPE_AUX     = 1
 } device_type_t;
 
 static const char *port_name[3] = { "Main", "Exp", "Third" };
@@ -429,7 +429,6 @@ static int lunatico_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_INTERNAL_ITEM, LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME, "Internal sensor", true);
 	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM, LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME, "External Sensor", false);
-	if (PORT_DATA.device_type != TYPE_FOCUSER) LA_TEMPERATURE_SENSOR_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
 	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
@@ -744,6 +743,69 @@ static indigo_result aux_detach(indigo_device *device) {
 	return indigo_aux_detach(device);
 }
 
+// -------------------------------------------------------------------------------- INDIGO dome device implementation
+
+static void dome_timer_callback(indigo_device *device) {
+}
+
+static indigo_result dome_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// This is a sliding roof -> we need only open and close
+		DOME_SPEED_PROPERTY->hidden = true;
+		DOME_DIRECTION_PROPERTY->hidden = true;
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden = true;
+		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
+		DOME_DIRECTION_PROPERTY->hidden = true;
+		DOME_STEPS_PROPERTY->hidden = true;
+		DOME_PARK_PROPERTY->hidden = true;
+		DOME_DIMENSION_PROPERTY->hidden = true;
+		DOME_SLAVING_PROPERTY->hidden = true;
+		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
+
+		// --------------------------------------------------------------------------------
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return indigo_dome_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
+		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
+		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		DOME_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DOME_SHUTTER
+		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_dome_change_property(device, client, property);
+}
+
+static indigo_result dome_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_dome_detach(device);
+}
+
+
 // --------------------------------------------------------------------------------
 
 static int device_number = 0;
@@ -757,6 +819,15 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 		aux_change_property,
 		NULL,
 		aux_detach
+	);
+
+	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
+		DOME_DRAGONFLY_NAME,
+		dome_attach,
+		indigo_dome_enumerate_properties,
+		dome_change_property,
+		NULL,
+		dome_detach
 	);
 
 	if (port_index >= MAX_PORTS) return;
@@ -778,7 +849,10 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 
 	device_data[device_index].port[port_index] = malloc(sizeof(indigo_device));
 	assert(device_data[device_index].port[port_index] != NULL);
-	if (device_type == 50) {
+	if (device_type == TYPE_DOME) {
+		memcpy(device_data[device_index].port[port_index], &dome_template, sizeof(indigo_device));
+		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", DOME_DRAGONFLY_NAME, port_name[port_index]);
+		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_DOME;
 	} else {
 		memcpy(device_data[device_index].port[port_index], &aux_template, sizeof(indigo_device));
 		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", AUX_DRAGONFLY_NAME, port_name[port_index]);
@@ -832,6 +906,7 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 			return INDIGO_FAILED;
 		}
 		create_port_device(0, 0, DEFAULT_DEVICE);
+		create_port_device(0, 1, TYPE_AUX);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:

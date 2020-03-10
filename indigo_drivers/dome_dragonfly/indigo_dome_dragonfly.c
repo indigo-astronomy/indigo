@@ -30,7 +30,7 @@
 #define CONFLICTING_DRIVER       "indigo_aux_dragonfly"
 #define DRIVER_INFO              "Lunatico Dragonfly Dome"
 
-#define DEFAULT_DEVICE           TYPE_FOCUSER
+#define DEFAULT_DEVICE           TYPE_DOME
 #define DRIVER_VERSION 					 0x0001
 
 #include "shared/dragonfly_shared.c"
