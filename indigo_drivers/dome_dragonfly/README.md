@@ -1,16 +1,12 @@
-# Lunatico Astronomy Limpet/Armadillo/Platypus Focuser/Rotator/Powerbox/GPIO driver
+# Lunatico Astronomy Dragonfly dome/GPIO driver
 
 https://www.lunatico.es
 
 ## Supported devices
 
-Seletek, Armadillo, Platypus and Limpet controllers.
+Dragonfly controllers.
 
-No hot plug support. All devices are present at startup:
-
-* **Limpet** - One Focuser is present.
-* **Seletek** and **Armadillo** - One Focuser is present on "Main" port and "Exp" can be configured as Rotator, Focuser or Powerbox/GPIO.
-* **Platypus** - One Focuser is present on "Main" port, while "Exp" and "Third" can be configured as Rotator, Focuser or Powerbox/GPIO.
+No hot plug support. One Dome and one GPIO are present at startup.
 
 ## Supported platforms
 
@@ -22,15 +18,16 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-indigo_server indigo_focuser_lunatico
+indigo_server indigo_dome_dragonfly
 
 ## Status: Under Development
 
 Driver is developed and tested with:
-* Armadillo controller
+* Dragonfly controller
 
 ## NOTES:
+* The Dome wiring should be as described in Dragonfly documentation.
 
-* This driver can not be loaded if *indigo_rotator_lunatico* is loaded as both drivers have the same functionality. The only difference is that "Main" port of *indigo_rotator_lunatico* driver is configured as Rotator.
+* This driver can not be loaded if *indigo_aux_dragonfly* is loaded as both drivers have the same functionality.
 
 * In devices with male DB9 connectors, pins are horizontally flipped. In software pin 1 corresponds to pin 5 on male DB9, pin 6 corresponds to pin 9 etc. There is no such flipping for the devices with female DB9 connectors.
