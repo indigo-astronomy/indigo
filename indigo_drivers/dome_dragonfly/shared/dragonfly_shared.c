@@ -53,42 +53,34 @@
 
 #define ROTATOR_SPEED 1
 
-#define MAX_PORTS  3
-#define MAX_DEVICES 4
+#define MAX_LOGICAL_DEVICES  2
+#define MAX_PHYSICAL_DEVICES 4
 
 #define DEVICE_CONNECTED_MASK            0x80
-#define PORT_INDEX_MASK                  0x0F
+#define L_DEVICE_INDEX_MASK              0x0F
 
 #define DEVICE_CONNECTED                 (device->gp_bits & DEVICE_CONNECTED_MASK)
 
 #define set_connected_flag(dev)          ((dev)->gp_bits |= DEVICE_CONNECTED_MASK)
 #define clear_connected_flag(dev)        ((dev)->gp_bits &= ~DEVICE_CONNECTED_MASK)
 
-#define get_port_index(dev)              ((dev)->gp_bits & PORT_INDEX_MASK)
-#define set_port_index(dev, index)       ((dev)->gp_bits = ((dev)->gp_bits & ~PORT_INDEX_MASK) | (PORT_INDEX_MASK & index))
+#define get_locical_device_index(dev)              ((dev)->gp_bits & L_DEVICE_INDEX_MASK)
+#define set_logical_device_index(dev, index)       ((dev)->gp_bits = ((dev)->gp_bits & ~L_DEVICE_INDEX_MASK) | (L_DEVICE_INDEX_MASK & index))
 
-#define device_exists(device_index, port_index) (device_data[device_index].port[port_index] != NULL)
+#define device_exists(p_device_index, l_device_index) (device_data[p_device_index].device[l_device_index] != NULL)
 
-#define PRIVATE_DATA                    ((lunatico_private_data *)device->private_data)
-#define PORT_DATA                       (PRIVATE_DATA->port_data[get_port_index(device)])
-
-#define LA_TEMPERATURE_SENSOR_PROPERTY      (PORT_DATA.temperature_sensor_property)
-#define LA_TEMPERATURE_SENSOR_INTERNAL_ITEM (LA_TEMPERATURE_SENSOR_PROPERTY->items+0)
-#define LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM (LA_TEMPERATURE_SENSOR_PROPERTY->items+1)
-
-#define LA_TEMPERATURE_SENSOR_PROPERTY_NAME        "LA_TEMPERATURE_SENSOR"
-#define LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME   "INTERNAL"
-#define LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME   "EXTERNAL"
+#define PRIVATE_DATA                      ((lunatico_private_data *)device->private_data)
+#define DEVICE_DATA                       (PRIVATE_DATA->device_data[get_locical_device_index(device)])
 
 #define AUX_POWERBOX_GROUP	"Powerbox"
 
-#define AUX_OUTLET_NAMES_PROPERTY      (PORT_DATA.outlet_names_property)
+#define AUX_OUTLET_NAMES_PROPERTY      (DEVICE_DATA.outlet_names_property)
 #define AUX_OUTLET_NAME_1_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 0)
 #define AUX_OUTLET_NAME_2_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 1)
 #define AUX_OUTLET_NAME_3_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 2)
 #define AUX_OUTLET_NAME_4_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 3)
 
-#define AUX_POWER_OUTLET_PROPERTY      (PORT_DATA.power_outlet_property)
+#define AUX_POWER_OUTLET_PROPERTY      (DEVICE_DATA.power_outlet_property)
 #define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
 #define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
 #define AUX_POWER_OUTLET_3_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 2)
@@ -96,13 +88,13 @@
 
 #define AUX_SENSORS_GROUP	"Sensors"
 
-#define AUX_SENSOR_NAMES_PROPERTY      (PORT_DATA.sensor_names_property)
+#define AUX_SENSOR_NAMES_PROPERTY      (DEVICE_DATA.sensor_names_property)
 #define AUX_SENSOR_NAME_1_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 0)
 #define AUX_SENSOR_NAME_2_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 1)
 #define AUX_SENSOR_NAME_3_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 2)
 #define AUX_SENSOR_NAME_4_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 3)
 
-#define AUX_GPIO_SENSORS_PROPERTY     (PORT_DATA.sensors_property)
+#define AUX_GPIO_SENSORS_PROPERTY     (DEVICE_DATA.sensors_property)
 #define AUX_GPIO_SENSOR_1_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 0)
 #define AUX_GPIO_SENSOR_2_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 1)
 #define AUX_GPIO_SENSOR_3_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 2)
@@ -114,25 +106,17 @@ typedef enum {
 	TYPE_AUX     = 1
 } device_type_t;
 
-static const char *port_name[3] = { "Main", "Exp", "Third" };
-
 typedef struct {
-	int f_current_position,
-	    f_target_position,
-	    backlash,
-	    temperature_sensor_index;
 	device_type_t device_type;
-	double r_target_position, r_current_position, prev_temp;
-	indigo_timer *focuser_timer;
-	indigo_timer *rotator_timer;
+	double prev_temp;
+
 	indigo_timer *temperature_timer;
 	indigo_timer *sensors_timer;
-	indigo_property *temperature_sensor_property,
-	                *outlet_names_property,
+	indigo_property *outlet_names_property,
 	                *power_outlet_property,
 	                *sensor_names_property,
 	                *sensors_property;
-} lunatico_port_data;
+} logical_device_data;
 
 typedef struct {
 	int handle;
@@ -140,20 +124,20 @@ typedef struct {
 	int port_count;
 	bool udp;
 	pthread_mutex_t port_mutex;
-	lunatico_port_data port_data[MAX_PORTS];
+	logical_device_data device_data[MAX_LOGICAL_DEVICES];
 } lunatico_private_data;
 
 typedef struct {
-	indigo_device *port[MAX_PORTS];
+	indigo_device *device[MAX_LOGICAL_DEVICES];
 	lunatico_private_data *private_data;
 } lunatico_device_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
 
-static lunatico_device_data device_data[MAX_DEVICES] = {0};
+static lunatico_device_data device_data[MAX_PHYSICAL_DEVICES] = {0};
 
-static void create_port_device(int device_index, int port_index, device_type_t type);
-static void delete_port_device(int device_index, int port_index);
+static void create_port_device(int p_device_index, int l_device_index, device_type_t type);
+static void delete_port_device(int p_device_index, int l_device_index);
 
 /* Linatico Astronomia device Commands ======================================================================== */
 
@@ -328,7 +312,7 @@ static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool en
 	int res;
 	if (pin < 1 || pin > 4) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d %d#", get_port_index(device), pin, enable ? 1 : 0);
+	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d %d#", get_locical_device_index(device), pin, enable ? 1 : 0);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
@@ -343,7 +327,7 @@ static bool lunatico_read_sensor(indigo_device *device, int pin, int *sensor_val
 
 	if (pin < 5 || pin > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!read an %d %d#", get_port_index(device), pin);
+	snprintf(command, LUNATICO_CMD_LEN, "!read an %d %d#", get_locical_device_index(device), pin);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*sensor_value = value;
@@ -423,12 +407,6 @@ static int lunatico_init_properties(indigo_device *device) {
 	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 5;
-	//--------------------------------------------------------------------------- TEMPERATURE_SENSOR_PROPERTY
-	LA_TEMPERATURE_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_TEMPERATURE_SENSOR_PROPERTY_NAME, "Advanced", "Temperature Sensor in use", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-	if (LA_TEMPERATURE_SENSOR_PROPERTY == NULL)
-		return INDIGO_FAILED;
-	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_INTERNAL_ITEM, LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME, "Internal sensor", true);
-	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM, LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME, "External Sensor", false);
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
 	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
@@ -437,7 +415,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_text_item(AUX_OUTLET_NAME_2_ITEM, AUX_POWER_OUTLET_NAME_2_ITEM_NAME, "DB9 Pin 2", "Power #2");
 	indigo_init_text_item(AUX_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "DB9 Pin 3", "Power #3");
 	indigo_init_text_item(AUX_OUTLET_NAME_4_ITEM, AUX_POWER_OUTLET_NAME_4_ITEM_NAME, "DB9 Pin 4", "Power #4");
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_OUTLET_NAMES_PROPERTY->hidden = true;
+	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_OUTLET_NAMES_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- POWER OUTLETS
 	AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWERBOX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 	if (AUX_POWER_OUTLET_PROPERTY == NULL)
@@ -446,7 +424,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power #2", false);
 	indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_3_ITEM_NAME, "Power #3", false);
 	indigo_init_switch_item(AUX_POWER_OUTLET_4_ITEM, AUX_POWER_OUTLET_4_ITEM_NAME, "Power #4", false);
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_POWER_OUTLET_PROPERTY->hidden = true;
+	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_POWER_OUTLET_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- SENSOR_NAMES
 	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
@@ -455,7 +433,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_text_item(AUX_SENSOR_NAME_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "DB9 Pin 7", "Sensor #2");
 	indigo_init_text_item(AUX_SENSOR_NAME_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "DB9 Pin 8", "Sensor #3");
 	indigo_init_text_item(AUX_SENSOR_NAME_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "DB9 Pin 9", "Sensor #4");
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_SENSOR_NAMES_PROPERTY->hidden = true;
+	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_SENSOR_NAMES_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- GPIO_SENSORS
 	AUX_GPIO_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_SENSORS_PROPERTY_NAME, AUX_SENSORS_GROUP, "GPIO sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
 	if (AUX_GPIO_SENSORS_PROPERTY == NULL)
@@ -464,7 +442,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_GPIO_SENSOR_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "Sensor #2", 0, 1024, 1, 0);
 	indigo_init_number_item(AUX_GPIO_SENSOR_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "Sensor #3", 0, 1024, 1, 0);
 	indigo_init_number_item(AUX_GPIO_SENSOR_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "Sensor #4", 0, 1024, 1, 0);
-	if (PORT_DATA.device_type != TYPE_AUX) AUX_GPIO_SENSORS_PROPERTY->hidden = true;
+	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_GPIO_SENSORS_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
 	indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
@@ -474,8 +452,6 @@ static int lunatico_init_properties(indigo_device *device) {
 
 static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(LA_TEMPERATURE_SENSOR_PROPERTY, property))
-			indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 		if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property))
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
@@ -498,13 +474,6 @@ static void lunatico_init_device(indigo_device *device) {
 		strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 	}
-
-	if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
-		PORT_DATA.temperature_sensor_index = 0;
-	} else {
-		PORT_DATA.temperature_sensor_index = 1;
-	}
-	indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 }
 
 
@@ -514,7 +483,6 @@ static indigo_result lunatico_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	lunatico_close(device);
 	indigo_device_disconnect(NULL, device->name);
-	indigo_release_property(LA_TEMPERATURE_SENSOR_PROPERTY);
 	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -529,33 +497,19 @@ static indigo_result lunatico_detach(indigo_device *device) {
 
 
 static void lunatico_save_properties(indigo_device *device) {
-	indigo_save_property(device, NULL, LA_TEMPERATURE_SENSOR_PROPERTY);
 	indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
 	indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
 }
 
 
 static void lunatico_delete_properties(indigo_device *device) {
-	indigo_delete_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 }
 
 
 static indigo_result lunatico_common_update_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(LA_TEMPERATURE_SENSOR_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- LA_TEMPERATURE_SENSOR
-		indigo_property_copy_values(LA_TEMPERATURE_SENSOR_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-		LA_TEMPERATURE_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
-		if (LA_TEMPERATURE_SENSOR_INTERNAL_ITEM->sw.value) {
-			PORT_DATA.temperature_sensor_index = 0;
-		} else {
-			PORT_DATA.temperature_sensor_index = 1;
-		}
-		indigo_update_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			lunatico_save_properties(device);
@@ -604,7 +558,7 @@ static void sensors_timer_callback(indigo_device *device) {
 	}
 
 	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-	indigo_reschedule_timer(device, 3, &PORT_DATA.sensors_timer);
+	indigo_reschedule_timer(device, 3, &DEVICE_DATA.sensors_timer);
 }
 
 
@@ -675,13 +629,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 					set_power_outlets(device);
-					PORT_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
+					DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_cancel_timer(device, &PORT_DATA.sensors_timer);
+				indigo_cancel_timer(device, &DEVICE_DATA.sensors_timer);
 				lunatico_delete_properties(device);
 				lunatico_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -810,7 +764,7 @@ static indigo_result dome_detach(indigo_device *device) {
 
 static int device_number = 0;
 
-static void create_port_device(int device_index, int port_index, device_type_t device_type) {
+static void create_port_device(int p_device_index, int l_device_index, device_type_t device_type) {
 
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
 		AUX_DRAGONFLY_NAME,
@@ -830,59 +784,59 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 		dome_detach
 	);
 
-	if (port_index >= MAX_PORTS) return;
-	if (device_index >= MAX_DEVICES) return;
-	if (device_data[device_index].port[port_index] != NULL) {
-		if ((device_data[device_index].private_data) && (device_data[device_index].private_data->port_data[port_index].device_type == device_type)) {
+	if (l_device_index >= MAX_LOGICAL_DEVICES) return;
+	if (p_device_index >= MAX_PHYSICAL_DEVICES) return;
+	if (device_data[p_device_index].device[l_device_index] != NULL) {
+		if ((device_data[p_device_index].private_data) && (device_data[p_device_index].private_data->device_data[l_device_index].device_type == device_type)) {
 				return;
 		} else {
-				delete_port_device(device_index, port_index);
+				delete_port_device(p_device_index, l_device_index);
 		}
 	}
 
-	if (device_data[device_index].private_data == NULL) {
-		device_data[device_index].private_data = malloc(sizeof(lunatico_private_data));
-		assert(device_data[device_index].private_data != NULL);
-		memset(device_data[device_index].private_data, 0, sizeof(lunatico_private_data));
+	if (device_data[p_device_index].private_data == NULL) {
+		device_data[p_device_index].private_data = malloc(sizeof(lunatico_private_data));
+		assert(device_data[p_device_index].private_data != NULL);
+		memset(device_data[p_device_index].private_data, 0, sizeof(lunatico_private_data));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
-	device_data[device_index].port[port_index] = malloc(sizeof(indigo_device));
-	assert(device_data[device_index].port[port_index] != NULL);
+	device_data[p_device_index].device[l_device_index] = malloc(sizeof(indigo_device));
+	assert(device_data[p_device_index].device[l_device_index] != NULL);
 	if (device_type == TYPE_DOME) {
-		memcpy(device_data[device_index].port[port_index], &dome_template, sizeof(indigo_device));
-		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", DOME_DRAGONFLY_NAME, port_name[port_index]);
-		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_DOME;
+		memcpy(device_data[p_device_index].device[l_device_index], &dome_template, sizeof(indigo_device));
+		sprintf(device_data[p_device_index].device[l_device_index]->name, "%s", DOME_DRAGONFLY_NAME);
+		device_data[p_device_index].private_data->device_data[l_device_index].device_type = TYPE_DOME;
 	} else {
-		memcpy(device_data[device_index].port[port_index], &aux_template, sizeof(indigo_device));
-		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", AUX_DRAGONFLY_NAME, port_name[port_index]);
-		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_AUX;
+		memcpy(device_data[p_device_index].device[l_device_index], &aux_template, sizeof(indigo_device));
+		sprintf(device_data[p_device_index].device[l_device_index]->name, "%s", AUX_DRAGONFLY_NAME);
+		device_data[p_device_index].private_data->device_data[l_device_index].device_type = TYPE_AUX;
 	}
-	set_port_index(device_data[device_index].port[port_index], port_index);
-	device_data[device_index].port[port_index]->private_data = device_data[device_index].private_data;
-	indigo_attach_device(device_data[device_index].port[port_index]);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: Device with port index = %d", get_port_index(device_data[device_index].port[port_index]));
+	set_logical_device_index(device_data[p_device_index].device[l_device_index], l_device_index);
+	device_data[p_device_index].device[l_device_index]->private_data = device_data[p_device_index].private_data;
+	indigo_attach_device(device_data[p_device_index].device[l_device_index]);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: Device with port index = %d", get_locical_device_index(device_data[p_device_index].device[l_device_index]));
 }
 
 
-static void delete_port_device(int device_index, int port_index) {
-	if (port_index >= MAX_PORTS) return;
-	if (device_index >= MAX_DEVICES) return;
+static void delete_port_device(int p_device_index, int l_device_index) {
+	if (l_device_index >= MAX_LOGICAL_DEVICES) return;
+	if (p_device_index >= MAX_PHYSICAL_DEVICES) return;
 
-	if (device_data[device_index].port[port_index] != NULL) {
-		indigo_detach_device(device_data[device_index].port[port_index]);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: Device with port index = %d", get_port_index(device_data[device_index].port[port_index]));
-		free(device_data[device_index].port[port_index]);
-		device_data[device_index].port[port_index] = NULL;
+	if (device_data[p_device_index].device[l_device_index] != NULL) {
+		indigo_detach_device(device_data[p_device_index].device[l_device_index]);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: Locical Device with index = %d", get_locical_device_index(device_data[p_device_index].device[l_device_index]));
+		free(device_data[p_device_index].device[l_device_index]);
+		device_data[p_device_index].device[l_device_index] = NULL;
 	}
 
-	for (int i = 0; i < MAX_PORTS; i++) {
-		if (device_data[device_index].port[i] != NULL) return;
+	for (int i = 0; i < MAX_LOGICAL_DEVICES; i++) {
+		if (device_data[p_device_index].device[i] != NULL) return;
 	}
 
-	if (device_data[device_index].private_data != NULL) {
-		free(device_data[device_index].private_data);
-		device_data[device_index].private_data = NULL;
+	if (device_data[p_device_index].private_data != NULL) {
+		free(device_data[p_device_index].private_data);
+		device_data[p_device_index].private_data = NULL;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: PRIVATE_DATA");
 	}
 }
@@ -911,7 +865,7 @@ indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
-		for (int index = 0; index < MAX_PORTS; index++) {
+		for (int index = 0; index < MAX_LOGICAL_DEVICES; index++) {
 			delete_port_device(0, index);
 		}
 		break;
