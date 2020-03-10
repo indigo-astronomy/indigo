@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -980,6 +980,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_HUB_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+		indigo_delete_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -1317,8 +1318,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_ITEM->number.min = -9999999;
-		FOCUSER_POSITION_ITEM->number.max = 9999999;
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -9999999;
+		FOCUSER_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 9999999;
 		FOCUSER_POSITION_ITEM->number.step = 1;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1476,6 +1478,16 @@ static void focuser_speed_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	int position = FOCUSER_POSITION_ITEM->number.value;
+	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+		if (position + FOCUSER_STEPS_ITEM->number.value > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
+			FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value - position;
+		}
+	} else {
+		if (position - FOCUSER_STEPS_ITEM->number.value < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
+			FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = position - FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+		}
+	}
 	snprintf(command, sizeof(command), "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1));
 	if (upb_command(device, command, response, sizeof(response))) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1493,7 +1505,13 @@ static void focuser_position_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		snprintf(command, sizeof(command), "SM:%d", (int)FOCUSER_POSITION_ITEM->number.value);
+		int position = FOCUSER_POSITION_ITEM->number.value;
+		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		snprintf(command, sizeof(command), "SM:%d", position);
 		if (upb_command(device, command, response, sizeof(response))) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
