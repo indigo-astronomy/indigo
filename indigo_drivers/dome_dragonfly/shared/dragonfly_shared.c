@@ -303,7 +303,7 @@ static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *
 
 	if (sensor < 0 || sensor > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio snanrd 2 %d#", sensor);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio snanrd 0 %d#", sensor);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*sensor_value = value;
@@ -320,7 +320,7 @@ static bool lunatico_digital_read_sensor(indigo_device *device, int sensor, bool
 
 	if (sensor < 0 || sensor > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 2 %d#", sensor);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 0 %d#", sensor);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*sensor_value = (bool)value;
@@ -338,7 +338,7 @@ static bool lunatico_read_relay(indigo_device *device, int relay, bool *enabled)
 
 	if (relay < 0 || relay > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio rldgrd 1 %d#", relay);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rldgrd 0 %d#", relay);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*enabled = (bool)value;
@@ -353,7 +353,7 @@ static bool lunatico_set_relay(indigo_device *device, int relay, bool enable) {
 	int res;
 	if (relay < 0 || relay > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio rlset 1 %d %d#", relay, enable ? 1 : 0);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlset 0 %d %d#", relay, enable ? 1 : 0);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
@@ -365,7 +365,7 @@ static bool lunatico_pulse_relay(indigo_device *device, int relay, uint32_t lenm
 	int res;
 	if (relay < 0 || relay > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio rlpulse 1 %d %d#", relay, lenms);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlpulse 0 %d %d#", relay, lenms);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
@@ -787,7 +787,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 						lunatico_digital_read_sensor(device, 1, &value);
 						lunatico_set_relay(device, 1, 1);
 						indigo_usleep(ONE_SECOND_DELAY*5);
+						lunatico_read_relay(device, 1, &value);
 						lunatico_set_relay(device, 1, 0);
+						lunatico_read_relay(device, 1, &value);
 						lunatico_pulse_relay(device, 0, 2000);
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
