@@ -336,6 +336,83 @@ static bool lunatico_read_sensor(indigo_device *device, int pin, int *sensor_val
 	return false;
 }
 
+static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *sensor_value) {
+	if (!sensor_value) return false;
+
+	char command[LUNATICO_CMD_LEN];
+	int value;
+
+	if (sensor < 0 || sensor > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio snanrd 1 %d#", sensor);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*sensor_value = value;
+		return true;
+	}
+	return false;
+}
+
+static bool lunatico_digital_read_sensor(indigo_device *device, int sensor, bool *sensor_value) {
+	if (!sensor_value) return false;
+
+	char command[LUNATICO_CMD_LEN];
+	int value;
+
+	if (sensor < 0 || sensor > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 1 %d#", sensor);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*sensor_value = (bool)value;
+		return true;
+	}
+	return false;
+}
+
+
+static bool lunatico_read_relay(indigo_device *device, int relay, bool *enabled) {
+	if (!enabled) return false;
+
+	char command[LUNATICO_CMD_LEN];
+	int value;
+
+	if (relay < 0 || relay > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 1 %d#", relay);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*enabled = (bool)value;
+		return true;
+	}
+	return false;
+}
+
+
+static bool lunatico_set_relay(indigo_device *device, int relay, bool enable) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+	if (relay < 0 || relay > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlset 0 %d#", relay, enable ? 1 : 0);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
+}
+
+
+static bool lunatico_pulse_relay(indigo_device *device, int relay, uint32_t lenms) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+	if (relay < 0 || relay > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlpulse 0 %d#", relay, lenms);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res != 0) return false;
+	return true;
+}
+
+
 // --------------------------------------------------------------------------------- Common stuff
 
 static bool lunatico_open(indigo_device *device) {
@@ -700,6 +777,7 @@ static indigo_result aux_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 
 static void dome_timer_callback(indigo_device *device) {
+
 }
 
 static indigo_result dome_attach(indigo_device *device) {
