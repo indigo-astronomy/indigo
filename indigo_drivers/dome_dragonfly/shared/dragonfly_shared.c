@@ -285,55 +285,14 @@ static bool lunatico_command_get_result(indigo_device *device, const char *comma
 	return false;
 }
 
-static bool lunatico_get_temperature(indigo_device *device, int sensor_index, double *temperature) {
-	if (!temperature) return false;
-
-	char command[LUNATICO_CMD_LEN];
-	int value;
-	double idC1 = 261;
-	double idC2 = 250;
-	double idF = 1.8;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!read temps %d#", sensor_index);
-	if (!lunatico_command_get_result(device, command, &value)) return false;
-
-	if (sensor_index != 0) { // not insternal
-		idC1 = 192;
-		idC2 = 0;
-		idF = 1.7;
-	}
-
-	*temperature = (((value - idC1) * idF) - idC2) / 10;
-	return true;
-}
 
 static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool enable) {
-	char command[LUNATICO_CMD_LEN];
-	int res;
-	if (pin < 1 || pin > 4) return false;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!write dig %d %d %d#", get_locical_device_index(device), pin, enable ? 1 : 0);
-	if (!lunatico_command_get_result(device, command, &res)) return false;
-	if (res != 0) return false;
 	return true;
 }
 
 
 static bool lunatico_read_sensor(indigo_device *device, int pin, int *sensor_value) {
-	if (!sensor_value) return false;
-
-	char command[LUNATICO_CMD_LEN];
-	int value;
-
-	if (pin < 5 || pin > 8) return false;
-
-	snprintf(command, LUNATICO_CMD_LEN, "!read an %d %d#", get_locical_device_index(device), pin);
-	if (!lunatico_command_get_result(device, command, &value)) return false;
-	if (value >= 0) {
-		*sensor_value = value;
-		return true;
-	}
-	return false;
+	return true;
 }
 
 static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *sensor_value) {
@@ -344,7 +303,7 @@ static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *
 
 	if (sensor < 0 || sensor > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio snanrd 1 %d#", sensor);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio snanrd 2 %d#", sensor);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*sensor_value = value;
@@ -361,7 +320,7 @@ static bool lunatico_digital_read_sensor(indigo_device *device, int sensor, bool
 
 	if (sensor < 0 || sensor > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 1 %d#", sensor);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 2 %d#", sensor);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*sensor_value = (bool)value;
@@ -379,7 +338,7 @@ static bool lunatico_read_relay(indigo_device *device, int relay, bool *enabled)
 
 	if (relay < 0 || relay > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 1 %d#", relay);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rldgrd 1 %d#", relay);
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*enabled = (bool)value;
@@ -394,7 +353,7 @@ static bool lunatico_set_relay(indigo_device *device, int relay, bool enable) {
 	int res;
 	if (relay < 0 || relay > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio rlset 0 %d#", relay, enable ? 1 : 0);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlset 1 %d %d#", relay, enable ? 1 : 0);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
@@ -406,7 +365,7 @@ static bool lunatico_pulse_relay(indigo_device *device, int relay, uint32_t lenm
 	int res;
 	if (relay < 0 || relay > 8) return false;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!relio rlpulse 0 %d#", relay, lenms);
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlpulse 1 %d %d#", relay, lenms);
 	if (!lunatico_command_get_result(device, command, &res)) return false;
 	if (res != 0) return false;
 	return true;
@@ -477,11 +436,6 @@ static int lunatico_init_properties(indigo_device *device) {
 	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT
 	DEVICE_PORT_PROPERTY->hidden = false;
-	// -------------------------------------------------------------------------------- DEVICE_PORTS
-	DEVICE_PORTS_PROPERTY->hidden = false;
-	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
-	DEVICE_BAUDRATE_PROPERTY->hidden = false;
-	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 5;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
@@ -690,7 +644,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		int position;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!DEVICE_CONNECTED) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -702,6 +655,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
+					} else {
+						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+						lunatico_close(device);
 					}
 					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
@@ -784,6 +741,7 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		DEVICE_PORT_PROPERTY->hidden = false;
 		// This is a sliding roof -> we need only open and close
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
@@ -810,7 +768,42 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (!DEVICE_CONNECTED) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				if (lunatico_open(device)) {
+					char board[LUNATICO_CMD_LEN] = "N/A";
+					char firmware[LUNATICO_CMD_LEN] = "N/A";
+					if (lunatico_get_info(device, board, firmware)) {
+						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+						int value;
+						lunatico_analog_read_sensor(device, 0, &value);
+						lunatico_digital_read_sensor(device, 0, &value);
+						lunatico_analog_read_sensor(device, 1, &value);
+						lunatico_digital_read_sensor(device, 1, &value);
+						lunatico_set_relay(device, 1, 1);
+						indigo_usleep(ONE_SECOND_DELAY*5);
+						lunatico_set_relay(device, 1, 0);
+						lunatico_pulse_relay(device, 0, 2000);
+					} else {
+						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+						lunatico_close(device);
+					}
+				}
+			}
+		} else {
+			if (DEVICE_CONNECTED) {
+				indigo_cancel_timer(device, &DEVICE_DATA.sensors_timer);
+				lunatico_delete_properties(device);
+				lunatico_close(device);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
