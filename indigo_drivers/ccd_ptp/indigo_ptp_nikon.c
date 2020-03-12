@@ -502,7 +502,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_WhiteBalance: {
-			switch (code) { case 1: return "Manual"; case 2: return "Auto"; case 3: return "One-push Auto"; case 4: return "Daylight"; case 5: return "Fluorescent"; case 6: return "Incandescent"; case 7: return "Flash"; case 32784: return "Cloudy"; case 32785: return "Shade"; case 32786: return "Color Temperature"; case 32787: return "Preset"; }
+			switch (code) { case 1: return "Manual"; case 2: return "Auto"; case 3: return "One-push Auto"; case 4: return "Daylight"; case 5: return "Fluorescent"; case 6: return "Incandescent"; case 7: return "Flash"; case 32784: return "Cloudy"; case 32785: return "Shade"; case 32786: return "Color Temperature"; case 32787: return "Preset"; case 32790: return "Natural light auto"; }
 			break;
 		}
 		case ptp_property_nikon_ExternalFlashMode:
