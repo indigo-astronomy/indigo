@@ -94,15 +94,15 @@
 #define AUX_GPIO_OUTLET_7_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 6)
 #define AUX_GPIO_OUTLET_8_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 7)
 
-#define AUX_OUTLET_PULSE_PROPERTY      (DEVICE_DATA.gpio_outlet_pulse_property)
-#define AUX_OUTLET_PULSE_1_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 0)
-#define AUX_OUTLET_PULSE_2_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 1)
-#define AUX_OUTLET_PULSE_3_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 2)
-#define AUX_OUTLET_PULSE_4_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 3)
-#define AUX_OUTLET_PULSE_5_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 4)
-#define AUX_OUTLET_PULSE_6_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 5)
-#define AUX_OUTLET_PULSE_7_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 6)
-#define AUX_OUTLET_PULSE_8_ITEM        (AUX_OUTLET_PULSE_PROPERTY->items + 7)
+#define AUX_OUTLET_PULSE_LENGTHS_PROPERTY      (DEVICE_DATA.gpio_outlet_pulse_property)
+#define AUX_OUTLET_PULSE_LENGTHS_1_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 0)
+#define AUX_OUTLET_PULSE_LENGTHS_2_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 1)
+#define AUX_OUTLET_PULSE_LENGTHS_3_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 2)
+#define AUX_OUTLET_PULSE_LENGTHS_4_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 3)
+#define AUX_OUTLET_PULSE_LENGTHS_5_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 4)
+#define AUX_OUTLET_PULSE_LENGTHS_6_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 5)
+#define AUX_OUTLET_PULSE_LENGTHS_7_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 6)
+#define AUX_OUTLET_PULSE_LENGTHS_8_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 7)
 
 #define AUX_SENSORS_GROUP	"Sensors"
 
@@ -311,12 +311,6 @@ static bool lunatico_command_get_result(indigo_device *device, const char *comma
 	return false;
 }
 
-
-static bool lunatico_enable_power_outlet(indigo_device *device, int pin, bool enable) {
-	return true;
-}
-
-
 static bool lunatico_read_sensor(indigo_device *device, int pin, int *sensor_value) {
 	return true;
 }
@@ -491,18 +485,18 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(AUX_GPIO_OUTLET_8_ITEM, AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME, "Relay #8", false);
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_GPIO_OUTLET_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- GPIO PULSE OUTLETS
-	AUX_OUTLET_PULSE_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLETS_PULSE_LENGHTS", AUX_POWERBOX_GROUP, "Relay outlets pulse lengths (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
-	if (AUX_OUTLET_PULSE_PROPERTY == NULL)
+	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", AUX_POWERBOX_GROUP, "Relay outlets pulse lengths (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
+	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_OUTLET_PULSE_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Relay #1", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Relay #2", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_3_ITEM, AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME, "Relay #3", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_4_ITEM, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, "Relay #4", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_5_ITEM, AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME, "Relay #5", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_6_ITEM, AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME, "Relay #6", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_7_ITEM, AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME, "Relay #7", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_8_ITEM, AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME, "Relay #8", 0, 100000, 100, 0);
-	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_OUTLET_PULSE_PROPERTY->hidden = true;
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Relay #1", 0, 100000, 100, 0);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Relay #2", 0, 100000, 100, 0);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_3_ITEM, AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME, "Relay #3", 0, 100000, 100, 0);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_4_ITEM, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, "Relay #4", 0, 100000, 100, 0);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_5_ITEM, AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME, "Relay #5", 0, 100000, 100, 0);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_6_ITEM, AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME, "Relay #6", 0, 100000, 100, 0);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_7_ITEM, AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME, "Relay #7", 0, 100000, 100, 0);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_8_ITEM, AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME, "Relay #8", 0, 100000, 100, 0);
+	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_OUTLET_PULSE_LENGTHS_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- SENSOR_NAMES
 	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
@@ -540,8 +534,8 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 	if (IS_CONNECTED) {
 		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-		if (indigo_property_match(AUX_OUTLET_PULSE_PROPERTY, property))
-			indigo_define_property(device, AUX_OUTLET_PULSE_PROPERTY, NULL);
+		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
+			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	}
@@ -572,7 +566,7 @@ static indigo_result lunatico_detach(indigo_device *device) {
 	lunatico_close(device);
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
-	indigo_release_property(AUX_OUTLET_PULSE_PROPERTY);
+	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
@@ -593,7 +587,7 @@ static void lunatico_save_properties(indigo_device *device) {
 
 static void lunatico_delete_properties(indigo_device *device) {
 	indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	indigo_delete_property(device, AUX_OUTLET_PULSE_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 }
 
@@ -654,102 +648,142 @@ static void sensors_timer_callback(indigo_device *device) {
 
 static bool set_power_outlets(indigo_device *device) {
 	bool success = true;
-	if ((AUX_OUTLET_PULSE_1_ITEM->number.value > 0) && AUX_GPIO_OUTLET_1_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 0, (int)AUX_OUTLET_PULSE_1_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 0, AUX_GPIO_OUTLET_1_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	}
-
-	if ((AUX_OUTLET_PULSE_2_ITEM->number.value > 0) && AUX_GPIO_OUTLET_2_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 1, (int)AUX_OUTLET_PULSE_2_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 1, AUX_GPIO_OUTLET_2_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
+	bool relay_value;
+	if (!lunatico_read_relay(device, 0, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_1_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_1_ITEM->number.value > 0) && AUX_GPIO_OUTLET_1_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 0, (int)AUX_OUTLET_PULSE_LENGTHS_1_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 0, AUX_GPIO_OUTLET_1_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
 		}
 	}
 
-	if ((AUX_OUTLET_PULSE_3_ITEM->number.value > 0) && AUX_GPIO_OUTLET_3_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 2, (int)AUX_OUTLET_PULSE_3_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 2, AUX_GPIO_OUTLET_3_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	}
-
-	if ((AUX_OUTLET_PULSE_4_ITEM->number.value > 0) && AUX_GPIO_OUTLET_4_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 3, (int)AUX_OUTLET_PULSE_4_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 3, AUX_GPIO_OUTLET_4_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
+	if (!lunatico_read_relay(device, 1, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_2_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_2_ITEM->number.value > 0) && AUX_GPIO_OUTLET_2_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 1, (int)AUX_OUTLET_PULSE_LENGTHS_2_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 1, AUX_GPIO_OUTLET_2_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
 		}
 	}
 
-	if ((AUX_OUTLET_PULSE_5_ITEM->number.value > 0) && AUX_GPIO_OUTLET_5_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 4, (int)AUX_OUTLET_PULSE_5_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 4, AUX_GPIO_OUTLET_5_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	}
-
-	if ((AUX_OUTLET_PULSE_6_ITEM->number.value > 0) && AUX_GPIO_OUTLET_6_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 5, (int)AUX_OUTLET_PULSE_6_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 5, AUX_GPIO_OUTLET_6_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
+	if (!lunatico_read_relay(device, 2, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_3_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_3_ITEM->number.value > 0) && AUX_GPIO_OUTLET_3_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 2, (int)AUX_OUTLET_PULSE_LENGTHS_3_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 2, AUX_GPIO_OUTLET_3_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
 		}
 	}
 
-	if ((AUX_OUTLET_PULSE_7_ITEM->number.value > 0) && AUX_GPIO_OUTLET_7_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 6, (int)AUX_OUTLET_PULSE_7_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 6, AUX_GPIO_OUTLET_7_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	}
-
-	if ((AUX_OUTLET_PULSE_8_ITEM->number.value > 0) && AUX_GPIO_OUTLET_8_ITEM->sw.value) {
-		if (!lunatico_pulse_relay(device, 7, (int)AUX_OUTLET_PULSE_8_ITEM->number.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
-		}
-	} else {
-		if (!lunatico_set_relay(device, 7, AUX_GPIO_OUTLET_8_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
-			success = false;
+	if (!lunatico_read_relay(device, 3, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_4_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_4_ITEM->number.value > 0) && AUX_GPIO_OUTLET_4_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 3, (int)AUX_OUTLET_PULSE_LENGTHS_4_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 3, AUX_GPIO_OUTLET_4_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
 		}
 	}
 
+	if (!lunatico_read_relay(device, 4, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_5_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_5_ITEM->number.value > 0) && AUX_GPIO_OUTLET_5_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 4, (int)AUX_OUTLET_PULSE_LENGTHS_5_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 4, AUX_GPIO_OUTLET_5_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		}
+	}
+
+	if (!lunatico_read_relay(device, 5, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_6_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_6_ITEM->number.value > 0) && AUX_GPIO_OUTLET_6_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 5, (int)AUX_OUTLET_PULSE_LENGTHS_6_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 5, AUX_GPIO_OUTLET_6_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		}
+	}
+
+	if (!lunatico_read_relay(device, 6, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_7_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_7_ITEM->number.value > 0) && AUX_GPIO_OUTLET_7_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 6, (int)AUX_OUTLET_PULSE_LENGTHS_7_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 6, AUX_GPIO_OUTLET_7_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		}
+	}
+
+	if (!lunatico_read_relay(device, 7, &relay_value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relay(%d) failed", PRIVATE_DATA->handle);
+		success = false;
+	} else if (AUX_GPIO_OUTLET_8_ITEM->sw.value != relay_value) {
+		if ((AUX_OUTLET_PULSE_LENGTHS_8_ITEM->number.value > 0) && AUX_GPIO_OUTLET_8_ITEM->sw.value) {
+			if (!lunatico_pulse_relay(device, 7, (int)AUX_OUTLET_PULSE_LENGTHS_8_ITEM->number.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		} else {
+			if (!lunatico_set_relay(device, 7, AUX_GPIO_OUTLET_8_ITEM->sw.value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+				success = false;
+			}
+		}
+	}
 	return success;
 }
 
@@ -797,7 +831,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						lunatico_close(device);
 					}
 					indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-					indigo_define_property(device, AUX_OUTLET_PULSE_PROPERTY, NULL);
+					indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 					set_power_outlets(device);
 					DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
@@ -817,7 +851,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-			indigo_delete_property(device, AUX_OUTLET_PULSE_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
 		snprintf(AUX_GPIO_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
 		snprintf(AUX_GPIO_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
@@ -828,20 +862,20 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_GPIO_OUTLET_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_7_ITEM->text.value);
 		snprintf(AUX_GPIO_OUTLET_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
 
-		snprintf(AUX_OUTLET_PULSE_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_3_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_4_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_5_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_6_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_7_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_3_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_4_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_5_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_6_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_7_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
 
 
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-			indigo_define_property(device, AUX_OUTLET_PULSE_PROPERTY, NULL);
+			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -857,11 +891,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_OUTLET_PULSE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTH
-		indigo_property_copy_values(AUX_OUTLET_PULSE_PROPERTY, property, false);
+	} else if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
+		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
-		indigo_update_property(device, AUX_OUTLET_PULSE_PROPERTY, NULL);
+		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
