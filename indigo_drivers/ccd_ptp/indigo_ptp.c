@@ -623,7 +623,7 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 		case ptp_aint128_type:
 		case ptp_auint128_type:
 			INDIGO_LOG(indigo_log("code:%x is array type(%x)", target->code, target->type));
-			return;
+			return source;
 		default:
 			INDIGO_LOG(indigo_log("Unsupported type=%x", target->type));
 			assert(false);
