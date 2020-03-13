@@ -23,7 +23,7 @@
  \file indigo_ccd_xagyl.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_wheel_xagyl"
 
 #include <stdlib.h>
@@ -52,19 +52,19 @@ static bool xagyl_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		char buffer[128];
-		if (indigo_printf(PRIVATE_DATA->handle, "I0") && indigo_scanf(PRIVATE_DATA->handle, "Xagyl %s", buffer) == 1) {
+		if (indigo_printf(PRIVATE_DATA->handle, "I0") && indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
 			strncpy(INFO_DEVICE_MODEL_ITEM->text.value, buffer, INDIGO_VALUE_SIZE);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read model name");
 			return false;
 		}
-		if (indigo_printf(PRIVATE_DATA->handle, "I1") && indigo_scanf(PRIVATE_DATA->handle, "FW %s", buffer) == 1) {
+		if (indigo_printf(PRIVATE_DATA->handle, "I1") && indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
 			strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer, INDIGO_VALUE_SIZE);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read firmware version");
 			return false;
 		}
-		if (indigo_printf(PRIVATE_DATA->handle, "I3") && indigo_scanf(PRIVATE_DATA->handle, "S/N: %s", buffer) == 1) {
+		if (indigo_printf(PRIVATE_DATA->handle, "I3") && indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
 			strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer, INDIGO_VALUE_SIZE);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read S/N");
