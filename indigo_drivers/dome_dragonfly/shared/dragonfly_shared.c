@@ -456,17 +456,18 @@ static bool lunatico_open(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			return false;
 		}
-		char *name = DEVICE_PORT_ITEM->text.value;
-		if (!indigo_is_device_url(name, "lunatico")) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %d", DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-			PRIVATE_DATA->udp = false;
+
+		char url[INDIGO_VALUE_SIZE];
+		if (strstr(DEVICE_PORT_ITEM->text.value, "://")) {
+			strncpy(url, DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE);
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening network device on host: %s", DEVICE_PORT_ITEM->text.value);
-			indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
-			PRIVATE_DATA->handle = indigo_open_network_device(name, 10000, &proto);
-			PRIVATE_DATA->udp = true;
+			snprintf(url, INDIGO_VALUE_SIZE, "udp://%s", DEVICE_PORT_ITEM->text.value);
 		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening network device on host: %s", DEVICE_PORT_ITEM->text.value);
+		indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
+		PRIVATE_DATA->handle = indigo_open_network_device(url, 10000, &proto);
+		PRIVATE_DATA->udp = true;
+
 		if (PRIVATE_DATA->handle < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
