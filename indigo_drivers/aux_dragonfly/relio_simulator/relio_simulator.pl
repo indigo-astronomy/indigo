@@ -16,7 +16,7 @@ $sock = IO::Socket::INET->new(
 	LocalPort => $PORTNO,
 	Proto => 'udp'
 ) or die "socket: $@";
-       
+
 print "Listening for UDP messages on port $PORTNO\n";
 
 while ($sock->recv($newmsg, $MAXLEN)) {
@@ -48,37 +48,37 @@ while ($sock->recv($newmsg, $MAXLEN)) {
 			$sock->send("\!$newmsg:".$relay[$command[3]]."\#");
 		} elsif ($command[1] eq "rlset" and @command == 5) {
 			$relay[$command[3]] = $command[4];
-		       	my $resp = "\!$newmsg:".$relay[$command[3]]."\#";	
-                        $sock->send("$resp");
-                } elsif ($command[1] eq "snanrd" and @command == 5) {
-                        my $resp = "\!$newmsg:".$sensor[0].",".$sensor[1].",".$sensor[2].",".$sensor[3].",".$sensor[4].",".$sensor[5].",".$sensor[6].",".$sensor[7]."\#";
-                        $sock->send($resp);
+			my $resp = "\!$newmsg:".$relay[$command[3]]."\#";
+			$sock->send("$resp");
+		} elsif ($command[1] eq "snanrd" and @command == 5) {
+			my $resp = "\!$newmsg:".$sensor[0].",".$sensor[1].",".$sensor[2].",".$sensor[3].",".$sensor[4].",".$sensor[5].",".$sensor[6].",".$sensor[7]."\#";
+			$sock->send($resp);
 		} elsif ($command[1] eq "snanrd" and @command == 4) {
-                        $sock->send("\!$newmsg:".$sensor[$command[3]]."\#");
+			$sock->send("\!$newmsg:".$sensor[$command[3]]."\#");
 		} elsif ($command[1] eq "sndgrd" and @command == 4) {
 			if ($sensor[$command[3]] > 512) {
-                        	$sock->send("\!$newmsg:1\#");
+				$sock->send("\!$newmsg:1\#");
 			} else {
 				$sock->send("\!$newmsg:0\#");
 			}
 		} elsif ($command[1] eq "rlchg" and @command == 4) {
-                        if ($sensor[$command[3]] > 0) {
+			if ($sensor[$command[3]] > 0) {
 				$sensor[$command[3]] = 0;
-                                $sock->send("\!$newmsg:0\#");
-                        } else {
+				$sock->send("\!$newmsg:0\#");
+			} else {
 				$sensor[$command[3]] = 1;
-                                $sock->send("\!$newmsg:1\#");
-                        }
+				$sock->send("\!$newmsg:1\#");
+			}
 		# for debug only does not respond
 		} elsif ($command[1] eq "snset" and @command == 5) {
-                        $sensor[$command[3]] = $command[4];
-                        my $resp = "\!$newmsg:".$sensor[$command[3]]."\#";
-                        print "$resp\n";
+			$sensor[$command[3]] = $command[4];
+			my $resp = "\!$newmsg:".$sensor[$command[3]]."\#";
+			print "$resp\n";
 		} else {
 			$sock->send("\!$newmsg:-1\#");
 		}
 	} else {
 		$sock->send("\!$newmsg:-1\#");
 	}
-} 
+}
 die "recv: $!";
