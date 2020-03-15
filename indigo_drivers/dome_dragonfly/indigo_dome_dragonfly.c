@@ -386,7 +386,6 @@ static bool set_gpio_outlets(indigo_device *device) {
 			}
 		}
 	}
-
 	return success;
 }
 
@@ -424,20 +423,20 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				if (lunatico_open(device)) {
 					char board[LUNATICO_CMD_LEN] = "N/A";
 					char firmware[LUNATICO_CMD_LEN] = "N/A";
-					if (lunatico_get_info(device, board, firmware)) {
+					if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
+						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+						DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
+						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 						lunatico_close(device);
 					}
-					indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-					indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-					DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
 		} else {
@@ -527,6 +526,7 @@ static void dome_timer_callback(indigo_device *device) {
 
 }
 
+
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -551,6 +551,7 @@ static indigo_result dome_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -565,7 +566,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				if (lunatico_open(device)) {
 					char board[LUNATICO_CMD_LEN] = "N/A";
 					char firmware[LUNATICO_CMD_LEN] = "N/A";
-					if (lunatico_get_info(device, board, firmware)) {
+					if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -602,6 +603,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	}
 	return indigo_dome_change_property(device, client, property);
 }
+
 
 static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
