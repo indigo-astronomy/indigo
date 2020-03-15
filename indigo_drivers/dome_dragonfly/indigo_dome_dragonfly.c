@@ -94,6 +94,14 @@
 #define AUX_GPIO_SENSOR_6_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 3)
 #define AUX_GPIO_SENSOR_7_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 4)
 
+#define LA_DOME_SETTINGS_PROPERTY                     (DEVICE_DATA.dome_settings_property)
+#define LA_DOME_SETTINGS_BUTTON_PULSE_ITEM            (LA_DOME_SETTINGS_PROPERTY->items + 0)
+#define LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM          (LA_DOME_SETTINGS_PROPERTY->items + 1)
+
+#define LA_DOME_SETTINGS_PROPERTY_NAME                "LA_DOME_SETTINGS"
+#define LA_DOME_SETTINGS_BUTTON_PULSE_ITEM_NAME       "BUTTON_PULSE_LENGTH"
+#define LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM_NAME     "PARK_SENSOR_THRESHOLD"
+
 typedef enum {
 	TYPE_DOME    = 0,
 	TYPE_AUX     = 1
@@ -110,7 +118,8 @@ typedef struct {
 	                *gpio_outlet_property,
 	                *gpio_outlet_pulse_property,
 	                *sensor_names_property,
-	                *sensors_property;
+	                *sensors_property,
+	                *dome_settings_property;
 } logical_device_data;
 
 typedef struct {
@@ -209,6 +218,13 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_GPIO_SENSOR_6_ITEM, AUX_GPIO_SENSOR_NAME_6_ITEM_NAME, "Sensor #6", 0, 1024, 1, 0);
 	indigo_init_number_item(AUX_GPIO_SENSOR_7_ITEM, AUX_GPIO_SENSOR_NAME_7_ITEM_NAME, "Sensor #7", 0, 1024, 1, 0);
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_GPIO_SENSORS_PROPERTY->hidden = true;
+	// -------------------------------------------------------------------------------- LA_DOME_SETTINGS
+	LA_DOME_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, LA_DOME_SETTINGS_PROPERTY_NAME, "Settings", "Dome Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (LA_DOME_SETTINGS_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(LA_DOME_SETTINGS_BUTTON_PULSE_ITEM, LA_DOME_SETTINGS_BUTTON_PULSE_ITEM_NAME, "Open/Close push duration (ms)", 0, 3000, 1, 500);
+	indigo_init_number_item(LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM, LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM_NAME, "Mount park sensor threshold", 0, 1024, 1, 512);
+	if (DEVICE_DATA.device_type != TYPE_DOME) LA_DOME_SETTINGS_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
 	indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
@@ -217,31 +233,21 @@ static int lunatico_init_properties(indigo_device *device) {
 
 
 static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (DEVICE_CONNECTED) {
 		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+		if (indigo_property_match(LA_DOME_SETTINGS_PROPERTY, property))
+			indigo_define_property(device, LA_DOME_SETTINGS_PROPERTY, NULL);
 	}
 	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
-}
-
-
-static void lunatico_init_device(indigo_device *device) {
-	char board[LUNATICO_CMD_LEN] = "N/A";
-	char firmware[LUNATICO_CMD_LEN] = "N/A";
-	uint32_t value;
-	if (lunatico_get_info(device, board, firmware)) {
-		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-		strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
-		indigo_update_property(device, INFO_PROPERTY, NULL);
-	}
 }
 
 
@@ -254,6 +260,7 @@ static indigo_result lunatico_detach(indigo_device *device) {
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
+	indigo_release_property(LA_DOME_SETTINGS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -268,6 +275,7 @@ static indigo_result lunatico_detach(indigo_device *device) {
 static void lunatico_save_properties(indigo_device *device) {
 	indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
 	indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
+	indigo_save_property(device, NULL, LA_DOME_SETTINGS_PROPERTY);
 }
 
 
@@ -275,6 +283,7 @@ static void lunatico_delete_properties(indigo_device *device) {
 	indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+	indigo_delete_property(device, LA_DOME_SETTINGS_PROPERTY, NULL);
 }
 
 
@@ -450,7 +459,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
@@ -467,7 +476,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_OUTLET_PULSE_LENGTHS_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
 
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
@@ -476,7 +485,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
 
 		if (set_gpio_outlets(device) == true) {
 			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
@@ -488,13 +497,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
 		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
 		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 		}
 		snprintf(AUX_GPIO_SENSOR_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_3_ITEM->text.value);
@@ -503,7 +512,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_GPIO_SENSOR_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_6_ITEM->text.value);
 		snprintf(AUX_GPIO_SENSOR_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_7_ITEM->text.value);
 		AUX_SENSOR_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 		}
 		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
@@ -545,6 +554,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 
 		// --------------------------------------------------------------------------------
+		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
 	}
@@ -570,6 +580,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
+						indigo_define_property(device, LA_DOME_SETTINGS_PROPERTY, NULL);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -589,6 +600,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
@@ -599,20 +611,29 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(LA_DOME_SETTINGS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- LA_DOME_SETTINGS
+		indigo_property_copy_values(LA_DOME_SETTINGS_PROPERTY, property, false);
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
+		LA_DOME_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, LA_DOME_SETTINGS_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
+	lunatico_common_update_property(device, client, property);
 	return indigo_dome_change_property(device, client, property);
+}
+
+static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	lunatico_enumerate_properties(device, client, property);
+	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
 
 
 static indigo_result dome_detach(indigo_device *device) {
-	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	lunatico_detach(device);
 	return indigo_dome_detach(device);
 }
-
 
 // --------------------------------------------------------------------------------
 
@@ -632,7 +653,7 @@ static void create_port_device(int p_device_index, int l_device_index, device_ty
 	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
 		DOME_DRAGONFLY_NAME,
 		dome_attach,
-		indigo_dome_enumerate_properties,
+		dome_enumerate_properties,
 		dome_change_property,
 		NULL,
 		dome_detach
