@@ -28,6 +28,10 @@
 
 #include <indigo/indigo_driver.h>
 
+#define DRIVER_NAME              "indigo_dome_dragonfly"
+#define CONFLICTING_DRIVER       "indigo_aux_dragonfly"
+#define DRIVER_INFO              "Lunatico Dragonfly Dome"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

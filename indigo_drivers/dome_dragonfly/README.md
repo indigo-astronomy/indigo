@@ -1,4 +1,4 @@
-# Lunatico Astronomy Dragonfly dome/GPIO driver
+# Lunatico Astronomy Dragonfly Dome / Relay Control GPIO driver
 
 https://www.lunatico.es
 
@@ -6,7 +6,7 @@ https://www.lunatico.es
 
 Dragonfly controllers.
 
-No hot plug support. One Dome and one GPIO are present at startup.
+No hot plug support. One Dome and one Relay Control GPIO devices are present at startup.
 
 ## Supported platforms
 
@@ -28,6 +28,6 @@ Driver is developed and tested with:
 ## NOTES:
 * The Dome wiring should be as described in Dragonfly documentation.
 
-* This driver can not be loaded if *indigo_aux_dragonfly* is loaded as both drivers have the same functionality.
+* Relays 1-3 and Sensors 1,2 and 8 are reserved for dome control and are not exposed in the GPIO device.
 
-* In devices with male DB9 connectors, pins are horizontally flipped. In software pin 1 corresponds to pin 5 on male DB9, pin 6 corresponds to pin 9 etc. There is no such flipping for the devices with female DB9 connectors.
+* This driver can not be loaded if *indigo_aux_dragonfly* is loaded.
