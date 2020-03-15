@@ -351,7 +351,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (DEVICE_CONNECTED) {
 		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
@@ -424,7 +424,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
@@ -447,7 +447,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_OUTLET_PULSE_LENGTHS_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
 
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
@@ -456,7 +456,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
 
 		if (set_gpio_outlets(device) == true) {
 			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
@@ -468,13 +468,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
 		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
 		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 		}
 		snprintf(AUX_GPIO_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_1_ITEM->text.value);
@@ -486,7 +486,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_GPIO_SENSOR_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_7_ITEM->text.value);
 		snprintf(AUX_GPIO_SENSOR_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_8_ITEM->text.value);
 		AUX_SENSOR_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 		}
 		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
