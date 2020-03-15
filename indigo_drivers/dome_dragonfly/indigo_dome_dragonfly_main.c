@@ -23,8 +23,21 @@
  \file indigo_dome_dragonfly_main.c
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <indigo/indigo_driver_xml.h>
+
 #include "indigo_dome_dragonfly.h"
 
-#define DRIVER_ENTRY_POINT       indigo_dome_dragonfly
-
-#include "shared/dragonfly_main_shared.c"
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	indigo_dome_dragonfly(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_dome_dragonfly(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
+}
