@@ -395,7 +395,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				if (lunatico_open(device)) {
 					char board[LUNATICO_CMD_LEN] = "N/A";
 					char firmware[LUNATICO_CMD_LEN] = "N/A";
-					if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE))  {
+					if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
