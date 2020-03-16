@@ -112,7 +112,7 @@ typedef struct {
 	double prev_temp;
 	bool relay_active[8];
 	indigo_timer *relay_timers[8];
-	pthread_mutex_t pulse_mutex;
+	pthread_mutex_t relay_mutex;
 	indigo_timer *temperature_timer;
 	indigo_timer *sensors_timer;
 	indigo_property *outlet_names_property,
@@ -144,19 +144,10 @@ static lunatico_device_data device_data[MAX_PHYSICAL_DEVICES] = {0};
 static void create_port_device(int p_device_index, int l_device_index, device_type_t type);
 static void delete_port_device(int p_device_index, int l_device_index);
 
-/* Linatico Astronomia device Commands ======================================================================== */
-
-#define LUNATICO_CMD_LEN 100
-
-typedef enum {
-	MODEL_SELETEK = 1,
-	MODEL_ARMADILLO = 2,
-	MODEL_PLATYPUS = 3,
-	MODEL_DRAGONFLY = 4,
-	MODEL_LIMPET = 5
-} lunatico_model_t;
 
 #include "../aux_dragonfly/shared/dragonfly_shared.c"
+
+// --------------------------------------------------------------------------------- Common
 
 static int lunatico_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
@@ -318,43 +309,43 @@ static void sensors_timer_callback(indigo_device *device) {
 }
 
 static void relay_4_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.relay_mutex);
 	DEVICE_DATA.relay_active[0] = false;
 	AUX_GPIO_OUTLET_4_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 }
 
 static void relay_5_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.relay_mutex);
 	DEVICE_DATA.relay_active[1] = false;
 	AUX_GPIO_OUTLET_5_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 }
 
 static void relay_6_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.relay_mutex);
 	DEVICE_DATA.relay_active[2] = false;
 	AUX_GPIO_OUTLET_6_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 }
 
 static void relay_7_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.relay_mutex);
 	DEVICE_DATA.relay_active[3] = false;
 	AUX_GPIO_OUTLET_7_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 }
 
 static void relay_8_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.relay_mutex);
 	DEVICE_DATA.relay_active[4] = false;
 	AUX_GPIO_OUTLET_8_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 }
 
 
@@ -408,7 +399,7 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
-		pthread_mutex_init(&DEVICE_DATA.pulse_mutex, NULL);
+		pthread_mutex_init(&DEVICE_DATA.relay_mutex, NULL);
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -540,6 +531,8 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		pthread_mutex_init(&DEVICE_DATA.relay_mutex, NULL);
+
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// This is a sliding roof -> we need only open and close
 		DOME_SPEED_PROPERTY->hidden = true;
