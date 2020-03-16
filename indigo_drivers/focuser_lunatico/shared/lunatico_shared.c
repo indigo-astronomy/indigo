@@ -51,8 +51,6 @@
 
 #define DEFAULT_BAUDRATE            "115200"
 
-#define ROTATOR_SPEED 1
-
 #define MAX_PORTS  3
 #define MAX_DEVICES 4
 
@@ -85,18 +83,18 @@
 #define LA_PORT_EXP_CONFIG_PROPERTY    (PORT_DATA.port_exp_config)
 #define LA_PORT_EXP_FOCUSER_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+0)
 #define LA_PORT_EXP_ROTATOR_ITEM       (LA_PORT_EXP_CONFIG_PROPERTY->items+1)
-#define LA_PORT_EXP_AUX_GPIO_ITEM      (LA_PORT_EXP_CONFIG_PROPERTY->items+2)
+#define LA_PORT_EXP_AUX_POWERBOX_ITEM  (LA_PORT_EXP_CONFIG_PROPERTY->items+2)
 
 #define LA_PORT_THIRD_CONFIG_PROPERTY    (PORT_DATA.port_third_config)
 #define LA_PORT_THIRD_FOCUSER_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+0)
 #define LA_PORT_THIRD_ROTATOR_ITEM       (LA_PORT_THIRD_CONFIG_PROPERTY->items+1)
-#define LA_PORT_THIRD_AUX_GPIO_ITEM      (LA_PORT_THIRD_CONFIG_PROPERTY->items+2)
+#define LA_PORT_THIRD_AUX_POWERBOX_ITEM  (LA_PORT_THIRD_CONFIG_PROPERTY->items+2)
 
-#define LA_PORT_EXP_CONFIG_PROPERTY_NAME    "LUNATICO_PORT_EXP_CONFIG"
-#define LA_PORT_THIRD_CONFIG_PROPERTY_NAME  "LUNATICO_PORT_THIRD_CONFIG"
-#define LA_PORT_CONFIG_FOCUSER_ITEM_NAME    "FOCUSER"
-#define LA_PORT_CONFIG_ROTATOR_ITEM_NAME    "ROTATOR"
-#define LA_PORT_CONFIG_AUX_GPIO_ITEM_NAME   "AUX_GPIO"
+#define LA_PORT_EXP_CONFIG_PROPERTY_NAME        "LUNATICO_PORT_EXP_CONFIG"
+#define LA_PORT_THIRD_CONFIG_PROPERTY_NAME      "LUNATICO_PORT_THIRD_CONFIG"
+#define LA_PORT_CONFIG_FOCUSER_ITEM_NAME        "FOCUSER"
+#define LA_PORT_CONFIG_ROTATOR_ITEM_NAME        "ROTATOR"
+#define LA_PORT_CONFIG_AUX_POWERBOX_ITEM_NAME   "AUX_POWERBOX"
 
 
 #define LA_STEP_MODE_PROPERTY          (PORT_DATA.step_mode_property)
@@ -177,6 +175,7 @@ typedef enum {
 	TYPE_ROTATOR = 1,
 	TYPE_AUX     = 2
 } device_type_t;
+
 
 static const char *port_name[3] = { "Main", "Exp", "Third" };
 
@@ -778,7 +777,7 @@ static int lunatico_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_PORT_EXP_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
 	indigo_init_switch_item(LA_PORT_EXP_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
-	indigo_init_switch_item(LA_PORT_EXP_AUX_GPIO_ITEM, LA_PORT_CONFIG_AUX_GPIO_ITEM_NAME, "Powerbox/GPIO", false);
+	indigo_init_switch_item(LA_PORT_EXP_AUX_POWERBOX_ITEM, LA_PORT_CONFIG_AUX_POWERBOX_ITEM_NAME, "Powerbox/GPIO", false);
 	if (get_port_index(device) != 0) LA_PORT_EXP_CONFIG_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
 	LA_PORT_THIRD_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_PORT_THIRD_CONFIG_PROPERTY_NAME, "Configuration", "Third port", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
@@ -786,7 +785,7 @@ static int lunatico_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_PORT_THIRD_FOCUSER_ITEM, LA_PORT_CONFIG_FOCUSER_ITEM_NAME, "Focuser", true);
 	indigo_init_switch_item(LA_PORT_THIRD_ROTATOR_ITEM, LA_PORT_CONFIG_ROTATOR_ITEM_NAME, "Rotator", false);
-	indigo_init_switch_item(LA_PORT_THIRD_AUX_GPIO_ITEM, LA_PORT_CONFIG_AUX_GPIO_ITEM_NAME, "Powerbox/GPIO", false);
+	indigo_init_switch_item(LA_PORT_THIRD_AUX_POWERBOX_ITEM, LA_PORT_CONFIG_AUX_POWERBOX_ITEM_NAME, "Powerbox/GPIO", false);
 	if (get_port_index(device) != 0) LA_PORT_THIRD_CONFIG_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 	LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -1838,8 +1837,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
@@ -2251,6 +2248,7 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 		device_data[device_index].private_data = malloc(sizeof(lunatico_private_data));
 		assert(device_data[device_index].private_data != NULL);
 		memset(device_data[device_index].private_data, 0, sizeof(lunatico_private_data));
+		pthread_mutex_init(&device_data[device_index].private_data->port_mutex, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
