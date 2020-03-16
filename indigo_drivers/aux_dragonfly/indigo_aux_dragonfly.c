@@ -112,6 +112,7 @@ typedef struct {
 	double prev_temp;
 	bool relay_active[8];
 	indigo_timer *relay_timers[8];
+	pthread_mutex_t pulse_mutex;
 	indigo_timer *temperature_timer;
 	indigo_timer *sensors_timer;
 	indigo_property *outlet_names_property,
@@ -239,70 +240,69 @@ static void sensors_timer_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, 1, &DEVICE_DATA.sensors_timer);
 }
 
-static pthread_mutex_t pulse_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void relay_1_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[0] = false;
 	AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 static void relay_2_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[1] = false;
 	AUX_GPIO_OUTLET_2_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 static void relay_3_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[2] = false;
 	AUX_GPIO_OUTLET_3_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 static void relay_4_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[3] = false;
 	AUX_GPIO_OUTLET_4_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 static void relay_5_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[4] = false;
 	AUX_GPIO_OUTLET_5_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 static void relay_6_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[5] = false;
 	AUX_GPIO_OUTLET_6_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 static void relay_7_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[6] = false;
 	AUX_GPIO_OUTLET_7_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 static void relay_8_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&pulse_mutex);
+	pthread_mutex_lock(&DEVICE_DATA.pulse_mutex);
 	DEVICE_DATA.relay_active[7] = false;
 	AUX_GPIO_OUTLET_8_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&pulse_mutex);
+	pthread_mutex_unlock(&DEVICE_DATA.pulse_mutex);
 }
 
 
@@ -372,6 +372,7 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
+		pthread_mutex_init(&DEVICE_DATA.pulse_mutex, NULL);
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -544,6 +545,7 @@ static void create_port_device(int p_device_index, int l_device_index) {
 		device_data[p_device_index].private_data = malloc(sizeof(lunatico_private_data));
 		assert(device_data[p_device_index].private_data != NULL);
 		memset(device_data[p_device_index].private_data, 0, sizeof(lunatico_private_data));
+		pthread_mutex_init(&device_data[p_device_index].private_data->port_mutex, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
