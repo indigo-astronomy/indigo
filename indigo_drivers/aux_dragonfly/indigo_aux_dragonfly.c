@@ -109,12 +109,11 @@
 #define AUX_GPIO_SENSOR_8_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 7)
 
 typedef struct {
-	double prev_temp;
 	bool relay_active[8];
 	indigo_timer *relay_timers[8];
 	pthread_mutex_t relay_mutex;
-	indigo_timer *temperature_timer;
 	indigo_timer *sensors_timer;
+
 	indigo_property *outlet_names_property,
 	                *gpio_outlet_property,
 	                *gpio_outlet_pulse_property,
@@ -125,7 +124,6 @@ typedef struct {
 typedef struct {
 	int handle;
 	int count_open;
-	int port_count;
 	bool udp;
 	pthread_mutex_t port_mutex;
 	logical_device_data device_data[MAX_LOGICAL_DEVICES];
@@ -140,6 +138,7 @@ static lunatico_device_data device_data[MAX_PHYSICAL_DEVICES] = {0};
 
 static void create_port_device(int p_device_index, int l_device_index);
 static void delete_port_device(int p_device_index, int l_device_index);
+
 
 #include "shared/dragonfly_shared.c"
 

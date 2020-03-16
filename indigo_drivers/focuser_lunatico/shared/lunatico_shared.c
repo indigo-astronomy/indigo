@@ -207,7 +207,6 @@ typedef struct {
 typedef struct {
 	int handle;
 	int count_open;
-	int port_count;
 	bool udp;
 	pthread_mutex_t port_mutex;
 	lunatico_port_data port_data[MAX_PORTS];
