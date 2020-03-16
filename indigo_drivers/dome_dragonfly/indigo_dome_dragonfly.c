@@ -96,10 +96,12 @@
 
 #define LA_DOME_SETTINGS_PROPERTY                     (DEVICE_DATA.dome_settings_property)
 #define LA_DOME_SETTINGS_BUTTON_PULSE_ITEM            (LA_DOME_SETTINGS_PROPERTY->items + 0)
-#define LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM          (LA_DOME_SETTINGS_PROPERTY->items + 1)
+#define LA_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM      (LA_DOME_SETTINGS_PROPERTY->items + 1)
+#define LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM          (LA_DOME_SETTINGS_PROPERTY->items + 2)
 
 #define LA_DOME_SETTINGS_PROPERTY_NAME                "LA_DOME_SETTINGS"
 #define LA_DOME_SETTINGS_BUTTON_PULSE_ITEM_NAME       "BUTTON_PULSE_LENGTH"
+#define LA_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM_NAME "OPEN_CLOSE_TIMEOUT"
 #define LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM_NAME     "PARK_SENSOR_THRESHOLD"
 
 typedef enum {
@@ -107,14 +109,28 @@ typedef enum {
 	TYPE_AUX     = 1
 } device_type_t;
 
+typedef enum {
+	ROOF_OPENED,
+	ROOF_CLOSED,
+	ROOF_OPENING,
+	ROOF_STOPPED_WHILE_OPENING,
+	ROOF_CLOSING,
+	ROOF_STOPPED_WHILE_CLOSING,
+	ROOF_UNKNOWN
+} roof_state_t;
+
 typedef struct {
 	device_type_t device_type;
-	double prev_temp;
-	bool relay_active[8];
-	indigo_timer *relay_timers[8];
+
+	bool relay_active[5];
+	indigo_timer *relay_timers[5];
 	pthread_mutex_t relay_mutex;
-	indigo_timer *temperature_timer;
 	indigo_timer *sensors_timer;
+
+	roof_state_t roof_state;
+	indigo_timer *roof_timer;
+	uint32_t roof_timer_hits;
+
 	indigo_property *outlet_names_property,
 	                *gpio_outlet_property,
 	                *gpio_outlet_pulse_property,
@@ -126,7 +142,6 @@ typedef struct {
 typedef struct {
 	int handle;
 	int count_open;
-	int port_count;
 	bool udp;
 	pthread_mutex_t port_mutex;
 	logical_device_data device_data[MAX_LOGICAL_DEVICES];
@@ -211,10 +226,11 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_GPIO_SENSOR_7_ITEM, AUX_GPIO_SENSOR_NAME_7_ITEM_NAME, "Sensor #7", 0, 1024, 1, 0);
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_GPIO_SENSORS_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- LA_DOME_SETTINGS
-	LA_DOME_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, LA_DOME_SETTINGS_PROPERTY_NAME, "Settings", "Dome Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	LA_DOME_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, LA_DOME_SETTINGS_PROPERTY_NAME, "Settings", "Dome Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 	if (LA_DOME_SETTINGS_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(LA_DOME_SETTINGS_BUTTON_PULSE_ITEM, LA_DOME_SETTINGS_BUTTON_PULSE_ITEM_NAME, "Open/Close push duration (ms)", 0, 3000, 1, 500);
+	indigo_init_number_item(LA_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM, LA_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM_NAME, "Open/Close tumeout (sec)", 0, 300, 1, 60);
 	indigo_init_number_item(LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM, LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM_NAME, "Mount park sensor threshold", 0, 1024, 1, 512);
 	if (DEVICE_DATA.device_type != TYPE_DOME) LA_DOME_SETTINGS_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
