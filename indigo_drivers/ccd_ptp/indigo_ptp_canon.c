@@ -413,7 +413,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 		}
 		case ptp_property_canon_ISOSpeed: {
 			switch (code) {
-				case 0x00: return "Auto"; case 0x40: return "50"; case 0x48: return "100"; case 0x4b: return "125"; case 0x4d: return "160"; case 0x50: return "200"; case 0x53: return "250"; case 0x55: return "320"; case 0x58: return "400"; case 0x5b: return "500"; case 0x5d: return "640"; case 0x60: return "800"; case 0x63: return "1000"; case 0x65: return "1250"; case 0x68: return "1600"; case 0x6b: return "2000"; case 0x6d: return "2500"; case 0x70: return "3200"; case 0x73: return "4000"; case 0x75: return "5000"; case 0x78: return "6400"; case 0x7b: return "8000"; case 0x7d: return "10000"; case 0x80: return "12800"; case 0x83: return "16000"; case 0x85: return "20000"; case 0x88: return "25600"; case 0x90: return "51200"; case 0x98: return "102400";
+				case 0x00: return "Auto"; case 0x40: return "50"; case 0x48: return "100"; case 0x4b: return "125"; case 0x4d: return "160"; case 0x50: return "200"; case 0x53: return "250"; case 0x55: return "320"; case 0x58: return "400"; case 0x5b: return "500"; case 0x5d: return "640"; case 0x60: return "800"; case 0x63: return "1000"; case 0x65: return "1250"; case 0x68: return "1600"; case 0x6b: return "2000"; case 0x6d: return "2500"; case 0x70: return "3200"; case 0x73: return "4000"; case 0x75: return "5000"; case 0x78: return "6400"; case 0x7b: return "8000"; case 0x7d: return "10000"; case 0x80: return "12800"; case 0x83: return "16000"; case 0x85: return "20000"; case 0x88: return "25600"; case 0x8b: return "32000"; case 0x8d: return "40000"; case 0x90: return "51200"; case 0x98: return "102400";
 			}
 			break;
 		}
