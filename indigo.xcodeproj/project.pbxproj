@@ -7815,7 +7815,6 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
-				591F328224211EB000D1D64B /* dome_dragonfly */,
 				9D85FAE021E38E3900ECDF82 /* agent_alignment */,
 				9DC4967C22BA7B810052AB3E /* agent_auxiliary */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
@@ -7854,6 +7853,7 @@
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
 				9D73E5F721FF36C4003CEC15 /* ccd_uvc */,
+				591F328224211EB000D1D64B /* dome_dragonfly */,
 				59B81EC82337AA2E00DFA81B /* dome_nexdome */,
 				9DB117902383F6FC002C1AB1 /* dome_nexdome3 */,
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
