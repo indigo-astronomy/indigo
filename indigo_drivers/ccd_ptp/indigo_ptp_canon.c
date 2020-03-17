@@ -449,7 +449,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 		case ptp_property_canon_EVFWBMode:
 		case ptp_property_canon_WhiteBalance: {
 			switch (code) {
-				case 0: return "Auto"; case 1: return "Daylight"; case 2: return "Cloudy"; case 3: return "Tungsten"; case 4: return "Fluorescent"; case 5: return "Flash"; case 6: return "Manual"; case 8: return "Shade"; case 9: return "Color temperature"; case 10: return "Custom white balance: PC-1"; case 11: return "Custom white balance: PC-2"; case 12: return "Custom white balance: PC-3"; case 15: return "Manual 2"; case 16: return "Manual 3"; case 18: return "Manual 4"; case 19: return "Manual 5"; case 20: return "Custom white balance: PC-4"; case 21: return "Custom white balance: PC-5";
+				case 0: return "Auto"; case 1: return "Daylight"; case 2: return "Cloudy"; case 3: return "Tungsten"; case 4: return "Fluorescent"; case 5: return "Flash"; case 6: return "Manual"; case 8: return "Shade"; case 9: return "Color temperature"; case 10: return "Custom white balance: PC-1"; case 11: return "Custom white balance: PC-2"; case 12: return "Custom white balance: PC-3"; case 15: return "Manual 2"; case 16: return "Manual 3"; case 18: return "Manual 4"; case 19: return "Manual 5"; case 20: return "Custom white balance: PC-4"; case 21: return "Custom white balance: PC-5"; case 23: return "Auto: White priority";
 			}
 			break;
 		}
@@ -737,7 +737,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 		}
 		case ptp_property_canon_MultiAspect: {
 			switch (code) {
-				case 0x0: return "3:2"; case 0x1: return "1:1"; case 0x2: return "4:3"; case 0x7: return "16:9";
+				case 0x0: return "3:2"; case 0x1: return "1:1"; case 0x2: return "4:3"; case 0x7: return "16:9"; case 0xd: return "1.6x (crop)";
 			}
 			break;
 		}
