@@ -606,6 +606,11 @@ static void dome_timer_callback(indigo_device *device) {
 	if (lunatico_analog_read_sensors(device, sensors)) {
 		bool opened = (sensors[OPENED_SENSOR] > 512) ? true : false;
 		bool closed = (sensors[CLOSED_SENSOR] > 512) ? true : false;
+		if (opened || closed) {
+			// Nomatter which setup is used it is safe to turn off the relays
+			lunatico_set_relay(device, OPEN_RELAY, false);
+			lunatico_set_relay(device, CLOSE_RELAY, false);
+		}
 		if (opened && !closed) {
 			DEVICE_DATA.roof_timer_hits = 0;
 			DEVICE_DATA.roof_state = ROOF_OPENED;
@@ -653,27 +658,31 @@ static void dome_handle_abort(indigo_device *device) {
 		pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 		return;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Attempting Abort...");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Attempting Abort...");
 
 	if (DEVICE_DATA.roof_state == ROOF_OPENING || DEVICE_DATA.roof_state == ROOF_CLOSING || DEVICE_DATA.roof_state == ROOF_OPENING_OR_CLOSING) {
-		relay_assignment_t button;
-		if (LA_DOME_FUNCTION_1_BUTTON_ITEM->sw.value || LA_DOME_FUNCTION_3_BUTTONS_ITEM->sw.value) {
-			if (LA_DOME_FUNCTION_1_BUTTON_ITEM->sw.value) button = OPEN_CLOSE_RELAY;
-			else button = STOP_RELAY;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Abort...");
-			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-			lunatico_pulse_relay(device, button, (int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value);
-			if (DEVICE_DATA.roof_state == ROOF_CLOSING) {
-				DEVICE_DATA.roof_state = ROOF_STOPPED_WHILE_CLOSING;
-			} else {
-				DEVICE_DATA.roof_state = ROOF_STOPPED_WHILE_OPENING;
-			}
-			DEVICE_DATA.roof_timer_hits = 0;
-			indigo_usleep((int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value * 1000);
-			pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
-			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof Stopped.");
-			return;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Abort...");
+		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+		// Does not hurt to turn off OPEN and CLOSE relays in all situations
+		lunatico_set_relay(device, OPEN_RELAY, false);
+		lunatico_set_relay(device, CLOSE_RELAY, false);
+		// In push and release setups push stop button
+		if (!LA_DOME_FUNCTION_2_BUTTONS_ITEM->sw.value) {
+			lunatico_pulse_relay(device, STOP_RELAY, (int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value);
 		}
+		if (DEVICE_DATA.roof_state == ROOF_CLOSING) {
+			DEVICE_DATA.roof_state = ROOF_STOPPED_WHILE_CLOSING;
+		} else {
+			DEVICE_DATA.roof_state = ROOF_STOPPED_WHILE_OPENING;
+		}
+		DEVICE_DATA.roof_timer_hits = 0;
+		// In push and release setups wait for the button to be released
+		if (!LA_DOME_FUNCTION_2_BUTTONS_ITEM->sw.value) {
+			indigo_usleep((int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value * 1000);
+		}
+		pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof Stopped.");
+		return;
 	}
 	pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 }
@@ -762,6 +771,34 @@ static void dome_handle_shutter(indigo_device *device) {
 		indigo_usleep((int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value * 1000);
 		pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
 		DEVICE_DATA.roof_timer = indigo_set_timer(device, 1, dome_timer_callback);
+
+	} else if (LA_DOME_FUNCTION_2_BUTTONS_ITEM->sw.value) {
+		// Close roof
+		if (DEVICE_DATA.roof_state != ROOF_CLOSED && DOME_SHUTTER_CLOSED_ITEM->sw.value == true) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof is closing...");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Roof is closing...");
+			pthread_mutex_lock(&DEVICE_DATA.relay_mutex);
+			lunatico_set_relay(device, CLOSE_RELAY, true);
+			DEVICE_DATA.roof_state = ROOF_CLOSING;
+			DEVICE_DATA.roof_timer_hits = 0;
+			pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
+			DEVICE_DATA.roof_timer = indigo_set_timer(device, 2, dome_timer_callback);
+			return;
+		}
+		// Open roof
+		if (DEVICE_DATA.roof_state != ROOF_OPENED && DOME_SHUTTER_OPENED_ITEM->sw.value == true) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof is opening...");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Roof is opening...");
+			pthread_mutex_lock(&DEVICE_DATA.relay_mutex);
+			lunatico_set_relay(device, OPEN_RELAY, true);
+			DEVICE_DATA.roof_state = ROOF_OPENING;
+			DEVICE_DATA.roof_timer_hits = 0;
+			pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
+			DEVICE_DATA.roof_timer = indigo_set_timer(device, 2, dome_timer_callback);
+			return;
+		}
 
 	} else if (LA_DOME_FUNCTION_3_BUTTONS_ITEM->sw.value) {
 		// Close roof

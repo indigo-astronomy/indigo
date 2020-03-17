@@ -80,5 +80,7 @@ while ($sock->recv($newmsg, $MAXLEN)) {
 	} else {
 		$sock->send("\!$newmsg:-1\#");
 	}
+	print "Relays : ".$relay[0]." ".$relay[1]." ".$relay[2]." ".$relay[3]." ".$relay[4]." ".$relay[5]." ".$relay[6]." ".$relay[7];
+	print " -- Sensors: ".$sensor[0]." ".$sensor[1]." ".$sensor[2]." ".$sensor[3]." ".$sensor[4]." ".$sensor[5]." ".$sensor[6]." ".$sensor[7]."\n";
 }
 die "recv: $!";
