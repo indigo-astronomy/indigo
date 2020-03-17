@@ -92,7 +92,7 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		indigo_printf(handle, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), item->label, hints_attribute(item->hints), item->text.value);
+			indigo_printf(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), indigo_xml_escape(item->text.value));
 		}
 		indigo_printf(handle, "</defTextVector>\n");
 		break;
@@ -101,9 +101,9 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
 			if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM)
-				indigo_printf(handle, "<defNumber name='%s' label='%s' format='%s' min='%s' max='%s' step='%s' target='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), item->label, item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.target, b4), indigo_dtoa(item->number.value, b5));
+				indigo_printf(handle, "<defNumber name='%s' label='%s' format='%s' min='%s' max='%s' step='%s' target='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.target, b4), indigo_dtoa(item->number.value, b5));
 			else
-				indigo_printf(handle, "<defNumber name='%s' label='%s'%s format='%s' min='%s' max='%s' step='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), item->label, hints_attribute(item->hints), item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.value, b4));
+				indigo_printf(handle, "<defNumber name='%s' label='%s'%s format='%s' min='%s' max='%s' step='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.value, b4));
 		}
 		indigo_printf(handle, "</defNumberVector>\n");
 		break;
@@ -111,7 +111,7 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		indigo_printf(handle, "<defSwitchVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s' rule='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, "<defSwitch name='%s' label='%s'%s>%s</defSwitch>\n", indigo_item_name(client->version, property, item), item->label, hints_attribute(item->hints), item->sw.value ? "On" : "Off");
+			indigo_printf(handle, "<defSwitch name='%s' label='%s'%s>%s</defSwitch>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), item->sw.value ? "On" : "Off");
 		}
 		indigo_printf(handle, "</defSwitchVector>\n");
 		break;
@@ -119,7 +119,7 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		indigo_printf(handle, "<defLightVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, " <defLight name='%s' label='%s'%s>%s</defLight>\n", indigo_item_name(client->version, property, item), item->label, hints_attribute(item->hints), indigo_property_state_text[item->light.value]);
+			indigo_printf(handle, " <defLight name='%s' label='%s'%s>%s</defLight>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), indigo_property_state_text[item->light.value]);
 		}
 		indigo_printf(handle, "</defLightVector>\n");
 		break;
@@ -127,7 +127,7 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		indigo_printf(handle, "<defBLOBVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, "<defBLOB name='%s' label='%s'%s/>\n", indigo_item_name(client->version, property, item), item->label, hints_attribute(item->hints));
+			indigo_printf(handle, "<defBLOB name='%s' label='%s'%s/>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints));
 		}
 		indigo_printf(handle, "</defBLOBVector>\n");
 		break;
