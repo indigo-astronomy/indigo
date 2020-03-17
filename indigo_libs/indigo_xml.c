@@ -1636,7 +1636,7 @@ exit_loop:
 }
 
 char *indigo_xml_escape(char *string) {
-	if (strpbrk(string, "%<>\"'")) {
+	if (strpbrk(string, "&<>\"'")) {
 		static char buffers[5][INDIGO_VALUE_SIZE];
 		static int	buffer_index = 0;
 		char *buffer = buffers[buffer_index = (buffer_index + 1) % 5];
