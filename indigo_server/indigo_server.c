@@ -126,6 +126,8 @@
 #include "focuser_lunatico/indigo_focuser_lunatico.h"
 #include "rotator_simulator/indigo_rotator_simulator.h"
 #include "rotator_lunatico/indigo_rotator_lunatico.h"
+#include "aux_dragonfly/indigo_aux_dragonfly.h"
+#include "dome_dragonfly/indigo_dome_dragonfly.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -160,6 +162,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_snoop,
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
+	indigo_aux_dragonfly,
 	indigo_aux_dsusb,
 	indigo_aux_fbc,
 	indigo_aux_flatmaster,
@@ -195,6 +198,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
+	indigo_dome_dragonfly,
 	indigo_dome_nexdome,
 	indigo_dome_nexdome3,
 	indigo_dome_simulator,
