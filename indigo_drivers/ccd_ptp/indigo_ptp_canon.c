@@ -485,6 +485,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				case 0:
 					strcpy(label, "");
 					break;
+				case 0x10010000:
+					strcpy(label, "L JPEG + ");
+					break;
 				case 0x10010003:
 					strcpy(label, "Large fine JPEG + ");
 					break;
@@ -500,14 +503,23 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				case 0x10010203:
 					strcpy(label, "Small fine JPEG + ");
 					break;
+				case 0x10010200:
+					strcpy(label, "S JPEG + ");
+					break;
 				case 0x10010202:
 					strcpy(label, "Small JPEG + ");
+					break;
+				case 0x10010500:
+					strcpy(label, "M1 JPEG + ");
 					break;
 				case 0x10010503:
 					strcpy(label, "M1 fine JPEG + ");
 					break;
 				case 0x10010502:
 					strcpy(label, "M1 JPEG + ");
+					break;
+				case 0x10010600:
+					strcpy(label, "M2 JPEG + ");
 					break;
 				case 0x10010603:
 					strcpy(label, "M2 fine JPEG + ");
@@ -556,6 +568,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					break;
 			}
 			switch (code & 0xFFFFFFFF) {
+				case 0x10010000:
+					strcat(label, "L JPEG");
+					break;
 				case 0x10010003:
 					strcat(label, "Large fine JPEG");
 					break;
@@ -568,17 +583,26 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				case 0x10010102:
 					strcat(label, "Medium JPEG");
 					break;
+				case 0x10010200:
+					strcat(label, "S JPEG");
+					break;
 				case 0x10010203:
 					strcat(label, "Small fine JPEG");
 					break;
 				case 0x10010202:
 					strcat(label, "Small JPEG");
 					break;
+				case 0x10010500:
+					strcat(label, "M1 JPEG");
+					break;
 				case 0x10010503:
 					strcat(label, "M1 fine JPEG");
 					break;
 				case 0x10010502:
 					strcat(label, "M1 JPEG");
+					break;
+				case 0x10010600:
+					strcat(label, "M2 JPEG");
 					break;
 				case 0x10010603:
 					strcat(label, "M2 fine JPEG");
@@ -623,7 +647,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcat(label, "CR2");
 					break;
 				default:
-					sprintf(label, "Unknown (0x%lx)", code & 0xFFFFFFFF);
+					sprintf(label, "%sUnknown (0x%lx)", label, code & 0xFFFFFFFF);
 					break;
 			}
 			return label;
