@@ -761,7 +761,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 		}
 		case ptp_property_canon_MultiAspect: {
 			switch (code) {
-				case 0x0: return "3:2"; case 0x1: return "1:1"; case 0x2: return "4:3"; case 0x7: return "16:9"; case 0xd: return "1.6x (crop)";
+				case 0x0: return "3:2"; case 0x1: return "1:1"; case 0x2: return "4:3"; case 0x7: return "16:9"; case 0xc: return "1.3 (crop)"; case 0xd: return "1.6x (crop)";
 			}
 			break;
 		}
