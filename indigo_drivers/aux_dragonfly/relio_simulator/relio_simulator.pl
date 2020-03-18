@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 use IO::Socket;
+use Getopt::Std;
 use Time::HiRes qw/gettimeofday/;
 
 my($sock, $newmsg, $MAXLEN, $PORTNO);
@@ -12,12 +13,25 @@ my @sensor = (11,12,13,14,15,16,17,18);
 $MAXLEN = 1024;
 $PORTNO = 10000;
 
+use constant PASSWORD => "123";
+my $require_password = 0;
+
 $sock = IO::Socket::INET->new(
 	LocalPort => $PORTNO,
 	Proto => 'udp'
 ) or die "socket: $@";
 
-print "Listening for UDP messages on port $PORTNO\n";
+my %opts;
+getopts('p', \%opts);
+if (defined $opts{'p'}) {
+	$require_password = 1;
+}
+
+if ($require_password) {
+	print "Listening for UDP messages on port $PORTNO access password: ".PASSWORD."\n";
+} else {
+	print "Listening for UDP messages on port $PORTNO\n";
+}
 
 while ($sock->recv($newmsg, $MAXLEN)) {
 	print "COMMAND: $newmsg\n";
@@ -34,10 +48,29 @@ while ($sock->recv($newmsg, $MAXLEN)) {
 	}
 
 	my @command = split(/\s+/, $newmsg);
-	if (($command[0] eq "seletek") and ($command[1] eq "version")) {
-		$sock->send("\!seletek version:4529\#");
+	if ($command[0] eq "seletek") {
+		if ($command[1] eq "version") {
+			$sock->send("\!seletek version:4529\#");
+		} elsif ($command[1] eq "echo") {
+			$sock->send("\!seletek echo:0\#");
+		}
+	} elsif (($command[0] eq "aux") and ($command[1] eq "earnaccess")){
+		if (@command == 3 and $command[2] eq PASSWORD) {
+			$require_password = 0;
+			my $resp = "\!$newmsg:3\#";
+			$sock->send("$resp");
+		} else {
+			$require_password = 1;
+			my $resp = "\!$newmsg:1\#";
+			$sock->send("$resp");
+		}
 	} elsif ($command[0] eq "relio") {
 		if ($command[1] eq "rlpulse" and @command == 5) {
+			if ($require_password) {
+				my $resp = "\!perm $newmsg:error -500 protected\#";
+				$sock->send("$resp");
+				next;
+			}
 			$end[$command[3]] = $command[4] + $now;
 			$relay[$command[3]] = 1;
 			$sock->send("\!$newmsg:0\#");
@@ -47,6 +80,11 @@ while ($sock->recv($newmsg, $MAXLEN)) {
 		} elsif ($command[1] eq "rldgrd" and @command == 4) {
 			$sock->send("\!$newmsg:".$relay[$command[3]]."\#");
 		} elsif ($command[1] eq "rlset" and @command == 5) {
+			if ($require_password) {
+				my $resp = "\!perm $newmsg:error -500 protected\#";
+				$sock->send("$resp");
+				next;
+			}
 			$relay[$command[3]] = $command[4];
 			my $resp = "\!$newmsg:".$relay[$command[3]]."\#";
 			$sock->send("$resp");
@@ -62,6 +100,11 @@ while ($sock->recv($newmsg, $MAXLEN)) {
 				$sock->send("\!$newmsg:0\#");
 			}
 		} elsif ($command[1] eq "rlchg" and @command == 4) {
+			if ($require_password) {
+				my $resp = "\!perm $newmsg:error -500 protected\#";
+				$sock->send("$resp");
+				next;
+			}
 			if ($sensor[$command[3]] > 0) {
 				$sensor[$command[3]] = 0;
 				$sock->send("\!$newmsg:0\#");
