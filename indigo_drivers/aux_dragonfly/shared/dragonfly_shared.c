@@ -170,22 +170,38 @@
  }
 
 
- static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *sensor_value) {
- 	if (!sensor_value) return false;
+ static bool lunatico_authenticate(indigo_device *device, char* password, int *access) {
+	if (!access && !password) return false;
 
- 	char command[LUNATICO_CMD_LEN];
- 	int value;
+	char command[LUNATICO_CMD_LEN];
+	int value;
 
- 	if (sensor < 0 || sensor > 8) return false;
+	snprintf(command, LUNATICO_CMD_LEN, "!aux earnaccess %s#", password);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*access = value;
+		return true;
+	}
+	return false;
+}
 
- 	snprintf(command, LUNATICO_CMD_LEN, "!relio snanrd 0 %d#", sensor);
- 	if (!lunatico_command_get_result(device, command, &value)) return false;
- 	if (value >= 0) {
- 		*sensor_value = value;
- 		return true;
- 	}
- 	return false;
- }
+
+static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *sensor_value) {
+	if (!sensor_value) return false;
+
+	char command[LUNATICO_CMD_LEN];
+	int value;
+
+	if (sensor < 0 || sensor > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio snanrd 0 %d#", sensor);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*sensor_value = value;
+		return true;
+	}
+	return false;
+}
 
 
  static bool lunatico_analog_read_sensors(indigo_device *device, int *sensors) {

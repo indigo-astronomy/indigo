@@ -330,7 +330,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 		if ((AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value != relay_value[i]) {
 			if (((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value > 0) && (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !DEVICE_DATA.relay_active[i]) {
 				if (!lunatico_pulse_relay(device, i, (int)(AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed", PRIVATE_DATA->handle);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed, did you authorize?", PRIVATE_DATA->handle);
 					success = false;
 				} else {
 					DEVICE_DATA.relay_active[i] = true;
@@ -338,7 +338,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 				}
 			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !DEVICE_DATA.relay_active[i])) {
 				if (!lunatico_set_relay(device, i, (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed", PRIVATE_DATA->handle);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed, did you authorize?", PRIVATE_DATA->handle);
 					success = false;
 				}
 			}
@@ -402,6 +402,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+						int access;
+						lunatico_authenticate(device, "123", &access);
 						DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
@@ -460,10 +462,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 		if (set_gpio_outlets(device) == true) {
 			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		} else {
 			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Relay operation failed, did you authorize?");
 		}
-		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
