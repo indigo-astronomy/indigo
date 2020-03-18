@@ -205,9 +205,13 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 					PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
 				if ( buffer[13] == 'E' || buffer[13] == 'W' ) {
 					// pier side
+					bool changed = PRIVATE_DATA->pierSide == (buffer[13] == 'E' ? 'W' : 'E');
 					PRIVATE_DATA->pierSide = buffer[13];
 					MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'E';
 					MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'W';
+					if (changed) {
+						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+					}
 				}
 				else if ( buffer[13] == 'F' ) {
 					// fulfilled
