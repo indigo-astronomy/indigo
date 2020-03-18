@@ -191,6 +191,9 @@ static void delete_port_device(int p_device_index, int l_device_index);
 
 static int lunatico_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
+	// -------------------------------------------------------------------------------- AUTHENTICATION
+	AUTHENTICATION_PROPERTY->hidden = false;
+	AUTHENTICATION_PROPERTY->count = 1;
 	// -------------------------------------------------------------------------------- SIMULATION
 	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT

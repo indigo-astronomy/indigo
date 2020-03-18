@@ -145,7 +145,9 @@ static void delete_port_device(int p_device_index, int l_device_index);
 // --------------------------------------------------------------------------------- INDIGO AUX RELAYS device implementation
 
 static int lunatico_init_properties(indigo_device *device) {
-	// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
+	// -------------------------------------------------------------------------------- AUTHENTICATION
+	AUTHENTICATION_PROPERTY->hidden = false;
+	AUTHENTICATION_PROPERTY->count = 1;
 	// -------------------------------------------------------------------------------- SIMULATION
 	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -402,8 +404,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-						int access;
-						lunatico_authenticate(device, "123", &access);
+						if (AUTHENTICATION_PASSWORD_ITEM->text.value[0] != 0) {
+							int access = 0;
+							lunatico_authenticate(device, AUTHENTICATION_PASSWORD_ITEM->text.value, &access);
+							indigo_send_message(device, "Earned access level: %d",access);
+						}
 						DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
