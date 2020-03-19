@@ -23,101 +23,101 @@
  \file dragonfly_shared.c
  */
 
- #define DEVICE_CONNECTED_MASK            0x80
- #define L_DEVICE_INDEX_MASK              0x0F
+#define DEVICE_CONNECTED_MASK            0x80
+#define L_DEVICE_INDEX_MASK              0x0F
 
- #define DEVICE_CONNECTED                 (device->gp_bits & DEVICE_CONNECTED_MASK)
+#define DEVICE_CONNECTED                 (device->gp_bits & DEVICE_CONNECTED_MASK)
 
- #define set_connected_flag(dev)          ((dev)->gp_bits |= DEVICE_CONNECTED_MASK)
- #define clear_connected_flag(dev)        ((dev)->gp_bits &= ~DEVICE_CONNECTED_MASK)
+#define set_connected_flag(dev)          ((dev)->gp_bits |= DEVICE_CONNECTED_MASK)
+#define clear_connected_flag(dev)        ((dev)->gp_bits &= ~DEVICE_CONNECTED_MASK)
 
- #define get_locical_device_index(dev)              ((dev)->gp_bits & L_DEVICE_INDEX_MASK)
- #define set_logical_device_index(dev, index)       ((dev)->gp_bits = ((dev)->gp_bits & ~L_DEVICE_INDEX_MASK) | (L_DEVICE_INDEX_MASK & index))
+#define get_locical_device_index(dev)              ((dev)->gp_bits & L_DEVICE_INDEX_MASK)
+#define set_logical_device_index(dev, index)       ((dev)->gp_bits = ((dev)->gp_bits & ~L_DEVICE_INDEX_MASK) | (L_DEVICE_INDEX_MASK & index))
 
- #define LUNATICO_CMD_LEN 100
+#define LUNATICO_CMD_LEN 100
 
- /* Linatico Astronomia device Commands ======================================================================== */
+/* Linatico Astronomia device Commands ======================================================================== */
 
- static bool lunatico_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
- 	char c;
- 	char buff[LUNATICO_CMD_LEN];
- 	struct timeval tv;
- 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
- 	// flush
- 	while (true) {
- 		fd_set readout;
- 		FD_ZERO(&readout);
- 		FD_SET(PRIVATE_DATA->handle, &readout);
- 		tv.tv_sec = 0;
- 		tv.tv_usec = 100000;
- 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
- 		if (result == 0)
- 			break;
- 		if (result < 0) {
- 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 			return false;
- 		}
- 		if (PRIVATE_DATA->udp) {
- 			result = read(PRIVATE_DATA->handle, buff, LUNATICO_CMD_LEN);
- 			if (result < 1) {
- 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 				return false;
- 			}
- 			break;
- 		} else {
- 			result = read(PRIVATE_DATA->handle, &c, 1);
- 			if (result < 1) {
- 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 				return false;
- 			}
- 		}
- 	}
+static bool lunatico_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
+	char c;
+	char buff[LUNATICO_CMD_LEN];
+	struct timeval tv;
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	// flush
+	while (true) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		tv.tv_sec = 0;
+		tv.tv_usec = 100000;
+		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+		if (result == 0)
+			break;
+		if (result < 0) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+		if (PRIVATE_DATA->udp) {
+			result = read(PRIVATE_DATA->handle, buff, LUNATICO_CMD_LEN);
+			if (result < 1) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
+			break;
+		} else {
+			result = read(PRIVATE_DATA->handle, &c, 1);
+			if (result < 1) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
+		}
+	}
 
- 	// write command
- 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
- 	if (sleep > 0)
- 		usleep(sleep);
+	// write command
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	if (sleep > 0)
+		usleep(sleep);
 
- 	// read responce
- 	if (response != NULL) {
- 		int index = 0;
- 		int timeout = 3;
- 		while (index < max) {
- 			fd_set readout;
- 			FD_ZERO(&readout);
- 			FD_SET(PRIVATE_DATA->handle, &readout);
- 			tv.tv_sec = timeout;
- 			tv.tv_usec = 100000;
- 			timeout = 0;
- 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
- 			if (result <= 0)
- 				break;
- 			if (PRIVATE_DATA->udp) {
- 				result = read(PRIVATE_DATA->handle, response, LUNATICO_CMD_LEN);
- 				if (result < 1) {
- 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
- 					return false;
- 				}
- 				index = result;
- 				break;
- 			} else {
- 				result = read(PRIVATE_DATA->handle, &c, 1);
- 				if (result < 1) {
- 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
- 					return false;
- 				}
- 				response[index++] = c;
- 				if (c == '#') break;
- 			}
- 		}
- 		response[index] = '\0';
- 	}
- 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
- 	return true;
- }
+	// read responce
+	if (response != NULL) {
+		int index = 0;
+		int timeout = 3;
+		while (index < max) {
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(PRIVATE_DATA->handle, &readout);
+			tv.tv_sec = timeout;
+			tv.tv_usec = 100000;
+			timeout = 0;
+			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+			if (result <= 0)
+				break;
+			if (PRIVATE_DATA->udp) {
+				result = read(PRIVATE_DATA->handle, response, LUNATICO_CMD_LEN);
+				if (result < 1) {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+					return false;
+				}
+				index = result;
+				break;
+			} else {
+				result = read(PRIVATE_DATA->handle, &c, 1);
+				if (result < 1) {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+					return false;
+				}
+				response[index++] = c;
+				if (c == '#') break;
+			}
+		}
+		response[index] = '\0';
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	return true;
+}
 
 
  static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
@@ -353,6 +353,23 @@ static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *
     set_connected_flag(device);
     pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
     return true;
+ }
+
+
+static bool lunatico_authenticate2(indigo_device *device, char *password) {
+	bool result = false;
+	if (password && password[0] != 0) {
+		int access = 0;
+		result = lunatico_authenticate(device, password, &access);
+		if (access == 1)
+			indigo_send_message(device, "Earned access level: %d (Read only)", access);
+		else if (access == 2)
+			indigo_send_message(device, "Earned access level: %d (Read / Write)", access);
+		else
+			indigo_send_message(device, "Earned access level: %d (Unknown)", access);
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Earned access: %d", access);
+	return result;
  }
 
 
