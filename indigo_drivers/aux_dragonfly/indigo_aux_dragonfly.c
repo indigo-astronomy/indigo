@@ -413,11 +413,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-						if (AUTHENTICATION_PASSWORD_ITEM->text.value[0] != 0) {
-							int access = 0;
-							lunatico_authenticate(device, AUTHENTICATION_PASSWORD_ITEM->text.value, &access);
-							indigo_send_message(device, "Earned access level: %d",access);
-						}
+						lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
 						DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
@@ -508,6 +504,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AUTHENTICATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUTHENTICATION_PROPERTY
+		indigo_property_copy_values(AUTHENTICATION_PROPERTY, property, false);
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
+		lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
