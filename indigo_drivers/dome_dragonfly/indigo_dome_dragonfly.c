@@ -421,7 +421,6 @@ static void (*relay_timer_callbacks[])(indigo_device*) = {
 static bool set_gpio_outlets(indigo_device *device) {
 	bool success = true;
 	bool relay_value[8];
-
 	if (!lunatico_read_relays(device, relay_value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relays(%d) failed", PRIVATE_DATA->handle);
 		return false;
@@ -487,7 +486,17 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
+						bool relay_value[8];
+						if (!lunatico_read_relays(device, relay_value)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relays(%d) failed", PRIVATE_DATA->handle);
+							AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+						} else {
+							for (int i = 0; i < 5; i++) {
+								(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i + 3];
+							}
+						}
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 						if (AUTHENTICATION_PASSWORD_ITEM->text.value[0] != 0) {
@@ -598,6 +607,9 @@ static void dome_timer_callback(indigo_device *device) {
 
 	// Timed out
 	if (DEVICE_DATA.roof_timer_hits > LA_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM->number.value) {
+		// Nomatter which setup is used it is safe to turn off the relays
+		lunatico_set_relay(device, OPEN_RELAY, false);
+		lunatico_set_relay(device, CLOSE_RELAY, false);
 		DEVICE_DATA.roof_timer_hits = 0;
 		DEVICE_DATA.roof_state = ROOF_UNKNOWN;
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;

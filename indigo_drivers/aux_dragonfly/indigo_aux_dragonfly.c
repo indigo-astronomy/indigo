@@ -401,6 +401,15 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
+						bool relay_value[8];
+						if (!lunatico_read_relays(device, relay_value)) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relays(%d) failed", PRIVATE_DATA->handle);
+							AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+						} else {
+							for (int i = 0; i < 8; i++) {
+								(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
+							}
+						}
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
