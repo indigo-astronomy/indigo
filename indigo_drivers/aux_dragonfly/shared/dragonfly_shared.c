@@ -120,57 +120,57 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 }
 
 
- static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
- 	if(!board || !firmware) return false;
+static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
+	if(!board || !firmware) return false;
 
- 	const char *operative[3] = { "", "Bootloader", "Error" };
- 	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
- 	int fwmaj, fwmin, model, oper, data;
- 	char response[LUNATICO_CMD_LEN]={0};
- 	if (lunatico_command(device, "!seletek version#", response, sizeof(response), 0)) {
- 		// !seletek version:2510#
- 		int parsed = sscanf(response, "!seletek version:%d#", &data);
- 		if (parsed != 1) return false;
- 		oper = data / 10000;		// 0 normal, 1 bootloader
- 		model = (data / 1000) % 10;	// 1 seletek, etc.
- 		fwmaj = (data / 100) % 10;
- 		fwmin = (data % 100);
- 		if (oper >= 2) oper = 2;
- 		if (model > 5) model = 0;
- 		sprintf(board, "%s", models[model]);
- 		sprintf(firmware, "%d.%d", fwmaj, fwmin);
+	const char *operative[3] = { "", "Bootloader", "Error" };
+	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
+	int fwmaj, fwmin, model, oper, data;
+	char response[LUNATICO_CMD_LEN]={0};
+	if (lunatico_command(device, "!seletek version#", response, sizeof(response), 0)) {
+		// !seletek version:2510#
+		int parsed = sscanf(response, "!seletek version:%d#", &data);
+		if (parsed != 1) return false;
+		oper = data / 10000;		// 0 normal, 1 bootloader
+		model = (data / 1000) % 10;	// 1 seletek, etc.
+		fwmaj = (data / 100) % 10;
+		fwmin = (data % 100);
+		if (oper >= 2) oper = 2;
+		if (model > 5) model = 0;
+		sprintf(board, "%s", models[model]);
+		sprintf(firmware, "%d.%d", fwmaj, fwmin);
 
- 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s = %s %s", response, board, firmware);
- 		return true;
- 	}
- 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
- 	return false;
- }
-
-
- static bool lunatico_command_get_result(indigo_device *device, const char *command, int32_t *result) {
- 	if (!result) return false;
-
- 	char response[LUNATICO_CMD_LEN]={0};
- 	char response_prefix[LUNATICO_CMD_LEN];
- 	char format[LUNATICO_CMD_LEN];
-
- 	if (lunatico_command(device, command, response, sizeof(response), 0)) {
- 		strncpy(response_prefix, command, LUNATICO_CMD_LEN);
- 		char *p = strrchr(response_prefix, '#');
- 		if (p) *p = ':';
- 		sprintf(format, "%s%%d#", response_prefix);
- 		int parsed = sscanf(response, format, result);
- 		if (parsed != 1) return false;
- 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *result);
- 		return true;
- 	}
- 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
- 	return false;
- }
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "!seletek version# -> %s = %s %s", response, board, firmware);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
 
 
- static bool lunatico_authenticate(indigo_device *device, char* password, int *access) {
+static bool lunatico_command_get_result(indigo_device *device, const char *command, int32_t *result) {
+	if (!result) return false;
+
+	char response[LUNATICO_CMD_LEN]={0};
+	char response_prefix[LUNATICO_CMD_LEN];
+	char format[LUNATICO_CMD_LEN];
+
+	if (lunatico_command(device, command, response, sizeof(response), 0)) {
+		strncpy(response_prefix, command, LUNATICO_CMD_LEN);
+		char *p = strrchr(response_prefix, '#');
+		if (p) *p = ':';
+		sprintf(format, "%s%%d#", response_prefix);
+		int parsed = sscanf(response, format, result);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *result);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+
+static bool lunatico_authenticate(indigo_device *device, char* password, int *access) {
 	if (!access && !password) return false;
 
 	char command[LUNATICO_CMD_LEN];
@@ -204,156 +204,156 @@ static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *
 }
 
 
- static bool lunatico_analog_read_sensors(indigo_device *device, int *sensors) {
- 	char response[LUNATICO_CMD_LEN]={0};
- 	char format[LUNATICO_CMD_LEN];
- 	int isensors[8];
+static bool lunatico_analog_read_sensors(indigo_device *device, int *sensors) {
+	 char response[LUNATICO_CMD_LEN]={0};
+	 char format[LUNATICO_CMD_LEN];
+	 int isensors[8];
 
- 	if (lunatico_command(device, "!relio snanrd 0 0 7#", response, sizeof(response), 0)) {
- 		sprintf(format, "!relio snanrd 0 0 7:%%d,%%d,%%d,%%d,%%d,%%d,%%d,%%d#");
- 		int parsed = sscanf(response, format, isensors, isensors+1, isensors+2, isensors+3, isensors+4, isensors+5, isensors+6, isensors+7);
- 		if (parsed != 8) return false;
- 		sensors[0] = isensors[0];
- 		sensors[1] = isensors[1];
- 		sensors[2] = isensors[2];
- 		sensors[3] = isensors[3];
- 		sensors[4] = isensors[4];
- 		sensors[5] = isensors[5];
- 		sensors[6] = isensors[6];
- 		sensors[7] = isensors[7];
- 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "-> %s = %d %d %d %d %d %d %d %d", response, sensors[0], sensors[1], sensors[2], sensors[3], sensors[4], sensors[5], sensors[6], sensors[7]);
- 		return true;
- 	}
- 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
- 	return false;
- }
-
-
- static bool lunatico_digital_read_sensor(indigo_device *device, int sensor, bool *sensor_value) {
- 	if (!sensor_value) return false;
-
- 	char command[LUNATICO_CMD_LEN];
- 	int value;
-
- 	if (sensor < 0 || sensor > 8) return false;
-
- 	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 0 %d#", sensor);
- 	if (!lunatico_command_get_result(device, command, &value)) return false;
- 	if (value >= 0) {
- 		*sensor_value = (bool)value;
- 		return true;
- 	}
- 	return false;
- }
+	 if (lunatico_command(device, "!relio snanrd 0 0 7#", response, sizeof(response), 0)) {
+		sprintf(format, "!relio snanrd 0 0 7:%%d,%%d,%%d,%%d,%%d,%%d,%%d,%%d#");
+		int parsed = sscanf(response, format, isensors, isensors+1, isensors+2, isensors+3, isensors+4, isensors+5, isensors+6, isensors+7);
+		if (parsed != 8) return false;
+		sensors[0] = isensors[0];
+		sensors[1] = isensors[1];
+		sensors[2] = isensors[2];
+		sensors[3] = isensors[3];
+		sensors[4] = isensors[4];
+		sensors[5] = isensors[5];
+		sensors[6] = isensors[6];
+		sensors[7] = isensors[7];
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "-> %s = %d %d %d %d %d %d %d %d", response, sensors[0], sensors[1], sensors[2], sensors[3], sensors[4], sensors[5], sensors[6], sensors[7]);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
 
 
- static bool lunatico_read_relay(indigo_device *device, int relay, bool *enabled) {
- 	if (!enabled) return false;
+static bool lunatico_digital_read_sensor(indigo_device *device, int sensor, bool *sensor_value) {
+	if (!sensor_value) return false;
 
- 	char command[LUNATICO_CMD_LEN];
- 	int value;
+	char command[LUNATICO_CMD_LEN];
+	int value;
 
- 	if (relay < 0 || relay > 8) return false;
+	if (sensor < 0 || sensor > 8) return false;
 
- 	snprintf(command, LUNATICO_CMD_LEN, "!relio rldgrd 0 %d#", relay);
- 	if (!lunatico_command_get_result(device, command, &value)) return false;
- 	if (value >= 0) {
- 		*enabled = (bool)value;
- 		return true;
- 	}
- 	return false;
- }
-
-
- static bool lunatico_read_relays(indigo_device *device, bool *relays) {
- 	char response[LUNATICO_CMD_LEN]={0};
- 	char format[LUNATICO_CMD_LEN];
- 	int irelays[8];
-
- 	if (lunatico_command(device, "!relio rldgrd 0 0 7#", response, sizeof(response), 0)) {
- 		sprintf(format, "!relio rldgrd 0 0 7:%%d,%%d,%%d,%%d,%%d,%%d,%%d,%%d#");
- 		int parsed = sscanf(response, format, irelays, irelays+1, irelays+2, irelays+3, irelays+4, irelays+5, irelays+6, irelays+7);
- 		if (parsed != 8) return false;
- 		relays[0] = (bool)irelays[0];
- 		relays[1] = (bool)irelays[1];
- 		relays[2] = (bool)irelays[2];
- 		relays[3] = (bool)irelays[3];
- 		relays[4] = (bool)irelays[4];
- 		relays[5] = (bool)irelays[5];
- 		relays[6] = (bool)irelays[6];
- 		relays[7] = (bool)irelays[7];
- 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "-> %s = %d %d %d %d %d %d %d %d", response, relays[0], relays[1], relays[2], relays[3], relays[4], relays[5], relays[6], relays[7]);
- 		return true;
- 	}
- 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
- 	return false;
- }
+	snprintf(command, LUNATICO_CMD_LEN, "!relio sndgrd 0 %d#", sensor);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*sensor_value = (bool)value;
+		return true;
+	}
+	return false;
+}
 
 
- static bool lunatico_set_relay(indigo_device *device, int relay, bool enable) {
- 	char command[LUNATICO_CMD_LEN];
- 	int res;
- 	if (relay < 0 || relay > 8) return false;
+static bool lunatico_read_relay(indigo_device *device, int relay, bool *enabled) {
+	if (!enabled) return false;
 
- 	snprintf(command, LUNATICO_CMD_LEN, "!relio rlset 0 %d %d#", relay, enable ? 1 : 0);
- 	if (!lunatico_command_get_result(device, command, &res)) return false;
- 	if (res < 0) return false;
- 	return true;
- }
+	char command[LUNATICO_CMD_LEN];
+	int value;
 
+	if (relay < 0 || relay > 8) return false;
 
- static bool lunatico_pulse_relay(indigo_device *device, int relay, uint32_t lenms) {
- 	char command[LUNATICO_CMD_LEN];
- 	int res;
- 	if (relay < 0 || relay > 8) return false;
-
- 	snprintf(command, LUNATICO_CMD_LEN, "!relio rlpulse 0 %d %d#", relay, lenms);
- 	if (!lunatico_command_get_result(device, command, &res)) return false;
- 	if (res < 0) return false;
- 	return true;
- }
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rldgrd 0 %d#", relay);
+	if (!lunatico_command_get_result(device, command, &value)) return false;
+	if (value >= 0) {
+		*enabled = (bool)value;
+		return true;
+	}
+	return false;
+}
 
 
- // --------------------------------------------------------------------------------- Common stuff
- static bool lunatico_open(indigo_device *device) {
-    INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
-    if (DEVICE_CONNECTED) return false;
+static bool lunatico_read_relays(indigo_device *device, bool *relays) {
+	char response[LUNATICO_CMD_LEN]={0};
+	char format[LUNATICO_CMD_LEN];
+	int irelays[8];
 
-    pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-    if (PRIVATE_DATA->count_open++ == 0) {
- 	   if (indigo_try_global_lock(device) != INDIGO_OK) {
- 		   PRIVATE_DATA->count_open--;
- 		   pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 		   INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
- 		   return false;
- 	   }
+	if (lunatico_command(device, "!relio rldgrd 0 0 7#", response, sizeof(response), 0)) {
+		sprintf(format, "!relio rldgrd 0 0 7:%%d,%%d,%%d,%%d,%%d,%%d,%%d,%%d#");
+		int parsed = sscanf(response, format, irelays, irelays+1, irelays+2, irelays+3, irelays+4, irelays+5, irelays+6, irelays+7);
+		if (parsed != 8) return false;
+		relays[0] = (bool)irelays[0];
+		relays[1] = (bool)irelays[1];
+		relays[2] = (bool)irelays[2];
+		relays[3] = (bool)irelays[3];
+		relays[4] = (bool)irelays[4];
+		relays[5] = (bool)irelays[5];
+		relays[6] = (bool)irelays[6];
+		relays[7] = (bool)irelays[7];
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "-> %s = %d %d %d %d %d %d %d %d", response, relays[0], relays[1], relays[2], relays[3], relays[4], relays[5], relays[6], relays[7]);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
 
- 	   char url[INDIGO_VALUE_SIZE];
- 	   if (strstr(DEVICE_PORT_ITEM->text.value, "://")) {
- 		   strncpy(url, DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE);
- 	   } else {
- 		   snprintf(url, INDIGO_VALUE_SIZE, "udp://%s", DEVICE_PORT_ITEM->text.value);
- 	   }
- 	   INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening network device on host: %s", DEVICE_PORT_ITEM->text.value);
- 	   indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
- 	   PRIVATE_DATA->handle = indigo_open_network_device(url, 10000, &proto);
- 	   PRIVATE_DATA->udp = true;
 
- 	   if (PRIVATE_DATA->handle < 0) {
- 		   INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
- 		   CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
- 		   indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
- 		   indigo_update_property(device, CONNECTION_PROPERTY, NULL);
- 		   indigo_global_unlock(device);
- 		   PRIVATE_DATA->count_open--;
- 		   pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- 		   return false;
- 	   }
-    }
-    set_connected_flag(device);
-    pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-    return true;
- }
+static bool lunatico_set_relay(indigo_device *device, int relay, bool enable) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+	if (relay < 0 || relay > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlset 0 %d %d#", relay, enable ? 1 : 0);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res < 0) return false;
+	return true;
+}
+
+
+static bool lunatico_pulse_relay(indigo_device *device, int relay, uint32_t lenms) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+	if (relay < 0 || relay > 8) return false;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!relio rlpulse 0 %d %d#", relay, lenms);
+	if (!lunatico_command_get_result(device, command, &res)) return false;
+	if (res < 0) return false;
+	return true;
+}
+
+
+// --------------------------------------------------------------------------------- Common stuff
+static bool lunatico_open(indigo_device *device) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
+	if (DEVICE_CONNECTED) return false;
+
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (PRIVATE_DATA->count_open++ == 0) {
+		if (indigo_try_global_lock(device) != INDIGO_OK) {
+			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			return false;
+		}
+
+		char url[INDIGO_VALUE_SIZE];
+		if (strstr(DEVICE_PORT_ITEM->text.value, "://")) {
+			strncpy(url, DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE);
+		} else {
+			snprintf(url, INDIGO_VALUE_SIZE, "udp://%s", DEVICE_PORT_ITEM->text.value);
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening network device on host: %s", DEVICE_PORT_ITEM->text.value);
+		indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
+		PRIVATE_DATA->handle = indigo_open_network_device(url, 10000, &proto);
+		PRIVATE_DATA->udp = true;
+
+		if (PRIVATE_DATA->handle < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_global_unlock(device);
+			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+	}
+	set_connected_flag(device);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	return true;
+}
 
 
 static bool lunatico_authenticate2(indigo_device *device, char *password) {
@@ -373,17 +373,17 @@ static bool lunatico_authenticate2(indigo_device *device, char *password) {
  }
 
 
- static void lunatico_close(indigo_device *device) {
-    INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
-    if (!DEVICE_CONNECTED) return;
+static void lunatico_close(indigo_device *device) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
+	if (!DEVICE_CONNECTED) return;
 
-    pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-    if (--PRIVATE_DATA->count_open == 0) {
- 	   close(PRIVATE_DATA->handle);
- 	   INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
- 	   indigo_global_unlock(device);
- 	   PRIVATE_DATA->handle = 0;
-    }
-    clear_connected_flag(device);
-    pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
- }
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (--PRIVATE_DATA->count_open == 0) {
+		close(PRIVATE_DATA->handle);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
+		indigo_global_unlock(device);
+		PRIVATE_DATA->handle = 0;
+	}
+	clear_connected_flag(device);
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+}
