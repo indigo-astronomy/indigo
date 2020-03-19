@@ -344,7 +344,11 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		// -------------------------------------------------------------------------------- AUTHENTICATION_PROPERTY
 		indigo_property_copy_values(AUTHENTICATION_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
+		if (AUTHENTICATION_PASSWORD_ITEM->text.value[0] == 0) {
+			lunatico_authenticate2(device, NULL);
+		} else {
+			lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
+		}
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

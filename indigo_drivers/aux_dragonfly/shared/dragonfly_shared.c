@@ -171,12 +171,16 @@ static bool lunatico_command_get_result(indigo_device *device, const char *comma
 
 
 static bool lunatico_authenticate(indigo_device *device, char* password, int *access) {
-	if (!access && !password) return false;
+	if (!access) return false;
 
 	char command[LUNATICO_CMD_LEN];
 	int value;
 
-	snprintf(command, LUNATICO_CMD_LEN, "!aux earnaccess %s#", password);
+	if (password) {
+		snprintf(command, LUNATICO_CMD_LEN, "!aux earnaccess %s#", password);
+	} else {
+		snprintf(command, LUNATICO_CMD_LEN, "!aux earnaccess#");
+	}
 	if (!lunatico_command_get_result(device, command, &value)) return false;
 	if (value >= 0) {
 		*access = value;
@@ -358,15 +362,18 @@ static bool lunatico_open(indigo_device *device) {
 
 static bool lunatico_authenticate2(indigo_device *device, char *password) {
 	bool result = false;
-	if (password && password[0] != 0) {
-		int access = 0;
-		result = lunatico_authenticate(device, password, &access);
-		if (access == 1)
-			indigo_send_message(device, "Earned access level: %d (Read only)", access);
-		else if (access == 2)
-			indigo_send_message(device, "Earned access level: %d (Read / Write)", access);
-		else
-			indigo_send_message(device, "Earned access level: %d (Unknown)", access);
+	if (password && password[0] == 0) return false;
+
+	int access = 0;
+	result = lunatico_authenticate(device, password, &access);
+	if (access == 1) {
+		indigo_send_message(device, "Earned access level: %d (Read only)", access);
+	} else if (access == 2) {
+		indigo_send_message(device, "Earned access level: %d (Read / Write)", access);
+	} else if (access == 3) {
+		indigo_send_message(device, "Earned access level: %d (Full access)", access);
+	} else {
+		indigo_send_message(device, "Earned access level: %d (Unknown)", access);
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Earned access: %d", access);
 	return result;
