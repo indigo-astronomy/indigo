@@ -54,8 +54,10 @@ Sensor configuration:
 *IN* and *COM* pins of the *Power inputs \#1 - \#3* should be short circuited in order to simulate the push of the button when *Relays \#1 - \#3* are switched on.
 
 ## NOTES:
+* **Do not control the slit / roof with the physical buttons when the driver is connected. This will make the driver behave strangely, as there is no feedback from the roof control if the roof is moving or stopped.**
+
 * The dome wiring should be similar to the described in Dragonfly documentation.
 
-* *Relays \#1 - \#3* and *Sensors \#1, \#2* and *\#8* are reserved for dome control and are not exposed in the GPIO device.
+* *Relays \#1 - \#3* and *Sensors \#1, \#2* and *\#8* are reserved for dome control and are not exposed in the Relay Control GPIO device.
 
 * This driver can not be loaded if *indigo_aux_dragonfly* driver is loaded.
