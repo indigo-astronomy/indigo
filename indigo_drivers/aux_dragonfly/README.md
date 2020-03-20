@@ -6,7 +6,7 @@ https://www.lunatico.es
 
 Dragonfly controllers.
 
-No hot plug support. One GPIO device is present at startup.
+No hot plug support. One Relay Controller GPIO device is present at startup.
 
 ## Supported platforms
 

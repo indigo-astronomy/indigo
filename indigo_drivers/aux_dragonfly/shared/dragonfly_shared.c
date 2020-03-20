@@ -170,6 +170,14 @@ static bool lunatico_command_get_result(indigo_device *device, const char *comma
 }
 
 
+static bool lunatico_keep_alive(indigo_device *device) {
+	int res;
+	if (!lunatico_command_get_result(device, "!seletek echo#", &res)) return false;
+	if (res < 0) return false;
+	return true;
+}
+
+
 static bool lunatico_authenticate(indigo_device *device, char* password, int *access) {
 	if (!access) return false;
 
