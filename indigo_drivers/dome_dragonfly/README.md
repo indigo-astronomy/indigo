@@ -54,7 +54,7 @@ Sensor configuration:
 *IN* and *COM* pins of the *Power inputs \#1 - \#3* should be short circuited in order to simulate the push of the button when *Relays \#1 - \#3* are switched on.
 
 ## NOTES:
-* **Do not control the slit / roof with the physical buttons when the driver is connected. This will make the driver behave strangely, as there is no feedback from the roof control if the roof is moving or stopped.**
+* **Do not control the slit / roof with the physical buttons when the driver is connected. This will make the driver behave strangely, as there is no feedback from the roof controller whether the roof is moving or is stopped.**
 
 * The dome wiring should be similar to the described in Dragonfly documentation.
 
