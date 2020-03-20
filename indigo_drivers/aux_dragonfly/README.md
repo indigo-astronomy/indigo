@@ -26,4 +26,7 @@ Driver is developed and tested with:
 * Dragonfly controller
 
 ## NOTES:
+
+* Requires firmware version 5.29 or newer.
+
 * This driver can not be loaded if *indigo_dome_dragonfly* is loaded.

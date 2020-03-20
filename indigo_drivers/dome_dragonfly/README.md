@@ -58,6 +58,8 @@ Sensor configuration:
 
 * The dome wiring should be similar to the described in Dragonfly documentation.
 
+* Requires firmware version 5.29 or newer.
+
 * *Relays \#1 - \#3* and *Sensors \#1, \#2* and *\#8* are reserved for dome control and are not exposed in the Relay Control GPIO device.
 
 * This driver can not be loaded if *indigo_aux_dragonfly* driver is loaded.
