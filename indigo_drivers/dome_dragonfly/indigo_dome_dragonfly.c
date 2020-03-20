@@ -49,6 +49,10 @@
 
 #define DEFAULT_BAUDRATE            "115200"
 
+#define KEEP_ALIVE_INTERVAL   10
+#define DOME_SENSORS_INTERVAL 1
+#define AUX_SENSORS_INTERVAL  1
+
 #define MAX_LOGICAL_DEVICES  2
 #define MAX_PHYSICAL_DEVICES 4
 
@@ -155,6 +159,7 @@ typedef struct {
 
 	roof_state_t roof_state;
 	indigo_timer *roof_timer;
+	indigo_timer *keep_alive_timer;
 	uint32_t roof_timer_hits;
 
 	indigo_property *outlet_names_property,
@@ -192,7 +197,6 @@ static void delete_port_device(int p_device_index, int l_device_index);
 // --------------------------------------------------------------------------------- Common
 
 static int lunatico_init_properties(indigo_device *device) {
-	// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
 	// -------------------------------------------------------------------------------- AUTHENTICATION
 	AUTHENTICATION_PROPERTY->hidden = false;
 	AUTHENTICATION_PROPERTY->count = 1;
@@ -374,7 +378,7 @@ static void sensors_timer_callback(indigo_device *device) {
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-	indigo_reschedule_timer(device, 1, &DEVICE_DATA.sensors_timer);
+	indigo_reschedule_timer(device, AUX_SENSORS_INTERVAL, &DEVICE_DATA.sensors_timer);
 }
 
 static void relay_4_timer_callback(indigo_device *device) {
@@ -602,6 +606,17 @@ static indigo_result aux_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 
+static void keep_alive_timer_callback(indigo_device *device) {
+	// Authentication is kept for 30 sec after last command -> send "echo" to preserve it.
+	if (lunatico_keep_alive(device)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Keep Alive!");
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Keep Alive falied!");
+	}
+	indigo_reschedule_timer(device, KEEP_ALIVE_INTERVAL, &DEVICE_DATA.keep_alive_timer);
+}
+
+
 static void dome_timer_callback(indigo_device *device) {
 	int sensors[8];
 
@@ -673,7 +688,7 @@ static void dome_timer_callback(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&DEVICE_DATA.relay_mutex);
-	indigo_reschedule_timer(device, 1, &DEVICE_DATA.roof_timer);
+	indigo_reschedule_timer(device, DOME_SENSORS_INTERVAL, &DEVICE_DATA.roof_timer);
 }
 
 
@@ -929,6 +944,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 								DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 							}
 						}
+						DEVICE_DATA.keep_alive_timer = indigo_set_timer(device, KEEP_ALIVE_INTERVAL, keep_alive_timer_callback);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -939,7 +955,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_cancel_timer(device, &DEVICE_DATA.sensors_timer);
+				indigo_cancel_timer(device, &DEVICE_DATA.keep_alive_timer);
+				indigo_cancel_timer(device, &DEVICE_DATA.roof_timer);
 				lunatico_delete_properties(device);
 				lunatico_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
