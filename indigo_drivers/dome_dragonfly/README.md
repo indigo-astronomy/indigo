@@ -1,4 +1,4 @@
-# Lunatico Astronomy Dragonfly Dome / Relay Control GPIO driver
+# Lunatico Astronomy Dragonfly Dome / Relay Controller GPIO driver
 
 https://www.lunatico.es
 
