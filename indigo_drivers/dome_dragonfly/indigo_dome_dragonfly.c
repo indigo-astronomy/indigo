@@ -764,7 +764,6 @@ static void dome_handle_shutter(indigo_device *device) {
 			DEVICE_DATA.roof_state = ROOF_CLOSED;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Roof closed, control regained.");
 		} else if ((!closed && DEVICE_DATA.roof_state == ROOF_CLOSED) || (!opened && DEVICE_DATA.roof_state == ROOF_OPENED)) {
-			DEVICE_DATA.roof_state = ROOF_UNKNOWN;
 			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(
 				device,
