@@ -747,19 +747,43 @@ static void dome_handle_shutter(indigo_device *device) {
 		return;
 	}
 
-	// Do not move if the state is the requested one.
-	if ((DEVICE_DATA.roof_state == ROOF_OPENED && DOME_SHUTTER_OPENED_ITEM->sw.value == true) ||
-	    (DEVICE_DATA.roof_state == ROOF_CLOSED && DOME_SHUTTER_CLOSED_ITEM->sw.value == true) ||
-		(DOME_SHUTTER_CLOSED_ITEM->sw.value == false && DOME_SHUTTER_OPENED_ITEM->sw.value == false)) {
-		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-		return;
-	}
-
 	int sensors[8] = {0};
 	bool parked = false;
 	if (lunatico_analog_read_sensors(device, sensors) && (sensors[PARK_SENSOR] > (int)LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM->number.value)) {
 		parked = true;
+		bool opened = (sensors[OPENED_SENSOR] > 512) ? true : false;
+		bool closed = (sensors[CLOSED_SENSOR] > 512) ? true : false;
+		/* The roof seems to be moved with the buttons,
+		   if not fully open or closed the driver will not control it.
+		*/
+		if (opened && DEVICE_DATA.roof_state != ROOF_OPENED) {
+			DEVICE_DATA.roof_state == ROOF_OPENED;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Roof open, control regained.");
+		} else if (closed && DEVICE_DATA.roof_state != ROOF_CLOSED) {
+			DEVICE_DATA.roof_state == ROOF_CLOSED;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Roof closed, control regained.");
+		} else if ((!closed && DEVICE_DATA.roof_state == ROOF_CLOSED) || (!opened && DEVICE_DATA.roof_state == ROOF_OPENED)) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(
+				device,
+				DOME_SHUTTER_PROPERTY,
+				"The roof seems to be moved by hand, the driver will regain control when opened or closed position is reached."
+			);
+			INDIGO_DRIVER_DEBUG(
+				DRIVER_NAME,
+				"Contol lost. The roof seems to be moved by hand, the driver will regain control when opened or closed position is reached."
+			);
+			return;
+		}
+	}
+
+	// Do not move if the state is the requested one.
+	if ((DEVICE_DATA.roof_state == ROOF_OPENED && DOME_SHUTTER_OPENED_ITEM->sw.value == true) ||
+		(DEVICE_DATA.roof_state == ROOF_CLOSED && DOME_SHUTTER_CLOSED_ITEM->sw.value == true) ||
+		(DOME_SHUTTER_CLOSED_ITEM->sw.value == false && DOME_SHUTTER_OPENED_ITEM->sw.value == false)) {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		return;
 	}
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PARKED = %d (%d > %d)?", parked, sensors[PARK_SENSOR], (int)LA_DOME_SETTINGS_PARK_THRESHOLD_ITEM->number.value);
@@ -777,7 +801,6 @@ static void dome_handle_shutter(indigo_device *device) {
 		}
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Can not move the roof, mount is not parked!");
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not move the roof, mount is not parked!");
-
 		return;
 	}
 
