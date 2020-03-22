@@ -253,6 +253,7 @@ endif
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
 	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/postinst
 	echo >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "if [ -z \`which systemctl\` ]; then echo \"No systemctl, will not configure!\"; exit 0; fi" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "# Configure INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl enable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl start indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
@@ -262,6 +263,7 @@ endif
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
 	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/prerm
 	echo >>$(INSTALL_ROOT)/DEBIAN/prerm
+	echo "if [ -z \`which systemctl\` ]; then echo \"No systemctl, will not disable indigo-environment service!\"; exit 0; fi" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "# Disable INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "systemctl stop indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "systemctl disable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
