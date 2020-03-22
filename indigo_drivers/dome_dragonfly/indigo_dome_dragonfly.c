@@ -1105,7 +1105,3 @@ indigo_result indigo_dome_dragonfly(indigo_driver_action action, indigo_driver_i
 
 	return INDIGO_OK;
 }
-
-
-//fake metainfo
-//SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
