@@ -2,6 +2,20 @@
 
 All notable changes to INDIGO framewark will be documented in this file.
 
+## [2.0-118] - Sun Mar 22 2020
+
+### Overall:
+- indigo framework: fix "&" character escape in XML
+
+### Driver Fixes:
+- indigo_ccd_ptp: Sony and Canon camera related fixes
+- indigo_mount_temma: Add pier side update notify
+
+### New Drivers:
+- indigo_dome_dragonfly: Lunatico Astronomia Dragonfly Dome / Relay controller driver
+- indigo_aux_dragonfly: Lunatico Astronomia Dragonfly Relay controller driver
+
+
 ## [2.0-116] - Mon Mar 9 2020
 
 ### Overall:

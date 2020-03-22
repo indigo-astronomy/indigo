@@ -100,14 +100,14 @@ This is the list of requirements taken into the consideration:
 71. GPS Service Daemon (GPSD) driver
 72. Lunatico Astronomy Limpet/Armadillo/Platypus Focuser/Rotator/Powerbox/GPIO Drivers
 73. Rotator Simulator Driver
+74. Lunatico Astronomy Dragonfly Dome / Relay Controller GPIO driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
 2. ASCOM driver for INDIGO focuser
 3. RainbowAstro Mount driver
-4. Lunatico Astronomy Dragonfly dome and AUX GPIO driver
-5. Lunatico Astronomy AAG CloudWatcher driver
-6. a-Box Adaptive optics driver
+6. Lunatico Astronomy AAG CloudWatcher driver
+7. a-Box Adaptive optics driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO

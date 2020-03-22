@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 117
+INDIGO_BUILD = 118
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
@@ -48,8 +48,8 @@ INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 
 STABLE_DRIVERS = agent_lx200_server agent_snoop ao_sx aux_dsusb guider_gpusb aux_joystick aux_upb aux_ppb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_ica ccd_iidc ccd_mi ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_asi focuser_dmfc focuser_dsd focuser_fcusb focuser_fli focuser_mjkzz focuser_mjkzz_bt focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro focuser_wemacro_bt gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_eqmac mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx focuser_steeldrive2 aux_sqm aux_usbdp aux_flatmaster focuser_focusdreampro aux_arteskyflat aux_fbc ccd_uvc aux_flipflat ccd_ptp
-UNTESTED_DRIVERS = agent_imager agent_alignment agent_mount agent_guider aux_rts focuser_lakeside focuser_optec wheel_optec wheel_quantum wheel_trutek wheel_xagyl agent_auxiliary focuser_efa dome_nexdome dome_nexdome3 gps_gpsd ccd_qhy ccd_qhy2 focuser_lunatico rotator_lunatico aux_dragonfly
-DEVELOPED_DRIVERS = mount_rainbow dome_dragonfly
+UNTESTED_DRIVERS = agent_imager agent_alignment agent_mount agent_guider aux_rts focuser_lakeside focuser_optec wheel_optec wheel_quantum wheel_trutek wheel_xagyl agent_auxiliary focuser_efa dome_nexdome dome_nexdome3 gps_gpsd ccd_qhy ccd_qhy2 focuser_lunatico rotator_lunatico aux_dragonfly dome_dragonfly
+DEVELOPED_DRIVERS = mount_rainbow
 OPTIONAL_DRIVERS = ccd_andor
 
 #---------------------------------------------------------------------
@@ -253,6 +253,7 @@ endif
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
 	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/postinst
 	echo >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "if [ -z \`which systemctl\` ]; then echo \"No systemctl, will not configure!\"; exit 0; fi" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "# Configure INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl enable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl start indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
@@ -262,6 +263,7 @@ endif
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
 	echo "#!/bin/bash" >$(INSTALL_ROOT)/DEBIAN/prerm
 	echo >>$(INSTALL_ROOT)/DEBIAN/prerm
+	echo "if [ -z \`which systemctl\` ]; then echo \"No systemctl, will not disable indigo-environment service!\"; exit 0; fi" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "# Disable INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "systemctl stop indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "systemctl disable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
