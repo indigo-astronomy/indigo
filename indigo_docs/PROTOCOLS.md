@@ -50,6 +50,8 @@ In case of successful handshake for version 2.0 the following extensions can be 
 
 4. Every property and every item may have optional attribute 'hints' containing presentation hints in CSS declaration syntax (see below for the list of defined properties and values).
 
+5. Every newXXXVector request may contain 'token' attribute containing client token used to allow write access to the locked device. 
+
 If protocol version 2.0 is used, INDIGO property and item names are used (more gramatically and semantically consistent),
 while if version 1.7 is used, names of  commonly used names are maped to their INDI counter parts.  Also "Idle" property state is mapped
 to "Ok" state ("Idle" state is not used as a property state in INDIGO, just as a light item value).
@@ -104,7 +106,7 @@ is mapped to JSON message
 ```
 XML message
 ```
-← <setSwitchVector device='' name='' state=''>
+← <setSwitchVector device='CCD Imager Simulator' name='CONNECTION' state='Ok'>
     <oneSwitch name='CONNECTED'>On</oneSwitch>
     <oneSwitch name='DISCONNECTED'>Off</oneSwitch>
   </setSwitchVector>
@@ -115,7 +117,7 @@ is mapped to JSON message
 ```
 XML message
 ```
-← <setBLOBVector device='' name='' state=''>
+← <setBLOBVector device='CCD Imager Simulator' name='CCD_IMAGE' state='Ok'>
 	  <oneBLOB name='IMAGE'>/blob/0x10381d798.fits</oneSwitch>
   </setBLOBVector>
 ```
@@ -125,13 +127,13 @@ is mapped to JSON message
 ```
 XML message
 ```
-→ <newNumberVector device='' name=''>
+→ <newNumberVector device='CCD Imager Simulator' name='CCD_EXPOSURE' token='FA0012'>
   	<oneNumber name='EXPOSURE'>1</defNumber>
   </newNumberVector>
 ```
 is mapped to JSON message
 ```
-→ {"newNumberVector":{"device":"CCD Imager Simulator","name":"CCD_EXPOSURE","items":[{"name":"EXPOSURE","value":1}]}}
+→ {"newNumberVector":{"device":"CCD Imager Simulator","name":"CCD_EXPOSURE","token": "FA0012", "items":[{"name":"EXPOSURE","value":1}]}}
 ```
 XML message
 ```

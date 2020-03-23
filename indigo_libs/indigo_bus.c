@@ -114,6 +114,7 @@ bool indigo_reshare_remote_devices = false;
 bool indigo_use_host_suffix = true;
 bool indigo_is_sandboxed = false;
 bool indigo_use_blob_caching = false;
+long indigo_access_token = 0;
 
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
@@ -271,9 +272,9 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 		if (message != NULL)
 			indigo_trace(message);
 		if (defs)
-			indigo_trace("'%s'.'%s' %s %s %s %d.%d %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
+			indigo_trace("'%s'.'%s' %s %s %s %d.%d %lx %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
 		else
-			indigo_trace("'%s'.'%s' %s %s %s %d.%d %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
+			indigo_trace("'%s'.'%s' %s %s %s %d.%d %lx %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
 		if (items) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
@@ -424,7 +425,6 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&device_mutex);
-	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property enumeration request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->enumerate_properties != NULL) {
@@ -450,6 +450,10 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->change_property != NULL) {
+			if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != 1) {
+				INDIGO_TRACE(indigo_trace("INDIGO Bus: device %s is locked with token %lx", device->name, device->access_token));
+				continue;
+			}
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
@@ -1073,6 +1077,7 @@ void indigo_property_sort_items(indigo_property *property) {
 
 indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values) {
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, count);
+	property->access_token = indigo_access_token;
 	for (int i = 0; i < count; i++)
 		indigo_init_text_item(property->items + i, items[i], NULL, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -1087,6 +1092,7 @@ indigo_result indigo_change_text_property_1(indigo_client *client, const char *d
 	vsnprintf(value, INDIGO_VALUE_SIZE, format, args);
 	va_end(args);
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, 1);
+	property->access_token = indigo_access_token;
 	indigo_init_text_item(property->items, item, NULL, value);
 	indigo_result result = indigo_change_property(client, property);
 	free(property);
@@ -1095,6 +1101,7 @@ indigo_result indigo_change_text_property_1(indigo_client *client, const char *d
 
 indigo_result indigo_change_number_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const double *values) {
 	indigo_property *property = indigo_init_number_property(NULL, device, name, NULL, NULL, 0, 0, count);
+	property->access_token = indigo_access_token;
 	for (int i = 0; i < count; i++)
 		indigo_init_number_item(property->items + i, items[i], NULL, 0, 0, 0, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -1104,6 +1111,7 @@ indigo_result indigo_change_number_property(indigo_client *client, const char *d
 
 indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value) {
 	indigo_property *property = indigo_init_number_property(NULL, device, name, NULL, NULL, 0, 0, 1);
+	property->access_token = indigo_access_token;
 	indigo_init_number_item(property->items, item, NULL, 0, 0, 0, value);
 	indigo_result result = indigo_change_property(client, property);
 	free(property);
@@ -1112,6 +1120,7 @@ indigo_result indigo_change_number_property_1(indigo_client *client, const char 
 
 indigo_result indigo_change_switch_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const bool *values) {
 	indigo_property *property = indigo_init_switch_property(NULL, device, name, NULL, NULL, 0, 0, 0, count);
+	property->access_token = indigo_access_token;
 	for (int i = 0; i < count; i++)
 		indigo_init_switch_item(property->items + i, items[i], NULL, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -1121,6 +1130,7 @@ indigo_result indigo_change_switch_property(indigo_client *client, const char *d
 
 indigo_result indigo_change_switch_property_1(indigo_client *client, const char *device, const char *name, const char *item, const bool value) {
 	indigo_property *property = indigo_init_switch_property(NULL, device, name, NULL, NULL, 0, 0, 0, 1);
+	property->access_token = indigo_access_token;
 	indigo_init_switch_item(property->items, item, NULL, value);
 	indigo_result result = indigo_change_property(client, property);
 	free(property);

@@ -272,8 +272,8 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 			strncpy(property->device, value,INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
-		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(INDIGO_VERSION_CURRENT, value);
+		} else if (!strcmp(name, "token")) {
+			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG) {
 		indigo_change_property(client, property);
@@ -314,8 +314,8 @@ static void *new_number_vector_handler(parser_state state, parser_context *conte
 			strncpy(property->device, value,INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
-		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(INDIGO_VERSION_CURRENT, value);
+		} else if (!strcmp(name, "token")) {
+			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG) {
 		indigo_change_property(client, property);
@@ -356,8 +356,8 @@ static void *new_switch_vector_handler(parser_state state, parser_context *conte
 			strncpy(property->device, value,INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
-		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(INDIGO_VERSION_CURRENT, value);
+		} else if (!strcmp(name, "token")) {
+			property->access_token = strtol(value, NULL, 16);
 		}
 		return new_switch_vector_handler;
 	} else if (state == END_TAG) {

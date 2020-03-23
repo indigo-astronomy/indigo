@@ -152,6 +152,8 @@ static void *new_text_vector_handler(parser_state state, char *name, char *value
 			strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			strncpy(property->name, value, INDIGO_NAME_SIZE);
+		} else if (!strcmp(name, "token")) {
+			property->access_token = (int)strtol(value, NULL, 16);
 		}
 	} else if (state == END_STRUCT) {
 		indigo_change_property(client, property);
@@ -186,6 +188,8 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 			strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			strncpy(property->name, value, INDIGO_NAME_SIZE);
+		} else if (!strcmp(name, "token")) {
+			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_STRUCT) {
 		indigo_change_property(client, property);
@@ -220,6 +224,8 @@ static void *new_switch_vector_handler(parser_state state, char *name, char *val
 			strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			strncpy(property->name, value, INDIGO_NAME_SIZE);
+		} else if (!strcmp(name, "token")) {
+			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_STRUCT) {
 		indigo_change_property(client, property);
