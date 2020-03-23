@@ -251,7 +251,7 @@ typedef struct {
 	indigo_property_type type;          ///< property type
 	indigo_property_perm perm;          ///< property access permission
 	indigo_rule rule;                   ///< switch behaviour rule (for switch properties)
-	long access_token;									///< allow change request on locked device
+	uint32_t access_token;							///< allow change request on locked device
 	short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
 	bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
 	int count;                          ///< number of property items
@@ -270,7 +270,7 @@ typedef struct indigo_device {
 	indigo_device *master_device;       ///< if the device provides many logical devices, this must point to one of the locical devices, otherwise is safe to be NULL
 	indigo_result last_result;          ///< result of last bus operation
 	indigo_version version;             ///< device version
-	long access_token;									///< allow change request with correct access token only
+	uint32_t access_token;							///< allow change request with correct access token only
 
 	/** callback called when device is attached to bus
 	 */
@@ -645,7 +645,7 @@ extern bool indigo_use_strict_locking;
 
 /** Access token for indigo_change_XXX() calls.
 */
-extern long indigo_access_token;
+extern uint32_t indigo_access_token;
 
 #ifdef __cplusplus
 }

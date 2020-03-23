@@ -114,7 +114,7 @@ bool indigo_reshare_remote_devices = false;
 bool indigo_use_host_suffix = true;
 bool indigo_is_sandboxed = false;
 bool indigo_use_blob_caching = false;
-long indigo_access_token = 0;
+uint32_t indigo_access_token = 0;
 
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
@@ -450,7 +450,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->change_property != NULL) {
-			if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != 1) {
+			if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != 0xFFFFFFFF) {
 				INDIGO_TRACE(indigo_trace("INDIGO Bus: device %s is locked with token %lx", device->name, device->access_token));
 				continue;
 			}
