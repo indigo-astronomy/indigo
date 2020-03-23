@@ -22,16 +22,16 @@
 echo FROM $1 >Dockerfile
 cat >>Dockerfile <<EOF
 LABEL maintainer="peter.polakovic@cloudmakers.eu"
-RUN apt-get -y update && apt-get -y install wget unzip build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils
-RUN wget https://github.com/indigo-astronomy/indigo/archive/master.zip
-RUN unzip master.zip
-RUN rm master.zip
-WORKDIR indigo-master
+RUN apt-get -y update && apt-get -y install wget unzip build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils
+COPY indigo-$3.tar.gz .
+RUN tar -zxf indigo-$3.tar.gz
+RUN rm indigo-$3.tar.gz
+WORKDIR indigo-$3
 RUN make package
 EOF
 docker build -t indigo .
 docker create --name indigo indigo
-docker cp indigo:/indigo-master/$2 .
+docker cp indigo:/indigo-$3/$2 .
 docker container rm indigo
 docker image rm indigo
 rm Dockerfile
