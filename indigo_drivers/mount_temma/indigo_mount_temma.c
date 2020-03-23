@@ -106,7 +106,7 @@ typedef struct {
 	int device_count;
 	double currentRA;
 	double currentDec;
-	char pierSide;
+	char telescopeSide;
 	bool isBusy, startTracking, stopTracking;
 	char slewCommand[3];
 	indigo_timer *slew_timer;
@@ -204,11 +204,11 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				else
 					PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
 				if ( buffer[13] == 'E' || buffer[13] == 'W' ) {
-					// pier side
-					bool changed = PRIVATE_DATA->pierSide == (buffer[13] == 'E' ? 'W' : 'E');
-					PRIVATE_DATA->pierSide = buffer[13];
-					MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'E';
-					MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = PRIVATE_DATA->pierSide == 'W';
+					// telescope side
+					bool changed = PRIVATE_DATA->telescopeSide == (buffer[13] == 'E' ? 'W' : 'E');
+					PRIVATE_DATA->telescopeSide = buffer[13];
+					MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = PRIVATE_DATA->telescopeSide == 'W';
+					MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = PRIVATE_DATA->telescopeSide == 'E';
 					if (changed) {
 						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 					}
@@ -216,7 +216,7 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				else if ( buffer[13] == 'F' ) {
 					// fulfilled
 				}
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->pierSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->telescopeSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
 				break;
 			}
 			case 'v': {
@@ -616,14 +616,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(MOUNT_SIDE_OF_PIER_PROPERTY, property, false);
 			if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
-				if (PRIVATE_DATA->pierSide == 'W') {
+				if (PRIVATE_DATA->telescopeSide == 'E') {
 					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of pier switched : West -> East");
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : West -> East");
 				}
 			} else if (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
-				if (PRIVATE_DATA->pierSide == 'E') {
+				if (PRIVATE_DATA->telescopeSide == 'W') {
 					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of pier switched : East -> West");
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : East -> West");
 				}
 			}
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
@@ -670,8 +670,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				ZENITH_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, ZENITH_PROPERTY, NULL);
 				// check side of pier
-				if ((ZENITH_EAST_ITEM->sw.value && PRIVATE_DATA->pierSide == 'W') ||
-				    (ZENITH_WEST_ITEM->sw.value && PRIVATE_DATA->pierSide == 'E')) {
+				if ((ZENITH_EAST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'W') ||
+				    (ZENITH_WEST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'E')) {
 					// update side of pier
 					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, false);
 				}
