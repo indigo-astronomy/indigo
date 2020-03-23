@@ -110,7 +110,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 		}
 	}
 	if (property->access_token) {
-		sprintf(token, " token='%lx'", property->access_token);
+		sprintf(token, " token='%x'", property->access_token);
 	}
 	switch (property->type) {
 	case INDIGO_TEXT_VECTOR:

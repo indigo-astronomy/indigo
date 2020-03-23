@@ -272,9 +272,9 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 		if (message != NULL)
 			indigo_trace(message);
 		if (defs)
-			indigo_trace("'%s'.'%s' %s %s %s %d.%d %lx %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
+			indigo_trace("'%s'.'%s' %s %s %s %d.%d %x %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
 		else
-			indigo_trace("'%s'.'%s' %s %s %s %d.%d %lx %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
+			indigo_trace("'%s'.'%s' %s %s %s %d.%d %x %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
 		if (items) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
@@ -451,7 +451,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 		indigo_device *device = devices[i];
 		if (device != NULL && device->change_property != NULL) {
 			if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != 0xFFFFFFFF) {
-				INDIGO_TRACE(indigo_trace("INDIGO Bus: device %s is locked with token %lx", device->name, device->access_token));
+				indigo_send_message(device, "Device %s is locked for exclusive access", device->name);
 				continue;
 			}
 			bool route = *property->device == 0;
