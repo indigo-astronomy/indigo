@@ -1184,7 +1184,7 @@ int main(int argc, const char * argv[]) {
 			       "       -l  | --use-syslog\n"
 			       "       -p  | --port port                     (default: 7624)\n"
 			       "       -b  | --bonjour name                  (default: hostname)\n"
-			       "       -t  | --master-token                  (master token for devce access default: 0 = none)"
+			       "       -t  | --master-token token            (master token for devce access default: 0 = none)\n"
 			       "       -b- | --disable-bonjour\n"
 			       "       -u- | --disable-blob-urls\n"
 			       "       -w- | --disable-web-apps\n"
