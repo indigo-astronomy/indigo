@@ -707,6 +707,7 @@ static void print_help(const char *name) {
 	       "       -vvv| --enable-trace\n"
 	       "       -r  | --remote-server host[:port]   (default: localhost)\n"
 	       "       -p  | --port port                   (default: 7624)\n"
+	       "       -T  | --token token\n"
 	       "       -t  | --time-to-wait seconds        (default: 2)\n"
 	);
 }
@@ -778,6 +779,14 @@ int main(int argc, const char * argv[]) {
 				port = atoi(argv[i]);
 			} else {
 				fprintf(stderr, "No port specified\n");
+				return 1;
+			}
+		} else if (!strcmp(argv[i], "-T") || !strcmp(argv[i], "--token")) {
+			if (argc > i+1) {
+				i++;
+				indigo_access_token = atoi(argv[i]);
+			} else {
+				fprintf(stderr, "No token specified\n");
 				return 1;
 			}
 		} else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--time-to-wait")) {
