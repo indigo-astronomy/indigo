@@ -23,7 +23,7 @@
  \file indigo_aux_usbdp.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_usbdp"
 
 #include <stdlib.h>
@@ -103,7 +103,7 @@
 #define AUX_DEW_WARNING_PROPERTY				(PRIVATE_DATA->dew_warning_proeprty)
 #define AUX_DEW_WARNING_SENSOR_1_ITEM			(AUX_DEW_WARNING_PROPERTY->items+0)
 #define AUX_DEW_WARNING_SENSOR_2_ITEM			(AUX_DEW_WARNING_PROPERTY->items+1)
-#define AUX_DEW_WARNING_SENSOR_3_ITEM				(AUX_DEW_WARNING_PROPERTY->items+2)
+#define AUX_DEW_WARNING_SENSOR_3_ITEM			(AUX_DEW_WARNING_PROPERTY->items+2)
 
 #define AUX_DEW_CONTROL_PROPERTY				(PRIVATE_DATA->heating_mode_property)
 #define AUX_DEW_CONTROL_MANUAL_ITEM				(AUX_DEW_CONTROL_PROPERTY->items + 0)
@@ -170,17 +170,17 @@ typedef struct {
 	float temp_amb;
 	float rh;
 	float dewpoint;
-	char  output_ch1;
-	char  output_ch2;
-	char  output_ch3;
-	char  cal_ch1;
-	char  cal_ch2;
-	char  cal_amb;
-	char  threshold_ch1;
-	char  threshold_ch2;
-	bool  auto_mode;
-	bool  ch2_3_linked;
-	char  aggressivity;
+	int  output_ch1;
+	int  output_ch2;
+	int  output_ch3;
+	int  cal_ch1;
+	int  cal_ch2;
+	int  cal_amb;
+	int  threshold_ch1;
+	int  threshold_ch2;
+	int  auto_mode;
+	int  ch2_3_linked;
+	int  aggressivity;
 } usbdp_status_v2_t;
 
 typedef struct {
