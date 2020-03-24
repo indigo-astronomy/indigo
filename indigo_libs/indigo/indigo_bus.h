@@ -55,6 +55,10 @@ typedef int indigo_glock;
 typedef struct indigo_client indigo_client;
 typedef struct indigo_device indigo_device;
 
+/** Indigo access token type, used to lock and access device
+ */
+typedef uint32_t indigo_token;
+
 /** Device interface (value should be used for INFO_DEVICE_INTERFACE_ITEM->text.value)
  */
 typedef enum {
@@ -251,7 +255,7 @@ typedef struct {
 	indigo_property_type type;          ///< property type
 	indigo_property_perm perm;          ///< property access permission
 	indigo_rule rule;                   ///< switch behaviour rule (for switch properties)
-	uint32_t access_token;							///< allow change request on locked device
+	indigo_token access_token;	///< allow change request on locked device
 	short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
 	bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
 	int count;                          ///< number of property items
@@ -270,7 +274,7 @@ typedef struct indigo_device {
 	indigo_device *master_device;       ///< if the device provides many logical devices, this must point to one of the locical devices, otherwise is safe to be NULL
 	indigo_result last_result;          ///< result of last bus operation
 	indigo_version version;             ///< device version
-	uint32_t access_token;							///< allow change request with correct access token only
+	indigo_token access_token;	///< allow change request with correct access token only
 
 	/** callback called when device is attached to bus
 	 */
@@ -388,6 +392,10 @@ extern void indigo_log(const char *format, ...);
 /** Print diagnostic message on trace level with property value, full property definition and items dump can be requested.
  */
 extern void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items);
+
+/** Set master token
+ */
+extern indigo_result indigo_set_master_token(indigo_token token);
 
 /** Start bus operation.
  Call has no effect, if bus is already started.
@@ -644,8 +652,8 @@ extern bool indigo_use_blob_caching;
 extern bool indigo_use_strict_locking;
 
 /** Access token for indigo_change_XXX() calls.
-*/
-extern uint32_t indigo_access_token;
+ */
+extern indigo_token indigo_access_token;
 
 #ifdef __cplusplus
 }

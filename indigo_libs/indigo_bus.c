@@ -61,6 +61,7 @@
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
 static indigo_blob_entry *blobs[MAX_BLOBS];
+static uint32_t master_token = 0;
 
 static pthread_mutex_t bus_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 #define client_mutex bus_mutex
@@ -114,7 +115,7 @@ bool indigo_reshare_remote_devices = false;
 bool indigo_use_host_suffix = true;
 bool indigo_is_sandboxed = false;
 bool indigo_use_blob_caching = false;
-uint32_t indigo_access_token = 0;
+indigo_token indigo_access_token = 0;
 
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
@@ -441,6 +442,12 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 	return INDIGO_OK;
 }
 
+indigo_result indigo_set_master_token(indigo_token token) {
+	master_token = token;
+	INDIGO_DEBUG(indigo_debug("INDIGO Bus: set master_token = 0x%x", master_token));
+	return INDIGO_OK;
+}
+
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
 	if ((!is_started) || (property == NULL) || (property->perm == INDIGO_RO_PERM))
 		return INDIGO_FAILED;
@@ -450,7 +457,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->change_property != NULL) {
-			if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != 0xFFFFFFFF) {
+			if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != master_token) {
 				indigo_send_message(device, "Device %s is locked for exclusive access", device->name);
 				continue;
 			}
