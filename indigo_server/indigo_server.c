@@ -917,6 +917,9 @@ static void server_main() {
 			indigo_reshare_remote_devices = true;
 			indigo_start_subprocess(executable, NULL);
 			i++;
+		} else if ((!strcmp(server_argv[i], "-t") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {
+			indigo_set_master_token(atoi(server_argv[i + 1]));
+			i++;
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
 		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
@@ -1181,6 +1184,7 @@ int main(int argc, const char * argv[]) {
 			       "       -l  | --use-syslog\n"
 			       "       -p  | --port port                     (default: 7624)\n"
 			       "       -b  | --bonjour name                  (default: hostname)\n"
+			       "       -t  | --master-token                  (master token for devce access default: 0 = none)"
 			       "       -b- | --disable-bonjour\n"
 			       "       -u- | --disable-blob-urls\n"
 			       "       -w- | --disable-web-apps\n"
