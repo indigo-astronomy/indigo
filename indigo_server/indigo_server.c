@@ -47,6 +47,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_xml.h>
+#include <indigo/indigo_token.h>
 
 #include "indigo_cat_data.h"
 
