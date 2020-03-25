@@ -32,6 +32,7 @@
 #include <pthread.h>
 
 #include <indigo/indigo_config.h>
+#include <indigo/indigo_token.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,10 +55,6 @@ extern "C" {
 typedef int indigo_glock;
 typedef struct indigo_client indigo_client;
 typedef struct indigo_device indigo_device;
-
-/** Indigo access token type, used to lock and access device
- */
-typedef uint32_t indigo_token;
 
 /** Device interface (value should be used for INFO_DEVICE_INTERFACE_ITEM->text.value)
  */
@@ -393,10 +390,6 @@ extern void indigo_log(const char *format, ...);
  */
 extern void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items);
 
-/** Set master token
- */
-extern indigo_result indigo_set_master_token(indigo_token token);
-
 /** Start bus operation.
  Call has no effect, if bus is already started.
  */
@@ -674,10 +667,6 @@ extern bool indigo_use_blob_caching;
 /** Use recursive locks for dispaching all bus messages
  */
 extern bool indigo_use_strict_locking;
-
-/** Access token for indigo_change_XXX() calls.
- */
-extern indigo_token indigo_access_token;
 
 #ifdef __cplusplus
 }
