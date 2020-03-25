@@ -1082,9 +1082,9 @@ void indigo_property_sort_items(indigo_property *property) {
 	}
 }
 
-indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values) {
+indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values) {
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, count);
-	property->access_token = indigo_access_token;
+	property->access_token = token;
 	for (int i = 0; i < count; i++)
 		indigo_init_text_item(property->items + i, items[i], NULL, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -1092,23 +1092,35 @@ indigo_result indigo_change_text_property(indigo_client *client, const char *dev
 	return result;
 }
 
-indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...) {
+indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values) {
+	return indigo_change_text_property_with_token(client, device, indigo_access_token, name, count, items, values);
+}
+
+indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...) {
 	char value[INDIGO_VALUE_SIZE];
 	va_list args;
 	va_start(args, format);
 	vsnprintf(value, INDIGO_VALUE_SIZE, format, args);
 	va_end(args);
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, 1);
-	property->access_token = indigo_access_token;
+	property->access_token = token;
 	indigo_init_text_item(property->items, item, NULL, value);
 	indigo_result result = indigo_change_property(client, property);
 	free(property);
 	return result;
 }
 
-indigo_result indigo_change_number_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const double *values) {
+indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	indigo_result result = indigo_change_text_property_1_with_token(client, device, indigo_access_token, name, item, format, args);
+	va_end(args);
+	return result;
+}
+
+indigo_result indigo_change_number_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const double *values) {
 	indigo_property *property = indigo_init_number_property(NULL, device, name, NULL, NULL, 0, 0, count);
-	property->access_token = indigo_access_token;
+	property->access_token = token;
 	for (int i = 0; i < count; i++)
 		indigo_init_number_item(property->items + i, items[i], NULL, 0, 0, 0, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -1116,18 +1128,26 @@ indigo_result indigo_change_number_property(indigo_client *client, const char *d
 	return result;
 }
 
-indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value) {
+indigo_result indigo_change_number_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const double *values) {
+	return indigo_change_number_property_with_token(client, device, indigo_access_token, name, count, items, values);
+}
+
+indigo_result indigo_change_number_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const double value) {
 	indigo_property *property = indigo_init_number_property(NULL, device, name, NULL, NULL, 0, 0, 1);
-	property->access_token = indigo_access_token;
+	property->access_token = token;
 	indigo_init_number_item(property->items, item, NULL, 0, 0, 0, value);
 	indigo_result result = indigo_change_property(client, property);
 	free(property);
 	return result;
 }
 
-indigo_result indigo_change_switch_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const bool *values) {
+indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value) {
+	return indigo_change_number_property_1_with_token(client, device, indigo_access_token, name, item, value);
+}
+
+indigo_result indigo_change_switch_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const bool *values) {
 	indigo_property *property = indigo_init_switch_property(NULL, device, name, NULL, NULL, 0, 0, 0, count);
-	property->access_token = indigo_access_token;
+	property->access_token = token;
 	for (int i = 0; i < count; i++)
 		indigo_init_switch_item(property->items + i, items[i], NULL, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -1135,13 +1155,21 @@ indigo_result indigo_change_switch_property(indigo_client *client, const char *d
 	return result;
 }
 
-indigo_result indigo_change_switch_property_1(indigo_client *client, const char *device, const char *name, const char *item, const bool value) {
+indigo_result indigo_change_switch_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const bool *values) {
+	return indigo_change_switch_property_with_token(client, device, indigo_access_token, name, count, items, values);
+}
+
+indigo_result indigo_change_switch_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const bool value) {
 	indigo_property *property = indigo_init_switch_property(NULL, device, name, NULL, NULL, 0, 0, 0, 1);
-	property->access_token = indigo_access_token;
+	property->access_token = token;
 	indigo_init_switch_item(property->items, item, NULL, value);
 	indigo_result result = indigo_change_property(client, property);
 	free(property);
 	return result;
+}
+
+indigo_result indigo_change_switch_property_1(indigo_client *client, const char *device, const char *name, const char *item, const bool value) {
+	return indigo_change_switch_property_1_with_token(client, device, indigo_access_token, name, item, value);
 }
 
 indigo_result indigo_device_connect(indigo_client *client, char *device) {

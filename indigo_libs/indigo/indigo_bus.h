@@ -551,25 +551,49 @@ extern void indigo_property_sort_items(indigo_property *property);
  */
 extern indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
 
+/** Request text property change with access token.
+ */
+extern indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values);
+
 /** Request text property change.
  */
 extern indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...);
+
+/** Request text property change with access token.
+ */
+extern indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...);
 
 /** Request number property change.
  */
 extern indigo_result indigo_change_number_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const double *values);
 
+/** Request number property change with access token.
+ */
+extern indigo_result indigo_change_number_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const double *values);
+
 /** Request number property change.
  */
 extern indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value);
+
+/** Request number property change with access token.
+ */
+extern indigo_result indigo_change_number_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const double value);
 
 /** Request switch property change.
  */
 extern indigo_result indigo_change_switch_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const bool *values);
 
+/** Request switch property change with access token.
+ */
+extern indigo_result indigo_change_switch_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const bool *values);
+
 /** Request switch property change.
  */
 extern indigo_result indigo_change_switch_property_1(indigo_client *client, const char *device, const char *name, const char *item, const bool value);
+
+/** Request switch property change with access_token.
+ */
+extern indigo_result indigo_change_switch_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const bool value);
 
 /** Send connect message.
  */
