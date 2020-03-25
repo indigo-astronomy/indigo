@@ -40,8 +40,8 @@ static pthread_mutex_t token_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 bool indigo_add_device_token(const char *device, indigo_token token) {
 	if (device == NULL) return false;
-
 	int slot = -1;
+	pthread_mutex_lock(&token_mutex);
 	for (int i = 0; i < MAX_TOKENS; i++) {
 		if (tokens[i].device[0] == '\0') {
 			if (slot < 0) slot = i;
@@ -53,57 +53,75 @@ bool indigo_add_device_token(const char *device, indigo_token token) {
 	if (slot >= 0 && slot < MAX_TOKENS) {
 		tokens[slot].token = token;
 		strncpy(tokens[slot].device, device, INDIGO_NAME_SIZE);
+		pthread_mutex_unlock(&token_mutex);
 		INDIGO_DEBUG(indigo_debug("INDIGO Bus: Token for '%s' = 0x%x added at slot %d", device, token, slot));
 		return true;
 	}
+	pthread_mutex_unlock(&token_mutex);
 	INDIGO_DEBUG(indigo_debug("INDIGO Bus: No slots available."));
 	return false;
 }
 
 bool indigo_remove_device_token(const char *device) {
 	if (device == NULL) return false;
+	pthread_mutex_lock(&token_mutex);
 	for (int i = 0; i < MAX_TOKENS; i++) {
 		if (!strncmp(tokens[i].device, device, INDIGO_NAME_SIZE)) {
 			tokens[i].token = 0;
 			tokens[i].device[0] = '\0';
+			pthread_mutex_unlock(&token_mutex);
 			INDIGO_DEBUG(indigo_debug("INDIGO Bus: Token for '%s' removed", device));
 			return true;
 		}
 	}
+	pthread_mutex_unlock(&token_mutex);
 	INDIGO_DEBUG(indigo_debug("INDIGO Bus: No token for '%s' to be removed", device));
 	return false;
 }
 
 indigo_token indigo_get_device_token(const char *device) {
 	if (device == NULL) return 0;
+	pthread_mutex_lock(&token_mutex);
 	for (int i = 0; i < MAX_TOKENS; i++) {
 		if (!strncmp(tokens[i].device, device, INDIGO_NAME_SIZE)) {
 			indigo_token token = tokens[i].token;
+			pthread_mutex_unlock(&token_mutex);
 			INDIGO_DEBUG(indigo_debug("INDIGO Bus: Token found '%s' = 0x%x", device, token));
 			return token;
 		}
 	}
+	pthread_mutex_unlock(&token_mutex);
 	INDIGO_DEBUG(indigo_debug("INDIGO Bus: No token for '%s'", device));
 	return 0;
 }
 
 indigo_token indigo_get_token(const char *device) {
 	if (master_token != 0) {
-		INDIGO_DEBUG(indigo_debug("INDIGO Bus: Master token found '%s' = 0x%x", device, master_token));
-		return master_token;
+		pthread_mutex_lock(&token_mutex);
+		indigo_token token = master_token;
+		pthread_mutex_unlock(&token_mutex);
+		INDIGO_DEBUG(indigo_debug("INDIGO Bus: Master token found '%s' = 0x%x", device, token));
+		return token;
 	}
 	return indigo_get_device_token(device);
 }
 
 indigo_token indigo_get_master_token() {
-	return master_token;
+	pthread_mutex_lock(&token_mutex);
+	indigo_token token = master_token;
+	pthread_mutex_unlock(&token_mutex);
+	return token;
 }
 
 void indigo_set_master_token(indigo_token token) {
+	pthread_mutex_lock(&token_mutex);
 	master_token = token;
+	pthread_mutex_unlock(&token_mutex);
 	INDIGO_DEBUG(indigo_debug("INDIGO Bus: set master_token = 0x%x", master_token));
 }
 
 void indigo_clear_device_tokens() {
+	pthread_mutex_lock(&token_mutex);
 	memset(tokens, 0, sizeof(tokens));
+	pthread_mutex_unlock(&token_mutex);
 }
