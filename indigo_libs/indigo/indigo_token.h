@@ -38,11 +38,33 @@ extern "C" {
 
 typedef uint64_t indigo_token;
 
+/** Add device token to the list
+ */
 extern bool indigo_add_device_token(const char *device, indigo_token token);
+
+/** Remove device access token from the list
+ */
 extern bool indigo_remove_device_token(const char *device);
+
+/** Get device access token from the list or 0 if not set
+ */
 extern indigo_token indigo_get_device_token(const char *device);
+
+/** Get master token if set else get device access token or 0 if not set
+ */
+extern indigo_token indigo_get_token(const char *device);
+
+/** Get master token
+ */
 extern indigo_token indigo_get_master_token();
+
+/** Set master token
+ */
 extern void indigo_set_master_token(indigo_token token);
+
+/** Clear token list
+ */
+extern void indigo_clear_device_tokens();
 
 #ifdef __cplusplus
 }
