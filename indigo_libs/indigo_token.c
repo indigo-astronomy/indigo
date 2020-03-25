@@ -44,7 +44,7 @@ bool indigo_add_device_token(const char *device, indigo_token token) {
 	int slot = -1;
 	for (int i = 0; i < MAX_TOKENS; i++) {
 		if (tokens[i].device[0] == '\0') {
-			slot = i;
+			if (slot < 0) slot = i;
 		} else if (!strncmp(tokens[i].device, device, INDIGO_NAME_SIZE)) {
 			slot = i;
 			break;
