@@ -921,6 +921,9 @@ static void server_main() {
 		} else if ((!strcmp(server_argv[i], "-t") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {
 			indigo_set_master_token(atoi(server_argv[i + 1]));
 			i++;
+		} else if ((!strcmp(server_argv[i], "-a") || !strcmp(server_argv[i], "--acl-file")) && i < server_argc - 1) {
+			indigo_load_device_tokens_from_file(server_argv[i + 1]);
+			i++;
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
 		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
@@ -1186,6 +1189,7 @@ int main(int argc, const char * argv[]) {
 			       "       -p  | --port port                     (default: 7624)\n"
 			       "       -b  | --bonjour name                  (default: hostname)\n"
 			       "       -t  | --master-token token            (master token for devce access default: 0 = none)\n"
+			       "       -a  | --acl-file file\n"
 			       "       -b- | --disable-bonjour\n"
 			       "       -u- | --disable-blob-urls\n"
 			       "       -w- | --disable-web-apps\n"

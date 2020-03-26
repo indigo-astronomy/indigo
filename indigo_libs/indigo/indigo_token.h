@@ -66,6 +66,14 @@ extern void indigo_set_master_token(indigo_token token);
  */
 extern void indigo_clear_device_tokens();
 
+/** Read device tokens from file
+    File format:
+    # This is comment
+    12345 Rotator Sumulator
+    765433 CCD Imager Simulator @ indigosky
+ */
+extern bool indigo_load_device_tokens_from_file(const char *file_name);
+
 #ifdef __cplusplus
 }
 #endif
