@@ -450,16 +450,17 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->change_property != NULL) {
-			if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
-				indigo_send_message(device, "Device %s is locked for exclusive access", device->name);
-				continue;
-			}
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
 			route = route || (!indigo_use_host_suffix && *device->name == '@');
-			if (route)
+			if (route) {
+				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
+					indigo_send_message(device, "Device %s is locked for exclusive access", device->name);
+					continue;
+				}
 				device->last_result = device->change_property(device, client, property);
+			}
 		}
 	}
 	if (indigo_use_strict_locking)
