@@ -349,9 +349,6 @@ indigo_result indigo_start() {
 indigo_result indigo_attach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
-	// TEST ONLY! Should be removed
-	indigo_add_device_token("Field Rotator Simulator", 12345);
-	indigo_add_device_token("Dome Dragonfly", 123456);
 	pthread_mutex_lock(&device_mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {

@@ -24,9 +24,9 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_bus.h>
-
 
 typedef struct {
 	char device[INDIGO_NAME_SIZE];
@@ -124,4 +124,46 @@ void indigo_clear_device_tokens() {
 	pthread_mutex_lock(&token_mutex);
 	memset(tokens, 0, sizeof(tokens));
 	pthread_mutex_unlock(&token_mutex);
+}
+
+bool indigo_load_device_tokens_from_file(const char *file_name) {
+	FILE* fp;
+	char buffer[INDIGO_VALUE_SIZE + 50];
+
+	fp = fopen(file_name, "r");
+	if (fp == NULL) {
+		INDIGO_ERROR(indigo_error("Can not open ACL file '%s'", file_name));
+		return false;
+	}
+
+	INDIGO_DEBUG(indigo_debug("Loading ACL from file '%s'", file_name));
+	int line_count = 0;
+	while(fgets(buffer, INDIGO_NAME_SIZE + 50, fp)) {
+		char device[INDIGO_NAME_SIZE];
+		indigo_token token;
+
+		line_count++;
+
+		// skip lines starting with #
+		if (buffer[0] == '#') continue;
+
+		if (sscanf(buffer, "%lld %256[^\n]s", &token, device) == 2) {
+			int len = strlen(device) - 1;
+			if (len > 0) {
+				while (device[len] == ' ' || device[len] == '\t') len--;
+				device[len + 1] = '\0';
+			} else { // this should not happen
+				fclose(fp);
+				INDIGO_ERROR(indigo_error("Error in ACL file '%s' at line %d", file_name, line_count));
+				return false;
+			}
+			indigo_add_device_token(device, token);
+		} else {
+			fclose(fp);
+			INDIGO_ERROR(indigo_error("Error in ACL file '%s' at line %d", file_name, line_count));
+			return false;
+		}
+	}
+	fclose(fp);
+	return true;
 }
