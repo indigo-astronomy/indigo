@@ -346,10 +346,15 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (CONNECTION_PROPERTY->state == INDIGO_ALERT_STATE)
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		indigo_token token = indigo_get_device_token(device->name);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			device->access_token = property->access_token;
+			if (token > 0) {
+				device->access_token = token;
+			} else {
+				device->access_token = property->access_token;
+			}
 		} else {
-			device->access_token = 0;
+			device->access_token = token;
 		}
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	} else if (indigo_property_match(SIMULATION_PROPERTY, property)) {

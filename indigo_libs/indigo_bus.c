@@ -349,10 +349,14 @@ indigo_result indigo_start() {
 indigo_result indigo_attach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
+	// TEST ONLY! Should be removed
+	indigo_add_device_token("Field Rotator Simulator", 12345);
+	indigo_add_device_token("Dome Dragonfly", 123456);
 	pthread_mutex_lock(&device_mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {
 			devices[i] = device;
+			device->access_token = indigo_get_device_token(device->name);
 			pthread_mutex_unlock(&device_mutex);
 			if (device->attach != NULL)
 				device->last_result = device->attach(device);
@@ -455,8 +459,9 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
 			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route) {
+				INDIGO_DEBUG(indigo_debug("Change request: Device '%s' token %d, proprerty '%s' token = %d", device->name, device->access_token, property->name, property->access_token));
 				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
-					indigo_send_message(device, "Device %s is locked for exclusive access", device->name);
+					indigo_send_message(device, "Device '%s' proprerty '%s' is locked for exclusive access", device->name, property->name);
 					continue;
 				}
 				device->last_result = device->change_property(device, client, property);
