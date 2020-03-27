@@ -158,16 +158,16 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 		// skip lines starting with #
 		if (buffer[0] == '#') continue;
 
+		// remove training spaces
+		int len = strlen(buffer) - 1;
+		if (len >= 0) {
+			while (buffer[len] == ' ' || buffer[len] == '\t' || buffer[len] == '\n') len--;
+			buffer[len + 1] = '\0';
+		}
+		// skip empty lines
+		if (buffer[0] == '\0') continue;
+
 		if (sscanf(buffer, "%llx %256[^\n]s", &token, device) == 2) {
-			int len = strlen(device) - 1;
-			if (len >= 0) {
-				while (device[len] == ' ' || device[len] == '\t') len--;
-				device[len + 1] = '\0';
-			} else { // this should not happen
-				fclose(fp);
-				INDIGO_ERROR(indigo_error("ACL: Error in ACL file '%s' at line %d", file_name, line_count));
-				return false;
-			}
 			if (!strncmp(device, "@", 256)) {
 				indigo_set_master_token(token);
 			} else {
