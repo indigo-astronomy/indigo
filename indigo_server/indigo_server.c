@@ -919,7 +919,7 @@ static void server_main() {
 			indigo_start_subprocess(executable, NULL);
 			i++;
 		} else if ((!strcmp(server_argv[i], "-T") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {
-			indigo_set_master_token(atoi(server_argv[i + 1]));
+			indigo_set_master_token(indigo_string_to_token(server_argv[i + 1]));
 			i++;
 		} else if ((!strcmp(server_argv[i], "-a") || !strcmp(server_argv[i], "--acl-file")) && i < server_argc - 1) {
 			indigo_load_device_tokens_from_file(server_argv[i + 1]);

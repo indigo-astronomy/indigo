@@ -784,7 +784,7 @@ int main(int argc, const char * argv[]) {
 		} else if (!strcmp(argv[i], "-T") || !strcmp(argv[i], "--token")) {
 			if (argc > i+1) {
 				i++;
-				indigo_set_master_token(atoi(argv[i]));
+				indigo_set_master_token(indigo_string_to_token(argv[i]));
 			} else {
 				fprintf(stderr, "No token specified\n");
 				return 1;

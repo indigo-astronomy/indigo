@@ -457,9 +457,9 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
 			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route) {
-				INDIGO_DEBUG(indigo_debug("Change request: Device '%s' token %d, proprerty '%s' token = %d", device->name, device->access_token, property->name, property->access_token));
+				INDIGO_DEBUG(indigo_debug("INDIGO Bus: Change request - Device '%s' token 0x%x, Proprerty '%s' token 0x%x", device->name, device->access_token, property->name, property->access_token));
 				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
-					indigo_send_message(device, "Device '%s' proprerty '%s' is locked for exclusive access", device->name, property->name);
+					indigo_send_message(device, "Device '%s' is protected or locked for exclusive access", device->name);
 					continue;
 				}
 				device->last_result = device->change_property(device, client, property);

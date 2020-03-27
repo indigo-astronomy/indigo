@@ -38,6 +38,11 @@ extern "C" {
 
 typedef uint64_t indigo_token;
 
+
+/** Convert hex string to indigo_token, 0 for error or no token
+ */
+indigo_token indigo_string_to_token(const char *token_string);
+
 /** Add device token to the list
  */
 extern bool indigo_add_device_token(const char *device, indigo_token token);
@@ -71,6 +76,8 @@ extern void indigo_clear_device_tokens();
     # This is comment
     12345 Rotator Sumulator
     765433 CCD Imager Simulator @ indigosky
+	# Set master token ('@' means master token)
+	1232 @
  */
 extern bool indigo_load_device_tokens_from_file(const char *file_name);
 
