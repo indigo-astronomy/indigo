@@ -95,7 +95,11 @@ indigo_token indigo_get_device_token(const char *device) {
 	return 0;
 }
 
-indigo_token indigo_get_token(const char *device) {
+indigo_token indigo_get_device_or_master_token(const char *device) {
+	int token = indigo_get_device_token(device);
+
+	if (token != 0) return token;
+
 	if (master_token != 0) {
 		pthread_mutex_lock(&token_mutex);
 		indigo_token token = master_token;
@@ -103,7 +107,6 @@ indigo_token indigo_get_token(const char *device) {
 		INDIGO_DEBUG(indigo_debug("INDIGO Bus: Master token found '%s' = 0x%x", device, token));
 		return token;
 	}
-	return indigo_get_device_token(device);
 }
 
 indigo_token indigo_get_master_token() {
