@@ -103,7 +103,7 @@ indigo_token indigo_get_device_token(const char *device) {
 }
 
 indigo_token indigo_get_device_or_master_token(const char *device) {
-	int token = indigo_get_device_token(device);
+	indigo_token token = indigo_get_device_token(device);
 
 	if (token != 0) return token;
 
@@ -114,6 +114,7 @@ indigo_token indigo_get_device_or_master_token(const char *device) {
 		INDIGO_DEBUG(indigo_debug("ACL: Master token found '%s' = 0x%x", device, token));
 		return token;
 	}
+	return 0;
 }
 
 indigo_token indigo_get_master_token() {
