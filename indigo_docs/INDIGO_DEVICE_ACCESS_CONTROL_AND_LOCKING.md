@@ -76,6 +76,8 @@ INDIGO supports internal token based ACL that can be handled by several calls. A
 
 - *indigo_load_device_tokens_from_file(file_name)* - Load ACL from file.
 
+Example of their usage can be found in *indigo_server*, *indigo_prop_tool* or *indigo_control_panel* source code.
+
 ## Access Control File Format
 The ACL file has a very simple syntax containing two fields:
 - *token* - hexadecimal token
@@ -84,7 +86,7 @@ The ACL file has a very simple syntax containing two fields:
 Rules:
 - Lines starting with '#' are ignored.
 - '@' is a special device name meaning that this is the master token of the server or the client.
-- '@ server' is used on the client to specify the master token used for authentication against the specified server.
+- '@ server' can be used on the client to specify the master token used for authentication against the specified server.
 - remote devices should be specified with the host name like this "Device @ server"
 
 Client ACL example:
