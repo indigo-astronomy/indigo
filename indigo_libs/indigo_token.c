@@ -38,6 +38,13 @@ static indigo_token master_token = 0;
 
 static pthread_mutex_t token_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+indigo_token indigo_string_to_token(const char *token_string) {
+	indigo_token token = 0;
+	if (token_string == NULL) return 0;
+	if (sscanf(token_string, "%llx", &token) == 1) return token;
+	return 0;
+}
+
 bool indigo_add_device_token(const char *device, indigo_token token) {
 	if (device == NULL) return false;
 	int slot = -1;
@@ -54,11 +61,11 @@ bool indigo_add_device_token(const char *device, indigo_token token) {
 		tokens[slot].token = token;
 		strncpy(tokens[slot].device, device, INDIGO_NAME_SIZE);
 		pthread_mutex_unlock(&token_mutex);
-		INDIGO_DEBUG(indigo_debug("INDIGO Bus: Token for '%s' = 0x%x added at slot %d", device, token, slot));
+		INDIGO_DEBUG(indigo_debug("ACL: Token for '%s' = 0x%x added at slot %d", device, token, slot));
 		return true;
 	}
 	pthread_mutex_unlock(&token_mutex);
-	INDIGO_DEBUG(indigo_debug("INDIGO Bus: No slots available."));
+	INDIGO_DEBUG(indigo_debug("ACL: No slots available."));
 	return false;
 }
 
@@ -70,12 +77,12 @@ bool indigo_remove_device_token(const char *device) {
 			tokens[i].token = 0;
 			tokens[i].device[0] = '\0';
 			pthread_mutex_unlock(&token_mutex);
-			INDIGO_DEBUG(indigo_debug("INDIGO Bus: Token for '%s' removed", device));
+			INDIGO_DEBUG(indigo_debug("ACL: Token for '%s' removed", device));
 			return true;
 		}
 	}
 	pthread_mutex_unlock(&token_mutex);
-	INDIGO_DEBUG(indigo_debug("INDIGO Bus: No token for '%s' to be removed", device));
+	INDIGO_DEBUG(indigo_debug("ACL: No token for '%s' to be removed", device));
 	return false;
 }
 
@@ -86,12 +93,12 @@ indigo_token indigo_get_device_token(const char *device) {
 		if (!strncmp(tokens[i].device, device, INDIGO_NAME_SIZE)) {
 			indigo_token token = tokens[i].token;
 			pthread_mutex_unlock(&token_mutex);
-			INDIGO_DEBUG(indigo_debug("INDIGO Bus: Token found '%s' = 0x%x", device, token));
+			INDIGO_DEBUG(indigo_debug("ACL: Token found '%s' = 0x%x", device, token));
 			return token;
 		}
 	}
 	pthread_mutex_unlock(&token_mutex);
-	INDIGO_DEBUG(indigo_debug("INDIGO Bus: No token for '%s'", device));
+	INDIGO_DEBUG(indigo_debug("ACL: No token for '%s'", device));
 	return 0;
 }
 
@@ -104,7 +111,7 @@ indigo_token indigo_get_device_or_master_token(const char *device) {
 		pthread_mutex_lock(&token_mutex);
 		indigo_token token = master_token;
 		pthread_mutex_unlock(&token_mutex);
-		INDIGO_DEBUG(indigo_debug("INDIGO Bus: Master token found '%s' = 0x%x", device, token));
+		INDIGO_DEBUG(indigo_debug("ACL: Master token found '%s' = 0x%x", device, token));
 		return token;
 	}
 }
@@ -120,7 +127,7 @@ void indigo_set_master_token(indigo_token token) {
 	pthread_mutex_lock(&token_mutex);
 	master_token = token;
 	pthread_mutex_unlock(&token_mutex);
-	INDIGO_DEBUG(indigo_debug("INDIGO Bus: set master_token = 0x%x", master_token));
+	INDIGO_DEBUG(indigo_debug("ACL: set master_token = 0x%x", master_token));
 }
 
 void indigo_clear_device_tokens() {
@@ -135,11 +142,11 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 
 	fp = fopen(file_name, "r");
 	if (fp == NULL) {
-		INDIGO_ERROR(indigo_error("Can not open ACL file '%s'", file_name));
+		INDIGO_ERROR(indigo_error("ACL: Can not open ACL file '%s'", file_name));
 		return false;
 	}
 
-	INDIGO_DEBUG(indigo_debug("Loading ACL from file '%s'", file_name));
+	INDIGO_DEBUG(indigo_debug("ACL: Loading ACL from file '%s'", file_name));
 	int line_count = 0;
 	while(fgets(buffer, INDIGO_NAME_SIZE + 50, fp)) {
 		char device[INDIGO_NAME_SIZE];
@@ -150,20 +157,24 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 		// skip lines starting with #
 		if (buffer[0] == '#') continue;
 
-		if (sscanf(buffer, "%lld %256[^\n]s", &token, device) == 2) {
+		if (sscanf(buffer, "%llx %256[^\n]s", &token, device) == 2) {
 			int len = strlen(device) - 1;
-			if (len > 0) {
+			if (len >= 0) {
 				while (device[len] == ' ' || device[len] == '\t') len--;
 				device[len + 1] = '\0';
 			} else { // this should not happen
 				fclose(fp);
-				INDIGO_ERROR(indigo_error("Error in ACL file '%s' at line %d", file_name, line_count));
+				INDIGO_ERROR(indigo_error("ACL: Error in ACL file '%s' at line %d", file_name, line_count));
 				return false;
 			}
-			indigo_add_device_token(device, token);
+			if (!strncmp(device, "@", 256)) {
+				indigo_set_master_token(token);
+			} else {
+				indigo_add_device_token(device, token);
+			}
 		} else {
 			fclose(fp);
-			INDIGO_ERROR(indigo_error("Error in ACL file '%s' at line %d", file_name, line_count));
+			INDIGO_ERROR(indigo_error("ACL: Error in ACL file '%s' at line %d", file_name, line_count));
 			return false;
 		}
 	}
