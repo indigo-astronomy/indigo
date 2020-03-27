@@ -63,7 +63,7 @@ INDIGO supports internal token based ACL that can be handled by several calls. A
 
 - *indigo_remove_device_token(device_name)* - remove the device from the ACL. On server it means that the device will not be protected.
 
-- *indigo_get_device_token(device_name)* - get the device token from the ACL (returns 0 not set)
+- *indigo_get_device_token(device_name)* - get the device token from the ACL. If not set, returns 0.
 
 - *indigo_get_device_or_master_token(device_name)* - get the device token from ACL if set. If not, get the master token. If none of the two is set return 0.
 
