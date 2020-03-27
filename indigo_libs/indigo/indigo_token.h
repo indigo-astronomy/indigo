@@ -50,9 +50,9 @@ extern bool indigo_remove_device_token(const char *device);
  */
 extern indigo_token indigo_get_device_token(const char *device);
 
-/** Get master token if set else get device access token or 0 if not set
+/** Get device token if set else get master access token or 0 if none set
  */
-extern indigo_token indigo_get_token(const char *device);
+extern indigo_token indigo_get_device_or_master_token(const char *device);
 
 /** Get master token
  */
