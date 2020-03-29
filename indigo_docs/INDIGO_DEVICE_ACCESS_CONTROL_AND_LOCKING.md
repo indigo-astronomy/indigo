@@ -1,5 +1,5 @@
 # INDIGO Device Access Control and Exclusive Lock System
-Revision: 27.03.2020 (draft)
+Revision: 29.03.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -22,7 +22,7 @@ If the device has **device token** set on the server, this device is controllabl
 This is the default access for the INDIGO device. If there is no **device token** set on the server this device is controllable by every client. However every client can claim exclusive control access of the public device.
 
 ### Locked Devices
-These are public devices that are locked by some client with a client specified token. The lock is obtained by setting the token option in the device connect property request and released when the device is disconnected.
+These are public devices that are locked by some client with a client specified token. The lock is obtained by setting the *token* attribute in the device connect property request (see [PROTOCOLS.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROTOCOLS.md)) and released when the device is disconnected.
 
 
 ## Tokens
@@ -47,7 +47,7 @@ On the client the **master token** has no strict dedication. It can be used in t
 ### Device Tokens
 **Device tokens** are shared between the server and the client. The client must know the particular device token, set on the server, to be able to control this device, unless the client has the **master token**.
 
-It is important to note that **protected devices** can not be exclusively locked. Only **public devices** can be locked at connect, if the connection request has **token** set. This will set temporary **device token** on the server which will be valid until the device is disconnected.
+It is important to note that **protected devices** can not be exclusively locked. Only **public devices** can be locked at connect, if the connection request has *token* attribute set. This will set temporary **device token** on the server which will be valid until the device is disconnected.
 
 ## INDIGO Access Control List
 
@@ -75,7 +75,17 @@ INDIGO supports internal token based ACL that can be handled by several calls. A
 
 - *indigo_load_device_tokens_from_file(file_name)* - Load ACL from file.
 
+The formal function declarations are available in [indigo_token.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_token.h)
+
+### Usage Examples
+
 Example of functions usage can be found in *indigo_server*, *indigo_prop_tool* or *indigo_control_panel* source code.
+
+1. [indigo_server/indigo_server.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_server/indigo_server.c) - the INDIGO server
+
+1. [indigo_tools/indigo_prop_tool.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c) - Command line property management tool
+
+1. [INDIGO Control Panel](https://github.com/indigo-astronomy/control-panel) - Official Linux and Windows Control panel using QT framework
 
 ## Access Control File Format
 The ACL file has a very simple syntax. Lines starting with '#' are ignored.
@@ -113,3 +123,5 @@ Server ACL file example:
 12FA3213 Dome Dragonfly
 12FA3213 Dragonfly Controller
 ```
+
+The proposed file name extension is '.iacl' standing for 'INDIGO Access Control List'

@@ -50,13 +50,13 @@ In case of successful handshake for version 2.0 the following extensions can be 
 
 4. Every property and every item may have optional attribute 'hints' containing presentation hints in CSS declaration syntax (see below for the list of defined properties and values).
 
-5. Every newXXXVector request may contain 'token' attribute containing client token used to allow write access to the locked device. 
+5. Every newXXXVector request may contain 'token' attribute containing client token used to allow write access to the protected or locked device. Please see: [INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
 
 If protocol version 2.0 is used, INDIGO property and item names are used (more gramatically and semantically consistent),
 while if version 1.7 is used, names of  commonly used names are maped to their INDI counter parts.  Also "Idle" property state is mapped
 to "Ok" state ("Idle" state is not used as a property state in INDIGO, just as a light item value).
 
-## INDIGO JSON protocol 
+## INDIGO JSON protocol
 
 JSON protocol offers the same features as XML version 2.0 protocol, but can be more confortable for a particular purpose,
 e.g. javascript client used by web applications or .net client used by ASCOM drivers. Messages can be exchanged either
