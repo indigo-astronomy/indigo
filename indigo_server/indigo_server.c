@@ -927,6 +927,12 @@ static void server_main() {
 			indigo_reshare_remote_devices = true;
 			indigo_start_subprocess(executable, NULL);
 			i++;
+		} else if ((!strcmp(server_argv[i], "-T") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {
+			/* just skip it - handled above */
+			i++;
+		} else if ((!strcmp(server_argv[i], "-a") || !strcmp(server_argv[i], "--acl-file")) && i < server_argc - 1) {
+			/* just skip it - handled above */
+			i++;
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
 		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
