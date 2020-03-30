@@ -424,15 +424,15 @@ static char *execute_query(char *command, ...) {
 
 static void check_versions(indigo_device *device) {
 	while (true) {
-		pthread_mutex_lock(&install_property_mutex);
 		bool redefine = false;
 		char *line = execute_query("s_rpi_ctrl.sh --list-available-versions");
 		if (line && strlen(line) > 0) {
 			if (install_property) {
 				indigo_delete_property(device, install_property, NULL);
-				indigo_release_property(install_property);
 				redefine = true;
 			}
+			pthread_mutex_lock(&install_property_mutex);
+			if (redefine) indigo_release_property(install_property);
 			install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
 			install_property->count = 0;
 			char *pnt, *versions[10] = { strtok_r(line, " ", &pnt) };
@@ -462,11 +462,10 @@ static void check_versions(indigo_device *device) {
 				install_property->count++;
 				versions[ii] = NULL;
 			}
+			pthread_mutex_unlock(&install_property_mutex);
 			free(line);
+			if (redefine) indigo_define_property(device, install_property, NULL);
 		}
-		if (redefine)
-			indigo_define_property(device, install_property, NULL);
-		pthread_mutex_unlock(&install_property_mutex);
 		indigo_usleep(10 * 60 * ONE_SECOND_DELAY);
 	}
 }
