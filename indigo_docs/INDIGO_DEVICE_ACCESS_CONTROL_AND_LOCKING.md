@@ -5,7 +5,7 @@ Author: **Rumen G.Bogdanovski**
 
 e-mail: *rumen@skyarchive.org*
 
-**IMPORTANT: This functionality is still considered experimental and may be a subject of changes.**
+**IMPORTANT: This functionality is still considered experimental and may be a subject to changes.**
 
 ## Introduction
 
