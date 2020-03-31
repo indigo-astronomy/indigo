@@ -531,7 +531,7 @@ static indigo_result attach(indigo_device *device) {
 			char *pnt, *token = strtok_r(line, "\t", &pnt);
 			if (token)
 				strncpy(wifi_ap_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
-			token = strtok_r(NULL, " ", &pnt);
+			token = strtok_r(NULL, "\t", &pnt);
 			if (token)
 				strncpy(wifi_ap_property->items[1].text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
