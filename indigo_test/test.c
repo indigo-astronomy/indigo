@@ -137,8 +137,6 @@ int main(int argc, const char * argv[]) {
 	indigo_start();
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
 
-	indigo_load_device_tokens_from_file("test.acl");
-
 
 	indigo_server_entry *server;
 	indigo_attach_client(&test);
