@@ -182,3 +182,28 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 	fclose(fp);
 	return true;
 }
+
+bool indigo_save_device_tokens_to_file(const char *file_name) {
+	FILE* fp;
+	char buffer[INDIGO_VALUE_SIZE + 50];
+
+	fp = fopen(file_name, "w");
+	if (fp == NULL) {
+		INDIGO_ERROR(indigo_error("ACL: Can not open ACL file '%s' for writing", file_name));
+		return false;
+	}
+
+	INDIGO_DEBUG(indigo_debug("ACL: Saving ACL to file '%s'", file_name));
+	fprintf(fp, "# Device ACL saved by INDIGO\n");
+	for (int i = 0; i < MAX_TOKENS; i++) {
+		if (tokens[i].device[0] != '\0') {
+			if (fprintf(fp, "%8X %s\n", tokens[i].token, tokens[i].device) < 0) {
+				INDIGO_ERROR(indigo_error("ACL: Can not save ACL to file '%s'", file_name));
+				fclose(fp);
+				return false;
+			}
+		}
+	}
+	fclose(fp);
+	return true;
+}
