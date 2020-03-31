@@ -1,9 +1,11 @@
 # INDIGO Device Access Control and Exclusive Lock System
-Revision: 29.03.2020 (draft)
+Revision: 31.03.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
 e-mail: *rumen@skyarchive.org*
+
+**IMPORTANT: This functionality is still considered experimental and may be a subject of changes.**
 
 ## Introduction
 
@@ -59,7 +61,7 @@ On the client the device ACL is like an internal password storage, that will be 
 
 INDIGO supports internal token based device ACL that can be handled by several calls. As mentioned above servers and clients have separate device ACLs but they are handled by the same framework functions:
 
-- *indigo_add_device_token(device_name, token)* - add device and token to the DACL
+- *indigo_add_device_token(device_name, token)* - add device and token to the DACL. If the device exists, the token will be updated.
 
 - *indigo_remove_device_token(device_name)* - remove the device from the DACL. On server it means that the device will not be protected.
 
@@ -73,7 +75,9 @@ INDIGO supports internal token based device ACL that can be handled by several c
 
 - *indigo_clear_device_tokens()* - clear the whole device ACL
 
-- *indigo_load_device_tokens_from_file(file_name)* - Load device ACL from file.
+- *indigo_load_device_tokens_from_file(file_name)* - Load device ACL from file. Existing list will not be removed, read tokens will be added to the list (or updated if exist).
+
+- *indigo_save_device_tokens_to_file(file_name)* - save DACL to file.
 
 The formal function declarations are available in [indigo_token.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_token.h)
 

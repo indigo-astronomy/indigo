@@ -43,7 +43,7 @@ typedef uint64_t indigo_token;
  */
 indigo_token indigo_string_to_token(const char *token_string);
 
-/** Add device token to the list
+/** Add device and token to the list, if the device exists, token will be updated
  */
 extern bool indigo_add_device_token(const char *device, indigo_token token);
 
