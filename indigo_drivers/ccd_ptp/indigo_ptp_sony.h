@@ -65,6 +65,8 @@ typedef enum {
 	ptp_property_sony_Capture = 0xD2C2,
 	ptp_property_sony_Movie = 0xD2C8,
 	ptp_property_sony_StillImage = 0xD2C7,
+	ptp_property_sony_ZoomState = 0xD22D,
+	ptp_property_sony_ZoomRatio = 0xD22F,
 } ptp_property_sony_code;
 
 typedef struct {
