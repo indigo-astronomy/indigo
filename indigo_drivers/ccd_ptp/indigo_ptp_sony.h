@@ -60,6 +60,7 @@ typedef enum {
 	ptp_property_sony_PictureEffect = 0xD21B,
 	ptp_property_sony_ABFilter = 0xD21C,
 	ptp_property_sony_ISO = 0xD21E,
+	ptp_property_sony_PCRemoteSaveDest = 0xD222,
 	ptp_property_sony_Autofocus = 0xD2C1,
 	ptp_property_sony_Capture = 0xD2C2,
 	ptp_property_sony_Movie = 0xD2C8,
