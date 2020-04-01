@@ -80,6 +80,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		case ptp_property_sony_ISO:	return DSLR_ISO_PROPERTY_NAME;
 		case ptp_property_sony_ImageSize: return CCD_MODE_PROPERTY_NAME;
 		case ptp_property_sony_PictureEffect: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
+		case ptp_property_sony_PCRemoteSaveDest: return "ADV_PCRemoteSaveDest";
 	}
 	return ptp_property_code_name(code);
 }
@@ -102,6 +103,7 @@ char *ptp_property_sony_code_label(uint16_t code) {
 		case ptp_property_sony_Capture: return "Capture_Sony";
 		case ptp_property_sony_Movie: return "Movie_Sony";
 		case ptp_property_sony_StillImage: return "StillImage_Sony";
+		case ptp_property_sony_PCRemoteSaveDest: return "PCRemoteSaveDest_Sony";
 	}
 	return ptp_property_code_label(code);
 }
@@ -351,6 +353,14 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 					sprintf(label, "1/%d", b);
 			}
 			return label;
+		}
+		case ptp_property_sony_PCRemoteSaveDest: {
+			switch (code) {
+				case 0x01: return "PC";
+				case 0x10: return "Camera";
+				case 0x11: return "PC+Camera";
+			}
+			break;
 		}
 	}
 	return ptp_property_value_code_label(device, property, code);
