@@ -80,6 +80,10 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		case ptp_property_sony_ISO:	return DSLR_ISO_PROPERTY_NAME;
 		case ptp_property_sony_ImageSize: return CCD_MODE_PROPERTY_NAME;
 		case ptp_property_sony_PictureEffect: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
+		case ptp_property_sony_BatteryLevel: return DSLR_BATTERY_LEVEL_PROPERTY_NAME;
+		case ptp_property_sony_PCRemoteSaveDest: return "ADV_PCRemoteSaveDest";
+		case ptp_property_sony_ZoomState: return "ADV_ZoomState";
+		case ptp_property_sony_ZoomRatio: return "ADV_ZoomRatio";
 	}
 	return ptp_property_code_name(code);
 }
@@ -95,6 +99,7 @@ char *ptp_property_sony_code_label(uint16_t code) {
 		case ptp_property_sony_AspectRatio: return "Aspect ratio";
 		case ptp_property_sony_FocusStatus: return "FocusStatus_Sony";
 		case ptp_property_sony_ExposeIndex: return "ExposeIndex_Sony";
+		case ptp_property_sony_BatteryLevel: return "BatteryLevel";
 		case ptp_property_sony_PictureEffect: return "Picture effect";
 		case ptp_property_sony_ABFilter: return "ABFilter_Sony";
 		case ptp_property_sony_ISO: return "ISO";
@@ -102,6 +107,9 @@ char *ptp_property_sony_code_label(uint16_t code) {
 		case ptp_property_sony_Capture: return "Capture_Sony";
 		case ptp_property_sony_Movie: return "Movie_Sony";
 		case ptp_property_sony_StillImage: return "StillImage_Sony";
+		case ptp_property_sony_PCRemoteSaveDest: return "PCRemoteSaveDest_Sony";
+		case ptp_property_sony_ZoomState: return "ZoomState_Sony";
+		case ptp_property_sony_ZoomRatio: return "ZoomRatio_Sony";
 	}
 	return ptp_property_code_label(code);
 }
@@ -351,6 +359,22 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 					sprintf(label, "1/%d", b);
 			}
 			return label;
+		}
+		case ptp_property_sony_PCRemoteSaveDest: {
+			switch (code) {
+				case 0x01: return "PC";
+				case 0x10: return "Camera";
+				case 0x11: return "PC+Camera";
+			}
+			break;
+		}
+		case ptp_property_sony_ZoomState: {
+			switch (code) {
+				case 0: "Normal";
+				case 1: "x1.0";
+				case 2: "Zooming";
+			}
+			break;
 		}
 	}
 	return ptp_property_value_code_label(device, property, code);
@@ -866,7 +890,7 @@ bool ptp_sony_exposure(indigo_device *device) {
 		}
 		bool complete_detected = false;
 		while (true) {
-			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
+			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE))
 				break;
 			// SONY a9 does not notify ObjectAdded
 			ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);

@@ -60,10 +60,13 @@ typedef enum {
 	ptp_property_sony_PictureEffect = 0xD21B,
 	ptp_property_sony_ABFilter = 0xD21C,
 	ptp_property_sony_ISO = 0xD21E,
+	ptp_property_sony_PCRemoteSaveDest = 0xD222,
 	ptp_property_sony_Autofocus = 0xD2C1,
 	ptp_property_sony_Capture = 0xD2C2,
 	ptp_property_sony_Movie = 0xD2C8,
 	ptp_property_sony_StillImage = 0xD2C7,
+	ptp_property_sony_ZoomState = 0xD22D,
+	ptp_property_sony_ZoomRatio = 0xD22F,
 } ptp_property_sony_code;
 
 typedef struct {
