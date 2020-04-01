@@ -890,7 +890,7 @@ bool ptp_sony_exposure(indigo_device *device) {
 		}
 		bool complete_detected = false;
 		while (true) {
-			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
+			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE))
 				break;
 			// SONY a9 does not notify ObjectAdded
 			ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
