@@ -2,6 +2,17 @@
 
 All notable changes to INDIGO framewark will be documented in this file.
 
+## [2.0-120] - Sat Apr 04 2020
+### Overall:
+- New experimental feature: Add device access control
+- indigo_server:
+    - Fix deadlock on indigosky
+    - Fix password trucation bug
+
+### Driver Fixes:
+- indigo_ccd_ptp: Sony camera related fixes
+- indigo_mount_temma: Side of pier fixed
+
 ## [2.0-118] - Sun Mar 22 2020
 
 ### Overall:
