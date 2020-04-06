@@ -1,5 +1,5 @@
 # INDIGO Device Access Control and Exclusive Lock System
-Revision: 31.03.2020 (draft)
+Revision: 06.04.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -24,7 +24,7 @@ If the device has **device token** set on the server, this device is controllabl
 This is the default access for the INDIGO device. If there is no **device token** set on the server this device is controllable by every client. However every client can claim exclusive control access of the public device.
 
 ### Locked Devices
-These are public devices that are locked by some client with a client specified token. The lock is obtained by setting the *token* attribute in the device connect property request (see [PROTOCOLS.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROTOCOLS.md)) and released when the device is disconnected.
+These are public devices that are locked by some client with a client specified token. The lock is obtained by setting the *token* attribute in the device connect property request (see [PROTOCOLS.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROTOCOLS.md)) and released when the device is disconnected. The server must have **master token** set, otherwise exclusive lock will have no effect. On the other hand the exclusive lock can be overridden by using the server **master token**.
 
 
 ## Tokens
@@ -43,13 +43,15 @@ On the server **master token** is used to override the device locks in two cases
 It is important to note that if the server has no **master token** set, **public devices** can not be locked and no devices can be **protected**, even if they have **device token** set. In other words to enable access control on the server, it must have **master token** set.
 
 On the client the **master token** has no strict dedication. It can be used in the following situations:
-- To get exclusive lock of the **public devices** who do not have **device tokens** set on the client.
-- To get high priority access to the devices on the server if it matches the server **master token**. Any client that has the server **master token** can override any exclusive locks or device protection and can control any device.
+- To get exclusive lock of the **public devices** which do not have **device tokens** set on the client.
+- To get high priority access to the devices on the server, if it matches the server **master token**. Any client that has the server **master token** can override any exclusive locks or device protection and can control any device.
 
 ### Device Tokens
-**Device tokens** are shared between the server and the client. The client must know the particular device token, set on the server, to be able to control this device, unless the client has the **master token**.
+**Device tokens** are shared between the server and the client. The client must know the particular device token, set on the server, to be able to control this device, unless the client has the server **master token**.
 
 It is important to note that **protected devices** can not be exclusively locked. Only **public devices** can be locked at connect, if the connection request has *token* attribute set. This will set temporary **device token** on the server which will be valid until the device is disconnected.
+
+If the device is public on the server and has a **device token** set on the client, the client will lock the device upon connect with this token.
 
 ## INDIGO Device Access Control List
 
@@ -77,7 +79,7 @@ INDIGO supports internal token based device ACL that can be handled by several c
 
 - *indigo_load_device_tokens_from_file(file_name)* - Load device ACL from file. Existing list will not be removed, read tokens will be added to the list (or updated if exist).
 
-- *indigo_save_device_tokens_to_file(file_name)* - save DACL to file.
+- *indigo_save_device_tokens_to_file(file_name)* - save device ACL to file.
 
 The formal function declarations are available in [indigo_token.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_token.h)
 
