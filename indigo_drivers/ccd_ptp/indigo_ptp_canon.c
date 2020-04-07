@@ -1295,6 +1295,7 @@ bool ptp_canon_initialise(indigo_device *device) {
 static bool set_number_property(indigo_device *device, uint16_t code, uint64_t value) {
 	uint8_t buffer[1024], *target = buffer + 2 * sizeof(uint32_t);
 	if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
+		CANON_PRIVATE_DATA->image_format = value;
 		uint64_t i1 = (value >> 32) & 0xFFFFFFFF;
 		uint64_t i2 = value & 0xFFFFFFFF;
 		int count = i1 == 0 ? 1 : 2;
@@ -1436,12 +1437,22 @@ bool ptp_canon_exposure(indigo_device *device) {
 		}
 		while (true) {
 			ptp_canon_get_event(device);
-			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
+			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE))
 				break;
 			indigo_usleep(100000);
 		}
 	}
-	return result;
+	if (PRIVATE_DATA->abort_capture) {
+		if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		}
+		if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
+			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		}
+	}
+	return result && !PRIVATE_DATA->abort_capture;
 }
 
 bool ptp_canon_liveview(indigo_device *device) {
