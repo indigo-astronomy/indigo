@@ -1452,7 +1452,7 @@ bool ptp_canon_exposure(indigo_device *device) {
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 	}
-	return result;
+	return result && !PRIVATE_DATA->abort_capture;
 }
 
 bool ptp_canon_liveview(indigo_device *device) {
