@@ -1056,9 +1056,19 @@ bool ptp_nikon_exposure(indigo_device *device) {
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 		while (true) {
-			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE)
+			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE))
 				break;
 			indigo_usleep(100000);
+		}
+	}
+	if (PRIVATE_DATA->abort_capture) {
+		if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		}
+		if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
+			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 	}
 	return result;
