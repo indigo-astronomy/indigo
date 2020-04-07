@@ -49,6 +49,7 @@ status:
 
 install: status libindigo
 	cp $(BUILD_LIB)/libindigo.$(SOEXT) $(INSTALL_LIB)
+	cp $(BUILD_LIB)/libindigo.a $(INSTALL_LIB)
 ifeq ($(OS_DETECTED),Darwin)
 	cp $(LIBUSB) $(INSTALL_LIB)
 endif
@@ -57,6 +58,7 @@ endif
 
 uninstall: status
 	rm -f $(INSTALL_LIB)/libindigo.$(SOEXT)
+	rm -f $(INSTALL_LIB)/libindigo.a
 ifeq ($(OS_DETECTED),Darwin)
 	rm -f $(INSTALL_LIB)/libusb-1.0.dylib
 endif
