@@ -912,7 +912,7 @@ bool ptp_sony_exposure(indigo_device *device) {
 				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 			}
 		}
-		return true;
+		return !PRIVATE_DATA->abort_capture;
 	}
 	return false;
 }
