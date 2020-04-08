@@ -648,6 +648,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
 					meade_get_coords(device);
 				}
+				// initialize target
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
