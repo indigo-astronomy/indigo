@@ -1370,6 +1370,8 @@ bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 
 bool ptp_canon_exposure(indigo_device *device) {
 	bool result = false;
+	if (ptp_operation_supported(device, ptp_operation_canon_SetUILock))
+		ptp_transaction_0_0(device, ptp_operation_canon_SetUILock);
 	if (ptp_operation_supported(device, ptp_operation_canon_RemoteReleaseOn)) {
 		int delay = 0;
 		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
@@ -1452,6 +1454,8 @@ bool ptp_canon_exposure(indigo_device *device) {
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 	}
+	if (ptp_operation_supported(device, ptp_operation_canon_ResetUILock))
+		ptp_transaction_0_0(device, ptp_operation_canon_ResetUILock);
 	return result && !PRIVATE_DATA->abort_capture;
 }
 
