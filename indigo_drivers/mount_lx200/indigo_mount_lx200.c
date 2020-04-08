@@ -256,7 +256,7 @@ static void meade_get_coords(indigo_device *device) {
 		if (meade_command(device, ":X34#", response, sizeof(response), 0))
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = (response[1] == '5' || response[2] == '5') ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 	} else {
-		if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target) < 1.0/3600.0 && fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target) < 1.0/3600.0)
+		if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target) < 2.0/60.0 && fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target) < 2.0/60.0)
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
