@@ -799,7 +799,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-				PRIVATE_DATA->position_timer = NULL;
 				meade_command(device, ":Q#", NULL, 0, 0);
 				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
