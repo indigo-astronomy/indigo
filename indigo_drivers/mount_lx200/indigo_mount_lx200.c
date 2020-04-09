@@ -171,6 +171,42 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 	return true;
 }
 
+static int meade_readout_progress(indigo_device *device) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "readout progress part...");
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	struct timeval tv;
+	char c;
+	char response[128];
+	// read progress
+	int index = 0;
+	int timeout = 60;
+	while (index < sizeof(response)) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		tv.tv_sec = timeout;
+		tv.tv_usec = 100000;
+		timeout = 0;
+		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+		if (result <= 0)
+			break;
+		result = read(PRIVATE_DATA->handle, &c, 1);
+		if (result < 1) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+		if (c < 0)
+			c = ':';
+		if (c == '#')
+			break;
+		response[index++] = c;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Progress width: %d", index);
+	return index;
+}
+
 //static bool gemini_command(indigo_device *device, char *command, char *response, int max) {
 //	char buffer[128];
 //	uint8_t checksum = command[0];
@@ -220,7 +256,7 @@ static void meade_get_coords(indigo_device *device) {
 		if (meade_command(device, ":X34#", response, sizeof(response), 0))
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = (response[1] == '5' || response[2] == '5') ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 	} else {
-		if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target) < 1.0/3600.0 && fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target) < 1.0/3600.0)
+		if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target) < 2.0/60.0 && fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target) < 2.0/60.0)
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -612,6 +648,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
 					meade_get_coords(device);
 				}
+				// initialize target
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -763,7 +802,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-				PRIVATE_DATA->position_timer = NULL;
 				meade_command(device, ":Q#", NULL, 0, 0);
 				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
@@ -910,9 +948,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			time_t secs = time(NULL);
 			struct tm tm = *localtime(&secs);
 			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+			if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
+				// :SCMM/DD/YY# returns two delimiters response:
+				// "1Updating Planetary Data#                                #"
+				// readout progress part
+				meade_readout_progress(device);
 				if (PRIVATE_DATA->use_dst_commands) {
 					sprintf(command, ":SH%d#", tm.tm_isdst);
 					meade_command(device, command, NULL, 0, 0);
@@ -947,9 +989,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			struct tm tm = *localtime(&secs);
 			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+			if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
+				// :SCMM/DD/YY# returns two delimiters response:
+				// "1Updating Planetary Data#                                #"
+				// readout progress part
+				meade_readout_progress(device);
 				if (PRIVATE_DATA->use_dst_commands) {
 					sprintf(command, ":SH%d#", tm.tm_isdst);
 					meade_command(device, command, NULL, 0, 0);
