@@ -902,7 +902,17 @@ bool ptp_sony_exposure(indigo_device *device) {
 			}
 			indigo_usleep(100000);
 		}
-		return true;
+		if (PRIVATE_DATA->abort_capture) {
+			if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
+				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			}
+			if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
+				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			}
+		}
+		return !PRIVATE_DATA->abort_capture;
 	}
 	return false;
 }
