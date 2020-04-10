@@ -43,13 +43,11 @@
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_aux_driver.h>
 
-#define DEFAULT_BAUDRATE            "9600"
-
-#define ROTATOR_SPEED 1
+#define DEFAULT_BAUDRATE "9600"
 
 #define MAX_DEVICES 1
 
-#define PRIVATE_DATA                   ((lunatico_private_data *)device->private_data)
+#define PRIVATE_DATA                   ((aag_private_data *)device->private_data)
 
 #define AUX_RELAYS_GROUP	"Relay control"
 
@@ -114,9 +112,6 @@ typedef struct {
 	float firmware;
 	bool udp;
 	pthread_mutex_t port_mutex;
-	bool relay_active[8];
-	indigo_timer *relay_timers[8];
-	pthread_mutex_t relay_mutex;
 	indigo_timer *sensors_timer;
 
 	indigo_property *outlet_names_property,
@@ -124,14 +119,14 @@ typedef struct {
 	                *gpio_outlet_pulse_property,
 	                *sensor_names_property,
 	                *sensors_property;
-} lunatico_private_data;
+} aag_private_data;
 
 typedef struct {
 	indigo_device *device;
-	lunatico_private_data *private_data;
-} lunatico_device_data;
+	aag_private_data *private_data;
+} aag_device_data;
 
-static lunatico_device_data device_data[MAX_DEVICES] = {0};
+static aag_device_data device_data[MAX_DEVICES] = {0};
 
 static void create_port_device(int device_index);
 static void delete_port_device(int device_index);
@@ -237,7 +232,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 }
 
 
-bool aag_is_cloudwatcher(indigo_device *device, char *name) {
+static bool aag_is_cloudwatcher(indigo_device *device, char *name) {
 	char buffer[BLOCK_SIZE * 2];
 	bool r = aag_command(device, "A!", buffer, 2, 0);
 
@@ -253,13 +248,13 @@ bool aag_is_cloudwatcher(indigo_device *device, char *name) {
 	return true;
 }
 
-bool aag_reset_buffers(indigo_device *device) {
+static bool aag_reset_buffers(indigo_device *device) {
 	bool r = aag_command(device, "z!", NULL, 0, 0);
 	if (!r) return false;
 	return true;
 }
 
-bool aag_get_firmware_version(indigo_device *device, char *version) {
+static bool aag_get_firmware_version(indigo_device *device, char *version) {
 	if (version == NULL) return false;
 
 	char buffer[BLOCK_SIZE * 2];
@@ -273,7 +268,7 @@ bool aag_get_firmware_version(indigo_device *device, char *version) {
 	return true;
 }
 
-bool aag_get_serial_number(indigo_device *device, char *serial_number) {
+static bool aag_get_serial_number(indigo_device *device, char *serial_number) {
 	if (serial_number == NULL) return false;
 
 	char buffer[BLOCK_SIZE * 2];
@@ -287,7 +282,7 @@ bool aag_get_serial_number(indigo_device *device, char *serial_number) {
 }
 
 
-bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temperature, int *ldr_value, int *rain_sensor_temperature) {
+static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temperature, int *ldr_value, int *rain_sensor_temperature) {
 	int zenerV;
 	int ambTemp = -10000;
 	int ldrRes;
@@ -329,7 +324,7 @@ bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temp
 }
 
 
-bool aag_get_ir_sky_temperature(indigo_device *device, int *temp) {
+static bool aag_get_ir_sky_temperature(indigo_device *device, int *temp) {
 	char buffer[BLOCK_SIZE * 2];
 
 	bool r = aag_command(device, "S!", buffer, 2, 0);
@@ -341,7 +336,7 @@ bool aag_get_ir_sky_temperature(indigo_device *device, int *temp) {
 	return true;
 }
 
-bool aag_get_sensor_temperature(indigo_device *device, int *temp) {
+static bool aag_get_sensor_temperature(indigo_device *device, int *temp) {
 	char buffer[BLOCK_SIZE * 2];
 
 	bool r = aag_command(device, "T!", buffer, 2, 0);
@@ -353,7 +348,7 @@ bool aag_get_sensor_temperature(indigo_device *device, int *temp) {
 	return true;
 }
 
-bool aag_get_rain_frequency(indigo_device *device, int *rain_freqency) {
+static bool aag_get_rain_frequency(indigo_device *device, int *rain_freqency) {
 	char buffer[BLOCK_SIZE * 2];
 
 	bool r = aag_command(device, "E!", buffer, 2, 0);
@@ -365,7 +360,7 @@ bool aag_get_rain_frequency(indigo_device *device, int *rain_freqency) {
 	return true;
 }
 
-bool set_pwm_duty_cycle(indigo_device *device, int pwm_duty_cycle) {
+static bool set_pwm_duty_cycle(indigo_device *device, int pwm_duty_cycle) {
 	if (pwm_duty_cycle < 0) pwm_duty_cycle = 0;
 	if (pwm_duty_cycle > 1023) pwm_duty_cycle = 1023;
 
@@ -399,7 +394,7 @@ bool set_pwm_duty_cycle(indigo_device *device, int pwm_duty_cycle) {
 	return true;
 }
 
-bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
+static bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
 	char buffer[BLOCK_SIZE * 2];
 
 	bool r = aag_command(device, "Q!", buffer, 2, 0);
@@ -411,7 +406,7 @@ bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
 	return true;
 }
 
-bool aag_get_electrical_constants(
+static bool aag_get_electrical_constants(
 		indigo_device *device,
 		float *zener_constant,
 		float *ldr_max_res,
@@ -439,7 +434,7 @@ bool aag_get_electrical_constants(
 	return true;
 }
 
-float aggregate_floats(float values[], int num) {
+static float aggregate_floats(float values[], int num) {
 	float average = 0.0;
 
 	for (int i = 0; i < num; i++) {
@@ -472,7 +467,7 @@ float aggregate_floats(float values[], int num) {
 	return avg;
 }
 
-int aggregate_integers(int values[], int num) {
+static int aggregate_integers(int values[], int num) {
 	float fvalues[num];
 	for (int i = 0; i < num; i++) {
 		fvalues[i] = (float)values[i];
@@ -481,7 +476,7 @@ int aggregate_integers(int values[], int num) {
 }
 
 // --------------------------------------------------------------------------------- Common stuff
-static bool lunatico_open(indigo_device *device) {
+static bool aag_open(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
 	if (DEVICE_CONNECTED) return false;
 
@@ -517,7 +512,7 @@ static bool lunatico_open(indigo_device *device) {
 	return true;
 }
 
-static void lunatico_close(indigo_device *device) {
+static void aag_close(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
 	if (!DEVICE_CONNECTED) return;
 
@@ -533,7 +528,7 @@ static void lunatico_close(indigo_device *device) {
 
 // --------------------------------------------------------------------------------- INDIGO AUX RELAYS device implementation
 
-static int lunatico_init_properties(indigo_device *device) {
+static int aag_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------------- AUTHENTICATION
 	//AUTHENTICATION_PROPERTY->hidden = false;
 	//AUTHENTICATION_PROPERTY->count = 1;
@@ -644,9 +639,8 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->relay_mutex, NULL);
 		// --------------------------------------------------------------------------------
-		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
+		if (aag_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_aux_enumerate_properties(device, NULL, NULL);
 	}
@@ -666,7 +660,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				aag_reset_buffers(device);
-				if (lunatico_open(device)) {
+				if (aag_open(device)) {
 					char board[LUNATICO_CMD_LEN] = "N/A";
 					char firmware[LUNATICO_CMD_LEN] = "N/A";
 					char serial_number[LUNATICO_CMD_LEN] = "N/A";
@@ -687,7 +681,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
-						lunatico_close(device);
+						aag_close(device);
 					}
 				}
 			}
@@ -699,7 +693,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 
-				lunatico_close(device);
+				aag_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -790,7 +784,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	lunatico_close(device);
+	aag_close(device);
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
@@ -823,9 +817,9 @@ static void create_port_device(int device_index) {
 	if (device_data[device_index].device != NULL) return;
 
 	if (device_data[device_index].private_data == NULL) {
-		device_data[device_index].private_data = malloc(sizeof(lunatico_private_data));
+		device_data[device_index].private_data = malloc(sizeof(aag_private_data));
 		assert(device_data[device_index].private_data != NULL);
-		memset(device_data[device_index].private_data, 0, sizeof(lunatico_private_data));
+		memset(device_data[device_index].private_data, 0, sizeof(aag_private_data));
 		pthread_mutex_init(&device_data[device_index].private_data->port_mutex, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
