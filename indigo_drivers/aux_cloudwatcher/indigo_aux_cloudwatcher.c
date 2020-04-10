@@ -103,9 +103,27 @@
 #define AUX_GPIO_SENSOR_7_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 6)
 #define AUX_GPIO_SENSOR_8_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 7)
 
-typedef struct {
 
-} logical_device_data;
+typedef struct {
+	int power_voltage;  ///< Internal Supply Voltage
+	int ir_sky_temperature;     ///< IR Sky Temperature
+	int ir_sensor_temperature;  ///< IR Sensor Temperature
+	int ambient_temperature; ///< Ambient temperature. In newer models there is no ambient temperature sensor so -10000 is returned.
+	int rain_frequency;    ///< Rain frequency
+	int rain_heater; ///< PWM Duty Cycle
+	int rain_sensor_temperature; ///< Rain sensor temperature (used as ambient temperature in models where there is no ambient temperature sensor)
+	int ldr;               ///< Ambient light sensor
+	int switch_status;      ///< The status of the internal switch
+	int wind_speed;         ///< The wind speed measured by the anemometer
+	float read_cycle;       ///< Time used in the readings
+	// ??? Shall I keep those?
+	int totalReadings;     ///< Total number of readings taken by the Cloud Watcher Controller
+	int internalErrors;    ///< Total number of internal errors
+	int firstByteErrors;   ///< First byte errors count
+	int secondByteErrors;  ///< Second byte errors count
+	int pecByteErrors;     ///< PEC byte errors count
+	int commandByteErrors; ///< Command byte errors count
+} cloudwatcher_data;
 
 typedef struct {
 	int handle;
@@ -434,6 +452,50 @@ static bool aag_get_electrical_constants(
 	return true;
 }
 
+static bool aag_is_anemometer_present(indigo_device *device, bool *present) {
+	if (!present) return false;
+
+	if (PRIVATE_DATA->firmware < 5.0) {
+		*present = false;
+		return true;
+	}
+
+	char buffer[BLOCK_SIZE * 2];
+	bool r = aag_command(device, "v!", buffer, 2, 0);
+	if (!r) return false;
+
+	int ipresent;
+	int res = sscanf(buffer, "!v %d", &ipresent);
+	if (res != 1) return false;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ipresent = %d", ipresent);
+	*present = (ipresent == 1) ? true : false;
+
+	return true;
+}
+
+static bool aag_get_wind_speed(indigo_device *device, int *wind_speed) {
+	if (!wind_speed) return false;
+
+	if (PRIVATE_DATA->firmware < 5.0) {
+		*wind_speed = 0;
+		return true;
+	}
+
+	char buffer[BLOCK_SIZE * 2];
+	bool r = aag_command(device, "V!", buffer, 2, 0);
+	if (!r) return false;
+
+	int res = sscanf(buffer, "!w %d", wind_speed);
+	if (res != 1) return false;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "raw_wind_speed = %d", *wind_speed);
+
+	if (true && *wind_speed != 0) *wind_speed = (int)((float)(*wind_speed) * 0.84 + 3);
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "wind_speed = %d", *wind_speed);
+	return true;
+}
+
+
 static float aggregate_floats(float values[], int num) {
 	float average = 0.0;
 
@@ -473,6 +535,76 @@ static int aggregate_integers(int values[], int num) {
 		fvalues[i] = (float)values[i];
 	}
 	return (int)aggregate_floats(fvalues, num);
+}
+
+#define NUMBER_OF_READS 5
+
+static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *cwd) {
+	int skyTemperature[NUMBER_OF_READS];
+	int sensorTemperature[NUMBER_OF_READS];
+	int rainFrequency[NUMBER_OF_READS];
+	int internalSupplyVoltage[NUMBER_OF_READS];
+	int ambientTemperature[NUMBER_OF_READS];
+	int ldrValue[NUMBER_OF_READS];
+	int rainSensorTemperature[NUMBER_OF_READS];
+	int windSpeed[NUMBER_OF_READS];
+
+	int check = 0;
+
+	static int totalReadings = 0;
+	totalReadings++;
+
+	struct timeval begin;
+	gettimeofday(&begin, NULL);
+
+	for (int i = 0; i < NUMBER_OF_READS; i++) {
+		check = aag_get_ir_sky_temperature(device, &skyTemperature[i]);
+		if (!check) return false;
+
+		check = aag_get_sensor_temperature(device, &sensorTemperature[i]);
+		if (!check) return false;
+
+		check = aag_get_rain_frequency(device, &rainFrequency[i]);
+		if (!check) return false;
+
+		check = aag_get_values(device, &internalSupplyVoltage[i], &ambientTemperature[i], &ldrValue[i], &rainSensorTemperature[i]);
+		if (!check) return false;
+
+		check = aag_get_wind_speed(device, &windSpeed[i]);
+		if (!check) return false;
+	}
+
+	struct timeval end;
+	gettimeofday(&end, NULL);
+
+	float rc = (float)(end.tv_sec - begin.tv_sec) + (end.tv_usec - begin.tv_usec) / 1000000.0;
+
+	cwd->read_cycle = rc;
+
+	cwd->ir_sky_temperature      = aggregate_integers(skyTemperature, NUMBER_OF_READS);
+	cwd->ir_sensor_temperature   = aggregate_integers(sensorTemperature, NUMBER_OF_READS);
+	cwd->rain_frequency          = aggregate_integers(rainFrequency, NUMBER_OF_READS);
+	cwd->power_voltage           = aggregate_integers(internalSupplyVoltage, NUMBER_OF_READS);
+	cwd->ambient_temperature     = aggregate_integers(ambientTemperature, NUMBER_OF_READS);
+	cwd->ldr                     = aggregate_integers(ldrValue, NUMBER_OF_READS);
+	cwd->rain_sensor_temperature = aggregate_integers(rainSensorTemperature, NUMBER_OF_READS);
+	cwd->wind_speed              = aggregate_integers(windSpeed, NUMBER_OF_READS);
+	cwd->totalReadings   = totalReadings;
+
+	/*
+	check = getIRErrors(&cwd->firstByteErrors, &cwd->commandByteErrors, &cwd->secondByteErrors, &cwd->pecByteErrors);
+	if (!check) return false;
+
+	cwd->internalErrors = cwd->firstByteErrors + cwd->commandByteErrors + cwd->secondByteErrors + cwd->pecByteErrors;
+	*/
+	check = aag_get_pwm_duty_cycle(device, &cwd->rain_heater);
+	if (!check) return false;
+
+	/*
+	check = getSwitchStatus(&cwd->switchStatus);
+	if (!check) return false;
+	*/
+	return true;
 }
 
 // --------------------------------------------------------------------------------- Common stuff
@@ -610,9 +742,12 @@ static int aag_init_properties(indigo_device *device) {
 }
 
 static void sensors_timer_callback(indigo_device *device) {
-	int sensor_value;
-	int power_voltage, ambient_temperature, ldr_value, rain_sensor_temperature;
-	bool success = aag_get_values(device, &power_voltage, &ambient_temperature, &ldr_value, &rain_sensor_temperature);
+
+	//int power_voltage, ambient_temperature, ldr_value, rain_sensor_temperature;
+	//bool success = aag_get_values(device, &power_voltage, &ambient_temperature, &ldr_value, &rain_sensor_temperature);
+	cloudwatcher_data cwd;
+	bool success = aag_get_cloudwatcher_data(device, &cwd);
+
 	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->sensors_timer);
 }
