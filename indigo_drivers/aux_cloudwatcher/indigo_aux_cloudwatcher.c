@@ -365,6 +365,40 @@ bool aag_get_rain_frequency(indigo_device *device, int *rain_freqency) {
 	return true;
 }
 
+bool set_pwm_duty_cycle(indigo_device *device, int pwm_duty_cycle) {
+	if (pwm_duty_cycle < 0) pwm_duty_cycle = 0;
+	if (pwm_duty_cycle > 1023) pwm_duty_cycle = 1023;
+
+	int new_pwm = pwm_duty_cycle;
+	char command[7] = "Pxxxx!";
+
+	int n = new_pwm / 1000;
+	command[1] = n + '0';
+	new_pwm = new_pwm - n * 1000;
+
+	n = new_pwm / 100;
+	command[2] = n + '0';
+	new_pwm = new_pwm - n * 100;
+
+	n = new_pwm / 10;
+	command[3] = n + '0';
+	new_pwm = new_pwm - n * 10;
+
+	command[4] = new_pwm + '0';
+
+	char buffer[BLOCK_SIZE * 2];
+	bool r = aag_command(device, command, buffer, 2, 0);
+	if (!r) return false;
+
+	int res = sscanf(buffer, "!Q %d", &new_pwm);
+	if (res != 1) return false;
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pwm_duty_cycle = %d, new_pwm = %d", pwm_duty_cycle, new_pwm);
+
+	if (new_pwm != pwm_duty_cycle) return false;
+	return true;
+}
+
 bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
 	char buffer[BLOCK_SIZE * 2];
 
@@ -379,12 +413,12 @@ bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
 
 bool aag_get_electrical_constants(
 		indigo_device *device,
-		float *zenerConstant,
-		float *LDRMaxResistance,
-		float *LDRPullUpResistance,
-		float *rainBeta,
-		float *rainResAt25,
-		float *rainPullUpResistance
+		float *zener_constant,
+		float *ldr_max_res,
+		float *ldr_pull_up_res,
+		float *rain_beta,
+		float *rain_res_at_25,
+		float *rain_pull_up_res
 	) {
 
 	if (PRIVATE_DATA->firmware < 3.0) return false;
@@ -395,14 +429,55 @@ bool aag_get_electrical_constants(
 
 	if (buffer[1] != 'M') return false;
 
-	*zenerConstant        = (256 * buffer[2] + buffer[3]) / 100.0;
-	*LDRMaxResistance     = (256 * buffer[4] + buffer[5]) / 1.0;
-	*LDRPullUpResistance  = (256 * buffer[6] + buffer[7]) / 10.0;
-	*rainBeta             = (256 * buffer[8] + buffer[9]) / 1.0;
-	*rainResAt25          = (256 * buffer[10] + buffer[11]) / 10.0;
-	*rainPullUpResistance = (256 * buffer[12] + buffer[13]) / 10.0;
+	*zener_constant    = (256 * buffer[2] + buffer[3]) / 100.0;
+	*ldr_max_res       = (256 * buffer[4] + buffer[5]) / 1.0;
+	*ldr_pull_up_res   = (256 * buffer[6] + buffer[7]) / 10.0;
+	*rain_beta         = (256 * buffer[8] + buffer[9]) / 1.0;
+	*rain_res_at_25    = (256 * buffer[10] + buffer[11]) / 10.0;
+	*rain_pull_up_res  = (256 * buffer[12] + buffer[13]) / 10.0;
 
 	return true;
+}
+
+float aggregate_floats(float values[], int num) {
+	float average = 0.0;
+
+	for (int i = 0; i < num; i++) {
+		average += values[i];
+	}
+
+	average /= num;
+
+	float std_dev = 0.0;
+
+	for (int i = 0; i < num; i++) {
+		std_dev += (values[i] - average) * (values[i] - average);
+	}
+
+	std_dev /= num;
+	std_dev = sqrt(std_dev);
+
+	float avg  = 0.0;
+	int count = 0;
+
+	for (int i = 0; i < num; i++) {
+		if (fabs(values[i] - average) <= std_dev) {
+			avg += values[i];
+			count++;
+		}
+	}
+	avg /= count;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Average: %f\n", avg);
+
+	return avg;
+}
+
+int aggregate_integers(int values[], int num) {
+	float fvalues[num];
+	for (int i = 0; i < num; i++) {
+		fvalues[i] = (float)values[i];
+	}
+	return (int)aggregate_floats(fvalues, num);
 }
 
 // --------------------------------------------------------------------------------- Common stuff
