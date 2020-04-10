@@ -365,6 +365,18 @@ bool aag_get_rain_frequency(indigo_device *device, int *rain_freqency) {
 	return true;
 }
 
+bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
+	char buffer[BLOCK_SIZE * 2];
+
+	bool r = aag_command(device, "Q!", buffer, 2, 0);
+	if (!r) return false;
+
+	int res = sscanf(buffer, "!Q %d", pwm_duty_cycle);
+	if (res != 1) return false;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pwm_duty_cycle = %d", *pwm_duty_cycle);
+	return true;
+}
+
 bool aag_get_electrical_constants(
 		indigo_device *device,
 		float *zenerConstant,
@@ -526,7 +538,6 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
 }
-
 
 static void sensors_timer_callback(indigo_device *device) {
 	int sensor_value;
