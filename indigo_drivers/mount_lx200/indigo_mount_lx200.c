@@ -171,16 +171,68 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 	return true;
 }
 
-static int meade_readout_progress(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "readout progress part...");
+static bool meade_command_progress(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	struct timeval tv;
 	char c;
-	char response[128];
+	struct timeval tv;
+	// flush
+	while (true) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		tv.tv_sec = 0;
+		tv.tv_usec = 100000;
+		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+		if (result == 0)
+			break;
+		if (result < 0) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+		result = read(PRIVATE_DATA->handle, &c, 1);
+		if (result < 1) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+	}
+	// write command
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	if (sleep > 0)
+		indigo_usleep(sleep);
+	// read response
+	if (response != NULL) {
+		int index = 0;
+		int timeout = 3;
+		while (index < max) {
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(PRIVATE_DATA->handle, &readout);
+			tv.tv_sec = timeout;
+			tv.tv_usec = 100000;
+			timeout = 0;
+			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+			if (result <= 0)
+				break;
+			result = read(PRIVATE_DATA->handle, &c, 1);
+			if (result < 1) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
+			if (c < 0)
+				c = ':';
+			if (c == '#')
+				break;
+			response[index++] = c;
+		}
+		response[index] = 0;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "readout progress part...");
+	char progress[128];
 	// read progress
 	int index = 0;
 	int timeout = 60;
-	while (index < sizeof(response)) {
+	while (index < sizeof(progress)) {
 		fd_set readout;
 		FD_ZERO(&readout);
 		FD_SET(PRIVATE_DATA->handle, &readout);
@@ -200,11 +252,12 @@ static int meade_readout_progress(indigo_device *device) {
 			c = ':';
 		if (c == '#')
 			break;
-		response[index++] = c;
+		progress[index++] = c;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Progress width: %d", index);
-	return index;
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	return true;
 }
 
 //static bool gemini_command(indigo_device *device, char *command, char *response, int max) {
@@ -948,13 +1001,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			time_t secs = time(NULL);
 			struct tm tm = *localtime(&secs);
 			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-			if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
+			// :SCMM/DD/YY# returns two delimiters response:
+			// "1Updating Planetary Data#                                #"
+			// readout progress part
+			if (!meade_command_progress(device, command, response, sizeof(response), 0) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				// :SCMM/DD/YY# returns two delimiters response:
-				// "1Updating Planetary Data#                                #"
-				// readout progress part
-				meade_readout_progress(device);
 				if (PRIVATE_DATA->use_dst_commands) {
 					sprintf(command, ":SH%d#", tm.tm_isdst);
 					meade_command(device, command, NULL, 0, 0);
@@ -989,13 +1041,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			struct tm tm = *localtime(&secs);
 			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-			if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
+			// :SCMM/DD/YY# returns two delimiters response:
+			// "1Updating Planetary Data#                                #"
+			// readout progress part
+			if (!meade_command_progress(device, command, response, sizeof(response), 0) || *response != '1') {
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				// :SCMM/DD/YY# returns two delimiters response:
-				// "1Updating Planetary Data#                                #"
-				// readout progress part
-				meade_readout_progress(device);
 				if (PRIVATE_DATA->use_dst_commands) {
 					sprintf(command, ":SH%d#", tm.tm_isdst);
 					meade_command(device, command, NULL, 0, 0);
