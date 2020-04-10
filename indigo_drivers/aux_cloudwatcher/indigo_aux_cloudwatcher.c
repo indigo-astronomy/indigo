@@ -148,7 +148,6 @@ static void delete_port_device(int device_index);
 #define BLOCK_SIZE 15
 
 /* Linatico AAG CloudWatcher device Commands ======================================================================== */
-#define lunatico_command aag_command
 static bool aag_command(indigo_device *device, const char *command, char *response, int block_count, int sleep) {
 	int max = block_count * BLOCK_SIZE;
 	char c;
@@ -296,7 +295,6 @@ bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temp
 
 	if (PRIVATE_DATA->firmware >= 3.0) {
 		char buffer[BLOCK_SIZE * 4];
-
 		bool r = aag_command(device, "C!", buffer, 4, 0);
 		if (!r) return false;
 
@@ -394,56 +392,6 @@ bool aag_get_electrical_constants(
 
 	return true;
 }
-
-
-static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
-	return false;
-}
-
-
-static bool lunatico_command_get_result(indigo_device *device, const char *command, int32_t *result) {
-	return false;
-}
-
-
-static bool lunatico_keep_alive(indigo_device *device) {
-
-}
-
-
-static bool lunatico_analog_read_sensor(indigo_device *device, int sensor, int *sensor_value) {
-}
-
-
-static bool lunatico_analog_read_sensors(indigo_device *device, int *sensors) {
-	return false;
-}
-
-
-static bool lunatico_digital_read_sensor(indigo_device *device, int sensor, bool *sensor_value) {
-	return false;
-}
-
-
-static bool lunatico_read_relay(indigo_device *device, int relay, bool *enabled) {
-	return false;
-}
-
-
-static bool lunatico_read_relays(indigo_device *device, bool *relays) {
-	return false;
-}
-
-
-static bool lunatico_set_relay(indigo_device *device, int relay, bool enable) {
-	return true;
-}
-
-
-static bool lunatico_pulse_relay(indigo_device *device, int relay, uint32_t lenms) {
-	return true;
-}
-
 
 // --------------------------------------------------------------------------------- Common stuff
 static bool lunatico_open(indigo_device *device) {
@@ -588,116 +536,6 @@ static void sensors_timer_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->sensors_timer);
 }
 
-
-static void relay_1_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[0] = false;
-	AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-static void relay_2_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[1] = false;
-	AUX_GPIO_OUTLET_2_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-static void relay_3_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[2] = false;
-	AUX_GPIO_OUTLET_3_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-static void relay_4_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[3] = false;
-	AUX_GPIO_OUTLET_4_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-static void relay_5_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[4] = false;
-	AUX_GPIO_OUTLET_5_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-static void relay_6_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[5] = false;
-	AUX_GPIO_OUTLET_6_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-static void relay_7_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[6] = false;
-	AUX_GPIO_OUTLET_7_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-static void relay_8_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
-	PRIVATE_DATA->relay_active[7] = false;
-	AUX_GPIO_OUTLET_8_ITEM->sw.value = false;
-	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
-}
-
-
-static void (*relay_timer_callbacks[])(indigo_device*) = {
-	relay_1_timer_callback,
-	relay_2_timer_callback,
-	relay_3_timer_callback,
-	relay_4_timer_callback,
-	relay_5_timer_callback,
-	relay_6_timer_callback,
-	relay_7_timer_callback,
-	relay_8_timer_callback
-};
-
-
-static bool set_gpio_outlets(indigo_device *device) {
-	bool success = true;
-	bool relay_value[8];
-
-	if (!lunatico_read_relays(device, relay_value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relays(%d) failed", PRIVATE_DATA->handle);
-		return false;
-	}
-
-	for (int i = 0; i < 8; i++) {
-		if ((AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value != relay_value[i]) {
-			if (((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value > 0) && (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i]) {
-				if (!lunatico_pulse_relay(device, i, (int)(AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_pulse_relay(%d) failed, did you authorize?", PRIVATE_DATA->handle);
-					success = false;
-				} else {
-					PRIVATE_DATA->relay_active[i] = true;
-					PRIVATE_DATA->relay_timers[i] = indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i]);
-				}
-			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i])) {
-				if (!lunatico_set_relay(device, i, (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_set_relay(%d) failed, did you authorize?", PRIVATE_DATA->handle);
-					success = false;
-				}
-			}
-		}
-	}
-
-	return success;
-}
-
-
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (DEVICE_CONNECTED) {
 		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
@@ -753,18 +591,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						aag_get_serial_number(device, serial_number);
 						strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
-						bool relay_value[8];
-						if (!lunatico_read_relays(device, relay_value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relays(%d) failed", PRIVATE_DATA->handle);
-							AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-						} else {
-							for (int i = 0; i < 8; i++) {
-								(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
-							}
-						}
+
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+
 						PRIVATE_DATA->sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
@@ -777,9 +608,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		} else {
 			if (DEVICE_CONNECTED) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->sensors_timer);
+
 				indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+
 				lunatico_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -821,13 +654,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 
-		if (set_gpio_outlets(device) == true) {
-			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-		} else {
-			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Relay operation failed, did you authorize?");
-		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
