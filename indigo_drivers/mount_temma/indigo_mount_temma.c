@@ -157,6 +157,26 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
+	// flush
+	while (true) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		tv.tv_sec = 0;
+		tv.tv_usec = 100000;
+		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+		if (result == 0)
+			break;
+		if (result < 0) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+		result = read(PRIVATE_DATA->handle, &c, 1);
+		if (result < 1) {
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return false;
+		}
+	}
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	indigo_write(PRIVATE_DATA->handle, "\r\n", 2);
