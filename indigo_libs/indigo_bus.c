@@ -353,6 +353,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {
 			devices[i] = device;
+			pthread_mutex_unlock(&device_mutex);
 			device->access_token = 0;
 			if (device->attach != NULL)
 				device->last_result = device->attach(device);
@@ -362,6 +363,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 				device->change_property(device, NULL, property);
 				indigo_release_property(property);
 			}
+			pthread_mutex_lock(&device_mutex);
 			device->access_token = indigo_get_device_token(device->name);
 			pthread_mutex_unlock(&device_mutex);
 			return INDIGO_OK;
