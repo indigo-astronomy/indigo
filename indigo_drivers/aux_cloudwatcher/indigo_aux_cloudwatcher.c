@@ -51,25 +51,44 @@
 
 #define AUX_RELAYS_GROUP	"Relay control"
 
-#define AUX_OUTLET_NAMES_PROPERTY      (PRIVATE_DATA->outlet_names_property)
-#define AUX_OUTLET_NAME_1_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 0)
-#define AUX_OUTLET_NAME_2_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 1)
-#define AUX_OUTLET_NAME_3_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 2)
-#define AUX_OUTLET_NAME_4_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 3)
-#define AUX_OUTLET_NAME_5_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 4)
-#define AUX_OUTLET_NAME_6_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 5)
-#define AUX_OUTLET_NAME_7_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 6)
-#define AUX_OUTLET_NAME_8_ITEM         (AUX_OUTLET_NAMES_PROPERTY->items + 7)
+#define X_SKY_CORRECTION_PROPERTY_NAME  "X_SKY_CORRECTION"
+#define X_SKY_CORRECTION_K1_ITEM_NAME   "K1"
+#define X_SKY_CORRECTION_K2_ITEM_NAME   "K2"
+#define X_SKY_CORRECTION_K3_ITEM_NAME   "K3"
+#define X_SKY_CORRECTION_K4_ITEM_NAME   "K4"
+#define X_SKY_CORRECTION_K5_ITEM_NAME   "K5"
 
-#define AUX_GPIO_OUTLET_PROPERTY      (PRIVATE_DATA->gpio_outlet_property)
-#define AUX_GPIO_OUTLET_1_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 0)
-#define AUX_GPIO_OUTLET_2_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 1)
-#define AUX_GPIO_OUTLET_3_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 2)
-#define AUX_GPIO_OUTLET_4_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 3)
-#define AUX_GPIO_OUTLET_5_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 4)
-#define AUX_GPIO_OUTLET_6_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 5)
-#define AUX_GPIO_OUTLET_7_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 6)
-#define AUX_GPIO_OUTLET_8_ITEM        (AUX_GPIO_OUTLET_PROPERTY->items + 7)
+#define X_SKY_CORRECTION_PROPERTY      (PRIVATE_DATA->sky_correction_property)
+#define X_SKY_CORRECTION_K1_ITEM       (X_SKY_CORRECTION_PROPERTY->items + 0)
+#define X_SKY_CORRECTION_K2_ITEM       (X_SKY_CORRECTION_PROPERTY->items + 1)
+#define X_SKY_CORRECTION_K3_ITEM       (X_SKY_CORRECTION_PROPERTY->items + 2)
+#define X_SKY_CORRECTION_K4_ITEM       (X_SKY_CORRECTION_PROPERTY->items + 3)
+#define X_SKY_CORRECTION_K5_ITEM       (X_SKY_CORRECTION_PROPERTY->items + 4)
+
+#define X_CONSTANTS_PROPERTY_NAME              "X_AAG_CONSTANTS"
+#define X_CONSTANTS_ZENER_VOLTAGE_ITEM_NAME    "ZENER_VOLTAGE"
+#define X_CONSTANTS_LDR_MAX_R_ITEM_NAME        "LDR_MAX_R"
+#define X_CONSTANTS_LDR_PULLUP_R_ITEM_NAME     "LDR_PULLUP_R"
+#define X_CONSTANTS_RAIN_BETA_ITEM_NAME        "RAIN_BETA_FACTOR"
+#define X_CONSTANTS_RAIN_R_AT_25_ITEM_NAME     "RAIN_R_AT_25"
+#define X_CONSTANTS_RAIN_PULLUP_R_ITEM_NAME    "RAIN_PULLUP_R"
+#define X_CONSTANTS_AMBIENT_BETA_ITEM_NAME     "AMBIENT_BETA_FACTOR"
+#define X_CONSTANTS_AMBIENT_R_AT_25_ITEM_NAME  "AMBIENT_R_AT_25"
+#define X_CONSTANTS_AMBIENT_PULLUP_R_ITEM_NAME "AMBIENT_PULLUP_R"
+#define X_CONSTANTS_ANEMOMETER_STATE_ITEM_NAME "ANEMOMETER_STATUS"
+
+
+#define X_CONSTANTS_PROPERTY               (PRIVATE_DATA->constants_property)
+#define X_CONSTANTS_ZENER_VOLTAGE_ITEM     (X_CONSTANTS_PROPERTY->items + 0)
+#define X_CONSTANTS_LDR_MAX_R_ITEM         (X_CONSTANTS_PROPERTY->items + 1)
+#define X_CONSTANTS_LDR_PULLUP_R_ITEM      (X_CONSTANTS_PROPERTY->items + 2)
+#define X_CONSTANTS_RAIN_BETA_ITEM         (X_CONSTANTS_PROPERTY->items + 3)
+#define X_CONSTANTS_RAIN_R_AT_25_ITEM      (X_CONSTANTS_PROPERTY->items + 4)
+#define X_CONSTANTS_RAIN_PULLUP_R_ITEM     (X_CONSTANTS_PROPERTY->items + 5)
+#define X_CONSTANTS_AMBIENT_BETA_ITEM      (X_CONSTANTS_PROPERTY->items + 6)
+#define X_CONSTANTS_AMBIENT_R_AT_25_ITEM   (X_CONSTANTS_PROPERTY->items + 7)
+#define X_CONSTANTS_AMBIENT_PULLUP_R_ITEM  (X_CONSTANTS_PROPERTY->items + 8)
+#define X_CONSTANTS_ANEMOMETER_STATE_ITEM  (X_CONSTANTS_PROPERTY->items + 9)
 
 #define AUX_OUTLET_PULSE_LENGTHS_PROPERTY      (PRIVATE_DATA->gpio_outlet_pulse_property)
 #define AUX_OUTLET_PULSE_LENGTHS_1_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 0)
@@ -132,8 +151,8 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	indigo_timer *sensors_timer;
 
-	indigo_property *outlet_names_property,
-	                *gpio_outlet_property,
+	indigo_property *sky_correction_property,
+	                *constants_property,
 	                *gpio_outlet_pulse_property,
 	                *sensor_names_property,
 	                *sensors_property;
@@ -606,6 +625,224 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	*/
 	return true;
 }
+/*
+bool process_data_and update(indigo_device *device) {
+    CloudWatcherData data;
+
+    int r = cwc->getAllData(&data);
+
+    if (!r)
+    {
+        return false;
+    }
+
+    const int N_DATA = 11;
+    double values[N_DATA];
+    char *names[N_DATA];
+
+    names[0]  = const_cast<char *>("supply");
+    values[0] = data.supply;
+
+    names[1]  = const_cast<char *>("sky");
+    values[1] = data.sky;
+
+    names[2]  = const_cast<char *>("sensor");
+    values[2] = data.sensor;
+
+    names[3]  = const_cast<char *>("ambient");
+    values[3] = data.ambient;
+
+    names[4]  = const_cast<char *>("rain");
+    values[4] = data.rain;
+
+    names[5]  = const_cast<char *>("rainHeater");
+    values[5] = data.rainHeater;
+
+    names[6]  = const_cast<char *>("rainTemp");
+    values[6] = data.rainTemperature;
+
+    names[7]  = const_cast<char *>("LDR");
+    values[7] = data.ldr;
+
+    names[8]       = const_cast<char *>("readCycle");
+    values[8]      = data.readCycle;
+    lastReadPeriod = data.readCycle;
+
+    names[9]  = const_cast<char *>("windSpeed");
+    values[9] = data.windSpeed;
+
+    names[10]  = const_cast<char *>("totalReadings");
+    values[10] = data.totalReadings;
+
+    INumberVectorProperty *nvp = getNumber("readings");
+    IUUpdateNumber(nvp, values, names, N_DATA);
+    nvp->s = IPS_OK;
+    IDSetNumber(nvp, nullptr);
+
+    const int N_ERRORS = 5;
+    double valuesE[N_ERRORS];
+    char *namesE[N_ERRORS];
+
+    namesE[0]  = const_cast<char *>("internalErrors");
+    valuesE[0] = data.internalErrors;
+
+    namesE[1]  = const_cast<char *>("firstAddressByteErrors");
+    valuesE[1] = data.firstByteErrors;
+
+    namesE[2]  = const_cast<char *>("commandByteErrors");
+    valuesE[2] = data.commandByteErrors;
+
+    namesE[3]  = const_cast<char *>("secondAddressByteErrors");
+    valuesE[3] = data.secondByteErrors;
+
+    namesE[4]  = const_cast<char *>("pecByteErrors");
+    valuesE[4] = data.pecByteErrors;
+
+    INumberVectorProperty *nvpE = getNumber("unitErrors");
+    IUUpdateNumber(nvpE, valuesE, namesE, N_ERRORS);
+    nvpE->s = IPS_OK;
+    IDSetNumber(nvpE, nullptr);
+
+    const int N_SENS = 9;
+    double valuesS[N_SENS];
+    char *namesS[N_SENS];
+
+    float skyTemperature = float(data.sky) / 100.0;
+    namesS[0]            = const_cast<char *>("infraredSky");
+    valuesS[0]           = skyTemperature;
+
+    namesS[1]  = const_cast<char *>("infraredSensor");
+    valuesS[1] = float(data.sensor) / 100.0;
+
+    namesS[2]  = const_cast<char *>("rainSensor");
+    valuesS[2] = data.rain;
+
+    float rainSensorTemperature = data.rainTemperature;
+    if (rainSensorTemperature > 1022)
+    {
+        rainSensorTemperature = 1022;
+    }
+    if (rainSensorTemperature < 1)
+    {
+        rainSensorTemperature = 1;
+    }
+    rainSensorTemperature = constants.rainPullUpResistance / ((1023.0 / rainSensorTemperature) - 1.0);
+    rainSensorTemperature = log(rainSensorTemperature / constants.rainResistanceAt25);
+    rainSensorTemperature =
+        1.0 / (rainSensorTemperature / constants.rainBetaFactor + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
+
+    namesS[3]  = const_cast<char *>("rainSensorTemperature");
+    valuesS[3] = rainSensorTemperature;
+
+    float rainSensorHeater = data.rainHeater;
+    rainSensorHeater       = 100.0 * rainSensorHeater / 1023.0;
+    namesS[4]              = const_cast<char *>("rainSensorHeater");
+    valuesS[4]             = rainSensorHeater;
+
+    float ambientLight = float(data.ldr);
+    if (ambientLight > 1022.0)
+    {
+        ambientLight = 1022.0;
+    }
+    if (ambientLight < 1)
+    {
+        ambientLight = 1.0;
+    }
+    ambientLight = constants.ldrPullUpResistance / ((1023.0 / ambientLight) - 1.0);
+    namesS[5]    = const_cast<char *>("brightnessSensor");
+    valuesS[5]   = ambientLight;
+
+    setParameterValue("WEATHER_BRIGHTNESS", ambientLight);
+
+    float ambientTemperature = data.ambient;
+
+    if (ambientTemperature == -10000)
+    {
+        ambientTemperature = float(data.sensor) / 100.0;
+    }
+    else
+    {
+        if (ambientTemperature > 1022)
+        {
+            ambientTemperature = 1022;
+        }
+        if (ambientTemperature < 1)
+        {
+            ambientTemperature = 1;
+        }
+        ambientTemperature = constants.ambientPullUpResistance / ((1023.0 / ambientTemperature) - 1.0);
+        ambientTemperature = log(ambientTemperature / constants.ambientResistanceAt25);
+        ambientTemperature =
+            1.0 / (ambientTemperature / constants.ambientBetaFactor + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
+    }
+
+    namesS[6]  = const_cast<char *>("ambientTemperatureSensor");
+    valuesS[6] = ambientTemperature;
+
+    INumberVectorProperty *nvpSky = getNumber("skyCorrection");
+    float k1                      = getNumberValueFromVector(nvpSky, "k1");
+    float k2                      = getNumberValueFromVector(nvpSky, "k2");
+    float k3                      = getNumberValueFromVector(nvpSky, "k3");
+    float k4                      = getNumberValueFromVector(nvpSky, "k4");
+    float k5                      = getNumberValueFromVector(nvpSky, "k5");
+
+    float correctedTemperature =
+        skyTemperature - ((k1 / 100.0) * (ambientTemperature - k2 / 10.0) +
+                          (k3 / 100.0) * pow(exp(k4 / 1000 * ambientTemperature), (k5 / 100.0)));
+
+    namesS[7]  = const_cast<char *>("correctedInfraredSky");
+    valuesS[7] = correctedTemperature;
+
+    namesS[8]  = const_cast<char *>("windSpeed");
+    valuesS[8] = data.windSpeed;
+
+    INumberVectorProperty *nvpS = getNumber("sensors");
+    IUUpdateNumber(nvpS, valuesS, namesS, N_SENS);
+    nvpS->s = IPS_OK;
+    IDSetNumber(nvpS, nullptr);
+
+    ISState states[2];
+    char *namesSw[2];
+    namesSw[0] = const_cast<char *>("open");
+    namesSw[1] = const_cast<char *>("close");
+    //IDLog("%d\n", data.switchStatus);
+    if (data.switchStatus == 1)
+    {
+        states[0] = ISS_OFF;
+        states[1] = ISS_ON;
+    }
+    else
+    {
+        states[0] = ISS_ON;
+        states[1] = ISS_OFF;
+    }
+
+    ISwitchVectorProperty *svpSw = getSwitch("deviceSwitch");
+    IUUpdateSwitch(svpSw, states, namesSw, 2);
+    svpSw->s = IPS_OK;
+    IDSetSwitch(svpSw, nullptr);
+
+    //IDLog("%d\n", data.switchStatus);
+
+    setParameterValue("WEATHER_CLOUD", correctedTemperature);
+    setParameterValue("WEATHER_RAIN", data.rain);
+
+    INumberVectorProperty *consts = getNumber("constants");
+    int anemometerStatus          = getNumberValueFromVector(consts, "anemometerStatus");
+
+    //IDLog("%d\n", data.switchStatus);
+
+    if (anemometerStatus)
+    {
+        setParameterValue("WEATHER_WIND_SPEED", data.windSpeed);
+    }
+    else
+    {
+        setParameterValue("WEATHER_WIND_SPEED", 0);
+    }
+    return true;
+}
+*/
 
 // --------------------------------------------------------------------------------- Common stuff
 static bool aag_open(indigo_device *device) {
@@ -676,29 +913,29 @@ static int aag_init_properties(indigo_device *device) {
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 7;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
-	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_RELAYS_GROUP, "Relay names", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
-	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
+	X_SKY_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, X_SKY_CORRECTION_PROPERTY_NAME, AUX_RELAYS_GROUP, "Sky temperature correction", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
+	if (X_SKY_CORRECTION_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Relay 1", "Relay #1");
-	indigo_init_text_item(AUX_OUTLET_NAME_2_ITEM, AUX_GPIO_OUTLET_NAME_2_ITEM_NAME, "Relay 2", "Relay #2");
-	indigo_init_text_item(AUX_OUTLET_NAME_3_ITEM, AUX_GPIO_OUTLET_NAME_3_ITEM_NAME, "Relay 3", "Relay #3");
-	indigo_init_text_item(AUX_OUTLET_NAME_4_ITEM, AUX_GPIO_OUTLET_NAME_4_ITEM_NAME, "Relay 4", "Relay #4");
-	indigo_init_text_item(AUX_OUTLET_NAME_5_ITEM, AUX_GPIO_OUTLET_NAME_5_ITEM_NAME, "Relay 5", "Relay #5");
-	indigo_init_text_item(AUX_OUTLET_NAME_6_ITEM, AUX_GPIO_OUTLET_NAME_6_ITEM_NAME, "Relay 6", "Relay #6");
-	indigo_init_text_item(AUX_OUTLET_NAME_7_ITEM, AUX_GPIO_OUTLET_NAME_7_ITEM_NAME, "Relay 7", "Relay #7");
-	indigo_init_text_item(AUX_OUTLET_NAME_8_ITEM, AUX_GPIO_OUTLET_NAME_8_ITEM_NAME, "Relay 8", "Relay #8");
-	// -------------------------------------------------------------------------------- GPIO OUTLETS
-	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_RELAYS_GROUP, "Relay outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
-	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
+	indigo_init_number_item(X_SKY_CORRECTION_K1_ITEM, X_SKY_CORRECTION_K1_ITEM_NAME, X_SKY_CORRECTION_K1_ITEM_NAME, -999, 999, 0, 33);
+	indigo_init_number_item(X_SKY_CORRECTION_K2_ITEM, X_SKY_CORRECTION_K2_ITEM_NAME, X_SKY_CORRECTION_K2_ITEM_NAME, -999, 999, 0, 0);
+	indigo_init_number_item(X_SKY_CORRECTION_K3_ITEM, X_SKY_CORRECTION_K3_ITEM_NAME, X_SKY_CORRECTION_K3_ITEM_NAME, -999, 999, 0, 4);
+	indigo_init_number_item(X_SKY_CORRECTION_K4_ITEM, X_SKY_CORRECTION_K4_ITEM_NAME, X_SKY_CORRECTION_K4_ITEM_NAME, -999, 999, 0, 100);
+	indigo_init_number_item(X_SKY_CORRECTION_K5_ITEM, X_SKY_CORRECTION_K5_ITEM_NAME, X_SKY_CORRECTION_K5_ITEM_NAME, -999, 999, 0, 100);
+
+	// -------------------------------------------------------------------------------- X_CONSTANTS
+	X_CONSTANTS_PROPERTY = indigo_init_number_property(NULL, device->name, X_CONSTANTS_PROPERTY_NAME, AUX_RELAYS_GROUP, "AAG Constants", INDIGO_OK_STATE, INDIGO_RO_PERM, 10);
+	if (X_CONSTANTS_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_switch_item(AUX_GPIO_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Relay #1", false);
-	indigo_init_switch_item(AUX_GPIO_OUTLET_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Relay #2", false);
-	indigo_init_switch_item(AUX_GPIO_OUTLET_3_ITEM, AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME, "Relay #3", false);
-	indigo_init_switch_item(AUX_GPIO_OUTLET_4_ITEM, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, "Relay #4", false);
-	indigo_init_switch_item(AUX_GPIO_OUTLET_5_ITEM, AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME, "Relay #5", false);
-	indigo_init_switch_item(AUX_GPIO_OUTLET_6_ITEM, AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME, "Relay #6", false);
-	indigo_init_switch_item(AUX_GPIO_OUTLET_7_ITEM, AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME, "Relay #7", false);
-	indigo_init_switch_item(AUX_GPIO_OUTLET_8_ITEM, AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME, "Relay #8", false);
+	indigo_init_number_item(X_CONSTANTS_ZENER_VOLTAGE_ITEM, X_CONSTANTS_ZENER_VOLTAGE_ITEM_NAME, "Zener voltage (V)", -100, 100, 0, 3);
+	indigo_init_number_item(X_CONSTANTS_LDR_MAX_R_ITEM, X_CONSTANTS_LDR_MAX_R_ITEM_NAME, "LDR max R (KOhm)", 0, 100000, 0, 1744);
+	indigo_init_number_item(X_CONSTANTS_LDR_PULLUP_R_ITEM, X_CONSTANTS_LDR_PULLUP_R_ITEM_NAME, "LDR Pullup R (KOhm)", 0, 100000, 0, 56);
+	indigo_init_number_item(X_CONSTANTS_RAIN_BETA_ITEM, X_CONSTANTS_RAIN_BETA_ITEM_NAME, "Rain Beta factor", -100000, 100000, 0, 3450);
+	indigo_init_number_item(X_CONSTANTS_RAIN_R_AT_25_ITEM, X_CONSTANTS_RAIN_R_AT_25_ITEM_NAME, "Rain R at 25degC (KOhm)", 0, 100000, 0, 1);
+	indigo_init_number_item(X_CONSTANTS_RAIN_PULLUP_R_ITEM, X_CONSTANTS_RAIN_PULLUP_R_ITEM_NAME, "Rain Pullup R (KOhm)", 0, 100000, 0, 1);
+	indigo_init_number_item(X_CONSTANTS_AMBIENT_BETA_ITEM, X_CONSTANTS_AMBIENT_BETA_ITEM_NAME, "Ambient Beta factor", -100000, 100000, 0, 3811);
+	indigo_init_number_item(X_CONSTANTS_AMBIENT_R_AT_25_ITEM, X_CONSTANTS_AMBIENT_R_AT_25_ITEM_NAME, "Ambient R at 25degC (KOhm)", 0, 100000, 0, 10);
+	indigo_init_number_item(X_CONSTANTS_AMBIENT_PULLUP_R_ITEM, X_CONSTANTS_AMBIENT_PULLUP_R_ITEM_NAME, "Ambient Pullup R (KOhm)", 0, 100000, 0, 9.9);
+	indigo_init_number_item(X_CONSTANTS_ANEMOMETER_STATE_ITEM, X_CONSTANTS_ANEMOMETER_STATE_ITEM_NAME, "Anemometer Status", 0, 10, 0, 0);
 	// -------------------------------------------------------------------------------- GPIO PULSE OUTLETS
 	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", AUX_RELAYS_GROUP, "Relay pulse lengths (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
@@ -736,7 +973,7 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_GPIO_SENSOR_7_ITEM, AUX_GPIO_SENSOR_NAME_7_ITEM_NAME, "Sensor #7", 0, 1024, 1, 0);
 	indigo_init_number_item(AUX_GPIO_SENSOR_8_ITEM, AUX_GPIO_SENSOR_NAME_8_ITEM_NAME, "Sensor #8", 0, 1024, 1, 0);
 	//---------------------------------------------------------------------------
-	indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+	indigo_define_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
 	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
 }
@@ -754,15 +991,15 @@ static void sensors_timer_callback(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (DEVICE_CONNECTED) {
-		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
-			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+		if (indigo_property_match(X_CONSTANTS_PROPERTY, property))
+			indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	}
-	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
-		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+	if (indigo_property_match(X_SKY_CORRECTION_PROPERTY, property))
+		indigo_define_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
 	if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 
@@ -807,7 +1044,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 
-						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 
@@ -824,7 +1061,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			if (DEVICE_CONNECTED) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->sensors_timer);
 
-				indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+				indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 
@@ -832,41 +1069,15 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
-	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
-		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-		if (DEVICE_CONNECTED) {
-			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-		}
-		snprintf(AUX_GPIO_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
-		snprintf(AUX_GPIO_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
-		snprintf(AUX_GPIO_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_3_ITEM->text.value);
-		snprintf(AUX_GPIO_OUTLET_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_4_ITEM->text.value);
-		snprintf(AUX_GPIO_OUTLET_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_5_ITEM->text.value);
-		snprintf(AUX_GPIO_OUTLET_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_6_ITEM->text.value);
-		snprintf(AUX_GPIO_OUTLET_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_7_ITEM->text.value);
-		snprintf(AUX_GPIO_OUTLET_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
-
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_3_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_4_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_5_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_6_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_7_ITEM->text.value);
-		snprintf(AUX_OUTLET_PULSE_LENGTHS_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
-
-		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (DEVICE_CONNECTED) {
-			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-		}
-		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+	} else if (indigo_property_match(X_SKY_CORRECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_SKY_CORRECTION
+		indigo_property_copy_values(X_SKY_CORRECTION_PROPERTY, property, false);
+		X_SKY_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match(X_CONSTANTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
-		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
+		indigo_property_copy_values(X_CONSTANTS_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 
 		return INDIGO_OK;
@@ -906,7 +1117,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
+			indigo_save_property(device, NULL, X_SKY_CORRECTION_PROPERTY);
 			indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
 		}
 	}
@@ -921,13 +1132,13 @@ static indigo_result aux_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	aag_close(device);
 	indigo_device_disconnect(NULL, device->name);
-	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
+	indigo_release_property(X_CONSTANTS_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
-	indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
+	indigo_delete_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
+	indigo_release_property(X_SKY_CORRECTION_PROPERTY);
 
 	indigo_delete_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 	indigo_release_property(AUX_SENSOR_NAMES_PROPERTY);
