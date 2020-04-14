@@ -362,7 +362,6 @@ static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambie
 	return true;
 }
 
-
 static bool aag_get_ir_sky_temperature(indigo_device *device, int *temp) {
 	char buffer[BLOCK_SIZE * 2];
 
@@ -516,6 +515,17 @@ static bool aag_get_electrical_constants(
 	*rain_beta         = (256 * buffer[8] + buffer[9]) / 1.0;
 	*rain_res_at_25    = (256 * buffer[10] + buffer[11]) / 10.0;
 	*rain_pull_up_res  = (256 * buffer[12] + buffer[13]) / 10.0;
+
+	INDIGO_DRIVER_DEBUG(
+		DRIVER_NAME,
+		"zener_constant = %f, ldr_max_res = %f, ldr_pull_up_res = %f, rain_beta = %f, rain_res_at_25 = %f, rain_pull_up_res = %f",
+		*zener_constant,
+		*ldr_max_res,
+		*ldr_pull_up_res,
+		*rain_beta,
+		*rain_res_at_25,
+		*rain_pull_up_res
+	);
 
 	return true;
 }
@@ -693,7 +703,10 @@ static bool aag_populate_constants(indigo_device *device) {
 	X_CONSTANTS_AMBIENT_BETA_ITEM->number.value = 3811;
 	X_CONSTANTS_AMBIENT_R_AT_25_ITEM->number.value = 10;
 	X_CONSTANTS_AMBIENT_PULLUP_R_ITEM->number.value = 9.9;
-	bool res2 = aag_is_anemometer_present(device, &X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value);
+
+	bool present = false;
+	bool res2 = aag_is_anemometer_present(device, &present);
+	X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value = (double)present;
 
 	if (res1 && res2) {
 		X_CONSTANTS_PROPERTY ->state = INDIGO_OK_STATE;
@@ -1124,11 +1137,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						aag_get_serial_number(device, serial_number);
 						strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
-
 						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 
+						aag_populate_constants(device);
 						PRIVATE_DATA->sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
