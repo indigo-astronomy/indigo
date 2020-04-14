@@ -128,8 +128,10 @@ typedef struct {
 	int ir_sky_temperature;     ///< IR Sky Temperature
 	int ir_sensor_temperature;  ///< IR Sensor Temperature
 	int ambient_temperature; ///< Ambient temperature. In newer models there is no ambient temperature sensor so -10000 is returned.
-	int rain_frequency;    ///< Rain frequency
-	int rain_heater; ///< PWM Duty Cycle
+	float rh;                 ///< Relative humidity
+	float rh_temperature;     ///< Temperature from RH sensor
+	int rain_frequency;     ///< Rain frequency
+	int rain_heater;        ///< PWM Duty Cycle
 	int rain_sensor_temperature; ///< Rain sensor temperature (used as ambient temperature in models where there is no ambient temperature sensor)
 	int ldr;               ///< Ambient light sensor
 	int switch_status;      ///< The status of the internal switch
@@ -443,14 +445,61 @@ static bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
 	return true;
 }
 
+static bool aag_get_rh_temperature(indigo_device *device, float *rh, float *temperature) {
+	if (PRIVATE_DATA->firmware < 5.6) return false;
+
+	int rhi, tempi;
+	char buffer[BLOCK_SIZE * 2];
+
+	bool precise = true;
+	bool r = aag_command(device, "t!", buffer, 2, 0);
+	if (!r) return false;
+	int res = sscanf(buffer, "!th%d", &tempi);
+	if (res != 1) {
+		res = sscanf(buffer, "!t %d", &tempi);
+		if (res != 1) return false;
+		precise = false;
+	}
+	if (precise) {
+		*temperature = ((tempi * 175.72) / 65536) - 46.85;
+	} else {
+		*temperature = (tempi * 1.7572) - 46.85;
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tempi = %d", tempi);
+
+	if (*temperature < -40 || *temperature > 80) return false;
+
+	precise = true;
+	r = aag_command(device, "h!", buffer, 2, 0);
+	if (!r) return false;
+	res = sscanf(buffer, "!hh%d", &rhi);
+	if (res != 1) {
+		res = sscanf(buffer, "!h %d", &rhi);
+		if (res != 1) return false;
+		precise = false;
+	}
+
+	if (precise) {
+		*rh = ((rhi * 125) / 65536) - 6;
+	} else {
+		*rh = ((rhi * 1.7572) / 100) - 6;
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "rhi = %d", rhi);
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "temperature = %f, rh = %f", *temperature, *rh);
+	return true;
+}
+
 static bool aag_get_electrical_constants(
 		indigo_device *device,
-		float *zener_constant,
-		float *ldr_max_res,
-		float *ldr_pull_up_res,
-		float *rain_beta,
-		float *rain_res_at_25,
-		float *rain_pull_up_res
+		double *zener_constant,
+		double *ldr_max_res,
+		double *ldr_pull_up_res,
+		double *rain_beta,
+		double *rain_res_at_25,
+		double *rain_pull_up_res
 	) {
 
 	if (PRIVATE_DATA->firmware < 3.0) return false;
@@ -593,6 +642,11 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 		if (!check) return false;
 	}
 
+	if (!aag_get_rh_temperature(device, &cwd->rh, &cwd->rh_temperature)) {
+		cwd->rh_temperature = -1000;
+		cwd->rh = -1000;
+	}
+
 	struct timeval end;
 	gettimeofday(&end, NULL);
 
@@ -625,6 +679,33 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	*/
 	return true;
 }
+
+static bool aag_populate_constants(indigo_device *device) {
+	bool res1 = aag_get_electrical_constants(
+		device,
+		&X_CONSTANTS_ZENER_VOLTAGE_ITEM->number.value,
+		&X_CONSTANTS_LDR_MAX_R_ITEM->number.value,
+		&X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value,
+		&X_CONSTANTS_RAIN_BETA_ITEM->number.value,
+		&X_CONSTANTS_RAIN_R_AT_25_ITEM->number.value,
+		&X_CONSTANTS_RAIN_PULLUP_R_ITEM->number.value
+	);
+	X_CONSTANTS_AMBIENT_BETA_ITEM->number.value = 3811;
+	X_CONSTANTS_AMBIENT_R_AT_25_ITEM->number.value = 10;
+	X_CONSTANTS_AMBIENT_PULLUP_R_ITEM->number.value = 9.9;
+	bool res2 = aag_is_anemometer_present(device, &X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value);
+
+	if (res1 && res2) {
+		X_CONSTANTS_PROPERTY ->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CONSTANTS_PROPERTY, NULL);
+		return true;
+	}
+	X_CONSTANTS_PROPERTY ->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_CONSTANTS_PROPERTY, "Failed reading device constants");
+	indigo_update_property(device, X_CONSTANTS_PROPERTY, NULL);
+	return false;
+}
+
 /*
 bool process_data_and update(indigo_device *device) {
     CloudWatcherData data;
