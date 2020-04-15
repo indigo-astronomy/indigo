@@ -90,15 +90,27 @@
 #define X_CONSTANTS_AMBIENT_PULLUP_R_ITEM  (X_CONSTANTS_PROPERTY->items + 8)
 #define X_CONSTANTS_ANEMOMETER_STATE_ITEM  (X_CONSTANTS_PROPERTY->items + 9)
 
-#define AUX_OUTLET_PULSE_LENGTHS_PROPERTY      (PRIVATE_DATA->gpio_outlet_pulse_property)
-#define AUX_OUTLET_PULSE_LENGTHS_1_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 0)
-#define AUX_OUTLET_PULSE_LENGTHS_2_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 1)
-#define AUX_OUTLET_PULSE_LENGTHS_3_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 2)
-#define AUX_OUTLET_PULSE_LENGTHS_4_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 3)
-#define AUX_OUTLET_PULSE_LENGTHS_5_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 4)
-#define AUX_OUTLET_PULSE_LENGTHS_6_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 5)
-#define AUX_OUTLET_PULSE_LENGTHS_7_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 6)
-#define AUX_OUTLET_PULSE_LENGTHS_8_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 7)
+
+#define X_SENSOR_READINGS_PROPERTY_NAME              "X_SENSOR_READINGS"
+#define X_SENSOR_SKY_TEMPERATURE_ITEM_NAME           "IR_SKY_TEMPERATURE"
+#define X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM_NAME "CORRECTED_IR_SKY_TEMPERATURE"
+#define X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM_NAME     "IR_SENSOR_TEMPERATURE"
+#define X_SENSOR_RAIN_CYCLES_ITEM_NAME               "RAIN_CYCLES"
+#define X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM_NAME   "RAIN_SENSOR_TEMPERATURE"
+#define X_SENSOR_RAIN_HEATER_POWER_ITEM_NAME         "RAIN_SENSOR_HEATER_POWER"
+#define X_SENSOR_SKY_BRIGHTNESS_ITEM_NAME            "SKY_BRIGHTNES"
+#define X_SENSOR_AMBIENT_TEMPERATURE_ITEM_NAME       "AMBIENT_TEMPERATURE"
+
+#define X_SENSOR_READINGS_PROPERTY               (PRIVATE_DATA->sensor_readings_property)
+#define X_SENSOR_SKY_TEMPERATURE_ITEM            (X_SENSOR_READINGS_PROPERTY->items + 0)
+#define X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM  (X_SENSOR_READINGS_PROPERTY->items + 1)
+#define X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM      (X_SENSOR_READINGS_PROPERTY->items + 2)
+#define X_SENSOR_RAIN_CYCLES_ITEM                (X_SENSOR_READINGS_PROPERTY->items + 3)
+#define X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM    (X_SENSOR_READINGS_PROPERTY->items + 4)
+#define X_SENSOR_RAIN_HEATER_POWER_ITEM          (X_SENSOR_READINGS_PROPERTY->items + 5)
+#define X_SENSOR_SKY_BRIGHTNESS_ITEM             (X_SENSOR_READINGS_PROPERTY->items + 6)
+#define X_SENSOR_AMBIENT_TEMPERATURE_ITEM        (X_SENSOR_READINGS_PROPERTY->items + 7)
+
 
 #define AUX_SENSORS_GROUP	"Sensors"
 
@@ -135,7 +147,7 @@ typedef struct {
 	int rain_sensor_temperature; ///< Rain sensor temperature (used as ambient temperature in models where there is no ambient temperature sensor)
 	int ldr;               ///< Ambient light sensor
 	int switch_status;      ///< The status of the internal switch
-	int wind_speed;         ///< The wind speed measured by the anemometer
+	float wind_speed;       ///< The wind speed measured by the anemometer (m/s)
 	float read_cycle;       ///< Time used in the readings
 	// ??? Shall I keep those?
 	int totalReadings;     ///< Total number of readings taken by the Cloud Watcher Controller
@@ -155,7 +167,7 @@ typedef struct {
 
 	indigo_property *sky_correction_property,
 	                *constants_property,
-	                *gpio_outlet_pulse_property,
+	                *sensor_readings_property,
 	                *sensor_names_property,
 	                *sensors_property;
 } aag_private_data;
@@ -551,7 +563,7 @@ static bool aag_is_anemometer_present(indigo_device *device, bool *present) {
 	return true;
 }
 
-static bool aag_get_wind_speed(indigo_device *device, int *wind_speed) {
+static bool aag_get_wind_speed(indigo_device *device, float *wind_speed) {
 	if (!wind_speed) return false;
 
 	if (PRIVATE_DATA->firmware < 5.0) {
@@ -563,13 +575,15 @@ static bool aag_get_wind_speed(indigo_device *device, int *wind_speed) {
 	bool r = aag_command(device, "V!", buffer, 2, 0);
 	if (!r) return false;
 
-	int res = sscanf(buffer, "!w %d", wind_speed);
+	int res = sscanf(buffer, "!w %f", wind_speed);
 	if (res != 1) return false;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "raw_wind_speed = %d", *wind_speed);
 
-	if (true && *wind_speed != 0) *wind_speed = (int)((float)(*wind_speed) * 0.84 + 3);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "raw_wind_speed = %f", *wind_speed);
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "wind_speed = %d", *wind_speed);
+	if (true && *wind_speed != 0) *wind_speed = *wind_speed * 0.84 + 3;
+	*wind_speed /= 3.6; //Convert to m/s
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "wind_speed = %f", *wind_speed);
 	return true;
 }
 
@@ -1021,27 +1035,27 @@ static int aag_init_properties(indigo_device *device) {
 	if (X_CONSTANTS_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(X_CONSTANTS_ZENER_VOLTAGE_ITEM, X_CONSTANTS_ZENER_VOLTAGE_ITEM_NAME, "Zener voltage (V)", -100, 100, 0, 3);
-	indigo_init_number_item(X_CONSTANTS_LDR_MAX_R_ITEM, X_CONSTANTS_LDR_MAX_R_ITEM_NAME, "LDR max R (KOhm)", 0, 100000, 0, 1744);
-	indigo_init_number_item(X_CONSTANTS_LDR_PULLUP_R_ITEM, X_CONSTANTS_LDR_PULLUP_R_ITEM_NAME, "LDR Pullup R (KOhm)", 0, 100000, 0, 56);
+	indigo_init_number_item(X_CONSTANTS_LDR_MAX_R_ITEM, X_CONSTANTS_LDR_MAX_R_ITEM_NAME, "LDR max R (kΩ)", 0, 100000, 0, 1744);
+	indigo_init_number_item(X_CONSTANTS_LDR_PULLUP_R_ITEM, X_CONSTANTS_LDR_PULLUP_R_ITEM_NAME, "LDR Pullup R (kΩ)", 0, 100000, 0, 56);
 	indigo_init_number_item(X_CONSTANTS_RAIN_BETA_ITEM, X_CONSTANTS_RAIN_BETA_ITEM_NAME, "Rain Beta factor", -100000, 100000, 0, 3450);
-	indigo_init_number_item(X_CONSTANTS_RAIN_R_AT_25_ITEM, X_CONSTANTS_RAIN_R_AT_25_ITEM_NAME, "Rain R at 25degC (KOhm)", 0, 100000, 0, 1);
-	indigo_init_number_item(X_CONSTANTS_RAIN_PULLUP_R_ITEM, X_CONSTANTS_RAIN_PULLUP_R_ITEM_NAME, "Rain Pullup R (KOhm)", 0, 100000, 0, 1);
+	indigo_init_number_item(X_CONSTANTS_RAIN_R_AT_25_ITEM, X_CONSTANTS_RAIN_R_AT_25_ITEM_NAME, "Rain R at 25°C (kΩ)", 0, 100000, 0, 1);
+	indigo_init_number_item(X_CONSTANTS_RAIN_PULLUP_R_ITEM, X_CONSTANTS_RAIN_PULLUP_R_ITEM_NAME, "Rain Pullup R (kΩ)", 0, 100000, 0, 1);
 	indigo_init_number_item(X_CONSTANTS_AMBIENT_BETA_ITEM, X_CONSTANTS_AMBIENT_BETA_ITEM_NAME, "Ambient Beta factor", -100000, 100000, 0, 3811);
-	indigo_init_number_item(X_CONSTANTS_AMBIENT_R_AT_25_ITEM, X_CONSTANTS_AMBIENT_R_AT_25_ITEM_NAME, "Ambient R at 25degC (KOhm)", 0, 100000, 0, 10);
-	indigo_init_number_item(X_CONSTANTS_AMBIENT_PULLUP_R_ITEM, X_CONSTANTS_AMBIENT_PULLUP_R_ITEM_NAME, "Ambient Pullup R (KOhm)", 0, 100000, 0, 9.9);
+	indigo_init_number_item(X_CONSTANTS_AMBIENT_R_AT_25_ITEM, X_CONSTANTS_AMBIENT_R_AT_25_ITEM_NAME, "Ambient R at 25°C (kΩ)", 0, 100000, 0, 10);
+	indigo_init_number_item(X_CONSTANTS_AMBIENT_PULLUP_R_ITEM, X_CONSTANTS_AMBIENT_PULLUP_R_ITEM_NAME, "Ambient Pullup R (kΩ)", 0, 100000, 0, 9.9);
 	indigo_init_number_item(X_CONSTANTS_ANEMOMETER_STATE_ITEM, X_CONSTANTS_ANEMOMETER_STATE_ITEM_NAME, "Anemometer Status", 0, 10, 0, 0);
 	// -------------------------------------------------------------------------------- GPIO PULSE OUTLETS
-	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", AUX_RELAYS_GROUP, "Relay pulse lengths (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
-	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
+	X_SENSOR_READINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_SENSOR_READINGS_PROPERTY_NAME, AUX_RELAYS_GROUP, "Sensor Readings", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
+	if (X_SENSOR_READINGS_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Relay #1", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Relay #2", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_3_ITEM, AUX_GPIO_OUTLETS_OUTLET_3_ITEM_NAME, "Relay #3", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_4_ITEM, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, "Relay #4", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_5_ITEM, AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME, "Relay #5", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_6_ITEM, AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME, "Relay #6", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_7_ITEM, AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME, "Relay #7", 0, 100000, 100, 0);
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_8_ITEM, AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME, "Relay #8", 0, 100000, 100, 0);
+	indigo_init_number_item(X_SENSOR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM_NAME, "IR sky temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM, X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM_NAME, "Corrected IR sky temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM, X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM_NAME, "IR sensor temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_SENSOR_RAIN_CYCLES_ITEM, X_SENSOR_RAIN_CYCLES_ITEM_NAME, "Rain (cycles)", 0, 100000, 0, 0);
+	indigo_init_number_item(X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM, X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM_NAME, "Rain sensor temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_SENSOR_RAIN_HEATER_POWER_ITEM, X_SENSOR_RAIN_HEATER_POWER_ITEM_NAME, "Rain sensor heater power (%)", 0, 100, 1, 0);
+	indigo_init_number_item(X_SENSOR_SKY_BRIGHTNESS_ITEM, X_SENSOR_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness (kΩ)", 0, 100000, 1, 0);
+	indigo_init_number_item(X_SENSOR_AMBIENT_TEMPERATURE_ITEM, X_SENSOR_AMBIENT_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
 	// -------------------------------------------------------------------------------- SENSOR_NAMES
 	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
@@ -1087,8 +1101,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	if (DEVICE_CONNECTED) {
 		if (indigo_property_match(X_CONSTANTS_PROPERTY, property))
 			indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
-		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
-			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+		if (indigo_property_match(X_SENSOR_READINGS_PROPERTY, property))
+			indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
 		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	}
@@ -1138,7 +1152,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
-						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+						indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 
 						aag_populate_constants(device);
@@ -1156,7 +1170,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_cancel_timer(device, &PRIVATE_DATA->sensors_timer);
 
 				indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+				indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 
 				aag_close(device);
@@ -1174,12 +1188,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(X_CONSTANTS_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 
-		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
-		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
@@ -1227,7 +1235,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	aag_close(device);
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_CONSTANTS_PROPERTY);
-	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
+	indigo_release_property(X_SENSOR_READINGS_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
