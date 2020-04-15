@@ -45,6 +45,8 @@
 
 #define DEFAULT_BAUDRATE "9600"
 
+#define NO_READING (-100000)
+
 #define MAX_DEVICES 1
 
 #define PRIVATE_DATA                   ((aag_private_data *)device->private_data)
@@ -335,7 +337,7 @@ static bool aag_get_serial_number(indigo_device *device, char *serial_number) {
 
 static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temperature, int *ldr_value, int *rain_sensor_temperature) {
 	int zenerV;
-	int ambTemp = -10000;
+	int ambTemp = NO_READING;
 	int ldrRes;
 	int rainSensTemp;
 
@@ -479,7 +481,7 @@ static bool aag_get_rh_temperature(indigo_device *device, float *rh, float *temp
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tempi = %d", tempi);
 
-	if (*temperature < -40 || *temperature > 80) return false;
+	if (*temperature < -50 || *temperature > 80) return false;
 
 	precise = true;
 	r = aag_command(device, "h!", buffer, 2, 0);
@@ -639,7 +641,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	int ambientTemperature[NUMBER_OF_READS];
 	int ldrValue[NUMBER_OF_READS];
 	int rainSensorTemperature[NUMBER_OF_READS];
-	int windSpeed[NUMBER_OF_READS];
+	float windSpeed[NUMBER_OF_READS];
 
 	int check = 0;
 
@@ -667,8 +669,8 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	}
 
 	if (!aag_get_rh_temperature(device, &cwd->rh, &cwd->rh_temperature)) {
-		cwd->rh_temperature = -1000;
-		cwd->rh = -1000;
+		cwd->rh_temperature = NO_READING;
+		cwd->rh = NO_READING;
 	}
 
 	struct timeval end;
@@ -685,7 +687,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	cwd->ambient_temperature     = aggregate_integers(ambientTemperature, NUMBER_OF_READS);
 	cwd->ldr                     = aggregate_integers(ldrValue, NUMBER_OF_READS);
 	cwd->rain_sensor_temperature = aggregate_integers(rainSensorTemperature, NUMBER_OF_READS);
-	cwd->wind_speed              = aggregate_integers(windSpeed, NUMBER_OF_READS);
+	cwd->wind_speed              = aggregate_floats(windSpeed, NUMBER_OF_READS);
 	cwd->totalReadings   = totalReadings;
 
 	/*
@@ -733,174 +735,70 @@ static bool aag_populate_constants(indigo_device *device) {
 	return false;
 }
 
-/*
-bool process_data_and update(indigo_device *device) {
-    CloudWatcherData data;
+#define ABS_ZERO 273.15
 
-    int r = cwc->getAllData(&data);
+bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
+	float rain_sensor_temp = data.rain_sensor_temperature;
+	if (rain_sensor_temp > 1022) {
+		rain_sensor_temp = 1022;
+	} else if (rain_sensor_temp < 1) {
+		rain_sensor_temp = 1;
+	}
+	rain_sensor_temp = X_CONSTANTS_RAIN_PULLUP_R_ITEM->number.value / ((1023.0 / rain_sensor_temp) - 1.0);
+	rain_sensor_temp = log(rain_sensor_temp / X_CONSTANTS_RAIN_R_AT_25_ITEM->number.value);
+	X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value =
+		1.0 / (rain_sensor_temp / X_CONSTANTS_RAIN_BETA_ITEM->number.value + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
 
-    if (!r)
-    {
-        return false;
-    }
+	X_SENSOR_RAIN_CYCLES_ITEM->number.value = data.rain_frequency;
 
-    const int N_DATA = 11;
-    double values[N_DATA];
-    char *names[N_DATA];
 
-    names[0]  = const_cast<char *>("supply");
-    values[0] = data.supply;
+	X_SENSOR_RAIN_HEATER_POWER_ITEM->number.value = 100.0 * data.rain_heater / 1023.0;
 
-    names[1]  = const_cast<char *>("sky");
-    values[1] = data.sky;
+	float ambient_light = (float)data.ldr;
+	if (ambient_light > 1022.0) {
+		ambient_light = 1022.0;
+	} else if (ambient_light < 1) {
+		ambient_light = 1.0;
+	}
+	X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value = X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value / ((1023.0 / ambient_light) - 1.0);
 
-    names[2]  = const_cast<char *>("sensor");
-    values[2] = data.sensor;
 
-    names[3]  = const_cast<char *>("ambient");
-    values[3] = data.ambient;
+	float ambient_temperature = data.ambient_temperature;
+	if (ambient_temperature < -200) {
+		if (data.rh_temperature < -200) {
+			ambient_temperature = data.ir_sensor_temperature / 100.0;
+		} else {
+			ambient_temperature = data.rh_temperature;
+		}
+	} else {
+		if (ambient_temperature > 1022) {
+			ambient_temperature = 1022;
+		} else if (ambient_temperature < 1) {
+			ambient_temperature = 1;
+		}
+		ambient_temperature = X_CONSTANTS_AMBIENT_PULLUP_R_ITEM->number.value / ((1023.0 / ambient_temperature) - 1.0);
+		ambient_temperature = log(ambient_temperature / X_CONSTANTS_AMBIENT_R_AT_25_ITEM->number.value);
+		ambient_temperature =
+			1.0 / (ambient_temperature / X_CONSTANTS_AMBIENT_BETA_ITEM->number.value + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
+	}
+	X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.value = ambient_temperature;
 
-    names[4]  = const_cast<char *>("rain");
-    values[4] = data.rain;
+	float sky_temperature = data.ir_sky_temperature / 100.0;
+	float ir_sensor_temperature = data.ir_sensor_temperature / 100.0;
+	X_SENSOR_SKY_TEMPERATURE_ITEM->number.value = sky_temperature;
+	X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM->number.value = ir_sensor_temperature;
+	float k1 = X_SKY_CORRECTION_K1_ITEM->number.value;
+	float k2 = X_SKY_CORRECTION_K2_ITEM->number.value;
+	float k3 = X_SKY_CORRECTION_K3_ITEM->number.value;
+	float k4 = X_SKY_CORRECTION_K4_ITEM->number.value;
+	float k5 = X_SKY_CORRECTION_K5_ITEM->number.value;
+	X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM->number.value =
+		sky_temperature - ((k1 / 100.0) * (ir_sensor_temperature - k2 / 10.0) +
+		                   (k3 / 100.0) * pow(exp(k4 / 1000 * ir_sensor_temperature), (k5 / 100.0)));
 
-    names[5]  = const_cast<char *>("rainHeater");
-    values[5] = data.rainHeater;
+	indigo_update_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
 
-    names[6]  = const_cast<char *>("rainTemp");
-    values[6] = data.rainTemperature;
-
-    names[7]  = const_cast<char *>("LDR");
-    values[7] = data.ldr;
-
-    names[8]       = const_cast<char *>("readCycle");
-    values[8]      = data.readCycle;
-    lastReadPeriod = data.readCycle;
-
-    names[9]  = const_cast<char *>("windSpeed");
-    values[9] = data.windSpeed;
-
-    names[10]  = const_cast<char *>("totalReadings");
-    values[10] = data.totalReadings;
-
-    INumberVectorProperty *nvp = getNumber("readings");
-    IUUpdateNumber(nvp, values, names, N_DATA);
-    nvp->s = IPS_OK;
-    IDSetNumber(nvp, nullptr);
-
-    const int N_ERRORS = 5;
-    double valuesE[N_ERRORS];
-    char *namesE[N_ERRORS];
-
-    namesE[0]  = const_cast<char *>("internalErrors");
-    valuesE[0] = data.internalErrors;
-
-    namesE[1]  = const_cast<char *>("firstAddressByteErrors");
-    valuesE[1] = data.firstByteErrors;
-
-    namesE[2]  = const_cast<char *>("commandByteErrors");
-    valuesE[2] = data.commandByteErrors;
-
-    namesE[3]  = const_cast<char *>("secondAddressByteErrors");
-    valuesE[3] = data.secondByteErrors;
-
-    namesE[4]  = const_cast<char *>("pecByteErrors");
-    valuesE[4] = data.pecByteErrors;
-
-    INumberVectorProperty *nvpE = getNumber("unitErrors");
-    IUUpdateNumber(nvpE, valuesE, namesE, N_ERRORS);
-    nvpE->s = IPS_OK;
-    IDSetNumber(nvpE, nullptr);
-
-    const int N_SENS = 9;
-    double valuesS[N_SENS];
-    char *namesS[N_SENS];
-
-    float skyTemperature = float(data.sky) / 100.0;
-    namesS[0]            = const_cast<char *>("infraredSky");
-    valuesS[0]           = skyTemperature;
-
-    namesS[1]  = const_cast<char *>("infraredSensor");
-    valuesS[1] = float(data.sensor) / 100.0;
-
-    namesS[2]  = const_cast<char *>("rainSensor");
-    valuesS[2] = data.rain;
-
-    float rainSensorTemperature = data.rainTemperature;
-    if (rainSensorTemperature > 1022)
-    {
-        rainSensorTemperature = 1022;
-    }
-    if (rainSensorTemperature < 1)
-    {
-        rainSensorTemperature = 1;
-    }
-    rainSensorTemperature = constants.rainPullUpResistance / ((1023.0 / rainSensorTemperature) - 1.0);
-    rainSensorTemperature = log(rainSensorTemperature / constants.rainResistanceAt25);
-    rainSensorTemperature =
-        1.0 / (rainSensorTemperature / constants.rainBetaFactor + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
-
-    namesS[3]  = const_cast<char *>("rainSensorTemperature");
-    valuesS[3] = rainSensorTemperature;
-
-    float rainSensorHeater = data.rainHeater;
-    rainSensorHeater       = 100.0 * rainSensorHeater / 1023.0;
-    namesS[4]              = const_cast<char *>("rainSensorHeater");
-    valuesS[4]             = rainSensorHeater;
-
-    float ambientLight = float(data.ldr);
-    if (ambientLight > 1022.0)
-    {
-        ambientLight = 1022.0;
-    }
-    if (ambientLight < 1)
-    {
-        ambientLight = 1.0;
-    }
-    ambientLight = constants.ldrPullUpResistance / ((1023.0 / ambientLight) - 1.0);
-    namesS[5]    = const_cast<char *>("brightnessSensor");
-    valuesS[5]   = ambientLight;
-
-    setParameterValue("WEATHER_BRIGHTNESS", ambientLight);
-
-    float ambientTemperature = data.ambient;
-
-    if (ambientTemperature == -10000)
-    {
-        ambientTemperature = float(data.sensor) / 100.0;
-    }
-    else
-    {
-        if (ambientTemperature > 1022)
-        {
-            ambientTemperature = 1022;
-        }
-        if (ambientTemperature < 1)
-        {
-            ambientTemperature = 1;
-        }
-        ambientTemperature = constants.ambientPullUpResistance / ((1023.0 / ambientTemperature) - 1.0);
-        ambientTemperature = log(ambientTemperature / constants.ambientResistanceAt25);
-        ambientTemperature =
-            1.0 / (ambientTemperature / constants.ambientBetaFactor + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
-    }
-
-    namesS[6]  = const_cast<char *>("ambientTemperatureSensor");
-    valuesS[6] = ambientTemperature;
-
-    INumberVectorProperty *nvpSky = getNumber("skyCorrection");
-    float k1                      = getNumberValueFromVector(nvpSky, "k1");
-    float k2                      = getNumberValueFromVector(nvpSky, "k2");
-    float k3                      = getNumberValueFromVector(nvpSky, "k3");
-    float k4                      = getNumberValueFromVector(nvpSky, "k4");
-    float k5                      = getNumberValueFromVector(nvpSky, "k5");
-
-    float correctedTemperature =
-        skyTemperature - ((k1 / 100.0) * (ambientTemperature - k2 / 10.0) +
-                          (k3 / 100.0) * pow(exp(k4 / 1000 * ambientTemperature), (k5 / 100.0)));
-
-    namesS[7]  = const_cast<char *>("correctedInfraredSky");
-    valuesS[7] = correctedTemperature;
-
+	/*
     namesS[8]  = const_cast<char *>("windSpeed");
     valuesS[8] = data.windSpeed;
 
@@ -948,9 +846,10 @@ bool process_data_and update(indigo_device *device) {
     {
         setParameterValue("WEATHER_WIND_SPEED", 0);
     }
+	*/
     return true;
 }
-*/
+
 
 // --------------------------------------------------------------------------------- Common stuff
 static bool aag_open(indigo_device *device) {
@@ -1024,7 +923,7 @@ static int aag_init_properties(indigo_device *device) {
 	X_SKY_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, X_SKY_CORRECTION_PROPERTY_NAME, AUX_RELAYS_GROUP, "Sky temperature correction", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
 	if (X_SKY_CORRECTION_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(X_SKY_CORRECTION_K1_ITEM, X_SKY_CORRECTION_K1_ITEM_NAME, X_SKY_CORRECTION_K1_ITEM_NAME, -999, 999, 0, 33);
+	indigo_init_number_item(X_SKY_CORRECTION_K1_ITEM, X_SKY_CORRECTION_K1_ITEM_NAME, X_SKY_CORRECTION_K1_ITEM_NAME, -999, 999, 0, 3);
 	indigo_init_number_item(X_SKY_CORRECTION_K2_ITEM, X_SKY_CORRECTION_K2_ITEM_NAME, X_SKY_CORRECTION_K2_ITEM_NAME, -999, 999, 0, 0);
 	indigo_init_number_item(X_SKY_CORRECTION_K3_ITEM, X_SKY_CORRECTION_K3_ITEM_NAME, X_SKY_CORRECTION_K3_ITEM_NAME, -999, 999, 0, 4);
 	indigo_init_number_item(X_SKY_CORRECTION_K4_ITEM, X_SKY_CORRECTION_K4_ITEM_NAME, X_SKY_CORRECTION_K4_ITEM_NAME, -999, 999, 0, 100);
@@ -1087,13 +986,10 @@ static int aag_init_properties(indigo_device *device) {
 }
 
 static void sensors_timer_callback(indigo_device *device) {
-
-	//int power_voltage, ambient_temperature, ldr_value, rain_sensor_temperature;
-	//bool success = aag_get_values(device, &power_voltage, &ambient_temperature, &ldr_value, &rain_sensor_temperature);
 	cloudwatcher_data cwd;
 	bool success = aag_get_cloudwatcher_data(device, &cwd);
+	process_data_and_update(device, cwd);
 
-	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->sensors_timer);
 }
 
