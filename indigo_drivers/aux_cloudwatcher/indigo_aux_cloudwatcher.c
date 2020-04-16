@@ -193,6 +193,8 @@ static void delete_port_device(int device_index);
 #define LUNATICO_CMD_LEN 100
 #define BLOCK_SIZE 15
 
+#define ABS_ZERO 273.15
+
 /* Linatico AAG CloudWatcher device Commands ======================================================================== */
 static bool aag_command(indigo_device *device, const char *command, char *response, int block_count, int sleep) {
 	int max = block_count * BLOCK_SIZE;
@@ -733,8 +735,6 @@ static bool aag_populate_constants(indigo_device *device) {
 	return false;
 }
 
-#define ABS_ZERO 273.15
-
 bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	float rain_sensor_temp = data.rain_sensor_temperature;
 	if (rain_sensor_temp > 1022) {
@@ -780,8 +780,13 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 			1.0 / (ambient_temperature / X_CONSTANTS_AMBIENT_BETA_ITEM->number.value + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
 	}
 	X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.value = AUX_WEATHER_TEMPERATURE_ITEM->number.value = ambient_temperature;
-	AUX_WEATHER_HUMIDITY_ITEM->number.value = data.rh;
-	AUX_WEATHER_DEWPOINT_ITEM->number.value = ambient_temperature - (100.0 - data.rh) / 5.0;
+	if (data.rh != NO_READING) {
+		AUX_WEATHER_HUMIDITY_ITEM->number.value = data.rh;
+		AUX_WEATHER_DEWPOINT_ITEM->number.value = ambient_temperature - (100.0 - data.rh) / 5.0;
+	} else {
+		AUX_WEATHER_DEWPOINT_ITEM->number.value = -ABS_ZERO;
+		AUX_WEATHER_HUMIDITY_ITEM->number.value = 0;
+	}
 
 	float sky_temperature = data.ir_sky_temperature / 100.0;
 	float ir_sensor_temperature = data.ir_sensor_temperature / 100.0;
