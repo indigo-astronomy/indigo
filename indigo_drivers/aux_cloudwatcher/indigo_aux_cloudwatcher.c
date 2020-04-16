@@ -94,8 +94,8 @@
 
 
 #define X_SENSOR_READINGS_PROPERTY_NAME              "X_SENSOR_READINGS"
+#define X_SENSOR_RAW_SKY_TEMPERATURE_ITEM_NAME       "RAW_IR_SKY_TEMPERATURE"
 #define X_SENSOR_SKY_TEMPERATURE_ITEM_NAME           "IR_SKY_TEMPERATURE"
-#define X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM_NAME "CORRECTED_IR_SKY_TEMPERATURE"
 #define X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM_NAME     "IR_SENSOR_TEMPERATURE"
 #define X_SENSOR_RAIN_CYCLES_ITEM_NAME               "RAIN_CYCLES"
 #define X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM_NAME   "RAIN_SENSOR_TEMPERATURE"
@@ -104,8 +104,8 @@
 #define X_SENSOR_AMBIENT_TEMPERATURE_ITEM_NAME       "AMBIENT_TEMPERATURE"
 
 #define X_SENSOR_READINGS_PROPERTY               (PRIVATE_DATA->sensor_readings_property)
-#define X_SENSOR_SKY_TEMPERATURE_ITEM            (X_SENSOR_READINGS_PROPERTY->items + 0)
-#define X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM  (X_SENSOR_READINGS_PROPERTY->items + 1)
+#define X_SENSOR_RAW_SKY_TEMPERATURE_ITEM        (X_SENSOR_READINGS_PROPERTY->items + 0)
+#define X_SENSOR_SKY_TEMPERATURE_ITEM  (X_SENSOR_READINGS_PROPERTY->items + 1)
 #define X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM      (X_SENSOR_READINGS_PROPERTY->items + 2)
 #define X_SENSOR_RAIN_CYCLES_ITEM                (X_SENSOR_READINGS_PROPERTY->items + 3)
 #define X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM    (X_SENSOR_READINGS_PROPERTY->items + 4)
@@ -113,10 +113,17 @@
 #define X_SENSOR_SKY_BRIGHTNESS_ITEM             (X_SENSOR_READINGS_PROPERTY->items + 6)
 #define X_SENSOR_AMBIENT_TEMPERATURE_ITEM        (X_SENSOR_READINGS_PROPERTY->items + 7)
 
+#define AUX_WEATHER_PROPERTY                     (PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_TEMPERATURE_ITEM             (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_HUMIDITY_ITEM                (AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_WIND_SPEED_ITEM              (AUX_WEATHER_PROPERTY->items + 2)
+#define AUX_WEATHER_DEWPOINT_ITEM                (AUX_WEATHER_PROPERTY->items + 3)
+#define AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM      (AUX_WEATHER_PROPERTY->items + 4)
+
 
 #define AUX_SENSORS_GROUP	"Sensors"
 
-#define AUX_SENSOR_NAMES_PROPERTY      (PRIVATE_DATA->sensor_names_property)
+#define AUX_SENSOR_NAMES_PROPERTY      (PRIVATE_DATA->sensors_property)
 #define AUX_SENSOR_NAME_1_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 0)
 #define AUX_SENSOR_NAME_2_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 1)
 #define AUX_SENSOR_NAME_3_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 2)
@@ -126,15 +133,6 @@
 #define AUX_SENSOR_NAME_7_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 6)
 #define AUX_SENSOR_NAME_8_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 7)
 
-#define AUX_GPIO_SENSORS_PROPERTY     (PRIVATE_DATA->sensors_property)
-#define AUX_GPIO_SENSOR_1_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 0)
-#define AUX_GPIO_SENSOR_2_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 1)
-#define AUX_GPIO_SENSOR_3_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 2)
-#define AUX_GPIO_SENSOR_4_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 3)
-#define AUX_GPIO_SENSOR_5_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 4)
-#define AUX_GPIO_SENSOR_6_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 5)
-#define AUX_GPIO_SENSOR_7_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 6)
-#define AUX_GPIO_SENSOR_8_ITEM        (AUX_GPIO_SENSORS_PROPERTY->items + 7)
 
 
 typedef struct {
@@ -170,7 +168,7 @@ typedef struct {
 	indigo_property *sky_correction_property,
 	                *constants_property,
 	                *sensor_readings_property,
-	                *sensor_names_property,
+	                *weather_property,
 	                *sensors_property;
 } aag_private_data;
 
@@ -781,22 +779,27 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 		ambient_temperature =
 			1.0 / (ambient_temperature / X_CONSTANTS_AMBIENT_BETA_ITEM->number.value + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
 	}
-	X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.value = ambient_temperature;
+	X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.value = AUX_WEATHER_TEMPERATURE_ITEM->number.value = ambient_temperature;
+	AUX_WEATHER_HUMIDITY_ITEM->number.value = data.rh;
+	AUX_WEATHER_DEWPOINT_ITEM->number.value = ambient_temperature - (100.0 - data.rh) / 5.0;
 
 	float sky_temperature = data.ir_sky_temperature / 100.0;
 	float ir_sensor_temperature = data.ir_sensor_temperature / 100.0;
-	X_SENSOR_SKY_TEMPERATURE_ITEM->number.value = sky_temperature;
+	X_SENSOR_RAW_SKY_TEMPERATURE_ITEM->number.value = sky_temperature;
 	X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM->number.value = ir_sensor_temperature;
 	float k1 = X_SKY_CORRECTION_K1_ITEM->number.value;
 	float k2 = X_SKY_CORRECTION_K2_ITEM->number.value;
 	float k3 = X_SKY_CORRECTION_K3_ITEM->number.value;
 	float k4 = X_SKY_CORRECTION_K4_ITEM->number.value;
 	float k5 = X_SKY_CORRECTION_K5_ITEM->number.value;
-	X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM->number.value =
+	X_SENSOR_SKY_TEMPERATURE_ITEM->number.value = AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM->number.value =
 		sky_temperature - ((k1 / 100.0) * (ir_sensor_temperature - k2 / 10.0) +
 		                   (k3 / 100.0) * pow(exp(k4 / 1000 * ir_sensor_temperature), (k5 / 100.0)));
 
+	AUX_WEATHER_WIND_SPEED_ITEM->number.value = data.wind_speed;
+
 	indigo_update_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
+	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 
 	/*
     namesS[8]  = const_cast<char *>("windSpeed");
@@ -947,9 +950,9 @@ static int aag_init_properties(indigo_device *device) {
 	X_SENSOR_READINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_SENSOR_READINGS_PROPERTY_NAME, AUX_RELAYS_GROUP, "Sensor Readings", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
 	if (X_SENSOR_READINGS_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(X_SENSOR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM_NAME, "IR sky temperature (°C)", -200, 80, 0, 0);
-	indigo_init_number_item(X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM, X_SENSOR_CORRECTED_SKY_TEMPERATURE_ITEM_NAME, "Corrected IR sky temperature (°C)", -200, 80, 0, 0);
-	indigo_init_number_item(X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM, X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM_NAME, "IR sensor temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_SENSOR_RAW_SKY_TEMPERATURE_ITEM, X_SENSOR_RAW_SKY_TEMPERATURE_ITEM_NAME, "Raw infrared sky temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_SENSOR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM_NAME, "Infrared sky temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM, X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM_NAME, "Infrared sensor temperature (°C)", -200, 80, 0, 0);
 	indigo_init_number_item(X_SENSOR_RAIN_CYCLES_ITEM, X_SENSOR_RAIN_CYCLES_ITEM_NAME, "Rain (cycles)", 0, 100000, 0, 0);
 	indigo_init_number_item(X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM, X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM_NAME, "Rain sensor temperature (°C)", -200, 80, 0, 0);
 	indigo_init_number_item(X_SENSOR_RAIN_HEATER_POWER_ITEM, X_SENSOR_RAIN_HEATER_POWER_ITEM_NAME, "Rain sensor heater power (%)", 0, 100, 1, 0);
@@ -968,17 +971,14 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_text_item(AUX_SENSOR_NAME_7_ITEM, AUX_GPIO_SENSOR_NAME_7_ITEM_NAME, "Sensor 7", "Sensor #7");
 	indigo_init_text_item(AUX_SENSOR_NAME_8_ITEM, AUX_GPIO_SENSOR_NAME_8_ITEM_NAME, "Sensor 8", "Sensor #8");
 	// -------------------------------------------------------------------------------- GPIO_SENSORS
-	AUX_GPIO_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_SENSORS_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
-	if (AUX_GPIO_SENSORS_PROPERTY == NULL)
+	AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_SENSORS_GROUP, "Weather", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+	if (AUX_WEATHER_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_GPIO_SENSOR_1_ITEM, AUX_GPIO_SENSOR_NAME_1_ITEM_NAME, "Sensor #1", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "Sensor #2", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "Sensor #3", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "Sensor #4", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_5_ITEM, AUX_GPIO_SENSOR_NAME_5_ITEM_NAME, "Sensor #5", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_6_ITEM, AUX_GPIO_SENSOR_NAME_6_ITEM_NAME, "Sensor #6", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_7_ITEM, AUX_GPIO_SENSOR_NAME_7_ITEM_NAME, "Sensor #7", 0, 1024, 1, 0);
-	indigo_init_number_item(AUX_GPIO_SENSOR_8_ITEM, AUX_GPIO_SENSOR_NAME_8_ITEM_NAME, "Sensor #8", 0, 1024, 1, 0);
+	indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative humidity (%)", 0, 100, 0, 0);
+	indigo_init_number_item(AUX_WEATHER_WIND_SPEED_ITEM, AUX_WEATHER_WIND_SPEED_ITEM_NAME, "Wind speed (m/s)", 0, 200, 0, 0);
+	indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -200, 80, 1, 0);
+	indigo_init_number_item(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM, "Infrared sky temperature (°C)", -200, 80, 1, 0);
 	//---------------------------------------------------------------------------
 	indigo_define_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
 	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
@@ -999,8 +999,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 		if (indigo_property_match(X_SENSOR_READINGS_PROPERTY, property))
 			indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
-		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
-			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 	}
 	if (indigo_property_match(X_SKY_CORRECTION_PROPERTY, property))
 		indigo_define_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
@@ -1049,7 +1049,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 						indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
-						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+						indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 
 						aag_populate_constants(device);
 						PRIVATE_DATA->sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
@@ -1067,7 +1067,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 				indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
 				indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+				indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 
 				aag_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1088,21 +1088,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
 		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
-		if (DEVICE_CONNECTED) {
-			indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-		}
-		snprintf(AUX_GPIO_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_1_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_2_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_3_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_4_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_5_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_6_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_7_ITEM->text.value);
-		snprintf(AUX_GPIO_SENSOR_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_SENSOR_NAME_8_ITEM->text.value);
-		AUX_SENSOR_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-		if (DEVICE_CONNECTED) {
-			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-		}
 		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUTHENTICATION_PROPERTY, property)) {
@@ -1132,7 +1117,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_CONSTANTS_PROPERTY);
 	indigo_release_property(X_SENSOR_READINGS_PROPERTY);
-	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
+	indigo_release_property(AUX_WEATHER_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
