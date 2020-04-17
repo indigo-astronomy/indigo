@@ -51,10 +51,11 @@
 
 #define PRIVATE_DATA                   ((aag_private_data *)device->private_data)
 
-#define SETTINGS_GROUP	"Settings"
-#define AUX_GROUP		"Auxiliary"
-
-#define AUX_RELAYS_GROUP	"Relay control"
+#define SETTINGS_GROUP	 "Settings"
+#define THRESHOLDS_GROUP "Tresholds"
+#define WARNINGS_GROUP   "Warnings"
+#define WEATHER_GROUP    "Weather"
+#define SENSORS_GROUP	 "Sensors"
 
 #define X_SKY_CORRECTION_PROPERTY_NAME  "X_SKY_CORRECTION"
 #define X_SKY_CORRECTION_K1_ITEM_NAME   "K1"
@@ -146,18 +147,88 @@
 #define AUX_RAIN_WARNING_SENSOR_1_ITEM			(AUX_RAIN_WARNING_PROPERTY->items + 0)
 
 
-#define AUX_SENSORS_GROUP	"Sensors"
+// Humidity conditions
+#define X_RH_CONDITION_THRESHOLDS_PROPERTY_NAME "X_RH_CONDITION_THRESHOLDS"
+#define X_RH_CONDITION_PROPERTY_NAME            "X_RH_CONDITION"
+#define X_RH_CONDITION_HUMID_ITEM_NAME          "HUMID"
+#define X_RH_CONDITION_NORMAL_ITEM_NAME         "NORMAL"
+#define X_RH_CONDITION_DRY_ITEM_NAME            "DRY"
 
-#define AUX_SENSOR_NAMES_PROPERTY      (PRIVATE_DATA->sensors_property)
-#define AUX_SENSOR_NAME_1_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 0)
-#define AUX_SENSOR_NAME_2_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 1)
-#define AUX_SENSOR_NAME_3_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 2)
-#define AUX_SENSOR_NAME_4_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 3)
-#define AUX_SENSOR_NAME_5_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 4)
-#define AUX_SENSOR_NAME_6_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 5)
-#define AUX_SENSOR_NAME_7_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 6)
-#define AUX_SENSOR_NAME_8_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 7)
+#define X_RH_CONDITION_THRESHOLDS_PROPERTY      (PRIVATE_DATA->rh_condition_thresholds_property)
+#define X_RH_CONDITION_HUMID_THRESHOLD_ITEM     (X_RH_CONDITION_THRESHOLDS_PROPERTY->items + 0)
+#define X_RH_CONDITION_NORMAL_THRESHOLD_ITEM    (X_RH_CONDITION_THRESHOLDS_PROPERTY->items + 1)
+#define X_RH_CONDITION_DRY_THRESHOLD_ITEM       (X_RH_CONDITION_THRESHOLDS_PROPERTY->items + 2)
 
+#define X_RH_CONDITION_PROPERTY		            (PRIVATE_DATA->rh_condition_property)
+#define X_RH_CONDITION_HUMID_ITEM		        (X_RH_CONDITION_PROPERTY->items + 0)
+#define X_RH_CONDITION_NORMAL_ITEM              (X_RH_CONDITION_PROPERTY->items + 1)
+#define X_RH_CONDITION_DRY_ITEM                 (X_RH_CONDITION_PROPERTY->items + 2)
+
+// WIND
+#define X_WIND_CONDITION_THRESHOLDS_PROPERTY_NAME "X_WIND_CONDITION_THRESHOLDS"
+#define X_WIND_CONDITION_PROPERTY_NAME            "X_WIND_CONDITION"
+#define X_WIND_CONDITION_STRONG_ITEM_NAME         "STRONG"
+#define X_WIND_CONDITION_MODERATE_ITEM_NAME       "MODERATE"
+#define X_WIND_CONDITION_CALM_ITEM_NAME           "CALM"
+
+#define X_WIND_CONDITION_THRESHOLDS_PROPERTY      (PRIVATE_DATA->wind_condition_thresholds_property)
+#define X_WIND_CONDITION_STRONG_THRESHOLD_ITEM    (X_WIND_CONDITION_THRESHOLDS_PROPERTY->items + 0)
+#define X_WIND_CONDITION_MODERATE_THRESHOLD_ITEM  (X_WIND_CONDITION_THRESHOLDS_PROPERTY->items + 1)
+
+#define X_WIND_CONDITION_PROPERTY                 (PRIVATE_DATA->wind_condition_property)
+#define X_WIND_CONDITION_STRONG_ITEM              (X_WIND_CONDITION_PROPERTY->items + 0)
+#define X_WIND_CONDITION_MODERATE_ITEM            (X_WIND_CONDITION_PROPERTY->items + 1)
+#define X_WIND_CONDITION_CALM_ITEM                (X_WIND_CONDITION_PROPERTY->items + 2)
+
+// RAIN
+#define X_RAIN_CONDITION_THRESHOLDS_PROPERTY_NAME "X_RAIN_CONDITION_THRESHOLDS"
+#define X_RAIN_CONDITION_PROPERTY_NAME            "X_RAIN_CONDITION"
+#define X_RAIN_CONDITION_RAINING_ITEM_NAME        "RAINING"
+#define X_RAIN_CONDITION_WET_ITEM_NAME            "WET"
+#define X_RAIN_CONDITION_DRY_ITEM_NAME            "DRY"
+
+#define X_RAIN_CONDITION_THRESHOLDS_PROPERTY      (PRIVATE_DATA->rain_condition_thresholds_property)
+#define X_RAIN_CONDITION_RAINING_THRESHOLD_ITEM   (X_RAIN_CONDITION_THRESHOLDS_PROPERTY->items + 0)
+#define X_RAIN_CONDITION_WET_THRESHOLD_ITEM       (X_RAIN_CONDITION_THRESHOLDS_PROPERTY->items + 1)
+
+#define X_RAIN_CONDITION_PROPERTY                 (PRIVATE_DATA->rain_condition_property)
+#define X_RAIN_CONDITION_RAINING_ITEM             (X_RAIN_CONDITION_PROPERTY->items + 0)
+#define X_RAIN_CONDITION_WET_ITEM                 (X_RAIN_CONDITION_PROPERTY->items + 1)
+#define X_RAIN_CONDITION_DRY_ITEM                 (X_RAIN_CONDITION_PROPERTY->items + 2)
+
+// CLOUD detection
+#define X_CLOUD_CONDITION_THRESHOLDS_PROPERTY_NAME  "X_CLOUD_CONDITION_THRESHOLDS"
+#define X_CLOUD_CONDITION_PROPERTY_NAME             "X_CLOUD_CONDITION"
+
+#define X_CLOUD_CONDITION_CLEAR_ITEM_NAME           "CLEAR"
+#define X_CLOUD_CONDITION_CLOUDY_ITEM_NAME          "CLOUDY"
+#define X_CLOUD_CONDITION_OVERCAST_ITEM_NAME        "OVERCAST"
+
+#define X_CLOUD_CONDITION_THRESHOLDS_PROPERTY       (PRIVATE_DATA->cloud_condition_thresholds_property)
+#define X_CLOUD_CONDITION_CLEAR_THRESHOLD_ITEM      (X_CLOUD_CONDITION_THRESHOLDS_PROPERTY->items + 0)
+#define X_CLOUD_CONDITION_CLOUDY_THRESHOLD_ITEM     (X_CLOUD_CONDITION_THRESHOLDS_PROPERTY->items + 1)
+
+#define X_CLOUD_CONDITION_PROPERTY                  (PRIVATE_DATA->cloud_condition_property)
+#define X_CLOUD_CONDITION_CLEAR_ITEM                (X_CLOUD_CONDITION_PROPERTY->items + 0)
+#define X_CLOUD_CONDITION_CLOUDY_ITEM               (X_CLOUD_CONDITION_PROPERTY->items + 1)
+#define X_CLOUD_CONDITION_OVERCAST_ITEM             (X_CLOUD_CONDITION_PROPERTY->items + 2)
+
+// SKY drkness
+#define X_SKY_CONDITION_THRESHOLDS_PROPERTY_NAME  "X_SKY_CONDITION_THRESHOLDS"
+#define X_SKY_CONDITION_PROPERTY_NAME             "X_SKY_CONDITION"
+
+#define X_SKY_CONDITION_DARK_ITEM_NAME              "DARK"
+#define X_SKY_CONDITION_LIGHT_ITEM_NAME             "LIGHT"
+#define X_SKY_CONDITION_VERY_LIGHT_ITEM_NAME        "VERY_LIGHT"
+
+#define X_SKY_CONDITION_THRESHOLDS_PROPERTY        (PRIVATE_DATA->sky_condition_thresholds_property)
+#define X_SKY_CONDITION_DARK_THRESHOLD_ITEM        (X_SKY_CONDITION_THRESHOLDS_PROPERTY->items + 0)
+#define X_SKY_CONDITION_LIGHT_THRESHOLD_ITEM       (X_SKY_CONDITION_THRESHOLDS_PROPERTY->items + 1)
+
+#define X_SKY_CONDITION_PROPERTY                   (PRIVATE_DATA->sky_condition_property)
+#define X_SKY_CONDITION_DARK_ITEM                  (X_SKY_CONDITION_PROPERTY->items + 0)
+#define X_SKY_CONDITION_LIGHT_ITEM                 (X_SKY_CONDITION_PROPERTY->items + 1)
+#define X_SKY_CONDITION_VERY_LIGHT_ITEM            (X_SKY_CONDITION_PROPERTY->items + 2)
 
 
 typedef struct {
@@ -194,12 +265,22 @@ typedef struct {
 	                *constants_property,
 	                *sensor_readings_property,
 	                *weather_property,
-					*dew_threshold_property,
-					*wind_threshold_property,
-					*rain_threshold_property,
-					*dew_warning_property,
-					*wind_warning_property,
-					*rain_warning_property,
+	                *dew_threshold_property,
+	                *wind_threshold_property,
+	                *rain_threshold_property,
+	                *dew_warning_property,
+	                *wind_warning_property,
+	                *rain_warning_property,
+	                *rh_condition_thresholds_property,
+	                *rh_condition_property,
+	                *wind_condition_thresholds_property,
+	                *wind_condition_property,
+	                *rain_condition_thresholds_property,
+	                *rain_condition_property,
+	                *cloud_condition_thresholds_property,
+	                *cloud_condition_property,
+	                *sky_condition_thresholds_property,
+	                *sky_condition_property,
 	                *sensors_property;
 } aag_private_data;
 
@@ -996,7 +1077,7 @@ static int aag_init_properties(indigo_device *device) {
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 7;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
-	X_SKY_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, X_SKY_CORRECTION_PROPERTY_NAME, AUX_RELAYS_GROUP, "Sky temperature correction", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
+	X_SKY_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, X_SKY_CORRECTION_PROPERTY_NAME, SETTINGS_GROUP, "Sky temperature correction", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
 	if (X_SKY_CORRECTION_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(X_SKY_CORRECTION_K1_ITEM, X_SKY_CORRECTION_K1_ITEM_NAME, X_SKY_CORRECTION_K1_ITEM_NAME, -999, 999, 0, 3);
@@ -1006,7 +1087,7 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_number_item(X_SKY_CORRECTION_K5_ITEM, X_SKY_CORRECTION_K5_ITEM_NAME, X_SKY_CORRECTION_K5_ITEM_NAME, -999, 999, 0, 100);
 
 	// -------------------------------------------------------------------------------- X_CONSTANTS
-	X_CONSTANTS_PROPERTY = indigo_init_number_property(NULL, device->name, X_CONSTANTS_PROPERTY_NAME, AUX_RELAYS_GROUP, "AAG Constants", INDIGO_OK_STATE, INDIGO_RO_PERM, 10);
+	X_CONSTANTS_PROPERTY = indigo_init_number_property(NULL, device->name, X_CONSTANTS_PROPERTY_NAME, SETTINGS_GROUP, "AAG Constants", INDIGO_OK_STATE, INDIGO_RO_PERM, 10);
 	if (X_CONSTANTS_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(X_CONSTANTS_ZENER_VOLTAGE_ITEM, X_CONSTANTS_ZENER_VOLTAGE_ITEM_NAME, "Zener voltage (V)", -100, 100, 0, 3);
@@ -1019,8 +1100,8 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_number_item(X_CONSTANTS_AMBIENT_R_AT_25_ITEM, X_CONSTANTS_AMBIENT_R_AT_25_ITEM_NAME, "Ambient R at 25°C (kΩ)", 0, 100000, 0, 10);
 	indigo_init_number_item(X_CONSTANTS_AMBIENT_PULLUP_R_ITEM, X_CONSTANTS_AMBIENT_PULLUP_R_ITEM_NAME, "Ambient Pullup R (kΩ)", 0, 100000, 0, 9.9);
 	indigo_init_number_item(X_CONSTANTS_ANEMOMETER_STATE_ITEM, X_CONSTANTS_ANEMOMETER_STATE_ITEM_NAME, "Anemometer Status", 0, 10, 0, 0);
-	// -------------------------------------------------------------------------------- GPIO PULSE OUTLETS
-	X_SENSOR_READINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_SENSOR_READINGS_PROPERTY_NAME, AUX_RELAYS_GROUP, "Sensor Readings", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
+	// -------------------------------------------------------------------------------- X_SENSOR_READINGS_PROPERTY
+	X_SENSOR_READINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_SENSOR_READINGS_PROPERTY_NAME, WEATHER_GROUP, "Sensor Readings", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
 	if (X_SENSOR_READINGS_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(X_SENSOR_RAW_SKY_TEMPERATURE_ITEM, X_SENSOR_RAW_SKY_TEMPERATURE_ITEM_NAME, "Raw infrared sky temperature (°C)", -200, 80, 0, 0);
@@ -1040,49 +1121,102 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_number_item(X_SENSOR_AMBIENT_TEMPERATURE_ITEM, X_SENSOR_AMBIENT_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
 	strncpy(X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
 	// -------------------------------------------------------------------------------- DEW_THRESHOLD
-	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Temerature difference (°C)", 0, 9, 0, 2);
 	// -------------------------------------------------------------------------------- WIND_THRESHOLD
-	AUX_WIND_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WIND_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Wind warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	AUX_WIND_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WIND_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Wind warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_WIND_THRESHOLD_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(AUX_WIND_THRESHOLD_SENSOR_1_ITEM, AUX_WIND_THRESHOLD_SENSOR_1_ITEM_NAME, "Wind speed (m/s)", 0, 50, 0, 6);
 	// -------------------------------------------------------------------------------- RAIN_THRESHOLD
-	AUX_RAIN_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_RAIN_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Rain warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	AUX_RAIN_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_RAIN_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Rain warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_WIND_THRESHOLD_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(AUX_RAIN_THRESHOLD_SENSOR_1_ITEM, AUX_RAIN_THRESHOLD_SENSOR_1_ITEM_NAME, "Rain (cycles)", 0, 100000, 1, 400);
 	// -------------------------------------------------------------------------------- DEW_WARNING
-	AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, AUX_GROUP, "Dew warning", INDIGO_OK_STATE, 1);
+	AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, WARNINGS_GROUP, "Dew warning", INDIGO_OK_STATE, 1);
 	if (AUX_DEW_WARNING_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Dew warning", INDIGO_OK_STATE);
 	// -------------------------------------------------------------------------------- RAIN_WARNING
-	AUX_RAIN_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_RAIN_WARNING_PROPERTY_NAME, AUX_GROUP, "Rain warning", INDIGO_OK_STATE, 1);
+	AUX_RAIN_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_RAIN_WARNING_PROPERTY_NAME, WARNINGS_GROUP, "Rain warning", INDIGO_OK_STATE, 1);
 	if (AUX_RAIN_WARNING_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_light_item(AUX_RAIN_WARNING_SENSOR_1_ITEM, AUX_RAIN_WARNING_SENSOR_1_ITEM_NAME, "Rain warning", INDIGO_OK_STATE);
 	// -------------------------------------------------------------------------------- WIND_WARNING
-	AUX_WIND_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_WIND_WARNING_PROPERTY_NAME, AUX_GROUP, "Wind warning", INDIGO_OK_STATE, 1);
+	AUX_WIND_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_WIND_WARNING_PROPERTY_NAME, WARNINGS_GROUP, "Wind warning", INDIGO_OK_STATE, 1);
 	if (AUX_WIND_WARNING_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_light_item(AUX_WIND_WARNING_SENSOR_1_ITEM, AUX_WIND_WARNING_SENSOR_1_ITEM_NAME, "Wind warning", INDIGO_OK_STATE);
-	// -------------------------------------------------------------------------------- SENSOR_NAMES
-	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
-	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
+	// -------------------------------------------------------------------------------- X_RH_CONDITION_THRESHOLDS
+	X_RH_CONDITION_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, X_RH_CONDITION_THRESHOLDS_PROPERTY_NAME, THRESHOLDS_GROUP, "Relative humidity thresholds (%)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (X_RH_CONDITION_THRESHOLDS_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_text_item(AUX_SENSOR_NAME_1_ITEM, AUX_GPIO_SENSOR_NAME_1_ITEM_NAME, "Sensor 1", "Sensor #1");
-	indigo_init_text_item(AUX_SENSOR_NAME_2_ITEM, AUX_GPIO_SENSOR_NAME_2_ITEM_NAME, "Sensor 2", "Sensor #2");
-	indigo_init_text_item(AUX_SENSOR_NAME_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "Sensor 3", "Sensor #3");
-	indigo_init_text_item(AUX_SENSOR_NAME_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "Sensor 4", "Sensor #4");
-	indigo_init_text_item(AUX_SENSOR_NAME_5_ITEM, AUX_GPIO_SENSOR_NAME_5_ITEM_NAME, "Sensor 5", "Sensor #5");
-	indigo_init_text_item(AUX_SENSOR_NAME_6_ITEM, AUX_GPIO_SENSOR_NAME_6_ITEM_NAME, "Sensor 6", "Sensor #6");
-	indigo_init_text_item(AUX_SENSOR_NAME_7_ITEM, AUX_GPIO_SENSOR_NAME_7_ITEM_NAME, "Sensor 7", "Sensor #7");
-	indigo_init_text_item(AUX_SENSOR_NAME_8_ITEM, AUX_GPIO_SENSOR_NAME_8_ITEM_NAME, "Sensor 8", "Sensor #8");
-	// -------------------------------------------------------------------------------- GPIO_SENSORS
-	AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_SENSORS_GROUP, "Weather", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+	indigo_init_number_item(X_RH_CONDITION_HUMID_THRESHOLD_ITEM, X_RH_CONDITION_HUMID_ITEM_NAME, "Humid (more than)", 0, 100, 0, 60);
+	indigo_init_number_item(X_RH_CONDITION_NORMAL_THRESHOLD_ITEM, X_RH_CONDITION_NORMAL_ITEM_NAME, "Normal (more than)", 0, 100, 0, 30);
+	// -------------------------------------------------------------------------------- X_WIND_CONDITION_THRESHOLDS
+	X_WIND_CONDITION_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, X_WIND_CONDITION_THRESHOLDS_PROPERTY_NAME, THRESHOLDS_GROUP, "Wind thresholds (m/s)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (X_WIND_CONDITION_THRESHOLDS_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(X_WIND_CONDITION_STRONG_THRESHOLD_ITEM, X_WIND_CONDITION_STRONG_ITEM_NAME, "Strong wind (more than)", 0, 100, 0, 10);
+	indigo_init_number_item(X_WIND_CONDITION_MODERATE_THRESHOLD_ITEM, X_WIND_CONDITION_MODERATE_ITEM_NAME, "Moderate wind (more than)", 0, 100, 0, 1);
+	// -------------------------------------------------------------------------------- X_RAIN_CONDITION_THRESHOLDS
+	X_RAIN_CONDITION_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, X_RAIN_CONDITION_THRESHOLDS_PROPERTY_NAME, THRESHOLDS_GROUP, "Rain sensor thresholds (kΩ)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (X_RAIN_CONDITION_THRESHOLDS_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(X_RAIN_CONDITION_RAINING_THRESHOLD_ITEM, X_RAIN_CONDITION_RAINING_ITEM_NAME, "Raining (less than)", 0, 100000, 0, 400);
+	indigo_init_number_item(X_RAIN_CONDITION_WET_THRESHOLD_ITEM, X_RAIN_CONDITION_WET_ITEM_NAME, "Wet (less than)", 0, 100000, 0, 1700);
+	// -------------------------------------------------------------------------------- X_CLOUD_CONDITION_THRESHOLDS
+	X_CLOUD_CONDITION_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, X_CLOUD_CONDITION_THRESHOLDS_PROPERTY_NAME, THRESHOLDS_GROUP, "Cloud thresholds (°C)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (X_CLOUD_CONDITION_THRESHOLDS_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(X_CLOUD_CONDITION_CLEAR_THRESHOLD_ITEM, X_CLOUD_CONDITION_CLEAR_ITEM_NAME, "Clear (less than)", -200, 80, 0, -15);
+	indigo_init_number_item(X_CLOUD_CONDITION_CLOUDY_THRESHOLD_ITEM, X_CLOUD_CONDITION_CLOUDY_ITEM_NAME, "Cloudy (less than)", -200, 80, 0, 0);
+	// -------------------------------------------------------------------------------- X_SKY_CONDITION_THRESHOLDS
+	X_SKY_CONDITION_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, X_SKY_CONDITION_THRESHOLDS_PROPERTY_NAME, THRESHOLDS_GROUP, "Sky darkness threshold (kΩ)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (X_SKY_CONDITION_THRESHOLDS_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(X_SKY_CONDITION_DARK_THRESHOLD_ITEM, X_SKY_CONDITION_DARK_ITEM_NAME, "Dark (more than)", 0, 100000, 0, 2100);
+	indigo_init_number_item(X_SKY_CONDITION_LIGHT_THRESHOLD_ITEM, X_SKY_CONDITION_LIGHT_ITEM_NAME, "Light (more than)", 0, 100000, 0, 6);
+	// -------------------------------------------------------------------------------- X_RH_CONDITION
+	X_RH_CONDITION_PROPERTY = indigo_init_switch_property(NULL, device->name, X_RH_CONDITION_PROPERTY_NAME, WEATHER_GROUP, "Humidity condition", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+	if (X_RH_CONDITION_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_switch_item(X_RH_CONDITION_HUMID_ITEM, X_RH_CONDITION_HUMID_ITEM_NAME, "Humid", false);
+	indigo_init_switch_item(X_RH_CONDITION_NORMAL_ITEM, X_RH_CONDITION_NORMAL_ITEM_NAME, "Normal", false);
+	indigo_init_switch_item(X_RH_CONDITION_DRY_ITEM, X_RH_CONDITION_DRY_ITEM_NAME, "Dry", false);
+	// -------------------------------------------------------------------------------- X_WIND_CONDITION
+	X_WIND_CONDITION_PROPERTY = indigo_init_switch_property(NULL, device->name, X_WIND_CONDITION_PROPERTY_NAME, WEATHER_GROUP, "Wind condition", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+	if (X_WIND_CONDITION_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_switch_item(X_WIND_CONDITION_STRONG_ITEM, X_WIND_CONDITION_STRONG_ITEM_NAME, "Strong", false);
+	indigo_init_switch_item(X_WIND_CONDITION_MODERATE_ITEM, X_WIND_CONDITION_MODERATE_ITEM_NAME, "Moderate", false);
+	indigo_init_switch_item(X_WIND_CONDITION_CALM_ITEM, X_WIND_CONDITION_CALM_ITEM_NAME, "Calm", false);
+	// -------------------------------------------------------------------------------- X_RAIN_CONDITION
+	X_RAIN_CONDITION_PROPERTY = indigo_init_switch_property(NULL, device->name, X_RAIN_CONDITION_PROPERTY_NAME, WEATHER_GROUP, "Rain condition", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+	if (X_RAIN_CONDITION_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_switch_item(X_RAIN_CONDITION_RAINING_ITEM, X_RAIN_CONDITION_RAINING_ITEM_NAME, "Raining", false);
+	indigo_init_switch_item(X_RAIN_CONDITION_WET_ITEM, X_RAIN_CONDITION_WET_ITEM_NAME, "Wet", false);
+	indigo_init_switch_item(X_RAIN_CONDITION_DRY_ITEM, X_RAIN_CONDITION_DRY_ITEM_NAME, "Dry", false);
+	// -------------------------------------------------------------------------------- X_CLOUD_CONDITION
+	X_CLOUD_CONDITION_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CLOUD_CONDITION_PROPERTY_NAME, WEATHER_GROUP, "Cloud condition", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+	if (X_CLOUD_CONDITION_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_switch_item(X_CLOUD_CONDITION_CLEAR_ITEM, X_CLOUD_CONDITION_CLEAR_ITEM_NAME, "Clear", false);
+	indigo_init_switch_item(X_CLOUD_CONDITION_CLOUDY_ITEM, X_CLOUD_CONDITION_CLOUDY_ITEM_NAME, "Cloudy", false);
+	indigo_init_switch_item(X_CLOUD_CONDITION_OVERCAST_ITEM, X_CLOUD_CONDITION_OVERCAST_ITEM_NAME, "Overcast", false);
+	// -------------------------------------------------------------------------------- X_SKY_CONDITION
+	X_SKY_CONDITION_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SKY_CONDITION_PROPERTY_NAME, WEATHER_GROUP, "Sky condition", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+	if (X_SKY_CONDITION_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_switch_item(X_SKY_CONDITION_DARK_ITEM, X_SKY_CONDITION_DARK_ITEM_NAME, "Dark", false);
+	indigo_init_switch_item(X_SKY_CONDITION_LIGHT_ITEM, X_SKY_CONDITION_LIGHT_ITEM_NAME, "Light", false);
+	indigo_init_switch_item(X_SKY_CONDITION_VERY_LIGHT_ITEM, X_SKY_CONDITION_VERY_LIGHT_ITEM_NAME, "Very light", false);
+	// -------------------------------------------------------------------------------- AUX_WEATHER
+	AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 	if (AUX_WEATHER_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
@@ -1096,8 +1230,6 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM_NAME, "Infrared sky temperature (°C)", -200, 80, 1, 0);
 	strncpy(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
 	//---------------------------------------------------------------------------
-	indigo_define_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
-	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -1123,6 +1255,16 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
 		if (indigo_property_match(AUX_WIND_WARNING_PROPERTY, property))
 			indigo_define_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
+		if (indigo_property_match(X_RH_CONDITION_PROPERTY, property))
+			indigo_define_property(device, X_RH_CONDITION_PROPERTY, NULL);
+		if (indigo_property_match(X_WIND_CONDITION_PROPERTY, property))
+			indigo_define_property(device, X_WIND_CONDITION_PROPERTY, NULL);
+		if (indigo_property_match(X_RAIN_CONDITION_PROPERTY, property))
+			indigo_define_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
+		if (indigo_property_match(X_CLOUD_CONDITION_PROPERTY, property))
+			indigo_define_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
+		if (indigo_property_match(X_SKY_CONDITION_PROPERTY, property))
+			indigo_define_property(device, X_SKY_CONDITION_PROPERTY, NULL);
 	}
 	if (indigo_property_match(X_SKY_CORRECTION_PROPERTY, property))
 		indigo_define_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
@@ -1132,8 +1274,16 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_property(device, AUX_RAIN_THRESHOLD_PROPERTY, NULL);
 	if (indigo_property_match(AUX_WIND_THRESHOLD_PROPERTY, property))
 		indigo_define_property(device, AUX_WIND_THRESHOLD_PROPERTY, NULL);
-	if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property))
-		indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
+	if (indigo_property_match(X_RH_CONDITION_THRESHOLDS_PROPERTY, property))
+		indigo_define_property(device, X_RH_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	if (indigo_property_match(X_WIND_CONDITION_THRESHOLDS_PROPERTY, property))
+		indigo_define_property(device, X_WIND_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	if (indigo_property_match(X_RAIN_CONDITION_THRESHOLDS_PROPERTY, property))
+		indigo_define_property(device, X_RAIN_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	if (indigo_property_match(X_CLOUD_CONDITION_THRESHOLDS_PROPERTY, property))
+		indigo_define_property(device, X_CLOUD_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	if (indigo_property_match(X_SKY_CONDITION_THRESHOLDS_PROPERTY, property))
+		indigo_define_property(device, X_SKY_CONDITION_THRESHOLDS_PROPERTY, NULL);
 
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -1163,7 +1313,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			if (!DEVICE_CONNECTED) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				aag_reset_buffers(device);
 				if (aag_open(device)) {
 					char board[LUNATICO_CMD_LEN] = "N/A";
 					char firmware[LUNATICO_CMD_LEN] = "N/A";
@@ -1181,7 +1330,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 						indigo_define_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
 						indigo_define_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
-
+						indigo_define_property(device, X_RH_CONDITION_PROPERTY, NULL);
+						indigo_define_property(device, X_WIND_CONDITION_PROPERTY, NULL);
+						indigo_define_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
+						indigo_define_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
+						indigo_define_property(device, X_SKY_CONDITION_PROPERTY, NULL);
 						aag_populate_constants(device);
 						PRIVATE_DATA->sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1202,6 +1355,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
 				indigo_delete_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
+				indigo_delete_property(device, X_RH_CONDITION_PROPERTY, NULL);
+				indigo_delete_property(device, X_WIND_CONDITION_PROPERTY, NULL);
+				indigo_delete_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
+				indigo_delete_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
+				indigo_delete_property(device, X_SKY_CONDITION_PROPERTY, NULL);
 
 				aag_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1237,10 +1395,35 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
-		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
-		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
+	} else if (indigo_property_match(X_RH_CONDITION_THRESHOLDS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RH_CONDITION_THRESHOLDS
+		indigo_property_copy_values(X_RH_CONDITION_THRESHOLDS_PROPERTY, property, false);
+		X_RH_CONDITION_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_RH_CONDITION_THRESHOLDS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(X_WIND_CONDITION_THRESHOLDS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_WIND_CONDITION_THRESHOLDS
+		indigo_property_copy_values(X_WIND_CONDITION_THRESHOLDS_PROPERTY, property, false);
+		X_WIND_CONDITION_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_WIND_CONDITION_THRESHOLDS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(X_RAIN_CONDITION_THRESHOLDS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RAIN_CONDITION_THRESHOLDS
+		indigo_property_copy_values(X_RAIN_CONDITION_THRESHOLDS_PROPERTY, property, false);
+		X_RAIN_CONDITION_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_RAIN_CONDITION_THRESHOLDS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(X_CLOUD_CONDITION_THRESHOLDS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CLOUD_CONDITION_THRESHOLDS
+		indigo_property_copy_values(X_CLOUD_CONDITION_THRESHOLDS_PROPERTY, property, false);
+		X_CLOUD_CONDITION_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CLOUD_CONDITION_THRESHOLDS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(X_SKY_CONDITION_THRESHOLDS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_SKY_CONDITION_THRESHOLDS
+		indigo_property_copy_values(X_SKY_CONDITION_THRESHOLDS_PROPERTY, property, false);
+		X_SKY_CONDITION_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_SKY_CONDITION_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUTHENTICATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUTHENTICATION_PROPERTY
@@ -1256,7 +1439,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, AUX_DEW_THRESHOLD_PROPERTY);
 			indigo_save_property(device, NULL, AUX_RAIN_THRESHOLD_PROPERTY);
 			indigo_save_property(device, NULL, AUX_WIND_THRESHOLD_PROPERTY);
-			indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
+			indigo_save_property(device, NULL, X_RH_CONDITION_THRESHOLDS_PROPERTY);
+			indigo_save_property(device, NULL, X_WIND_CONDITION_THRESHOLDS_PROPERTY);
+			indigo_save_property(device, NULL, X_RAIN_CONDITION_THRESHOLDS_PROPERTY);
+			indigo_save_property(device, NULL, X_CLOUD_CONDITION_THRESHOLDS_PROPERTY);
+			indigo_save_property(device, NULL, X_SKY_CONDITION_THRESHOLDS_PROPERTY);
 		}
 	}
 	// --------------------------------------------------------------------------------
@@ -1276,6 +1463,11 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_DEW_WARNING_PROPERTY);
 	indigo_release_property(AUX_RAIN_WARNING_PROPERTY);
 	indigo_release_property(AUX_WIND_WARNING_PROPERTY);
+	indigo_release_property(X_RH_CONDITION_PROPERTY);
+	indigo_release_property(X_WIND_CONDITION_PROPERTY);
+	indigo_release_property(X_RAIN_CONDITION_PROPERTY);
+	indigo_release_property(X_CLOUD_CONDITION_PROPERTY);
+	indigo_release_property(X_SKY_CONDITION_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
@@ -1290,8 +1482,21 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_delete_property(device, AUX_WIND_THRESHOLD_PROPERTY, NULL);
 	indigo_release_property(AUX_WIND_THRESHOLD_PROPERTY);
 
-	indigo_delete_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
-	indigo_release_property(AUX_SENSOR_NAMES_PROPERTY);
+	indigo_delete_property(device, X_RH_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	indigo_release_property(X_RH_CONDITION_THRESHOLDS_PROPERTY);
+
+	indigo_delete_property(device, X_WIND_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	indigo_release_property(X_WIND_CONDITION_THRESHOLDS_PROPERTY);
+
+	indigo_delete_property(device, X_RAIN_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	indigo_release_property(X_RAIN_CONDITION_THRESHOLDS_PROPERTY);
+
+	indigo_delete_property(device, X_CLOUD_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	indigo_release_property(X_CLOUD_CONDITION_THRESHOLDS_PROPERTY);
+
+	indigo_delete_property(device, X_SKY_CONDITION_THRESHOLDS_PROPERTY, NULL);
+	indigo_release_property(X_SKY_CONDITION_THRESHOLDS_PROPERTY);
+
 	return indigo_aux_detach(device);
 }
 
