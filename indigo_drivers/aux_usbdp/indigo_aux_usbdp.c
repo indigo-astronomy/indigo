@@ -23,7 +23,7 @@
  \file indigo_aux_usbdp.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_aux_usbdp"
 
 #include <stdlib.h>
@@ -100,7 +100,7 @@
 #define AUX_LINK_CH_2AND3_LINKED_ITEM_NAME			"LINKED"
 #define AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME		"NOT_LINKED"
 
-#define AUX_DEW_WARNING_PROPERTY				(PRIVATE_DATA->dew_warning_proeprty)
+#define AUX_DEW_WARNING_PROPERTY				(PRIVATE_DATA->dew_warning_property)
 #define AUX_DEW_WARNING_SENSOR_1_ITEM			(AUX_DEW_WARNING_PROPERTY->items+0)
 #define AUX_DEW_WARNING_SENSOR_2_ITEM			(AUX_DEW_WARNING_PROPERTY->items+1)
 #define AUX_DEW_WARNING_SENSOR_3_ITEM			(AUX_DEW_WARNING_PROPERTY->items+2)
@@ -123,7 +123,7 @@ typedef struct {
 	indigo_property *heating_mode_property;
 	indigo_property *weather_property;
 	indigo_property *temperature_sensors_property;
-	indigo_property *dew_warning_proeprty;
+	indigo_property *dew_warning_property;
 	indigo_property *heater_aggressivity_property;
 	indigo_property *link_channels_23_property;
 	indigo_property *dew_threshold_property;
@@ -306,29 +306,29 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_WEATHER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient Temperature [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient Temperature (°C)", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -50, 100, 0, 0);
 		// -------------------------------------------------------------------------------- SENSORS
 		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_GROUP, "Temperature Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Sensor #1 [C]", -50, 100, 0, 0);
-		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Sensor #2 [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", -50, 100, 0, 0);
 
 		// -------------------------------------------------------------------------------- SENSOR_CALLIBRATION
 		AUX_CALLIBRATION_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_CALLIBRATION_PROPERTY_NAME, SETTINGS_GROUP, "Temperature Sensors Callibration", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_CALLIBRATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_1_ITEM, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME, "Sensor #1 [C]", 0, 9, 1, 0);
-		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_2_ITEM, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, "Sensor #2 [C]", 0, 9, 1, 0);
-		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_3_ITEM, AUX_CALLIBRATION_SENSOR_3_ITEM_NAME, "Ambient sensor [C]", 0, 9, 1, 0);
+		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_1_ITEM, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", 0, 9, 1, 0);
+		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_2_ITEM, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", 0, 9, 1, 0);
+		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_3_ITEM, AUX_CALLIBRATION_SENSOR_3_ITEM_NAME, "Ambient sensor (°C)", 0, 9, 1, 0);
 		// -------------------------------------------------------------------------------- DEW_THRESHOLD
 		AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Dew Thresholds", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Sensor #1 [C]", 0, 9, 1, 0);
-		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_2_ITEM, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, "Sensor #2 [C]", 0, 9, 1, 0);
+		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", 0, 9, 1, 0);
+		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_2_ITEM, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", 0, 9, 1, 0);
 		// -------------------------------------------------------------------------------- LINK_CHAANNELS_2AND3
 		AUX_LINK_CH_2AND3_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LINK_CH_2AND3_PROPERTY_NAME, SETTINGS_GROUP, "Link chanels 2 and 3", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_LINK_CH_2AND3_PROPERTY == NULL)
@@ -758,12 +758,12 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
-	snprintf(AUX_TEMPERATURE_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_TEMPERATURE_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_CALLIBRATION_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_CALLIBRATION_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s [C]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_TEMPERATURE_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+	snprintf(AUX_TEMPERATURE_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_CALLIBRATION_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+	snprintf(AUX_CALLIBRATION_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	snprintf(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+	snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_DEW_WARNING_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_DEW_WARNING_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
