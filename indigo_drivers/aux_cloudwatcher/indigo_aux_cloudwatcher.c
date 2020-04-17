@@ -767,6 +767,7 @@ static bool aag_populate_constants(indigo_device *device) {
 }
 
 bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
+	// Rain sensor temperature
 	float rain_sensor_temp = data.rain_sensor_temperature;
 	if (rain_sensor_temp > 1022) {
 		rain_sensor_temp = 1022;
@@ -778,11 +779,21 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value =
 		1.0 / (rain_sensor_temp / X_CONSTANTS_RAIN_BETA_ITEM->number.value + 1.0 / (ABS_ZERO + 25.0)) - ABS_ZERO;
 
+	// Rain and warning
 	X_SENSOR_RAIN_CYCLES_ITEM->number.value = data.rain_frequency;
+	if (AUX_RAIN_THRESHOLD_SENSOR_1_ITEM->number.value > data.rain_frequency) {
+		AUX_RAIN_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_RAIN_WARNING_SENSOR_1_ITEM->light.value = INDIGO_ALERT_STATE;
+	} else {
+		AUX_RAIN_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_RAIN_WARNING_SENSOR_1_ITEM->light.value = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
 
-
+	// Rain heater
 	X_SENSOR_RAIN_HEATER_POWER_ITEM->number.value = 100.0 * data.rain_heater / 1023.0;
 
+	// Ambient light
 	float ambient_light = (float)data.ldr;
 	if (ambient_light > 1022.0) {
 		ambient_light = 1022.0;
@@ -791,7 +802,7 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	}
 	X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value = X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value / ((1023.0 / ambient_light) - 1.0);
 
-
+	// Ambient temperature and dewpoint
 	float ambient_temperature = data.ambient_temperature;
 	if (ambient_temperature < -200) {
 		if (data.rh_temperature < -200) {
@@ -819,6 +830,20 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = 0;
 	}
 
+	// Dew point warning
+	if (data.rh == NO_READING) { // no sensor
+		AUX_DEW_WARNING_PROPERTY->state = INDIGO_IDLE_STATE;
+		AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+	} else if (ambient_temperature - AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value <= AUX_WEATHER_DEWPOINT_ITEM->number.value) {
+		AUX_DEW_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_ALERT_STATE;
+	} else {
+		AUX_DEW_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+
+	// Sky temperature
 	float sky_temperature = data.ir_sky_temperature / 100.0;
 	float ir_sensor_temperature = data.ir_sensor_temperature / 100.0;
 	X_SENSOR_RAW_SKY_TEMPERATURE_ITEM->number.value = sky_temperature;
@@ -832,7 +857,19 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 		sky_temperature - ((k1 / 100.0) * (ir_sensor_temperature - k2 / 10.0) +
 		                   (k3 / 100.0) * pow(exp(k4 / 1000 * ir_sensor_temperature), (k5 / 100.0)));
 
+	// Wind speed and warning
 	AUX_WEATHER_WIND_SPEED_ITEM->number.value = data.wind_speed;
+	if (X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value < 1) {
+		AUX_WIND_WARNING_PROPERTY->state = INDIGO_IDLE_STATE;
+		AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+	} else if (AUX_WIND_THRESHOLD_SENSOR_1_ITEM->number.value < data.wind_speed) {
+		AUX_WIND_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_ALERT_STATE;
+	} else {
+		AUX_WIND_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
 
 	indigo_update_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
 	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
@@ -1028,7 +1065,7 @@ static int aag_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	indigo_init_light_item(AUX_RAIN_WARNING_SENSOR_1_ITEM, AUX_RAIN_WARNING_SENSOR_1_ITEM_NAME, "Rain warning", INDIGO_OK_STATE);
 	// -------------------------------------------------------------------------------- WIND_WARNING
-	AUX_WIND_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_WIND_WARNING_PROPERTY_NAME, AUX_GROUP, "Rain warning", INDIGO_OK_STATE, 1);
+	AUX_WIND_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_WIND_WARNING_PROPERTY_NAME, AUX_GROUP, "Wind warning", INDIGO_OK_STATE, 1);
 	if (AUX_WIND_WARNING_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_light_item(AUX_WIND_WARNING_SENSOR_1_ITEM, AUX_WIND_WARNING_SENSOR_1_ITEM_NAME, "Wind warning", INDIGO_OK_STATE);
