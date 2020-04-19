@@ -1340,7 +1340,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		if (aag_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_aux_enumerate_properties(device, NULL, NULL);
+		return aux_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -1387,6 +1387,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 						aag_close(device);
 					}
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 				}
 			}
 		} else {

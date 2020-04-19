@@ -25,7 +25,7 @@
 
 #include "indigo_dome_dragonfly.h"
 
-#define DRIVER_VERSION         0x0002
+#define DRIVER_VERSION         0x0003
 
 #define DOME_DRAGONFLY_NAME    "Dome Dragonfly"
 #define AUX_DRAGONFLY_NAME     "Dragonfly Controller"
@@ -277,10 +277,6 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_DOME_FUNCTION_3_BUTTONS_ITEM, LA_DOME_FUNCTION_3_BUTTONS_ITEM_NAME, "3 Buttons, push (relays: #1-stop, #2-open, #3-close)", false);
 	if (DEVICE_DATA.device_type != TYPE_DOME) LA_DOME_FUNCTION_PROPERTY->hidden = true;
 	//---------------------------------------------------------------------------
-	indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
-	indigo_define_property(device, LA_DOME_SETTINGS_PROPERTY, NULL);
-	indigo_define_property(device, LA_DOME_FUNCTION_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -480,7 +476,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_aux_enumerate_properties(device, NULL, NULL);
+		return aux_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -525,6 +521,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 						lunatico_close(device);
 					}
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 				}
 			}
 		} else {
@@ -916,6 +915,13 @@ static void dome_handle_shutter(indigo_device *device) {
 	}
 }
 
+
+static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	lunatico_enumerate_properties(device, client, property);
+	return indigo_dome_enumerate_properties(device, NULL, NULL);
+}
+
+
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -941,7 +947,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_dome_enumerate_properties(device, NULL, NULL);
+		return dome_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -1031,12 +1037,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	lunatico_common_update_property(device, client, property);
 	return indigo_dome_change_property(device, client, property);
 }
-
-static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	lunatico_enumerate_properties(device, client, property);
-	return indigo_dome_enumerate_properties(device, NULL, NULL);
-}
-
 
 static indigo_result dome_detach(indigo_device *device) {
 	lunatico_detach(device);
