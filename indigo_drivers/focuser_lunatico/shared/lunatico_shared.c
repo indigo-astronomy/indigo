@@ -651,6 +651,9 @@ static bool lunatico_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			return false;
 		}
 		char *name = DEVICE_PORT_ITEM->text.value;
