@@ -1275,6 +1275,50 @@ static int aag_init_properties(indigo_device *device) {
 	return INDIGO_OK;
 }
 
+static void aag_reset_properties(indigo_device *device) {
+	int i;
+	X_CONSTANTS_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < X_CONSTANTS_PROPERTY->count; i++)
+		X_CONSTANTS_PROPERTY->items[i].number.value = 0;
+
+	X_SENSOR_READINGS_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < X_SENSOR_READINGS_PROPERTY->count; i++)
+		X_SENSOR_READINGS_PROPERTY->items[i].number.value = 0;
+
+	AUX_WEATHER_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < AUX_WEATHER_PROPERTY->count; i++)
+		AUX_WEATHER_PROPERTY->items[i].number.value = 0;
+
+	AUX_DEW_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
+	AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+
+	AUX_RAIN_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
+	AUX_RAIN_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+
+	AUX_WIND_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
+	AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+
+	X_RH_CONDITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < X_RH_CONDITION_PROPERTY->count; i++)
+		X_RH_CONDITION_PROPERTY->items[i].sw.value = NULL;
+
+	X_WIND_CONDITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < X_WIND_CONDITION_PROPERTY->count; i++)
+		X_WIND_CONDITION_PROPERTY->items[i].sw.value = NULL;
+
+	X_RAIN_CONDITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < X_RAIN_CONDITION_PROPERTY->count; i++)
+		X_RAIN_CONDITION_PROPERTY->items[i].sw.value = NULL;
+
+	X_CLOUD_CONDITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < X_CLOUD_CONDITION_PROPERTY->count; i++)
+		X_CLOUD_CONDITION_PROPERTY->items[i].sw.value = NULL;
+
+	X_SKY_CONDITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (i = 0; i < X_SKY_CONDITION_PROPERTY->count; i++)
+		X_SKY_CONDITION_PROPERTY->items[i].sw.value = NULL;
+}
+
 static void sensors_timer_callback(indigo_device *device) {
 	cloudwatcher_data cwd;
 	bool success = aag_get_cloudwatcher_data(device, &cwd);
@@ -1367,6 +1411,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						aag_get_serial_number(device, serial_number);
 						strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
+						aag_reset_properties(device);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 						indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
