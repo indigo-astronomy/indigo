@@ -260,6 +260,11 @@
 #define X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM              (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 6)
 #define X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM                  (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 7)
 
+typedef enum {
+	normal,
+	increasing,
+	pulse
+} heating_algorithm_state;
 
 typedef struct {
 	int power_voltage;  ///< Internal Supply Voltage
@@ -290,6 +295,13 @@ typedef struct {
 	bool udp;
 	bool anemometer_black;
 	pthread_mutex_t port_mutex;
+
+	heating_algorithm_state heating_state;
+	time_t pulse_start_time;
+	time_t wet_start_time;
+	float desired_sensor_temperature;
+	float sensor_heater_power;
+
 	indigo_timer *sensors_timer;
 
 	indigo_property *sky_correction_property,
@@ -1355,211 +1367,133 @@ static void aag_reset_properties(indigo_device *device) {
 
 
 static bool aag_heating_algorithm(indigo_device *device) {
-	float tempLow                  = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM->number.value;
-	float tempHigh                 = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM->number.value;
-	float deltaLow                 = (float)X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM->number.value;
-	float deltaHigh                = (float)X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM->number.value;
-	float heatImpulseTemp          = (float)X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM->number.value;
-	float heatImpulseDuration      = (float)X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM->number.value;
-	float heatImpulseCycle         = (float)X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM->number.value;
-	float min                      = (float)X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM->number.value;
+	float temp_low                  = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM->number.value;
+	float temp_high                 = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM->number.value;
+	float delta_low                 = (float)X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM->number.value;
+	float delta_high                = (float)X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM->number.value;
+	float heater_impulse_temp       = (float)X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM->number.value;
+	float impulse_duration          = (float)X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM->number.value;
+	float impulse_cycle             = (float)X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM->number.value;
+	float min_power                 = (float)X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM->number.value;
 
-	float ambient                  = (float)AUX_WEATHER_TEMPERATURE_ITEM->number.value;
-    float rainSensorTemperature    = (float)X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value;
+	float ambient_temp              = (float)AUX_WEATHER_TEMPERATURE_ITEM->number.value;
+	float rain_sensor_temp          = (float)X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value;
 
-    float refresh = 10;
+	float refresh = 10;
 
-/*
-    // XXX FIXME: when the automatic refresh is disabled the refresh period is set to 0, however we can be called in a manual fashion.
-    // this is needed as we divide by refresh later...
-    if (refresh < 3)
-    {
-        refresh = 3;
-    }
+	if (PRIVATE_DATA->sensor_heater_power == -1) {
+		// If not already setted
+		PRIVATE_DATA->sensor_heater_power = X_SENSOR_RAIN_HEATER_POWER_ITEM->number.value;
+	}
 
-    if (globalRainSensorHeater == -1)
-    {
-        // If not already setted
-        globalRainSensorHeater = getNumberValueFromVector(sensors, "rainSensorHeater");
-    }
+	time_t current_time = time(NULL);
 
-    time_t currentTime = time(nullptr);
+	if (X_RAIN_CONDITION_DRY_ITEM->sw.value != true && PRIVATE_DATA->heating_state == normal) {
+		// We check if sensor is wet.
+		if (PRIVATE_DATA->wet_start_time == -1) {
+			// First moment wet
+			PRIVATE_DATA->wet_start_time = time(NULL);
+		} else {
+			// We have been wet for a while
+			if (current_time - PRIVATE_DATA->wet_start_time >= impulse_cycle) {
+				// We have been a cycle wet. Apply pulse
+				PRIVATE_DATA->wet_start_time = -1;
+				PRIVATE_DATA->heating_state = increasing;
+				PRIVATE_DATA->pulse_start_time = -1;
+			}
+		}
+	} else {
+		// is not wet
+		PRIVATE_DATA->wet_start_time = -1;
+	}
 
-    if ((isWetRain()) && (heatingStatus == normal))
-    {
-        // We check if sensor is wet.
-        if (wetStartTime == -1)
-        {
-            // First moment wet
-            wetStartTime = time(nullptr);
-        }
-        else
-        {
-            // We have been wet for a while
+	if (PRIVATE_DATA->heating_state == pulse) {
+		if (current_time - PRIVATE_DATA->pulse_start_time > impulse_duration) {
+			// Pulse ends
+			PRIVATE_DATA->heating_state  = normal;
+			PRIVATE_DATA->wet_start_time   = -1;
+			PRIVATE_DATA->pulse_start_time = -1;
+		}
+	}
 
-            if (currentTime - wetStartTime >= heatImpulseCycle)
-            {
-                // We have been a cycle wet. Apply pulse
-                wetStartTime   = -1;
-                heatingStatus  = increasingToPulse;
-                pulseStartTime = -1;
-            }
-        }
-    }
-    else
-    {
-        // is not wet
-        wetStartTime = -1;
-    }
+	if (PRIVATE_DATA->heating_state == normal) {
+		// Compute desired temperature
+		if (ambient_temp < temp_low) {
+			PRIVATE_DATA->desired_sensor_temperature = delta_low;
+		} else if (ambient_temp > temp_high) {
+			PRIVATE_DATA->desired_sensor_temperature = ambient_temp + delta_high;
+		} else {
+			// Between temp_low and temp_high
+			float delta = ((((ambient_temp - temp_low) / (temp_high - temp_low)) * (delta_high - delta_low)) + delta_low);
+			PRIVATE_DATA->desired_sensor_temperature = ambient_temp + delta;
+			if (PRIVATE_DATA->desired_sensor_temperature < temp_low) {
+				PRIVATE_DATA->desired_sensor_temperature = delta_low;
+			}
+		}
+	} else {
+		PRIVATE_DATA->desired_sensor_temperature = ambient_temp + heater_impulse_temp;
+	}
 
-    if (heatingStatus == pulse)
-    {
-        if (currentTime - pulseStartTime > heatImpulseDuration)
-        {
-            // Pulse ends
-            heatingStatus  = normal;
-            wetStartTime   = -1;
-            pulseStartTime = -1;
-        }
-    }
+	if (PRIVATE_DATA->heating_state == increasing) {
+		if (rain_sensor_temp < PRIVATE_DATA->desired_sensor_temperature) {
+			PRIVATE_DATA->sensor_heater_power = 100.0;
+		} else {
+			// the pulse starts
+			PRIVATE_DATA->pulse_start_time = time(NULL);
+			PRIVATE_DATA->heating_state = pulse;
+		}
+	}
 
-    if (heatingStatus == normal)
-    {
-        // Compute desired temperature
+	if ((PRIVATE_DATA->heating_state == normal) || (PRIVATE_DATA->heating_state == pulse)) {
+		// Check desired temperature and act accordingly
+		// Obtain the difference in temperature and modifier
+		float diff = fabs(PRIVATE_DATA->desired_sensor_temperature - rain_sensor_temp);
+		float refresh_modifier = sqrt(refresh / 10.0);
+		float modifier = 1;
 
-        if (ambient < tempLow)
-        {
-            desiredSensorTemperature = deltaLow;
-        }
-        else if (ambient > tempHigh)
-        {
-            desiredSensorTemperature = ambient + deltaHigh;
-        }
-        else
-        {
-            // Between tempLow and tempHigh
-            float delt = ((((ambient - tempLow) / (tempHigh - tempLow)) * (deltaHigh - deltaLow)) + deltaLow);
+		if (diff > 8) {
+			modifier = (1.4 / refresh_modifier);
+		} else if (diff > 4) {
+			modifier = (1.2 / refresh_modifier);
+		} else if (diff > 3) {
+			modifier = (1.1 / refresh_modifier);
+		} else if (diff > 2) {
+			modifier = (1.06 / refresh_modifier);
+		} else if (diff > 1) {
+			modifier = (1.04 / refresh_modifier);
+		} else if (diff > 0.5) {
+			modifier = (1.02 / refresh_modifier);
+		} else if (diff > 0.3) {
+			modifier = (1.01 / refresh_modifier);
+		}
 
-            desiredSensorTemperature = ambient + delt;
+		if (rain_sensor_temp > PRIVATE_DATA->desired_sensor_temperature) {
+			// Lower heating
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temp: %f, Desired: %f, Lowering: %f %f -> %f\n", rain_sensor_temp, PRIVATE_DATA->desired_sensor_temperature, modifier, PRIVATE_DATA->sensor_heater_power, PRIVATE_DATA->sensor_heater_power / modifier);
+			PRIVATE_DATA->sensor_heater_power /= modifier;
+		} else {
+			// increase heating
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temp: %f, Desired: %f, Increasing: %f %f -> %f\n", rain_sensor_temp, PRIVATE_DATA->desired_sensor_temperature, modifier, PRIVATE_DATA->sensor_heater_power, PRIVATE_DATA->sensor_heater_power * modifier);
+			PRIVATE_DATA->sensor_heater_power *= modifier;
+		}
+	}
 
-            if (desiredSensorTemperature < tempLow)
-            {
-                desiredSensorTemperature = deltaLow;
-            }
-        }
-    }
-    else
-    {
-        desiredSensorTemperature = ambient + heatImpulseTemp;
-    }
+	if (PRIVATE_DATA->sensor_heater_power < min_power) {
+		PRIVATE_DATA->sensor_heater_power = min_power;
+	}
 
-    if (heatingStatus == increasingToPulse)
-    {
-        if (rainSensorTemperature < desiredSensorTemperature)
-        {
-            globalRainSensorHeater = 100.0;
-        }
-        else
-        {
-            // the pulse starts
-            pulseStartTime = time(nullptr);
-            heatingStatus  = pulse;
-        }
-    }
+	if (PRIVATE_DATA->sensor_heater_power > 100.0) {
+		PRIVATE_DATA->sensor_heater_power = 100.0;
+	}
 
-    if ((heatingStatus == normal) || (heatingStatus == pulse))
-    {
-        // Check desired temperature and act accordingly
-        // Obtain the difference in temperature and modifier
-        float dif             = fabs(desiredSensorTemperature - rainSensorTemperature);
-        float refreshModifier = sqrt(refresh / 10.0);
-        float modifier        = 1;
+	int raw_sensor_heater = (int)(PRIVATE_DATA->sensor_heater_power * 1023.0 / 100.0);
 
-        if (dif > 8)
-        {
-            modifier = (1.4 / refreshModifier);
-        }
-        else if (dif > 4)
-        {
-            modifier = (1.2 / refreshModifier);
-        }
-        else if (dif > 3)
-        {
-            modifier = (1.1 / refreshModifier);
-        }
-        else if (dif > 2)
-        {
-            modifier = (1.06 / refreshModifier);
-        }
-        else if (dif > 1)
-        {
-            modifier = (1.04 / refreshModifier);
-        }
-        else if (dif > 0.5)
-        {
-            modifier = (1.02 / refreshModifier);
-        }
-        else if (dif > 0.3)
-        {
-            modifier = (1.01 / refreshModifier);
-        }
+	set_pwm_duty_cycle(device, raw_sensor_heater);
 
-        if (rainSensorTemperature > desiredSensorTemperature)
-        {
-            // Lower heating
-            //   IDLog("Temp: %f, Desired: %f, Lowering: %f %f -> %f\n", rainSensorTemperature, desiredSensorTemperature, modifier, globalRainSensorHeater, globalRainSensorHeater / modifier);
-            globalRainSensorHeater /= modifier;
-        }
-        else
-        {
-            // increase heating
-            //   IDLog("Temp: %f, Desired: %f, Increasing: %f %f -> %f\n", rainSensorTemperature, desiredSensorTemperature, modifier, globalRainSensorHeater, globalRainSensorHeater * modifier);
-            globalRainSensorHeater *= modifier;
-        }
-    }
+	// Sending heater status to clients HERE
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "HEATER State: %d\n", PRIVATE_DATA->heating_state);
 
-    if (globalRainSensorHeater < min)
-    {
-        globalRainSensorHeater = min;
-    }
-    if (globalRainSensorHeater > 100.0)
-    {
-        globalRainSensorHeater = 100.0;
-    }
-
-    int rawSensorHeater = int(globalRainSensorHeater * 1023.0 / 100.0);
-
-    cwc->setPWMDutyCycle(rawSensorHeater);
-
-    // Sending heater status to clients
-    char *namesSw[3];
-    ISState statesSw[3];
-    statesSw[0] = ISS_OFF;
-    statesSw[1] = ISS_OFF;
-    statesSw[2] = ISS_OFF;
-    namesSw[0]  = const_cast<char *>("normal");
-    namesSw[1]  = const_cast<char *>("increasing");
-    namesSw[2]  = const_cast<char *>("pulse");
-
-    if (heatingStatus == normal)
-    {
-        statesSw[0] = ISS_ON;
-    }
-    else if (heatingStatus == increasingToPulse)
-    {
-        statesSw[1] = ISS_ON;
-    }
-    else if (heatingStatus == pulse)
-    {
-        statesSw[2] = ISS_ON;
-    }
-
-    ISwitchVectorProperty *svp = getSwitch("heaterStatus");
-    IUUpdateSwitch(svp, statesSw, namesSw, 3);
-    svp->s = IPS_OK;
-    IDSetSwitch(svp, nullptr);
-	*/
-    return true;
+	return true;
 }
 
 
@@ -1567,6 +1501,7 @@ static void sensors_timer_callback(indigo_device *device) {
 	cloudwatcher_data cwd;
 	bool success = aag_get_cloudwatcher_data(device, &cwd);
 	process_data_and_update(device, cwd);
+	aag_heating_algorithm(device);
 
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->sensors_timer);
 }
@@ -1658,6 +1593,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						aag_get_serial_number(device, serial_number);
 						strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 						aag_reset_properties(device);
+						PRIVATE_DATA->heating_state = normal;
+						PRIVATE_DATA->pulse_start_time = -1;
+						PRIVATE_DATA->wet_start_time = -1;
+						PRIVATE_DATA->desired_sensor_temperature = 0;
+						PRIVATE_DATA->sensor_heater_power = -1;
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 						indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
