@@ -239,6 +239,27 @@
 #define X_ANEMOMETER_TYPE_BLACK_ITEM         (X_ANEMOMETER_TYPE_PROPERTY->items + 0)
 #define X_ANEMOMETER_TYPE_GREY_ITEM          (X_ANEMOMETER_TYPE_PROPERTY->items + 1)
 
+// Rain sensor heater parameters
+#define X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME             "X_RAIN_SENSOR_HEATER_SETUP"
+#define X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM_NAME       "TEMPETATURE_LOW"
+#define X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM_NAME      "TEMPETATURE_HIGH"
+#define X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM_NAME             "TEMPETATURE_DELTA_LOW"
+#define X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM_NAME            "TEMPETATURE_DELTA_HIGH"
+#define X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM_NAME   "HEAT_IMPULSE_TEMPETATURE"
+#define X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM_NAME      "HEAT_IMPULSE_DURATION"
+#define X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM_NAME         "HEAT_IMPULSE_CYCLE"
+#define X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM_NAME             "HEATER_MIN_POWER"
+
+#define X_RAIN_SENSOR_HEATER_SETUP_PROPERTY                  (PRIVATE_DATA->rain_sensor_heater_setup_property)
+#define X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM            (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 0)
+#define X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM           (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 1)
+#define X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM                  (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 2)
+#define X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM                 (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 3)
+#define X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM        (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 4)
+#define X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM           (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 5)
+#define X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM              (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 6)
+#define X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM                  (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->items + 7)
+
 
 typedef struct {
 	int power_voltage;  ///< Internal Supply Voltage
@@ -292,6 +313,7 @@ typedef struct {
 	                *sky_condition_thresholds_property,
 	                *sky_condition_property,
 	                *anemometer_type_property,
+	                *rain_sensor_heater_setup_property,
 	                *sensors_property;
 } aag_private_data;
 
@@ -1271,6 +1293,18 @@ static int aag_init_properties(indigo_device *device) {
 	strncpy(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
 	indigo_init_number_item(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM_NAME, "Infrared sky temperature (°C)", -200, 80, 1, 0);
 	strncpy(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	// -------------------------------------------------------------------------------- X_RAIN_SENSOR_HEATER_SETUP
+	X_RAIN_SENSOR_HEATER_SETUP_PROPERTY = indigo_init_number_property(NULL, device->name, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME, SETTINGS_GROUP, "Rain sensor heater setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
+	if (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM, X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM_NAME, "Temperature low (°C)", -200, 80, 0, 0);
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM, X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM_NAME, "Temperature high (°C)", -200, 80, 0, 20);
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM, X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM_NAME, "Temperature delta low (°C)", -200, 80, 0, 6);
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM, X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM_NAME, "Temperature delta high (°C)", -200, 80, 0, 4);
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM, X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM_NAME, "Heat impulse temperature (°C)", -200, 80, 0, 10);
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM, X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM_NAME, "Heat impulse duration (s)", 0, 1500, 0, 60);
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM, X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM_NAME, "Heat impulse cycle (s)", 0, 1500, 0, 600);
+	indigo_init_number_item(X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM, X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM_NAME, "Heater minimum power (%)", 10, 20, 0, 10);
 	//---------------------------------------------------------------------------
 	return INDIGO_OK;
 }
@@ -1318,6 +1352,216 @@ static void aag_reset_properties(indigo_device *device) {
 	for (i = 0; i < X_SKY_CONDITION_PROPERTY->count; i++)
 		X_SKY_CONDITION_PROPERTY->items[i].sw.value = NULL;
 }
+
+
+static bool aag_heating_algorithm(indigo_device *device) {
+	float tempLow                  = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_LOW_ITEM->number.value;
+	float tempHigh                 = (float)X_RAIN_SENSOR_HEATER_TEMPETATURE_HIGH_ITEM->number.value;
+	float deltaLow                 = (float)X_RAIN_SENSOR_HEATER_DELTA_LOW_ITEM->number.value;
+	float deltaHigh                = (float)X_RAIN_SENSOR_HEATER_DELTA_HIGH_ITEM->number.value;
+	float heatImpulseTemp          = (float)X_RAIN_SENSOR_HEATER_IMPULSE_TEMPERATURE_ITEM->number.value;
+	float heatImpulseDuration      = (float)X_RAIN_SENSOR_HEATER_IMPULSE_DURATION_ITEM->number.value;
+	float heatImpulseCycle         = (float)X_RAIN_SENSOR_HEATER_IMPULSE_CYCLE_ITEM->number.value;
+	float min                      = (float)X_RAIN_SENSOR_HEATER_MIN_POWER_ITEM->number.value;
+
+	float ambient                  = (float)AUX_WEATHER_TEMPERATURE_ITEM->number.value;
+    float rainSensorTemperature    = (float)X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value;
+
+    float refresh = 10;
+
+/*
+    // XXX FIXME: when the automatic refresh is disabled the refresh period is set to 0, however we can be called in a manual fashion.
+    // this is needed as we divide by refresh later...
+    if (refresh < 3)
+    {
+        refresh = 3;
+    }
+
+    if (globalRainSensorHeater == -1)
+    {
+        // If not already setted
+        globalRainSensorHeater = getNumberValueFromVector(sensors, "rainSensorHeater");
+    }
+
+    time_t currentTime = time(nullptr);
+
+    if ((isWetRain()) && (heatingStatus == normal))
+    {
+        // We check if sensor is wet.
+        if (wetStartTime == -1)
+        {
+            // First moment wet
+            wetStartTime = time(nullptr);
+        }
+        else
+        {
+            // We have been wet for a while
+
+            if (currentTime - wetStartTime >= heatImpulseCycle)
+            {
+                // We have been a cycle wet. Apply pulse
+                wetStartTime   = -1;
+                heatingStatus  = increasingToPulse;
+                pulseStartTime = -1;
+            }
+        }
+    }
+    else
+    {
+        // is not wet
+        wetStartTime = -1;
+    }
+
+    if (heatingStatus == pulse)
+    {
+        if (currentTime - pulseStartTime > heatImpulseDuration)
+        {
+            // Pulse ends
+            heatingStatus  = normal;
+            wetStartTime   = -1;
+            pulseStartTime = -1;
+        }
+    }
+
+    if (heatingStatus == normal)
+    {
+        // Compute desired temperature
+
+        if (ambient < tempLow)
+        {
+            desiredSensorTemperature = deltaLow;
+        }
+        else if (ambient > tempHigh)
+        {
+            desiredSensorTemperature = ambient + deltaHigh;
+        }
+        else
+        {
+            // Between tempLow and tempHigh
+            float delt = ((((ambient - tempLow) / (tempHigh - tempLow)) * (deltaHigh - deltaLow)) + deltaLow);
+
+            desiredSensorTemperature = ambient + delt;
+
+            if (desiredSensorTemperature < tempLow)
+            {
+                desiredSensorTemperature = deltaLow;
+            }
+        }
+    }
+    else
+    {
+        desiredSensorTemperature = ambient + heatImpulseTemp;
+    }
+
+    if (heatingStatus == increasingToPulse)
+    {
+        if (rainSensorTemperature < desiredSensorTemperature)
+        {
+            globalRainSensorHeater = 100.0;
+        }
+        else
+        {
+            // the pulse starts
+            pulseStartTime = time(nullptr);
+            heatingStatus  = pulse;
+        }
+    }
+
+    if ((heatingStatus == normal) || (heatingStatus == pulse))
+    {
+        // Check desired temperature and act accordingly
+        // Obtain the difference in temperature and modifier
+        float dif             = fabs(desiredSensorTemperature - rainSensorTemperature);
+        float refreshModifier = sqrt(refresh / 10.0);
+        float modifier        = 1;
+
+        if (dif > 8)
+        {
+            modifier = (1.4 / refreshModifier);
+        }
+        else if (dif > 4)
+        {
+            modifier = (1.2 / refreshModifier);
+        }
+        else if (dif > 3)
+        {
+            modifier = (1.1 / refreshModifier);
+        }
+        else if (dif > 2)
+        {
+            modifier = (1.06 / refreshModifier);
+        }
+        else if (dif > 1)
+        {
+            modifier = (1.04 / refreshModifier);
+        }
+        else if (dif > 0.5)
+        {
+            modifier = (1.02 / refreshModifier);
+        }
+        else if (dif > 0.3)
+        {
+            modifier = (1.01 / refreshModifier);
+        }
+
+        if (rainSensorTemperature > desiredSensorTemperature)
+        {
+            // Lower heating
+            //   IDLog("Temp: %f, Desired: %f, Lowering: %f %f -> %f\n", rainSensorTemperature, desiredSensorTemperature, modifier, globalRainSensorHeater, globalRainSensorHeater / modifier);
+            globalRainSensorHeater /= modifier;
+        }
+        else
+        {
+            // increase heating
+            //   IDLog("Temp: %f, Desired: %f, Increasing: %f %f -> %f\n", rainSensorTemperature, desiredSensorTemperature, modifier, globalRainSensorHeater, globalRainSensorHeater * modifier);
+            globalRainSensorHeater *= modifier;
+        }
+    }
+
+    if (globalRainSensorHeater < min)
+    {
+        globalRainSensorHeater = min;
+    }
+    if (globalRainSensorHeater > 100.0)
+    {
+        globalRainSensorHeater = 100.0;
+    }
+
+    int rawSensorHeater = int(globalRainSensorHeater * 1023.0 / 100.0);
+
+    cwc->setPWMDutyCycle(rawSensorHeater);
+
+    // Sending heater status to clients
+    char *namesSw[3];
+    ISState statesSw[3];
+    statesSw[0] = ISS_OFF;
+    statesSw[1] = ISS_OFF;
+    statesSw[2] = ISS_OFF;
+    namesSw[0]  = const_cast<char *>("normal");
+    namesSw[1]  = const_cast<char *>("increasing");
+    namesSw[2]  = const_cast<char *>("pulse");
+
+    if (heatingStatus == normal)
+    {
+        statesSw[0] = ISS_ON;
+    }
+    else if (heatingStatus == increasingToPulse)
+    {
+        statesSw[1] = ISS_ON;
+    }
+    else if (heatingStatus == pulse)
+    {
+        statesSw[2] = ISS_ON;
+    }
+
+    ISwitchVectorProperty *svp = getSwitch("heaterStatus");
+    IUUpdateSwitch(svp, statesSw, namesSw, 3);
+    svp->s = IPS_OK;
+    IDSetSwitch(svp, nullptr);
+	*/
+    return true;
+}
+
 
 static void sensors_timer_callback(indigo_device *device) {
 	cloudwatcher_data cwd;
@@ -1372,6 +1616,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_property(device, X_SKY_CONDITION_THRESHOLDS_PROPERTY, NULL);
 	if (indigo_property_match(X_ANEMOMETER_TYPE_PROPERTY, property))
 		indigo_define_property(device, X_ANEMOMETER_TYPE_PROPERTY, NULL);
+	if (indigo_property_match(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, property))
+		indigo_define_property(device, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, NULL);
 
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -1528,6 +1774,12 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, X_ANEMOMETER_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RAIN_SENSOR_HEATER_SETUP
+		indigo_property_copy_values(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, property, false);
+		X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -1541,6 +1793,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, X_CLOUD_CONDITION_THRESHOLDS_PROPERTY);
 			indigo_save_property(device, NULL, X_SKY_CONDITION_THRESHOLDS_PROPERTY);
 			indigo_save_property(device, NULL, X_ANEMOMETER_TYPE_PROPERTY);
+			indigo_save_property(device, NULL, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY);
 		}
 	}
 	// --------------------------------------------------------------------------------
@@ -1596,6 +1849,9 @@ static indigo_result aux_detach(indigo_device *device) {
 
 	indigo_delete_property(device, X_ANEMOMETER_TYPE_PROPERTY, NULL);
 	indigo_release_property(X_ANEMOMETER_TYPE_PROPERTY);
+
+	indigo_delete_property(device, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, NULL);
+	indigo_release_property(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY);
 
 	return indigo_aux_detach(device);
 }
