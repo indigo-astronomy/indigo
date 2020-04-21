@@ -1570,6 +1570,32 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void handle_disconnect(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
+	//while (PRIVATE_DATA->sensors_timer->callback_running == true) {
+	//	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TIMERRRRRRRRRRRR: %d", (int)(PRIVATE_DATA->sensors_timer->callback_running));
+	//	indigo_usleep(ONE_SECOND_DELAY);
+	//}
+
+	indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
+	indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
+	indigo_delete_property(device, X_RH_CONDITION_PROPERTY, NULL);
+	indigo_delete_property(device, X_WIND_CONDITION_PROPERTY, NULL);
+	indigo_delete_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
+	indigo_delete_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
+	indigo_delete_property(device, X_SKY_CONDITION_PROPERTY, NULL);
+
+	aag_close(device);
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+}
+
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -1625,22 +1651,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->sensors_timer);
-
-				indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
-				indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
-				indigo_delete_property(device, X_RH_CONDITION_PROPERTY, NULL);
-				indigo_delete_property(device, X_WIND_CONDITION_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
-				indigo_delete_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
-				indigo_delete_property(device, X_SKY_CONDITION_PROPERTY, NULL);
-
-				aag_close(device);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_async(handle_disconnect, device);
+				return INDIGO_OK;
 			}
 		}
 	} else if (indigo_property_match(X_SKY_CORRECTION_PROPERTY, property)) {
