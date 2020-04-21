@@ -81,7 +81,13 @@ static void *timer_func(indigo_timer *timer) {
 
 			timer->scheduled = false;
 			if (!timer->canceled) {
+				pthread_mutex_lock(&timer->callback_mutex);
+				timer->callback_running = true;
+				INDIGO_DEBUG(indigo_debug("CALLBACK START: %d", (int)timer->callback_running));
 				timer->callback(timer->device);
+				timer->callback_running = false;
+				INDIGO_DEBUG(indigo_debug("CALLBACK END: %d", (int)timer->callback_running));
+				pthread_mutex_unlock(&timer->callback_mutex);
 			}
 		}
 
@@ -126,6 +132,7 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 		timer = free_timer;
 		free_timer = free_timer->next;
 		timer->wake = true;
+		timer->callback_running = false;
 		timer->canceled = false;
 		timer->scheduled = true;
 		timer->delay = delay;
@@ -143,8 +150,10 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 		timer = malloc(sizeof(indigo_timer));
 		timer->timer_id = timer_count++;
 		pthread_mutex_init(&timer->mutex, NULL);
+		pthread_mutex_init(&timer->callback_mutex, NULL);
 		pthread_cond_init(&timer->cond, NULL);
 		timer->canceled = false;
+		timer->callback_running = false;
 		timer->scheduled = true;
 		if ((timer->device = device) != NULL) {
 			timer->next = DEVICE_CONTEXT->timers;
@@ -165,7 +174,7 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer) {
 	bool result = false;
 	pthread_mutex_lock(&cancel_timer_mutex);
-	if (*timer != NULL) {
+	if (*timer != NULL && (*timer)->canceled == false) {
 		(*timer)->delay = delay;
 		(*timer)->scheduled = true;
 		result = true;
@@ -189,6 +198,27 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 		result = true;
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
+	return result;
+}
+
+bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
+	bool result = false;
+	pthread_mutex_lock(&cancel_timer_mutex);
+	if (*timer != NULL) {
+		(*timer)->canceled = true;
+		(*timer)->scheduled = false;
+		pthread_mutex_lock(&(*timer)->mutex);
+		pthread_cond_signal(&(*timer)->cond);
+		pthread_mutex_unlock(&(*timer)->mutex);
+		result = true;
+	}
+	pthread_mutex_unlock(&cancel_timer_mutex);
+	if (result) {
+		// just wait for the callback to finish
+		pthread_mutex_lock(&(*timer)->callback_mutex);
+		pthread_mutex_unlock(&(*timer)->callback_mutex);
+		*timer = NULL;
+	}
 	return result;
 }
 
