@@ -381,6 +381,22 @@ static indigo_result aux_attach(indigo_device *device) {
 }
 
 
+static void handle_disconnect(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	for (int i = 0; i < 8; i++) {
+		indigo_cancel_timer_sync(device, &DEVICE_DATA.relay_timers[i]);
+	}
+	indigo_cancel_timer_sync(device, &DEVICE_DATA.sensors_timer);
+	indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+	indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+	lunatico_close(device);
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+}
+
+
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -406,6 +422,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						} else {
 							for (int i = 0; i < 8; i++) {
 								(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
+								DEVICE_DATA.relay_active[i] = false;
 							}
 						}
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
@@ -426,12 +443,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_cancel_timer(device, &DEVICE_DATA.sensors_timer);
-				indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-				indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-				lunatico_close(device);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_async(handle_disconnect, (void*)device);
+				return INDIGO_OK;
 			}
 		}
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
@@ -528,9 +541,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (DEVICE_CONNECTED) {
+		handle_disconnect(device);
 		indigo_device_disconnect(NULL, device->name);
-	lunatico_close(device);
+	}
 	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
