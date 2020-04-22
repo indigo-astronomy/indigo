@@ -146,8 +146,18 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 
 indigo_result indigo_remove_driver(indigo_driver_entry *driver) {
 	assert(driver != NULL);
+	indigo_result result;
 	pthread_mutex_lock(&mutex);
-	driver->driver(INDIGO_DRIVER_SHUTDOWN, NULL); /* deregister */
+	result = driver->driver(INDIGO_DRIVER_SHUTDOWN, NULL); /* deregister */
+	if (result != INDIGO_OK) {
+		if (result == INDIGO_BUSY) {
+			INDIGO_LOG(indigo_log("Driver %s is in use and can't be unloaded", driver->name));
+		} else {
+			INDIGO_LOG(indigo_log("Driver %s failed to unload", driver->name));
+		}
+		pthread_mutex_unlock(&mutex);
+		return result;
+	}
 	if (driver->dl_handle) {
 		dlclose(driver->dl_handle);
 	}
