@@ -344,6 +344,7 @@ static void delete_port_device(int device_index);
 
 #define DEVICE_CONNECTED                 (device->gp_bits & DEVICE_CONNECTED_MASK)
 
+#define is_connected(dev)                ((dev)->gp_bits & DEVICE_CONNECTED_MASK)
 #define set_connected_flag(dev)          ((dev)->gp_bits |= DEVICE_CONNECTED_MASK)
 #define clear_connected_flag(dev)        ((dev)->gp_bits &= ~DEVICE_CONNECTED_MASK)
 
@@ -1755,10 +1756,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (DEVICE_CONNECTED) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 	aag_close(device);
-	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_CONSTANTS_PROPERTY);
 	indigo_release_property(X_SENSOR_READINGS_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
@@ -1863,6 +1864,14 @@ static void delete_port_device(int device_index) {
 }
 
 
+static bool at_least_one_device_connected() {
+	for (int index = 0; index < MAX_DEVICES; index++) {
+		if (is_connected(device_data[index].device)) return true;
+	}
+	return false;
+}
+
+
 indigo_result indigo_aux_cloudwatcher(indigo_driver_action action, indigo_driver_info *info) {
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -1881,6 +1890,7 @@ indigo_result indigo_aux_cloudwatcher(indigo_driver_action action, indigo_driver
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		if (at_least_one_device_connected() == true) return INDIGO_BUSY;
 		last_action = action;
 		for (int index = 0; index < MAX_DEVICES; index++) {
 			delete_port_device(index);
