@@ -23,7 +23,7 @@
  \file indigo_focuser_focusdreampro.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_focusdreampro"
 
 #include <stdlib.h>

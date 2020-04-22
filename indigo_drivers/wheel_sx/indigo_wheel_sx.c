@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_wheel_sx"
 
 #include <stdlib.h>
@@ -163,7 +163,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static indigo_device *device = NULL;
+static indigo_device *wheel = NULL;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
@@ -177,30 +177,30 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			if (device != NULL) {
+			if (wheel != NULL) {
 				return 0;
 			}
-			device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &wheel_template, sizeof(indigo_device));
+			wheel = malloc(sizeof(indigo_device));
+			assert(wheel != NULL);
+			memcpy(wheel, &wheel_template, sizeof(indigo_device));
 			char usb_path[INDIGO_NAME_SIZE];
 			indigo_get_usb_path(dev, usb_path);
-			snprintf(device->name, INDIGO_NAME_SIZE, "SX Filter Wheel #%s", usb_path);
+			snprintf(wheel->name, INDIGO_NAME_SIZE, "SX Filter Wheel #%s", usb_path);
 			sx_private_data *private_data = malloc(sizeof(sx_private_data));
 			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(sx_private_data));
-			device->private_data = private_data;
-			indigo_attach_device(device);
+			wheel->private_data = private_data;
+			indigo_attach_device(wheel);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			if (device == NULL) {
+			if (wheel == NULL) {
 				return 0;
 			}
-			indigo_detach_device(device);
-			free(device->private_data);
-			free(device);
-			device = NULL;
+			indigo_detach_device(wheel);
+			free(wheel->private_data);
+			free(wheel);
+			wheel = NULL;
 		}
 	}
 	return 0;
@@ -219,7 +219,7 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		device = NULL;
+		wheel = NULL;
 		hid_init();
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
@@ -227,11 +227,11 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(device);
+		VERIFY_NOT_CONNECTED(wheel);
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-		if (device)
+		if (wheel)
 			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 		break;
 

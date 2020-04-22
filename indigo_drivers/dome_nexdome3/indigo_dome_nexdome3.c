@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome3.c
  */
 
-#define DRIVER_VERSION 0x00007
+#define DRIVER_VERSION 0x00008
 #define DRIVER_NAME    "indigo_dome_nexdome3"
 
 #define FIRMWARE_VERSION_3_2 0x0302
@@ -778,7 +778,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (!device->is_connected) {
-			char name[NEXDOME_CMD_LEN] = "N/A";
+			//char name[NEXDOME_CMD_LEN] = "N/A";
 			char firmware[NEXDOME_CMD_LEN] = "N/A";
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -823,7 +823,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 					indigo_update_property(device, CONNECTION_PROPERTY, "NexDome did not respond. Are you using the correct firmware?");
 					return INDIGO_OK;
 				} else { // Successfully connected
-					uint32_t value;
+					//uint32_t value;
 					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome", INDIGO_VALUE_SIZE);
 					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 					int version, revision;
@@ -908,7 +908,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		PROPERTY_LOCK();
 		double current_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value;
-		double target_position;
+		double target_position = 0;
 
 		DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
 		if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
@@ -1014,7 +1014,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		PROPERTY_LOCK();
-		bool success;
+		//bool success;
 		if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
 			nexdome_command(device, "OPS");
 		} else {

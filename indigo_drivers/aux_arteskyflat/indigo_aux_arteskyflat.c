@@ -23,7 +23,7 @@
  \file indigo_aux_arteskyflat.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_arteskyflat"
 
 #include <stdlib.h>

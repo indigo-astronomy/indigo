@@ -24,7 +24,7 @@
  \file indigo_gps_gpsd.c
  */
 
-#define DRIVER_VERSION	0x0002
+#define DRIVER_VERSION	0x0003
 #define DRIVER_NAME	"indigo_gps_gpsd"
 
 #include <stdlib.h>

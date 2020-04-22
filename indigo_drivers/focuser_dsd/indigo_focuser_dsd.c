@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -117,7 +117,8 @@
 typedef struct {
 	int handle;
 	int focuser_version;
-	int current_position, target_position, max_position, backlash;
+	uint32_t current_position, target_position, max_position;
+	int backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -317,10 +318,10 @@ static bool dsd_set_step_mode(indigo_device *device, stepmode_t mode) {
 }
 
 
-static bool dsd_get_max_move(indigo_device *device, uint32_t *move) {
-	return dsd_command_get_value(device, "[GMXM]", move);
-}
-
+//static bool dsd_get_max_move(indigo_device *device, uint32_t *move) {
+//	return dsd_command_get_value(device, "[GMXM]", move);
+//}
+//
 
 static bool dsd_set_max_move(indigo_device *device, uint32_t move) {
 	return dsd_command_set_value(device, "[SMXM%d]", move);
@@ -488,7 +489,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static void temperature_timer_callback(indigo_device *device) {
 	double temp;
 	static bool has_sensor = true;
-	bool moving = false;
+	//bool moving = false;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	if (!dsd_get_temperature(device, &temp)) {
@@ -757,7 +758,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		int position;
+		uint32_t position;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1111,7 +1112,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(DSD_STEP_MODE_PROPERTY, property, false);
 		DSD_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		stepmode_t mode;
+		stepmode_t mode = STEP_MODE_FULL;
 		if(DSD_STEP_MODE_FULL_ITEM->sw.value) {
 			mode = STEP_MODE_FULL;
 		} else if(DSD_STEP_MODE_HALF_ITEM->sw.value) {
@@ -1234,7 +1235,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(DSD_COILS_MODE_PROPERTY, property, false);
 		DSD_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		coilsmode_t mode;
+		coilsmode_t mode = COILS_MODE_IDLE_OFF;
 		if(DSD_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
 			mode = COILS_MODE_IDLE_OFF;
 		} else if(DSD_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {

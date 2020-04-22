@@ -23,7 +23,7 @@
  \file indigo_aux_flipflat.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_flipflat"
 
 #include <stdlib.h>

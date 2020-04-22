@@ -23,7 +23,7 @@
  \file indigo_rotator_simulator.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_rotator_simulator"
 
 #include <stdlib.h>
