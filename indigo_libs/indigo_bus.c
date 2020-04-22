@@ -396,10 +396,10 @@ indigo_result indigo_detach_device(indigo_device *device) {
 	pthread_mutex_lock(&device_mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == device) {
-			if (device->detach != NULL)
-				device->last_result = device->detach(device);
 			devices[i] = NULL;
 			pthread_mutex_unlock(&device_mutex);
+			if (device->detach != NULL)
+				device->last_result = device->detach(device);
 			return INDIGO_OK;
 		}
 	}
