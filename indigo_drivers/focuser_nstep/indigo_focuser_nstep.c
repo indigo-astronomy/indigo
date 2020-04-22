@@ -24,7 +24,7 @@
  \file indigo_focuser_nstep.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_nstep"
 
 #include <stdlib.h>

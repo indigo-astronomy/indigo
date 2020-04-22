@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -651,21 +651,21 @@ static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 	return rc >= 0;
 }
 
-static bool sx_flood_led(indigo_device *device, bool state) {
-	libusb_device_handle *handle = PRIVATE_DATA->handle;
-	unsigned char *setup_data = PRIVATE_DATA->setup_data;
-	int transferred;
-	setup_data[REQ_TYPE ] = REQ_VENDOR;
-	setup_data[REQ ] = CCD_FLOOD_LED;
-	setup_data[REQ_VALUE_L ] = state;
-	setup_data[REQ_VALUE_H ] = 0;
-	setup_data[REQ_INDEX_L ] = 0;
-	setup_data[REQ_INDEX_H ] = 0;
-	setup_data[REQ_LENGTH_L] = 0;
-	setup_data[REQ_LENGTH_H] = 0;
-	int rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-	return rc >= 0;
-}
+//static bool sx_flood_led(indigo_device *device, bool state) {
+//	libusb_device_handle *handle = PRIVATE_DATA->handle;
+//	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+//	int transferred;
+//	setup_data[REQ_TYPE ] = REQ_VENDOR;
+//	setup_data[REQ ] = CCD_FLOOD_LED;
+//	setup_data[REQ_VALUE_L ] = state;
+//	setup_data[REQ_VALUE_H ] = 0;
+//	setup_data[REQ_INDEX_L ] = 0;
+//	setup_data[REQ_INDEX_H ] = 0;
+//	setup_data[REQ_LENGTH_L] = 0;
+//	setup_data[REQ_LENGTH_H] = 0;
+//	int rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+//	return rc >= 0;
+//}
 
 static void sx_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);

@@ -23,7 +23,7 @@
  \file indigo_guider_gpusb.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_guider_gpusb"
 
 #include <stdlib.h>
