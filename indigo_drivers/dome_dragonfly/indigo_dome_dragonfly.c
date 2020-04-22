@@ -484,6 +484,9 @@ static indigo_result aux_attach(indigo_device *device) {
 static void handle_aux_disconnect(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	for (int i = 0; i < 5; i++) {
+		indigo_cancel_timer_sync(device, &DEVICE_DATA.relay_timers[i]);
+	}
 	indigo_cancel_timer_sync(device, &DEVICE_DATA.sensors_timer);
 	lunatico_delete_properties(device);
 	lunatico_close(device);
@@ -517,6 +520,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						} else {
 							for (int i = 0; i < 5; i++) {
 								(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i + 3];
+								DEVICE_DATA.relay_active[i] = false;
 							}
 						}
 						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
