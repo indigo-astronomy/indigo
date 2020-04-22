@@ -63,7 +63,7 @@
 
 #include "indigo_ccd_apogee.h"
 
-#define MAXCAMERAS               32
+#define MAX_DEVICES               32
 #define MIN_CCD_TEMP            -70
 
 #define MAX_CCD_GAIN             63
@@ -1160,7 +1160,7 @@ static indigo_result ethernet_detach(indigo_device *device) {
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t ethernet_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static indigo_device *devices[MAXCAMERAS] = {NULL};
+static indigo_device *devices[MAX_DEVICES] = {NULL};
 static indigo_device *apogee_ethernet = NULL;
 
 static void ethernet_discover(char *network, bool cam_found) {
@@ -1210,7 +1210,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		uint16_t id = GetID(discovery_string);
 		uint16_t frmwrRev = GetFrmwrRev(discovery_string);
 		bool found = false;
-		for (int j = 0; j < MAXCAMERAS; j++) {
+		for (int j = 0; j < MAX_DEVICES; j++) {
 			indigo_device *device = devices[j];
 			if (device) {
 				uint16_t c_id = GetID(PRIVATE_DATA->discovery_string);
@@ -1233,7 +1233,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		PRIVATE_DATA->discovery_string = discovery_string;
 		std::string model = GetModelName(discovery_string);
 		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
-		for (int j = 0; j < MAXCAMERAS; j++) {
+		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
 				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
 				break;
@@ -1241,7 +1241,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		}
 	}
 
-	for (int j = 0; j < MAXCAMERAS; j++) {
+	for (int j = 0; j < MAX_DEVICES; j++) {
 		indigo_device *device = devices[j];
 		if (device) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
@@ -1254,7 +1254,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST camera[%d]: %s", i, discovery_string.c_str());
-		for (int j = 0; j < MAXCAMERAS; j++) {
+		for (int j = 0; j < MAX_DEVICES; j++) {
 			indigo_device *device = devices[j];
 			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
@@ -1262,7 +1262,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 			PRIVATE_DATA->available = true;
 		}
 	}
-	for (int j = 0; j < MAXCAMERAS; j++) {
+	for (int j = 0; j < MAX_DEVICES; j++) {
 		indigo_device *device = devices[j];
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
@@ -1305,7 +1305,7 @@ static void process_plug_event(indigo_device *unused) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot plug failed: %s", text.c_str());
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Attempting recovery by disconnecting all cameras...");
 		indigo_device *device;
-		for (int i = 0; i < MAXCAMERAS; i++) {
+		for (int i = 0; i < MAX_DEVICES; i++) {
 			device = devices[i];
 			if (device == NULL)	continue;
 			if (device->is_connected) {
@@ -1337,7 +1337,7 @@ static void process_plug_event(indigo_device *unused) {
 		uint16_t id = GetID(discovery_string);
 		uint16_t frmwrRev = GetFrmwrRev(discovery_string);
 		bool found = false;
-		for (int j = 0; j < MAXCAMERAS; j++) {
+		for (int j = 0; j < MAX_DEVICES; j++) {
 			indigo_device *device = devices[j];
 			if (device) {
 				uint16_t c_id = GetID(PRIVATE_DATA->discovery_string);
@@ -1360,7 +1360,7 @@ static void process_plug_event(indigo_device *unused) {
 		PRIVATE_DATA->discovery_string = discovery_string;
 		std::string model = GetItemFromFindStr(discovery_string, "model=");
 		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
-		for (int j = 0; j < MAXCAMERAS; j++) {
+		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
 				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
 				break;
@@ -1385,7 +1385,7 @@ static void process_unplug_event(indigo_device *unused) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Attempting recovery by disconnecting all cameras...");
 		// UGLY hack, but there is no way to recover without disconnect!
 		indigo_device *device;
-		for (int i = 0; i < MAXCAMERAS; i++) {
+		for (int i = 0; i < MAX_DEVICES; i++) {
 			device = devices[i];
 			if (device == NULL) continue;
 			if (device->is_connected) {
@@ -1404,7 +1404,7 @@ static void process_unplug_event(indigo_device *unused) {
 		}
 	}
 	device_strings = GetDeviceVector( msg );
-	for (int j = 0; j < MAXCAMERAS; j++) {
+	for (int j = 0; j < MAX_DEVICES; j++) {
 		indigo_device *device = devices[j];
 		if (device) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
@@ -1418,7 +1418,7 @@ static void process_unplug_event(indigo_device *unused) {
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST camera[%d]: %s", i, discovery_string.c_str());
-		for (int j = 0; j < MAXCAMERAS; j++) {
+		for (int j = 0; j < MAX_DEVICES; j++) {
 			indigo_device *device = devices[j];
 			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
@@ -1426,7 +1426,7 @@ static void process_unplug_event(indigo_device *unused) {
 			PRIVATE_DATA->available = true;
 		}
 	}
-	for (int j = 0; j < MAXCAMERAS; j++) {
+	for (int j = 0; j < MAX_DEVICES; j++) {
 		indigo_device *device = devices[j];
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
@@ -1465,7 +1465,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 
 static void remove_all_devices() {
-	for (int i = 0; i < MAXCAMERAS; i++) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device **device = &devices[i];
 		if (*device == NULL)
 			continue;
@@ -1505,7 +1505,7 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 				if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
 					strncpy(apogee_sysconfdir, getenv("INDIGO_FIRMWARE_BASE"), 2048);
 				}
-				for (int i = 0; i < MAXCAMERAS; i++) {
+				for (int i = 0; i < MAX_DEVICES; i++) {
 					devices[i] = NULL;
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "libapogee version: %d.%d.%d", APOGEE_MAJOR_VERSION, APOGEE_MINOR_VERSION, APOGEE_PATCH_VERSION);
@@ -1523,6 +1523,8 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 				return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 			}
 			case INDIGO_DRIVER_SHUTDOWN: {
+				for (int i = 0; i < MAX_DEVICES; i++)
+					VERIFY_NOT_CONNECTED(devices[i]);
 				last_action = action;
 				libusb_hotplug_deregister_callback(NULL, callback_handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

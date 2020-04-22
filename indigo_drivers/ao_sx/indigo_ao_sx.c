@@ -430,6 +430,8 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(guider);
+			VERIFY_NOT_CONNECTED(ao);
 			last_action = action;
 			if (guider != NULL) {
 				indigo_detach_device(guider);

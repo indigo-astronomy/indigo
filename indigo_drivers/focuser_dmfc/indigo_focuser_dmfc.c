@@ -559,6 +559,7 @@ indigo_result indigo_focuser_dmfc(indigo_driver_action action, indigo_driver_inf
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);

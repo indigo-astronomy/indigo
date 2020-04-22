@@ -852,6 +852,13 @@ indigo_result indigo_aux_joystick(indigo_driver_action action, indigo_driver_inf
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+#ifdef INDIGO_LINUX
+		for (int i = 0; i < MAX_DEVICES; i++)
+			VERIFY_NOT_CONNECTED(devices[i]);
+#endif
+#ifdef INDIGO_MACOS
+		//TBD
+#endif
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

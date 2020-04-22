@@ -348,6 +348,7 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(gps);
 		last_action = action;
 		if (gps != NULL) {
 			indigo_detach_device(gps);

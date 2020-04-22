@@ -223,8 +223,8 @@ static int lunatico_init_properties(indigo_device *device) {
 
 
 static void sensors_timer_callback(indigo_device *device) {
-	int sensor_value;
-	bool success;
+	//int sensor_value;
+	//bool success;
 	int sensors[8];
 
 	if (!lunatico_analog_read_sensors(device, sensors)) {
@@ -561,7 +561,7 @@ static indigo_result aux_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static int device_number = 0;
+//static int device_number = 0;
 
 static void create_port_device(int p_device_index, int l_device_index) {
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(

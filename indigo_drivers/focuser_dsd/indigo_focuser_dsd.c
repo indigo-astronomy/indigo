@@ -1358,6 +1358,8 @@ indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		for (int i = 0; i < MAX_DEVICES; i++)
+			VERIFY_NOT_CONNECTED(focuser[i]);
 		last_action = action;
 		for (int index = 0; index < device_number; index++) {
 			if (focuser[index] != NULL) {
