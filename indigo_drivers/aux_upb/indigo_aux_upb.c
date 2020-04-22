@@ -1685,6 +1685,8 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(focuser);
+			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);

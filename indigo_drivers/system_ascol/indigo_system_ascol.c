@@ -3284,6 +3284,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(panel);
 		last_action = action;
 		if (panel != NULL) {
 			indigo_detach_device(panel);

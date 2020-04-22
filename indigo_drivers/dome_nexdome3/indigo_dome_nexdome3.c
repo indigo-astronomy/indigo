@@ -1246,6 +1246,7 @@ indigo_result indigo_dome_nexdome3(indigo_driver_action action, indigo_driver_in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(dome);
 			last_action = action;
 			if (dome != NULL) {
 				indigo_detach_device(dome);

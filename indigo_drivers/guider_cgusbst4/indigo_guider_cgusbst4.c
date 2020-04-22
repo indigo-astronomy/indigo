@@ -254,6 +254,7 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
 			if (guider != NULL) {
 				indigo_detach_device(guider);

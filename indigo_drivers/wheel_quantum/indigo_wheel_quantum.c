@@ -188,6 +188,7 @@ indigo_result indigo_wheel_quantum(indigo_driver_action action, indigo_driver_in
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(device);
 		last_action = action;
 		if (device != NULL) {
 			indigo_detach_device(device);
