@@ -643,11 +643,12 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 				} else {
 					drivers_property->items[i].sw.value = indigo_load_driver(name, true, &driver) == INDIGO_OK;
 					if (driver && !driver->initialized) {
+						indigo_send_message(device, "Driver %s failed to load", name);
 						indigo_remove_driver(driver);
 					}
 				}
 			} else if (driver) {
-				indigo_result result;
+				indigo_result result = INDIGO_OK;
 				if (driver->dl_handle) {
 					result = indigo_remove_driver(driver);
 					if (result != INDIGO_OK) {
@@ -662,7 +663,11 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 					}
 				}
 				if (result != INDIGO_OK) {
-					indigo_update_property(device, drivers_property, "Driver %s failed to unload, maybe in use", driver->name);
+					if (result == INDIGO_BUSY) {
+						indigo_send_message(device, "Driver %s is in use, can't be unloaded", name);
+					} else {
+						indigo_send_message(device, "Driver %s failed to unload", name);
+					}
 				}
 			}
 		}
@@ -741,7 +746,6 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						unload_property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, unload_property, "Driver %s failed to unload", name);
 					}
-
 					return INDIGO_OK;
 				}
 			unload_property->state = INDIGO_ALERT_STATE;
