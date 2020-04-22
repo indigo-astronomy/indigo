@@ -344,7 +344,7 @@ static void delete_port_device(int device_index);
 
 #define DEVICE_CONNECTED                 (device->gp_bits & DEVICE_CONNECTED_MASK)
 
-#define is_connected(dev)                ((dev)->gp_bits & DEVICE_CONNECTED_MASK)
+#define is_connected(dev)                ((dev) && (dev)->gp_bits & DEVICE_CONNECTED_MASK)
 #define set_connected_flag(dev)          ((dev)->gp_bits |= DEVICE_CONNECTED_MASK)
 #define clear_connected_flag(dev)        ((dev)->gp_bits &= ~DEVICE_CONNECTED_MASK)
 
