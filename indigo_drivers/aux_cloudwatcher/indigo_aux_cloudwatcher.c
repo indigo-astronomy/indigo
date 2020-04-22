@@ -1575,11 +1575,6 @@ static void handle_disconnect(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
-	//while (PRIVATE_DATA->sensors_timer->callback_running == true) {
-	//	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TIMERRRRRRRRRRRR: %d", (int)(PRIVATE_DATA->sensors_timer->callback_running));
-	//	indigo_usleep(ONE_SECOND_DELAY);
-	//}
-
 	indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
 	indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
