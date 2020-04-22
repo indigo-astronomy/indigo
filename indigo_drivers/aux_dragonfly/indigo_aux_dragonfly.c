@@ -383,6 +383,7 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static void handle_disconnect(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	for (int i = 0; i < 8; i++) {
 		indigo_cancel_timer_sync(device, &DEVICE_DATA.relay_timers[i]);
