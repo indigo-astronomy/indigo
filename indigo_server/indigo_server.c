@@ -661,6 +661,9 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						driver->initialized = false;
 					}
 				}
+				if (result != INDIGO_OK) {
+					indigo_update_property(device, drivers_property, "Driver %s failed to unload, maybe in use", driver->name);
+				}
 			}
 		}
 		drivers_property->state = INDIGO_OK_STATE;
