@@ -2298,6 +2298,16 @@ static void delete_port_device(int device_index, int port_index) {
 	}
 }
 
+/*
+static bool at_least_one_device_connected() {
+	for (int p_index = 0; p_index < MAX_PHYSICAL_DEVICES; p_index++) {
+		for (int l_index = 0; l_index < MAX_LOGICAL_DEVICES; l_index++) {
+			if (is_connected(device_data[p_index].device[l_index])) return true;
+		}
+	}
+	return false;
+}
+*/
 
 indigo_result DRIVER_ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info) {
 
