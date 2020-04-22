@@ -546,7 +546,6 @@ static indigo_result aux_detach(indigo_device *device) {
 		handle_disconnect(device);
 		indigo_device_disconnect(NULL, device->name);
 	}
-	indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
@@ -622,6 +621,16 @@ static void delete_port_device(int p_device_index, int l_device_index) {
 }
 
 
+static bool at_least_one_device_connected() {
+	for (int p_index = 0; p_index < MAX_PHYSICAL_DEVICES; p_index++) {
+		for (int l_index = 0; l_index < MAX_LOGICAL_DEVICES; l_index++) {
+			if (is_connected(device_data[p_index].device[l_index])) return true;
+		}
+	}
+	return false;
+}
+
+
 indigo_result indigo_aux_dragonfly(indigo_driver_action action, indigo_driver_info *info) {
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -639,10 +648,11 @@ indigo_result indigo_aux_dragonfly(indigo_driver_action action, indigo_driver_in
 			last_action = INDIGO_DRIVER_SHUTDOWN;
 			return INDIGO_FAILED;
 		}
-		create_port_device(0, 1);
+		create_port_device(0, 0);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		if (at_least_one_device_connected() == true) return INDIGO_BUSY;
 		last_action = action;
 		for (int index = 0; index < MAX_LOGICAL_DEVICES; index++) {
 			delete_port_device(0, index);
