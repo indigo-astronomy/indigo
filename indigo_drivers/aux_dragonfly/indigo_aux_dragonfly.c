@@ -381,7 +381,7 @@ static indigo_result aux_attach(indigo_device *device) {
 }
 
 
-static void handle_disconnect(indigo_device *device) {
+static void handle_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -394,7 +394,7 @@ static void handle_disconnect(indigo_device *device) {
 	indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	lunatico_close(device);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	if (client && property) indigo_aux_change_property(device, client, property);
 }
 
 
@@ -444,7 +444,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				INDIGO_ASYNC(handle_disconnect, device);
+				indigo_handle_property_async(handle_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}
@@ -543,8 +543,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (DEVICE_CONNECTED) {
-		handle_disconnect(device);
-		indigo_device_disconnect(NULL, device->name);
+		handle_disconnect(device, NULL, NULL);
 	}
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
