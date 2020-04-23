@@ -304,9 +304,6 @@ static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo
 
 static indigo_result lunatico_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-	lunatico_close(device);
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
@@ -481,7 +478,7 @@ static indigo_result aux_attach(indigo_device *device) {
 }
 
 
-static void handle_aux_disconnect(indigo_device *device) {
+static void handle_aux_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	for (int i = 0; i < 5; i++) {
@@ -491,7 +488,7 @@ static void handle_aux_disconnect(indigo_device *device) {
 	lunatico_delete_properties(device);
 	lunatico_close(device);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	if (client && property) indigo_aux_change_property(device, client, property);
 }
 
 
@@ -542,7 +539,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				INDIGO_ASYNC(handle_aux_disconnect, device);
+				indigo_handle_property_async(handle_aux_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}
@@ -616,6 +613,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 
 static indigo_result aux_detach(indigo_device *device) {
+	if (DEVICE_CONNECTED) {
+		handle_aux_disconnect(device, NULL, NULL);
+	}
 	lunatico_detach(device);
 	return indigo_aux_detach(device);
 }
@@ -965,7 +965,7 @@ static indigo_result dome_attach(indigo_device *device) {
 }
 
 
-static void handle_dome_disconnect(indigo_device *device) {
+static void handle_dome_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	indigo_cancel_timer_sync(device, &DEVICE_DATA.keep_alive_timer);
@@ -973,7 +973,7 @@ static void handle_dome_disconnect(indigo_device *device) {
 	lunatico_delete_properties(device);
 	lunatico_close(device);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	if (client && property) indigo_dome_change_property(device, client, property);
 }
 
 
@@ -1025,7 +1025,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				INDIGO_ASYNC(handle_dome_disconnect, device);
+				indigo_handle_property_async(handle_dome_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}
@@ -1060,6 +1060,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 }
 
 static indigo_result dome_detach(indigo_device *device) {
+	if (DEVICE_CONNECTED) {
+		handle_dome_disconnect(device, NULL, NULL);
+	}
 	lunatico_detach(device);
 	return indigo_dome_detach(device);
 }
