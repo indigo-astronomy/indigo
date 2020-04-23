@@ -902,6 +902,35 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	return INDIGO_OK;
 }
 
+typedef struct {
+	indigo_device *device;
+	indigo_client *client;
+	indigo_property *property;
+} property_handler_data_t;
+
+static void handle_ccd_disconnect(property_handler_data_t *phd) {
+	indigo_device *device = phd->device;
+	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	PRIVATE_DATA->can_check_temperature = false;
+	indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+		asi_abort_exposure(device);
+		CCD_EXPOSURE_ITEM->number.value = 0;
+	} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+		CCD_STREAMING_COUNT_ITEM->number.value = 0;
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+	}
+	indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+	indigo_delete_property(device, ASI_PRESETS_PROPERTY, NULL);
+	indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
+	asi_close(device);
+	device->is_connected = false;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_ccd_change_property(device, phd->client, phd->property);
+}
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -916,6 +945,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					int id = PRIVATE_DATA->dev_id;
 					int ctrl_count;
 					ASI_CONTROL_CAPS ctrl_caps;
+
+					CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+					CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 
 					indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
@@ -978,14 +1011,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if(device->is_connected) {
-				PRIVATE_DATA->can_check_temperature = false;
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-				indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-				indigo_delete_property(device, ASI_PRESETS_PROPERTY, NULL);
-				indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
-				asi_close(device);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				static property_handler_data_t phd;
+				phd.device = device;
+				phd.client = client;
+				phd.property = property;
+				INDIGO_ASYNC(handle_ccd_disconnect, &phd);
+				return INDIGO_OK;
 			}
 		}
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -1322,6 +1353,18 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void handle_guider_disconnect(property_handler_data_t *phd) {
+	indigo_device *device = phd->device;
+	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_ra);
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
+	asi_close(device);
+	device->is_connected = false;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_guider_change_property(device, phd->client, phd->property);
+}
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1338,6 +1381,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 					GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1346,9 +1391,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		} else {
 			if (device->is_connected) {
-				asi_close(device);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				static property_handler_data_t phd;
+				phd.device = device;
+				phd.client = client;
+				phd.property = property;
+				INDIGO_ASYNC(handle_guider_disconnect, &phd);
+				return INDIGO_OK;
 			}
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
@@ -1438,7 +1486,7 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define MAX_DEVICES                   10
+#define MAX_DEVICES                   12
 #define NO_DEVICE                 (-1000)
 
 
@@ -1718,8 +1766,17 @@ indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *in
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++)
-				VERIFY_NOT_CONNECTED(devices[i]);
+			for (int i = 0; i < MAX_DEVICES; i++) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "devices[%d] = %p", i, devices[i]);
+				//VERIFY_NOT_CONNECTED(devices[i]);
+				//==19308== Process terminating with default action of signal 11 (SIGSEGV)
+				//==19308==  Access not within mapped region at address 0x10
+				//==19308==    at 0x982BD9A: indigo_ccd_asi (indigo_ccd_asi.c:1754)
+				//==19308==    by 0x528AB2A: indigo_remove_driver (indigo_client.c:151)
+				//==19308==    by 0x404701: server_main (indigo_server.c:1168)
+				//==19308==    by 0x402868: main (indigo_server.c:1276)
+				if (devices[i] && devices[i]->is_connected > 0) return INDIGO_BUSY;
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
