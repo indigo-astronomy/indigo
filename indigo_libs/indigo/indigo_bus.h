@@ -601,6 +601,15 @@ extern indigo_result indigo_device_disconnect(indigo_client *client, char *devic
  */
 extern void indigo_trim_local_service(char *device_name);
 
+/** Asynchronous handle property change in sepatate thread
+*/
+extern bool indigo_handle_property_async(
+	void (*handler)(indigo_device *device, indigo_client *client, indigo_property *property),
+	indigo_device *device,
+	indigo_client *client,
+	indigo_property *property
+);
+
 /** Asynchronous execution in thread.
  */
 extern bool indigo_async(void *fun(void *data), void *data);

@@ -902,14 +902,8 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	return INDIGO_OK;
 }
 
-typedef struct {
-	indigo_device *device;
-	indigo_client *client;
-	indigo_property *property;
-} property_handler_data_t;
 
-static void handle_ccd_disconnect(property_handler_data_t *phd) {
-	indigo_device *device = phd->device;
+static void handle_ccd_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	PRIVATE_DATA->can_check_temperature = false;
@@ -928,7 +922,7 @@ static void handle_ccd_disconnect(property_handler_data_t *phd) {
 	asi_close(device);
 	device->is_connected = false;
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_ccd_change_property(device, phd->client, phd->property);
+	indigo_ccd_change_property(device, client, property);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1011,11 +1005,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if(device->is_connected) {
-				static property_handler_data_t phd;
-				phd.device = device;
-				phd.client = client;
-				phd.property = property;
-				INDIGO_ASYNC(handle_ccd_disconnect, &phd);
+				indigo_handle_property_async(handle_ccd_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}
@@ -1353,8 +1343,8 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static void handle_guider_disconnect(property_handler_data_t *phd) {
-	indigo_device *device = phd->device;
+
+static void handle_guider_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_ra);
@@ -1362,7 +1352,7 @@ static void handle_guider_disconnect(property_handler_data_t *phd) {
 	asi_close(device);
 	device->is_connected = false;
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_guider_change_property(device, phd->client, phd->property);
+	indigo_guider_change_property(device, client, property);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1391,11 +1381,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		} else {
 			if (device->is_connected) {
-				static property_handler_data_t phd;
-				phd.device = device;
-				phd.client = client;
-				phd.property = property;
-				INDIGO_ASYNC(handle_guider_disconnect, &phd);
+				indigo_handle_property_async(handle_guider_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}

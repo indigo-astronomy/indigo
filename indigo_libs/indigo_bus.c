@@ -1195,6 +1195,36 @@ void indigo_trim_local_service(char *device_name) {
 	}
 }
 
+typedef struct {
+	void (*handler)(indigo_device *device, indigo_client *client, indigo_property *property);
+	indigo_device *device;
+	indigo_client *client;
+	indigo_property *property;
+} property_handler_data_t;
+
+static void _indigo_handle_property_async(property_handler_data_t *phd) {
+	assert(phd != NULL);
+	phd->handler(phd->device, phd->client, phd->property);
+	free(phd);
+}
+
+bool indigo_handle_property_async(
+	void (*handler)(indigo_device *device, indigo_client *client, indigo_property *property),
+	indigo_device *device,
+	indigo_client *client,
+	indigo_property *property
+) {
+	property_handler_data_t *phd = malloc(sizeof(property_handler_data_t));
+	if (phd == NULL) return false;
+
+	phd->handler = handler;
+	phd->device = device;
+	phd->client = client;
+	phd->property = property;
+
+	return INDIGO_ASYNC(_indigo_handle_property_async, phd);
+}
+
 bool indigo_async(void *fun(void *data), void *data) {
 	pthread_t async_thread;
 	if (pthread_create(&async_thread, NULL, fun, data) == 0) {
