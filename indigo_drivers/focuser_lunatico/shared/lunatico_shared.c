@@ -1212,14 +1212,14 @@ static indigo_result aux_attach(indigo_device *device) {
 }
 
 
-static void handle_aux_disconnect(indigo_device *device) {
+static void handle_aux_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	indigo_cancel_timer_sync(device, &PORT_DATA.sensors_timer);
 	lunatico_delete_properties(device);
 	lunatico_close(device);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	if (client && property) indigo_aux_change_property(device, client, property);
 }
 
 
@@ -1251,7 +1251,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				INDIGO_ASYNC(handle_aux_disconnect, device);
+				indigo_handle_property_async(handle_aux_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}
@@ -1308,7 +1308,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result aux_detach(indigo_device *device) {
 	if (DEVICE_CONNECTED)
-		handle_aux_disconnect(device);
+		handle_aux_disconnect(device, NULL, NULL);
 	lunatico_detach(device);
 	return indigo_aux_detach(device);
 }
@@ -1424,14 +1424,14 @@ static indigo_result rotator_attach(indigo_device *device) {
 }
 
 
-static void handle_rotator_disconnect(indigo_device *device) {
+static void handle_rotator_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	indigo_cancel_timer_sync(device, &PORT_DATA.rotator_timer);
 	lunatico_delete_properties(device);
 	lunatico_close(device);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	if (client && property) indigo_rotator_change_property(device, client, property);
 }
 
 
@@ -1509,7 +1509,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				INDIGO_ASYNC(handle_rotator_disconnect, device);
+				indigo_handle_property_async(handle_rotator_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}
@@ -1713,7 +1713,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 
 static indigo_result rotator_detach(indigo_device *device) {
 	if (DEVICE_CONNECTED)
-		handle_rotator_disconnect(device);
+		handle_rotator_disconnect(device, NULL, NULL);
 	lunatico_detach(device);
 	return indigo_rotator_detach(device);
 }
@@ -1903,7 +1903,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 
-static void handle_focuser_disconnect(indigo_device *device) {
+static void handle_focuser_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	indigo_cancel_timer_sync(device, &PORT_DATA.focuser_timer);
@@ -1912,7 +1912,7 @@ static void handle_focuser_disconnect(indigo_device *device) {
 	lunatico_delete_properties(device);
 	lunatico_close(device);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	if (client && property) indigo_focuser_change_property(device, client, property);
 }
 
 
@@ -1978,7 +1978,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				INDIGO_ASYNC(handle_focuser_disconnect, device);
+				indigo_handle_property_async(handle_focuser_disconnect, device, client, property);
 				return INDIGO_OK;
 			}
 		}
@@ -2228,7 +2228,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	if (DEVICE_CONNECTED)
-		handle_focuser_disconnect(device);
+		handle_focuser_disconnect(device, NULL, NULL);
 	lunatico_detach(device);
 	return indigo_focuser_detach(device);
 }
