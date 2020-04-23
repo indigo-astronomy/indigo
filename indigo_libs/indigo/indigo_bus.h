@@ -605,6 +605,8 @@ extern void indigo_trim_local_service(char *device_name);
  */
 extern bool indigo_async(void *fun(void *data), void *data);
 
+#define INDIGO_ASYNC(call, data) (indigo_async((void*(*)(void *))call, (void*)data))
+
 /** Convert sexagesimal string to double.
  */
 extern double indigo_stod(char *string);
