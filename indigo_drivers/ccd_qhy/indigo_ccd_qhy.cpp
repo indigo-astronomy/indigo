@@ -372,11 +372,11 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 	}
 	res = live ? BeginQHYCCDLive(PRIVATE_DATA->handle) : ExpQHYCCDSingleFrame(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res != QHYCCD_SUCCESS) {
+	if (res != QHYCCD_SUCCESS && res != QHYCCD_READ_DIRECTLY) {
 		if (live)
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BeginQHYCCDLive(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		else
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
 	return true;
