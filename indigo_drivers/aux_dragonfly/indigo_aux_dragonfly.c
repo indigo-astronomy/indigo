@@ -444,7 +444,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_async(handle_disconnect, (void*)device);
+				INDIGO_ASYNC(handle_disconnect, device);
 				return INDIGO_OK;
 			}
 		}

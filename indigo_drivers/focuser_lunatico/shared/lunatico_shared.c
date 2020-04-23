@@ -1024,21 +1024,21 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		// -------------------------------------------------------------------------------- LA_MODEL
 		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
 		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_async(configure_ports, device);
+		INDIGO_ASYNC(configure_ports, device);
 		indigo_update_property(device, LA_MODEL_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_PORT_EXP_CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
 		indigo_property_copy_values(LA_PORT_EXP_CONFIG_PROPERTY, property, false);
 		LA_PORT_EXP_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_async(configure_ports, device);
+		INDIGO_ASYNC(configure_ports, device);
 		indigo_update_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_PORT_THIRD_CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
 		indigo_property_copy_values(LA_PORT_THIRD_CONFIG_PROPERTY, property, false);
 		LA_PORT_THIRD_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_async(configure_ports, device);
+		INDIGO_ASYNC(configure_ports, device);
 		indigo_update_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_STEP_MODE_PROPERTY, property)) {
@@ -1163,7 +1163,6 @@ static void sensors_timer_callback(indigo_device *device) {
 	} else {
 		AUX_GPIO_SENSOR_4_ITEM->number.value = (double)sensor_value;
 	}
-	indigo_usleep(ONE_SECOND_DELAY*10);
 	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 3, &PORT_DATA.sensors_timer);
 }
@@ -1252,7 +1251,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_async(handle_aux_disconnect, device);
+				INDIGO_ASYNC(handle_aux_disconnect, device);
 				return INDIGO_OK;
 			}
 		}
@@ -1510,7 +1509,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_async(handle_rotator_disconnect, device);
+				INDIGO_ASYNC(handle_rotator_disconnect, device);
 				return INDIGO_OK;
 			}
 		}
@@ -1979,7 +1978,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_async(handle_focuser_disconnect, device);
+				INDIGO_ASYNC(handle_focuser_disconnect, device);
 				return INDIGO_OK;
 			}
 		}
