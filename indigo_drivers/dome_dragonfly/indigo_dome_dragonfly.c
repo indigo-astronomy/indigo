@@ -542,7 +542,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_async(handle_aux_disconnect, device);
+				INDIGO_ASYNC(handle_aux_disconnect, device);
 				return INDIGO_OK;
 			}
 		}
@@ -1025,7 +1025,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 		} else {
 			if (DEVICE_CONNECTED) {
-				indigo_async(handle_dome_disconnect, device);
+				INDIGO_ASYNC(handle_dome_disconnect, device);
 				return INDIGO_OK;
 			}
 		}
