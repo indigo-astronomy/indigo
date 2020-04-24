@@ -267,19 +267,19 @@ typedef enum {
 } heating_algorithm_state;
 
 typedef struct {
-	int power_voltage;  ///< Internal Supply Voltage
-	int ir_sky_temperature;     ///< IR Sky Temperature
-	int ir_sensor_temperature;  ///< IR Sensor Temperature
-	int ambient_temperature; ///< Ambient temperature. In newer models there is no ambient temperature sensor so -10000 is returned.
-	float rh;                 ///< Relative humidity
-	float rh_temperature;     ///< Temperature from RH sensor
-	int rain_frequency;     ///< Rain frequency
-	int rain_heater;        ///< PWM Duty Cycle
-	int rain_sensor_temperature; ///< Rain sensor temperature (used as ambient temperature in models where there is no ambient temperature sensor)
-	int ldr;               ///< Ambient light sensor
-	int switch_status;      ///< The status of the internal switch
-	float wind_speed;       ///< The wind speed measured by the anemometer (m/s)
-	float read_cycle;       ///< Time used in the readings
+	int power_voltage;
+	int ir_sky_temperature;
+	int ir_sensor_temperature;
+	int ambient_temperature;     // In newer models there is no ambient temperature sensor so -10000 is returned.
+	float rh;
+	float rh_temperature;
+	int rain_frequency;
+	int rain_heater;
+	int rain_sensor_temperature; // used as ambient temperature in models where there is no ambient temperature sensor)
+	int ldr;                     // Ambient light sensor
+	int switch_status;
+	float wind_speed;            // The wind speed (m/s)
+	float read_duration;         // Reding duration (s)
 } cloudwatcher_data;
 
 typedef struct {
@@ -344,7 +344,7 @@ static void delete_port_device(int device_index);
 
 #define ABS_ZERO 273.15
 #define NUMBER_OF_READS 5
-#define READ_INTERVAL 10
+#define REFRESH_INTERVAL 15.0
 
 /* Linatico AAG CloudWatcher device Commands ======================================================================== */
 static bool aag_command(indigo_device *device, const char *command, char *response, int block_count, int sleep) {
@@ -359,7 +359,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 		FD_ZERO(&readout);
 		FD_SET(PRIVATE_DATA->handle, &readout);
 		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
+		tv.tv_usec = 10000;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 		if (result == 0)
 			break;
@@ -397,7 +397,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
+			tv.tv_usec = 10000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result <= 0)
@@ -838,7 +838,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 
 	float rc = (float)(end.tv_sec - begin.tv_sec) + (end.tv_usec - begin.tv_usec) / 1000000.0;
 
-	cwd->read_cycle = rc;
+	cwd->read_duration = rc;
 
 	cwd->ir_sky_temperature      = aggregate_integers(sky_temperature, NUMBER_OF_READS);
 	cwd->ir_sensor_temperature   = aggregate_integers(ir_sensor_temperature, NUMBER_OF_READS);
@@ -1373,7 +1373,7 @@ static bool aag_heating_algorithm(indigo_device *device) {
 	float ambient_temp              = (float)AUX_WEATHER_TEMPERATURE_ITEM->number.value;
 	float rain_sensor_temp          = (float)X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.value;
 
-	float refresh = 10;
+	float refresh = REFRESH_INTERVAL;
 
 	if (PRIVATE_DATA->sensor_heater_power == -1) {
 		// If not already setted
@@ -1493,11 +1493,15 @@ static bool aag_heating_algorithm(indigo_device *device) {
 
 static void sensors_timer_callback(indigo_device *device) {
 	cloudwatcher_data cwd;
+
 	bool success = aag_get_cloudwatcher_data(device, &cwd);
 	process_data_and_update(device, cwd);
 	aag_heating_algorithm(device);
 
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->sensors_timer);
+	float reschedule_time = REFRESH_INTERVAL - cwd.read_duration;
+	if (reschedule_time < 1) reschedule_time = 1;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REFRESH_INTERVAL = %.2f, reschedule_time = %.2f,  cwd.read_duration = %.2f\n", REFRESH_INTERVAL, reschedule_time, cwd.read_duration);
+	indigo_reschedule_timer(device, reschedule_time, &PRIVATE_DATA->sensors_timer);
 }
 
 
