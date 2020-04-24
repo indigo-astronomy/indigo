@@ -287,6 +287,7 @@ typedef struct {
 	float firmware;
 	bool udp;
 	bool anemometer_black;
+	bool cancel_reading;
 	pthread_mutex_t port_mutex;
 
 	heating_algorithm_state heating_state;
@@ -807,6 +808,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	float wind_speed[NUMBER_OF_READS];
 
 	int check = 0;
+	cwd->read_duration = 0;
 
 	struct timeval begin;
 	gettimeofday(&begin, NULL);
@@ -826,6 +828,8 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 
 		check = aag_get_wind_speed(device, &wind_speed[i]);
 		if (!check) return false;
+
+		if (PRIVATE_DATA->cancel_reading) return false;
 	}
 
 	if (!aag_get_rh_temperature(device, &cwd->rh, &cwd->rh_temperature)) {
@@ -836,9 +840,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	struct timeval end;
 	gettimeofday(&end, NULL);
 
-	float rc = (float)(end.tv_sec - begin.tv_sec) + (end.tv_usec - begin.tv_usec) / 1000000.0;
-
-	cwd->read_duration = rc;
+	cwd->read_duration = (float)(end.tv_sec - begin.tv_sec) + (end.tv_usec - begin.tv_usec) / 1000000.0;
 
 	cwd->ir_sky_temperature      = aggregate_integers(sky_temperature, NUMBER_OF_READS);
 	cwd->ir_sensor_temperature   = aggregate_integers(ir_sensor_temperature, NUMBER_OF_READS);
@@ -1495,9 +1497,10 @@ static void sensors_timer_callback(indigo_device *device) {
 	cloudwatcher_data cwd;
 
 	bool success = aag_get_cloudwatcher_data(device, &cwd);
-	process_data_and_update(device, cwd);
-	aag_heating_algorithm(device);
-
+	if (success) {
+		process_data_and_update(device, cwd);
+		aag_heating_algorithm(device);
+	}
 	float reschedule_time = REFRESH_INTERVAL - cwd.read_duration;
 	if (reschedule_time < 1) reschedule_time = 1;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REFRESH_INTERVAL = %.2f, reschedule_time = %.2f,  cwd.read_duration = %.2f\n", REFRESH_INTERVAL, reschedule_time, cwd.read_duration);
@@ -1573,6 +1576,7 @@ static indigo_result aux_attach(indigo_device *device) {
 static void handle_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	PRIVATE_DATA->cancel_reading = true;
 	indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
 	indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
 	indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
@@ -1618,6 +1622,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						PRIVATE_DATA->wet_start_time = -1;
 						PRIVATE_DATA->desired_sensor_temperature = 0;
 						PRIVATE_DATA->sensor_heater_power = -1;
+						PRIVATE_DATA->cancel_reading = false;
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
 						indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
