@@ -1576,8 +1576,14 @@ static indigo_result aux_attach(indigo_device *device) {
 static void handle_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+
+	// Stop timer faster - do not wait to finish readout cycle
 	PRIVATE_DATA->cancel_reading = true;
 	indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
+
+	// To be on the safe side - set mim heating power
+	set_pwm_duty_cycle(device, (int)(PRIVATE_DATA->sensor_heater_power * 1023.0 / 100.0));
+
 	indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
 	indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
 	indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
@@ -1590,6 +1596,7 @@ static void handle_disconnect(indigo_device *device, indigo_client *client, indi
 	indigo_delete_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
 	indigo_delete_property(device, X_SKY_CONDITION_PROPERTY, NULL);
 	aag_close(device);
+
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (client && property) indigo_aux_change_property(device, client, property);
 }
