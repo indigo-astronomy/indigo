@@ -372,11 +372,11 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 	}
 	res = live ? BeginQHYCCDLive(PRIVATE_DATA->handle) : ExpQHYCCDSingleFrame(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res != QHYCCD_SUCCESS) {
+	if (res != QHYCCD_SUCCESS && res != QHYCCD_READ_DIRECTLY) {
 		if (live)
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BeginQHYCCDLive(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		else
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
 	return true;
@@ -1766,6 +1766,9 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
+#ifdef QHY2
+			SetQHYCCDAutoDetectCamera(false);
+#endif  // new SDK
 			SetQHYCCDLogLevel(6);
 			rc = InitQHYCCDResource();
 			if (rc != QHYCCD_SUCCESS) return INDIGO_FAILED;
