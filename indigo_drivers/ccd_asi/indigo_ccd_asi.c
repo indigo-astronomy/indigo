@@ -911,7 +911,6 @@ static void handle_ccd_disconnect(indigo_device *device, indigo_client *client, 
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 		asi_abort_exposure(device);
-		CCD_EXPOSURE_ITEM->number.value = 0;
 	} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 		CCD_STREAMING_COUNT_ITEM->number.value = 0;
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
