@@ -907,7 +907,7 @@ static void handle_ccd_disconnect(indigo_device *device, indigo_client *client, 
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	PRIVATE_DATA->can_check_temperature = false;
-	indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 		asi_abort_exposure(device);
@@ -939,10 +939,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					int id = PRIVATE_DATA->dev_id;
 					int ctrl_count;
 					ASI_CONTROL_CAPS ctrl_caps;
-
-					CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-					CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 
 					indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
@@ -1371,8 +1367,6 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 					GUIDER_GUIDE_RA_PROPERTY->hidden = false;
-					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;

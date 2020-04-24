@@ -330,6 +330,9 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
 			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_PREVIEW_PROPERTY, NULL);
