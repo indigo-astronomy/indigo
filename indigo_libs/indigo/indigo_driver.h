@@ -264,7 +264,7 @@ extern indigo_result indigo_global_unlock(indigo_device *device);
 /** Device is connected.
  */
 
-#define IS_CONNECTED	(CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE)
+#define IS_CONNECTED	(DEVICE_CONTEXT != NULL && CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE)
 
 /** Attach callback function.
  */
