@@ -1317,7 +1317,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		handle_ccd_disconnect(device, NULL, NULL);
-		//indigo_device_disconnect(NULL, device->name);
 
 	if (device == device->master_device)
 		indigo_global_unlock(device);
@@ -1461,7 +1460,6 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		handle_guider_disconnect(device, NULL, NULL);
-		//indigo_device_disconnect(NULL, device->name);
 
 	if (device == device->master_device)
 		indigo_global_unlock(device);
@@ -1756,14 +1754,7 @@ indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *in
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "devices[%d] = %p", i, devices[i]);
-				indigo_usleep(ONE_SECOND_DELAY);
 				VERIFY_NOT_CONNECTED(devices[i]);
-				//==19308== Process terminating with default action of signal 11 (SIGSEGV)
-				//==19308==  Access not within mapped region at address 0x10
-				//==19308==    at 0x982BD9A: indigo_ccd_asi (indigo_ccd_asi.c:1754)
-				//==19308==    by 0x528AB2A: indigo_remove_driver (indigo_client.c:151)
-				//==19308==    by 0x404701: server_main (indigo_server.c:1168)
-				//==19308==    by 0x402868: main (indigo_server.c:1276)
 				//if (devices[i] && devices[i]->is_connected > 0) return INDIGO_BUSY;
 			}
 			last_action = action;
