@@ -248,8 +248,9 @@ typedef struct {
 #define VERIFY_NOT_CONNECTED(dev)\
 {\
 	indigo_device *device = dev;\
-	if (device && IS_CONNECTED)\
-		return INDIGO_BUSY;\
+	if (device)\
+		if (IS_CONNECTED)\
+			return INDIGO_BUSY;\
 }
 
 /** Try to aquire global lock
