@@ -1766,6 +1766,9 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
+#ifdef QHY2
+			SetQHYCCDAutoDetectCamera(false);
+#endif  // new SDK
 			SetQHYCCDLogLevel(6);
 			rc = InitQHYCCDResource();
 			if (rc != QHYCCD_SUCCESS) return INDIGO_FAILED;
