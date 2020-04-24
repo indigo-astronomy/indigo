@@ -360,6 +360,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
 		} else {
+			CCD_STREAMING_COUNT_ITEM->number.value = 0;
+			CCD_EXPOSURE_ITEM->number.value = 0;
 			indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_PREVIEW_PROPERTY, NULL);
