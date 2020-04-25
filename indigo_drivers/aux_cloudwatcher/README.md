@@ -1,4 +1,4 @@
-# Lunatico Astronomy AAC CloudWatcher driver
+# Lunatico Astronomy AAG CloudWatcher driver
 
 https://www.lunatico.es
 
@@ -24,4 +24,3 @@ indigo_server indigo_aux_cloudwatcher
 
 Driver is developed and tested with:
 * AAG CloudWatcher
-
