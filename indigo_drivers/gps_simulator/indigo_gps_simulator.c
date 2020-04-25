@@ -24,7 +24,7 @@
  \file indigo_gps_simulator.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"idnigo_gps_simulator"
 
 #include <stdlib.h>
@@ -265,6 +265,7 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(gps);
 		last_action = action;
 		if (gps != NULL) {
 			indigo_detach_device(gps);

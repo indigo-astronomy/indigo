@@ -23,7 +23,7 @@
  \file indigo_focuser_steeldrive2.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_focuser_steeldrive2"
 
 #include <stdlib.h>
@@ -1285,6 +1285,8 @@ indigo_result indigo_focuser_steeldrive2(indigo_driver_action action, indigo_dri
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(aux);
+			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);

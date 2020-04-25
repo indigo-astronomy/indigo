@@ -591,6 +591,8 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(mount);
+			VERIFY_NOT_CONNECTED(mount_guider);
 			last_action = action;
 			if (mount_guider != NULL) {
 				indigo_detach_device(mount_guider);

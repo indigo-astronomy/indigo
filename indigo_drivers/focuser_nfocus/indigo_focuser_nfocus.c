@@ -24,7 +24,7 @@
  \file indigo_focuser_nfocus.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_nfocus"
 
 #include <stdlib.h>
@@ -318,6 +318,7 @@ indigo_result indigo_focuser_nfocus(indigo_driver_action action, indigo_driver_i
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);

@@ -26,7 +26,7 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0007
+#define DRIVER_VERSION             0x0008
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -666,6 +666,8 @@ indigo_result indigo_focuser_fli(indigo_driver_action action, indigo_driver_info
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		for (int i = 0; i < MAX_DEVICES; i++)
+			VERIFY_NOT_CONNECTED(devices[i]);
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("libusb_hotplug_deregister_callback"));

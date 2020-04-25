@@ -23,7 +23,7 @@
  \file indigo_aux_flipflat.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_flipflat"
 
 #include <stdlib.h>
@@ -375,6 +375,7 @@ indigo_result indigo_aux_flipflat(indigo_driver_action action, indigo_driver_inf
 			break;
 			
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);

@@ -46,11 +46,13 @@ typedef struct indigo_timer {
 	indigo_timer_callback callback;           ///< callback function pointer
 	bool canceled;                            ///< timer is canceled (darwin only)
 	bool scheduled;
+	bool callback_running;
 	double delay;
 	bool wake;
 	int timer_id;
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
+	pthread_mutex_t callback_mutex;
 	pthread_t thread;
 	struct indigo_timer *next;
 } indigo_timer;
@@ -90,6 +92,10 @@ extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_
 /** Cancel timer.
  */
 extern bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);
+
+/** Cancel timer and wait to cancel.
+ */
+extern bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer);
 
 /** Cancel all timers for given device.
  */

@@ -23,7 +23,7 @@
  \file indigo_rotator_simulator.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_rotator_simulator"
 
 #include <stdlib.h>
@@ -173,6 +173,7 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(imager_focuser);
 			last_action = action;
 			if (imager_focuser != NULL) {
 				if (private_data) indigo_cancel_timer(imager_focuser, &private_data->rotator_timer);

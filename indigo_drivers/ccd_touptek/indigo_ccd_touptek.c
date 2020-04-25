@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_ccd_touptek"
 
 #include <stdlib.h>
@@ -964,6 +964,8 @@ indigo_result indigo_ccd_touptek(indigo_driver_action action, indigo_driver_info
 			break;
 		}
 		case INDIGO_DRIVER_SHUTDOWN:
+			for (int i = 0; i < TOUPCAM_MAX; i++)
+				VERIFY_NOT_CONNECTED(devices[i]);
 			break;
 			
 		case INDIGO_DRIVER_INFO:

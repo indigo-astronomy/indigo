@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -110,7 +110,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static void temperature_timer_callback(indigo_device *device) {
 	float temp;
 	static bool has_sensor = true;
-	bool moving = false, moving_HC = false;
+	//bool moving = false, moving_HC = false;
 	int res;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -167,7 +167,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 
 	/* temperature difference if more than 1 degree so compensation needed */
-	if ((abs(temp_difference) >= 1.0) && (abs(temp_difference) < 100)) {
+	if ((fabs(temp_difference) >= 1.0) && (fabs(temp_difference) < 100)) {
 		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.1f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
 	} else {
@@ -835,6 +835,8 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		for (int i = 0; i < MAX_DEVICES; i++)
+			VERIFY_NOT_CONNECTED(devices[i]);
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

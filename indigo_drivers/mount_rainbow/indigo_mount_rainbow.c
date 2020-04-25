@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -542,6 +542,7 @@ indigo_result indigo_mount_rainbow(indigo_driver_action action, indigo_driver_in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(mount);
 			last_action = action;
 			if (mount != NULL) {
 				indigo_detach_device(mount);

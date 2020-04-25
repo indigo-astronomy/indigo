@@ -23,7 +23,7 @@
  \file indigo_aux_usbdp.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_aux_usbdp"
 
 #include <stdlib.h>
@@ -398,7 +398,7 @@ static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
 
-	char response[128];
+	//char response[128];
 	bool updateHeaterOutlet = false;
 	bool updateHeaterOutletState = false;
 	bool updateWeather = false;
@@ -1005,6 +1005,7 @@ indigo_result indigo_aux_usbdp(indigo_driver_action action, indigo_driver_info *
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);

@@ -94,6 +94,8 @@ indigo_result indigo_guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 			indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 			indigo_define_property(device, GUIDER_RATE_PROPERTY, NULL);
@@ -114,4 +116,3 @@ indigo_result indigo_guider_detach(indigo_device *device) {
 	indigo_release_property(GUIDER_RATE_PROPERTY);
 	return indigo_device_detach(device);
 }
-

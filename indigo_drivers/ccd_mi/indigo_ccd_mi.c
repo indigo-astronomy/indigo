@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -710,6 +710,8 @@ indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *inf
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			for (int i = 0; i < MAX_DEVICES; i++)
+				VERIFY_NOT_CONNECTED(devices[i]);
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

@@ -23,7 +23,7 @@
  \file indigo_aux_dsusb.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_aux_dsusb"
 
 #include <stdlib.h>
@@ -293,12 +293,14 @@ indigo_result indigo_aux_dsusb(indigo_driver_action action, indigo_driver_info *
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		for (int i = 0; i < MAX_DEVICES; i++)
+			VERIFY_NOT_CONNECTED(devices[i]);
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-		for (int j = 0; j < MAX_DEVICES; j++) {
-			if (devices[j] != NULL) {
-				indigo_device *device = devices[j];
+		for (int i = 0; i < MAX_DEVICES; i++) {
+			if (devices[i] != NULL) {
+				indigo_device *device = devices[i];
 				hotplug_callback(NULL, PRIVATE_DATA->dev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 			}
 		}

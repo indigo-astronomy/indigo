@@ -23,7 +23,7 @@
  \file indigo_aux_rts.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_aux_rts"
 
 #include <stdlib.h>
@@ -264,6 +264,7 @@ indigo_result indigo_aux_rts(indigo_driver_action action, indigo_driver_info *in
 			break;
 			
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);

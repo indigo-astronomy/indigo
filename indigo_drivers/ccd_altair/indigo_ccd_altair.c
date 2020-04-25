@@ -23,7 +23,7 @@
  \file indigo_ccd_altair.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME "indigo_ccd_altair"
 
 #include <stdlib.h>
@@ -981,6 +981,8 @@ indigo_result indigo_ccd_altair(indigo_driver_action action, indigo_driver_info 
 			break;
 		}
 		case INDIGO_DRIVER_SHUTDOWN:
+			for (int i = 0; i < ALTAIRCAM_MAX; i++)
+				VERIFY_NOT_CONNECTED(devices[i]);
 			break;
 
 		case INDIGO_DRIVER_INFO:

@@ -98,7 +98,8 @@ typedef enum {
 	INDIGO_LOCK_ERROR,          ///< mutex lock error
 	INDIGO_NOT_FOUND,           ///< unknown client/device/property/item etc.
 	INDIGO_CANT_START_SERVER,   ///< network server start failure
-	INDIGO_DUPLICATED						///< duplicated items etc.
+	INDIGO_DUPLICATED,			///< duplicated items etc.
+	INDIGO_BUSY                 ///< operation failed because the resourse is busy.
 } indigo_result;
 
 /** Property data type.
@@ -600,9 +601,20 @@ extern indigo_result indigo_device_disconnect(indigo_client *client, char *devic
  */
 extern void indigo_trim_local_service(char *device_name);
 
+/** Asynchronous handle property change in sepatate thread
+*/
+extern bool indigo_handle_property_async(
+	void (*handler)(indigo_device *device, indigo_client *client, indigo_property *property),
+	indigo_device *device,
+	indigo_client *client,
+	indigo_property *property
+);
+
 /** Asynchronous execution in thread.
  */
 extern bool indigo_async(void *fun(void *data), void *data);
+
+#define INDIGO_ASYNC(call, data) (indigo_async((void*(*)(void *))call, (void*)data))
 
 /** Convert sexagesimal string to double.
  */

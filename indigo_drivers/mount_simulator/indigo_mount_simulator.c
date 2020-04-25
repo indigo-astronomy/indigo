@@ -24,7 +24,7 @@
  \file indigo_mount_simulator.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_mount_simulator"
 
 #include <stdlib.h>
@@ -508,6 +508,8 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(mount);
+			VERIFY_NOT_CONNECTED(mount_guider);
 			last_action = action;
 			if (mount != NULL) {
 				indigo_detach_device(mount);

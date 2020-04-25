@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -1165,6 +1165,13 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(imager_ccd);
+			VERIFY_NOT_CONNECTED(imager_wheel);
+			VERIFY_NOT_CONNECTED(imager_focuser);
+			VERIFY_NOT_CONNECTED(guider_ccd);
+			VERIFY_NOT_CONNECTED(guider_guider);
+			VERIFY_NOT_CONNECTED(guider_ao);
+			VERIFY_NOT_CONNECTED(dslr);
 			last_action = action;
 			if (imager_ccd != NULL) {
 				indigo_detach_device(imager_ccd);
