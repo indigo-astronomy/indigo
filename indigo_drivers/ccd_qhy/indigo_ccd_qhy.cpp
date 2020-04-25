@@ -1203,12 +1203,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-
-	if (device == device->master_device)
-		indigo_global_unlock(device);
-
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ccd_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
@@ -1297,9 +1295,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		guider_connect_callback(device);
+	}
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 
@@ -1351,6 +1350,48 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void wheel_connect_callback(indigo_device *device) {
+	int res;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			if (qhy_open(device)) {
+				char targetpos = '1';
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				res = SendOrder2QHYCCDCFW(PRIVATE_DATA->handle, &targetpos, 1);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				if (res != QHYCCD_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) = %d.", PRIVATE_DATA->dev_sid, res);
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					return;
+				}
+				PRIVATE_DATA->fw_current_slot = -1;
+				WHEEL_SLOT_ITEM->number.value = 1;
+				PRIVATE_DATA->fw_count = FW_COUNT;
+				PRIVATE_DATA->fw_target_slot = targetpos;
+
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->fw_count;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) fw_current_slot = %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+				device->is_connected = true;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else { /* disconnect */
+		if(device->is_connected) {
+			qhy_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			device->is_connected = false;
+		}
+	}
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+}
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -1360,45 +1401,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (qhy_open(device)) {
-					char targetpos = '1';
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					res = SendOrder2QHYCCDCFW(PRIVATE_DATA->handle, &targetpos, 1);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res != QHYCCD_SUCCESS) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) = %d.", PRIVATE_DATA->dev_sid, res);
-						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-						return INDIGO_FAILED;
-					}
-					PRIVATE_DATA->fw_current_slot = -1;
-					WHEEL_SLOT_ITEM->number.value = 1;
-					PRIVATE_DATA->fw_count = FW_COUNT;
-					PRIVATE_DATA->fw_target_slot = targetpos;
-
-					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->fw_count;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) fw_current_slot = %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
-					device->is_connected = true;
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				}
-			}
-		} else { /* disconnect */
-			if(device->is_connected) {
-				qhy_close(device);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				device->is_connected = false;
-			}
-		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, wheel_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
@@ -1435,7 +1442,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		wheel_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }

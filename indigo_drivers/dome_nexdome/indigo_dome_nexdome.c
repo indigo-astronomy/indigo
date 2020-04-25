@@ -1085,8 +1085,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		dome_connect_callback(device);
+	}
 	indigo_release_property(NEXDOME_REVERSED_PROPERTY);
 	indigo_release_property(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
 	indigo_release_property(NEXDOME_FIND_HOME_PROPERTY);

@@ -1067,13 +1067,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-
-	indigo_global_unlock(device);
-
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ccd_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-
 	indigo_release_property(APG_ADC_SPEED_PROPERTY);
 	indigo_release_property(APG_FAN_SPEED_PROPERTY);
 	indigo_release_property(APG_GAIN_PROPERTY);
@@ -1121,6 +1119,31 @@ static indigo_result ethernet_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void ethernet_connect_callback(indigo_device *device) {
+	char message[1024] = {0};
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			snprintf(message, 1024, "Probing for cameras in %s. This may take some time...", DEVICE_PORT_ITEM->text.value);
+			indigo_update_property(device, CONNECTION_PROPERTY, message);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			device->is_connected = true;
+			message[0] = '\0';
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
+			ethernet_lookup_timer = indigo_set_timer(device, 0, ethernet_lookup_callback);
+		}
+	} else { /* disconnect */
+		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &ethernet_lookup_timer);
+			ethernet_discover(NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			device->is_connected = false;
+		}
+	}
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+}
+
 
 static indigo_result ethernet_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -1128,31 +1151,10 @@ static indigo_result ethernet_change_property(indigo_device *device, indigo_clie
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		char message[1024] = {0};
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				snprintf(message, 1024, "Probing for cameras in %s. This may take some time...", DEVICE_PORT_ITEM->text.value);
-				indigo_update_property(device, CONNECTION_PROPERTY, message);
-
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				device->is_connected = true;
-				message[0] = '\0';
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
-				ethernet_lookup_timer = indigo_set_timer(device, 0, ethernet_lookup_callback);
-			}
-		} else { /* disconnect */
-			if (device->is_connected) {
-				indigo_cancel_timer(device, &ethernet_lookup_timer);
-				ethernet_discover(NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				device->is_connected = false;
-			}
-		}
-
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ethernet_connect_callback);
 		return INDIGO_OK;
 	}
 	return indigo_device_change_property(device, client, property);
@@ -1161,10 +1163,10 @@ static indigo_result ethernet_change_property(indigo_device *device, indigo_clie
 
 static indigo_result ethernet_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-
-	indigo_cancel_timer(device, &ethernet_lookup_timer);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ethernet_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_device_detach(device);
 }

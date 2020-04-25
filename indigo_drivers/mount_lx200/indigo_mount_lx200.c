@@ -1212,8 +1212,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		mount_connect_callback(device);
+	}
 	indigo_release_property(ALIGNMENT_MODE_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -1232,6 +1234,30 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void guider_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			result = meade_open(device->master_device);
+		}
+		if (result) {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		if (--PRIVATE_DATA->device_count == 0) {
+			meade_close(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1239,26 +1265,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				result = meade_open(device->master_device);
-			}
-			if (result) {
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			if (--PRIVATE_DATA->device_count == 0) {
-				meade_close(device);
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, guider_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
@@ -1316,8 +1326,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		guider_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -1374,6 +1386,62 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void focuser_connect_callback(indigo_device *device) {
+	char command[16], response[16];
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			result = meade_open(device->master_device);
+		}
+		if (result) {
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
+				FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+				FOCUSER_SPEED_ITEM->number.max = 2;
+				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+				meade_command(device, FOCUSER_SPEED_ITEM->number.value == 1 ? ":FS#" : ":FF#", NULL, 0, 0);
+				if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_ITEM->number.value = atoi(response);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+				FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+				FOCUSER_SPEED_ITEM->number.max = 4;
+				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+				sprintf(command, "F%d", (int)FOCUSER_SPEED_ITEM->number.value);
+				meade_command(device, command, NULL, 0, 0);
+				if (meade_command(device, ":FG#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_ITEM->number.value = atoi(response);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (meade_command(device, ":FI#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_ITEM->number.min = atoi(response);
+				}
+				if (meade_command(device, ":FM#", response, sizeof(response), 0)) {
+					FOCUSER_POSITION_ITEM->number.max = atoi(response);
+				}
+			}
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		if (--PRIVATE_DATA->device_count == 0) {
+			meade_close(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1382,57 +1450,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				result = meade_open(device->master_device);
-			}
-			if (result) {
-				if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
-					FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
-					FOCUSER_SPEED_ITEM->number.max = 2;
-					FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-					meade_command(device, FOCUSER_SPEED_ITEM->number.value == 1 ? ":FS#" : ":FF#", NULL, 0, 0);
-					if (meade_command(device, ":FP#", response, sizeof(response), 0)) {
-						FOCUSER_POSITION_ITEM->number.value = atoi(response);
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-					} else {
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					}
-				} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
-					FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
-					FOCUSER_SPEED_ITEM->number.max = 4;
-					FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-					sprintf(command, "F%d", (int)FOCUSER_SPEED_ITEM->number.value);
-					meade_command(device, command, NULL, 0, 0);
-					if (meade_command(device, ":FG#", response, sizeof(response), 0)) {
-						FOCUSER_POSITION_ITEM->number.value = atoi(response);
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-						FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
-					} else {
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					}
-					if (meade_command(device, ":FI#", response, sizeof(response), 0)) {
-						FOCUSER_POSITION_ITEM->number.min = atoi(response);
-					}
-					if (meade_command(device, ":FM#", response, sizeof(response), 0)) {
-						FOCUSER_POSITION_ITEM->number.max = atoi(response);
-					}
-				}
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			if (--PRIVATE_DATA->device_count == 0) {
-				meade_close(device);
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_connect_callback);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_SPEED
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
@@ -1521,8 +1542,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }

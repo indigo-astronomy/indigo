@@ -879,16 +879,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-
-	indigo_global_unlock(device);
-
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ccd_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-
 	indigo_release_property(FLI_NFLUSHES_PROPERTY);
 	indigo_release_property(FLI_CAMERA_MODE_PROPERTY);
-
 	return indigo_ccd_detach(device);
 }
 

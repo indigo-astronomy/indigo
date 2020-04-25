@@ -91,21 +91,12 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-
-static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
+static void wheel_connect_callback(indigo_device *device) {
 	EFW_INFO info;
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-
-		int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
-		if (index < 0) {
-			return INDIGO_NOT_FOUND;
-		}
-
+	int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+	if (index < 0) {
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -153,6 +144,21 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
+	}
+	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, wheel_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
@@ -180,8 +186,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(NULL, device->name);
-	indigo_global_unlock(device);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		wheel_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
