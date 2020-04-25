@@ -1295,7 +1295,6 @@ bool ptp_canon_initialise(indigo_device *device) {
 static bool set_number_property(indigo_device *device, uint16_t code, uint64_t value) {
 	uint8_t buffer[1024], *target = buffer + 2 * sizeof(uint32_t);
 	if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
-		CANON_PRIVATE_DATA->image_format = value;
 		uint64_t i1 = (value >> 32) & 0xFFFFFFFF;
 		uint64_t i2 = value & 0xFFFFFFFF;
 		int count = i1 == 0 ? 1 : 2;
@@ -1336,7 +1335,18 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 	}
 	uint32_t size = *((uint32_t *)buffer) = (uint32_t)(target - buffer);
 	*((uint32_t *)buffer + 1) = code;
-	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer, size);
+	bool result = ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer, size);
+	if (result) {
+		// The private value must be updated immediately because there are some models in which GetEvent is delayed.
+		if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
+			CANON_PRIVATE_DATA->image_format = value;
+		} else if (code == ptp_property_canon_ShutterSpeed) {
+			CANON_PRIVATE_DATA->shutter = value;
+		} else if (code == ptp_property_canon_AutoExposureMode) {
+			CANON_PRIVATE_DATA->mode = value;
+		}
+	}
+	return result;
 }
 
 static bool set_string_property(indigo_device *device, uint16_t code, char *value) {
