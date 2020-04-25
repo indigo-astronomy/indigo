@@ -466,6 +466,259 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
+static void mount_connect_callback(indigo_device *device) {
+	char response[128];
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			result = meade_open(device);
+		}
+		if (result) {
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
+				if (meade_command(device, ":GVP#", response, sizeof(response), 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s", response);
+					strncpy(PRIVATE_DATA->product, response, 64);
+				}
+				if (!strncmp(PRIVATE_DATA->product, "LX", 2) || !strncmp(PRIVATE_DATA->product, "Autostar", 8)) {
+					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_MEADE_ITEM, true);
+				} else if (!strcmp(PRIVATE_DATA->product, "EQMac")) {
+					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_EQMAC_ITEM, true);
+				} else if (!strncmp(PRIVATE_DATA->product, "10micron", 8)) {
+					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_10MICRONS_ITEM, true);
+				} else if (!strncmp(PRIVATE_DATA->product, "Losmandy", 8)) {
+					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_GEMINI_ITEM, true);
+				} else if (!strncmp(PRIVATE_DATA->product, "Avalon", 6)) {
+					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AVALON_ITEM, true);
+				} else if (!strncmp(PRIVATE_DATA->product, "On-Step", 7)) {
+					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ON_STEP_ITEM, true);
+				}
+			}
+			indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
+			ALIGNMENT_MODE_PROPERTY->hidden = true;
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+				MOUNT_UTC_TIME_PROPERTY->hidden = false;
+				MOUNT_TRACKING_PROPERTY->hidden = false;
+				MOUNT_PARK_PROPERTY->count = 1;
+				MOUNT_PARK_PARKED_ITEM->sw.value = false;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				PRIVATE_DATA->parked = false;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
+				if (meade_command(device, ":GVF#", response, sizeof(response), 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Version:  %s", response);
+					char *sep = strchr(response, '|');
+					if (sep != NULL)
+						*sep = 0;
+					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+				} else {
+					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+				}
+				if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
+					strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+				}
+				if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
+					ALIGNMENT_MODE_PROPERTY->hidden = false;
+					if (*response == 'P' || *response == 'G') {
+						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+					} else if (*response == 'A') {
+						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+					} else {
+						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, false);
+					}
+					indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
+				}
+				meade_get_observatory(device);
+				meade_get_coords(device);
+				meade_get_utc(device);
+				if (meade_command(device, ":GH#", response, sizeof(response), 0)) {
+					PRIVATE_DATA->use_dst_commands = *response != 0;
+				}
+			} else if (MOUNT_TYPE_EQMAC_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
+				MOUNT_UTC_TIME_PROPERTY->hidden = true;
+				MOUNT_TRACKING_PROPERTY->hidden = true;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				meade_get_coords(device);
+				if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value == 0 && MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value == 0) {
+					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+					PRIVATE_DATA->parked = true;
+				} else {
+					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+					PRIVATE_DATA->parked = false;
+				}
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "N/A");
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "EQMac");
+				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+			} else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+				MOUNT_UTC_TIME_PROPERTY->hidden = false;
+				MOUNT_TRACKING_PROPERTY->hidden = false;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "10Micron");
+				strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				MOUNT_PARK_PROPERTY->count = 2;
+				PRIVATE_DATA->parked = false;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+				if (meade_command(device, ":Gstat#", response, sizeof(response), 0)) {
+					if (*response == '0') {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					} else if (*response == '5') {
+						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+						PRIVATE_DATA->parked = true;
+					}
+				}
+				meade_get_observatory(device);
+				meade_get_coords(device);
+				meade_get_utc(device);
+			} else if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+				MOUNT_UTC_TIME_PROPERTY->hidden = false;
+				MOUNT_TRACKING_PROPERTY->hidden = false;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
+				strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				MOUNT_PARK_PROPERTY->count = 2;
+				PRIVATE_DATA->parked = false;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+				if (meade_command(device, ":Gv#", response, 1, 0)) {
+					if (*response == 'T' || *response == 'G') {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					} else if (*response == 'N') {
+						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+						PRIVATE_DATA->parked = true;
+					}
+				}
+				meade_get_observatory(device);
+				meade_get_coords(device);
+				meade_get_utc(device);
+			} else if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
+				MOUNT_UTC_TIME_PROPERTY->hidden = true;
+				MOUNT_TRACKING_PROPERTY->hidden = false;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
+				MOUNT_HOME_PROPERTY->hidden = false;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "AvalonGO");
+				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				MOUNT_PARK_PROPERTY->count = 2;
+				PRIVATE_DATA->parked = false;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+				if (meade_command(device, ":X34#", response, sizeof(response), 0)) {
+					if (response[1] == '1') {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					} else {
+						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+						PRIVATE_DATA->parked = true;
+					}
+				}
+				if (meade_command(device, ":X22#", response, sizeof(response), 0)) {
+					int ra, dec;
+					if (sscanf(response, "%db%d#", &ra, &dec) == 2) {
+						MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target = ra;
+						MOUNT_GUIDE_RATE_DEC_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.target = dec;
+						MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+					} else {
+						MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+				meade_get_observatory(device);
+				meade_get_coords(device);
+				meade_get_utc(device);
+			} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+				MOUNT_UTC_TIME_PROPERTY->hidden = false;
+				MOUNT_TRACKING_PROPERTY->hidden = false;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "AstroPhysics");
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
+				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				MOUNT_PARK_PROPERTY->count = 2;
+				PRIVATE_DATA->parked = true;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				meade_command(device, ":U#", NULL, 0, 0);
+				meade_command(device, ":Br 00:00:00#", NULL, 0, 0);
+				meade_get_observatory(device);
+				meade_get_coords(device);
+				meade_get_utc(device);
+			} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+				MOUNT_UTC_TIME_PROPERTY->hidden = false;
+				MOUNT_TRACKING_PROPERTY->hidden = false;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				MOUNT_PEC_PROPERTY->hidden = false;
+				MOUNT_PARK_PROPERTY->count = 1;
+				MOUNT_PARK_PARKED_ITEM->sw.value = false;
+				PRIVATE_DATA->parked = false;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
+				if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
+					strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+				}
+				if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
+					ALIGNMENT_MODE_PROPERTY->hidden = false;
+					if (*response == 'P' || *response == 'G') {
+						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+					} else if (*response == 'A') {
+						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+					} else {
+						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+					}
+					indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
+				}
+				if (meade_command(device, ":$QZ?", response, sizeof(response), 0))
+					indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
+				meade_get_observatory(device);
+				meade_get_coords(device);
+				meade_get_utc(device);
+			} else {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
+				MOUNT_UTC_TIME_PROPERTY->hidden = true;
+				MOUNT_TRACKING_PROPERTY->hidden = true;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				MOUNT_PARK_PROPERTY->hidden = true;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
+				meade_get_coords(device);
+			}
+			// initialize target
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+		if (--PRIVATE_DATA->device_count == 0) {
+			meade_command(device, ":Q#", NULL, 0, 0);
+			meade_close(device);
+		}
+		indigo_delete_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+
+
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -474,252 +727,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				result = meade_open(device);
-			}
-			if (result) {
-				if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
-					if (meade_command(device, ":GVP#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s", response);
-						strncpy(PRIVATE_DATA->product, response, 64);
-					}
-					if (!strncmp(PRIVATE_DATA->product, "LX", 2) || !strncmp(PRIVATE_DATA->product, "Autostar", 8)) {
-						indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_MEADE_ITEM, true);
-					} else if (!strcmp(PRIVATE_DATA->product, "EQMac")) {
-						indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_EQMAC_ITEM, true);
-					} else if (!strncmp(PRIVATE_DATA->product, "10micron", 8)) {
-						indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_10MICRONS_ITEM, true);
-					} else if (!strncmp(PRIVATE_DATA->product, "Losmandy", 8)) {
-						indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_GEMINI_ITEM, true);
-					} else if (!strncmp(PRIVATE_DATA->product, "Avalon", 6)) {
-						indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AVALON_ITEM, true);
-					} else if (!strncmp(PRIVATE_DATA->product, "On-Step", 7)) {
-						indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ON_STEP_ITEM, true);
-					}
-				}
-				indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
-				ALIGNMENT_MODE_PROPERTY->hidden = true;
-				if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
-					MOUNT_UTC_TIME_PROPERTY->hidden = false;
-					MOUNT_TRACKING_PROPERTY->hidden = false;
-					MOUNT_PARK_PROPERTY->count = 1;
-					MOUNT_PARK_PARKED_ITEM->sw.value = false;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-					PRIVATE_DATA->parked = false;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
-					if (meade_command(device, ":GVF#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Version:  %s", response);
-						char *sep = strchr(response, '|');
-						if (sep != NULL)
-							*sep = 0;
-						strncpy(MOUNT_INFO_MODEL_ITEM->text.value, response, INDIGO_VALUE_SIZE);
-					} else {
-						strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
-					}
-					if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-						strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
-					}
-					if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
-						ALIGNMENT_MODE_PROPERTY->hidden = false;
-						if (*response == 'P' || *response == 'G') {
-							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
-						} else if (*response == 'A') {
-							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
-						} else {
-							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, false);
-						}
-						indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
-					}
-					meade_get_observatory(device);
-					meade_get_coords(device);
-					meade_get_utc(device);
-					if (meade_command(device, ":GH#", response, sizeof(response), 0)) {
-						PRIVATE_DATA->use_dst_commands = *response != 0;
-					}
-				} else if (MOUNT_TYPE_EQMAC_ITEM->sw.value) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
-					MOUNT_UTC_TIME_PROPERTY->hidden = true;
-					MOUNT_TRACKING_PROPERTY->hidden = true;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-					meade_get_coords(device);
-					if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value == 0 && MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value == 0) {
-						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
-						PRIVATE_DATA->parked = true;
-					} else {
-						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-						PRIVATE_DATA->parked = false;
-					}
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "N/A");
-					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "EQMac");
-					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-				} else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
-					MOUNT_UTC_TIME_PROPERTY->hidden = false;
-					MOUNT_TRACKING_PROPERTY->hidden = false;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "10Micron");
-					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
-					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-					MOUNT_PARK_PROPERTY->count = 2;
-					PRIVATE_DATA->parked = false;
-					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-					if (meade_command(device, ":Gstat#", response, sizeof(response), 0)) {
-						if (*response == '0') {
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-						} else if (*response == '5') {
-							indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
-							PRIVATE_DATA->parked = true;
-						}
-					}
-					meade_get_observatory(device);
-					meade_get_coords(device);
-					meade_get_utc(device);
-				} else if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
-					MOUNT_UTC_TIME_PROPERTY->hidden = false;
-					MOUNT_TRACKING_PROPERTY->hidden = false;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
-					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
-					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-					MOUNT_PARK_PROPERTY->count = 2;
-					PRIVATE_DATA->parked = false;
-					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-					if (meade_command(device, ":Gv#", response, 1, 0)) {
-						if (*response == 'T' || *response == 'G') {
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-						} else if (*response == 'N') {
-							indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
-							PRIVATE_DATA->parked = true;
-						}
-					}
-					meade_get_observatory(device);
-					meade_get_coords(device);
-					meade_get_utc(device);
-				} else if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
-					MOUNT_UTC_TIME_PROPERTY->hidden = true;
-					MOUNT_TRACKING_PROPERTY->hidden = false;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
-					MOUNT_HOME_PROPERTY->hidden = false;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
-					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "AvalonGO");
-					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-					MOUNT_PARK_PROPERTY->count = 2;
-					PRIVATE_DATA->parked = false;
-					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-					if (meade_command(device, ":X34#", response, sizeof(response), 0)) {
-						if (response[1] == '1') {
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-						} else {
-							indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
-							PRIVATE_DATA->parked = true;
-						}
-					}
-					if (meade_command(device, ":X22#", response, sizeof(response), 0)) {
-						int ra, dec;
-						if (sscanf(response, "%db%d#", &ra, &dec) == 2) {
-							MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target = ra;
-							MOUNT_GUIDE_RATE_DEC_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.target = dec;
-							MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-						} else {
-							MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-						}
-					}
-					meade_get_observatory(device);
-					meade_get_coords(device);
-					meade_get_utc(device);
-				} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
-					MOUNT_UTC_TIME_PROPERTY->hidden = false;
-					MOUNT_TRACKING_PROPERTY->hidden = false;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "AstroPhysics");
-					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
-					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-					MOUNT_PARK_PROPERTY->count = 2;
-					PRIVATE_DATA->parked = true;
-					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-					meade_command(device, ":U#", NULL, 0, 0);
-					meade_command(device, ":Br 00:00:00#", NULL, 0, 0);
-					meade_get_observatory(device);
-					meade_get_coords(device);
-					meade_get_utc(device);
-				} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
-					MOUNT_UTC_TIME_PROPERTY->hidden = false;
-					MOUNT_TRACKING_PROPERTY->hidden = false;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-					MOUNT_PEC_PROPERTY->hidden = false;
-					MOUNT_PARK_PROPERTY->count = 1;
-					MOUNT_PARK_PARKED_ITEM->sw.value = false;
-					PRIVATE_DATA->parked = false;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
-					if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-						strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
-					}
-					if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
-						ALIGNMENT_MODE_PROPERTY->hidden = false;
-						if (*response == 'P' || *response == 'G') {
-							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
-						} else if (*response == 'A') {
-							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
-						} else {
-							indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-						}
-						indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
-					}
-					if (meade_command(device, ":$QZ?", response, sizeof(response), 0))
-						indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
-					meade_get_observatory(device);
-					meade_get_coords(device);
-					meade_get_utc(device);
-				} else {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
-					MOUNT_UTC_TIME_PROPERTY->hidden = true;
-					MOUNT_TRACKING_PROPERTY->hidden = true;
-					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-					MOUNT_PARK_PROPERTY->hidden = true;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
-					meade_get_coords(device);
-				}
-				// initialize target
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-			PRIVATE_DATA->position_timer = NULL;
-			if (--PRIVATE_DATA->device_count == 0) {
-				meade_close(device);
-			}
-			indigo_delete_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);

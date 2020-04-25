@@ -555,6 +555,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
+			steeldrive2_command(device, "$BS STOP", response, sizeof(response));
 			indigo_delete_property(device, X_NAME_PROPERTY, NULL);
 			indigo_delete_property(device, X_SAVED_VALUES_PROPERTY, NULL);
 			indigo_delete_property(device, X_STATUS_PROPERTY, NULL);
@@ -564,7 +565,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_delete_property(device, X_START_ZEROING_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			if (--PRIVATE_DATA->count == 0) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
@@ -1066,7 +1067,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_delete_property(device, X_SELECT_AMB_SENSOR_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			if (--PRIVATE_DATA->count == 0) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}

@@ -294,7 +294,8 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			nstep_command(device, ":F10000#", NULL, 0);
 			indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");

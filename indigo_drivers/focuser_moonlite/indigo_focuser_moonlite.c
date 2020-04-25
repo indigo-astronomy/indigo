@@ -265,7 +265,8 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			moonlite_command(device, ":FQ#", NULL, 0);
 			indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);

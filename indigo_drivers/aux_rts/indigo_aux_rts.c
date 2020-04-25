@@ -156,7 +156,7 @@ static void aux_connection_handler(indigo_device *device) {
 	} else {
 		indigo_delete_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
 		rts_off(device);
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;

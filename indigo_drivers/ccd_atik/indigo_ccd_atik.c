@@ -138,118 +138,137 @@ static void ccd_temperature_callback(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
-	if (PRIVATE_DATA->device_count++ == 0) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			PRIVATE_DATA->handle = NULL;
-		} else {
-			PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (PRIVATE_DATA->device_count++ == 0) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				PRIVATE_DATA->handle = NULL;
+			} else {
+				PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
+			}
 		}
-	}
-	if (PRIVATE_DATA->handle) {
-		struct ARTEMISPROPERTIES properties;
-		int temperature, flags, level, min_level, max_level, set_point, max_x_bin, max_y_bin;
-		if (ArtemisProperties(PRIVATE_DATA->handle, &properties) == ARTEMIS_OK) {
-			if (properties.nPixelsX == 3354 && properties.nPixelsY == 2529) {
-				properties.nPixelsX = 3326;
-				properties.nPixelsY = 2504;
-			}
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Firmware: %d.%d", properties.Protocol >> 8, properties.Protocol & 0xff);
-			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = properties.nPixelsX;
-			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = properties.nPixelsY;
-			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(properties.PixelMicronsX * 100)/100;
-			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(properties.PixelMicronsX * 100) / 100;
-			ArtemisGetMaxBin(PRIVATE_DATA->handle, &max_x_bin, &max_y_bin);
-			CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_x_bin;
-			CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_y_bin;
-			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_MODE_PROPERTY->count = log2(max_x_bin) + 1;
-			char name[32], label[32];
-			int pw = 1;
-			for (int i = 1; i <= CCD_MODE_PROPERTY->count; i++) {
-				sprintf(name, "BIN_%dx%d", pw, pw);
-				sprintf(label, "RAW 16 %dx%d", properties.nPixelsX / pw, properties.nPixelsY / pw);
-				indigo_init_switch_item(CCD_MODE_ITEM + (i - 1), name, label, i == 1);
-				pw *= 2;
-			}
-			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
-			assert(PRIVATE_DATA->buffer != NULL);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &temperature) == ARTEMIS_OK && temperature > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
-				CCD_TEMPERATURE_PROPERTY->hidden = false;
-				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-				CCD_TEMPERATURE_ITEM->number.value = round(temperature / 10.0) / 10.0;
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
-				PRIVATE_DATA->can_check_temperature = true;
-			}
-			if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point) == ARTEMIS_OK && (flags & 3) == 3) {
-				CCD_COOLER_PROPERTY->hidden = false;
-				CCD_COOLER_POWER_PROPERTY->hidden = false;
-				CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
-				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_TEMPERATURE_ITEM->number.target = round(set_point / 10.0) / 10.0;
-				if (CCD_TEMPERATURE_ITEM->number.target > 100)
-					CCD_TEMPERATURE_ITEM->number.target = CCD_TEMPERATURE_ITEM->number.value;
-				if (CCD_COOLER_ON_ITEM->sw.value)
-					CCD_TEMPERATURE_PROPERTY->state = fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-				else
+		if (PRIVATE_DATA->handle) {
+			struct ARTEMISPROPERTIES properties;
+			int temperature, flags, level, min_level, max_level, set_point, max_x_bin, max_y_bin;
+			if (ArtemisProperties(PRIVATE_DATA->handle, &properties) == ARTEMIS_OK) {
+				if (properties.nPixelsX == 3354 && properties.nPixelsY == 2529) {
+					properties.nPixelsX = 3326;
+					properties.nPixelsY = 2504;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Firmware: %d.%d", properties.Protocol >> 8, properties.Protocol & 0xff);
+				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = properties.nPixelsX;
+				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = properties.nPixelsY;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(properties.PixelMicronsX * 100)/100;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(properties.PixelMicronsX * 100) / 100;
+				ArtemisGetMaxBin(PRIVATE_DATA->handle, &max_x_bin, &max_y_bin);
+				CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_x_bin;
+				CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_y_bin;
+				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_MODE_PROPERTY->count = log2(max_x_bin) + 1;
+				char name[32], label[32];
+				int pw = 1;
+				for (int i = 1; i <= CCD_MODE_PROPERTY->count; i++) {
+					sprintf(name, "BIN_%dx%d", pw, pw);
+					sprintf(label, "RAW 16 %dx%d", properties.nPixelsX / pw, properties.nPixelsY / pw);
+					indigo_init_switch_item(CCD_MODE_ITEM + (i - 1), name, label, i == 1);
+					pw *= 2;
+				}
+				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+				assert(PRIVATE_DATA->buffer != NULL);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &temperature) == ARTEMIS_OK && temperature > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-				CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
-				CCD_COOLER_POWER_ITEM->number.value = round(100.0 * (level - min_level) / (max_level - min_level));
-			}
-			if (ArtemisHasCameraSpecificOption(PRIVATE_DATA->handle, 1)) {
-				ATIK_PRESETS_PROPERTY->hidden = false;
-				short value = 0;
-				int actualLength;
-				ATIK_PRESETS_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 1, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-				if (value == 0) {
-					short value;
+					CCD_TEMPERATURE_ITEM->number.value = round(temperature / 10.0) / 10.0;
+				}
+				if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point) == ARTEMIS_OK && (flags & 3) == 3) {
+					CCD_COOLER_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_TEMPERATURE_ITEM->number.target = round(set_point / 10.0) / 10.0;
+					if (CCD_TEMPERATURE_ITEM->number.target > 100)
+						CCD_TEMPERATURE_ITEM->number.target = CCD_TEMPERATURE_ITEM->number.value;
+					if (CCD_COOLER_ON_ITEM->sw.value)
+						CCD_TEMPERATURE_PROPERTY->state = fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					else
+						CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+					CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
+					CCD_COOLER_POWER_ITEM->number.value = round(100.0 * (level - min_level) / (max_level - min_level));
+				}
+				if (ArtemisHasCameraSpecificOption(PRIVATE_DATA->handle, 1)) {
+					ATIK_PRESETS_PROPERTY->hidden = false;
+					short value = 0;
 					int actualLength;
-					CCD_GAIN_PROPERTY->hidden = false;
-					CCD_OFFSET_PROPERTY->hidden = false;
-					value = CCD_GAIN_ITEM->number.value;
-					CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-					CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
-					value = CCD_OFFSET_ITEM->number.value;
-					CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-					CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
-					indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_CUSTOM_ITEM, true);
-				} else {
-					CCD_GAIN_PROPERTY->hidden = true;
-					CCD_OFFSET_PROPERTY->hidden = true;
-					switch (value) {
-						case 1:
-							indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_LOW_ITEM, true);
-							break;
-						case 2:
-							indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_MED_ITEM, true);
-							break;
-						case 3:
-							indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_HIGH_ITEM, true);
-							break;
+					ATIK_PRESETS_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 1, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					if (value == 0) {
+						short value;
+						int actualLength;
+						CCD_GAIN_PROPERTY->hidden = false;
+						CCD_OFFSET_PROPERTY->hidden = false;
+						value = CCD_GAIN_ITEM->number.value;
+						CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+						CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
+						value = CCD_OFFSET_ITEM->number.value;
+						CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+						CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
+						indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_CUSTOM_ITEM, true);
+					} else {
+						CCD_GAIN_PROPERTY->hidden = true;
+						CCD_OFFSET_PROPERTY->hidden = true;
+						switch (value) {
+							case 1:
+								indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_LOW_ITEM, true);
+								break;
+							case 2:
+								indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_MED_ITEM, true);
+								break;
+							case 3:
+								indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_HIGH_ITEM, true);
+								break;
+						}
 					}
 				}
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				ArtemisDisconnect(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = NULL;
 			}
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			ArtemisDisconnect(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = NULL;
 		}
-	}
-	if (PRIVATE_DATA->handle == NULL) {
-		indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+		if (PRIVATE_DATA->handle == NULL) {
+			if (PRIVATE_DATA->buffer != NULL) {
+				free(PRIVATE_DATA->buffer);
+				PRIVATE_DATA->buffer = NULL;
+			}
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		} else {
+			if (!CCD_TEMPERATURE_PROPERTY->hidden) {
+				PRIVATE_DATA->can_check_temperature = true;
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
+			}
+			indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
+		}
+	} else {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			ArtemisStopExposure(PRIVATE_DATA->handle);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+		}
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
 		}
-		PRIVATE_DATA->device_count--;
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-	} else {
-		indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
+		if (--PRIVATE_DATA->device_count == 0) {
+			indigo_delete_property(device, ATIK_PRESETS_PROPERTY, NULL);
+			ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
+			ArtemisDisconnect(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = NULL;
+			indigo_global_unlock(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -306,24 +325,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			indigo_set_timer(device, 0, ccd_connect_callback);
-			return INDIGO_OK;
-		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-			if (PRIVATE_DATA->buffer != NULL) {
-				free(PRIVATE_DATA->buffer);
-				PRIVATE_DATA->buffer = NULL;
-			}
-			if (--PRIVATE_DATA->device_count == 0) {
-				indigo_delete_property(device, ATIK_PRESETS_PROPERTY, NULL);
-				ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
-				ArtemisDisconnect(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = NULL;
-				indigo_global_unlock(device);
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(ATIK_PRESETS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ATIK_PRESETS
 		short lastPreset = 0, preset = 0;
@@ -516,6 +521,40 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void guider_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (PRIVATE_DATA->device_count++ == 0) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				PRIVATE_DATA->handle = NULL;
+			} else {
+				PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
+			}
+		}
+		if (PRIVATE_DATA->handle) {
+			ArtemisGuidePort(PRIVATE_DATA->handle, PRIVATE_DATA->relay_mask = 0);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
+		if (PRIVATE_DATA->buffer != NULL) {
+			free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+		}
+		if (--PRIVATE_DATA->device_count == 0) {
+			ArtemisDisconnect(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = NULL;
+			indigo_global_unlock(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -523,33 +562,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					PRIVATE_DATA->handle = NULL;
-				} else {
-					PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
-				}
-			}
-			if (PRIVATE_DATA->handle) {
-				ArtemisGuidePort(PRIVATE_DATA->handle, PRIVATE_DATA->relay_mask = 0);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			if (--PRIVATE_DATA->device_count == 0) {
-				ArtemisDisconnect(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = NULL;
-				indigo_global_unlock(device);
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, guider_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);

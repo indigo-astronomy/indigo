@@ -101,6 +101,32 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
+static void focuser_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (libfcusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
+			libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
+			if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
+				libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
+			else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
+				libfcusb_set_frequency(PRIVATE_DATA->device_context, 4);
+			else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
+				libfcusb_set_frequency(PRIVATE_DATA->device_context, 16);
+			indigo_define_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+		libfcusb_stop(PRIVATE_DATA->device_context);
+		indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
+		libfcusb_close(PRIVATE_DATA->device_context);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -108,26 +134,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (libfcusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
-				libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
-				if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
-					libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
-				else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
-					libfcusb_set_frequency(PRIVATE_DATA->device_context, 4);
-				else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
-					libfcusb_set_frequency(PRIVATE_DATA->device_context, 16);
-				indigo_define_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
-			libfcusb_close(PRIVATE_DATA->device_context);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_connect_callback);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

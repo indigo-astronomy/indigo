@@ -695,6 +695,157 @@ static indigo_result ccd_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void ccd_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			if (apogee_open(device)) {
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+
+				ApogeeCam *camera = PRIVATE_DATA->camera;
+				Apg::AdcSpeed current_adc_speed = Apg::AdcSpeed_Unknown;
+				Apg::FanMode current_fan_speed = Apg::FanMode_Off;
+				uint16_t image_width = 0;
+				uint16_t image_height = 0;
+				double pixel_width = 0;
+				double pixel_height = 0;
+				uint16_t max_bin_x = 0;
+				uint16_t max_bin_y = 0;
+				bool cooling_regulated = false;
+				bool cooling_supported = false;
+				int32_t num_adcs = 0;
+				int32_t num_channels = 0;
+				uint16_t gains[2][2] = {{0,0},{0,0}};
+				uint16_t offsets[2][2] = {{0,0},{0,0}};
+				std::string serial_no;
+				try {
+					current_adc_speed = camera->GetCcdAdcSpeed();
+					current_fan_speed = camera->GetFanMode();
+					image_width = camera->GetMaxImgCols();
+					image_height = camera->GetMaxImgRows();
+					pixel_width = camera->GetPixelWidth();
+					pixel_height = camera->GetPixelHeight();
+					max_bin_x = camera->GetMaxBinCols();
+					max_bin_y = camera->GetMaxBinRows();
+					cooling_regulated = camera->IsCoolingRegulated();
+					cooling_supported = camera->IsCoolingSupported();
+					// serial_no = camera->GetSerialNumber();  // Breaks ASPEN!!!!
+					CCD_EXPOSURE_ITEM->number.min = camera->GetMinExposureTime();
+					CCD_EXPOSURE_ITEM->number.max = camera->GetMaxExposureTime();
+					num_adcs = camera->GetNumAds();
+					num_channels = camera->GetNumAdChannels();
+					for (int adc = 0; adc < num_adcs; adc++) {
+						for (int ch = 0; ch < num_channels; ch++) {
+							gains[adc][ch] = camera->GetAdcGain(adc, ch);
+							offsets[adc][ch] = camera->GetAdcOffset(adc, ch);
+						}
+					}
+				} catch (std::runtime_error err) {
+						std::string text = err.what();
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get camera info: %s (%s)", device->name, text.c_str());
+				}
+				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = image_width;
+				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = image_height;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(pixel_width * 100)/100;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixel_height * 100) / 100;
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+
+				strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str(), INDIGO_VALUE_SIZE);
+				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "0x%x", GetFrmwrRev(PRIVATE_DATA->discovery_string));
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+
+				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_MODE_PROPERTY->count = 3;
+				char name[32];
+				sprintf(name, "RAW 16 %dx%d", image_width, image_height);
+				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+				sprintf(name, "RAW 16 %dx%d", image_width/2, image_height/2);
+				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+				sprintf(name, "RAW 16 %dx%d", image_width/4, image_height/4);
+				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+
+				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_BIN_PROPERTY->hidden = false;
+				CCD_BIN_HORIZONTAL_ITEM->number.min = CCD_BIN_HORIZONTAL_ITEM->number.value = 1;
+				CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin_x;
+				CCD_BIN_VERTICAL_ITEM->number.min = CCD_BIN_VERTICAL_ITEM->number.value = 1;
+				CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin_y;
+
+				if (cooling_supported) CCD_COOLER_PROPERTY->hidden = false;
+				else CCD_COOLER_PROPERTY->hidden = true;
+
+				CCD_TEMPERATURE_PROPERTY->hidden = false;
+				CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+
+				if (cooling_regulated && cooling_supported) {
+					CCD_COOLER_POWER_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+				} else {
+					CCD_COOLER_POWER_PROPERTY->hidden = true;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+				}
+
+				PRIVATE_DATA->target_temperature = 0;
+				PRIVATE_DATA->can_check_temperature = true;
+
+				indigo_init_switch_item(APG_ADC_SPEED_PROPERTY->items + 0, "NORMAL", "Normal", (1 == current_adc_speed));
+				indigo_init_switch_item(APG_ADC_SPEED_PROPERTY->items + 1, "FAST", "Fast", (2 == current_adc_speed));
+				indigo_define_property(device, APG_ADC_SPEED_PROPERTY, NULL);
+
+				indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 0, "OFF", "Off", (0 == current_fan_speed));
+				indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 1, "LOW", "Low", (1 == current_fan_speed));
+				indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 2, "MEDIUM", "Medium", (2 == current_fan_speed));
+				indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 3, "HIGH", "High", (3 == current_fan_speed));
+				indigo_define_property(device, APG_FAN_SPEED_PROPERTY, NULL);
+
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s ADCs=%d Chanels=%d", device->name, num_adcs, num_channels);
+				for (int adc = 0, item = 0; adc < num_adcs; adc++) {
+					for (int ch = 0; ch < num_channels; ch++, item++) {
+						char item_name[32];
+						char item_label[32];
+						snprintf(item_name, sizeof(item_name), "ADC_%1d_%1d", adc, ch);
+						snprintf(item_label, sizeof(item_label), "ADC %1d Channel %1d", adc, ch);
+						indigo_init_number_item(APG_GAIN_PROPERTY->items+item, item_name, item_label, 0, MAX_CCD_GAIN, 1, gains[adc][ch]);
+						indigo_init_number_item(APG_OFFSET_PROPERTY->items+item, item_name, item_label, 0, MAX_CCD_OFFSET, 1, offsets[adc][ch]);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s %s  Gain=%d Offset=%d, item=%d", device->name, item_name, gains[adc][ch], offsets[adc][ch], item);
+					}
+				}
+				PRIVATE_DATA->num_adcs = num_adcs;
+				PRIVATE_DATA->num_channels = num_channels;
+				APG_GAIN_PROPERTY->count = APG_OFFSET_PROPERTY->count = num_adcs*num_channels;
+				indigo_define_property(device, APG_GAIN_PROPERTY, NULL);
+				indigo_define_property(device, APG_OFFSET_PROPERTY, NULL);
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else {
+		if (device->is_connected) {
+			PRIVATE_DATA->can_check_temperature = false;
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				try {
+					PRIVATE_DATA->camera->StopExposure(false);
+				} catch (std::runtime_error err) {
+					std::string text = err.what();
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "StopExposure(): %s (%s)", device->name, text.c_str());
+				}
+			}
+			indigo_delete_property(device, APG_ADC_SPEED_PROPERTY, NULL);
+			indigo_delete_property(device, APG_FAN_SPEED_PROPERTY, NULL);
+			indigo_delete_property(device, APG_GAIN_PROPERTY, NULL);
+			indigo_delete_property(device, APG_OFFSET_PROPERTY, NULL);
+			apogee_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+}
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -704,146 +855,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
-				if (apogee_open(device)) {
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-
-					ApogeeCam *camera = PRIVATE_DATA->camera;
-					Apg::AdcSpeed current_adc_speed = Apg::AdcSpeed_Unknown;
-					Apg::FanMode current_fan_speed = Apg::FanMode_Off;
-					uint16_t image_width = 0;
-					uint16_t image_height = 0;
-					double pixel_width = 0;
-					double pixel_height = 0;
-					uint16_t max_bin_x = 0;
-					uint16_t max_bin_y = 0;
-					bool cooling_regulated = false;
-					bool cooling_supported = false;
-					int32_t num_adcs = 0;
-					int32_t num_channels = 0;
-					uint16_t gains[2][2] = {{0,0},{0,0}};
-					uint16_t offsets[2][2] = {{0,0},{0,0}};
-					std::string serial_no;
-					try {
-						current_adc_speed = camera->GetCcdAdcSpeed();
-						current_fan_speed = camera->GetFanMode();
-						image_width = camera->GetMaxImgCols();
-						image_height = camera->GetMaxImgRows();
-						pixel_width = camera->GetPixelWidth();
-						pixel_height = camera->GetPixelHeight();
-						max_bin_x = camera->GetMaxBinCols();
-						max_bin_y = camera->GetMaxBinRows();
-						cooling_regulated = camera->IsCoolingRegulated();
-						cooling_supported = camera->IsCoolingSupported();
-						// serial_no = camera->GetSerialNumber();  // Breaks ASPEN!!!!
-						CCD_EXPOSURE_ITEM->number.min = camera->GetMinExposureTime();
-						CCD_EXPOSURE_ITEM->number.max = camera->GetMaxExposureTime();
-						num_adcs = camera->GetNumAds();
-						num_channels = camera->GetNumAdChannels();
-						for (int adc = 0; adc < num_adcs; adc++) {
-							for (int ch = 0; ch < num_channels; ch++) {
-								gains[adc][ch] = camera->GetAdcGain(adc, ch);
-								offsets[adc][ch] = camera->GetAdcOffset(adc, ch);
-							}
-						}
-					} catch (std::runtime_error err) {
-							std::string text = err.what();
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get camera info: %s (%s)", device->name, text.c_str());
-					}
-					CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = image_width;
-					CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = image_height;
-					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(pixel_width * 100)/100;
-					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixel_height * 100) / 100;
-					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-
-					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str(), INDIGO_VALUE_SIZE);
-					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "0x%x", GetFrmwrRev(PRIVATE_DATA->discovery_string));
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-
-					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-					CCD_MODE_PROPERTY->count = 3;
-					char name[32];
-					sprintf(name, "RAW 16 %dx%d", image_width, image_height);
-					indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-					sprintf(name, "RAW 16 %dx%d", image_width/2, image_height/2);
-					indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-					sprintf(name, "RAW 16 %dx%d", image_width/4, image_height/4);
-					indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-
-					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-					CCD_BIN_PROPERTY->hidden = false;
-					CCD_BIN_HORIZONTAL_ITEM->number.min = CCD_BIN_HORIZONTAL_ITEM->number.value = 1;
-					CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin_x;
-					CCD_BIN_VERTICAL_ITEM->number.min = CCD_BIN_VERTICAL_ITEM->number.value = 1;
-					CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin_y;
-
-					if (cooling_supported) CCD_COOLER_PROPERTY->hidden = false;
-					else CCD_COOLER_PROPERTY->hidden = true;
-
-					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
-
-					if (cooling_regulated && cooling_supported) {
-						CCD_COOLER_POWER_PROPERTY->hidden = false;
-						CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
-						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-					} else {
-						CCD_COOLER_POWER_PROPERTY->hidden = true;
-						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-					}
-
-					PRIVATE_DATA->target_temperature = 0;
-					PRIVATE_DATA->can_check_temperature = true;
-
-					indigo_init_switch_item(APG_ADC_SPEED_PROPERTY->items + 0, "NORMAL", "Normal", (1 == current_adc_speed));
-					indigo_init_switch_item(APG_ADC_SPEED_PROPERTY->items + 1, "FAST", "Fast", (2 == current_adc_speed));
-					indigo_define_property(device, APG_ADC_SPEED_PROPERTY, NULL);
-
-					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 0, "OFF", "Off", (0 == current_fan_speed));
-					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 1, "LOW", "Low", (1 == current_fan_speed));
-					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 2, "MEDIUM", "Medium", (2 == current_fan_speed));
-					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 3, "HIGH", "High", (3 == current_fan_speed));
-					indigo_define_property(device, APG_FAN_SPEED_PROPERTY, NULL);
-
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s ADCs=%d Chanels=%d", device->name, num_adcs, num_channels);
-					for (int adc = 0, item = 0; adc < num_adcs; adc++) {
-						for (int ch = 0; ch < num_channels; ch++, item++) {
-							char item_name[32];
-							char item_label[32];
-							snprintf(item_name, sizeof(item_name), "ADC_%1d_%1d", adc, ch);
-							snprintf(item_label, sizeof(item_label), "ADC %1d Channel %1d", adc, ch);
-							indigo_init_number_item(APG_GAIN_PROPERTY->items+item, item_name, item_label, 0, MAX_CCD_GAIN, 1, gains[adc][ch]);
-							indigo_init_number_item(APG_OFFSET_PROPERTY->items+item, item_name, item_label, 0, MAX_CCD_OFFSET, 1, offsets[adc][ch]);
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s %s  Gain=%d Offset=%d, item=%d", device->name, item_name, gains[adc][ch], offsets[adc][ch], item);
-						}
-					}
-					PRIVATE_DATA->num_adcs = num_adcs;
-					PRIVATE_DATA->num_channels = num_channels;
-					APG_GAIN_PROPERTY->count = APG_OFFSET_PROPERTY->count = num_adcs*num_channels;
-					indigo_define_property(device, APG_GAIN_PROPERTY, NULL);
-					indigo_define_property(device, APG_OFFSET_PROPERTY, NULL);
-					device->is_connected = true;
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				}
-			}
-		} else {
-			if(device->is_connected) {
-				PRIVATE_DATA->can_check_temperature = false;
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-				indigo_delete_property(device, APG_ADC_SPEED_PROPERTY, NULL);
-				indigo_delete_property(device, APG_FAN_SPEED_PROPERTY, NULL);
-				indigo_delete_property(device, APG_GAIN_PROPERTY, NULL);
-				indigo_delete_property(device, APG_OFFSET_PROPERTY, NULL);
-				apogee_close(device);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_connect_callback);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		if (PRIVATE_DATA->abort_in_progress) {

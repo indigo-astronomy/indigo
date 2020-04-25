@@ -324,8 +324,8 @@ failure:
 
 static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	uint8_t response_packet[10];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		uint8_t response_packet[10];
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
@@ -398,7 +398,9 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			uint8_t stop_packet[10] = { SOM, 0x06, APP, FOC, 0x24, 0x00, 0 };
+			efa_command(device, stop_packet, response_packet);
 			indigo_delete_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);

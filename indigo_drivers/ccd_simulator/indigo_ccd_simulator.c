@@ -514,6 +514,45 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 	return result;
 }
 
+static void ccd_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) { /* Do not double open device */
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
+				return;
+			}
+			if (device == PRIVATE_DATA->dslr) {
+				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
+			}
+			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
+			device->is_connected = true;
+		}
+	} else {
+		if (device->is_connected) {  /* Do not double close device */
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			if (device == PRIVATE_DATA->dslr) {
+				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
+			}
+			device->is_connected = false;
+			indigo_global_unlock(device);
+		}
+	}
+	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -521,41 +560,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) { /* Do not double open device */
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
-					return INDIGO_OK;
-				}
-				if (device == PRIVATE_DATA->dslr) {
-					indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
-				}
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
-				device->is_connected = true;
-			}
-		} else {
-			if (device->is_connected) {  /* Do not double close device */
-				indigo_global_unlock(device);
-				if (device == PRIVATE_DATA->dslr) {
-					indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
-				}
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-				device->is_connected = false;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)

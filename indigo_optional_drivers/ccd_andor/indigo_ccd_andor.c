@@ -803,6 +803,222 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 	return result;
 }
 
+static void ccd_connect_callback(indigo_device *device) {
+	int res;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) { /* Do not double open device */
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
+				indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
+				return INDIGO_OK;
+			}
+
+			pthread_mutex_lock(&driver_mutex);
+			if (use_camera(device) == false) {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				indigo_global_unlock(device);
+				pthread_mutex_unlock(&driver_mutex);
+				return INDIGO_OK;
+			}
+			if (CAP_SET_VREADOUT) {
+				init_vsspeed_property(device);
+			}
+			if(CAP_SET_VSAMPLITUDE) {
+				init_vsamplitude_property(device);
+			}
+			if(CAP_SET_HREADOUT) {
+				init_hreadout_property(device);
+			}
+			if(CAP_SET_PREAMPGAIN) {
+				init_preampgain_property(device);
+			}
+			if(CAP_SET_HIGHCAPACITY) {
+				init_highcapacity_property(device);
+			}
+			if(CAP_SET_BASELINECLAMP) {
+				init_baselineclamp_property(device);
+			}
+			if(CAP_SET_BASELINEOFFSET) {
+				init_baselineoffset_property(device);
+			}
+			if(CAP_FANCONTROL) {
+				init_fancontrol_property(device);
+			}
+			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+			res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() for camera %d error: %d", PRIVATE_DATA->handle, res);
+				INFO_DEVICE_MODEL_ITEM->text.value[0] = '\0';
+			}
+
+			unsigned int fw_ver = 0, fw_build = 0, dummy;
+			res = GetHardwareVersion(&dummy, &dummy, &dummy, &dummy, &fw_ver, &fw_build);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHardwareVersion() for camera %d error: %d", PRIVATE_DATA->handle, res);
+			}
+			snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%d-%d", fw_ver, fw_build);
+
+			snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE, "CCD-%d", PRIVATE_DATA->serial_number);
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+
+			int width = 0, height = 0;
+			res = GetDetector(&width, &height);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDetector() for camera %d error: %d", PRIVATE_DATA->handle, res);
+			}
+			CCD_INFO_WIDTH_ITEM->number.value = width;
+			CCD_INFO_HEIGHT_ITEM->number.value = height;
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+			if (PRIVATE_DATA->buffer == NULL) {
+				PRIVATE_DATA->buffer_size = width * height * 4 + FITS_HEADER_SIZE;
+				PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
+			}
+
+			float x_size = 0, y_size = 0;
+			res = GetPixelSize(&x_size, &y_size);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetPixelSize() for camera %d error: %d", PRIVATE_DATA->handle, res);
+			}
+			CCD_INFO_PIXEL_WIDTH_ITEM->number.value = x_size;
+			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = y_size;
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
+
+			int max_bin = 1;
+			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+			/* 4 is Image mode, 0 is horizontal binning */
+			res = GetMaximumBinning(4, 0, &max_bin);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(X) for camera %d error: %d", PRIVATE_DATA->handle, res);
+			}
+			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+			CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+
+			/* 4 is Image mode, 1 is vertical binning */
+			res = GetMaximumBinning(4, 1, &max_bin);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(Y) for camera %d error: %d", PRIVATE_DATA->handle, res);
+			}
+			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
+			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+			CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+
+			if (CAP_GET_TEMPERATURE) {
+				CCD_TEMPERATURE_PROPERTY->hidden = false;
+				PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 0;
+				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+			}
+			if (CAP_SET_TEMPERATURE) {
+				int cooler_on = false;
+				CCD_COOLER_PROPERTY->hidden = false;
+				IsCoolerOn(&cooler_on);
+				if(cooler_on) {
+					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+				} else {
+					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+				}
+				int temp_min = -100, temp_max = 20;
+				if (CAP_GET_TEMPERATURE_RANGE) GetTemperatureRange(&temp_min, &temp_max);
+				CCD_TEMPERATURE_ITEM->number.max = (double)temp_max;
+				CCD_TEMPERATURE_ITEM->number.min = (double)temp_min;
+				PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = (double)temp_max;
+				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+				init_coolermode_property(device);
+			}
+
+			/* Find available BPPs and use max */
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 0;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 128;
+			int max_bpp_channel = 0;
+			res = GetNumberADChannels(&PRIVATE_DATA->adc_channels);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() for camera %d error: %d", PRIVATE_DATA->handle, res);
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channels: %d", PRIVATE_DATA->adc_channels);
+			for (int i = 0; i < PRIVATE_DATA->adc_channels; i++) {
+				GetBitDepth(i, &PRIVATE_DATA->bit_depths[i]);
+				if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min >= PRIVATE_DATA->bit_depths[i]) {
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bit_depths[i];
+				}
+				if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max <= PRIVATE_DATA->bit_depths[i]) {
+					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bit_depths[i];
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bit_depths[i];
+					max_bpp_channel = i;
+				}
+			}
+			fix_bpp(device);
+			res = SetADChannel(max_bpp_channel);
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) error: %d", max_bpp_channel, res);
+			}
+
+			char name[32];
+			char value[32];
+			CCD_MODE_PROPERTY->count = 0;
+			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+			int bin = 1;
+			for (int i = 0; i < MAX_CCD_MODES; i++) {
+				if ((CCD_BIN_HORIZONTAL_ITEM->number.max < bin) || (CCD_BIN_VERTICAL_ITEM->number.max < bin)) {
+					break;
+				}
+				sprintf(value, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / bin, (int)CCD_INFO_HEIGHT_ITEM->number.value / bin);
+				sprintf(name, "BIN_%dx%d", bin, bin);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_ITEM[%d] => %s = \"%s\", selected = %d", i, name, value, !i);
+				indigo_init_switch_item(CCD_MODE_ITEM+i, name, value, !i);
+				CCD_MODE_PROPERTY->count = i + 1;
+				bin *= 2; /* binning should be power of 2 */
+			}
+
+			pthread_mutex_unlock(&driver_mutex);
+			device->is_connected = true;
+			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
+		}
+	} else {
+		if (device->is_connected) {  /* Do not double close device */
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			indigo_global_unlock(device);
+			if (CAP_SET_VREADOUT) {
+				indigo_delete_property(device, VSSPEED_PROPERTY, NULL);
+			}
+			if (CAP_SET_VSAMPLITUDE) {
+				indigo_delete_property(device, VSAMPLITUDE_PROPERTY, NULL);
+			}
+			if (CAP_SET_HREADOUT) {
+				indigo_delete_property(device, HREADOUT_PROPERTY, NULL);
+			}
+			if (CAP_SET_PREAMPGAIN) {
+				indigo_delete_property(device, PREAMPGAIN_PROPERTY, NULL);
+			}
+			if (CAP_SET_HIGHCAPACITY) {
+				indigo_delete_property(device, HIGHCAPACITY_PROPERTY, NULL);
+			}
+			if (CAP_SET_BASELINECLAMP) {
+				indigo_delete_property(device, BASELINECLAMP_PROPERTY, NULL);
+			}
+			if (CAP_SET_BASELINEOFFSET) {
+				indigo_delete_property(device, BASELINEOFFSET_PROPERTY, NULL);
+			}
+			if (CAP_FANCONTROL) {
+				indigo_delete_property(device, FANCONTROL_PROPERTY, NULL);
+			}
+			if (CAP_SET_TEMPERATURE) {
+				indigo_delete_property(device, COOLERMODE_PROPERTY, NULL);
+			}
+
+			if (PRIVATE_DATA->buffer != NULL) {
+				free(PRIVATE_DATA->buffer);
+				PRIVATE_DATA->buffer = NULL;
+			}
+			device->is_connected = false;
+		}
+	}
+	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+}
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -812,218 +1028,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) { /* Do not double open device */
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
-					indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
-					return INDIGO_OK;
-				}
-
-				pthread_mutex_lock(&driver_mutex);
-				if (use_camera(device) == false) {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
-					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					indigo_global_unlock(device);
-					pthread_mutex_unlock(&driver_mutex);
-					return INDIGO_OK;
-				}
-				if (CAP_SET_VREADOUT) {
-					init_vsspeed_property(device);
-				}
-				if(CAP_SET_VSAMPLITUDE) {
-					init_vsamplitude_property(device);
-				}
-				if(CAP_SET_HREADOUT) {
-					init_hreadout_property(device);
-				}
-				if(CAP_SET_PREAMPGAIN) {
-					init_preampgain_property(device);
-				}
-				if(CAP_SET_HIGHCAPACITY) {
-					init_highcapacity_property(device);
-				}
-				if(CAP_SET_BASELINECLAMP) {
-					init_baselineclamp_property(device);
-				}
-				if(CAP_SET_BASELINEOFFSET) {
-					init_baselineoffset_property(device);
-				}
-				if(CAP_FANCONTROL) {
-					init_fancontrol_property(device);
-				}
-				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() for camera %d error: %d", PRIVATE_DATA->handle, res);
-					INFO_DEVICE_MODEL_ITEM->text.value[0] = '\0';
-				}
-
-				unsigned int fw_ver = 0, fw_build = 0, dummy;
-				res = GetHardwareVersion(&dummy, &dummy, &dummy, &dummy, &fw_ver, &fw_build);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHardwareVersion() for camera %d error: %d", PRIVATE_DATA->handle, res);
-				}
-				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%d-%d", fw_ver, fw_build);
-
-				snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE, "CCD-%d", PRIVATE_DATA->serial_number);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-
-				int width = 0, height = 0;
-				res = GetDetector(&width, &height);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDetector() for camera %d error: %d", PRIVATE_DATA->handle, res);
-				}
-				CCD_INFO_WIDTH_ITEM->number.value = width;
-				CCD_INFO_HEIGHT_ITEM->number.value = height;
-				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
-				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
-				if (PRIVATE_DATA->buffer == NULL) {
-					PRIVATE_DATA->buffer_size = width * height * 4 + FITS_HEADER_SIZE;
-					PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
-				}
-
-				float x_size = 0, y_size = 0;
-				res = GetPixelSize(&x_size, &y_size);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetPixelSize() for camera %d error: %d", PRIVATE_DATA->handle, res);
-				}
-				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = x_size;
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = y_size;
-				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
-
-				int max_bin = 1;
-				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				/* 4 is Image mode, 0 is horizontal binning */
-				res = GetMaximumBinning(4, 0, &max_bin);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(X) for camera %d error: %d", PRIVATE_DATA->handle, res);
-				}
-				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
-				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-				CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
-
-				/* 4 is Image mode, 1 is vertical binning */
-				res = GetMaximumBinning(4, 1, &max_bin);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(Y) for camera %d error: %d", PRIVATE_DATA->handle, res);
-				}
-				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
-				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-				CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
-
-				if (CAP_GET_TEMPERATURE) {
-					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 0;
-					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-				}
-				if (CAP_SET_TEMPERATURE) {
-					int cooler_on = false;
-					CCD_COOLER_PROPERTY->hidden = false;
-					IsCoolerOn(&cooler_on);
-					if(cooler_on) {
-						indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
-					} else {
-						indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-					}
-					int temp_min = -100, temp_max = 20;
-					if (CAP_GET_TEMPERATURE_RANGE) GetTemperatureRange(&temp_min, &temp_max);
-					CCD_TEMPERATURE_ITEM->number.max = (double)temp_max;
-					CCD_TEMPERATURE_ITEM->number.min = (double)temp_min;
-					PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = (double)temp_max;
-					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-					init_coolermode_property(device);
-				}
-
-				/* Find available BPPs and use max */
-				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 0;
-				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 128;
-				int max_bpp_channel = 0;
-				res = GetNumberADChannels(&PRIVATE_DATA->adc_channels);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() for camera %d error: %d", PRIVATE_DATA->handle, res);
-				}
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channels: %d", PRIVATE_DATA->adc_channels);
-				for (int i = 0; i < PRIVATE_DATA->adc_channels; i++) {
-					GetBitDepth(i, &PRIVATE_DATA->bit_depths[i]);
-					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min >= PRIVATE_DATA->bit_depths[i]) {
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bit_depths[i];
-					}
-					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max <= PRIVATE_DATA->bit_depths[i]) {
-						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bit_depths[i];
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bit_depths[i];
-						max_bpp_channel = i;
-					}
-				}
-				fix_bpp(device);
-				res = SetADChannel(max_bpp_channel);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) error: %d", max_bpp_channel, res);
-				}
-
-				char name[32];
-				char value[32];
-				CCD_MODE_PROPERTY->count = 0;
-				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-				int bin = 1;
-				for (int i = 0; i < MAX_CCD_MODES; i++) {
-					if ((CCD_BIN_HORIZONTAL_ITEM->number.max < bin) || (CCD_BIN_VERTICAL_ITEM->number.max < bin)) {
-						break;
-					}
-					sprintf(value, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / bin, (int)CCD_INFO_HEIGHT_ITEM->number.value / bin);
-					sprintf(name, "BIN_%dx%d", bin, bin);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_ITEM[%d] => %s = \"%s\", selected = %d", i, name, value, !i);
-					indigo_init_switch_item(CCD_MODE_ITEM+i, name, value, !i);
-					CCD_MODE_PROPERTY->count = i + 1;
-					bin *= 2; /* binning should be power of 2 */
-				}
-
-				pthread_mutex_unlock(&driver_mutex);
-				device->is_connected = true;
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
-			}
-		} else {
-			if (device->is_connected) {  /* Do not double close device */
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-				indigo_global_unlock(device);
-				if (CAP_SET_VREADOUT) {
-					indigo_delete_property(device, VSSPEED_PROPERTY, NULL);
-				}
-				if (CAP_SET_VSAMPLITUDE) {
-					indigo_delete_property(device, VSAMPLITUDE_PROPERTY, NULL);
-				}
-				if (CAP_SET_HREADOUT) {
-					indigo_delete_property(device, HREADOUT_PROPERTY, NULL);
-				}
-				if (CAP_SET_PREAMPGAIN) {
-					indigo_delete_property(device, PREAMPGAIN_PROPERTY, NULL);
-				}
-				if (CAP_SET_HIGHCAPACITY) {
-					indigo_delete_property(device, HIGHCAPACITY_PROPERTY, NULL);
-				}
-				if (CAP_SET_BASELINECLAMP) {
-					indigo_delete_property(device, BASELINECLAMP_PROPERTY, NULL);
-				}
-				if (CAP_SET_BASELINEOFFSET) {
-					indigo_delete_property(device, BASELINEOFFSET_PROPERTY, NULL);
-				}
-				if (CAP_FANCONTROL) {
-					indigo_delete_property(device, FANCONTROL_PROPERTY, NULL);
-				}
-				if (CAP_SET_TEMPERATURE) {
-					indigo_delete_property(device, COOLERMODE_PROPERTY, NULL);
-				}
-
-				if (PRIVATE_DATA->buffer != NULL) {
-					free(PRIVATE_DATA->buffer);
-					PRIVATE_DATA->buffer = NULL;
-				}
-				device->is_connected = false;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)

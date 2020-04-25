@@ -88,6 +88,14 @@ static indigo_result rotator_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void rotator_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_timer);
+	}
+	indigo_rotator_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -95,7 +103,10 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, rotator_connect_callback);
+		return INDIGO_OK;		
 	} else if (indigo_property_match(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
@@ -176,7 +187,6 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 			VERIFY_NOT_CONNECTED(imager_focuser);
 			last_action = action;
 			if (imager_focuser != NULL) {
-				if (private_data) indigo_cancel_timer(imager_focuser, &private_data->rotator_timer);
 				indigo_detach_device(imager_focuser);
 				free(imager_focuser);
 				imager_focuser = NULL;

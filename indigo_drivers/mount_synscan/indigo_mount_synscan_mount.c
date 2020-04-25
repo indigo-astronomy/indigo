@@ -216,32 +216,37 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
+static void synscan_disconnect_timer_callback(indigo_device* device) {
+	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+	indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
+	indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+	indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
+	indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
+	indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+	indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+	indigo_delete_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
+	if (PRIVATE_DATA->device_count > 0 && --PRIVATE_DATA->device_count == 0) {
+		synscan_close(device);
+	}
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 indigo_result synscan_mount_connect(indigo_device* device) {
 	//  Ignore if we are already processing a connection change
 	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
 		return INDIGO_OK;
 
+	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	//  Handle connect/disconnect commands
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//  CONNECT to the mount
 		indigo_set_timer(device, 0, &synscan_connect_timer_callback);
-		return INDIGO_OK;
 	} else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
-		//  DISCONNECT from mount
-		indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-		indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
-		indigo_delete_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
-		if (PRIVATE_DATA->device_count > 0 && --PRIVATE_DATA->device_count == 0) {
-			synscan_close(device);
-		}
+		indigo_set_timer(device, 0, &synscan_disconnect_timer_callback);
 	}
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	return indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	return INDIGO_OK;
 }
 
 static void mount_slew_timer_callback(indigo_device* device) {

@@ -164,8 +164,8 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
-		indigo_cancel_timer(device, &PRIVATE_DATA->timer_callback);
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
