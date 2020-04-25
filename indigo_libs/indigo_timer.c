@@ -83,10 +83,10 @@ static void *timer_func(indigo_timer *timer) {
 			if (!timer->canceled) {
 				pthread_mutex_lock(&timer->callback_mutex);
 				timer->callback_running = true;
-				INDIGO_DEBUG(indigo_debug("CALLBACK START: %d", (int)timer->callback_running));
+				INDIGO_TRACE(indigo_trace("timer callback: %p started", timer->callback));
 				timer->callback(timer->device);
 				timer->callback_running = false;
-				INDIGO_DEBUG(indigo_debug("CALLBACK END: %d", (int)timer->callback_running));
+				INDIGO_TRACE(indigo_trace("timer callback: %p finished", timer->callback));
 				pthread_mutex_unlock(&timer->callback_mutex);
 			}
 		}
