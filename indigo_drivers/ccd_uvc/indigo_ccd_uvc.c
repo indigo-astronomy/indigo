@@ -154,6 +154,83 @@ static struct {
 	{ UVC_FRAME_FORMAT_ANY, "    ", "%dx%d" }
 };
 
+static void ccd_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (PRIVATE_DATA->handle == 0) {
+			uvc_error_t res = uvc_open(PRIVATE_DATA->dev, &PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(res));
+			if (res != UVC_SUCCESS) {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				uvc_print_diag(PRIVATE_DATA->handle, stderr);
+				const uvc_format_desc_t *format = uvc_get_format_descs(PRIVATE_DATA->handle);
+				CCD_MODE_PROPERTY->count = 0;
+				CCD_INFO_WIDTH_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value = 0;
+				while (format) {
+					int frame_format;
+					for (frame_format = 0; formats[frame_format].format != UVC_FRAME_FORMAT_ANY; frame_format++) {
+						if (!strncmp((char *)format->fourccFormat, formats[frame_format].fourcc, 4)) {
+							break;
+						}
+					}
+					if (format->bDescriptorSubtype == UVC_VS_FORMAT_UNCOMPRESSED) {
+						uvc_frame_desc_t *frame = format->frame_descs;
+						while (frame) {
+							if (frame->bDescriptorSubtype == UVC_VS_FRAME_UNCOMPRESSED) {
+								if (CCD_INFO_WIDTH_ITEM->number.value < frame->wWidth)
+									CCD_INFO_WIDTH_ITEM->number.value = frame->wWidth;
+								if (CCD_INFO_HEIGHT_ITEM->number.value < frame->wHeight)
+									CCD_INFO_HEIGHT_ITEM->number.value = frame->wHeight;
+								if (CCD_MODE_PROPERTY->count == 0) {
+									CCD_FRAME_WIDTH_ITEM->number.value = frame->wWidth;
+									CCD_FRAME_HEIGHT_ITEM->number.value = frame->wHeight;
+									if (formats[frame_format].format == UVC_FRAME_FORMAT_GRAY16)
+										CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
+									else
+										CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
+									PRIVATE_DATA->format = formats[frame_format].format;
+								}
+								char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+								sprintf(name, "%d_%dx%d", frame_format, frame->wWidth, frame->wHeight);
+								sprintf(label, formats[frame_format].label_format, frame->wWidth, frame->wHeight);
+								indigo_init_switch_item(CCD_MODE_PROPERTY->items + CCD_MODE_PROPERTY->count++, name, label, CCD_MODE_PROPERTY->count == 1);
+								if (CCD_MODE_PROPERTY->count == 1) {
+									uvc_error_t res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, formats[frame_format].format, frame->wWidth, frame->wHeight, 0);
+									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, 0) -> %s", formats[frame_format].format, frame->wWidth, frame->wHeight, uvc_strerror(res));
+									if (res != UVC_SUCCESS) {
+										CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+									} else {
+										res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
+										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(res));
+									}
+								}
+							}
+							frame = frame->next;
+						}
+					}
+					format = format->next;
+				}
+				PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value * 3);
+			}
+		}
+	} else {
+		if (PRIVATE_DATA->strmhp) {
+			uvc_stream_stop(PRIVATE_DATA->strmhp);
+		}
+		if (PRIVATE_DATA->handle != 0) {
+			uvc_close(PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_close() -> %s");
+			PRIVATE_DATA->handle = 0;
+			if (PRIVATE_DATA->buffer)
+				free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+		}
+	}
+	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -161,78 +238,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (PRIVATE_DATA->handle == 0) {
-				uvc_error_t res = uvc_open(PRIVATE_DATA->dev, &PRIVATE_DATA->handle);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_open() -> %s", uvc_strerror(res));
-				if (res != UVC_SUCCESS) {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					uvc_print_diag(PRIVATE_DATA->handle, stderr);
-					const uvc_format_desc_t *format = uvc_get_format_descs(PRIVATE_DATA->handle);
-					CCD_MODE_PROPERTY->count = 0;
-					CCD_INFO_WIDTH_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value = 0;
-					while (format) {
-						int frame_format;
-						for (frame_format = 0; formats[frame_format].format != UVC_FRAME_FORMAT_ANY; frame_format++) {
-							if (!strncmp((char *)format->fourccFormat, formats[frame_format].fourcc, 4)) {
-								break;
-							}
-						}
-						if (format->bDescriptorSubtype == UVC_VS_FORMAT_UNCOMPRESSED) {
-							uvc_frame_desc_t *frame = format->frame_descs;
-							while (frame) {
-								if (frame->bDescriptorSubtype == UVC_VS_FRAME_UNCOMPRESSED) {
-									if (CCD_INFO_WIDTH_ITEM->number.value < frame->wWidth)
-										CCD_INFO_WIDTH_ITEM->number.value = frame->wWidth;
-									if (CCD_INFO_HEIGHT_ITEM->number.value < frame->wHeight)
-										CCD_INFO_HEIGHT_ITEM->number.value = frame->wHeight;
-									if (CCD_MODE_PROPERTY->count == 0) {
-										CCD_FRAME_WIDTH_ITEM->number.value = frame->wWidth;
-										CCD_FRAME_HEIGHT_ITEM->number.value = frame->wHeight;
-										if (formats[frame_format].format == UVC_FRAME_FORMAT_GRAY16)
-											CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
-										else
-											CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
-										PRIVATE_DATA->format = formats[frame_format].format;
-									}
-									char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-									sprintf(name, "%d_%dx%d", frame_format, frame->wWidth, frame->wHeight);
-									sprintf(label, formats[frame_format].label_format, frame->wWidth, frame->wHeight);
-									indigo_init_switch_item(CCD_MODE_PROPERTY->items + CCD_MODE_PROPERTY->count++, name, label, CCD_MODE_PROPERTY->count == 1);
-									if (CCD_MODE_PROPERTY->count == 1) {
-										uvc_error_t res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, formats[frame_format].format, frame->wWidth, frame->wHeight, 0);
-										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, 0) -> %s", formats[frame_format].format, frame->wWidth, frame->wHeight, uvc_strerror(res));
-										if (res != UVC_SUCCESS) {
-											CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-										} else {
-											res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
-											INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(1) -> %s", uvc_strerror(res));
-										}
-									}
-								}
-								frame = frame->next;
-							}
-						}
-						format = format->next;
-					}
-					PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value * 3);
-				}
-			}
-		} else {
-			if (PRIVATE_DATA->strmhp) {
-				uvc_stream_stop(PRIVATE_DATA->strmhp);
-			}
-			if (PRIVATE_DATA->handle != 0) {
-				uvc_close(PRIVATE_DATA->handle);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_close() -> %s");
-				PRIVATE_DATA->handle = 0;
-				if (PRIVATE_DATA->buffer)
-					free(PRIVATE_DATA->buffer);
-				PRIVATE_DATA->buffer = NULL;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_MODE
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
@@ -326,8 +335,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ccd_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }

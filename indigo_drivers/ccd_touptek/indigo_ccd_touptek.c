@@ -756,13 +756,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ccd_connect_callback(device);
+	}
 	if (X_CCD_ADVANCED_PROPERTY)
 		indigo_release_property(X_CCD_ADVANCED_PROPERTY);
 	if (X_CCD_FAN_PROPERTY)
-		indigo_release_property(X_CCD_FAN_PROPERTY);
-	
+		indigo_release_property(X_CCD_FAN_PROPERTY);	
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);

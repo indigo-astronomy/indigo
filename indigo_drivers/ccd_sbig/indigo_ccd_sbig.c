@@ -1433,9 +1433,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_device_disconnect(NULL, device->name);
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ccd_connect_callback(device);
 	}
-
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	if (PRIMARY_CCD) {
@@ -1639,7 +1639,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_device_disconnect(NULL, device->name);
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		guider_connect_callback(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
@@ -1981,7 +1982,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		wheel_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
@@ -1999,6 +2003,48 @@ static indigo_result ao_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void ao_connect_callback(indigo_device *device) {
+	int res = CE_NO_ERROR;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!DEVICE_CONNECTED) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			if (sbig_open(device)) {
+				pthread_mutex_lock(&driver_mutex);
+				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+				if ( res != CE_NO_ERROR ) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
+					pthread_mutex_unlock(&driver_mutex);
+					return;
+				}
+
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				pthread_mutex_unlock(&driver_mutex);
+				set_connected_flag(device);
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else { /* disconnect */
+		if(DEVICE_CONNECTED) {
+			pthread_mutex_lock(&driver_mutex);
+			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+			if ( res != CE_NO_ERROR ) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
+				pthread_mutex_unlock(&driver_mutex);
+				return;
+			}
+			pthread_mutex_unlock(&driver_mutex);
+			sbig_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			clear_connected_flag(device);
+		}
+	}
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_ao_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result ao_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -2007,45 +2053,10 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!DEVICE_CONNECTED) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (sbig_open(device)) {
-					pthread_mutex_lock(&driver_mutex);
-					res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-					if ( res != CE_NO_ERROR ) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
-						pthread_mutex_unlock(&driver_mutex);
-						return INDIGO_FAILED;
-					}
-
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					pthread_mutex_unlock(&driver_mutex);
-					set_connected_flag(device);
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				}
-			}
-		} else { /* disconnect */
-			if(DEVICE_CONNECTED) {
-				pthread_mutex_lock(&driver_mutex);
-				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-				if ( res != CE_NO_ERROR ) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
-					pthread_mutex_unlock(&driver_mutex);
-					return INDIGO_FAILED;
-				}
-				pthread_mutex_unlock(&driver_mutex);
-				sbig_close(device);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				clear_connected_flag(device);
-			}
-		}
-
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ao_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AO_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_DEC
 		indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
@@ -2103,7 +2114,8 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 static indigo_result ao_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_device_disconnect(NULL, device->name);
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		ao_connect_callback(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ao_detach(device);

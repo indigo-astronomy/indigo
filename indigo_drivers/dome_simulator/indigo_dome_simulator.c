@@ -107,6 +107,16 @@ static indigo_result dome_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void dome_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+	}
+	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+
+
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -114,7 +124,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, dome_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
@@ -251,8 +264,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		dome_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
 }

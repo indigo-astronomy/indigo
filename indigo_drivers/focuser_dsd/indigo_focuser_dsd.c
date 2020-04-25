@@ -1305,7 +1305,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connect_callback(device);
+	}
 	indigo_release_property(DSD_STEP_MODE_PROPERTY);
 	indigo_release_property(DSD_COILS_MODE_PROPERTY);
 	indigo_release_property(DSD_CURRENT_CONTROL_PROPERTY);
