@@ -378,8 +378,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		synscan_mount_connect(device);
+	}
 	indigo_delete_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 	indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
 	indigo_release_property(MOUNT_POLARSCOPE_PROPERTY);
@@ -525,8 +527,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		synscan_guider_connect(device);
+	}
 
 	//  Wake up the pulse timer threads to exit
 	PRIVATE_DATA->guiding_thread_exit = true;
