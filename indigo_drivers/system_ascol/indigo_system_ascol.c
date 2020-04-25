@@ -24,7 +24,7 @@
  \file indigo_system_ascol.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_system_ascol"
 
 #include <stdlib.h>
@@ -3284,6 +3284,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(panel);
 		last_action = action;
 		if (panel != NULL) {
 			indigo_detach_device(panel);

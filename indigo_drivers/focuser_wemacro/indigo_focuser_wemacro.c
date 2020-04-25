@@ -23,7 +23,7 @@
  \file indigo_focuser_wemacro.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_wemacro"
 
 #include <stdlib.h>
@@ -385,6 +385,7 @@ indigo_result indigo_focuser_wemacro(indigo_driver_action action, indigo_driver_
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);

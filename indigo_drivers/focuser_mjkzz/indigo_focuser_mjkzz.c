@@ -23,7 +23,7 @@
  \file indigo_focuser_mjkzz.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_mjkzz"
 
 #include <stdlib.h>
@@ -317,6 +317,7 @@ indigo_result indigo_focuser_mjkzz(indigo_driver_action action, indigo_driver_in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);

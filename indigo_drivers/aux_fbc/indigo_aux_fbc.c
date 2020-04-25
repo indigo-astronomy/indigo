@@ -23,7 +23,7 @@
  \file indigo_aux_fbc.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_fbc"
 
 #include <stdlib.h>
@@ -431,6 +431,7 @@ indigo_result indigo_aux_fbc(indigo_driver_action action, indigo_driver_info *in
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);

@@ -23,7 +23,7 @@
  \file indigo_wheel_optec.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_wheel_optec"
 
 #include <stdlib.h>
@@ -153,7 +153,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	return indigo_wheel_detach(device);
 }
 
-static indigo_device *device = NULL;
+static indigo_device *wheel = NULL;
 
 indigo_result indigo_wheel_optec(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -174,25 +174,26 @@ indigo_result indigo_wheel_optec(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		if (device == NULL) {
-			device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &wheel_template, sizeof(indigo_device));
+		if (wheel == NULL) {
+			wheel = malloc(sizeof(indigo_device));
+			assert(wheel != NULL);
+			memcpy(wheel, &wheel_template, sizeof(indigo_device));
 			optec_private_data *private_data = malloc(sizeof(optec_private_data));
 			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(optec_private_data));
-			device->private_data = private_data;
-			indigo_attach_device(device);
+			wheel->private_data = private_data;
+			indigo_attach_device(wheel);
 		}
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(wheel);
 		last_action = action;
-		if (device != NULL) {
-			indigo_detach_device(device);
-			free(device->private_data);
-			free(device);
-			device = NULL;
+		if (wheel != NULL) {
+			indigo_detach_device(wheel);
+			free(wheel->private_data);
+			free(wheel);
+			wheel = NULL;
 		}
 		break;
 

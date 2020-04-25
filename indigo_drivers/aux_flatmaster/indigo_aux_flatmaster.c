@@ -23,7 +23,7 @@
  \file indigo_aux_flatmaster.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_aux_flatmaster"
 
 #include <stdlib.h>
@@ -294,6 +294,7 @@ indigo_result indigo_aux_flatmaster(indigo_driver_action action, indigo_driver_i
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);

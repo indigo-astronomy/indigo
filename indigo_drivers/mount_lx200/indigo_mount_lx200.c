@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -1584,6 +1584,9 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(mount);
+			VERIFY_NOT_CONNECTED(mount_guider);
+			VERIFY_NOT_CONNECTED(mount_focuser);
 			last_action = action;
 			if (mount != NULL) {
 				indigo_detach_device(mount);

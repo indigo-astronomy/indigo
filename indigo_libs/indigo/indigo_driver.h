@@ -245,6 +245,13 @@ typedef struct {
 	}\
 }
 
+#define VERIFY_NOT_CONNECTED(dev)\
+{\
+	indigo_device *device = dev;\
+	if (device)\
+		if (IS_CONNECTED)\
+			return INDIGO_BUSY;\
+}
 
 /** Try to aquire global lock
 */
@@ -257,7 +264,7 @@ extern indigo_result indigo_global_unlock(indigo_device *device);
 /** Device is connected.
  */
 
-#define IS_CONNECTED	(CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE)
+#define IS_CONNECTED	(DEVICE_CONTEXT != NULL && CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE)
 
 /** Attach callback function.
  */

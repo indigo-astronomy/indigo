@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
@@ -348,6 +348,7 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(gps);
 		last_action = action;
 		if (gps != NULL) {
 			indigo_detach_device(gps);
