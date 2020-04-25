@@ -23,7 +23,7 @@
  \file indigo_focuser_moonlite.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_focuser_moonlite"
 
 #include <stdlib.h>
@@ -58,8 +58,8 @@ typedef struct {
 static bool moonlite_command(indigo_device *device, char *command, char *response, int max) {
 	char c;
 	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 1000000;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (response != NULL) {
 		int index = 0;
