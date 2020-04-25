@@ -387,7 +387,6 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_USE_ENCODERS_PROPERTY);
 	indigo_release_property(MOUNT_AUTOHOME_PROPERTY);
 	indigo_release_property(MOUNT_AUTOHOME_SETTINGS_PROPERTY);
-	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }

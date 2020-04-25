@@ -954,7 +954,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
 		char command[] = "PE:0000";
 		if (AUX_POWER_OUTLET_1_ITEM->sw.value)
 			command[3] = '1';
@@ -1445,7 +1445,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		if (--PRIVATE_DATA->count == 0) {
 			if (PRIVATE_DATA->handle > 0) {
 				upb_command(device, "PL:0", response, sizeof(response));

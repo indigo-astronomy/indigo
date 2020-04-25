@@ -206,7 +206,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
 				gps_close(device);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -221,9 +221,7 @@ static indigo_result gps_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
 	indigo_global_unlock(device);
-
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_gps_detach(device);
 }

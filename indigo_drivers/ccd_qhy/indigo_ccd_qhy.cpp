@@ -709,7 +709,217 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	return INDIGO_OK;
 }
 
+static void ccd_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			if (qhy_open(device)) {
+				CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
+				CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
+				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
 
+				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
+				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bpp;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bpp;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
+
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+				PRIVATE_DATA->has_shutter = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_MECHANICALSHUTTER) == QHYCCD_SUCCESS);
+
+				PRIVATE_DATA->has_cooler = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_COOLER) == QHYCCD_SUCCESS);
+				if(PRIVATE_DATA->has_cooler) {
+					CCD_COOLER_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+					CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
+					CCD_TEMPERATURE_ITEM->number.step = 0;
+					PRIVATE_DATA->cooler_on = (GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) > 0);
+				} else {
+					CCD_COOLER_PROPERTY->hidden = true;
+					CCD_COOLER_POWER_PROPERTY->hidden = true;
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+				}
+				// --------------------------------------------------------------------------------- PIXEL_FORMAT
+				indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, PRIVATE_DATA->bpp == 8);
+				indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, PRIVATE_DATA->bpp == 16);
+				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PRIVATE_DATA->bpp;
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_8BITS) == QHYCCD_SUCCESS && IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_16BITS) == QHYCCD_SUCCESS) {
+				} else {
+					PIXEL_FORMAT_PROPERTY->hidden = true;
+				}
+
+				// --------------------------------------------------------------------------------- BINNING
+				bool bins_ok[4] = {false};
+				int max_bin = 0;
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN1X1MODE) == QHYCCD_SUCCESS) {
+					max_bin = 1;
+					bins_ok[0] = true;
+				}
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS) {
+					max_bin = 2;
+					bins_ok[1] = true;
+				}
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN3X3MODE) == QHYCCD_SUCCESS) {
+					max_bin = 3;
+					bins_ok[2] = true;
+				}
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS) {
+					max_bin = 4;
+					bins_ok[3] = true;
+				}
+
+				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+				CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+				CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+
+				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
+
+				// --------------------------------------------------------------------------------- MODE
+				int count = 0;
+				char name[32], label[64];
+				for (int bin = 1; bin <= max_bin; bin++) {
+					if (!bins_ok[bin-1]) continue;
+					if (bpp_supported(device, 8)) {
+						snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
+						snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+						indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1 && PIXEL_FORMAT_PROPERTY->items[0].sw.value);
+						count++;
+					}
+					if (bpp_supported(device, 16)) {
+						snprintf(name, 32, "%s %dx%d", RAW16_NAME, bin, bin);
+						snprintf(label, 64, "%s %dx%d", RAW16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+						indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1  && PIXEL_FORMAT_PROPERTY->items[1].sw.value);
+						count++;
+					}
+				}
+				CCD_MODE_PROPERTY->count = count;
+
+				// --------------------------------------------------------------------------------- CCD_GAIN
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAIN) == QHYCCD_SUCCESS) {
+					CCD_GAIN_PROPERTY->hidden = false;
+					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_GAIN, &CCD_GAIN_ITEM->number.min, &CCD_GAIN_ITEM->number.max, &CCD_GAIN_ITEM->number.step);
+					CCD_GAIN_ITEM->number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAIN);
+				} else {
+					CCD_GAIN_PROPERTY->hidden = true;
+				}
+
+				// --------------------------------------------------------------------------------- CCD_OFFSET
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_OFFSET) == QHYCCD_SUCCESS) {
+					CCD_OFFSET_PROPERTY->hidden = false;
+					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_OFFSET, &CCD_OFFSET_ITEM->number.min, &CCD_OFFSET_ITEM->number.max, &CCD_OFFSET_ITEM->number.step);
+					CCD_OFFSET_ITEM->number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET);
+				} else {
+					CCD_OFFSET_PROPERTY->hidden = true;
+				}
+
+				// --------------------------------------------------------------------------------- CCD_GAMMA
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAMMA) == QHYCCD_SUCCESS) {
+					CCD_GAMMA_PROPERTY->hidden = false;
+					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_GAMMA, &CCD_GAMMA_ITEM->number.min, &CCD_GAMMA_ITEM->number.max, &CCD_GAMMA_ITEM->number.step);
+					CCD_GAMMA_ITEM->number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+				} else {
+					CCD_GAMMA_PROPERTY->hidden = true;
+				}
+
+				// ---------------------------------------------------------------------------------- EXPOSURE
+				GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_EXPOSURE,
+					&(CCD_EXPOSURE_ITEM->number.min),
+					&(CCD_EXPOSURE_ITEM->number.max),
+					&(CCD_EXPOSURE_ITEM->number.step)
+				);
+				/* convert to seconds */
+				CCD_EXPOSURE_ITEM->number.min /= 1e6;
+				CCD_EXPOSURE_ITEM->number.max /= 1e6;
+				CCD_EXPOSURE_ITEM->number.step /= 1e6;
+				/* Kludge: some cameras report ridiculous max exposure times like QHY6 (~80s) while it can happily can do 900s */
+				CCD_EXPOSURE_ITEM->number.max = (CCD_EXPOSURE_ITEM->number.max < 900) ? 900 : CCD_EXPOSURE_ITEM->number.max;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure params min = %fs max = %fs step = %fs", CCD_EXPOSURE_ITEM->number.min, CCD_EXPOSURE_ITEM->number.max, CCD_EXPOSURE_ITEM->number.step);
+
+				// --------------------------------------------------------------------------------- ADVANCED
+				count = 0;
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC) == QHYCCD_SUCCESS) {
+					QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
+					indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, USBTRAFFIC_NAME, USBTRAFFIC_DESC, 0, 0, 1, 0);
+					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC,
+						&(QHY_ADVANCED_PROPERTY->items[count].number.min),
+						&(QHY_ADVANCED_PROPERTY->items[count].number.max),
+						&(QHY_ADVANCED_PROPERTY->items[count].number.step)
+					);
+					QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC);
+					/* Kludge - default is 30 but 5LII hangs on readout with exposeures > 15s and usbtraffic < 40 so set it to 50 :) */
+					QHY_ADVANCED_PROPERTY->items[count].number.value =
+						(QHY_ADVANCED_PROPERTY->items[count].number.value < 50) ? 50 : QHY_ADVANCED_PROPERTY->items[count].number.value;
+					SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC, QHY_ADVANCED_PROPERTY->items[count].number.value);
+					count++;
+				}
+
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_SPEED) == QHYCCD_SUCCESS) {
+					QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
+					indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, USBSPEED_NAME, USBSPEED_DESC, 0, 0, 1, 0);
+					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_SPEED,
+						&(QHY_ADVANCED_PROPERTY->items[count].number.min),
+						&(QHY_ADVANCED_PROPERTY->items[count].number.max),
+						&(QHY_ADVANCED_PROPERTY->items[count].number.step)
+					);
+					QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_SPEED);
+					count++;
+				}
+
+				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE) == QHYCCD_SUCCESS) {
+					QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
+					indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, SHUTTERHEATING_NAME, SHUTTERHEATING_DESC, 0, 0, 1, 0);
+					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE,
+						&(QHY_ADVANCED_PROPERTY->items[count].number.min),
+						&(QHY_ADVANCED_PROPERTY->items[count].number.max),
+						&(QHY_ADVANCED_PROPERTY->items[count].number.step)
+					);
+					QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE);
+					count++;
+				}
+				// -------------------------------------------------------------------------------------- END
+
+				indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+				PRIVATE_DATA->can_check_temperature = true;
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else {
+		if(device->is_connected) {
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+				qhy_abort_exposure(device, false);
+			}
+			PRIVATE_DATA->can_check_temperature = false;
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+			indigo_delete_property(device, QHY_ADVANCED_PROPERTY, NULL);
+			qhy_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+}
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -718,210 +928,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
-				if (qhy_open(device)) {
-					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
-					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
-					CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
-					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
-					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
-
-					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
-					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bpp;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bpp;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
-
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-					PRIVATE_DATA->has_shutter = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_MECHANICALSHUTTER) == QHYCCD_SUCCESS);
-
-					PRIVATE_DATA->has_cooler = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_COOLER) == QHYCCD_SUCCESS);
-					if(PRIVATE_DATA->has_cooler) {
-						CCD_COOLER_PROPERTY->hidden = false;
-						CCD_COOLER_POWER_PROPERTY->hidden = false;
-						CCD_TEMPERATURE_PROPERTY->hidden = false;
-						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-						CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
-						CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
-						CCD_TEMPERATURE_ITEM->number.step = 0;
-						PRIVATE_DATA->cooler_on = (GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) > 0);
-					} else {
-						CCD_COOLER_PROPERTY->hidden = true;
-						CCD_COOLER_POWER_PROPERTY->hidden = true;
-						CCD_TEMPERATURE_PROPERTY->hidden = false;
-						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-					}
-					// --------------------------------------------------------------------------------- PIXEL_FORMAT
-          indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, PRIVATE_DATA->bpp == 8);
-          indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, PRIVATE_DATA->bpp == 16);
-          indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-          CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
-          CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
-          CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PRIVATE_DATA->bpp;
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_8BITS) == QHYCCD_SUCCESS && IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_16BITS) == QHYCCD_SUCCESS) {
-					} else {
-						PIXEL_FORMAT_PROPERTY->hidden = true;
-					}
-
-					// --------------------------------------------------------------------------------- BINNING
-					bool bins_ok[4] = {false};
-					int max_bin = 0;
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN1X1MODE) == QHYCCD_SUCCESS) {
-						max_bin = 1;
-						bins_ok[0] = true;
-					}
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS) {
-						max_bin = 2;
-						bins_ok[1] = true;
-					}
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN3X3MODE) == QHYCCD_SUCCESS) {
-						max_bin = 3;
-						bins_ok[2] = true;
-					}
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS) {
-						max_bin = 4;
-						bins_ok[3] = true;
-					}
-
-					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-					CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
-					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-					CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
-
-					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
-					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
-
-					// --------------------------------------------------------------------------------- MODE
-					int count = 0;
-					char name[32], label[64];
-					for (int bin = 1; bin <= max_bin; bin++) {
-						if (!bins_ok[bin-1]) continue;
-						if (bpp_supported(device, 8)) {
-							snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
-							snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
-							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1 && PIXEL_FORMAT_PROPERTY->items[0].sw.value);
-							count++;
-						}
-						if (bpp_supported(device, 16)) {
-							snprintf(name, 32, "%s %dx%d", RAW16_NAME, bin, bin);
-							snprintf(label, 64, "%s %dx%d", RAW16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
-							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1  && PIXEL_FORMAT_PROPERTY->items[1].sw.value);
-							count++;
-						}
-					}
-					CCD_MODE_PROPERTY->count = count;
-
-					// --------------------------------------------------------------------------------- CCD_GAIN
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAIN) == QHYCCD_SUCCESS) {
-						CCD_GAIN_PROPERTY->hidden = false;
-						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_GAIN, &CCD_GAIN_ITEM->number.min, &CCD_GAIN_ITEM->number.max, &CCD_GAIN_ITEM->number.step);
-						CCD_GAIN_ITEM->number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAIN);
-					} else {
-						CCD_GAIN_PROPERTY->hidden = true;
-					}
-
-					// --------------------------------------------------------------------------------- CCD_OFFSET
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_OFFSET) == QHYCCD_SUCCESS) {
-						CCD_OFFSET_PROPERTY->hidden = false;
-						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_OFFSET, &CCD_OFFSET_ITEM->number.min, &CCD_OFFSET_ITEM->number.max, &CCD_OFFSET_ITEM->number.step);
-						CCD_OFFSET_ITEM->number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET);
-					} else {
-						CCD_OFFSET_PROPERTY->hidden = true;
-					}
-
-					// --------------------------------------------------------------------------------- CCD_GAMMA
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAMMA) == QHYCCD_SUCCESS) {
-						CCD_GAMMA_PROPERTY->hidden = false;
-						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_GAMMA, &CCD_GAMMA_ITEM->number.min, &CCD_GAMMA_ITEM->number.max, &CCD_GAMMA_ITEM->number.step);
-						CCD_GAMMA_ITEM->number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
-					} else {
-						CCD_GAMMA_PROPERTY->hidden = true;
-					}
-
-					// ---------------------------------------------------------------------------------- EXPOSURE
-					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_EXPOSURE,
-						&(CCD_EXPOSURE_ITEM->number.min),
-						&(CCD_EXPOSURE_ITEM->number.max),
-						&(CCD_EXPOSURE_ITEM->number.step)
-					);
-					/* convert to seconds */
-					CCD_EXPOSURE_ITEM->number.min /= 1e6;
-					CCD_EXPOSURE_ITEM->number.max /= 1e6;
-					CCD_EXPOSURE_ITEM->number.step /= 1e6;
-					/* Kludge: some cameras report ridiculous max exposure times like QHY6 (~80s) while it can happily can do 900s */
-					CCD_EXPOSURE_ITEM->number.max = (CCD_EXPOSURE_ITEM->number.max < 900) ? 900 : CCD_EXPOSURE_ITEM->number.max;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure params min = %fs max = %fs step = %fs", CCD_EXPOSURE_ITEM->number.min, CCD_EXPOSURE_ITEM->number.max, CCD_EXPOSURE_ITEM->number.step);
-
-					// --------------------------------------------------------------------------------- ADVANCED
-					count = 0;
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC) == QHYCCD_SUCCESS) {
-						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
-						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, USBTRAFFIC_NAME, USBTRAFFIC_DESC, 0, 0, 1, 0);
-						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC,
-							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
-							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
-							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
-						);
-						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC);
-						/* Kludge - default is 30 but 5LII hangs on readout with exposeures > 15s and usbtraffic < 40 so set it to 50 :) */
-						QHY_ADVANCED_PROPERTY->items[count].number.value =
-							(QHY_ADVANCED_PROPERTY->items[count].number.value < 50) ? 50 : QHY_ADVANCED_PROPERTY->items[count].number.value;
-						SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC, QHY_ADVANCED_PROPERTY->items[count].number.value);
-						count++;
-					}
-
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_SPEED) == QHYCCD_SUCCESS) {
-						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
-						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, USBSPEED_NAME, USBSPEED_DESC, 0, 0, 1, 0);
-						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_SPEED,
-							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
-							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
-							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
-						);
-						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_SPEED);
-						count++;
-					}
-
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE) == QHYCCD_SUCCESS) {
-						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
-						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, SHUTTERHEATING_NAME, SHUTTERHEATING_DESC, 0, 0, 1, 0);
-						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE,
-							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
-							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
-							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
-						);
-						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE);
-						count++;
-					}
-					// -------------------------------------------------------------------------------------- END
-
-					indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-					PRIVATE_DATA->can_check_temperature = true;
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-
-					device->is_connected = true;
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				}
-			}
-		} else {
-			if(device->is_connected) {
-				PRIVATE_DATA->can_check_temperature = false;
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-				indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-				indigo_delete_property(device, QHY_ADVANCED_PROPERTY, NULL);
-				qhy_close(device);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_connect_callback);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -972,8 +982,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			qhy_abort_exposure(device, false);
-		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-			CCD_STREAMING_COUNT_ITEM->number.value = 0;
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
@@ -1221,6 +1229,30 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void guider_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			if (qhy_open(device)) {
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+				device->is_connected = true;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else {
+		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_ra);
+			qhy_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+}
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -1230,25 +1262,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
-				if (qhy_open(device)) {
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
-					GUIDER_GUIDE_RA_PROPERTY->hidden = false;
-					device->is_connected = true;
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				}
-			}
-		} else {
-			if (device->is_connected) {
-				qhy_close(device);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, guider_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
@@ -1264,8 +1281,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		if ((GUIDER_GUIDE_EAST_ITEM->number.value > 0) || (GUIDER_GUIDE_WEST_ITEM->number.value > 0)) {
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, guider_timer_callback_ra);
+			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, guider_timer_callback_ra);
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;

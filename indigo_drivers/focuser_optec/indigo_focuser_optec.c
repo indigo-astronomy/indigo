@@ -188,7 +188,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			optec_close(device);
 		}

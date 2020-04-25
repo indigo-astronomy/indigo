@@ -270,19 +270,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-
-static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
-		if (index < 0) {
-			return INDIGO_NOT_FOUND;
-		}
-
+static void focuser_connect_callback(indigo_device *device) {
+	int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+	if (index < 0) {
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -347,11 +339,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 				indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				int res = EAFClose(PRIVATE_DATA->dev_id);
+				int res = EAFStop(PRIVATE_DATA->dev_id);
+				res = EAFClose(PRIVATE_DATA->dev_id);
 				if (res != EAF_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 				} else {
@@ -369,6 +362,21 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
+	}
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		if (!IS_CONNECTED) return INDIGO_OK;

@@ -769,6 +769,130 @@ static indigo_result dome_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void dome_connect_callback(indigo_device *device) {
+	if (!device->is_connected) {
+		//char name[NEXDOME_CMD_LEN] = "N/A";
+		char firmware[NEXDOME_CMD_LEN] = "N/A";
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		PROPERTY_LOCK();
+		if (indigo_try_global_lock(device) != INDIGO_OK) {
+			PROPERTY_UNLOCK();
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		} else {
+			PROPERTY_UNLOCK();
+			char *device_name = DEVICE_PORT_ITEM->text.value;
+			if (!indigo_is_device_url(device_name, "nexdome")) {
+				PRIVATE_DATA->handle = indigo_open_serial(device_name);
+				/* To be on the safe side -> Wait for 1 seconds! */
+				sleep(1);
+			} else {
+				indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+				PRIVATE_DATA->handle = indigo_open_network_device(device_name, 8080, &proto);
+			}
+			if ( PRIVATE_DATA->handle < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				indigo_global_unlock(device);
+				return;
+			} else if (!nexdome_handshake(device, firmware)) {
+				int res = close(PRIVATE_DATA->handle);
+				if (res < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+				}
+				indigo_global_unlock(device);
+				device->is_connected = false;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: NexDome did not respond. Are you using the correct firmware?");
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_update_property(device, CONNECTION_PROPERTY, "NexDome did not respond. Are you using the correct firmware?");
+				return;
+			} else { // Successfully connected
+				//uint32_t value;
+				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome", INDIGO_VALUE_SIZE);
+				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+				int version, revision;
+				char leftover[255];
+				sscanf(firmware, "%d.%d.%s", &version, &revision, leftover);
+				PRIVATE_DATA->version = (version<<8) + revision;
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s (%04x) connected.", "NexDome", firmware, PRIVATE_DATA->version);
+
+				indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_RANGE_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_RAIN_PROPERTY, NULL);
+				indigo_define_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
+#ifdef CMD_AID
+				indigo_define_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
+#endif
+
+				PRIVATE_DATA->steps_per_degree = 153;
+
+				indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->park_requested = true;
+
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				device->is_connected = true;
+
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
+				PRIVATE_DATA->dome_event = indigo_set_timer(device, 0, dome_event_handler);
+
+				/* Request Rotator and Shutter report to set the current values */
+				nexdome_command(device, "SRR");
+				nexdome_command(device, "SRS");
+
+				request_settings(device);
+			}
+		}
+	} else {
+		if (device->is_connected) {
+			indigo_cancel_timer(device, &PRIVATE_DATA->dome_event);
+			indigo_delete_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_POWER_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_RANGE_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_RAIN_PROPERTY, NULL);
+			indigo_delete_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
+#ifdef CMD_AID
+			indigo_delete_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
+#endif
+			pthread_mutex_lock(&PRIVATE_DATA->port_r_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->port_w_mutex);
+			int res = close(PRIVATE_DATA->handle);
+			if (res < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+			}
+			indigo_global_unlock(device);
+			pthread_mutex_unlock(&PRIVATE_DATA->port_w_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->port_r_mutex);
+			device->is_connected = false;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected = %d", PRIVATE_DATA->handle);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
+}
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -777,127 +901,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (!device->is_connected) {
-			//char name[NEXDOME_CMD_LEN] = "N/A";
-			char firmware[NEXDOME_CMD_LEN] = "N/A";
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PROPERTY_LOCK();
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				PROPERTY_UNLOCK();
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			} else {
-				PROPERTY_UNLOCK();
-				char *device_name = DEVICE_PORT_ITEM->text.value;
-				if (!indigo_is_device_url(device_name, "nexdome")) {
-					PRIVATE_DATA->handle = indigo_open_serial(device_name);
-					/* To be on the safe side -> Wait for 1 seconds! */
-					sleep(1);
-				} else {
-					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-					PRIVATE_DATA->handle = indigo_open_network_device(device_name, 8080, &proto);
-				}
-				if ( PRIVATE_DATA->handle < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
-					device->is_connected = false;
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					indigo_global_unlock(device);
-					return INDIGO_OK;
-				} else if (!nexdome_handshake(device, firmware)) {
-					int res = close(PRIVATE_DATA->handle);
-					if (res < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-					} else {
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-					}
-					indigo_global_unlock(device);
-					device->is_connected = false;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: NexDome did not respond. Are you using the correct firmware?");
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, "NexDome did not respond. Are you using the correct firmware?");
-					return INDIGO_OK;
-				} else { // Successfully connected
-					//uint32_t value;
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome", INDIGO_VALUE_SIZE);
-					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
-					int version, revision;
-					char leftover[255];
-					sscanf(firmware, "%d.%d.%s", &version, &revision, leftover);
-					PRIVATE_DATA->version = (version<<8) + revision;
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s (%04x) connected.", "NexDome", firmware, PRIVATE_DATA->version);
-
-					indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_RANGE_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_RAIN_PROPERTY, NULL);
-					indigo_define_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
-#ifdef CMD_AID
-					indigo_define_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
-#endif
-
-					PRIVATE_DATA->steps_per_degree = 153;
-
-					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
-					DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-					PRIVATE_DATA->park_requested = true;
-
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					device->is_connected = true;
-
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
-					PRIVATE_DATA->dome_event = indigo_set_timer(device, 0, dome_event_handler);
-
-					/* Request Rotator and Shutter report to set the current values */
-					nexdome_command(device, "SRR");
-					nexdome_command(device, "SRS");
-
-					request_settings(device);
-				}
-			}
-		} else {
-			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->dome_event);
-				indigo_delete_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_POWER_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_RANGE_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_RAIN_PROPERTY, NULL);
-				indigo_delete_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
-#ifdef CMD_AID
-				indigo_delete_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
-#endif
-				pthread_mutex_lock(&PRIVATE_DATA->port_r_mutex);
-				pthread_mutex_lock(&PRIVATE_DATA->port_w_mutex);
-				int res = close(PRIVATE_DATA->handle);
-				if (res < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-				}
-				indigo_global_unlock(device);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_w_mutex);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_r_mutex);
-				device->is_connected = false;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected = %d", PRIVATE_DATA->handle);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, dome_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);

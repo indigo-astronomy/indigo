@@ -262,7 +262,8 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			focusdreampro_command(device, "H", response, sizeof(response));
 			indigo_delete_property(device, X_FOCUSER_DUTY_CYCLE_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);

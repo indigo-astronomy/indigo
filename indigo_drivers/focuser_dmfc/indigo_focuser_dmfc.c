@@ -290,7 +290,8 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->timer);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			dmfc_command(device, "H", response, sizeof(response));
 			indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 			indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 			indigo_delete_property(device, X_FOCUSER_LED_PROPERTY, NULL);

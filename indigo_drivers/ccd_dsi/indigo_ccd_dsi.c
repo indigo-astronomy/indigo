@@ -320,6 +320,107 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	return false;
 }
 
+static void ccd_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			if (camera_open(device)) {
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				CCD_INFO_WIDTH_ITEM->number.value = dsi_get_frame_width(PRIVATE_DATA->dsi);
+				CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_frame_height(PRIVATE_DATA->dsi);
+				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
+				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+
+				sprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "%s", dsi_get_serial_number(PRIVATE_DATA->dsi));
+				sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", dsi_get_model_name(PRIVATE_DATA->dsi));
+
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+
+				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = dsi_get_pixel_width(PRIVATE_DATA->dsi);
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = dsi_get_pixel_height(PRIVATE_DATA->dsi);
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
+				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
+				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
+
+				CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
+
+				char name[32];
+				if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
+					CCD_BIN_PROPERTY->hidden = false;
+					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+
+					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_MODE_PROPERTY->count = 2;
+					sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
+					indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+					sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi)/2, dsi_get_frame_height(PRIVATE_DATA->dsi)/2);
+					indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+				} else {
+					CCD_BIN_PROPERTY->hidden = true;  // keep it hidden as device does not support binning!
+					CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
+
+					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_MODE_PROPERTY->count = 1;
+					sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
+					indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+				}
+				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+				CCD_BIN_HORIZONTAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
+				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+				CCD_BIN_VERTICAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
+
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+
+				CCD_TEMPERATURE_PROPERTY->hidden = false;
+				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+				CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+				CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
+				CCD_TEMPERATURE_ITEM->number.step = 0;
+
+				CCD_GAIN_PROPERTY->hidden = false;
+				CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_GAIN_ITEM->number.min = 0;
+				CCD_GAIN_ITEM->number.max = 100;
+				CCD_GAIN_ITEM->number.value = dsi_get_amp_gain(PRIVATE_DATA->dsi);
+
+				CCD_OFFSET_PROPERTY->hidden = false;
+				CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_OFFSET_ITEM->number.min = 0;
+				CCD_OFFSET_ITEM->number.max = 100;
+				CCD_OFFSET_ITEM->number.value = dsi_get_amp_offset(PRIVATE_DATA->dsi);
+
+				double temp = dsi_get_temperature(PRIVATE_DATA->dsi);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
+				if (temp > 1000) {  /* no sensor */
+					CCD_TEMPERATURE_PROPERTY->hidden = true;
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsi_get_temperature(%s) = NO_SENSOR", PRIVATE_DATA->dev_sid);
+				} else {
+					PRIVATE_DATA->can_check_temperature = true;
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+				}
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else {
+		if (device->is_connected) {
+			PRIVATE_DATA->can_check_temperature = false;
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			camera_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -328,104 +429,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
-				if (camera_open(device)) {
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					CCD_INFO_WIDTH_ITEM->number.value = dsi_get_frame_width(PRIVATE_DATA->dsi);
-					CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_frame_height(PRIVATE_DATA->dsi);
-					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
-					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
-
-					sprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "%s", dsi_get_serial_number(PRIVATE_DATA->dsi));
-					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", dsi_get_model_name(PRIVATE_DATA->dsi));
-
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-
-					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = dsi_get_pixel_width(PRIVATE_DATA->dsi);
-					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = dsi_get_pixel_height(PRIVATE_DATA->dsi);
-					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
-					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
-					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
-
-					CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
-
-					char name[32];
-					if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
-						CCD_BIN_PROPERTY->hidden = false;
-						CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-
-						CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-						CCD_MODE_PROPERTY->count = 2;
-						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
-						indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi)/2, dsi_get_frame_height(PRIVATE_DATA->dsi)/2);
-						indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-					} else {
-						CCD_BIN_PROPERTY->hidden = true;  // keep it hidden as device does not support binning!
-						CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
-
-						CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-						CCD_MODE_PROPERTY->count = 1;
-						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
-						indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-					}
-					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-					CCD_BIN_HORIZONTAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
-					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-					CCD_BIN_VERTICAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
-
-					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
-
-					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
-					CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
-					CCD_TEMPERATURE_ITEM->number.step = 0;
-
-					CCD_GAIN_PROPERTY->hidden = false;
-					CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
-					CCD_GAIN_ITEM->number.min = 0;
-					CCD_GAIN_ITEM->number.max = 100;
-					CCD_GAIN_ITEM->number.value = dsi_get_amp_gain(PRIVATE_DATA->dsi);
-
-					CCD_OFFSET_PROPERTY->hidden = false;
-					CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
-					CCD_OFFSET_ITEM->number.min = 0;
-					CCD_OFFSET_ITEM->number.max = 100;
-					CCD_OFFSET_ITEM->number.value = dsi_get_amp_offset(PRIVATE_DATA->dsi);
-
-					double temp = dsi_get_temperature(PRIVATE_DATA->dsi);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-					device->is_connected = true;
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
-					if (temp > 1000) {  /* no sensor */
-						CCD_TEMPERATURE_PROPERTY->hidden = true;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsi_get_temperature(%s) = NO_SENSOR", PRIVATE_DATA->dev_sid);
-					} else {
-						PRIVATE_DATA->can_check_temperature = true;
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-					}
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				}
-			}
-		} else {
-			if (device->is_connected) {
-				PRIVATE_DATA->can_check_temperature = false;
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-				camera_close(device);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_connect_callback);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)

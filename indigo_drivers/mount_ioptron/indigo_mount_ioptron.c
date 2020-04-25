@@ -689,6 +689,92 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
+static void mount_connect_callback(indigo_device *device) {
+	char response[128];
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			result = ieq_open(device);
+		}
+		if (result) {
+			if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100) {
+				if (ieq_command(device, ":Gt#", response, sizeof(response)))
+					MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
+				if (ieq_command(device, ":Gg#", response, sizeof(response))) {
+					double  longitude = indigo_stod(response);
+					if (longitude < 0)
+						longitude += 360;
+					MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+				}
+			} else if (PRIVATE_DATA->protocol == 0x0200) {
+				MOUNT_HOME_PROPERTY->hidden = false;
+				MOUNT_PARK_SET_PROPERTY->hidden = false;
+				MOUNT_PARK_SET_PROPERTY->count = 1;
+				if (ieq_command(device, ":Gt#", response, sizeof(response)))
+					MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = atol(response) / 60.0 / 60.0;
+				if (ieq_command(device, ":Gg#", response, sizeof(response))) {
+					double longitude = atol(response) / 60.0 / 60.0;
+					if (longitude < 0)
+						longitude += 360;
+					MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+				}
+			} else if (PRIVATE_DATA->protocol >= 0x0205) {
+				MOUNT_HOME_PROPERTY->hidden = false;
+				MOUNT_PARK_SET_PROPERTY->hidden = false;
+				MOUNT_PARK_SET_PROPERTY->count = 1;
+				if (ieq_command(device, ":GLS#", response, sizeof(response))) {
+					if (response[12] == '2') {
+						char val[7];
+						strncpy(val, response + 6, 6);
+						bool update = MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
+						double latitude = atol(val) / 60.0 / 60.0 - 90;
+						if (latitude != MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) {
+							MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
+							update = true;
+						}
+						strncpy(val, response, 7);
+						double longitude = atol(val) / 60.0 / 60.0;
+						if (longitude < 0)
+							longitude += 360;
+						if (longitude != MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) {
+							MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+							update = true;
+						}
+						if (update) {
+							MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+					} else if (response[12] == '1') {
+						if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+							MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+					}
+				}
+			}
+			ieq_get_coords(device);
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
+			ieq_get_utc(device);
+			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+		if (--PRIVATE_DATA->device_count == 0) {
+			ieq_close(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -697,87 +783,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				result = ieq_open(device);
-			}
-			if (result) {
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100) {
-					if (ieq_command(device, ":Gt#", response, sizeof(response)))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (ieq_command(device, ":Gg#", response, sizeof(response))) {
-						double  longitude = indigo_stod(response);
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
-				} else if (PRIVATE_DATA->protocol == 0x0200) {
-					MOUNT_HOME_PROPERTY->hidden = false;
-					MOUNT_PARK_SET_PROPERTY->hidden = false;
-					MOUNT_PARK_SET_PROPERTY->count = 1;
-					if (ieq_command(device, ":Gt#", response, sizeof(response)))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = atol(response) / 60.0 / 60.0;
-					if (ieq_command(device, ":Gg#", response, sizeof(response))) {
-						double longitude = atol(response) / 60.0 / 60.0;
-						if (longitude < 0)
-							longitude += 360;
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-					}
-				} else if (PRIVATE_DATA->protocol >= 0x0205) {
-					MOUNT_HOME_PROPERTY->hidden = false;
-					MOUNT_PARK_SET_PROPERTY->hidden = false;
-					MOUNT_PARK_SET_PROPERTY->count = 1;
-					if (ieq_command(device, ":GLS#", response, sizeof(response))) {
-						if (response[12] == '2') {
-							char val[7];
-							strncpy(val, response + 6, 6);
-							bool update = MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
-							double latitude = atol(val) / 60.0 / 60.0 - 90;
-							if (latitude != MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) {
-								MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-								update = true;
-							}
-							strncpy(val, response, 7);
-							double longitude = atol(val) / 60.0 / 60.0;
-							if (longitude < 0)
-								longitude += 360;
-							if (longitude != MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) {
-								MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-								update = true;
-							}
-							if (update) {
-								MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-								indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-							}
-						} else if (response[12] == '1') {
-							if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-								MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-								indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-							}
-						}
-					}
-				}
-				ieq_get_coords(device);
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
-				ieq_get_utc(device);
-				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-			if (--PRIVATE_DATA->device_count == 0) {
-				ieq_close(device);
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PARK_SET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK_SET
 		indigo_property_copy_values(MOUNT_PARK_SET_PROPERTY, property, false);
