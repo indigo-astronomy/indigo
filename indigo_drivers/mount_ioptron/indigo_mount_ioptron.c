@@ -1236,8 +1236,11 @@ static void guider_connect_callback(indigo_device *device) {
 			result = ieq_open(device->master_device);
 		}
 		if (result) {
-			if (ieq_command(device, ":AG#", response, sizeof(response)))
+			if (ieq_command(device, ":AG#", response, sizeof(response))) {
+				if (PRIVATE_DATA->protocol >= 0x0205)
+					response[2] = 0;
 				GUIDER_RATE_ITEM->number.value = atoi(response);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			PRIVATE_DATA->device_count--;
@@ -1300,7 +1303,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- GUIDER_RATE
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
-		sprintf(command, ":RG%03d#", (int)GUIDER_RATE_ITEM->number.value);
+		if (PRIVATE_DATA->protocol < 0x0205)
+			sprintf(command, ":RG%03d#", (int)GUIDER_RATE_ITEM->number.value);
+		else
+			sprintf(command, ":RG%02d%02d#", (int)GUIDER_RATE_ITEM->number.value, (int)GUIDER_RATE_ITEM->number.value);
 		ieq_command(device, command, response, 1);
 		GUIDER_RATE_PROPERTY->state = *response == '1';
 		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
