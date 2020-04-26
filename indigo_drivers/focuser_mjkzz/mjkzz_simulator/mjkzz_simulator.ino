@@ -23,6 +23,8 @@
 #ifdef ARDUINO_SAM_DUE
 #define MJKZZ Serial3
 #define DEBUG  Serial
+#else
+#define MJKZZ Serial
 #endif
 
 #ifdef LCD
