@@ -110,7 +110,7 @@ WatchedEntry::WatchedEntry(BMessenger *messenger, entry_ref *ref)
 					usbi_dbg("device allocation failed");
 					continue;
 				}
-				*((USBDevice **)dev->os_priv) = fDevice;
+				*((USBDevice **)usbi_get_device_priv(dev)) = fDevice;
 
 				// Calculate pseudo-device-address
 				int addr, tmp;
@@ -125,7 +125,7 @@ WatchedEntry::WatchedEntry(BMessenger *messenger, entry_ref *ref)
 					addr += tmp + 1;
 					parent_path.GetParent(&parent_path);
 				}
-				sscanf(path.Path(), "/dev/bus/usb/%d", &dev->bus_number);
+				sscanf(path.Path(), "/dev/bus/usb/%hhu", &dev->bus_number);
 				dev->device_address = addr - (dev->bus_number + 1);
 
 				if (usbi_sanitize_device(dev) < 0) {

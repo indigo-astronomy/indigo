@@ -21,27 +21,21 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <config.h>
+#include "libusbi.h"
+#include "linux_usbfs.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <pthread.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
 
 #ifdef HAVE_ASM_TYPES_H
 #include <asm/types.h>
 #endif
-
-#include <sys/socket.h>
 #include <linux/netlink.h>
-
-#include "libusbi.h"
-#include "linux_usbfs.h"
+#include <sys/socket.h>
 
 #define NL_GROUP_KERNEL 1
 
@@ -68,12 +62,12 @@ static int set_fd_cloexec_nb(int fd, int socktype)
 	if (!(socktype & SOCK_CLOEXEC)) {
 		flags = fcntl(fd, F_GETFD);
 		if (flags == -1) {
-			usbi_err(NULL, "failed to get netlink fd flags (%d)", errno);
+			usbi_err(NULL, "failed to get netlink fd flags, errno=%d", errno);
 			return -1;
 		}
 
 		if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1) {
-			usbi_err(NULL, "failed to set netlink fd flags (%d)", errno);
+			usbi_err(NULL, "failed to set netlink fd flags, errno=%d", errno);
 			return -1;
 		}
 	}
@@ -83,12 +77,12 @@ static int set_fd_cloexec_nb(int fd, int socktype)
 	if (!(socktype & SOCK_NONBLOCK)) {
 		flags = fcntl(fd, F_GETFL);
 		if (flags == -1) {
-			usbi_err(NULL, "failed to get netlink fd status flags (%d)", errno);
+			usbi_err(NULL, "failed to get netlink fd status flags, errno=%d", errno);
 			return -1;
 		}
 
 		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-			usbi_err(NULL, "failed to set netlink fd status flags (%d)", errno);
+			usbi_err(NULL, "failed to set netlink fd status flags, errno=%d", errno);
 			return -1;
 		}
 	}
@@ -111,7 +105,7 @@ int linux_netlink_start_event_monitor(void)
 	}
 
 	if (linux_netlink_socket == -1) {
-		usbi_err(NULL, "failed to create netlink socket (%d)", errno);
+		usbi_err(NULL, "failed to create netlink socket, errno=%d", errno);
 		goto err;
 	}
 
@@ -121,13 +115,13 @@ int linux_netlink_start_event_monitor(void)
 
 	ret = bind(linux_netlink_socket, (struct sockaddr *)&sa_nl, sizeof(sa_nl));
 	if (ret == -1) {
-		usbi_err(NULL, "failed to bind netlink socket (%d)", errno);
+		usbi_err(NULL, "failed to bind netlink socket, errno=%d", errno);
 		goto err_close_socket;
 	}
 
 	ret = setsockopt(linux_netlink_socket, SOL_SOCKET, SO_PASSCRED, &opt, sizeof(opt));
 	if (ret == -1) {
-		usbi_err(NULL, "failed to set netlink socket SO_PASSCRED option (%d)", errno);
+		usbi_err(NULL, "failed to set netlink socket SO_PASSCRED option, errno=%d", errno);
 		goto err_close_socket;
 	}
 
@@ -314,7 +308,7 @@ static int linux_netlink_read_message(void)
 	len = recvmsg(linux_netlink_socket, &msg, 0);
 	if (len == -1) {
 		if (errno != EAGAIN && errno != EINTR)
-			usbi_err(NULL, "error receiving message from netlink (%d)", errno);
+			usbi_err(NULL, "error receiving message from netlink, errno=%d", errno);
 		return -1;
 	}
 
@@ -370,6 +364,12 @@ static void *linux_netlink_event_thread_main(void *arg)
 	};
 
 	UNUSED(arg);
+
+#if defined(HAVE_PTHREAD_SETNAME_NP)
+	r = pthread_setname_np(pthread_self(), "libusb_event");
+	if (r)
+		usbi_warn(NULL, "failed to set hotplug event thread name, error=%d", r);
+#endif
 
 	usbi_dbg("netlink event thread entering");
 
