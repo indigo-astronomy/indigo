@@ -21,34 +21,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  *
  */
-#pragma once
 
-#if defined(_MSC_VER)
-// disable /W4 MSVC warnings that are benign
-#pragma warning(disable:4127) // conditional expression is constant
-#endif
-
-// Handle synchronous completion through the overlapped structure
-#if !defined(STATUS_REPARSE)	// reuse the REPARSE status code
-#define STATUS_REPARSE ((LONG)0x00000104L)
-#endif
-#define STATUS_COMPLETED_SYNCHRONOUSLY	STATUS_REPARSE
-#if defined(_WIN32_WCE)
-// WinCE doesn't have a HasOverlappedIoCompleted() macro, so attempt to emulate it
-#define HasOverlappedIoCompleted(lpOverlapped) (((DWORD)(lpOverlapped)->Internal) != STATUS_PENDING)
-#endif
-#define HasOverlappedIoCompletedSync(lpOverlapped)	(((DWORD)(lpOverlapped)->Internal) == STATUS_COMPLETED_SYNCHRONOUSLY)
+#ifndef LIBUSB_POLL_WINDOWS_H
+#define LIBUSB_POLL_WINDOWS_H
 
 #define DUMMY_HANDLE ((HANDLE)(LONG_PTR)-2)
 
-#define MAX_FDS     256
+#define POLLIN		0x0001	/* There is data to read */
+#define POLLPRI		0x0002	/* There is urgent data to read */
+#define POLLOUT		0x0004	/* Writing now will not block */
+#define POLLERR		0x0008	/* Error condition */
+#define POLLHUP		0x0010	/* Hung up */
+#define POLLNVAL	0x0020	/* Invalid request: fd not open */
 
-#define POLLIN      0x0001    /* There is data to read */
-#define POLLPRI     0x0002    /* There is urgent data to read */
-#define POLLOUT     0x0004    /* Writing now will not block */
-#define POLLERR     0x0008    /* Error condition */
-#define POLLHUP     0x0010    /* Hung up */
-#define POLLNVAL    0x0020    /* Invalid request: fd not open */
+typedef unsigned int usbi_nfds_t;
 
 struct pollfd {
 	int fd;		/* file descriptor */
@@ -66,35 +52,9 @@ extern const struct winfd INVALID_WINFD;
 struct winfd usbi_create_fd(void);
 
 int usbi_pipe(int pipefd[2]);
-int usbi_poll(struct pollfd *fds, unsigned int nfds, int timeout);
+int usbi_poll(struct pollfd *fds, usbi_nfds_t nfds, int timeout);
 ssize_t usbi_write(int fd, const void *buf, size_t count);
 ssize_t usbi_read(int fd, void *buf, size_t count);
 int usbi_close(int fd);
 
-int usbi_inc_fds_ref(struct pollfd *fds, unsigned int nfds);
-int usbi_dec_fds_ref(struct pollfd *fds, unsigned int nfds);
-
-/*
- * Timeval operations
- */
-#if defined(DDKBUILD)
-#include <winsock.h>	// defines timeval functions on DDK
-#endif
-
-#if !defined(TIMESPEC_TO_TIMEVAL)
-#define TIMESPEC_TO_TIMEVAL(tv, ts) {                   \
-	(tv)->tv_sec = (long)(ts)->tv_sec;                  \
-	(tv)->tv_usec = (long)(ts)->tv_nsec / 1000;         \
-}
-#endif
-#if !defined(timersub)
-#define timersub(a, b, result)                          \
-do {                                                    \
-	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;       \
-	(result)->tv_usec = (a)->tv_usec - (b)->tv_usec;    \
-	if ((result)->tv_usec < 0) {                        \
-		--(result)->tv_sec;                             \
-		(result)->tv_usec += 1000000;                   \
-	}                                                   \
-} while (0)
 #endif

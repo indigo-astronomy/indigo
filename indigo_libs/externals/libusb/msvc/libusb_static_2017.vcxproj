@@ -38,9 +38,9 @@
     <ProjectName>libusb-1.0 (static)</ProjectName>
     <ProjectGuid>{349EE8F9-7D25-4909-AAF5-FF3FADE72187}</ProjectGuid>
     <RootNamespace>libusb</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
     <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
     <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
+    <WindowsTargetPlatformVersion Condition="'$(Platform)'=='ARM' Or '$(Platform)'=='ARM64'">10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -58,14 +58,15 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <IntDir>$(SolutionDir)..\$(Platform)\$(Configuration)\lib\$(TargetName)\</IntDir>
-    <OutDir>$(SolutionDir)..\$(Platform)\$(Configuration)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\$(Platform)\$(Configuration)\lib\$(TargetName)\</IntDir>
+    <OutDir>$(ProjectDir)..\$(Platform)\$(Configuration)\lib\</OutDir>
     <TargetName>libusb-1.0</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>.;..\libusb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WINVER=0x0501;_WIN32_WINNT=0x0501;_LIB;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=_WIN32_WINNT_VISTA;_LIB;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
       <WarningLevel>Level4</WarningLevel>
     </ClCompile>
@@ -91,7 +92,7 @@
     <ClCompile Include="..\libusb\strerror.c" />
     <ClCompile Include="..\libusb\sync.c" />
     <ClCompile Include="..\libusb\os\threads_windows.c" />
-    <ClCompile Include="..\libusb\os\windows_nt_common.c" />
+    <ClCompile Include="..\libusb\os\windows_common.c" />
     <ClCompile Include="..\libusb\os\windows_usbdk.c" />
     <ClCompile Include="..\libusb\os\windows_winusb.c" />
   </ItemGroup>
@@ -105,8 +106,6 @@
     <ClInclude Include="..\libusb\version.h" />
     <ClInclude Include="..\libusb\version_nano.h" />
     <ClInclude Include="..\libusb\os\windows_common.h" />
-    <ClInclude Include="..\libusb\os\windows_nt_common.h" />
-    <ClInclude Include="..\libusb\os\windows_nt_shared_types.h" />
     <ClInclude Include="..\libusb\os\windows_usbdk.h" />
     <ClInclude Include="..\libusb\os\windows_winusb.h" />
   </ItemGroup>
