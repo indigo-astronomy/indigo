@@ -121,7 +121,8 @@ static void aux_timer_callback(indigo_device *device) {
 	indigo_printf(PRIVATE_DATA->handle, "rx");
 	indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
-	if (*strtok_r(buffer, ",", &pnt) != 'r') {
+	char *tok = strtok_r(buffer, ",", &pnt);
+	if (tok == NULL || *tok != 'r') {
 		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		X_AUX_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
