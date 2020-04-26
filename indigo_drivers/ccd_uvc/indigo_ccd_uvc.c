@@ -220,7 +220,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle != 0) {
 			uvc_close(PRIVATE_DATA->handle);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_close() -> %s");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_close()");
 			PRIVATE_DATA->handle = 0;
 			if (PRIVATE_DATA->buffer)
 				free(PRIVATE_DATA->buffer);
@@ -409,7 +409,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				indigo_device *device = devices[j];
-				if (uvc_get_bus_number(PRIVATE_DATA->dev) == libusb_get_bus_number(dev) && uvc_get_device_address(PRIVATE_DATA->dev) == libusb_get_device_address(dev)) {
+				if (device && uvc_get_bus_number(PRIVATE_DATA->dev) == libusb_get_bus_number(dev) && uvc_get_device_address(PRIVATE_DATA->dev) == libusb_get_device_address(dev)) {
 					indigo_detach_device(device);
 					free(PRIVATE_DATA);
 					free(device);
