@@ -475,6 +475,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TRIGGER, 1) -> %08x", result);
 			result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -793,6 +794,53 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void guider_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (PRIVATE_DATA->handle == NULL) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			} else {
+				char id[66];
+				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
+				PRIVATE_DATA->handle = Altaircam_Open(id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Open(%s) -> %p", id, PRIVATE_DATA->handle);
+			}
+		}
+		device->gp_bits = 1;
+		if (PRIVATE_DATA->handle) {
+			HRESULT result = Altaircam_get_SerialNumber(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_SerialNumber() -> %08x", result);
+			result = Altaircam_get_HwVersion(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_HwVersion() -> %08x", result);
+			result = Altaircam_get_FwVersion(PRIVATE_DATA->handle, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_FwVersion() -> %08x", result);
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			device->gp_bits = 0;
+		}
+	} else {
+		if (PRIVATE_DATA->buffer != NULL) {
+			free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+		}
+		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
+			if (((altair_private_data *)PRIVATE_DATA->camera->private_data)->handle == NULL) {
+				pthread_mutex_lock(&PRIVATE_DATA->mutex);
+				Altaircam_Close(PRIVATE_DATA->handle);
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				indigo_global_unlock(device);
+			}
+			PRIVATE_DATA->handle = NULL;
+		}
+		device->gp_bits = 0;
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -800,48 +848,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (PRIVATE_DATA->handle == NULL) {
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				} else {
-					char id[66];
-					sprintf(id, "@%s", PRIVATE_DATA->cam.id);
-					PRIVATE_DATA->handle = Altaircam_Open(id);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Open(%s) -> %p", id, PRIVATE_DATA->handle);
-				}
-			}
-			device->gp_bits = 1;
-			if (PRIVATE_DATA->handle) {
-				HRESULT result = Altaircam_get_SerialNumber(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_SerialNumber() -> %08x", result);
-				result = Altaircam_get_HwVersion(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_HwVersion() -> %08x", result);
-				result = Altaircam_get_FwVersion(PRIVATE_DATA->handle, INFO_DEVICE_FW_REVISION_ITEM->text.value);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_FwVersion() -> %08x", result);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				device->gp_bits = 0;
-			}
-		} else {
-			if (PRIVATE_DATA->buffer != NULL) {
-				free(PRIVATE_DATA->buffer);
-				PRIVATE_DATA->buffer = NULL;
-			}
-			if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
-				if (((altair_private_data *)PRIVATE_DATA->camera->private_data)->handle == NULL) {
-					pthread_mutex_lock(&PRIVATE_DATA->mutex);
-					Altaircam_Close(PRIVATE_DATA->handle);
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-					indigo_global_unlock(device);
-				}
-				PRIVATE_DATA->handle = NULL;
-			}
-			device->gp_bits = 0;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, guider_connect_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		HRESULT result = 0;
@@ -871,10 +881,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
-	if (device == device->master_device)
-		indigo_global_unlock(device);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		guider_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
