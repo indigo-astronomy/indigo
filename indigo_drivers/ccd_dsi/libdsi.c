@@ -1639,7 +1639,7 @@ static int dsicmd_write_firmware(libusb_device_handle *handle) {
 	return rc;
 }
 
-void dsi_load_firmware() {
+bool dsi_load_firmware() {
 	struct libusb_device **list = NULL;
 	struct libusb_device_descriptor desc;
 	int i;
@@ -1661,11 +1661,14 @@ void dsi_load_firmware() {
 					rc = dsicmd_write_firmware(handle);
 					rc = libusb_release_interface(handle, 0);
 					libusb_close(handle);
+					libusb_free_device_list(list, 0);
+					return true;
 				}
 			}
 		}
 	}
 	libusb_free_device_list(list, 0);
+	return false;
 }
 
 

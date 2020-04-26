@@ -74,7 +74,6 @@ typedef struct {
 	char dev_sid[DSI_ID_LEN];
 	enum DSI_BIN_MODE exp_bin_mode;
 	dsi_camera_t *dsi;
-	int count_open;
 	indigo_timer *exposure_timer, *temperature_timer;
 	long int buffer_size;
 	char *buffer;
@@ -596,10 +595,12 @@ static void process_plug_event(indigo_device *unusued) {
 		NULL,
 		ccd_detach
 	);
-	pthread_mutex_lock(&device_mutex);
 #ifdef __APPLE__
-	dsi_load_firmware();
+  if (dsi_load_firmware()) {
+		return;
+	}
 #endif
+	pthread_mutex_lock(&device_mutex);
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
@@ -614,6 +615,10 @@ static void process_plug_event(indigo_device *unusued) {
 		return;
 	}
 	char dev_name[DSI_NAME_LEN + 1];
+#ifdef __APPLE__
+	strcpy(dev_name, "Meade DSI");
+#else
+// doesn't work on macOS, dsi_open_camera resets the device what leads to duplicate plug/unplug
 	dsi_camera_t *dsi;
 	dsi = dsi_open_camera(sid);
 	if(dsi == NULL) {
@@ -623,6 +628,7 @@ static void process_plug_event(indigo_device *unusued) {
 	}
 	strncpy(dev_name, dsi_get_model_name(dsi), DSI_NAME_LEN);
 	dsi_close_camera(dsi);
+#endif
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -678,13 +684,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	if (descriptor.idVendor != DSI_VENDOR_ID) {
 		return 0;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hotplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 			indigo_set_timer(NULL, 0.5, process_plug_event);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 			indigo_set_timer(NULL, 0.5, process_unplug_event);
 			break;
 		}

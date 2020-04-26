@@ -15,6 +15,7 @@
 #endif
 #include <fcntl.h>
 #include <errno.h>
+#include <stdbool.h>
 
 struct DSI_CAMERA;
 
@@ -203,7 +204,7 @@ enum DSI_BIN_MODE {
 void libdsi_set_verbose_init(int on);
 int libdsi_get_verbose_init();
 
-void dsi_load_firmware();
+bool dsi_load_firmware();
 int dsi_scan_usb(dsi_device_list devices);
 
 dsi_camera_t *dsi_open_camera(const char *identifier);
