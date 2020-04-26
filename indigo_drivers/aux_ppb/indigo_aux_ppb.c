@@ -23,7 +23,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -352,10 +352,10 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_POWER_OUTLET_2_ITEM->sw.value = token[0] == '1';
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
-					AUX_HEATER_OUTLET_1_ITEM->number.value = round(indigo_atod(token) * 100.0 / 255.0);
+					AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
-					AUX_HEATER_OUTLET_2_ITEM->number.value = round(indigo_atod(token) * 100.0 / 255.0);
+					AUX_HEATER_OUTLET_2_ITEM->number.value = AUX_HEATER_OUTLET_2_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 1 ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
