@@ -181,12 +181,12 @@ void loop() {
     Serial.print(':');
     Serial.print(power4 ? 200 : 0);
     Serial.print(':');
-    Serial.print(power5 ? 300 : 0);
+    Serial.print(power5 ? 350 : 0);
     Serial.print(':');
-    Serial.print(power6 ? 300 : 0);
+    Serial.print(power6 ? 380 : 0);
 #ifdef V2
     Serial.print(':');
-    Serial.print(power7 ? 600 : 0);
+    Serial.print(power7 ? 700 : 0);
     Serial.print(":0000010:");
 #else
     Serial.print(":000001:");
@@ -195,7 +195,7 @@ void loop() {
   } else if (command.startsWith("PC")) {
     Serial.println("2.1:12:46");
   } else if (command.startsWith("PD:")) {
-    autodev = command.charAt(3);
+    autodev = command.charAt(3) == '0' ? 0 : 1;
     Serial.println(command);
   } else if (command.equals("PV")) {
     Serial.println("1.0");
