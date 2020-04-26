@@ -748,7 +748,6 @@ static void ccd_connect_callback(indigo_device *device) {
 				// --------------------------------------------------------------------------------- PIXEL_FORMAT
 				indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, PRIVATE_DATA->bpp == 8);
 				indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, PRIVATE_DATA->bpp == 16);
-				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PRIVATE_DATA->bpp;
@@ -756,6 +755,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				} else {
 					PIXEL_FORMAT_PROPERTY->hidden = true;
 				}
+				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 				// --------------------------------------------------------------------------------- BINNING
 				bool bins_ok[4] = {false};
@@ -1677,7 +1677,7 @@ static void process_unplug_event() {
 	}
 
 	if (!removed) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged!");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No unplugged device found.");
 	}
 	pthread_mutex_unlock(&device_mutex);
 }
@@ -1723,18 +1723,19 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		(descriptor.idVendor != QHY_VENDOR_ID5)) {
 		return 0;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hotplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-				if (!indigo_async(plug_thread_func, NULL)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
-				}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+			if (!indigo_async(plug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for plug handler");
+			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-				if (!indigo_async(unplug_thread_func, NULL)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
-				}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+			if (!indigo_async(unplug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for unplug handler");
+			}
 			break;
 		}
 	}
@@ -1789,7 +1790,7 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
+			if (indigo_driver_initialized((char *)CONFLICTING_DRIVER)) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
