@@ -78,6 +78,8 @@ void loop() {
   } else if (command.startsWith("PD:")) {
     autodev = command.charAt(3) == '1';
     Serial.println(command);
+  } else if (command.startsWith("PL:")) {
+    Serial.println(command);
   } else if (command.equals("PV")) {
     Serial.println("1.0");
   }
