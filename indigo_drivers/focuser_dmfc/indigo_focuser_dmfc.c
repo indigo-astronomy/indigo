@@ -324,9 +324,9 @@ static void focuser_speed_handler(indigo_device *device) {
 
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[16], response[64];
+	char command[16];
 	snprintf(command, sizeof(command), "G:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1));
-	if (dmfc_command(device, command, response, sizeof(response))) {
+	if (dmfc_command(device, command, NULL, 0)) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
