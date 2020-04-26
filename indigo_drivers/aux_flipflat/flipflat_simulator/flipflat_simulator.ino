@@ -24,6 +24,7 @@
 #define DISPLAY_INIT()
 #define DISPLAY_BEGIN()
 #define DISPLAY_TEXTF(line, ...)
+#define DISPLAY_TEXT(line, ...)
 #define DISPLAY_END()
 #ifdef ARDUINO_TTGO_T1
 #pragma message ARDUINO_TTGO_T1
