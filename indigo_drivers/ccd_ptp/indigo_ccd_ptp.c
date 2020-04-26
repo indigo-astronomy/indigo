@@ -191,9 +191,6 @@ static void handle_connection(indigo_device *device) {
 					indigo_release_property(PRIVATE_DATA->properties[i].property);
 				memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
 			}
-			indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
-		} else {
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 	} else {
