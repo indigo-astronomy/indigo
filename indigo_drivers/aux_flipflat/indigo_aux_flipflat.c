@@ -23,7 +23,7 @@
  \file indigo_aux_flipflat.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_flipflat"
 
 #include <stdlib.h>
@@ -212,11 +212,10 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 			if (!AUX_LIGHT_INTENSITY_PROPERTY->hidden) {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-				sprintf(command, ">J%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-				if (flipflat_command(PRIVATE_DATA->handle, command, response) && *response == '*') {
+				if (flipflat_command(PRIVATE_DATA->handle, ">J000", response) && *response == '*') {
 					int type, value;
 					if (sscanf(response, "*J%02d%3d", &type, &value) == 2) {
-						AUX_LIGHT_INTENSITY_ITEM->number.value = value;
+						AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = value;
 						AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 					}
 				}
