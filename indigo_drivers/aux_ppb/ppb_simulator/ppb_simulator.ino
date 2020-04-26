@@ -54,10 +54,10 @@ void loop() {
   } else if (command.startsWith("P2:")) {
     power_dslr = command.charAt(3) == '1';
     Serial.println(command);
-  } else if (command.startsWith("P5:")) {
+  } else if (command.startsWith("P3:")) {
     power5 = command.substring(3).toInt();
     Serial.println(command);
-  } else if (command.startsWith("P6:")) {
+  } else if (command.startsWith("P4:")) {
     power6 = command.substring(3).toInt();
     Serial.println(command);
   } else if (command.startsWith("PF")) {
