@@ -545,7 +545,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
+		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	} else {
 		PRIVATE_DATA->exposure_timer = NULL;
 	}
@@ -991,7 +991,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					if (PRIVATE_DATA->has_temperature_sensor) {
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+						indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 					}
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1021,10 +1021,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		if (CCD_EXPOSURE_ITEM->number.target > 4)
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
 		else {
 			PRIVATE_DATA->can_check_temperature = false;
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
@@ -1041,7 +1041,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
+		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -1389,7 +1389,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res);
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 			PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
@@ -1399,7 +1399,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res);
-				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+				indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 				PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
 			}
 		}
@@ -1422,7 +1422,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res);
-			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 			PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
@@ -1432,7 +1432,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res);
-				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+				indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 				PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
 			}
 		}
@@ -1674,12 +1674,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			for (int i = 0; i < asi_id_count; i++) {
 				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct)
 					continue;
-				indigo_set_timer(NULL, 0.5, process_plug_event);
+				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
 			break;
 		}
 	}

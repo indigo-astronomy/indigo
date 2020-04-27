@@ -1287,7 +1287,7 @@ bool ptp_canon_initialise(indigo_device *device) {
 	ptp_transaction_1_0(device, ptp_operation_canon_RequestDevicePropValue, ptp_property_canon_Copyright);
 	ptp_transaction_1_0(device, ptp_operation_canon_RequestDevicePropValue, ptp_property_canon_SerialNumber);
 	ptp_canon_get_event(device);
-	PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_canon_check_event);
+	indigo_set_timer(device, 0.5, ptp_canon_check_event, &PRIVATE_DATA->event_checker);
 	ptp_canon_lock(device);
 	return true;
 }

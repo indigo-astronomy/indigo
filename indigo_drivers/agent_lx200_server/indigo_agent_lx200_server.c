@@ -509,7 +509,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(LX200_SERVER_PROPERTY, property, false);
 		if (LX200_SERVER_STARTED_ITEM->sw.value && DEVICE_PRIVATE_DATA->server_socket == 0) {
 			LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_set_timer(device, 3, start_server_callback);
+			indigo_set_timer(device, 3, start_server_callback, NULL);
 		} else if (LX200_SERVER_STOPPED_ITEM->sw.value && DEVICE_PRIVATE_DATA->server_socket != 0) {
 			LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
 			shutdown_server(device);

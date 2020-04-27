@@ -54,7 +54,7 @@ void indigo_ccd_suspend_countdown(indigo_device *device) {
 
 void indigo_ccd_resume_countdown(indigo_device *device) {
 	CCD_CONTEXT->countdown_enabled = true;
-	CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, countdown_timer_callback);
+	indigo_set_timer(device, 1.0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 }
 
 void indigo_use_shortest_exposure_if_bias(indigo_device *device) {
@@ -429,7 +429,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
-				CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, countdown_timer_callback);
+				 indigo_set_timer(device, 1.0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 			}
 		}
 		return INDIGO_OK;

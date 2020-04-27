@@ -204,7 +204,7 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 		indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 		//  Start position timer
-		PRIVATE_DATA->position_timer = indigo_set_timer(device, 1, position_timer_callback);
+		indigo_set_timer(device, 1, position_timer_callback, &PRIVATE_DATA->position_timer);
 	} else {
 		synscan_close(device);
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -242,9 +242,9 @@ indigo_result synscan_mount_connect(indigo_device* device) {
 	//  Handle connect/disconnect commands
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//  CONNECT to the mount
-		indigo_set_timer(device, 0, &synscan_connect_timer_callback);
+		indigo_set_timer(device, 0, &synscan_connect_timer_callback, NULL);
 	} else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
-		indigo_set_timer(device, 0, &synscan_disconnect_timer_callback);
+		indigo_set_timer(device, 0, &synscan_disconnect_timer_callback, NULL);
 	}
 	return INDIGO_OK;
 }
@@ -528,7 +528,7 @@ void mount_handle_coordinates(indigo_device *device) {
 
 		//  Start slew timer thread
 		PRIVATE_DATA->globalMode = kGlobalModeSlewing;
-		indigo_set_timer(device, 0, mount_slew_timer_callback);
+		indigo_set_timer(device, 0, mount_slew_timer_callback, NULL);
 	}
 }
 
@@ -539,7 +539,7 @@ void mount_handle_aa_coordinates(indigo_device *device) {
 //
 //		//  Start slew timer thread
 //		PRIVATE_DATA->globalMode = kGlobalModeSlewing;
-//		indigo_set_timer(device, 0, mount_slew_aa_timer_callback);
+//		indigo_set_timer(device, 0, mount_slew_aa_timer_callback, NULL);
 //	}
 }
 
@@ -570,7 +570,7 @@ void mount_handle_tracking_rate(indigo_device* device) {
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, mount_update_tracking_rate_timer_callback);
+		indigo_set_timer(device, 0, mount_update_tracking_rate_timer_callback, NULL);
 	}
 	else {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -600,7 +600,7 @@ static void mount_tracking_timer_callback(indigo_device* device) {
 void mount_handle_tracking(indigo_device *device) {
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-	indigo_set_timer(device, 0, mount_tracking_timer_callback);
+	indigo_set_timer(device, 0, mount_tracking_timer_callback, NULL);
 }
 
 static void manual_slew_west_timer_callback(indigo_device* device) {
@@ -670,13 +670,13 @@ void mount_handle_motion_ra(indigo_device *device) {
 	if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-		indigo_set_timer(device, 0, manual_slew_west_timer_callback);
+		indigo_set_timer(device, 0, manual_slew_west_timer_callback, NULL);
 	} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-		indigo_set_timer(device, 0, manual_slew_east_timer_callback);
+		indigo_set_timer(device, 0, manual_slew_east_timer_callback, NULL);
 	} else {
-		indigo_set_timer(device, 0, manual_slew_ra_stop_timer_callback);
+		indigo_set_timer(device, 0, manual_slew_ra_stop_timer_callback, NULL);
 	}
 }
 
@@ -684,13 +684,13 @@ void mount_handle_motion_dec(indigo_device *device) {
 	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-		indigo_set_timer(device, 0, manual_slew_north_timer_callback);
+		indigo_set_timer(device, 0, manual_slew_north_timer_callback, NULL);
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-		indigo_set_timer(device, 0, manual_slew_south_timer_callback);
+		indigo_set_timer(device, 0, manual_slew_south_timer_callback, NULL);
 	} else {
-		indigo_set_timer(device, 0, manual_slew_dec_stop_timer_callback);
+		indigo_set_timer(device, 0, manual_slew_dec_stop_timer_callback, NULL);
 	}
 }
 
@@ -764,7 +764,7 @@ void mount_handle_park(indigo_device* device) {
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
 
 			PRIVATE_DATA->globalMode = kGlobalModeParking;
-			indigo_set_timer(device, 0, mount_park_timer_callback);
+			indigo_set_timer(device, 0, mount_park_timer_callback, NULL);
 		} else {
 			//  Can't park while mount is doing something else
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -784,7 +784,7 @@ void mount_handle_home(indigo_device* device) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home...");
 			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
-			indigo_set_timer(device, 0, mount_park_timer_callback);
+			indigo_set_timer(device, 0, mount_park_timer_callback, NULL);
 		} else {
 			//  Can't go home while mount is doing something else
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -915,7 +915,7 @@ static void mount_train_ppec_callback(indigo_device* device) {
 		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Failed to read PPEC training state");
 	} else if ((PRIVATE_DATA->raFeatures & kInPPECTraining) || (PRIVATE_DATA->decFeatures & kInPPECTraining)) {
-		indigo_set_timer(device, 1, mount_train_ppec_callback);
+		indigo_set_timer(device, 1, mount_train_ppec_callback, NULL);
 	} else {
 		indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
 		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Cleared PPEC training state");
@@ -931,7 +931,7 @@ void mount_handle_train_ppec(indigo_device *device) {
 		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Updated PPEC training state");
 	}
 	if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value || MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value)
-		indigo_set_timer(device, 1, mount_train_ppec_callback);
+		indigo_set_timer(device, 1, mount_train_ppec_callback, NULL);
 }
 
 // Code based on: https://stargazerslounge.com/topic/238364-eq8-tools-autohome-without-handset/
@@ -1172,7 +1172,7 @@ void mount_handle_autohome(indigo_device *device) {
 			MOUNT_AUTOHOME_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Starting auto home procedure...");
 			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
-			indigo_set_timer(device, 0, mount_autohome_timer_callback);
+			indigo_set_timer(device, 0, mount_autohome_timer_callback, NULL);
 		} else {
 			MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Auto home not started - mount is busy.");

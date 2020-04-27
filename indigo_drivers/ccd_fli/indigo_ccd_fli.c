@@ -426,7 +426,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (!device->is_connected) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
+		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	} else {
 		PRIVATE_DATA->exposure_timer = NULL;
 	}
@@ -460,10 +460,10 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 			{
 				if(PRIVATE_DATA->abort_flag) return;
 				if (CCD_EXPOSURE_ITEM->number.target > 4) {
-					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+					indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
 				} else {
 					PRIVATE_DATA->can_check_temperature = false;
-					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+					indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 				}
 			} else {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -616,14 +616,14 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 			indigo_ccd_suspend_countdown(device);
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Flushing CCD to remove RBI, this takes some time...");
 			PRIVATE_DATA->can_check_temperature = false;
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_RBI_FLUSH_EXPOSURE_ITEM->number.value, rbi_exposure_timer_callback);
+			indigo_set_timer(device, CCD_RBI_FLUSH_EXPOSURE_ITEM->number.value, rbi_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			if (CCD_EXPOSURE_ITEM->number.target > 4) {
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
 			} else {
 				PRIVATE_DATA->can_check_temperature = false;
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			}
 		}
 	} else {
@@ -752,7 +752,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+				indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -784,7 +784,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, ccd_connect_callback);
+		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -1075,11 +1075,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != FLI_VENDOR_ID)
 				break;
-			indigo_set_timer(NULL, 0.5, process_plug_event);
+			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
 			break;
 		}
 	}

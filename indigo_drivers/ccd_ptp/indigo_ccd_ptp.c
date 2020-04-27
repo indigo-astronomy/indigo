@@ -320,7 +320,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, handle_connection);
+		indigo_set_timer(device, 0, handle_connection, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE_PROPERTY
@@ -337,32 +337,32 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
 		indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
-		indigo_set_timer(device, 0, handle_zoom);
+		indigo_set_timer(device, 0, handle_zoom, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DSLR_LOCK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_LOCK
 		indigo_property_copy_values(DSLR_LOCK_PROPERTY, property, false);
-		indigo_set_timer(device, 0, handle_lock);
+		indigo_set_timer(device, 0, handle_lock, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DSLR_AF_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_AF
 		indigo_property_copy_values(DSLR_AF_PROPERTY, property, false);
-		indigo_set_timer(device, 0, handle_af);
+		indigo_set_timer(device, 0, handle_af, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DSLR_SET_HOST_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_AF
 		indigo_property_copy_values(DSLR_SET_HOST_TIME_PROPERTY, property, false);
-		indigo_set_timer(device, 0, handle_set_host_time);
+		indigo_set_timer(device, 0, handle_set_host_time, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		indigo_set_timer(device, 0, handle_exposure);
+		indigo_set_timer(device, 0, handle_exposure, NULL);
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		PRIVATE_DATA->abort_capture = false;
-		indigo_set_timer(device, 0, handle_streaming);
+		indigo_set_timer(device, 0, handle_streaming, NULL);
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
@@ -398,7 +398,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_property *definition = PRIVATE_DATA->properties[i].property;
 				indigo_property_copy_values(definition, property, false);
 				PRIVATE_DATA->message_property_index = i;
-				indigo_set_timer(device, 0, handle_set_property);
+				indigo_set_timer(device, 0, handle_set_property, NULL);
 				break;
 			}
 		}
@@ -466,7 +466,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		indigo_set_timer(device, 0, handle_focus);
+		indigo_set_timer(device, 0, handle_focus, NULL);
 	}
 	return indigo_focuser_change_property(device, client, property);
 }

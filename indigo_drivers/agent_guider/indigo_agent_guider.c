@@ -652,7 +652,7 @@ static void calibrate_process(indigo_device *device) {
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		indigo_set_timer(device, 0, guide_process);
+		indigo_set_timer(device, 0, guide_process, NULL);
 	}
 }
 
@@ -928,13 +928,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				if (AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0, preview_process);
+					indigo_set_timer(device, 0, preview_process, NULL);
 				} else if (AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0, calibrate_process);
+					indigo_set_timer(device, 0, calibrate_process, NULL);
 				} else if (AGENT_GUIDER_START_GUIDING_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0, guide_process);
+					indigo_set_timer(device, 0, guide_process, NULL);
 				} else {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}

@@ -376,7 +376,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_set_timer(device, 0.5, wheel_timer_callback);
+		indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
@@ -385,7 +385,7 @@ static void wheel_timer_callback(indigo_device *device) {
 When the filter change request is sent, the timer can be scheduled to fire after 0.5 seconds by calling *indigo_set_timer()* and start polling:
 
 ```C
-indigo_set_timer(device, 0.5, wheel_timer_callback);
+indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 ```
 
 However there is a better way to use timers that gives more flexibility (like rescheduling and canceling the timer). Preserving the timer object gives this flexibility:
@@ -393,7 +393,7 @@ However there is a better way to use timers that gives more flexibility (like re
 ```C
 indigo_timer *wheel_timer;
 ...
-wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+	indigo_set_timer(device, 0.5, wheel_timer_callback, &wheel_timer);
 ```
 
 Using the timer object the above callback can be rewritten by using *indigo_reschedule_timer()*:
@@ -625,7 +625,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_set_timer(device, 0.5, wheel_timer_callback);
+		indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
@@ -697,7 +697,7 @@ static indigo_result wheel_change_property(indigo_device *device,
 				PRIVATE_DATA->handle,
 				(int)WHEEL_SLOT_ITEM->number.value
 			);
-			indigo_set_timer(device, 0.5, wheel_timer_callback);
+			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;

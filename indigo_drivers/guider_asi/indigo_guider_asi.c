@@ -199,7 +199,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, guider_connect_callback);
+		indigo_set_timer(device, 0, guider_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
@@ -212,7 +212,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB2ST4PulseGuide(%d, USB2ST4_NORTH) = %d", id, res);
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 			PRIVATE_DATA->guide_relays[USB2ST4_NORTH] = true;
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
@@ -222,7 +222,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB2ST4PulseGuide(%d, USB2ST4_SOUTH) = %d", id, res);
-				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+				indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 				PRIVATE_DATA->guide_relays[USB2ST4_SOUTH] = true;
 			}
 		}
@@ -245,7 +245,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB2ST4PulseGuide(%d, USB2ST4_EAST) = %d", id, res);
-			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 			PRIVATE_DATA->guide_relays[USB2ST4_EAST] = true;
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
@@ -255,7 +255,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB2ST4PulseGuide(%d, USB2ST4_WEST) = %d", id, res);
-				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+				indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 				PRIVATE_DATA->guide_relays[USB2ST4_WEST] = true;
 			}
 		}
@@ -448,12 +448,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			for (int i = 0; i < asi_id_count; i++) {
 				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct)
 					continue;
-				indigo_set_timer(NULL, 0.5, process_plug_event);
+				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
 			break;
 		}
 	}

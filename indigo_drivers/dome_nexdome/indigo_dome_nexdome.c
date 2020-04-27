@@ -833,7 +833,7 @@ static void dome_connect_callback(indigo_device *device) {
 				device->is_connected = true;
 
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
-				PRIVATE_DATA->dome_timer = indigo_set_timer(device, 0.5, dome_timer_callback);
+				indigo_set_timer(device, 0.5, dome_timer_callback, &PRIVATE_DATA->dome_timer);
 			}
 		}
 	} else {
@@ -870,7 +870,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, dome_connect_callback);
+		indigo_set_timer(device, 0, dome_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS

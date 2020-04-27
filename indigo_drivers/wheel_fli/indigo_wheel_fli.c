@@ -180,7 +180,7 @@ static void wheel_connect_callback(indigo_device *device) {
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 						device->is_connected = true;
 
-						indigo_set_timer(device, 0, wheel_timer_callback);
+						indigo_set_timer(device, 0, wheel_timer_callback, NULL);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -219,7 +219,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, wheel_connect_callback);
+		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
@@ -232,7 +232,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0, wheel_timer_callback);
+			indigo_set_timer(device, 0, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -440,11 +440,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != FLI_VENDOR_ID)
 				break;
-			indigo_set_timer(NULL, 0.5, process_plug_event);
+			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
 			break;
 		}
 	}

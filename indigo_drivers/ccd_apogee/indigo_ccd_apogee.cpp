@@ -626,7 +626,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
+		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	} else {
 		PRIVATE_DATA->exposure_timer = NULL;
 	}
@@ -699,7 +699,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (apogee_open(device)) {
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+				indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 
 				ApogeeCam *camera = PRIVATE_DATA->camera;
 				Apg::AdcSpeed current_adc_speed = Apg::AdcSpeed_Unknown;
@@ -817,7 +817,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, APG_OFFSET_PROPERTY, NULL);
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+				indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -857,7 +857,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, ccd_connect_callback);
+		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -883,10 +883,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		if (CCD_EXPOSURE_ITEM->number.target > 4)
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
 		else {
 			PRIVATE_DATA->can_check_temperature = false;
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -906,7 +906,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 			PRIVATE_DATA->abort_in_progress = true;
 			/* As Abort needs some time on camera like ASPEN we do it in another thread */
-			indigo_set_timer(device, 0, abort_exposure_callback);
+			indigo_set_timer(device, 0, abort_exposure_callback, NULL);
 			return INDIGO_OK;
 		}
 	// -------------------------------------------------------------------------------- CCD_COOLER
@@ -1131,7 +1131,7 @@ static void ethernet_connect_callback(indigo_device *device) {
 			device->is_connected = true;
 			message[0] = '\0';
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
-			ethernet_lookup_timer = indigo_set_timer(device, 0, ethernet_lookup_callback);
+			indigo_set_timer(device, 0, ethernet_lookup_callback, &ethernet_lookup_timer);
 		}
 	} else { /* disconnect */
 		if (device->is_connected) {
@@ -1154,7 +1154,7 @@ static indigo_result ethernet_change_property(indigo_device *device, indigo_clie
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, ethernet_connect_callback);
+		indigo_set_timer(device, 0, ethernet_connect_callback, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_device_change_property(device, client, property);
@@ -1469,11 +1469,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != UsbFrmwr::APOGEE_VID)
 				break;
-			indigo_set_timer(NULL, 0.5, process_plug_event);
+			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
 			break;
 		}
 	}

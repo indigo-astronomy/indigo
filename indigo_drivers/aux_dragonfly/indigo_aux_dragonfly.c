@@ -334,7 +334,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 					success = false;
 				} else {
 					DEVICE_DATA.relay_active[i] = true;
-					DEVICE_DATA.relay_timers[i] = indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i]);
+					indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i], &DEVICE_DATA.relay_timers[i]);
 				}
 			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !DEVICE_DATA.relay_active[i])) {
 				if (!lunatico_set_relay(device, i, (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
@@ -430,7 +430,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 						lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
-						DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
+						indigo_set_timer(device, 0, sensors_timer_callback, &DEVICE_DATA.sensors_timer);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;

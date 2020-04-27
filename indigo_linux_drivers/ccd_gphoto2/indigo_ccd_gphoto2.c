@@ -2716,8 +2716,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 		shutterspeed_closest(device);
 		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
 
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0,
-								streaming_timer_callback);
+		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 	}
 	/*--------------------------------- CONFIG ---------------------------*/

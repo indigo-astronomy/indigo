@@ -609,9 +609,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_LX200_SERVER_PROPERTY, property, false);
 		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
 		if (AGENT_LX200_SERVER_STARTED_ITEM->sw.value) {
-			indigo_set_timer(device, 0, start_lx200_server);
+			indigo_set_timer(device, 0, start_lx200_server, NULL);
 		} else {
-			indigo_set_timer(device, 0, stop_lx200_server);
+			indigo_set_timer(device, 0, stop_lx200_server, NULL);
 		}
 		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		return INDIGO_OK;

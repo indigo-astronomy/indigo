@@ -850,7 +850,7 @@ static void dome_connect_callback(indigo_device *device) {
 				device->is_connected = true;
 
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
-				PRIVATE_DATA->dome_event = indigo_set_timer(device, 0, dome_event_handler);
+				indigo_set_timer(device, 0, dome_event_handler, &PRIVATE_DATA->dome_event);
 
 				/* Request Rotator and Shutter report to set the current values */
 				nexdome_command(device, "SRR");
@@ -903,7 +903,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, dome_connect_callback);
+		indigo_set_timer(device, 0, dome_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS

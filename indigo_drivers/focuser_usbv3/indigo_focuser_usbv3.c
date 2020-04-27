@@ -248,7 +248,7 @@ static void focuser_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (usbv3_open(device)) {
 			indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
-			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, focuser_temperature_callback);
+			indigo_set_timer(device, 0, focuser_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
 			usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
 			usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
@@ -281,7 +281,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_connect_callback);
+		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
@@ -316,7 +316,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				else
 					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
 			}
-			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0.2, focuser_position_callback);
+			indigo_set_timer(device, 0.2, focuser_position_callback, &PRIVATE_DATA->position_timer);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
@@ -357,7 +357,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			usbv3_command(device, "FAUTOM");
 		} else {
 			usbv3_command(device, "FMANUA");
-			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, focuser_temperature_callback);
+			indigo_set_timer(device, 0, focuser_temperature_callback, &PRIVATE_DATA->temperature_timer);
 		}
 		// -------------------------------------------------------------------------------- X_FOCUSER_STEP_SIZE
 	} else if (indigo_property_match(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {

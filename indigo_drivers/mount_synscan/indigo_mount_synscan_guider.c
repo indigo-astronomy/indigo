@@ -177,8 +177,8 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 		//  Start RA/DEC timer threads
-		PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, 0, &guider_timer_callback_ra);
-		PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, &guider_timer_callback_dec);
+		indigo_set_timer(device, 0, &guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
+		indigo_set_timer(device, 0, &guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 	} else {
 		synscan_close(device->master_device);
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -197,7 +197,7 @@ indigo_result synscan_guider_connect(indigo_device* device) {
 	//  Handle connect/disconnect commands
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//  CONNECT to the mount
-		indigo_set_timer(device, 0, &synscan_connect_timer_callback);
+		indigo_set_timer(device, 0, &synscan_connect_timer_callback, NULL);
 		return INDIGO_OK;
 	} else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
 		//  DISCONNECT from mount

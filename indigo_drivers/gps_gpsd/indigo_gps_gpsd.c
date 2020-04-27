@@ -224,7 +224,7 @@ static void gps_connect_callback(indigo_device *device) {
 			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 			GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
-			indigo_set_timer(device, 0, gps_refresh_callback);
+			indigo_set_timer(device, 0, gps_refresh_callback, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			indigo_set_switch(CONNECTION_PROPERTY,
@@ -250,7 +250,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, gps_connect_callback);
+		indigo_set_timer(device, 0, gps_connect_callback, NULL);
 		return INDIGO_OK;
 	}
 

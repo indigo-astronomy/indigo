@@ -158,7 +158,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			PRIVATE_DATA->timer_callback = indigo_set_timer(device, 0, aux_timer_callback);
+			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->timer_callback);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -184,7 +184,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_connection_handler);
+		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}

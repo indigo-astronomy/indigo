@@ -1233,7 +1233,7 @@ bool ptp_initialise(indigo_device *device) {
 			buffer = NULL;
 		}
 		if (PRIVATE_DATA->initialise == ptp_initialise) {
-			PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_check_event);
+			indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
 		}
 		return true;
 	}

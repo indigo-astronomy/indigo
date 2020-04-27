@@ -1245,7 +1245,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 					set_power_outlets(device);
-					PORT_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
+					indigo_set_timer(device, 0, sensors_timer_callback, &PORT_DATA.sensors_timer);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
@@ -1504,7 +1504,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
-					PORT_DATA.rotator_timer = indigo_set_timer(device, 0.1, rotator_timer_callback);
+					indigo_set_timer(device, 0.1, rotator_timer_callback, &PORT_DATA.rotator_timer);
 				}
 			}
 		} else {
@@ -1556,7 +1556,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.r_target_position, (uint32_t)ROTATOR_BACKLASH_ITEM->number.value);
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				PORT_DATA.focuser_timer = indigo_set_timer(device, 0.5, rotator_timer_callback);
+				indigo_set_timer(device, 0.5, rotator_timer_callback, &PORT_DATA.focuser_timer);
 			} else { /* RESET CURRENT POSITION */
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				if(!lunatico_sync_position(device, steps_position)) {
@@ -1843,7 +1843,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	PORT_DATA.focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+	indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
 }
 
 
@@ -1970,10 +1970,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 					lunatico_get_temperature(device, 0, &FOCUSER_TEMPERATURE_ITEM->number.value);
 					PORT_DATA.prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-					PORT_DATA.temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
+					indigo_set_timer(device, 1, temperature_timer_callback, &PORT_DATA.temperature_timer);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					PORT_DATA.focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+					indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
 				}
 			}
 		} else {
@@ -2027,7 +2027,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				PORT_DATA.focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+				indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				if(!lunatico_sync_position(device, PORT_DATA.f_target_position)) {
@@ -2116,7 +2116,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, 0) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			PORT_DATA.focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+			indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;

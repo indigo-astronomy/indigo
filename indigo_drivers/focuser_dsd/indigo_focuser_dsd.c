@@ -574,7 +574,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+	indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 }
 
 
@@ -900,7 +900,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 
-					PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+					indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 
 					if (PRIVATE_DATA->focuser_version > 1) {
 						FOCUSER_MODE_PROPERTY->hidden = false;
@@ -910,7 +910,7 @@ static void focuser_connect_callback(indigo_device *device) {
 						FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 						FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 						FOCUSER_COMPENSATION_ITEM->number.max = 10000;
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 1, temperature_timer_callback);
+						indigo_set_timer(device, 1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 					} else {
 						FOCUSER_MODE_PROPERTY->hidden = true;
 					}
@@ -997,7 +997,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				if(!dsd_sync_position(device, PRIVATE_DATA->target_position)) {
@@ -1079,7 +1079,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0.5, focuser_timer_callback);
+			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
