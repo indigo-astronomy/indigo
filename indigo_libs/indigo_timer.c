@@ -86,6 +86,8 @@ static void *timer_func(indigo_timer *timer) {
 				INDIGO_TRACE(indigo_trace("timer callback: %p started", timer->callback));
 				timer->callback(timer->device);
 				timer->callback_running = false;
+				if (!timer->scheduled && timer->reference)
+					*timer->reference = NULL;
 				INDIGO_TRACE(indigo_trace("timer callback: %p finished", timer->callback));
 				pthread_mutex_unlock(&timer->callback_mutex);
 			}
@@ -119,54 +121,60 @@ static void *timer_func(indigo_timer *timer) {
 
 		pthread_mutex_lock(&timer->mutex);
 		while (!timer->wake)
-			 pthread_cond_wait(&timer->cond, &timer->mutex);
+			pthread_cond_wait(&timer->cond, &timer->mutex);
 		pthread_mutex_unlock(&timer->mutex);
 	}
 	return NULL;
 }
 
-indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback) {
-	indigo_timer *timer = NULL;
+bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
+	indigo_timer *t = NULL;
 	pthread_mutex_lock(&free_timer_mutex);
 	if (free_timer != NULL) {
-		timer = free_timer;
+		t = free_timer;
 		free_timer = free_timer->next;
-		timer->wake = true;
-		timer->callback_running = false;
-		timer->canceled = false;
-		timer->scheduled = true;
-		timer->delay = delay;
-		if ((timer->device = device) != NULL) {
-			timer->next = DEVICE_CONTEXT->timers;
-			DEVICE_CONTEXT->timers = timer;
+		t->wake = true;
+		t->callback_running = false;
+		t->canceled = false;
+		t->scheduled = true;
+		t->delay = delay;
+		if ((t->device = device) != NULL) {
+			t->next = DEVICE_CONTEXT->timers;
+			DEVICE_CONTEXT->timers = t;
 		} else {
-			timer->next = NULL;
+			t->next = NULL;
 		}
-		timer->callback = callback;
-		pthread_mutex_lock(&timer->mutex);
-		pthread_cond_signal(&timer->cond);
-		pthread_mutex_unlock(&timer->mutex);
+		t->callback = callback;
+		pthread_mutex_lock(&t->mutex);
+		pthread_cond_signal(&t->cond);
+		pthread_mutex_unlock(&t->mutex);
 	} else {
-		timer = malloc(sizeof(indigo_timer));
-		timer->timer_id = timer_count++;
-		pthread_mutex_init(&timer->mutex, NULL);
-		pthread_mutex_init(&timer->callback_mutex, NULL);
-		pthread_cond_init(&timer->cond, NULL);
-		timer->canceled = false;
-		timer->callback_running = false;
-		timer->scheduled = true;
-		if ((timer->device = device) != NULL) {
-			timer->next = DEVICE_CONTEXT->timers;
-			DEVICE_CONTEXT->timers = timer;
+		t = malloc(sizeof(indigo_timer));
+		if (t == NULL)
+			return false;
+		t->timer_id = timer_count++;
+		pthread_mutex_init(&t->mutex, NULL);
+		pthread_mutex_init(&t->callback_mutex, NULL);
+		pthread_cond_init(&t->cond, NULL);
+		t->canceled = false;
+		t->callback_running = false;
+		t->scheduled = true;
+		if ((t->device = device) != NULL) {
+			t->next = DEVICE_CONTEXT->timers;
+			DEVICE_CONTEXT->timers = t;
 		} else {
-			timer->next = NULL;
+			t->next = NULL;
 		}
-		timer->delay = delay;
-		timer->callback = callback;
-		pthread_create(&timer->thread, NULL, (void * (*)(void*))timer_func, timer);
+		t->delay = delay;
+		t->callback = callback;
+		pthread_create(&t->thread, NULL, (void * (*)(void*))timer_func, t);
 	}
 	pthread_mutex_unlock(&free_timer_mutex);
-	return timer;
+	if (timer) {
+		t->reference = timer;
+		*timer = t;
+	}
+	return true;
 }
 
 // TODO: do we need device?

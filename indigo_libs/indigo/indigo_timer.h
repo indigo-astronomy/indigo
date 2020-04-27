@@ -54,6 +54,7 @@ typedef struct indigo_timer {
 	pthread_mutex_t mutex;
 	pthread_mutex_t callback_mutex;
 	pthread_t thread;
+	struct indigo_timer **reference;
 	struct indigo_timer *next;
 } indigo_timer;
 
@@ -83,7 +84,7 @@ static inline void normalize_timespec(struct timespec *ts) {
 
 /** Set timer.
  */
-extern indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback);
+extern bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
 
 /** Rescheduled timer (if not null).
  */
