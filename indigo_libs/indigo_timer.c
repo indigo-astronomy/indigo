@@ -213,6 +213,7 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 
 bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 	bool result = false;
+	indigo_timer *timer_buffer;
 	pthread_mutex_lock(&cancel_timer_mutex);
 	if (*timer != NULL) {
 		(*timer)->canceled = true;
@@ -220,13 +221,14 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 		pthread_mutex_lock(&(*timer)->mutex);
 		pthread_cond_signal(&(*timer)->cond);
 		pthread_mutex_unlock(&(*timer)->mutex);
+		timer_buffer = *timer;
 		result = true;
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
 	if (result) {
 		// just wait for the callback to finish
-		pthread_mutex_lock(&(*timer)->callback_mutex);
-		pthread_mutex_unlock(&(*timer)->callback_mutex);
+		pthread_mutex_lock(&(timer_buffer)->callback_mutex);
+		pthread_mutex_unlock(&(timer_buffer)->callback_mutex);
 		*timer = NULL;
 	}
 	return result;
