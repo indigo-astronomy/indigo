@@ -945,7 +945,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
-			PRIVATE_DATA->aux_timer = indigo_set_timer(device, 0, aux_timer_callback);
+			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
@@ -1197,47 +1197,47 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_connection_handler);
+		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_outlet_names_handler);
+		indigo_set_timer(device, 0, aux_outlet_names_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
 		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_power_outlet_handler);
+		indigo_set_timer(device, 0, aux_power_outlet_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_HEATER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
 		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_heater_outlet_handler);
+		indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
 		indigo_property_copy_values(AUX_DEW_CONTROL_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_dew_control_handler);
+		indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_USB_PORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_USB_PORT
 		indigo_property_copy_values(AUX_USB_PORT_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_usb_port_handler);
+		indigo_set_timer(device, 0, aux_usb_port_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_AUX_HUB_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_HUB
 		indigo_property_copy_values(X_AUX_HUB_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_hub_handler);
+		indigo_set_timer(device, 0, aux_hub_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_REBOOT
 		indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_reboot_handler);
+		indigo_set_timer(device, 0, aux_reboot_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_VARIABLE_POWER_OUTLET
 		indigo_property_copy_values(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_variable_power_outlet_handler);
+		indigo_set_timer(device, 0, aux_variable_power_outlet_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
@@ -1436,7 +1436,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atol(response);
 			}
 			upb_command(device, "PL:1", response, sizeof(response));
-			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, 0, focuser_timer_callback);
+			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
@@ -1589,37 +1589,37 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_connection_handler);
+		indigo_set_timer(device, 0, focuser_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_speed_handler);
+		indigo_set_timer(device, 0, focuser_speed_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_steps_handler);
+		indigo_set_timer(device, 0, focuser_steps_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_position_handler);
+		indigo_set_timer(device, 0, focuser_position_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_abort_handler);
+		indigo_set_timer(device, 0, focuser_abort_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_reverse_motion_handler);
+		indigo_set_timer(device, 0, focuser_reverse_motion_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_backlash_handler);
+		indigo_set_timer(device, 0, focuser_backlash_handler, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);

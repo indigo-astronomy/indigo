@@ -258,7 +258,7 @@ static void mount_connect_callback(indigo_device *device) {
 			rainbow_get_observatory(device);
 			rainbow_get_coords(device);
 			rainbow_get_utc(device);
-			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+			indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -284,7 +284,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, mount_connect_callback);
+		indigo_set_timer(device, 0, mount_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK

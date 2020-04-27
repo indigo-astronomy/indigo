@@ -903,7 +903,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->imager_no_check_temperature = true;
-		PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback);
+		indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
 	} else {
 		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	}
@@ -1016,10 +1016,10 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
-			PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
 		} else {
 			PRIVATE_DATA->imager_no_check_temperature = true;
-			PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
 		}
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1156,7 +1156,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					PRIVATE_DATA->imager_buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 					assert(PRIVATE_DATA->imager_buffer != NULL);
 
-					PRIVATE_DATA->imager_ccd_temperature_timer = indigo_set_timer(device, 0, imager_ccd_temperature_callback);
+					indigo_set_timer(device, 0, imager_ccd_temperature_callback, &PRIVATE_DATA->imager_ccd_temperature_timer);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&driver_mutex);
 				} else { /* Secondary CCD */
@@ -1255,7 +1255,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					PRIVATE_DATA->guider_buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 					assert(PRIVATE_DATA->guider_buffer != NULL);
 
-					PRIVATE_DATA->guider_ccd_temperature_timer = indigo_set_timer(device, 0, guider_ccd_temperature_callback);
+					indigo_set_timer(device, 0, guider_ccd_temperature_callback, &PRIVATE_DATA->guider_ccd_temperature_timer);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&driver_mutex);
 				}
@@ -1302,7 +1302,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, ccd_connect_callback);
+		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -1566,7 +1566,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, guider_connect_callback);
+		indigo_set_timer(device, 0, guider_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
@@ -1577,7 +1577,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_lock(&driver_mutex);
 			res = sbig_set_relays(driver_handle, RELAY_NORTH);
 			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_NORTH) = %d (%s)", driver_handle, res, sbig_error_string(res));
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 			PRIVATE_DATA->relay_map |= RELAY_NORTH;
 			pthread_mutex_unlock(&driver_mutex);
 		} else {
@@ -1586,7 +1586,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_lock(&driver_mutex);
 				res = sbig_set_relays(driver_handle, RELAY_SOUTH);
 				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_SOUTH) = %d (%s)", driver_handle, res, sbig_error_string(res));
-				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+				indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 				PRIVATE_DATA->relay_map |= RELAY_SOUTH;
 				pthread_mutex_unlock(&driver_mutex);
 			}
@@ -1608,7 +1608,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_lock(&driver_mutex);
 			res = sbig_set_relays(driver_handle, RELAY_EAST);
 			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_EAST) = %d (%s)", driver_handle, res, sbig_error_string(res));
-			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 			PRIVATE_DATA->relay_map |= RELAY_EAST;
 			pthread_mutex_unlock(&driver_mutex);
 		} else {
@@ -1617,7 +1617,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_lock(&driver_mutex);
 				res = sbig_set_relays(driver_handle, RELAY_WEST);
 				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_WEST) = %d (%s)", driver_handle, res, sbig_error_string(res));
-				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+				indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 				PRIVATE_DATA->relay_map |= RELAY_WEST;
 				pthread_mutex_unlock(&driver_mutex);
 			}
@@ -1886,7 +1886,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_QUERY at connect cfwr.cfwPosition = %d", cfwr.cfwPosition);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				pthread_mutex_unlock(&driver_mutex);
-				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+				indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 				set_connected_flag(device);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1929,7 +1929,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, wheel_connect_callback);
+		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
@@ -1970,7 +1970,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				return INDIGO_FAILED;
 			}
 			pthread_mutex_unlock(&driver_mutex);
-			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+			indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -2055,7 +2055,7 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, ao_connect_callback);
+		indigo_set_timer(device, 0, ao_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AO_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_DEC

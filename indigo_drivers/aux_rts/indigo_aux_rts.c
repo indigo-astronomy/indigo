@@ -172,7 +172,7 @@ static void aux_exposure_handler(indigo_device *device) {
 	if (X_CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
 		X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		rts_on(device);
-		PRIVATE_DATA->timer_callback = indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+		indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->timer_callback);
 	}
 	indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -199,17 +199,17 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_connection_handler);
+		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_CCD_EXPOSURE
 	} else if (indigo_property_match(X_CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_EXPOSURE_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_exposure_handler);
+		indigo_set_timer(device, 0, aux_exposure_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(X_CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_abort_handler);
+		indigo_set_timer(device, 0, aux_abort_handler, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}

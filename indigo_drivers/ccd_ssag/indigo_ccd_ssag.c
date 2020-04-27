@@ -312,9 +312,9 @@ static void exposure_timer_callback(indigo_device *device) {
 //			ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
 //			if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
 //				indigo_usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000);
-//				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
+//				indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 //			} else
-//				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);
+//				indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 //			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 //			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 //		}
@@ -384,7 +384,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, ccd_connect_callback);
+		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -397,9 +397,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		ssag_start_exposure(device, CCD_EXPOSURE_ITEM->number.target);
 		if (CCD_EXPOSURE_ITEM->number.target < 0.1) {
 			indigo_usleep(CCD_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, exposure_timer_callback);
+			indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 //	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 //		// -------------------------------------------------------------------------------- CCD_STREAMING
 //		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -418,9 +418,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 //		ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
 //		if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
 //			indigo_usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
-//			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
+//			indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 //		} else
-//			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback);
+//			indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 //		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -494,7 +494,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, guider_connect_callback);
+		indigo_set_timer(device, 0, guider_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC

@@ -191,7 +191,7 @@ static void gps_connect_callback(indigo_device *device) {
 				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 				device->is_connected = true;
 				/* start updates */
-				PRIVATE_DATA->gps_timer = indigo_set_timer(device, 0, gps_timer_callback);
+				indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -218,7 +218,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, gps_connect_callback);
+		indigo_set_timer(device, 0, gps_connect_callback, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);

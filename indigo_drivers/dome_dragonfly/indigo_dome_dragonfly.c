@@ -444,7 +444,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 					success = false;
 				} else {
 					DEVICE_DATA.relay_active[i] = true;
-					DEVICE_DATA.relay_timers[i] = indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i]);
+					indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i], &DEVICE_DATA.relay_timers[i]);
 				}
 			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !DEVICE_DATA.relay_active[i])) {
 				if (!lunatico_set_relay(device, i + 3, (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
@@ -525,7 +525,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 						lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
-						DEVICE_DATA.sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
+						indigo_set_timer(device, 0, sensors_timer_callback, &DEVICE_DATA.sensors_timer);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -835,7 +835,7 @@ static void dome_handle_shutter(indigo_device *device) {
 				DEVICE_DATA.roof_timer_hits = 0;
 				indigo_usleep((int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value * 1000000);
 				lunatico_set_relay(device, OPEN_CLOSE_RELAY, false);
-				DEVICE_DATA.roof_timer = indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback);
+				indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback, &DEVICE_DATA.roof_timer);
 			} else {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Can not close the roof, did you authorize?");
@@ -855,7 +855,7 @@ static void dome_handle_shutter(indigo_device *device) {
 				DEVICE_DATA.roof_timer_hits = 0;
 				indigo_usleep((int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value * 1000000);
 				lunatico_set_relay(device, OPEN_CLOSE_RELAY, false);
-				DEVICE_DATA.roof_timer = indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback);
+				indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback, &DEVICE_DATA.roof_timer);
 			} else {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Can not close the roof, did you authorize?");
@@ -874,7 +874,7 @@ static void dome_handle_shutter(indigo_device *device) {
 			DEVICE_DATA.roof_timer_hits = 0;
 			indigo_usleep((int)LA_DOME_SETTINGS_BUTTON_PULSE_ITEM->number.value * 1000000);
 			lunatico_set_relay(device, OPEN_CLOSE_RELAY, false);
-			DEVICE_DATA.roof_timer = indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback);
+			indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback, &DEVICE_DATA.roof_timer);
 		} else {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Can not move the roof, did you authorize?");
@@ -895,7 +895,7 @@ static void dome_handle_shutter(indigo_device *device) {
 				if (LA_DOME_FUNCTION_3_BUTTONS_ITEM->sw.value) {
 					lunatico_set_relay(device, CLOSE_RELAY, false);
 				}
-				DEVICE_DATA.roof_timer = indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback);
+				indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback, &DEVICE_DATA.roof_timer);
 			} else {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Can not close the roof, did you authorize?");
@@ -916,7 +916,7 @@ static void dome_handle_shutter(indigo_device *device) {
 				if (LA_DOME_FUNCTION_3_BUTTONS_ITEM->sw.value) {
 					lunatico_set_relay(device, OPEN_RELAY, false);
 				}
-				DEVICE_DATA.roof_timer = indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback);
+				indigo_set_timer(device, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM->number.value, dome_timer_callback, &DEVICE_DATA.roof_timer);
 			} else {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Can not open the roof, did you authorize?");
@@ -1014,7 +1014,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 								DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 							}
 						}
-						DEVICE_DATA.keep_alive_timer = indigo_set_timer(device, KEEP_ALIVE_INTERVAL, keep_alive_timer_callback);
+						indigo_set_timer(device, KEEP_ALIVE_INTERVAL, keep_alive_timer_callback, &DEVICE_DATA.keep_alive_timer);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1033,13 +1033,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_set_timer(device, 0, dome_handle_abort);
+		indigo_set_timer(device, 0, dome_handle_abort, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
-		indigo_set_timer(device, 0, dome_handle_shutter);
+		indigo_set_timer(device, 0, dome_handle_shutter, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_DOME_SETTINGS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_DOME_SETTINGS

@@ -80,7 +80,7 @@ static void wheel_timer_callback(indigo_device *device) {
 		WHEEL_SLOT_ITEM->number.value = slot + 1;
 		if (slot == -1) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_set_timer(device, 0.5, wheel_timer_callback);
+			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -144,7 +144,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				} else {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 					cam.put_Position(WHEEL_SLOT_ITEM->number.value - 1);
-					indigo_set_timer(device, 0.5, wheel_timer_callback);
+					indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 				}
 			}
 		} catch (std::runtime_error err) {
@@ -331,7 +331,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_COOLER_ON_ITEM->sw.value = false;
 				CCD_COOLER_OFF_ITEM->sw.value = true;
 			}
-			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
@@ -384,7 +384,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, ccd_connect_callback);
+		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -403,7 +403,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				cam.put_BinY(CCD_BIN_VERTICAL_ITEM->number.value);
 				cam.StartExposure(CCD_EXPOSURE_ITEM->number.value, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value));
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
 				std::string last("");
@@ -601,12 +601,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot-plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-			indigo_set_timer(NULL, 0.5, process_plug_event);
+			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot-unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
 			break;
 		}
 	}

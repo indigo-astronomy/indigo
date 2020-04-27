@@ -246,22 +246,22 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, ao_connection_handler);
+		indigo_set_timer(device, 0, ao_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AO_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_DEC
 		indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
-		indigo_set_timer(device, 0, ao_guide_dec_handler);
+		indigo_set_timer(device, 0, ao_guide_dec_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AO_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_RA
 		indigo_property_copy_values(AO_GUIDE_RA_PROPERTY, property, false);
-		indigo_set_timer(device, 0, ao_guide_ra_handler);
+		indigo_set_timer(device, 0, ao_guide_ra_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AO_RESET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_RESET
 		indigo_property_copy_values(AO_RESET_PROPERTY, property, false);
-		indigo_set_timer(device, 0, ao_reset_handler);
+		indigo_set_timer(device, 0, ao_reset_handler, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -352,17 +352,17 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, guider_connection_handler);
+		indigo_set_timer(device, 0, guider_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		indigo_set_timer(device, 0, guider_guide_dec_handler);
+		indigo_set_timer(device, 0, guider_guide_dec_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		indigo_set_timer(device, 0, guider_guide_ra_handler);
+		indigo_set_timer(device, 0, guider_guide_ra_handler, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}

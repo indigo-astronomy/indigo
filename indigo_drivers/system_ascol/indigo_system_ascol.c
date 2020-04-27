@@ -2151,7 +2151,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide r_ra = %.1f\", r_DEC = %.1f\", pulse = %.3f sec", ra_gv, new_dec_gv, duration);
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration, guider_timer_callback_dec);
+			indigo_set_timer(device, duration, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 		} else {
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		}
@@ -2188,7 +2188,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide r_RA = %.1f\", r_dec = %.1f\", pulse = %.3f sec", new_ra_gv, dec_gv, duration);
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration, guider_timer_callback_ra);
+			indigo_set_timer(device, duration, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_dec);
 		} else {
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		}
@@ -3209,7 +3209,7 @@ static indigo_result panel_change_property(indigo_device *device, indigo_client 
 					device->is_connected = true;
 					/* start updates */
 					panel_attach_devices(device);
-					PRIVATE_DATA->panel_timer = indigo_set_timer(device, 0, panel_timer_callback);
+					indigo_set_timer(device, 0, panel_timer_callback, &PRIVATE_DATA->panel_timer);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);

@@ -730,7 +730,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 		if (buffer)
 			free(buffer);
 	}
-	PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_check_event);
+	indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
 	return true;
 }
 

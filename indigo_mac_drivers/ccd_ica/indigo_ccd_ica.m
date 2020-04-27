@@ -319,7 +319,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
     }
     if (PRIVATE_DATA->bulb)
-      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
+      indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
     return indigo_ccd_change_property(device, client, property);
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
