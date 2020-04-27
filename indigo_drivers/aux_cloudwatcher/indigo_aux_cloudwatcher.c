@@ -1753,7 +1753,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
 						indigo_define_property(device, X_SKY_CONDITION_PROPERTY, NULL);
 						aag_populate_constants(device);
-						PRIVATE_DATA->sensors_timer = indigo_set_timer(device, 0, sensors_timer_callback);
+						indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
