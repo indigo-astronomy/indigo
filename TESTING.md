@@ -46,4 +46,9 @@ All testing with physical hardware or simulators is documented in this file
 | wheel_xagyl | arduino simulator | :white_check_mark: | just connect/disconnect |
 | ccd_ica | Canon 400D, Nikon D5600 | :x: | hot unplug fails |
 
+## April 27th 2020 (Linux)
+
+| driver | device | Result | Comments |
+| ----- | ----- | ----- | ----- |
+| focuser_dsd | DSD AF1 | :white_check_mark: | |
 
