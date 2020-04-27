@@ -129,6 +129,7 @@
 #include "rotator_lunatico/indigo_rotator_lunatico.h"
 #include "aux_dragonfly/indigo_aux_dragonfly.h"
 #include "dome_dragonfly/indigo_dome_dragonfly.h"
+#include "aux_cloudwatcher/indigo_aux_cloudwatcher.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -163,6 +164,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_snoop,
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
+	indigo_aux_cloudwatcher,
 	indigo_aux_dragonfly,
 	indigo_aux_dsusb,
 	indigo_aux_fbc,
