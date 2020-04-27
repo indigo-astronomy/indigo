@@ -1512,14 +1512,12 @@ static void *thread_capture(void *user_data)
 		sleep(PRIVATE_DATA->mirror_lockup_secs);
 	}
 
-	PRIVATE_DATA->counter_timer =
-		indigo_set_timer(device, TIMER_COUNTER_STEP_SEC,
-				 counter_timer_callback);
+	indigo_set_timer(device, TIMER_COUNTER_STEP_SEC,
+				 counter_timer_callback, &PRIVATE_DATA->counter_timer);
 
-	PRIVATE_DATA->exposure_timer =
-		indigo_set_timer(device,
+	indigo_set_timer(device,
 				 CCD_EXPOSURE_ITEM->number.target,
-				 exposure_timer_callback);
+				 exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 
 	if (PRIVATE_DATA->has_eos_remote_release) {
 		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE,
@@ -2063,9 +2061,8 @@ static indigo_result ccd_attach(indigo_device *device)
 		if (exists_widget_label(EOS_BATTERY_LEVEL, device) != GP_OK)
 			DSLR_BATTERY_LEVEL_PROPERTY->hidden = true;
 		else {
-			PRIVATE_DATA->battery_level_timer =
 				indigo_set_timer(device, TIMER_BATTERY_LEVEL_UPDATE_SEC,
-						 battery_level_timer_callback);
+						 battery_level_timer_callback, &PRIVATE_DATA->battery_level_timer);
 		}
 
 		/*----------------------- ZOOM-PREVIEW -----------------------*/
