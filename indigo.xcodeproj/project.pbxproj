@@ -210,7 +210,6 @@
 		9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */; };
 		9D35EA2B23CDB27D00B6A41F /* indigo_gps_gpsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D35EA0023CDB27D00B6A41F /* indigo_gps_gpsd.c */; };
 		9D35EA2C23CDB27D00B6A41F /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9D35EA0123CDB27D00B6A41F /* Makefile.inc */; };
-		9D35EA3E23CDB53D00B6A41F /* libgps.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D35EA3D23CDB53D00B6A41F /* libgps.a */; };
 		9D35EA3F23CDB56100B6A41F /* libgps.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D35EA3D23CDB53D00B6A41F /* libgps.a */; };
 		9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */; };
 		9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */; };
@@ -3928,7 +3927,6 @@
 				59A5302521A35264000B6F27 /* libqhy.a in Frameworks */,
 				599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */,
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
-				9D35EA3E23CDB53D00B6A41F /* libgps.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
 				594222A322E34C99009DAD5C /* libnovas.a in Frameworks */,
@@ -11798,7 +11796,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0800;
-				LastUpgradeCheck = 1010;
+				LastUpgradeCheck = 1120;
 				ORGANIZATIONNAME = "CloudMakers, s. r. o.";
 				TargetAttributes = {
 					599C9A471DA022C0008BBCC1 = {
@@ -11814,12 +11812,11 @@
 			};
 			buildConfigurationList = 592662A81D9590630021746A /* Build configuration list for PBXProject "indigo" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
-				English,
 			);
 			mainGroup = 592662A41D9590630021746A;
 			productRefGroup = 592662AE1D9590630021746A /* Products */;
@@ -12091,6 +12088,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
@@ -12155,6 +12153,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
@@ -12214,6 +12213,7 @@
 		595F747B228224800091B366 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
@@ -12226,6 +12226,7 @@
 		595F747C228224800091B366 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
@@ -12332,6 +12333,7 @@
 		59D382111D97343000E87393 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
@@ -12344,6 +12346,7 @@
 		59D382121D97343000E87393 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
@@ -12356,6 +12359,7 @@
 		9D1880BC1E534B5E002F75D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -12372,6 +12376,7 @@
 		9D1880BD1E534B5E002F75D7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -12388,6 +12393,7 @@
 		9D97F8151D9A8A1900582EAF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -12416,6 +12422,7 @@
 		9D97F8161D9A8A1900582EAF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
