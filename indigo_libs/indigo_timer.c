@@ -212,7 +212,7 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 }
 
 bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
-	bool result = false;
+	bool must_wait = false;
 	indigo_timer *timer_buffer;
 	pthread_mutex_lock(&cancel_timer_mutex);
 	if (*timer != NULL) {
@@ -221,17 +221,21 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 		pthread_mutex_lock(&(*timer)->mutex);
 		pthread_cond_signal(&(*timer)->cond);
 		pthread_mutex_unlock(&(*timer)->mutex);
+		/* Save a local copy of the timer instance as *timer can be set
+		   to NULL by *timer_func() after cancel_timer_mutex is released */
 		timer_buffer = *timer;
-		result = true;
+		must_wait = true;
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
-	if (result) {
-		// just wait for the callback to finish
+	/* if must_wain == true then timer_buffer != NULL (see above) */
+	if (must_wait) {
+		/* just wait for the callback to finish */
 		pthread_mutex_lock(&(timer_buffer)->callback_mutex);
 		pthread_mutex_unlock(&(timer_buffer)->callback_mutex);
 		*timer = NULL;
 	}
-	return result;
+	/* if must_wait == true timer is canceled else it was not running */
+	return must_wait;
 }
 
 void indigo_cancel_all_timers(indigo_device *device) {
