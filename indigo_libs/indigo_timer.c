@@ -173,6 +173,8 @@ bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback
 	if (timer) {
 		t->reference = timer;
 		*timer = t;
+	} else {
+		t->reference = NULL;
 	}
 	return true;
 }
