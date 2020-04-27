@@ -27,8 +27,6 @@ All testing with physical hardware or simulators is documented in this file
 | ccd_ssag | QHY5 | :white_check_mark: | |
 | ccd_sx | Lodestar | :white_check_mark: | |
 | ccd_uvc | SBONY 205 | :white_check_mark: | |
-| dome_nexdome | arduino simulator | unclear |
-| dome_nexdome3 | arduino simulator | unclear |
 | focuser_efa | arduino simulator | :white_check_mark: | |
 | focuser_dmfc | arduino simulator | :white_check_mark: | |
 | focuser_lakeside | arduino simulator | :white_check_mark: | |
