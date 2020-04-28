@@ -163,6 +163,7 @@
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_io.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_version.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h" />
     <ClInclude Include="externals\pthreads4w\include\pthread.h" />
     <ClInclude Include="externals\pthreads4w\include\sched.h" />
     <ClInclude Include="externals\pthreads4w\include\semaphore.h" />
@@ -184,8 +185,13 @@
     <ClCompile Include="..\..\indigo_libs\indigo_io.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\..\indigo_libs\indigo_version.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_version.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\indigo_libs\indigo_xml.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_token.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="dllmain.cpp" />
