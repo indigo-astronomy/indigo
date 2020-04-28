@@ -24,7 +24,7 @@
  */
 
 #if defined(INDIGO_WINDOWS)
-#define _CRT_SECURE_NO_WARNINGS
+#define
 #endif
 
 #include <string.h>
