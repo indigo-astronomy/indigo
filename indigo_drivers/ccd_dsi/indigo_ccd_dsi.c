@@ -687,12 +687,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
+			indigo_set_timer(NULL, 1, process_plug_event, NULL);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
+			indigo_set_timer(NULL, 1, process_unplug_event, NULL);
 			break;
 		}
 	}
