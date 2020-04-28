@@ -19,8 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\indigo_test\test.c" />
-    <ClCompile Include="..\..\indigo_libs\indigo_base64.c" />
+    <ClCompile Include="..\..\indigo_test\test.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_base64.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\indigo_libs\indigo_bus.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -33,10 +37,15 @@
     <ClCompile Include="..\..\indigo_libs\indigo_io.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\..\indigo_libs\indigo_version.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_version.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\indigo_libs\indigo_xml.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+		<ClCompile Include="..\..\indigo_libs\indigo_token.c">
+			<PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+		</ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_base64.h" />
@@ -48,6 +57,7 @@
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_io.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_version.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h" />
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\pthread.h" />
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\sched.h" />
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\semaphore.h" />
