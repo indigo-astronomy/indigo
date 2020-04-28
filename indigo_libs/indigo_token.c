@@ -23,14 +23,14 @@
  \file indigo_token.c
  */
 
+#if defined(INDIGO_WINDOWS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <string.h>
 #include <stdio.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_bus.h>
-
-#if defined(INDIGO_WINDOWS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
 
 typedef struct {
 	char device[INDIGO_NAME_SIZE];
