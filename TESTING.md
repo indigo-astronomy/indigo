@@ -50,5 +50,7 @@ All testing with physical hardware or simulators is documented in this file
 
 | driver | device | Result | Comments |
 | ----- | ----- | ----- | ----- |
-| focuser_dsd | DSD AF1 | :white_check_mark: | |
-
+| focuser_dsd | DSD AF1 | :white_check_mark: | - |
+| focuser_asi | ZWO EAFocuser | :white_check_mark: | - |
+| wheel_asi   | ZWO EFW mini  | :white_check_mark: | - |
+| ccd_dsi     | Meade DSI Pro II | :white_check_mark: | fixed crash on hotplug |
