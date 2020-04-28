@@ -28,6 +28,10 @@
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_bus.h>
 
+#if defined(INDIGO_WINDOWS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 typedef struct {
 	char device[INDIGO_NAME_SIZE];
 	indigo_token token;
@@ -159,7 +163,7 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 		if (buffer[0] == '#') continue;
 
 		// remove training spaces
-		int len = strlen(buffer) - 1;
+		int len = (int)strlen(buffer) - 1;
 		if (len >= 0) {
 			while (buffer[len] == ' ' || buffer[len] == '\t' || buffer[len] == '\n') len--;
 			buffer[len + 1] = '\0';
@@ -185,7 +189,6 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 
 bool indigo_save_device_tokens_to_file(const char *file_name) {
 	FILE* fp;
-	char buffer[INDIGO_VALUE_SIZE + 50];
 
 	fp = fopen(file_name, "w");
 	if (fp == NULL) {
@@ -197,7 +200,7 @@ bool indigo_save_device_tokens_to_file(const char *file_name) {
 	fprintf(fp, "# Device ACL saved by INDIGO\n");
 	for (int i = 0; i < MAX_TOKENS; i++) {
 		if (tokens[i].device[0] != '\0') {
-			if (fprintf(fp, "%8X %s\n", tokens[i].token, tokens[i].device) < 0) {
+			if (fprintf(fp, "%8llX %s\n", tokens[i].token, tokens[i].device) < 0) {
 				INDIGO_ERROR(indigo_error("ACL: Can not save ACL to file '%s'", file_name));
 				fclose(fp);
 				return false;
