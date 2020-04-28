@@ -54,3 +54,5 @@ All testing with physical hardware or simulators is documented in this file
 | focuser_asi | ZWO EAFocuser | :white_check_mark: | - |
 | wheel_asi   | ZWO EFW mini  | :white_check_mark: | - |
 | ccd_dsi     | Meade DSI Pro II | :white_check_mark: | fixed crash on hotplug |
+| ccd_qhy     | QHY6-M | :x: | regression: can not take exposure at all |
+| ccd_qhy2     | QHY6-M | :x: | regression: can not take exposure at all |
