@@ -46,4 +46,14 @@ All testing with physical hardware or simulators is documented in this file
 | wheel_xagyl | arduino simulator | :white_check_mark: | just connect/disconnect |
 | ccd_ica | Canon 400D, Nikon D5600 | :x: | hot unplug fails |
 
+## April 27th 2020 (Linux)
 
+| driver | device | Result | Comments |
+| ----- | ----- | ----- | ----- |
+| focuser_dsd | DSD AF1 | :white_check_mark: | - |
+| focuser_asi | ZWO EAFocuser | :white_check_mark: | - |
+| wheel_asi   | ZWO EFW mini  | :white_check_mark: | - |
+| ccd_dsi     | Meade DSI Pro II | :white_check_mark: | fixed crash on hotplug |
+| ccd_qhy     | QHY6-M | :x: | regression: can not take exposure at all |
+| ccd_qhy2     | QHY6-M | :x: | regression: can not take exposure at all |
+| ccd_asi     | ZWO ASI224MC | :white_check_mark: | if unplugged while reading the image timeout is > 60s, everything else works |
