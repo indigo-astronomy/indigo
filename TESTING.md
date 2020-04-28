@@ -56,3 +56,4 @@ All testing with physical hardware or simulators is documented in this file
 | ccd_dsi     | Meade DSI Pro II | :white_check_mark: | fixed crash on hotplug |
 | ccd_qhy     | QHY6-M | :x: | regression: can not take exposure at all |
 | ccd_qhy2     | QHY6-M | :x: | regression: can not take exposure at all |
+| ccd_asi     | ZWO ASI224MC | :white_check_mark: | if unplugged while reading the image timeout is > 60s, everything else works |
