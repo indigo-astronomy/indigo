@@ -36,7 +36,7 @@
 extern "C" {
 #endif
 
-typedef uint64_t indigo_token;
+typedef long long unsigned indigo_token;
 
 
 /** Convert hex string to indigo_token, 0 for error or no token
