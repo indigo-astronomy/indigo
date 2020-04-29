@@ -104,6 +104,7 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
 			indigo_define_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
 		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			indigo_delete_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
 			indigo_delete_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);

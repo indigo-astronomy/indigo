@@ -245,7 +245,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			MOUNT_PEC_PROPERTY->hidden = true;
 			indigo_init_switch_item(MOUNT_PEC_ENABLED_ITEM, MOUNT_PEC_ENABLED_ITEM_NAME, "Enabled", false);
 			indigo_init_switch_item(MOUNT_PEC_DISABLED_ITEM, MOUNT_PEC_DISABLED_ITEM_NAME, "Disabled", true);
-			
+
 			// -------------------------------------------------------------------------------- MOUNT_TRAIN_PPEC
 			MOUNT_PEC_TRAINING_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PEC_TRAINING_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Train PEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_PEC_TRAINING_PROPERTY == NULL)
@@ -441,6 +441,13 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_add_snoop_rule(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
 			indigo_add_snoop_rule(MOUNT_UTC_TIME_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, UTC_TIME_PROPERTY_NAME);
 		} else {
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_remove_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);
 			indigo_remove_snoop_rule(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_SLEW_RATE_PROPERTY_NAME);
 			indigo_remove_snoop_rule(MOUNT_TRACKING_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_TRACKING_PROPERTY_NAME);

@@ -189,6 +189,8 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 				indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		} else {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, FOCUSER_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
