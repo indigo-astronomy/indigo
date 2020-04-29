@@ -754,8 +754,6 @@ static void focuser_connect_callback(indigo_device *device) {
 	uint32_t position;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
