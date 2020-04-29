@@ -477,6 +477,58 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void handle_aux_connect_property(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!DEVICE_CONNECTED) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			if (lunatico_open(device)) {
+				char board[LUNATICO_CMD_LEN] = "N/A";
+				char firmware[LUNATICO_CMD_LEN] = "N/A";
+				if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
+					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					bool relay_value[8];
+					if (!lunatico_read_relays(device, relay_value)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relays(%d) failed", PRIVATE_DATA->handle);
+						AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						for (int i = 0; i < 5; i++) {
+							(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i + 3];
+							DEVICE_DATA.relay_active[i] = false;
+						}
+					}
+					indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+
+					indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+					indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+					lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
+					indigo_set_timer(device, 0, sensors_timer_callback, &DEVICE_DATA.sensors_timer);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+					lunatico_close(device);
+				}
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+			}
+		}
+	} else {
+		if (DEVICE_CONNECTED) {
+			for (int i = 0; i < 5; i++) {
+				indigo_cancel_timer_sync(device, &DEVICE_DATA.relay_timers[i]);
+			}
+			indigo_cancel_timer_sync(device, &DEVICE_DATA.sensors_timer);
+			lunatico_delete_properties(device);
+			lunatico_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+}
 
 static void handle_aux_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -499,50 +551,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!DEVICE_CONNECTED) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (lunatico_open(device)) {
-					char board[LUNATICO_CMD_LEN] = "N/A";
-					char firmware[LUNATICO_CMD_LEN] = "N/A";
-					if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
-						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
-						indigo_update_property(device, INFO_PROPERTY, NULL);
-						bool relay_value[8];
-						if (!lunatico_read_relays(device, relay_value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_read_relays(%d) failed", PRIVATE_DATA->handle);
-							AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-						} else {
-							for (int i = 0; i < 5; i++) {
-								(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i + 3];
-								DEVICE_DATA.relay_active[i] = false;
-							}
-						}
-						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-
-						indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-						indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-						lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
-						indigo_set_timer(device, 0, sensors_timer_callback, &DEVICE_DATA.sensors_timer);
-						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					} else {
-						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
-						lunatico_close(device);
-					}
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
-				}
-			}
-		} else {
-			if (DEVICE_CONNECTED) {
-				indigo_handle_property_async(handle_aux_disconnect, device, client, property);
-				return INDIGO_OK;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
@@ -614,7 +625,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result aux_detach(indigo_device *device) {
 	if (DEVICE_CONNECTED) {
-		handle_aux_disconnect(device, NULL, NULL);
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		handle_aux_connect_property(device);
 	}
 	lunatico_detach(device);
 	return indigo_aux_detach(device);
@@ -965,15 +977,56 @@ static indigo_result dome_attach(indigo_device *device) {
 }
 
 
-static void handle_dome_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
-	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-	indigo_cancel_timer_sync(device, &DEVICE_DATA.keep_alive_timer);
-	indigo_cancel_timer_sync(device, &DEVICE_DATA.roof_timer);
-	lunatico_delete_properties(device);
-	lunatico_close(device);
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (client && property) indigo_dome_change_property(device, client, property);
+static void handle_dome_connect_property(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!DEVICE_CONNECTED) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			if (lunatico_open(device)) {
+				char board[LUNATICO_CMD_LEN] = "N/A";
+				char firmware[LUNATICO_CMD_LEN] = "N/A";
+				if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
+					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
+					int sensors[8];
+					DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+					DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
+					DEVICE_DATA.roof_state = ROOF_UNKNOWN;
+					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+					if (lunatico_analog_read_sensors(device, sensors)) {
+						bool opened = (sensors[OPENED_SENSOR] > 512) ? true : false;
+						bool closed = (sensors[CLOSED_SENSOR] > 512) ? true : false;
+						if (opened && !closed) {
+							DOME_SHUTTER_OPENED_ITEM->sw.value = true;
+							DEVICE_DATA.roof_state = ROOF_OPENED;
+							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+						} else if(!opened && closed) {
+							DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
+							DEVICE_DATA.roof_state = ROOF_CLOSED;
+							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+						}
+					}
+					indigo_set_timer(device, KEEP_ALIVE_INTERVAL, keep_alive_timer_callback, &DEVICE_DATA.keep_alive_timer);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+					lunatico_close(device);
+				}
+			}
+		}
+	} else {
+		if (DEVICE_CONNECTED) {
+			indigo_cancel_timer_sync(device, &DEVICE_DATA.keep_alive_timer);
+			indigo_cancel_timer_sync(device, &DEVICE_DATA.roof_timer);
+			lunatico_delete_properties(device);
+			lunatico_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
 
@@ -984,51 +1037,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!DEVICE_CONNECTED) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (lunatico_open(device)) {
-					char board[LUNATICO_CMD_LEN] = "N/A";
-					char firmware[LUNATICO_CMD_LEN] = "N/A";
-					if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
-						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
-						indigo_update_property(device, INFO_PROPERTY, NULL);
-						lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
-						int sensors[8];
-						DOME_SHUTTER_OPENED_ITEM->sw.value = false;
-						DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
-						DEVICE_DATA.roof_state = ROOF_UNKNOWN;
-						DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-						if (lunatico_analog_read_sensors(device, sensors)) {
-							bool opened = (sensors[OPENED_SENSOR] > 512) ? true : false;
-							bool closed = (sensors[CLOSED_SENSOR] > 512) ? true : false;
-							if (opened && !closed) {
-								DOME_SHUTTER_OPENED_ITEM->sw.value = true;
-								DEVICE_DATA.roof_state = ROOF_OPENED;
-								DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-							} else if(!opened && closed) {
-								DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
-								DEVICE_DATA.roof_state = ROOF_CLOSED;
-								DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-							}
-						}
-						indigo_set_timer(device, KEEP_ALIVE_INTERVAL, keep_alive_timer_callback, &DEVICE_DATA.keep_alive_timer);
-						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					} else {
-						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
-						lunatico_close(device);
-					}
-				}
-			}
-		} else {
-			if (DEVICE_CONNECTED) {
-				indigo_handle_property_async(handle_dome_disconnect, device, client, property);
-				return INDIGO_OK;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, handle_dome_connect_property, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
@@ -1061,7 +1073,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 static indigo_result dome_detach(indigo_device *device) {
 	if (DEVICE_CONNECTED) {
-		handle_dome_disconnect(device, NULL, NULL);
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		handle_dome_connect_property(device);
 	}
 	lunatico_detach(device);
 	return indigo_dome_detach(device);

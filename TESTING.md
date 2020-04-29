@@ -60,3 +60,5 @@ All testing with physical hardware or simulators is documented in this file
 | dome_nexdome | arduino simulator | :white_check_mark: | - |
 | dome_nexdome3 | arduino simulator | :white_check_mark: | - |
 | aux_cloudwatcher | AAG CloudWatcher | :white_check_mark: | - |
+| aux_dragonfly | Dragonfly Controller | :white_check_mark: | - |
+| aux_dome_dragonfly | Dragonfly Controller | :white_check_mark: | - |
