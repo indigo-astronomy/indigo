@@ -1678,34 +1678,83 @@ static indigo_result aux_attach(indigo_device *device) {
 }
 
 
-static void handle_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
-	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-
-	// Stop timer faster - do not wait to finish readout cycle
-	PRIVATE_DATA->cancel_reading = true;
-	indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
-
-	// To be on the safe side - set mim heating power
-	set_pwm_duty_cycle(device, (int)(PRIVATE_DATA->sensor_heater_power * 1023.0 / 100.0));
-
-	indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-	indigo_delete_property(device, X_HEATER_CONTROL_STATE_PROPERTY, NULL);
-	indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
-	indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
-	indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
-	indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-	indigo_delete_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
-	indigo_delete_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
-	indigo_delete_property(device, X_RH_CONDITION_PROPERTY, NULL);
-	indigo_delete_property(device, X_WIND_CONDITION_PROPERTY, NULL);
-	indigo_delete_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
-	indigo_delete_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
-	indigo_delete_property(device, X_SKY_CONDITION_PROPERTY, NULL);
-	aag_close(device);
-
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (client && property) indigo_aux_change_property(device, client, property);
+static void handle_aux_connect_property(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!DEVICE_CONNECTED) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			if (aag_open(device)) {
+				char board[MAX_LEN] = "N/A";
+				char firmware[MAX_LEN] = "N/A";
+				char serial_number[MAX_LEN] = "N/A";
+				/* Pocket CW needs ~2sec after connect, maybe arduino based which resets at connect?!? */
+				indigo_usleep(ONE_SECOND_DELAY*2);
+				if (aag_is_cloudwatcher(device, board)) {
+					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+					aag_get_firmware_version(device, firmware);
+					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					aag_get_serial_number(device, serial_number);
+					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
+					aag_get_swith(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
+					aag_reset_properties(device);
+					PRIVATE_DATA->heating_state = normal;
+					PRIVATE_DATA->pulse_start_time = -1;
+					PRIVATE_DATA->wet_start_time = -1;
+					PRIVATE_DATA->desired_sensor_temperature = 0;
+					PRIVATE_DATA->sensor_heater_power = -1;
+					PRIVATE_DATA->cancel_reading = false;
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+					indigo_define_property(device, X_HEATER_CONTROL_STATE_PROPERTY, NULL);
+					indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
+					indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
+					indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
+					indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+					indigo_define_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
+					indigo_define_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
+					indigo_define_property(device, X_RH_CONDITION_PROPERTY, NULL);
+					indigo_define_property(device, X_WIND_CONDITION_PROPERTY, NULL);
+					indigo_define_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
+					indigo_define_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
+					indigo_define_property(device, X_SKY_CONDITION_PROPERTY, NULL);
+					aag_populate_constants(device);
+					indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+					aag_close(device);
+				}
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+			}
+		}
+	} else {
+		if (DEVICE_CONNECTED) {
+			// Stop timer faster - do not wait to finish readout cycle
+			PRIVATE_DATA->cancel_reading = true;
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
+			// To be on the safe side - set mim heating power
+			set_pwm_duty_cycle(device, (int)(PRIVATE_DATA->sensor_heater_power * 1023.0 / 100.0));
+			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+			indigo_delete_property(device, X_HEATER_CONTROL_STATE_PROPERTY, NULL);
+			indigo_delete_property(device, X_CONSTANTS_PROPERTY, NULL);
+			indigo_delete_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
+			indigo_delete_property(device, X_RH_CONDITION_PROPERTY, NULL);
+			indigo_delete_property(device, X_WIND_CONDITION_PROPERTY, NULL);
+			indigo_delete_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
+			indigo_delete_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
+			indigo_delete_property(device, X_SKY_CONDITION_PROPERTY, NULL);
+			aag_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
 
@@ -1716,61 +1765,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!DEVICE_CONNECTED) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (aag_open(device)) {
-					char board[MAX_LEN] = "N/A";
-					char firmware[MAX_LEN] = "N/A";
-					char serial_number[MAX_LEN] = "N/A";
-					if (aag_is_cloudwatcher(device, board)) {
-						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-						aag_get_firmware_version(device, firmware);
-						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
-						aag_get_serial_number(device, serial_number);
-						strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
-						aag_get_swith(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
-						aag_reset_properties(device);
-						PRIVATE_DATA->heating_state = normal;
-						PRIVATE_DATA->pulse_start_time = -1;
-						PRIVATE_DATA->wet_start_time = -1;
-						PRIVATE_DATA->desired_sensor_temperature = 0;
-						PRIVATE_DATA->sensor_heater_power = -1;
-						PRIVATE_DATA->cancel_reading = false;
-						indigo_update_property(device, INFO_PROPERTY, NULL);
-						indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-						indigo_define_property(device, X_HEATER_CONTROL_STATE_PROPERTY, NULL);
-						indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
-						indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
-						indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-						indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-						indigo_define_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
-						indigo_define_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
-						indigo_define_property(device, X_RH_CONDITION_PROPERTY, NULL);
-						indigo_define_property(device, X_WIND_CONDITION_PROPERTY, NULL);
-						indigo_define_property(device, X_RAIN_CONDITION_PROPERTY, NULL);
-						indigo_define_property(device, X_CLOUD_CONDITION_PROPERTY, NULL);
-						indigo_define_property(device, X_SKY_CONDITION_PROPERTY, NULL);
-						aag_populate_constants(device);
-						indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
-						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					} else {
-						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
-						aag_close(device);
-					}
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
-				}
-			}
-		} else {
-			if (DEVICE_CONNECTED) {
-				indigo_handle_property_async(handle_disconnect, device, client, property);
-				return INDIGO_OK;
-			}
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
@@ -1905,7 +1903,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (DEVICE_CONNECTED) {
-		handle_disconnect(device, NULL, NULL);
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		handle_aux_connect_property(device);
 	}
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(X_HEATER_CONTROL_STATE_PROPERTY);
