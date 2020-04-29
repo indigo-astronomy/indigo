@@ -237,6 +237,11 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_set_timer(device, SYNC_INTERAL, sync_timer_callback, &DOME_CONTEXT->sync_timer);
 		} else {
 			indigo_cancel_timer(device, &DOME_CONTEXT->sync_timer);
+			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_remove_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 			indigo_remove_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
 			indigo_delete_property(device, DOME_SPEED_PROPERTY, NULL);

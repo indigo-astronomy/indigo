@@ -132,6 +132,7 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 			indigo_define_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 			indigo_define_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		} else {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
 			indigo_delete_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 			indigo_delete_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
