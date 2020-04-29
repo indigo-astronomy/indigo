@@ -62,3 +62,5 @@ All testing with physical hardware or simulators is documented in this file
 | aux_cloudwatcher | AAG CloudWatcher | :white_check_mark: | - |
 | aux_dragonfly | Dragonfly Controller | :white_check_mark: | - |
 | aux_dome_dragonfly | Dragonfly Controller | :white_check_mark: | - |
+| aux_focuser_lunatico | Armadillo Controller | :white_check_mark: | - |
+| aux_rotator_lunatico | Armadillo Controller | :white_check_mark: | - |
