@@ -480,8 +480,6 @@ static indigo_result aux_attach(indigo_device *device) {
 static void handle_aux_connect_property(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (lunatico_open(device)) {
 				char board[LUNATICO_CMD_LEN] = "N/A";
 				char firmware[LUNATICO_CMD_LEN] = "N/A";
@@ -530,19 +528,6 @@ static void handle_aux_connect_property(indigo_device *device) {
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void handle_aux_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
-	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-	for (int i = 0; i < 5; i++) {
-		indigo_cancel_timer_sync(device, &DEVICE_DATA.relay_timers[i]);
-	}
-	indigo_cancel_timer_sync(device, &DEVICE_DATA.sensors_timer);
-	lunatico_delete_properties(device);
-	lunatico_close(device);
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (client && property) indigo_aux_change_property(device, client, property);
-}
-
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -552,6 +537,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
@@ -980,8 +966,6 @@ static indigo_result dome_attach(indigo_device *device) {
 static void handle_dome_connect_property(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (lunatico_open(device)) {
 				char board[LUNATICO_CMD_LEN] = "N/A";
 				char firmware[LUNATICO_CMD_LEN] = "N/A";
