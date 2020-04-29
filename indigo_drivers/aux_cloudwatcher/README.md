@@ -5,6 +5,7 @@ https://www.lunatico.es
 ## Supported devices
 
 * Lunatico AAG CloudWatcher
+* Lunatico PocketCloudWatcher
 
 No hot plug support. All devices are present at startup:
 
