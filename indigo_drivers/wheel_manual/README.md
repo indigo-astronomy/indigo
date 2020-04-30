@@ -1,11 +1,11 @@
-# CCD Manual Filter wheel driver
+# Manual filter wheel driver
 
 ## Supported devices
 
-* Manual filter wheel
+* All manual filter wheels and drawers
 
-All devices are present on startup. The driver does not control any hardware. It should be used 
-to keep a record of the used filters with a manual filter wheels.
+Single device is present on startup. The driver does not control any hardware. It should be used
+to keep a record of the used filters with a manual filter wheels or drawers.
 
 ## Supported platforms
 
