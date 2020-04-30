@@ -1,7 +1,7 @@
 /*
  * The Moravian Instruments (MI) camera library.
  *
- * Copyright 2016, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
+ * Copyright 2020, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
  * All rights reserved.
  */
 
@@ -69,9 +69,9 @@ typedef struct camera camera_t;
  * etc.) and it is not necessary to change them.
  * "MicrometerFilterOffsets" is explained in the following section.
  * "ClearTime" is interval in seconds in which the driver periodically clears
- * the CCD chip. There is no need to change the default value (15 seconds).
+ * the chip. There is no need to change the default value (15 seconds).
  * If you want to use advanced USB functions below, you can turn this feature by
- * setting "ClearTime" to 0 or -1 and clear the CCD manualy with gxusb_clear().
+ * setting "ClearTime" to 0 or -1 and clear the chip manualy with gxusb_clear().
  *------------------------------------------------------------------------------
  * Section [filters] is for G2/G3/G4 camera filter wheel configuration.
  * There is no way how to determine the actual filters in the filter wheel
@@ -122,6 +122,7 @@ typedef struct camera camera_t;
 
 /*
  * Sets global path to your configuration .ini file.
+ * You can pass NULL or empty string to use lookup process described above.
  */
 void gxccd_configure(const char *ini_path);
 
@@ -182,13 +183,13 @@ enum
     GBP_SUB_FRAME,                 /* true if camera supports sub-frame read */
     GBP_READ_MODES,                /* true if camera supports multiple read modes */
     GBP_SHUTTER,                   /* true if camera is equipped with mechanical shutter */
-    GBP_COOLER,                    /* true if camera is equipped with active CCD cooler */
+    GBP_COOLER,                    /* true if camera is equipped with active chip cooler */
     GBP_FAN,                       /* true if camera fan can be controlled */
     GBP_FILTERS,                   /* true if camera controls filter wheel */
     GBP_GUIDE,                     /* true if camera is capable to guide the telescope
                              mount */
-    GBP_WINDOW_HEATING,            /* true if camera can control the CCD window heating */
-    GBP_PREFLASH,                  /* true if camera can use CCD preflash */
+    GBP_WINDOW_HEATING,            /* true if camera can control the chip window heating */
+    GBP_PREFLASH,                  /* true if camera can use chip preflash */
     GBP_ASYMMETRIC_BINNING,        /* true if camera horizontal and vertical binning
                              can differ */
     GBP_MICROMETER_FILTER_OFFSETS, /* true if filter focusing offsets are
@@ -197,14 +198,14 @@ enum
                              gxccd_get_value() */
     GBP_GAIN,                      /* true if camera can return gain in gxccd_get_value() */
     GBP_CONFIGURED = 127,          /* true if camera is configured */
-    GBP_RGB,                       /* true if camera has Bayer RGBG filters on CCD */
-    GBP_CMY,                       /* true if camera has CMY filters on CCD */
-    GBP_CMYG,                      /* true if camera has CMYG filters on CCD */
+    GBP_RGB,                       /* true if camera has Bayer RGBG filters on the chip */
+    GBP_CMY,                       /* true if camera has CMY filters on the chip */
+    GBP_CMYG,                      /* true if camera has CMYG filters on the chip */
     GBP_DEBAYER_X_ODD,             /* true if camera Bayer masks starts on horizontal
                              odd pixel */
     GBP_DEBAYER_Y_ODD,             /* true if camera Bayer masks starts on vertical
                              odd pixel */
-    GBP_INTERLACED = 256           /* true if CCD detector is interlaced
+    GBP_INTERLACED = 256           /* true if chip is interlaced
                              (else progressive) */
 };
 
@@ -215,10 +216,10 @@ int gxccd_get_boolean_parameter(camera_t *camera, int index, bool *value);
 enum
 {
     GIP_CAMERA_ID = 0,        /* Identifier of the current camera */
-    GIP_CHIP_W,               /* CCD detector width in pixels */
-    GIP_CHIP_D,               /* CCD detector depth in pixels */
-    GIP_PIXEL_W,              /* CCD pixel width in nanometers */
-    GIP_PIXEL_D,              /* CCD pixel depth in nanometers */
+    GIP_CHIP_W,               /* Chip width in pixels */
+    GIP_CHIP_D,               /* Chip depth in pixels */
+    GIP_PIXEL_W,              /* Chip pixel width in nanometers */
+    GIP_PIXEL_D,              /* Chip pixel depth in nanometers */
     GIP_MAX_BINNING_X,        /* Maximum binning in horizontal direction */
     GIP_MAX_BINNING_Y,        /* Maximum binning in vertical direction */
     GIP_READ_MODES,           /* Number of read modes offered by the camera */
@@ -231,13 +232,16 @@ enum
     GIP_PREVIEW_READ_MODE,    /* Read mode to be used for preview (fast read) */
     GIP_MAX_WINDOW_HEATING,   /* Maximal value for gxccd_set_window_heating() */
     GIP_MAX_FAN,              /* Maximal value for gxccd_set_fan() */
+    GIP_MAX_GAIN,             /* Maximal value for gxccd_set_gain() */
+    GIP_MAX_PIXEL_VALUE,      /* Maximal possible pixel value. May vary with read mode and binning,
+                                 read only after gxccd_set_read_mode() and gxccd_set_binning() calls */
     GIP_FIRMWARE_MAJOR = 128, /* Camera firmware version (optional) */
     GIP_FIRMWARE_MINOR,
     GIP_FIRMWARE_BUILD,
-    GIP_DRIVER_MAJOR, /* Driver version (optional) */
+    GIP_DRIVER_MAJOR,         /* This library version */
     GIP_DRIVER_MINOR,
     GIP_DRIVER_BUILD,
-    GIP_FLASH_MAJOR, /* Flash version (optional) */
+    GIP_FLASH_MAJOR,          /* Flash version (optional) */
     GIP_FLASH_MINOR,
     GIP_FLASH_BUILD,
 };
@@ -251,7 +255,7 @@ enum
     GSP_CAMERA_DESCRIPTION = 0, /* Camera description */
     GSP_MANUFACTURER,           /* Manufacturer name */
     GSP_CAMERA_SERIAL,          /* Camera serial number */
-    GSP_CHIP_DESCRIPTION        /* Used CCD detector description */
+    GSP_CHIP_DESCRIPTION        /* Used chip description */
 };
 
 /*
@@ -263,7 +267,7 @@ int gxccd_get_string_parameter(camera_t *camera, int index, char *buf, size_t si
 /* Standard gxccd_get_value() indexes */
 enum
 {
-    GV_CHIP_TEMPERATURE = 0,    /* Current temperature of the CCD detector
+    GV_CHIP_TEMPERATURE = 0,    /* Current temperature of the chip
                                  in deg. Celsius */
     GV_HOT_TEMPERATURE,         /* Current temperature of the cooler hot side
                                  in deg. Celsius */
@@ -272,7 +276,7 @@ enum
     GV_ENVIRONMENT_TEMPERATURE, /* Current temperature of the environment air
                                  in deg. Celsius */
     GV_SUPPLY_VOLTAGE = 10,     /* Current voltage of the camera power supply */
-    GV_POWER_UTILIZATION,       /* Current utilization of the CCD cooler
+    GV_POWER_UTILIZATION,       /* Current utilization of the chip cooler
                                  (rational number from 0.0 to 1.0) */
     GV_ADC_GAIN = 20            /* Current gain of A/D converter in electrons/ADU */
 };
@@ -303,11 +307,11 @@ int gxccd_set_binning(camera_t *camera, int x, int y);
 /*
  * If the camera is equipped with preflash electronics, this function sets it.
  * "preflash_time" defines time for which the preflash LED inside the camera is
- * switched on. "clear_num" defines how many times the CCD has to be cleared
+ * switched on. "clear_num" defines how many times the chip has to be cleared
  * after the preflash. Actual values of these parameters depends on
  * the particular camera model (e.g. number and luminance of the LEDs used etc.).
- * Gx series of CCD cameras typically need less than 1 second to completely
- * saturate the CCD ("preflash_time"). Number of subsequent clears should be
+ * Gx series of cameras typically need less than 1 second to completely
+ * saturate the chip ("preflash_time"). Number of subsequent clears should be
  * at last 2, but more than 4 or 5 clears is not useful, too.
  */
 int gxccd_set_preflash(camera_t *camera, double preflash_time, int clear_num);
@@ -334,7 +338,7 @@ int gxccd_abort_exposure(camera_t *camera, bool download);
 
 /*
  * When the exposure already started by gxccd_start_exposure() call, parameter
- * "ready" is false if the exposure is sill running. When the exposure finishes
+ * "ready" is false if the exposure is still running. When the exposure finishes
  * and it is possible to call gxccd_read_image(), parameter "ready" is true.
  * It is recommended to count the exposure time in the application despite
  * the fact the exact exposure time is determined by the camera/driver and to
@@ -392,6 +396,23 @@ int gxccd_enumerate_read_modes(camera_t *camera, int index, char *buf, size_t si
 int gxccd_set_read_mode(camera_t *camera, int mode);
 
 /*
+ * Sets required gain. Range of parameter "gain" depends on particular camera
+ * hardware, as it typically represents directly a register value.
+ * This method is chosen to allow to control gain as precisely as each particular
+ * camera allows. Low limit is 0, high limit is returned by function
+ * gxccd_get_integer_parameter with index GIP_MAX_GAIN.
+ */
+int gxccd_set_gain(camera_t *camera, uint16_t gain);
+
+/*
+ * As the gxccd_set_gain function accepts camera-dependent parameter gain,
+ * which typically does not represent actual gain as signal multiply or value in dB,
+ * a helper function gxccd_convert_gain is provided to convert register value into
+ * gain in logarithmic dB units as well as in linear times-signal units.
+ */
+int gxccd_convert_gain(camera_t *camera, uint16_t gain, double *db, double *times);
+
+/*
  * Enumerates all filters provided by the camera.
  * This enumeration does not use any callback, by the caller passes index
  * beginning with 0 and repeats the call with incremented index until the call
@@ -414,6 +435,13 @@ int gxccd_enumerate_filters(camera_t *camera, int index, char *buf, size_t size,
 int gxccd_set_filter(camera_t *camera, int index);
 
 /*
+ * Reinitializes camera filter wheel.
+ * If parameter "num_filter" is not NULL, it will contain the number of detected
+ * filters or 0 in case of error (or camera without filter wheel).
+ */
+int gxccd_reinit_filter_wheel(camera_t *camera, int *num_filters);
+
+/*
  * If the camera is equipped with cooling fan and allows its control,
  * this function sets the fan rotation speed.
  * The maximum value of the "speed" parameter should be determined by
@@ -424,7 +452,7 @@ int gxccd_set_filter(camera_t *camera, int index);
 int gxccd_set_fan(camera_t *camera, uint8_t speed);
 
 /*
- * If the camera is equipped with CCD cold chamber front window heater
+ * If the camera is equipped with chip cold chamber front window heater
  * and allows its control, this function sets heating intensity.
  * The maximum value of the "heating" parameter should be determined by
  * gxccd_get_integer_parameter() call with GIP_MAX_WINDOW_HEATING "index".
