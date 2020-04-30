@@ -96,6 +96,8 @@ indigo_result indigo_ao_change_property(indigo_device *device, indigo_client *cl
 			indigo_define_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 			indigo_define_property(device, AO_RESET_PROPERTY, NULL);
 		} else {
+			AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
 			indigo_delete_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 			indigo_delete_property(device, AO_RESET_PROPERTY, NULL);
@@ -112,4 +114,3 @@ indigo_result indigo_ao_detach(indigo_device *device) {
 	indigo_release_property(AO_RESET_PROPERTY);
 	return indigo_device_detach(device);
 }
-
