@@ -70,7 +70,8 @@ long int f_delay_start;
 #define F_STATE_CLOSING         3
 #define F_STATE_ABORTED         4
 
-#define ERROR_MESSAGE            "d#comerro"
+#define ERROR_MESSAGE           "d#comerro"
+#define OK_MESSAGE              "d#gotmess"
 
 int r_state;
 int r_requested_state;
@@ -271,12 +272,12 @@ String baader_process_command(char command_buffer[]) {
 
   command = String(command_buffer);
 
-  response = "d#gotmess";
+  response = OK_MESSAGE;
 
     /* Firmware protocol commands */
     //======================================
     if (command.equals("d#ser_num")) {
-      response = "d#1234567";
+      response = "d#3141592";
     }
     //======================================
     else if (command.equals("d#getshut")) {
@@ -386,6 +387,23 @@ String baader_process_command(char command_buffer[]) {
         } else {
           f_requested_state = F_STATE_CLOSING;
         }
+      }
+    }
+    //=======================================
+    else if (command.equals("d#opefull")) {
+      // Open shutter
+      if (s_state == S_STATE_CLOSING) {
+        s_requested_state = S_STATE_ABORTED;
+        s_requested_position = s_position;
+      } else {
+        s_requested_state = S_STATE_OPENING;
+        s_requested_position = S_MAX_STEPS;
+      }
+      // Open flap
+      if (f_state == F_STATE_CLOSING) {
+        f_requested_state = F_STATE_ABORTED;
+      } else {
+        f_requested_state = F_STATE_OPENING;
       }
     }
     //========================================

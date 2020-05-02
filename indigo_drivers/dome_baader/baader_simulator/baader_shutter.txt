@@ -16,7 +16,7 @@ d#getshut
 d#getshut
 d#opeshut
 
-d#mvsht04
+d#mvsht10
 d#getshut
 d#getshut
 d#getshut
@@ -36,10 +36,8 @@ d#getshut
 d#getshut
 d#getshut
 d#getshut
-d#getshut
-
 d#getflap
-d#opeflap
+d#cloflap
 d#getflap
 d#getflap
 d#getflap
@@ -50,6 +48,7 @@ d#getflap
 d#getflap
 d#getflap
 d#getflap
+d#getshut
 
 d#getflap
 d#cloflap
@@ -62,5 +61,28 @@ d#getflap
 d#getflap
 d#getflap
 d#getflap
+d#getflap
+
+d#getflap
+d#getshut
+d#opefull
+d#getflap
+d#getshut
+d#getflap
+d#getshut
+d#getflap
+d#getshut
+d#getflap
+d#getshut
+d#getflap
+d#getshut
+d#getflap
+d#getshut
+d#getflap
+d#getshut
+d#getflap
+d#getshut
+d#getflap
+d#getshut
 d#getflap
 
