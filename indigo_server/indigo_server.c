@@ -130,6 +130,7 @@
 #include "aux_dragonfly/indigo_aux_dragonfly.h"
 #include "dome_dragonfly/indigo_dome_dragonfly.h"
 #include "aux_cloudwatcher/indigo_aux_cloudwatcher.h"
+#include "wheel_manual/indigo_wheel_manual.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -250,6 +251,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_asi,
 	indigo_wheel_atik,
 	indigo_wheel_fli,
+	indigo_wheel_manual,
 	indigo_wheel_optec,
 	indigo_wheel_quantum,
 	indigo_wheel_sx,
