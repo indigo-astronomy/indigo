@@ -37,14 +37,17 @@
 #define STATE_COMMAND_RECEIVED     2
 #define STATE_COMMAND_ERROR        3
 
-char recv_buffer[COMMAND_LENGTH] = {0};
+char recv_buffer[COMMAND_LENGTH+1] = {0};
 String response_message;
 char current_symbol;
 int bytes_received = 0;
 int ReceivedCommandLength = 0;
 int command_receiver_state = STATE_BUFFER_CLEAR;
 
-#define DELAY_TIME             100  // 0.1sec
+#define BASE_DELAY_TIME             20  // 0.02sec
+#define R_DELAY_TIME                (BASE_DELAY_TIME)
+#define S_DELAY_TIME                (10 * BASE_DELAY_TIME)
+#define F_DELAY_TIME                (10 * BASE_DELAY_TIME)
 
 long int delay_start;
 long int r_delay_start;
@@ -94,6 +97,7 @@ long int r_requested_position = 0;
 long int s_position = 0;
 long int s_requested_position = 0;
 long int f_position = 0;
+int eme[4] = {0};
 
 
 String baader_process_command(char command_buffer[]);
@@ -137,8 +141,8 @@ void loop() {
     }
   
     // check if delay has timed out
-    if (((millis() - delay_start) >= DELAY_TIME)) {
-      delay_start += DELAY_TIME; // this prevents delay drifting 
+    if (((millis() - delay_start) >= BASE_DELAY_TIME)) {
+      delay_start += BASE_DELAY_TIME; // this prevents delay drifting
       // Change Shutter state
       if (s_requested_state != s_state) {
         switch (s_requested_state) {
@@ -215,8 +219,8 @@ void loop() {
       }
     
       // Process Shutter move request
-      if (((millis() - s_delay_start) >= 1)) {
-        s_delay_start += 1; // this prevents delay drifting
+      if (((millis() - s_delay_start) >= S_DELAY_TIME)) {
+        s_delay_start += S_DELAY_TIME; // this prevents delay drifting
         if (s_requested_position != s_position) {
           if (s_state == S_STATE_OPENING) {
             if (s_position < S_MAX_STEPS) s_position++;
@@ -230,8 +234,8 @@ void loop() {
       }
   
       // Process Flap move request
-      if (((millis() - f_delay_start) >= 1)) {
-        f_delay_start += 1; // this prevents delay drifting
+      if (((millis() - f_delay_start) >= F_DELAY_TIME)) {
+        f_delay_start += F_DELAY_TIME; // this prevents delay drifting
          if (f_state == F_STATE_OPENING) {
           if (f_position < F_MAX_STEPS) f_position++;
           if (f_position == F_MAX_STEPS) f_state = F_STATE_OPEN;
@@ -245,8 +249,8 @@ void loop() {
       }
     
       // Process Rotator request
-      if (((millis() - r_delay_start) >= 1)) {
-        r_delay_start += 1; // this prevents delay drifting
+      if (((millis() - r_delay_start) >= R_DELAY_TIME)) {
+        r_delay_start += R_DELAY_TIME; // this prevents delay drifting
         if (r_requested_position != r_position) {
           if (r_state == R_STATE_MOVING_LEFT) {
             r_position--;
@@ -333,7 +337,7 @@ String baader_process_command(char command_buffer[]) {
     //=======================================
     else if (command.equals("d#getazim")) {
       char buffer[5];
-      snprintf(buffer,sizeof(buffer), "%04d", r_position);
+      snprintf(buffer, sizeof(buffer), "%04d", r_position);
       response = "d#azi" + String(buffer);
     }
     //========================================
@@ -405,6 +409,23 @@ String baader_process_command(char command_buffer[]) {
       } else {
         f_requested_state = F_STATE_OPENING;
       }
+    }
+    //======================================
+    else if (command.equals("d#get_eme")) {
+      char buffer[5];
+      snprintf(buffer, sizeof(buffer), "%1d%1d%1d%1d", eme[0], eme[1], eme[2], eme[3]);
+      response = "d#eme" + String(buffer);
+    }
+    //======================================
+    else if (command.equals("d#chk_aon")) {
+      response = "d#automod";
+    }
+    //======== Simulator Commands == =========
+    else if (command.startsWith("d#EME")) {
+      eme[0] = (command.substring(5,6).toInt() > 0) ? 1 : 0;
+      eme[1] = (command.substring(6,7).toInt() > 0) ? 1 : 0;
+      eme[2] = (command.substring(7,8).toInt() > 0) ? 1 : 0;
+      eme[3] = (command.substring(8,9).toInt() > 0) ? 1 : 0;
     }
     //========================================
     else {
