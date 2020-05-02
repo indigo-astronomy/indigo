@@ -86,6 +86,7 @@
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
 		595F7478228224800091B366 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
 		595F7486228224900091B366 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 592662B01D9590630021746A /* test.c */; };
+		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
 		5980010A22E4E76700021D67 /* libapogee.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598000FC22E4E6BD00021D67 /* libapogee.a */; };
 		598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598005FD22E4FFEA00021D67 /* libqsiapi.a */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
@@ -723,6 +724,10 @@
 		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
 		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
 		5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Gemini-5-2.1.pdf"; sourceTree = "<group>"; };
+		59689A9F245DE3E100F950CE /* indigo_wheel_manual.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_manual.h; sourceTree = "<group>"; };
+		59689AA0245DE3E100F950CE /* indigo_wheel_manual_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_manual_main.c; sourceTree = "<group>"; };
+		59689AA1245DE3E100F950CE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_manual.c; sourceTree = "<group>"; };
 		597E4F7623EEE637007E0BF8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		597E4F7A23EEE637007E0BF8 /* QHY21.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY21.HEX; sourceTree = "<group>"; };
 		597E4F7B23EEE637007E0BF8 /* QHY290.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY290.img; sourceTree = "<group>"; };
@@ -4805,6 +4810,17 @@
 			path = DDHidLib;
 			sourceTree = "<group>";
 		};
+		59689A9E245DE3E100F950CE /* wheel_manual */ = {
+			isa = PBXGroup;
+			children = (
+				59689AA1245DE3E100F950CE /* README.md */,
+				59689A9F245DE3E100F950CE /* indigo_wheel_manual.h */,
+				59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */,
+				59689AA0245DE3E100F950CE /* indigo_wheel_manual_main.c */,
+			);
+			path = wheel_manual;
+			sourceTree = "<group>";
+		};
 		597E4F7423EEE637007E0BF8 /* ccd_qhy2 */ = {
 			isa = PBXGroup;
 			children = (
@@ -7914,6 +7930,7 @@
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
 				9DBC34611DCB265A00588DB9 /* wheel_asi */,
 				5992F7B91E1EC9270035242E /* wheel_fli */,
+				59689A9E245DE3E100F950CE /* wheel_manual */,
 				590DD8752127590600F2B978 /* wheel_optec */,
 				9DAD52412126BD98002FCC79 /* wheel_quantum */,
 				59C8E7F71DBBDF2200AA3F0A /* wheel_sx */,
@@ -11980,6 +11997,7 @@
 				595F2929211E211200380EF4 /* NSDictionary+DDHidExtras.m in Sources */,
 				59DD69CE1FC1D30300AEF0DF /* indigo_dome_driver.c in Sources */,
 				9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */,
+				59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */,
 				591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */,
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,
 				590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */,
