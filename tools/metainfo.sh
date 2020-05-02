@@ -1,6 +1,16 @@
 #!/bin/bash
 shopt -s nullglob
 
+process=0
+
+for f in *.c *.cpp *.m
+do
+	process=1
+done
+
+if [ $process -eq 1 ]
+then
+
 name=`pwd`
 name=indigo_`basename $name`
 description=`grep SET_DRIVER_INFO *.c *.cpp *.m | awk -F ',' '{ print $2 }' | awk '{$1=$1;print}'`
@@ -19,3 +29,5 @@ fi
 version=`echo $version | cut -c3-7`
 
 echo \"$name\", $description, $version
+
+fi
