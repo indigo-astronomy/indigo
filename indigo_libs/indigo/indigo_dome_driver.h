@@ -154,6 +154,18 @@ extern "C" {
  */
 #define DOME_SHUTTER_OPENED_ITEM							(DOME_SHUTTER_PROPERTY->items+1)
 
+/** DOME_FLAP property pointer, property is optional, property change request should be fully handled by dome driver
+ */
+#define DOME_FLAP_PROPERTY									(DOME_CONTEXT->dome_flap_property)
+
+/** DOME_FLAP.CLOSED property item pointer.
+ */
+#define DOME_FLAP_CLOSED_ITEM								(DOME_FLAP_PROPERTY->items+0)
+
+/** DOME_FLAP.OPENED property item pointer.
+ */
+#define DOME_FLAP_OPENED_ITEM								(DOME_FLAP_PROPERTY->items+1)
+
 /** DOME_PARK property pointer, property is optional, property change request should be fully handled by device driver.
  */
 #define DOME_PARK_PROPERTY														(DOME_CONTEXT->dome_park_property)
@@ -260,6 +272,7 @@ typedef struct {
 	indigo_property *dome_slaving_parameters_property;					///< DOME_SLAVING_PARAMETERS property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
+	indigo_property *dome_flap_property;									///< DOME_FLAP_PROPERTY pointer
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
 	indigo_property *dome_dimension_property;								///< DOME_DIMENSION property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
