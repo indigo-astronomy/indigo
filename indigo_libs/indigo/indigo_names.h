@@ -1814,6 +1814,19 @@
 #define DOME_SHUTTER_CLOSED_ITEM_NAME						"CLOSED"
 
 //----------------------------------------------------------------------
+/** DOME_FLAP property name.
+ */
+#define DOME_FLAP_PROPERTY_NAME							"DOME_FLAP"
+
+/** DOME_FLAP.OPEN property item name.
+ */
+#define DOME_FLAP_OPENED_ITEM_NAME						"OPENED"
+
+/** DOME_FLAP.CLOSE property item name.
+ */
+#define DOME_FLAP_CLOSED_ITEM_NAME						"CLOSED"
+
+//----------------------------------------------------------------------
 /** DOME_PARK property name.
  */
 #define DOME_PARK_PROPERTY_NAME								"DOME_PARK"
