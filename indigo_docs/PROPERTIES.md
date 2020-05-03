@@ -291,7 +291,7 @@ Properties are implemented by dome driver base class in [indigo_dome_driver.c](h
 | ROTATOR_ON_POSITION_SET | switch | no  | no       | GOTO        | yes      |          |
 |                         |        |     |          | SYNC        | yes      |          |
 | ROTATOR_POSITION        | number | no  | yes      | POSITION    | yes      |          |
-| ROTATOR_DIRECTION       | switch | no  | yes      | NORMAL      | yes      |          |
+| ROTATOR_DIRECTION       | switch | no  | no      | NORMAL      | yes      |          |
 |                         |        |     |          | REVERSED    | yes      |          |
 | ROTATOR_ABORT_MOTION    | switch | no  | yes      | ABORT_MOTION | yes     |          |
 | ROTATOR_BACKLASH        | number | no  | no       | BACKLASH     | yes     |          |
