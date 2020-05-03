@@ -286,13 +286,18 @@ Properties are implemented by dome driver base class in [indigo_dome_driver.c](h
 
 ## Rotator specific properties
 
-TBD
-
 | Property name  | Type   | RO | Required | Item name        | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-|       |       |       |       |       |       |       |
-
-For complete list see below:
+| ROTATOR_ON_POSITION_SET | switch | no  | no       | GOTO        | yes      |          |
+|                         |        |     |          | SYNC        | yes      |          |
+| ROTATOR_POSITION        | number | no  | yes      | POSITION    | yes      |          |
+| ROTATOR_DIRECTION       | switch | no  | yes      | NORMAL      | yes      |          |
+|                         |        |     |          | REVERSED    | yes      |          |
+| ROTATOR_ABORT_MOTION    | switch | no  | yes      | ABORT_MOTION | yes     |          |
+| ROTATOR_BACKLASH        | number | no  | no       | BACKLASH     | yes     |          |
+| ROTATOR_LIMITS          | number | no  | no       | MIN_POSITION | yes     |          |
+|                         |        |     |          | MAX_POSITION | yes     |          |
+| ROTATOR_STEPS_PER_REVOLUTION | number | no | no | STEPS_PER_REVOLUTION| yes |         |
 
 Properties are implemented by rotator driver base class in [indigo_rotator_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_rotator_driver.c)
 
