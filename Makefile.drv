@@ -39,6 +39,7 @@ endif
 DRIVER = indigo_$(notdir $(shell pwd))
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
+SOURCES = $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.m) $(ADDITIONAL_SOURCES)
 DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 ifeq ($(wildcard $(DRIVER)_main.c),)
@@ -71,11 +72,16 @@ FLAGS += $(SDK_INCLUDE)
 
 .PHONY: all status install uninstall make_sdk
 
+ifeq ($(notdir $(SOURCES)),)
+all: status
+	@printf "No sources for $(DRIVER) \n\n"
+else
 all: status $(MAKE_SDK) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+endif
 
 status:
 	@printf "\n$(DRIVER) ---------------------------------------\n\n"
-	@printf "Sources:    $(notdir $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.m) $(ADDITIONAL_SOURCES))\n"
+	@printf "Sources:    $(notdir $(SOURCES))\n"
 	@printf "Archive:    $(notdir $(DRIVER_A))\n"
 	@printf "SO library: $(notdir $(DRIVER_SO))\n"
 	@printf "$(DRIVER_O)\n"
