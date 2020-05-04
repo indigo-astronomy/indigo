@@ -61,12 +61,12 @@
 #define AUX_GPIO_OUTLET_1_ITEM         (AUX_GPIO_OUTLET_PROPERTY->items + 0)
 
 
-#define X_CORRECTION_PROPERTY_NAME  "X_WEATHER_CORRECTION"
+#define X_CALIBRATION_PROPERTY_NAME  "X_WEATHER_CALIBRATION"
 
-#define X_CORRECTION_PROPERTY               (PRIVATE_DATA->sky_correction_property)
-#define X_CORRECTION_TEMPERATURE_ITEM       (X_CORRECTION_PROPERTY->items + 0)
-#define X_CORRECTION_HUMIDIDTY_ITEM         (X_CORRECTION_PROPERTY->items + 1)
-#define X_CORRECTION_PRESSURE_ITEM          (X_CORRECTION_PROPERTY->items + 2)
+#define X_CALIBRATION_PROPERTY               (PRIVATE_DATA->sky_calibration_property)
+#define X_CALIBRATION_TEMPERATURE_ITEM       (X_CALIBRATION_PROPERTY->items + 0)
+#define X_CALIBRATION_HUMIDIDTY_ITEM         (X_CALIBRATION_PROPERTY->items + 1)
+#define X_CALIBRATION_PRESSURE_ITEM          (X_CALIBRATION_PROPERTY->items + 2)
 
 #define AUX_WEATHER_PROPERTY                     (PRIVATE_DATA->weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM             (AUX_WEATHER_PROPERTY->items + 0)
@@ -88,7 +88,7 @@ typedef struct {
 	char firmware[INDIGO_VALUE_SIZE];
 	indigo_property *outlet_names_property,
 	                *gpio_outlet_property,
-	                *sky_correction_property,
+	                *sky_calibration_property,
 	                *weather_property,
 	                *dew_threshold_property,
 	                *dew_warning_property;
@@ -274,7 +274,6 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 			*/
 			// Weather update
 			device = aux_weather;
-
 			if (!strcmp(tokens[0], "XDR")) { // Weather data
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "PXDR");
 				AUX_WEATHER_PRESSURE_ITEM->number.value = indigo_atod(tokens[2]) / 100.0; // We need hPa
@@ -289,11 +288,11 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 				}
 			} else if (!strcmp(tokens[0], "CAL")) {
-				X_CORRECTION_PRESSURE_ITEM->number.value = indigo_atod(tokens[2]) / 10.0;
-				X_CORRECTION_TEMPERATURE_ITEM->number.value = indigo_atod(tokens[4]) / 10.0;
-				X_CORRECTION_HUMIDIDTY_ITEM->number.value = indigo_atod(tokens[6]) / 10.0;
-				X_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, X_CORRECTION_PROPERTY, NULL);
+				X_CALIBRATION_PRESSURE_ITEM->number.value = indigo_atod(tokens[2]) / 10.0;
+				X_CALIBRATION_TEMPERATURE_ITEM->number.value = indigo_atod(tokens[4]) / 10.0;
+				X_CALIBRATION_HUMIDIDTY_ITEM->number.value = indigo_atod(tokens[6]) / 10.0;
+				X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
 				// handle switches here
 			}
 		}
@@ -440,7 +439,7 @@ static int aux_init_properties(indigo_device *device) {
 	DEVICE_BAUDRATE_PROPERTY->hidden = true;
 	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
-	INFO_PROPERTY->count = 7;
+	INFO_PROPERTY->count = 5;
 	// -------------------------------------------------------------------------------- GPIO OUTLETS
 	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, SWITCH_GROUP, "Switch outlet", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
@@ -461,13 +460,13 @@ static int aux_init_properties(indigo_device *device) {
 	if (AUX_DEW_WARNING_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Dew warning", INDIGO_IDLE_STATE);
-	// -------------------------------------------------------------------------------- X_CORRECTION
-	X_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, X_CORRECTION_PROPERTY_NAME, SETTINGS_GROUP, "Weather correction factors", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-	if (X_CORRECTION_PROPERTY == NULL)
+	// -------------------------------------------------------------------------------- X_CALIBRATION
+	X_CALIBRATION_PROPERTY = indigo_init_number_property(NULL, device->name, X_CALIBRATION_PROPERTY_NAME, SETTINGS_GROUP, "Weather calibration factors", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+	if (X_CALIBRATION_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(X_CORRECTION_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature (°C)", -999, 999, 0, 0);
-	indigo_init_number_item(X_CORRECTION_HUMIDIDTY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative Humidity (%)", -99, 99, 0, 0);
-	indigo_init_number_item(X_CORRECTION_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric Pressure (hPa)", -999, 999, 0, 0);
+	indigo_init_number_item(X_CALIBRATION_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature (°C)", -999, 999, 0, 0);
+	indigo_init_number_item(X_CALIBRATION_HUMIDIDTY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative Humidity (%)", -99, 99, 0, 0);
+	indigo_init_number_item(X_CALIBRATION_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric Pressure (Pa)", -999, 999, 0, 0);
 	// -------------------------------------------------------------------------------- AUX_WEATHER
 	AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather conditions", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 4);
 	if (AUX_WEATHER_PROPERTY == NULL)
@@ -492,11 +491,11 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 		if (indigo_property_match(AUX_DEW_WARNING_PROPERTY, property))
 			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+		if (indigo_property_match(X_CALIBRATION_PROPERTY, property))
+			indigo_define_property(device, X_CALIBRATION_PROPERTY, NULL);
 	}
 	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	if (indigo_property_match(X_CORRECTION_PROPERTY, property))
-		indigo_define_property(device, X_CORRECTION_PROPERTY, NULL);
 	if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property))
 		indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 
@@ -528,12 +527,13 @@ static void handle_aux_connect_property(indigo_device *device) {
 				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
 				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 				strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
+				PRIVATE_DATA->firmware[0] = '\0';
 				//aag_get_swith(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
 				indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 				indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 				indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+				indigo_define_property(device, X_CALIBRATION_PROPERTY, NULL);
 				device->is_connected = true;
-				//indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -543,11 +543,10 @@ static void handle_aux_connect_property(indigo_device *device) {
 		}
 	} else {
 		if (device->is_connected) {
-			// Stop timer faster - do not wait to finish readout cycle
-			//indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+			indigo_delete_property(device, X_CALIBRATION_PROPERTY, NULL);
 			mgbox_close(device);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -600,11 +599,25 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Open/Close switch failed");
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_CORRECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_CORRECTION
-		indigo_property_copy_values(X_CORRECTION_PROPERTY, property, false);
-		X_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, X_CORRECTION_PROPERTY, NULL);
+	} else if (indigo_property_match(X_CALIBRATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CALIBRATION
+		indigo_property_copy_values(X_CALIBRATION_PROPERTY, property, false);
+		if (!device->is_connected) return INDIGO_OK;
+		char command[INDIGO_VALUE_SIZE];
+		X_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
+		sprintf(
+			command,
+			":calp,%d*:calt,%d*:calh,%d*",
+			(int)(X_CALIBRATION_PRESSURE_ITEM->number.value * 10),
+			(int)(X_CALIBRATION_TEMPERATURE_ITEM->number.value * 10),
+			(int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.value * 10)
+		);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
+
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_THRESHOLD
@@ -632,14 +645,12 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_DEW_WARNING_PROPERTY);
+	indigo_release_property(X_CALIBRATION_PROPERTY);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
-
-	indigo_delete_property(device, X_CORRECTION_PROPERTY, NULL);
-	indigo_release_property(X_CORRECTION_PROPERTY);
 
 	indigo_delete_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 	indigo_release_property(AUX_DEW_THRESHOLD_PROPERTY);
