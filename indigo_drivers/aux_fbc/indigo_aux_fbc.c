@@ -41,6 +41,9 @@
 #include <indigo/indigo_io.h>
 #include "indigo_aux_fbc.h"
 
+// gp_bits is used as boolean
+#define is_connected               gp_bits
+
 #define PRIVATE_DATA                                          ((fbc_private_data *)device->private_data)
 
 #define AUX_LIGHT_SWITCH_PROPERTY                             (PRIVATE_DATA->light_switch_property)
@@ -200,7 +203,6 @@ static void aux_connection_handler(indigo_device *device) {
 				ioctl(PRIVATE_DATA->handle,TIOCMBIC,&fc_flag);
 				fc_flag = TIOCM_CTS;   /* Modem Constant for CTS pin */
 				ioctl(PRIVATE_DATA->handle,TIOCMBIC,&fc_flag);
-
 
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 				if (fbc_command(PRIVATE_DATA->handle, ": I #", response, sizeof(response)) && !strcmp("I FBC", response)) {
