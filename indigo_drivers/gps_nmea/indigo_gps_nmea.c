@@ -305,7 +305,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, gps_connect_callback, &PRIVATE_DATA->timer_callback);
+		indigo_set_timer(device, 0, gps_connect_callback, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);

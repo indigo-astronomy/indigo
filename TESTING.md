@@ -64,3 +64,4 @@ All testing with physical hardware or simulators is documented in this file
 | aux_dome_dragonfly | Dragonfly Controller | :white_check_mark: | - |
 | aux_focuser_lunatico | Armadillo Controller | :white_check_mark: | - |
 | aux_rotator_lunatico | Armadillo Controller | :white_check_mark: | - |
+| indigo_gps_nmea | Ublox GPS mouse | :white_check_mark: | There was a bug in the driver -> indigo_set_timer(device, 0, gps_connect_callback, &PRIVATE_DATA->timer_callback) should be  indigo_set_timer(device, 0, gps_connect_callback, null) |
