@@ -504,15 +504,15 @@ static indigo_result gps_detach(indigo_device *device) {
 static void pg_sned_callibration(indigo_device *device) {
 	char command[INDIGO_VALUE_SIZE];
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	sprintf(command, ":calp,%d*", (int)(X_CALIBRATION_PRESSURE_ITEM->number.value * 10));
+	sprintf(command, ":calp,%d*", (int)(X_CALIBRATION_PRESSURE_ITEM->number.target * 10));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	indigo_usleep(ONE_SECOND_DELAY);
-	sprintf(command, ":calt,%d*", (int)(X_CALIBRATION_TEMPERATURE_ITEM->number.value * 10));
+	sprintf(command, ":calt,%d*", (int)(X_CALIBRATION_TEMPERATURE_ITEM->number.target * 10));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	indigo_usleep(ONE_SECOND_DELAY);
-	sprintf(command, ":calh,%d*", (int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.value * 10));
+	sprintf(command, ":calh,%d*", (int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.target * 10));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
