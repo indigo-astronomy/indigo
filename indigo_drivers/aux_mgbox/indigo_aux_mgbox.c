@@ -275,7 +275,6 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 					}
 				}
 			}
-
 			/*
 			static bool inject = false;
 			if (inject) {
@@ -293,7 +292,6 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 				}
 			}
 			*/
-
 			// Weather update
 			device = aux_weather;
 			if (!strcmp(tokens[0], "XDR")) { // Weather data
@@ -466,8 +464,12 @@ static void gps_connect_callback(indigo_device *device) {
 				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
-				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
-				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
+				if (PRIVATE_DATA->device_type[0] != '\0') {
+					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+				}
+				if (PRIVATE_DATA->firmware[0] != '\0') {
+					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
+				}
 				indigo_define_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -652,8 +654,12 @@ static void handle_aux_connect_property(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (mgbox_open(device)) {
-				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
-				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
+				if (PRIVATE_DATA->device_type[0] != '\0') {
+					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+				}
+				if (PRIVATE_DATA->firmware[0] != '\0') {
+					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
+				}
 				// request callibration data at connect
 				indigo_write(PRIVATE_DATA->handle, ":calget*", 8);
 				indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
