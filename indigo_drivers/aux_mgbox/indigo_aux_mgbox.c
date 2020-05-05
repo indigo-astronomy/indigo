@@ -501,6 +501,24 @@ static indigo_result gps_detach(indigo_device *device) {
 
 // -----------------------XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-----------------
 
+static void pg_sned_callibration(indigo_device *device) {
+	char command[INDIGO_VALUE_SIZE];
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	sprintf(command, ":calp,%d*", (int)(X_CALIBRATION_PRESSURE_ITEM->number.value * 10));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	indigo_usleep(ONE_SECOND_DELAY);
+	sprintf(command, ":calt,%d*", (int)(X_CALIBRATION_TEMPERATURE_ITEM->number.value * 10));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	indigo_usleep(ONE_SECOND_DELAY);
+	sprintf(command, ":calh,%d*", (int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.value * 10));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+}
+
+
 static int aux_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------------- SIMULATION
 	SIMULATION_PROPERTY->hidden = true;
@@ -688,20 +706,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- X_CALIBRATION
 		indigo_property_copy_values(X_CALIBRATION_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
-		char command[INDIGO_VALUE_SIZE];
 		X_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
-		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		sprintf(command, ":calp,%d*", (int)(X_CALIBRATION_PRESSURE_ITEM->number.value * 10));
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
-		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-		sprintf(command, ":calt,%d*", (int)(X_CALIBRATION_TEMPERATURE_ITEM->number.value * 10));
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
-		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-		sprintf(command, ":calh,%d*", (int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.value * 10));
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
-		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		indigo_set_timer(device, 0, pg_sned_callibration, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_SEND_WEATHER_MOUNT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SEND_WEATHER_DATA_TO_MOUNT
