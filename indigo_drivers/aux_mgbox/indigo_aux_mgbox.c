@@ -27,7 +27,7 @@
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME	"idnigo_aux_mgbox"
 
-#define DEFAULT_BAUDRATE "9600"
+#define DEFAULT_BAUDRATE "38400"
 
 // gp_bits is used as boolean
 #define is_connected               gp_bits
@@ -397,6 +397,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		GPS_ADVANCED_PROPERTY->hidden = false;
+		strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
@@ -508,7 +509,7 @@ static int aux_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------------- DEVICE_PORTS
 	DEVICE_PORTS_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
-	DEVICE_BAUDRATE_PROPERTY->hidden = true;
+	DEVICE_BAUDRATE_PROPERTY->hidden = false;
 	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 5;
@@ -690,16 +691,15 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		char command[INDIGO_VALUE_SIZE];
 		X_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
-		sprintf(
-			command,
-			":calp,%d*:calt,%d*:calh,%d*",
-			(int)(X_CALIBRATION_PRESSURE_ITEM->number.value * 10),
-			(int)(X_CALIBRATION_TEMPERATURE_ITEM->number.value * 10),
-			(int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.value * 10)
-		);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
-
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		sprintf(command, ":calp,%d*", (int)(X_CALIBRATION_PRESSURE_ITEM->number.value * 10));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
+		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+		sprintf(command, ":calt,%d*", (int)(X_CALIBRATION_TEMPERATURE_ITEM->number.value * 10));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
+		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+		sprintf(command, ":calh,%d*", (int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.value * 10));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
