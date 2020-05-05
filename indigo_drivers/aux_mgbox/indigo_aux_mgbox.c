@@ -57,6 +57,8 @@
 #define AUX_GPIO_OUTLET_PROPERTY       (PRIVATE_DATA->gpio_outlet_property)
 #define AUX_GPIO_OUTLET_1_ITEM         (AUX_GPIO_OUTLET_PROPERTY->items + 0)
 
+#define AUX_OUTLET_PULSE_LENGTHS_PROPERTY      (PRIVATE_DATA->gpio_outlet_pulse_property)
+#define AUX_OUTLET_PULSE_LENGTHS_1_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 0)
 
 #define X_SEND_GPS_MOUNT_PROPERTY_NAME  "X_SEND_GPS_DATA_TO_MOUNT"
 #define X_SEND_GPS_MOUNT_ITEM_NAME      "ENABLED"
@@ -98,6 +100,7 @@ typedef struct {
 	char device_type[INDIGO_VALUE_SIZE];
 	indigo_property *outlet_names_property,
 	                *gpio_outlet_property,
+	                *gpio_outlet_pulse_property,
 	                *sky_calibration_property,
 	                *weather_property,
 	                *dew_threshold_property,
@@ -147,6 +150,13 @@ static char **parse(char *buffer) {
 	 {\
 		 if (device->is_connected) indigo_update_property(device, property, message);\
 	 }
+
+static void mg_send_command(int handle, char *command) {
+	// device does not like often commands so wait 1/2 seconds
+	indigo_usleep(ONE_SECOND_DELAY / 2);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command -> %s", command);
+	indigo_write(handle, command, strlen(command));
+}
 
 static void gps_refresh_callback(indigo_device *gdevice) {
 	char buffer[128];
@@ -346,16 +356,20 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 						break;
 					}
 				}
-			} else if (!strncmp(tokens[0], "LOG", 3)) {
+			} else if (!strncmp(tokens[0], "LOG:", 4)) {
 				char device_type[INDIGO_VALUE_SIZE];
-				if (sscanf(tokens[0], "LOG: Device Type: %s", device_type) == 1 && PRIVATE_DATA->device_type[0] == '\0') {
-					strncpy(PRIVATE_DATA->device_type, device_type, INDIGO_VALUE_SIZE);
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-					device = gps;
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-					device = aux_weather;
+				if (sscanf(tokens[0], "LOG: Device Type: %s", device_type) == 1) {
+					if (PRIVATE_DATA->device_type[0] == '\0') {
+						strncpy(PRIVATE_DATA->device_type, device_type, INDIGO_VALUE_SIZE);
+						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						device = gps;
+						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						device = aux_weather;
+					}
+				} else {
+					indigo_send_message(device, tokens[0]+4);
 				}
 			}
 		}
@@ -381,7 +395,7 @@ static bool mgbox_open(indigo_device *device) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 			indigo_set_timer(gps, 0, gps_refresh_callback, &global_timer);
 			// request devicetype
-			indigo_write(PRIVATE_DATA->handle, ":devicetype*", 8);
+			mg_send_command(PRIVATE_DATA->handle, ":devicetype*");
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 			PRIVATE_DATA->count_open--;
@@ -513,9 +527,8 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		} else {
 			strcpy(command,":mg,0*");
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+		mg_send_command(PRIVATE_DATA->handle, command);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
 	}
@@ -535,23 +548,31 @@ static indigo_result gps_detach(indigo_device *device) {
 
 // -----------------------XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-----------------
 
-static void pg_sned_callibration(indigo_device *device) {
+static void mg_set_callibration(indigo_device *device) {
 	char command[INDIGO_VALUE_SIZE];
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	sprintf(command, ":calp,%d*", (int)(X_CALIBRATION_PRESSURE_ITEM->number.target * 10));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_usleep(ONE_SECOND_DELAY / 2);
+	mg_send_command(PRIVATE_DATA->handle, command);
 	sprintf(command, ":calt,%d*", (int)(X_CALIBRATION_TEMPERATURE_ITEM->number.target * 10));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_usleep(ONE_SECOND_DELAY / 2);
+	mg_send_command(PRIVATE_DATA->handle, command);
 	sprintf(command, ":calh,%d*", (int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.target * 10));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	mg_send_command(PRIVATE_DATA->handle, command);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 }
 
+static void mg_pulse(indigo_device *device) {
+	if (AUX_GPIO_OUTLET_1_ITEM->sw.value) {
+		char command[INDIGO_VALUE_SIZE];
+		sprintf(command, ":pulse,%d*", (int)(AUX_OUTLET_PULSE_LENGTHS_1_ITEM->number.target));
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		mg_send_command(PRIVATE_DATA->handle, command);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		indigo_usleep((int)(AUX_OUTLET_PULSE_LENGTHS_1_ITEM->number.target * 1000));
+		AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
+		AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+	}
+}
 
 static int aux_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------------- SIMULATION
@@ -569,14 +590,17 @@ static int aux_init_properties(indigo_device *device) {
 	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, SWITCH_GROUP, "Switch outlet", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	AUX_GPIO_OUTLET_PROPERTY->hidden = true;
 	indigo_init_switch_item(AUX_GPIO_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Switch", false);
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
-	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, SWITCH_GROUP, "Switch name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, SETTINGS_GROUP, "Switch name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	AUX_OUTLET_NAMES_PROPERTY->hidden = true;
-	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Internal switch", "Switch");
+	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Switch name", "Switch");
+	// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
+	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", SWITCH_GROUP, "Switch pulse length (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Switch", 1, 10000, 100, 100);
 	// -------------------------------------------------------------------------------- DEW_THRESHOLD
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
@@ -619,6 +643,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
+			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 		if (indigo_property_match(AUX_DEW_WARNING_PROPERTY, property))
@@ -661,8 +687,9 @@ static void handle_aux_connect_property(indigo_device *device) {
 					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
 				}
 				// request callibration data at connect
-				indigo_write(PRIVATE_DATA->handle, ":calget*", 8);
+				mg_send_command(PRIVATE_DATA->handle, ":calget*");
 				indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+				indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 				indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 				indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 				indigo_define_property(device, X_CALIBRATION_PROPERTY, NULL);
@@ -678,6 +705,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 	} else {
 		if (device->is_connected) {
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 			indigo_delete_property(device, X_CALIBRATION_PROPERTY, NULL);
@@ -707,32 +735,36 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
 		snprintf(AUX_GPIO_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_OUTLET_PULSE_LENGTHS_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
 		if (IS_CONNECTED) {
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		}
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
+		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
-
-		bool success = false;
-		if (AUX_GPIO_OUTLET_1_ITEM->sw.value) {
-			//success = aag_close_swith(device);
-		} else {
-			//success = aag_open_swith(device);
-		}
-		if (success) {
-			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-		} else {
+		if (!strchr(PRIVATE_DATA->device_type,'P')) {
+			AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
 			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Open/Close switch failed");
+			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Open/Close switch not supported on this device.");
+			return INDIGO_OK;
 		}
+		AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mg_pulse, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_CALIBRATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CALIBRATION
@@ -740,7 +772,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (!device->is_connected) return INDIGO_OK;
 		X_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, pg_sned_callibration, NULL);
+		indigo_set_timer(device, 0, mg_set_callibration, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_SEND_WEATHER_MOUNT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SEND_WEATHER_DATA_TO_MOUNT
@@ -756,7 +788,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+		mg_send_command(PRIVATE_DATA->handle, command);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property)) {
@@ -783,6 +815,7 @@ static indigo_result aux_detach(indigo_device *device) {
 		handle_aux_connect_property(device);
 	}
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
+	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_DEW_WARNING_PROPERTY);
 	indigo_release_property(X_CALIBRATION_PROPERTY);
