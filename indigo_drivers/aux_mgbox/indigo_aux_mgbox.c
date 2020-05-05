@@ -95,6 +95,7 @@ typedef struct {
 	int count_open;
 	pthread_mutex_t serial_mutex;
 	char firmware[INDIGO_VALUE_SIZE];
+	char device_type[INDIGO_VALUE_SIZE];
 	indigo_property *outlet_names_property,
 	                *gpio_outlet_property,
 	                *sky_calibration_property,
@@ -113,9 +114,10 @@ static indigo_timer *global_timer = NULL;
 static char **parse(char *buffer) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
 	int offset = 3;
-	if (strncmp("$GP", buffer, 3) && strncmp("$P", buffer, 2)) return NULL;
+	if (strncmp("$GP", buffer, 3) && strncmp("$P", buffer, 2) && strncmp("$LOG", buffer, 4)) return NULL;
 	else if (buffer[1] == 'G') offset = 3;
-	else offset = 2;
+	else if (buffer[1] == 'P') offset = 2;
+	else offset = 1;
 
 	char *index = strchr(buffer, '*');
 	if (index) {
@@ -281,11 +283,13 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 				tokens = parse(buffer);
 				inject = false;
 			} else {
-				strcpy(buffer, "$PCAL,P,16960,T,16960,H,0,MM,0,MG,0*68");
+				strcpy(buffer, "$LOG: Device Type: MGPBox*6B");
 				tokens = parse(buffer);
 				inject = true;
 				if (!tokens) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "TOKEN: NULL");
+				} else {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "TOKEN: %s", tokens[0]);
 				}
 			}
 			*/
@@ -300,9 +304,13 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 				AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 				update_property_if_connected(device, AUX_WEATHER_PROPERTY, NULL);
 				if (PRIVATE_DATA->firmware[0] == '\0') {
-					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, tokens[17], INDIGO_VALUE_SIZE);
 					strncpy(PRIVATE_DATA->firmware, tokens[17], INDIGO_VALUE_SIZE);
+					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
+					device = gps;
+					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					device = aux_weather;
 				}
 				// Dew point warning
 				if (AUX_WEATHER_TEMPERATURE_ITEM->number.value - AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value <= AUX_WEATHER_DEWPOINT_ITEM->number.value) {
@@ -336,8 +344,20 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 						X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
 						device = gps;
 						update_property_if_connected(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+						device = aux_weather;
 						break;
 					}
+				}
+			} else if (!strncmp(tokens[0], "LOG", 3)) {
+				char device_type[INDIGO_VALUE_SIZE];
+				if (sscanf(tokens[0], "LOG: Device Type: %s", device_type) == 1 && PRIVATE_DATA->device_type[0] == '\0') {
+					strncpy(PRIVATE_DATA->device_type, device_type, INDIGO_VALUE_SIZE);
+					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					device = gps;
+					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					device = aux_weather;
 				}
 			}
 		}
@@ -362,6 +382,8 @@ static bool mgbox_open(indigo_device *device) {
 		if (PRIVATE_DATA->handle >= 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 			indigo_set_timer(gps, 0, gps_refresh_callback, &global_timer);
+			// request devicetype
+			indigo_write(PRIVATE_DATA->handle, ":devicetype*", 8);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 			PRIVATE_DATA->count_open--;
@@ -378,6 +400,8 @@ static void mgbox_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = -1;
+		PRIVATE_DATA->firmware[0] = '\0';
+		PRIVATE_DATA->device_type[0] = '\0';
 		indigo_cancel_timer_sync(gps, &global_timer);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
@@ -407,6 +431,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
+		INFO_PROPERTY->count = 5;
 		//#ifdef INDIGO_LINUX
 		//for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 		//	if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "ttyGPS")) {
@@ -441,6 +466,8 @@ static void gps_connect_callback(indigo_device *device) {
 				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
+				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
 				indigo_define_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -625,14 +652,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (mgbox_open(device)) {
-				char board[INDIGO_VALUE_SIZE] = "N/A";
-				char firmware[INDIGO_VALUE_SIZE] = "N/A";
-				char serial_number[INDIGO_VALUE_SIZE] = "N/A";
-
-				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
-				strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
-				PRIVATE_DATA->firmware[0] = '\0';
+				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type, INDIGO_VALUE_SIZE);
+				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
 				// request callibration data at connect
 				indigo_write(PRIVATE_DATA->handle, ":calget*", 8);
 				indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
