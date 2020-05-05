@@ -320,22 +320,27 @@ static void gps_refresh_callback(indigo_device *gdevice) {
 				X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 				update_property_if_connected(device, X_CALIBRATION_PROPERTY, NULL);
 
-				X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
-				X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
-				if (!strcmp(tokens[7], "MM")) {
-					X_SEND_WEATHER_MOUNT_ITEM->sw.value = atoi(tokens[8]);
-					X_SEND_GPS_MOUNT_ITEM->sw.value = atoi(tokens[10]);
-				} else {
-					X_SEND_WEATHER_MOUNT_ITEM->sw.value = atoi(tokens[10]);
-					X_SEND_GPS_MOUNT_ITEM->sw.value = atoi(tokens[8]);
+				int i = 1;
+				while (tokens[i] != NULL) {
+					if (!strcmp(tokens[i++], "MM")) {
+						X_SEND_WEATHER_MOUNT_ITEM->sw.value = atoi(tokens[i]);
+						X_SEND_WEATHER_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
+						update_property_if_connected(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
+						break;
+					}
 				}
-				update_property_if_connected(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
-				device = gps;
-				update_property_if_connected(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+				i = 1;
+				while (tokens[i] != NULL) {
+					if (!strcmp(tokens[i++], "MG")) {
+						X_SEND_GPS_MOUNT_ITEM->sw.value = atoi(tokens[i]);
+						X_SEND_GPS_MOUNT_PROPERTY->state = INDIGO_OK_STATE;
+						device = gps;
+						update_property_if_connected(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+						break;
+					}
+				}
 			}
 		}
-
-	//
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader finished");
 }
@@ -507,11 +512,11 @@ static void pg_sned_callibration(indigo_device *device) {
 	sprintf(command, ":calp,%d*", (int)(X_CALIBRATION_PRESSURE_ITEM->number.target * 10));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_usleep(ONE_SECOND_DELAY / 2);
 	sprintf(command, ":calt,%d*", (int)(X_CALIBRATION_TEMPERATURE_ITEM->number.target * 10));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_usleep(ONE_SECOND_DELAY / 2);
 	sprintf(command, ":calh,%d*", (int)(X_CALIBRATION_HUMIDIDTY_ITEM->number.target * 10));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SENDING command: %s", command);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
@@ -557,7 +562,7 @@ static int aux_init_properties(indigo_device *device) {
 	X_CALIBRATION_PROPERTY = indigo_init_number_property(NULL, device->name, X_CALIBRATION_PROPERTY_NAME, SETTINGS_GROUP, "Weather calibration factors", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 	if (X_CALIBRATION_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(X_CALIBRATION_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature (°C)", -999, 999, 0, 0);
+	indigo_init_number_item(X_CALIBRATION_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature (°C)", -200, 200, 0, 0);
 	indigo_init_number_item(X_CALIBRATION_HUMIDIDTY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative Humidity (%)", -99, 99, 0, 0);
 	indigo_init_number_item(X_CALIBRATION_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric Pressure (Pa)", -999, 999, 0, 0);
 	// -------------------------------------------------------------------------------- AUX_WEATHER
@@ -569,9 +574,9 @@ static int aux_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -200, 80, 1, 0);
 	strncpy(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
 	indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative humidity (%)", 0, 100, 0, 0);
-	strncpy(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.0f", INDIGO_VALUE_SIZE);
+	strncpy(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
 	indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric Pressure (hPa)", 0, 10000, 0, 0);
-	strncpy(AUX_WEATHER_PRESSURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	strncpy(AUX_WEATHER_PRESSURE_ITEM->number.format, "%.2f", INDIGO_VALUE_SIZE);
 	//--------------------------------------------------------------------------- X_SEND_WEATHER_MOUNT_PROPERTY
 	X_SEND_WEATHER_MOUNT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SEND_WEATHER_MOUNT_PROPERTY_NAME, SETTINGS_GROUP, "Send weather data to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (X_SEND_WEATHER_MOUNT_PROPERTY == NULL)
