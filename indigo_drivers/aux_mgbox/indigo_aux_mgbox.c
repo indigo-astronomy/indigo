@@ -110,7 +110,8 @@
 typedef struct {
 	int handle;
 	int count_open;
-	pthread_mutex_t serial_mutex;
+	pthread_mutex_t serial_mutex,
+	                reset_mutex;
 	char firmware[INDIGO_VALUE_SIZE];
 	char device_type[INDIGO_VALUE_SIZE];
 	indigo_property *outlet_names_property,
@@ -189,7 +190,10 @@ static void data_refresh_callback(indigo_device *gdevice) {
 	device = gps;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "NMEA reader started");
 	while (PRIVATE_DATA->handle > 0) {
-		if (indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0 && (tokens = parse(buffer))) {
+		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
+		int result = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
+		if (result > 0 && (tokens = parse(buffer))) {
 			// GPS Update
 			device = gps;
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
@@ -481,7 +485,6 @@ static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -608,7 +611,10 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			X_REBOOT_GPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 			mg_send_command(PRIVATE_DATA->handle, ":rebootgps*");
+			indigo_usleep(ONE_SECOND_DELAY);
+			pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			X_REBOOT_GPS_ITEM->sw.value = false;
 			X_REBOOT_GPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -899,7 +905,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			X_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 			mg_send_command(PRIVATE_DATA->handle, ":reboot*");
+			indigo_usleep(ONE_SECOND_DELAY);
+			pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			X_REBOOT_ITEM->sw.value = false;
 			X_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -984,6 +993,8 @@ indigo_result indigo_aux_mgbox(indigo_driver_action action, indigo_driver_info *
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(mg_private_data));
 		private_data->handle = -1;
+		pthread_mutex_init(&private_data->serial_mutex, NULL);
+		pthread_mutex_init(&private_data->reset_mutex, NULL);
 		gps = malloc(sizeof(indigo_device));
 		assert(gps != NULL);
 		memcpy(gps, &gps_template, sizeof(indigo_device));
