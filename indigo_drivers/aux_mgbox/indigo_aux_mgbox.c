@@ -470,6 +470,21 @@ static void mgbox_close(indigo_device *device) {
 }
 
 
+static void mg_reset_gps(indigo_device *device) {
+	if (X_REBOOT_GPS_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
+		mg_send_command(PRIVATE_DATA->handle, ":rebootgps*");
+		indigo_usleep(2 * ONE_SECOND_DELAY);
+		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		X_REBOOT_GPS_ITEM->sw.value = false;
+	}
+	X_REBOOT_GPS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+}
+
+
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (indigo_property_match(X_SEND_GPS_MOUNT_PROPERTY, property))
@@ -608,19 +623,9 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- X_REBOOT_GPS
 		indigo_property_copy_values(X_REBOOT_GPS_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
-		if (X_REBOOT_GPS_ITEM->sw.value) {
-			X_REBOOT_GPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
-			mg_send_command(PRIVATE_DATA->handle, ":rebootgps*");
-			indigo_usleep(ONE_SECOND_DELAY);
-			pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			X_REBOOT_GPS_ITEM->sw.value = false;
-			X_REBOOT_GPS_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		X_REBOOT_GPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mg_reset_gps, NULL);
 		return INDIGO_OK;
 	}
 	// -------------------------------------------------------------------------------------
@@ -667,6 +672,21 @@ static void mg_pulse(indigo_device *device) {
 		AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	}
+}
+
+
+static void mg_reset_device(indigo_device *device) {
+	if (X_REBOOT_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
+		mg_send_command(PRIVATE_DATA->handle, ":reboot*");
+		indigo_usleep(2 * ONE_SECOND_DELAY);
+		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		X_REBOOT_ITEM->sw.value = false;
+	}
+	X_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
 }
 
 
@@ -902,19 +922,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- X_REBOOT_DEVICE
 		indigo_property_copy_values(X_REBOOT_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
-		if (X_REBOOT_ITEM->sw.value) {
-			X_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
-			mg_send_command(PRIVATE_DATA->handle, ":reboot*");
-			indigo_usleep(ONE_SECOND_DELAY);
-			pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			X_REBOOT_ITEM->sw.value = false;
-			X_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		X_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mg_reset_device, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_THRESHOLD
