@@ -425,13 +425,19 @@ static bool mgbox_open(indigo_device *device) {
 		if (PRIVATE_DATA->handle >= 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 			indigo_set_timer(gps, 0, data_refresh_callback, &global_timer);
+			// To be on the safe side wait a bit after connect some arduino devices reset at connect
+			indigo_usleep(ONE_SECOND_DELAY);
 			// request devicetype
 			mg_send_command(PRIVATE_DATA->handle, ":devicetype*");
-			// wait for 2 seconds for a response, handled in data_refresh_callback()
-			for (int i=0; i < 20; i++) {
-				indigo_usleep(ONE_SECOND_DELAY/10);
-				if (PRIVATE_DATA->device_type[0] != '\0') break;
+			// wait for 3.5 seconds for a response, handled in data_refresh_callback()
+			for (int i=1; i <= 35; i++) {
+				indigo_usleep(ONE_SECOND_DELAY / 10);
+				if (PRIVATE_DATA->device_type[0] != '\0') {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device identified as '%f' in %.1f sec.", PRIVATE_DATA->device_type, i / 10.0);
+					break;
+				}
 			}
+
 			// no responce to ":devicetype*"
 			if (PRIVATE_DATA->device_type[0] == '\0') {
 				close(PRIVATE_DATA->handle);
@@ -716,7 +722,7 @@ static int aux_init_properties(indigo_device *device) {
 	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", SWITCH_GROUP, "Switch pulse length (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Pulse switch", 1, 10000, 100, 100);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Pulse switch", 1, 10000, 100, 1000);
 	// -------------------------------------------------------------------------------- DEW_THRESHOLD
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
