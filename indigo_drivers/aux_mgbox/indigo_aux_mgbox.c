@@ -50,6 +50,20 @@
 #define WEATHER_GROUP                         "Weather"
 #define SWITCH_GROUP                          "Switch Control"
 
+
+// GPS
+#define X_SEND_GPS_MOUNT_PROPERTY_NAME        "X_SEND_GPS_DATA_TO_MOUNT"
+#define X_SEND_GPS_MOUNT_ITEM_NAME            "ENABLED"
+
+#define X_SEND_GPS_MOUNT_PROPERTY             (PRIVATE_DATA->gps_to_mount_property)
+#define X_SEND_GPS_MOUNT_ITEM                 (X_SEND_GPS_MOUNT_PROPERTY->items + 0)
+
+#define X_REBOOT_GPS_PROPERTY_NAME            "X_REBOOT_GPS"
+#define X_REBOOT_GPS_ITEM_NAME                "REBOOT"
+
+#define X_REBOOT_GPS_PROPERTY                 (PRIVATE_DATA->reboot_gps_property)
+#define X_REBOOT_GPS_ITEM                     (X_REBOOT_GPS_PROPERTY->items + 0)
+
 // Switch
 #define AUX_OUTLET_NAMES_PROPERTY             (PRIVATE_DATA->outlet_names_property)
 #define AUX_OUTLET_NAME_1_ITEM                (AUX_OUTLET_NAMES_PROPERTY->items + 0)
@@ -60,17 +74,18 @@
 #define AUX_OUTLET_PULSE_LENGTHS_PROPERTY     (PRIVATE_DATA->gpio_outlet_pulse_property)
 #define AUX_OUTLET_PULSE_LENGTHS_1_ITEM       (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 0)
 
-#define X_SEND_GPS_MOUNT_PROPERTY_NAME        "X_SEND_GPS_DATA_TO_MOUNT"
-#define X_SEND_GPS_MOUNT_ITEM_NAME            "ENABLED"
-
-#define X_SEND_GPS_MOUNT_PROPERTY             (PRIVATE_DATA->gps_to_mount_property)
-#define X_SEND_GPS_MOUNT_ITEM                 (X_SEND_GPS_MOUNT_PROPERTY->items + 0)
-
+// Weather
 #define X_SEND_WEATHER_MOUNT_PROPERTY_NAME    "X_SEND_WEATHER_DATA_TO_MOUNT"
 #define X_SEND_WEATHER_MOUNT_ITEM_NAME        "ENABLED"
 
 #define X_SEND_WEATHER_MOUNT_PROPERTY         (PRIVATE_DATA->weather_to_mount_property)
 #define X_SEND_WEATHER_MOUNT_ITEM             (X_SEND_WEATHER_MOUNT_PROPERTY->items + 0)
+
+#define X_REBOOT_PROPERTY_NAME                 "X_REBOOT_DEVICE"
+#define X_REBOOT_ITEM_NAME                     "REBOOT"
+
+#define X_REBOOT_PROPERTY                      (PRIVATE_DATA->reboot_device_property)
+#define X_REBOOT_ITEM                          (X_REBOOT_PROPERTY->items + 0)
 
 #define X_CALIBRATION_PROPERTY_NAME           "X_WEATHER_CALIBRATION"
 
@@ -106,7 +121,9 @@ typedef struct {
 	                *dew_threshold_property,
 	                *dew_warning_property,
 	                *weather_to_mount_property,
-	                *gps_to_mount_property;
+	                *gps_to_mount_property,
+	                *reboot_gps_property,
+	                *reboot_device_property;
 } mg_private_data;
 
 static mg_private_data *private_data = NULL;
@@ -292,6 +309,7 @@ static void data_refresh_callback(indigo_device *gdevice) {
 				}
 			}
 			/*
+			// Test code to be removed when in production
 			static bool inject = false;
 			if (inject) {
 				strcpy(buffer, "$PXDR,P,96816.0,P,0,C,24.9,C,1,H,34.0,P,2,C,8.0,C,3,1.1*04");
@@ -451,6 +469,9 @@ static indigo_result gps_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(X_SEND_GPS_MOUNT_PROPERTY, property))
 			indigo_define_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+		if (indigo_property_match(X_REBOOT_GPS_PROPERTY, property))
+			indigo_define_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+
 	}
 	return indigo_gps_enumerate_properties(device, NULL, NULL);
 }
@@ -485,6 +506,11 @@ static indigo_result gps_attach(indigo_device *device) {
 		if (X_SEND_GPS_MOUNT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_SEND_GPS_MOUNT_ITEM, X_SEND_GPS_MOUNT_ITEM_NAME, "Enable", false);
+		//--------------------------------------------------------------------------- X_REBOOT_GPS_PROPERTY
+		X_REBOOT_GPS_PROPERTY = indigo_init_switch_property(NULL, device->name, X_REBOOT_GPS_PROPERTY_NAME, SETTINGS_GROUP, "Reboot GPS", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (X_REBOOT_GPS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_REBOOT_GPS_ITEM, X_REBOOT_GPS_ITEM_NAME, "Reboot!", false);
 		//--------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return gps_enumerate_properties(device, NULL, NULL);
@@ -525,6 +551,7 @@ static void gps_connect_callback(indigo_device *device) {
 					return;
 				}
 				indigo_define_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+				indigo_define_property(device, X_REBOOT_GPS_PROPERTY, NULL);
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -536,6 +563,7 @@ static void gps_connect_callback(indigo_device *device) {
 	} else {
 		if (device->is_connected) {
 			indigo_delete_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
+			indigo_delete_property(device, X_REBOOT_GPS_PROPERTY, NULL);
 			mgbox_close(device);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -572,7 +600,23 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		mg_send_command(PRIVATE_DATA->handle, command);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
+	} else if (indigo_property_match(X_REBOOT_GPS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_REBOOT_GPS
+		indigo_property_copy_values(X_REBOOT_GPS_PROPERTY, property, false);
+		if (!device->is_connected) return INDIGO_OK;
+		if (X_REBOOT_GPS_ITEM->sw.value) {
+			X_REBOOT_GPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			mg_send_command(PRIVATE_DATA->handle, ":rebootgps*");
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			X_REBOOT_GPS_ITEM->sw.value = false;
+			X_REBOOT_GPS_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+		return INDIGO_OK;
 	}
+	// -------------------------------------------------------------------------------------
 	return indigo_gps_change_property(device, client, property);
 }
 
@@ -584,6 +628,7 @@ static indigo_result gps_detach(indigo_device *device) {
 		gps_connect_callback(device);
 	}
 	indigo_release_property(X_SEND_GPS_MOUNT_PROPERTY);
+	indigo_release_property(X_REBOOT_GPS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_gps_detach(device);
 }
@@ -674,11 +719,16 @@ static int aux_init_properties(indigo_device *device) {
 	strncpy(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
 	indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric Pressure (hPa)", 0, 10000, 0, 0);
 	strncpy(AUX_WEATHER_PRESSURE_ITEM->number.format, "%.2f", INDIGO_VALUE_SIZE);
-	//--------------------------------------------------------------------------- X_SEND_WEATHER_MOUNT_PROPERTY
+	//--------------------------------------------------------------------------- X_SEND_WEATHER_MOUNT
 	X_SEND_WEATHER_MOUNT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SEND_WEATHER_MOUNT_PROPERTY_NAME, SETTINGS_GROUP, "Send weather data to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (X_SEND_WEATHER_MOUNT_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(X_SEND_WEATHER_MOUNT_ITEM, X_SEND_WEATHER_MOUNT_ITEM_NAME, "Enable", false);
+	//--------------------------------------------------------------------------- X_REBOOT_DEVICE
+	X_REBOOT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_REBOOT_PROPERTY_NAME, SETTINGS_GROUP, "Reboot device", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+	if (X_REBOOT_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_switch_item(X_REBOOT_ITEM, X_REBOOT_ITEM_NAME, "Reboot!", false);
 	//---------------------------------------------------------------------------
 	return INDIGO_OK;
 }
@@ -698,6 +748,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, X_CALIBRATION_PROPERTY, NULL);
 		if (indigo_property_match(X_SEND_WEATHER_MOUNT_PROPERTY, property))
 			indigo_define_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
+		if (indigo_property_match(X_REBOOT_PROPERTY, property))
+			indigo_define_property(device, X_REBOOT_PROPERTY, NULL);
 	}
 	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
 		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -738,6 +790,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 				indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 				indigo_define_property(device, X_CALIBRATION_PROPERTY, NULL);
 				indigo_define_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
+				indigo_define_property(device, X_REBOOT_PROPERTY, NULL);
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -754,6 +807,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 			indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 			indigo_delete_property(device, X_CALIBRATION_PROPERTY, NULL);
 			indigo_delete_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
+			indigo_delete_property(device, X_REBOOT_PROPERTY, NULL);
 			mgbox_close(device);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -837,6 +891,21 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		mg_send_command(PRIVATE_DATA->handle, command);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
+	} else if (indigo_property_match(X_REBOOT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_REBOOT_DEVICE
+		indigo_property_copy_values(X_REBOOT_PROPERTY, property, false);
+		if (!device->is_connected) return INDIGO_OK;
+		if (X_REBOOT_ITEM->sw.value) {
+			X_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			mg_send_command(PRIVATE_DATA->handle, ":reboot*");
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			X_REBOOT_ITEM->sw.value = false;
+			X_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_THRESHOLD
 		indigo_property_copy_values(AUX_DEW_THRESHOLD_PROPERTY, property, false);
@@ -867,6 +936,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_DEW_WARNING_PROPERTY);
 	indigo_release_property(X_CALIBRATION_PROPERTY);
 	indigo_release_property(X_SEND_WEATHER_MOUNT_PROPERTY);
+	indigo_release_property(X_REBOOT_PROPERTY);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
