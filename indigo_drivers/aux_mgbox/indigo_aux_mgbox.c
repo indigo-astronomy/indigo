@@ -154,7 +154,7 @@ static char **parse(char *buffer) {
 		if (c1 != c2)
 			return NULL;
 	}
-	static char *tokens[32];
+	static char *tokens[128];
 	int token = 0;
 	memset(tokens, 0, sizeof(tokens));
 	index = buffer + offset;
@@ -183,7 +183,7 @@ static void mg_send_command(int handle, char *command) {
 
 
 static void data_refresh_callback(indigo_device *gdevice) {
-	char buffer[128];
+	char buffer[INDIGO_VALUE_SIZE];
 	char **tokens;
 	indigo_device* device;
 
@@ -194,6 +194,7 @@ static void data_refresh_callback(indigo_device *gdevice) {
 		int result = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 		if (result > 0 && (tokens = parse(buffer))) {
+			buffer[INDIGO_VALUE_SIZE-1] = '\0';
 			// GPS Update
 			device = gps;
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
