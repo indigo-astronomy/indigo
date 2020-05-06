@@ -164,7 +164,7 @@ static void mg_send_command(int handle, char *command) {
 }
 
 
-static void gps_refresh_callback(indigo_device *gdevice) {
+static void data_refresh_callback(indigo_device *gdevice) {
 	char buffer[128];
 	char **tokens;
 	indigo_device* device;
@@ -401,9 +401,26 @@ static bool mgbox_open(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle >= 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-			indigo_set_timer(gps, 0, gps_refresh_callback, &global_timer);
+			indigo_set_timer(gps, 0, data_refresh_callback, &global_timer);
 			// request devicetype
 			mg_send_command(PRIVATE_DATA->handle, ":devicetype*");
+			// wait for 2 seconds for a response, handled in data_refresh_callback()
+			for (int i=0; i < 20; i++) {
+				indigo_usleep(ONE_SECOND_DELAY/10);
+				if (PRIVATE_DATA->device_type[0] != '\0') break;
+			}
+			// no responce to ":devicetype*"
+			if (PRIVATE_DATA->device_type[0] == '\0') {
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = -1;
+				indigo_cancel_timer_sync(gps, &global_timer);
+				PRIVATE_DATA->count_open--;
+				PRIVATE_DATA->firmware[0] = '\0';
+				PRIVATE_DATA->device_type[0] = '\0';
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Could not identify device at %s", name);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				return false;
+			}
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 			PRIVATE_DATA->count_open--;
@@ -421,9 +438,9 @@ static void mgbox_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = -1;
+		indigo_cancel_timer_sync(gps, &global_timer);
 		PRIVATE_DATA->firmware[0] = '\0';
 		PRIVATE_DATA->device_type[0] = '\0';
-		indigo_cancel_timer_sync(gps, &global_timer);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -495,6 +512,17 @@ static void gps_connect_callback(indigo_device *device) {
 				}
 				if (PRIVATE_DATA->firmware[0] != '\0') {
 					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware, INDIGO_VALUE_SIZE);
+				}
+				if (!strchr(PRIVATE_DATA->device_type, 'G')) {
+					char message[INDIGO_VALUE_SIZE];
+					snprintf(message, INDIGO_VALUE_SIZE, "Model '%s' does not have GPS device", PRIVATE_DATA->device_type);
+					mgbox_close(device);
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					device->is_connected = false;
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CONNECTION_PROPERTY, message);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
+					return;
 				}
 				indigo_define_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
 				device->is_connected = true;
@@ -606,17 +634,17 @@ static int aux_init_properties(indigo_device *device) {
 	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, SWITCH_GROUP, "Switch outlet", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_switch_item(AUX_GPIO_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Switch", false);
+	indigo_init_switch_item(AUX_GPIO_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Pulse switch", false);
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
 	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, SETTINGS_GROUP, "Switch name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Switch name", "Switch");
+	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Switch name", "Pulse switch");
 	// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
 	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", SWITCH_GROUP, "Switch pulse length (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Switch", 1, 10000, 100, 100);
+	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Pulse switch", 1, 10000, 100, 100);
 	// -------------------------------------------------------------------------------- DEW_THRESHOLD
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
@@ -772,10 +800,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
-		if (!strchr(PRIVATE_DATA->device_type,'P')) {
+		if (!strchr(PRIVATE_DATA->device_type, 'P')) {
 			AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
 			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Open/Close switch not supported on this device.");
+			char message[INDIGO_VALUE_SIZE];
+			snprintf(message, INDIGO_VALUE_SIZE, "Model '%s' does not have a pulse switch", PRIVATE_DATA->device_type);
+			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, message);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
 			return INDIGO_OK;
 		}
 		AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
