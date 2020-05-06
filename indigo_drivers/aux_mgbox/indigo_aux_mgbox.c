@@ -193,8 +193,8 @@ static void data_refresh_callback(indigo_device *gdevice) {
 		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 		int result = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
+		buffer[INDIGO_VALUE_SIZE-1] = '\0';
 		if (result > 0 && (tokens = parse(buffer))) {
-			buffer[INDIGO_VALUE_SIZE-1] = '\0';
 			// GPS Update
 			device = gps;
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
@@ -614,7 +614,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 			pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 			mg_send_command(PRIVATE_DATA->handle, ":rebootgps*");
-			indigo_usleep(ONE_SECOND_DELAY);
 			pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			X_REBOOT_GPS_ITEM->sw.value = false;
@@ -908,7 +907,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 			pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 			mg_send_command(PRIVATE_DATA->handle, ":reboot*");
-			indigo_usleep(ONE_SECOND_DELAY);
 			pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			X_REBOOT_ITEM->sw.value = false;
