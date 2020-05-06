@@ -189,7 +189,7 @@ static void data_refresh_callback(indigo_device *gdevice) {
 
 	device = gps;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "NMEA reader started");
-	while (PRIVATE_DATA->handle > 0) {
+	while (PRIVATE_DATA->handle >= 0) {
 		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 		int result = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
