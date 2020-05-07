@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION         0x0001
+#define DRIVER_VERSION         0x0002
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #include <stdlib.h>
@@ -1266,7 +1266,7 @@ static int aag_init_properties(indigo_device *device) {
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Temerature difference (°C)", 0, 9, 0, 2);
+	indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Temperature difference (°C)", 0, 9, 0, 2);
 	// -------------------------------------------------------------------------------- WIND_THRESHOLD
 	AUX_WIND_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WIND_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Wind warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_WIND_THRESHOLD_PROPERTY == NULL)
