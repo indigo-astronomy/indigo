@@ -131,6 +131,7 @@
 #include "dome_dragonfly/indigo_dome_dragonfly.h"
 #include "aux_cloudwatcher/indigo_aux_cloudwatcher.h"
 #include "wheel_manual/indigo_wheel_manual.h"
+#include "aux_mgbox/indigo_aux_mgbox.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -172,6 +173,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_flatmaster,
 	indigo_aux_flipflat,
 	indigo_aux_joystick,
+	indigo_aux_mgbox,
 	indigo_aux_ppb,
 	indigo_aux_rts,
 	indigo_aux_sqm,
