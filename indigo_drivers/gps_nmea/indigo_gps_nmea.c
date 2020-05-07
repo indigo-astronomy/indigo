@@ -112,7 +112,7 @@ static void gps_refresh_callback(indigo_device *device) {
 	char buffer[128];
 	char **tokens;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader started");
-	while (IS_CONNECTED && PRIVATE_DATA->handle > 0) {
+	while (IS_CONNECTED && PRIVATE_DATA->handle >= 0) {
 		//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		if (indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0 && (tokens = parse(buffer))) {
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
