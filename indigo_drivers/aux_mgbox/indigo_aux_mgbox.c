@@ -427,14 +427,19 @@ static bool mgbox_open(indigo_device *device) {
 			indigo_set_timer(gps, 0, data_refresh_callback, &global_timer);
 			// To be on the safe side wait a bit after connect some arduino devices reset at connect
 			indigo_usleep(ONE_SECOND_DELAY);
-			// request devicetype
-			mg_send_command(PRIVATE_DATA->handle, ":devicetype*");
-			// wait for 3.5 seconds for a response, handled in data_refresh_callback()
-			for (int i=1; i <= 35; i++) {
-				indigo_usleep(ONE_SECOND_DELAY / 10);
-				if (PRIVATE_DATA->device_type[0] != '\0') {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device identified as '%f' in %.1f sec.", PRIVATE_DATA->device_type, i / 10.0);
-					break;
+			// request devicetype (the device is reluctant to answer commands for some reason so try 3 times)
+			int retry = 3;
+			while (retry--) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trying yo identify defice (will retry %d more times)...", retry);
+				mg_send_command(PRIVATE_DATA->handle, ":devicetype*");
+				// wait for 2.5 seconds for a response, handled in data_refresh_callback()
+				for (int i=1; i <= 25; i++) {
+					indigo_usleep(ONE_SECOND_DELAY / 10);
+					if (PRIVATE_DATA->device_type[0] != '\0') {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device identified as '%s' in %.1f sec.", PRIVATE_DATA->device_type, i / 10.0);
+						retry = 0;
+						break;
+					}
 				}
 			}
 
