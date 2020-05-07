@@ -150,6 +150,7 @@
 		59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
 		59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */; };
 		59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */; };
+		59C565072464A14C00344C0C /* indigo_aux_mgbox.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C565012464A13A00344C0C /* indigo_aux_mgbox.c */; };
 		59C76F0C237872480091B966 /* nexstar.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C583721A75B1A001CA8C0 /* nexstar.h */; };
 		59C76F0D2378724A0091B966 /* nexstar.c in Sources */ = {isa = PBXBuildFile; fileRef = 598C583021A75B1A001CA8C0 /* nexstar.c */; };
 		59C76F0E2378724D0091B966 /* nex_open.c in Sources */ = {isa = PBXBuildFile; fileRef = 598C582F21A75B1A001CA8C0 /* nex_open.c */; };
@@ -2126,6 +2127,11 @@
 		59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main.c; sourceTree = "<group>"; };
 		59C4C88220CEF107007EE330 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro.c; sourceTree = "<group>"; };
+		59C565012464A13A00344C0C /* indigo_aux_mgbox.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_mgbox.c; sourceTree = "<group>"; };
+		59C565022464A13A00344C0C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59C565032464A13A00344C0C /* indigo_aux_mgbox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_mgbox.h; sourceTree = "<group>"; };
+		59C565042464A13A00344C0C /* indigo_aux_mgbox_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_mgbox_main.c; sourceTree = "<group>"; };
+		59C565062464A13A00344C0C /* MGPBox Manual English 1.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "MGPBox Manual English 1.1.pdf"; sourceTree = "<group>"; };
 		59C5806922EB6C33005BE502 /* Ultimate_Powerbox_v2_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Ultimate_Powerbox_v2_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		59C6F75321FE214D0043DC52 /* indigo_cat_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_cat_data.h; sourceTree = "<group>"; };
 		59C8AD3421A9ADDD00C3594F /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -7773,6 +7779,26 @@
 			path = focuser_wemacro;
 			sourceTree = "<group>";
 		};
+		59C565002464A13A00344C0C /* aux_mgbox */ = {
+			isa = PBXGroup;
+			children = (
+				59C565022464A13A00344C0C /* README.md */,
+				59C565012464A13A00344C0C /* indigo_aux_mgbox.c */,
+				59C565032464A13A00344C0C /* indigo_aux_mgbox.h */,
+				59C565042464A13A00344C0C /* indigo_aux_mgbox_main.c */,
+				59C565052464A13A00344C0C /* doc */,
+			);
+			path = aux_mgbox;
+			sourceTree = "<group>";
+		};
+		59C565052464A13A00344C0C /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				59C565062464A13A00344C0C /* MGPBox Manual English 1.1.pdf */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
 		59C8E7F71DBBDF2200AA3F0A /* wheel_sx */ = {
 			isa = PBXGroup;
 			children = (
@@ -7867,6 +7893,7 @@
 				9DFA59832361D92600326A74 /* aux_flatmaster */,
 				9DFC619E238530FF003977C7 /* aux_flipflat */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
+				59C565002464A13A00344C0C /* aux_mgbox */,
 				5996615022CF3E0F00330652 /* aux_ppb */,
 				59BBD189218246C8008199D6 /* aux_rts */,
 				9DC4969622C39A170052AB3E /* aux_sqm */,
@@ -11927,6 +11954,7 @@
 				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
+				59C565072464A14C00344C0C /* indigo_aux_mgbox.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59C76F0E2378724D0091B966 /* nex_open.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
