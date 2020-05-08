@@ -212,7 +212,7 @@ static bool nexdome_handshake(indigo_device *device, char *firmware) {
 	if(!firmware) return false;
 	char response[255];
 	nexdome_command(device, "FRR");
-	/* I hope in 30 messages responce will be sent */
+	/* I hope in 30 messages response will be sent */
 	for(int i = 0; i < 30; i++) {
 		if (!nexdome_get_message(device, response, sizeof(response))) return false;
 		if (!strncmp(":FR", response, 3)) {
