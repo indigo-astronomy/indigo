@@ -156,7 +156,7 @@ static bool baader_command(indigo_device *device, const char *command, char *res
 	if (sleep > 0)
 		usleep(sleep);
 
-	// read responce
+	// read response
 	if (response != NULL) {
 		int index = 0;
 		int timeout = 3;
@@ -225,7 +225,7 @@ static bool baader_dome_state(indigo_device *device, baader_dome_state_t *state)
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -240,7 +240,7 @@ static bool baader_get_azimuth(indigo_device *device, float *azimuth) {
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -258,7 +258,7 @@ static bool baader_shutter_state(indigo_device *device, baader_shutter_state_t *
 		if (parsed != 2) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -273,7 +273,7 @@ static bool baader_shutter_state(indigo_device *device, baader_shutter_state_t *
 //		if (parsed != 1) return false;
 //		return true;
 //	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 //	return false;
 //}
 
@@ -285,7 +285,7 @@ static bool baader_open_shutter(indigo_device *device) {
 		if (response[0] != 'D') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -297,7 +297,7 @@ static bool baader_close_shutter(indigo_device *device) {
 		if (response[0] != 'D') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -313,7 +313,7 @@ static bool baader_close_shutter(indigo_device *device) {
 //		if (response[0] != 'F') return false;
 //		return true;
 //	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 //	return false;
 //}
 
@@ -330,7 +330,7 @@ static bool baader_sync_azimuth(indigo_device *device, float azimuth) {
 		if (response[0] != 'S') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -345,7 +345,7 @@ static bool baader_sync_azimuth(indigo_device *device, float azimuth) {
 //		if (parsed != 1) return false;
 //		return true;
 //	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 //	return false;
 //}
 
@@ -362,7 +362,7 @@ static bool baader_sync_azimuth(indigo_device *device, float azimuth) {
 //		if (response[0] != 'I') return false;
 //		return true;
 //	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 //	return false;
 //}
 
@@ -377,7 +377,7 @@ static bool baader_get_park_azimuth(indigo_device *device, float *azimuth) {
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -394,7 +394,7 @@ static bool baader_get_park_azimuth(indigo_device *device, float *azimuth) {
 //		if (response[0] != 'N') return false;
 //		return true;
 //	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 //	return false;
 //}
 
@@ -410,7 +410,7 @@ static bool baader_goto_azimuth(indigo_device *device, float azimuth) {
 		if (response[0] != 'G') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -423,7 +423,7 @@ static bool baader_find_home(indigo_device *device) {
 		if (response[0] != 'H') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -440,7 +440,7 @@ static bool baader_find_home(indigo_device *device) {
 //		if (parsed != 1) return false;
 //		return true;
 //	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 //	return false;
 //}
 
@@ -453,7 +453,7 @@ static bool baader_callibrate(indigo_device *device) {
 		if (response[0] != 'C') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -470,7 +470,7 @@ static bool baader_get_reversed_flag(indigo_device *device, bool *reversed) {
 		if (parsed != 1) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -486,7 +486,7 @@ static bool baader_set_reversed_flag(indigo_device *device, bool reversed) {
 		if (response[0] != 'Y') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -502,7 +502,7 @@ static bool baader_get_voltages(indigo_device *device, float *v_rotattor, float 
 		if (parsed != 2) return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -515,7 +515,7 @@ static bool baader_restart_shutter_communication(indigo_device *device) {
 		if (response[0] != 'W') return false;
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No responce");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
