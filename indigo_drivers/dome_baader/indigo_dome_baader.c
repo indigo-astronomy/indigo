@@ -213,7 +213,7 @@ static bool baader_get_azimuth(indigo_device *device, float *azimuth) {
 	if (baader_command(device, "d#getazim", response, 100)) {
 		int parsed = sscanf(response, "d#az%c%d", &ch, &azim);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#getazim -> %s, %d, ch = %c", response, azim, ch);
-		if (parsed != 1) return false;
+		if (parsed != 2) return false;
 		*azimuth = azim / 10.0;
 		return true;
 	}
@@ -357,30 +357,19 @@ static void dome_timer_callback(indigo_device *device) {
 	int prev_shutter_position = -1;
 
 	/* Handle dome rotation */
-	/*
-	if(!baader_dome_state(device, &PRIVATE_DATA->dome_state)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_dome_state(): returned error");
-	}
-
 	if(!baader_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error");
 	}
 
-	if ((DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) || PRIVATE_DATA->callibration_requested) need_update = true;
+	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ||
+	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) need_update = true;
 
-	if (PRIVATE_DATA->dome_state != DOME_STOPED) {
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-		need_update = true;
-	} else if(need_update) {
-		if (!PRIVATE_DATA->callibration_requested && fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (need_update) {
+		if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		} else {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -389,30 +378,10 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		}
-
-		if(X_FIND_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			X_FIND_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_switch(X_FIND_HOME_PROPERTY, X_FIND_HOME_ITEM, false);
-			indigo_update_property(device, X_FIND_HOME_PROPERTY, "Home Found.");
-		}
-		if(X_CALLIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			X_CALLIBRATE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_switch(X_CALLIBRATE_PROPERTY, X_CALLIBRATE_ITEM, false);
-			indigo_update_property(device, X_CALLIBRATE_PROPERTY, "Callibration complete.");
-		}
-		PRIVATE_DATA->callibration_requested = false;
 		need_update = false;
 	}
 
-	if (PRIVATE_DATA->park_requested && (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*10) <= 1)) {
-		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-		PRIVATE_DATA->park_requested = false;
-		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
-	}
-	*/
 	/* Handle dome shutter */
-	bool raining;
 	if(!baader_get_shutter_position(device, &PRIVATE_DATA->shutter_position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_shutter_position(): returned error");
 	}
