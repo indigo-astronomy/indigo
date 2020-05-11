@@ -177,6 +177,7 @@ static bool baader_command(indigo_device *device, const char *command, char *res
 	return true;
 }
 
+
 static bool baader_get_info(indigo_device *device, char *name, char *serial_num) {
 	if(!name || !serial_num) return false;
 
@@ -194,26 +195,9 @@ static bool baader_get_info(indigo_device *device, char *name, char *serial_num)
 
 static bool baader_abort(indigo_device *device) {
 	char response[BAADER_CMD_LEN]={0};
-	if (baader_command(device, "a\n", response, 100)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "a -> %s", response);
-		if (response[0] != 'A') return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
-}
-
-
-static bool baader_dome_state(indigo_device *device, baader_dome_state_t *state) {
-	if(!state) return false;
-
-	char response[BAADER_CMD_LEN]={0};
-	if (baader_command(device, "m\n", response, 100)) {
-		int _state;
-		int parsed = sscanf(response, "M %d", &_state);
-		*state = _state;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "m -> %s, %d", response, *state);
-		if (parsed != 1) return false;
+	if (baader_command(device, "d#stopdom", response, 100)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#stopdom -> %s", response);
+		if (strcmp(response, "d#gotmess")) return false;
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
@@ -307,95 +291,25 @@ static bool baader_close_shutter(indigo_device *device) {
 
 
 static bool baader_sync_azimuth(indigo_device *device, float azimuth) {
-	char command[BAADER_CMD_LEN];
-	char response[BAADER_CMD_LEN] = {0};
-
-	snprintf(command, BAADER_CMD_LEN, "s %.2f\n", azimuth);
-
-	// we ignore the returned sync value
-	if (baader_command(device, command, response, 100)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "s %.2f -> %s", azimuth, response);
-		if (response[0] != 'S') return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
-
-
-//static bool baader_get_home_azimuth(indigo_device *device, float *azimuth) {
-//	if(!azimuth) return false;
-//
-//	char response[BAADER_CMD_LEN]={0};
-//	if (baader_command(device, "i\n", response, 100)) {
-//		int parsed = sscanf(response, "I %f", azimuth);
-//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "i -> %s, %f", response, *azimuth);
-//		if (parsed != 1) return false;
-//		return true;
-//	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-//	return false;
-//}
-
-
-//static bool baader_set_home_azimuth(indigo_device *device, float azimuth) {
-//	char command[BAADER_CMD_LEN];
-//	char response[BAADER_CMD_LEN] = {0};
-//
-//	snprintf(command, BAADER_CMD_LEN, "j %.2f\n", azimuth);
-//
-//	// we ignore the returned value
-//	if (baader_command(device, command, response, 100)) {
-//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "j %.2f -> %s", azimuth, response);
-//		if (response[0] != 'I') return false;
-//		return true;
-//	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-//	return false;
-//}
 
 
 static bool baader_get_park_azimuth(indigo_device *device, float *azimuth) {
 	if(!azimuth) return false;
-
-	char response[BAADER_CMD_LEN]={0};
-	if (baader_command(device, "n\n", response, 100)) {
-		int parsed = sscanf(response, "N %f", azimuth);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "n -> %s, %f", response, *azimuth);
-		if (parsed != 1) return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
-
-
-//static bool baader_set_park_azimuth(indigo_device *device, float azimuth) {
-//	char command[BAADER_CMD_LEN];
-//	char response[BAADER_CMD_LEN] = {0};
-//
-//	snprintf(command, BAADER_CMD_LEN, "l %.2f\n", azimuth);
-//
-//	// we ignore the returned value
-//	if (baader_command(device, command, response, 100)) {
-//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "l %.2f -> %s", azimuth, response);
-//		if (response[0] != 'N') return false;
-//		return true;
-//	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-//	return false;
-//}
 
 
 static bool baader_goto_azimuth(indigo_device *device, float azimuth) {
 	char command[BAADER_CMD_LEN];
 	char response[BAADER_CMD_LEN] = {0};
 
-	snprintf(command, BAADER_CMD_LEN, "g %.2f\n", azimuth);
+	snprintf(command, BAADER_CMD_LEN, "d#azi%04d", (int)(azimuth *10));
 
 	if (baader_command(device, command, response, 100)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "g %.2f -> %s", azimuth, response);
-		if (response[0] != 'G') return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s", command, response);
+		if (strcmp(response, "d#gotmess")) return false;
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
@@ -405,105 +319,32 @@ static bool baader_goto_azimuth(indigo_device *device, float azimuth) {
 
 static bool baader_find_home(indigo_device *device) {
 	char response[BAADER_CMD_LEN] = {0};
-
-	if (baader_command(device, "h\n", response, 100)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "h -> %s", response);
-		if (response[0] != 'H') return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
 
-//static bool baader_get_home_state(indigo_device *device, int *state) {
-//	if(!state) return false;
-//
-//	char response[BAADER_CMD_LEN]={0};
-//	if (baader_command(device, "z\n", response, 100)) {
-//		int _state;
-//		int parsed = sscanf(response, "Z %d", &_state);
-//		*state = _state;
-//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "z -> %s, %d", response, *state);
-//		if (parsed != 1) return false;
-//		return true;
-//	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-//	return false;
-//}
-
-
 static bool baader_callibrate(indigo_device *device) {
-	char response[BAADER_CMD_LEN] = {0};
-
-	if (baader_command(device, "c\n", response, 100)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "c -> %s", response);
-		if (response[0] != 'C') return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
 
 static bool baader_get_reversed_flag(indigo_device *device, bool *reversed) {
 	if(!reversed) return false;
-
-	char response[BAADER_CMD_LEN]={0};
-	if (baader_command(device, "y\n", response, 100)) {
-		int _reversed;
-		int parsed = sscanf(response, "Y %d", &_reversed);
-		*reversed = _reversed;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "y -> %s, %d", response, *reversed);
-		if (parsed != 1) return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
 
 static bool baader_set_reversed_flag(indigo_device *device, bool reversed) {
-	char command[BAADER_CMD_LEN];
-	char response[BAADER_CMD_LEN] = {0};
-
-	snprintf(command, BAADER_CMD_LEN, "y %d\n", (int)reversed);
-
-	if (baader_command(device, command, response, 100)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "y %d -> %s", reversed, response);
-		if (response[0] != 'Y') return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
 static bool baader_get_voltages(indigo_device *device, float *v_rotattor, float *v_shutter) {
 	if (!v_rotattor || !v_shutter) return false;
-
-	char response[BAADER_CMD_LEN]={0};
-	if (baader_command(device, "k\n", response, 100)) {
-		int parsed = sscanf(response, "K %f %f", v_rotattor, v_shutter);
-		*v_rotattor /= 100;
-		*v_shutter /= 100;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "k -> %s, %f %f", response, *v_rotattor, *v_shutter);
-		if (parsed != 2) return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
 
 static bool baader_restart_shutter_communication(indigo_device *device) {
-	char response[BAADER_CMD_LEN] = {0};
-
-	if (baader_command(device, "w\n", response, 100)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "W -> %s", response);
-		if (response[0] != 'W') return false;
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
 	return false;
 }
 
@@ -591,7 +432,6 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 
 	/* Keep the dome in sync if needed */
-	/*
 	if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 		double az;
 		if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) &&
@@ -609,7 +449,6 @@ static void dome_timer_callback(indigo_device *device) {
 			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		}
 	}
-	*/
 
 	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
 }
