@@ -361,7 +361,7 @@ static void dome_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error");
 	}
 
-	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ||
+	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE ||
 	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) need_update = true;
 
 	if (need_update) {
@@ -377,6 +377,12 @@ static void dome_timer_callback(indigo_device *device) {
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+		}
+		if ((fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*10) < 1) && PRIVATE_DATA->park_requested) {
+			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->park_requested = false;
+			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		}
 		need_update = false;
 	}
@@ -570,15 +576,13 @@ static void dome_connect_callback(indigo_device *device) {
 				indigo_define_property(device, X_FIND_HOME_PROPERTY, NULL);
 				indigo_define_property(device, X_CALLIBRATE_PROPERTY, NULL);
 				indigo_define_property(device, X_POWER_PROPERTY, NULL);
-
+				*/
 
 				if(!baader_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error");
 				}
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-				if(!baader_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
-				}
+				PRIVATE_DATA->park_azimuth = 180;
 				if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
 					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 				} else {
@@ -587,7 +591,6 @@ static void dome_connect_callback(indigo_device *device) {
 				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->park_requested = false;
 				indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
-				*/
 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				device->is_connected = true;
@@ -599,11 +602,13 @@ static void dome_connect_callback(indigo_device *device) {
 	} else {
 		if (device->is_connected) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_timer);
+			/*
 			indigo_delete_property(device, X_REVERSED_PROPERTY, NULL);
 			indigo_delete_property(device, X_RESET_SHUTTER_COMM_PROPERTY, NULL);
 			indigo_delete_property(device, X_FIND_HOME_PROPERTY, NULL);
 			indigo_delete_property(device, X_CALLIBRATE_PROPERTY, NULL);
 			indigo_delete_property(device, X_POWER_PROPERTY, NULL);
+			*/
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			int res = close(PRIVATE_DATA->handle);
 			if (res < 0) {
@@ -682,20 +687,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		}
 
-		if (DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM->sw.value) {
-			if(!baader_sync_azimuth(device, PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_sync_azimuth(%d): returned error", PRIVATE_DATA->handle);
-				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
-		} else { /* GOTO */
-			if(!baader_goto_azimuth(device, PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
-				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-				return INDIGO_OK;
-			}
+		if(!baader_goto_azimuth(device, PRIVATE_DATA->target_position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			return INDIGO_OK;
 		}
 
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -760,9 +756,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			PRIVATE_DATA->park_requested = false;
 		} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
-			if(!baader_get_park_azimuth(device, &PRIVATE_DATA->park_azimuth)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_park_azimuth(%d): returned error", PRIVATE_DATA->handle);
-			}
+
 			if(!baader_goto_azimuth(device, PRIVATE_DATA->park_azimuth)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
 			}
