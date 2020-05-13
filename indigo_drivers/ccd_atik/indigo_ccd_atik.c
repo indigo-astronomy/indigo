@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -203,16 +203,20 @@ static void ccd_connect_callback(indigo_device *device) {
 					int actualLength;
 					ATIK_PRESETS_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 1, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 					if (value == 0) {
-						short value;
+						uint16_t value[3];
 						int actualLength;
 						CCD_GAIN_PROPERTY->hidden = false;
-						CCD_OFFSET_PROPERTY->hidden = false;
-						value = CCD_GAIN_ITEM->number.value;
 						CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-						CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
-						value = CCD_OFFSET_ITEM->number.value;
+						CCD_GAIN_ITEM->number.min = value[0];
+						CCD_GAIN_ITEM->number.min = value[1];
+						CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value[2];
+						CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+						CCD_OFFSET_PROPERTY->hidden = false;
 						CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-						CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
+						CCD_OFFSET_ITEM->number.min = value[0];
+						CCD_OFFSET_ITEM->number.min = value[1];
+						CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value[2];
+						CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_CUSTOM_ITEM, true);
 					} else {
 						CCD_GAIN_PROPERTY->hidden = true;
@@ -244,6 +248,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			PRIVATE_DATA->device_count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			indigo_global_unlock(device);
 		} else {
 			if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 				PRIVATE_DATA->can_check_temperature = true;
@@ -348,18 +353,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			preset = 3;
 		}
 		if (lastPreset != preset) {
-			short value;
-			int actualLength;
 			if (preset == 0) {
-				value = CCD_GAIN_ITEM->number.value;
-				CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-				CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
-				value = CCD_OFFSET_ITEM->number.value;
+				uint16_t value[3];
+				int actualLength;
 				CCD_GAIN_PROPERTY->hidden = false;
+				CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				CCD_GAIN_ITEM->number.min = value[0];
+				CCD_GAIN_ITEM->number.max = value[1];
+				CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value[2];
+				CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
-				CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
 				CCD_OFFSET_PROPERTY->hidden = false;
+				CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				CCD_OFFSET_ITEM->number.min = value[0];
+				CCD_OFFSET_ITEM->number.max = value[1];
+				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value[2];
+				CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
 			} else {
 				indigo_delete_property(device, CCD_GAIN_PROPERTY, NULL);
@@ -374,14 +383,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-		short value = CCD_GAIN_ITEM->number.target;
+		uint16_t value = CCD_GAIN_ITEM->number.target;
 		CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_OFFSET
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
-		short value = CCD_OFFSET_ITEM->number.target;
+		uint16_t value = CCD_OFFSET_ITEM->number.target;
 		CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
