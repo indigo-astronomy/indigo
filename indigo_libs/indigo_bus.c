@@ -1279,7 +1279,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	else if (string == string_4)
 		string = string_1;
 	if (format == NULL)
-		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, s);
+		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, (int)(s*100.0)/100.0);
 	else if (format[strlen(format) - 1] == 'd')
 		snprintf(string, 128, format, (int)d, (int)m, (int)s);
 	else
