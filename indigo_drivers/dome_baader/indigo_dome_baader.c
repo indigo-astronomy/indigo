@@ -352,8 +352,6 @@ static bool baader_restart_shutter_communication(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 
 static void dome_timer_callback(indigo_device *device) {
-	static bool need_update = true;
-	static bool low_voltage = false;
 	int prev_shutter_position = -1;
 
 	/* Handle dome rotation */
@@ -361,22 +359,15 @@ static void dome_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error");
 	}
 
-	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE ||
-	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) need_update = true;
-
-	if (need_update) {
-		if (PRIVATE_DATA->aborted) {
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			PRIVATE_DATA->aborted = false;
-		} else if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
+	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ||
+	    DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE ||
+	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1
+	) {
+		if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			//DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		} else {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -385,14 +376,12 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		}
-
 		if ((fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*10) < 1) && PRIVATE_DATA->park_requested) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		}
-		need_update = false;
 	}
 
 	/* Handle dome shutter */
@@ -408,7 +397,7 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+		//	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
 		prev_shutter_position = PRIVATE_DATA->shutter_position;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
@@ -431,6 +420,20 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		}
+	}
+
+	if (PRIVATE_DATA->aborted) {
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+
+		DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		prev_shutter_position = PRIVATE_DATA->shutter_position;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		PRIVATE_DATA->aborted = false;
 	}
 
 	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
