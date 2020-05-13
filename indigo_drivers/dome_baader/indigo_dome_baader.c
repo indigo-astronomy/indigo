@@ -104,7 +104,7 @@ typedef struct {
 	baader_dome_state_t dome_state;
 	int shutter_position;
 	bool park_requested;
-	bool callibration_requested;
+	bool aborted;
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
@@ -365,7 +365,14 @@ static void dome_timer_callback(indigo_device *device) {
 	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) need_update = true;
 
 	if (need_update) {
-		if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
+		if (PRIVATE_DATA->aborted) {
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			PRIVATE_DATA->aborted = false;
+		} else if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -378,6 +385,7 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		}
+
 		if ((fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*10) < 1) && PRIVATE_DATA->park_requested) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
@@ -526,8 +534,6 @@ static void dome_connect_callback(indigo_device *device) {
 			char *device_name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_is_device_url(device_name, "baader")) {
 				PRIVATE_DATA->handle = indigo_open_serial(device_name);
-				/* To be on the safe side -> Wait for 1 seconds! */
-				sleep(1);
 			} else {
 				indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
 				PRIVATE_DATA->handle = indigo_open_network_device(device_name, 8080, &proto);
@@ -582,6 +588,7 @@ static void dome_connect_callback(indigo_device *device) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error");
 				}
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+				PRIVATE_DATA->aborted = false;
 				PRIVATE_DATA->park_azimuth = 180;
 				if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
 					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
@@ -676,7 +683,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
-		PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			if(!baader_get_azimuth(device, &PRIVATE_DATA->current_position)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(%d): returned error", PRIVATE_DATA->handle);
@@ -686,7 +692,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
 			return INDIGO_OK;
 		}
-
+		PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 		if(!baader_goto_azimuth(device, PRIVATE_DATA->target_position)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -727,9 +733,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		}
 
+		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+		PRIVATE_DATA->aborted = true;
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
@@ -809,7 +819,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_set_switch(X_FIND_HOME_PROPERTY, X_FIND_HOME_ITEM, false);
 				X_FIND_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				PRIVATE_DATA->callibration_requested = true;
+				//PRIVATE_DATA->callibration_requested = true;
 			}
 		}
 		indigo_update_property(device, X_FIND_HOME_PROPERTY, NULL);
@@ -826,7 +836,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				indigo_update_property(device, X_CALLIBRATE_PROPERTY, "Callibration failed. Is the dome in home position?");
 				return INDIGO_OK;
 			} else {
-				PRIVATE_DATA->callibration_requested = true;
+				//PRIVATE_DATA->callibration_requested = true;
 			}
 		}
 		indigo_update_property(device, X_CALLIBRATE_PROPERTY, NULL);
