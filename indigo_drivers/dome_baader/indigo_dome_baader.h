@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define DOME_BAADER_NAME              "Baader Dome"
+#define DOME_BAADER_NAME              "Baader Classic Dome"
 
 /** Create Baader dome device instance
  */

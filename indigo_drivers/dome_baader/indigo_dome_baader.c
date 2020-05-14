@@ -41,9 +41,9 @@
 #include "indigo_dome_baader.h"
 
 // gp_bits is used as boolean
-#define is_connected                    gp_bits
+#define is_connected                        gp_bits
 
-#define PRIVATE_DATA                              ((baader_private_data *)device->private_data)
+#define PRIVATE_DATA                        ((baader_private_data *)device->private_data)
 
 #define X_SETTINGS_GROUP                    "Settings"
 
@@ -492,6 +492,7 @@ static indigo_result dome_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+
 static void dome_connect_callback(indigo_device *device) {
 	if (!device->is_connected) {
 		char serial_number[INDIGO_VALUE_SIZE] = "N/A";
@@ -586,6 +587,7 @@ static void dome_connect_callback(indigo_device *device) {
 	}
 	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
 }
+
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -813,7 +815,6 @@ static indigo_result dome_detach(indigo_device *device) {
 // --------------------------------------------------------------------------------
 
 static baader_private_data *private_data = NULL;
-
 static indigo_device *dome = NULL;
 
 indigo_result indigo_dome_baader(indigo_driver_action action, indigo_driver_info *info) {
