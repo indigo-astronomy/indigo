@@ -602,7 +602,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
-		if (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) return INDIGO_OK_STATE;
+		if (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed.");
+			return INDIGO_OK_STATE;
+		}
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
@@ -641,7 +644,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
-		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) return INDIGO_OK_STATE;
+		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is moving: request can not be completed.");
+			return INDIGO_OK_STATE;
+		}
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
@@ -708,7 +714,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
-		if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) return INDIGO_OK_STATE;
+		if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is moving: request can not be completed.");
+			return INDIGO_OK_STATE;
+		 }
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
@@ -728,9 +737,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_FLAP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_FLAP
+		if (DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap is moving: request can not be completed.");
+			return INDIGO_OK_STATE;
+		}
 		bool is_opened = DOME_FLAP_OPENED_ITEM->sw.value;
 		bool is_closed = DOME_FLAP_CLOSED_ITEM->sw.value;
-		if (DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE) return INDIGO_OK_STATE;
 		indigo_property_copy_values(DOME_FLAP_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
