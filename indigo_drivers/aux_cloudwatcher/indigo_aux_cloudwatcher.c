@@ -1824,10 +1824,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, AUX_WIND_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_CONSTANTS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
+		// -------------------------------------------------------------------------------- X_CONSTANTS
 		indigo_property_copy_values(X_CONSTANTS_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
-
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_RH_CONDITION_THRESHOLDS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RH_CONDITION_THRESHOLDS
