@@ -207,7 +207,7 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 		if (indigo_property_match(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property))
 			indigo_define_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		if (indigo_property_match(DOME_UTC_TIME_PROPERTY, property))
-		indigo_define_property(device, DOME_UTC_TIME_PROPERTY, NULL);
+			indigo_define_property(device, DOME_UTC_TIME_PROPERTY, NULL);
 		if (indigo_property_match(DOME_SET_HOST_TIME_PROPERTY, property))
 			indigo_define_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
 		if (indigo_property_match(DOME_SNOOP_DEVICES_PROPERTY, property))
