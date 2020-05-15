@@ -638,13 +638,17 @@ static void wheel_timer_callback(indigo_device *device) {
 
 	int num_filters, moving, current_pos, target_pos;
 	if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
-		WHEEL_SLOT_ITEM->number.value = current_pos;
-		WHEEL_SLOT_ITEM->number.target = target_pos;
-		if (current_pos == target_pos) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
+		if (current_pos >= num_filters)
+			current_pos = 0;
+		if (target_pos >= num_filters)
+			target_pos = 0;
+		WHEEL_SLOT_ITEM->number.value = current_pos + 1;
+		WHEEL_SLOT_ITEM->number.target = target_pos + 1;
+		if (moving) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -678,8 +682,19 @@ static void wheel_connect_callback(indigo_device *device) {
 			int num_filters, moving, current_pos, target_pos;
 			if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = num_filters;
-				WHEEL_SLOT_ITEM->number.value = current_pos;
-				WHEEL_SLOT_ITEM->number.target = target_pos;
+				if (current_pos >= num_filters)
+					current_pos = 0;
+				if (target_pos >= num_filters)
+					target_pos = 0;
+				if (moving) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Wheel is moving!");
+					WHEEL_SLOT_ITEM->number.value = current_pos + 1;
+					WHEEL_SLOT_ITEM->number.target = target_pos + 1;
+					indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+				}
+				else {
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = current_pos + 1;
+				}
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		} else {
@@ -718,7 +733,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			ArtemisFilterWheelMove(PRIVATE_DATA->handle, (int)WHEEL_SLOT_ITEM->number.target);
+			ArtemisFilterWheelMove(PRIVATE_DATA->handle, (int)WHEEL_SLOT_ITEM->number.target - 1);
 			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
