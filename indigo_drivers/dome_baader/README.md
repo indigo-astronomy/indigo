@@ -1,4 +1,4 @@
-# Baader Planetarium dome driver (Rotating domes)
+# Baader Planetarium Classic Dome Driver (Rotating domes)
 
 https://www.baader-planetarium.com/en/domes.html
 

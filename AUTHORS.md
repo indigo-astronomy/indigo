@@ -1,9 +1,6 @@
-The following people participate in INDIGO development:
+The following people are the INDIGO core developers:
 
 Peter Polakovic, peter.polakovic@cloudmakers.eu
 
 Rumen G.Bogdanovski, rumen@skyarchive.org
 
-Thomas Stibor, thomas@stibor.net
-
-David Hulse, dave@hulse.id.au
