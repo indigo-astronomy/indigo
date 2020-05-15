@@ -565,7 +565,6 @@
 		5918E26D1F8C06AF005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5918E26E1F8C06C0005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		591B015121A48F47006A1CD8 /* AtikCameras.dll Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AtikCameras.dll Guide.pdf"; sourceTree = "<group>"; };
-		591B015221A48F47006A1CD8 /* AtikHorizon Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AtikHorizon Guide.pdf"; sourceTree = "<group>"; };
 		591B015421A48F53006A1CD8 /* AtikCameras.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtikCameras.h; sourceTree = "<group>"; };
 		591B015521A48F69006A1CD8 /* libatikcameras.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libatikcameras.dylib; sourceTree = "<group>"; };
 		591B015621A48F76006A1CD8 /* libatikcameras.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libatikcameras.so; sourceTree = "<group>"; };
@@ -1346,6 +1345,9 @@
 		598005FB22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		598005FD22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
+		5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "CMOS Camera Specific Options.pdf"; sourceTree = "<group>"; };
+		5989C386246C48110005282C /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
+		5989C387246C48A90005282C /* make_source_tarball.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = make_source_tarball.sh; sourceTree = "<group>"; };
 		598C57E321A75B1A001CA8C0 /* libnexstar.man */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.man; sourceTree = "<group>"; };
 		598C57E521A75B1A001CA8C0 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
 		598C57EA21A75B1A001CA8C0 /* ltmain.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ltmain.sh; sourceTree = "<group>"; };
@@ -4357,6 +4359,7 @@
 				591B015321A48F53006A1CD8 /* include */,
 				591B015021A48F47006A1CD8 /* doc */,
 				591B014921A48F1C006A1CD8 /* lib */,
+				5989C386246C48110005282C /* RELEASE */,
 			);
 			path = libatikcameras;
 			sourceTree = "<group>";
@@ -4424,8 +4427,8 @@
 		591B015021A48F47006A1CD8 /* doc */ = {
 			isa = PBXGroup;
 			children = (
+				5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */,
 				591B015121A48F47006A1CD8 /* AtikCameras.dll Guide.pdf */,
-				591B015221A48F47006A1CD8 /* AtikHorizon Guide.pdf */,
 			);
 			path = doc;
 			sourceTree = "<group>";
@@ -5833,6 +5836,7 @@
 		599A240C1DBEC5820020BF8F /* tools */ = {
 			isa = PBXGroup;
 			children = (
+				5989C387246C48A90005282C /* make_source_tarball.sh */,
 				595E9FBE233E65F7006E01D3 /* make_dslr_table.py */,
 				595E9FBF233E6607006E01D3 /* dslr.csv */,
 				598000F922E44A0B00021D67 /* build_debs.sh */,
