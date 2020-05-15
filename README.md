@@ -102,6 +102,7 @@ This is the list of requirements taken into the consideration:
 73. Rotator Simulator Driver
 74. Lunatico Astronomy Dragonfly Dome / Relay Controller GPIO driver
 75. Lunatico AAG CloudWacher driver
+76. Baader Planetarium Classic (Rotating) dome driver 
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
