@@ -631,7 +631,7 @@ static void dome_connect_callback(indigo_device *device) {
 				}
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 				PRIVATE_DATA->aborted = false;
-				PRIVATE_DATA->park_azimuth = 180;
+				PRIVATE_DATA->park_azimuth = 0;
 				if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
 					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 				} else {
