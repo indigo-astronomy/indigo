@@ -47,10 +47,16 @@
 
 #define X_SETTINGS_GROUP                    "Settings"
 
-#define X_CALLIBRATE_PROPERTY               (PRIVATE_DATA->callibrate_property)
-#define X_CALLIBRATE_ITEM                   (X_CALLIBRATE_PROPERTY->items+0)
-#define X_CALLIBRATE_PROPERTY_NAME          "X_CALLIBRATE"
-#define X_CALLIBRATE_ITEM_NAME              "CALLIBRATE"
+#define X_EMERGENCY_CLOSE_PROPERTY               (PRIVATE_DATA->emergency_property)
+#define X_EMERGENCY_RAIN_ITEM                    (X_EMERGENCY_CLOSE_PROPERTY->items+0)
+#define X_EMERGENCY_WIND_ITEM                    (X_EMERGENCY_CLOSE_PROPERTY->items+1)
+#define X_EMERGENCY_OPERATION_TIMEOUT_ITEM       (X_EMERGENCY_CLOSE_PROPERTY->items+2)
+#define X_EMERGENCY_POWERCUT_ITEM                (X_EMERGENCY_CLOSE_PROPERTY->items+3)
+#define X_EMERGENCY_CLOSE_PROPERTY_NAME          "X_EMERGENCY_CLOSE"
+#define X_EMERGENCY_RAIN_ITEM_NAME               "RAIN"
+#define X_EMERGENCY_WIND_ITEM_NAME               "WIND"
+#define X_EMERGENCY_OPERATION_TIMEOUT_ITEM_NAME  "OPERATION_TIMEOUT"
+#define X_EMERGENCY_POWERCUT_ITEM_NAME           "POWER_CUT"
 
 typedef enum {
 	FLAP_CLOSED = 0,
@@ -73,13 +79,14 @@ typedef struct {
 	int handle;
 	float target_position, current_position;
 	int shutter_position;
+	bool rain, wind, timeout, powercut;
 	baader_flap_state_t flap_state;
 	bool park_requested;
 	bool aborted;
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
-	indigo_property *callibrate_property;
+	indigo_property *emergency_property;
 } baader_private_data;
 
 #define BAADER_CMD_LEN 10
@@ -118,7 +125,7 @@ static bool baader_command(indigo_device *device, const char *command, char *res
 	if (response != NULL) {
 		int index = 0;
 		int timeout = 3;
-		while (index < BAADER_CMD_LEN-1) {
+		while (index < BAADER_CMD_LEN - 1) {
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
@@ -317,20 +324,27 @@ static baader_rc_t baader_close_flap(indigo_device *device) {
 	return BD_NO_RESPONSE;
 }
 
-//static bool baader_set_shutter_position(indigo_device *device, float position) {
-//	char command[BAADER_CMD_LEN];
-//	char response[BAADER_CMD_LEN] = {0};
-//
-//	snprintf(command, BAADER_CMD_LEN, "f %.2f\n", position);
-//
-//	if (baader_command(device, command, response, 100)) {
-//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "f %.2f -> %s", position, response);
-//		if (response[0] != 'F') return false;
-//		return true;
-//	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-//	return false;
-//}
+
+static baader_rc_t baader_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
+	char r,w,t,p;
+	char response[BAADER_CMD_LEN]={0};
+
+	if (!rain || !wind || !timeout || !powercut) return BD_PARAM_ERROR;
+
+	if (baader_command(device, "d#get_eme", response, 100)) {
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		int parsed = sscanf(response, "d#eme%c%c%c%c", &r, &w, &t, &p);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#get_eme -> %s, %c %c %c %c", response, r, w, t, p);
+		if (parsed != 4) return BD_COMMAND_ERROR;
+		*rain = (r == '0') ? false : true;
+		*wind = (w == '0') ? false : true;
+		*timeout = (t == '0') ? false : true;
+		*powercut = (p == '0') ? false : true;
+		return BD_SUCCESS;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
+	return BD_NO_RESPONSE;
+}
 
 
 static baader_rc_t baader_goto_azimuth(indigo_device *device, float azimuth) {
@@ -479,14 +493,39 @@ static void dome_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->aborted = false;
 	}
 
+	/* Emergency flags state */
+	bool rain, wind, timeout, powercut;
+	if ((rc = baader_get_emergency_status(device, &rain, &wind, &timeout, &powercut)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_emergency_status(): returned error %d", rc);
+	} else {
+		if (X_EMERGENCY_CLOSE_PROPERTY->state == INDIGO_IDLE_STATE ||
+		    PRIVATE_DATA->rain != rain ||
+		    PRIVATE_DATA->wind != wind ||
+		    PRIVATE_DATA->timeout != timeout ||
+		    PRIVATE_DATA->powercut != powercut)
+		{
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating X_EMERGENCY_CLOSE");
+			X_EMERGENCY_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
+			X_EMERGENCY_RAIN_ITEM->light.value = rain ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->rain = rain;
+			X_EMERGENCY_WIND_ITEM->light.value = wind ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->wind = wind;
+			X_EMERGENCY_OPERATION_TIMEOUT_ITEM->light.value = timeout ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->timeout = timeout;
+			X_EMERGENCY_POWERCUT_ITEM->light.value = powercut ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->powercut = powercut;
+			indigo_update_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
+		}
+	}
+
 	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
 }
 
 
 static indigo_result baader_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_CALLIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_CALLIBRATE_PROPERTY, NULL);
+		if (indigo_property_match(X_EMERGENCY_CLOSE_PROPERTY, property))
+			indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -515,12 +554,14 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- X_CALLIBRATE_PROPERTY
-		X_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALLIBRATE_PROPERTY_NAME, X_SETTINGS_GROUP, "Callibrate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (X_CALLIBRATE_PROPERTY == NULL)
+		// -------------------------------------------------------------------------------- X_EMERGENCY_CLOSE_PROPERTY
+		X_EMERGENCY_CLOSE_PROPERTY = indigo_init_light_property(NULL, device->name, X_EMERGENCY_CLOSE_PROPERTY_NAME, DOME_MAIN_GROUP, "Energency close flags", INDIGO_IDLE_STATE, 4);
+		if (X_EMERGENCY_CLOSE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		X_CALLIBRATE_PROPERTY->hidden = false;
-		indigo_init_switch_item(X_CALLIBRATE_ITEM, X_CALLIBRATE_ITEM_NAME, "Callibrate", false);
+		indigo_init_light_item(X_EMERGENCY_RAIN_ITEM, X_EMERGENCY_RAIN_ITEM_NAME, "Rain alert", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_EMERGENCY_WIND_ITEM, X_EMERGENCY_WIND_ITEM_NAME, "Wind alert", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_EMERGENCY_OPERATION_TIMEOUT_ITEM, X_EMERGENCY_OPERATION_TIMEOUT_ITEM_NAME, "Operation timeout alert", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_EMERGENCY_POWERCUT_ITEM, X_EMERGENCY_POWERCUT_ITEM_NAME, "Power coutage alert", INDIGO_IDLE_STATE);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -578,7 +619,12 @@ static void dome_connect_callback(indigo_device *device) {
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with serial No.%s connected", INFO_DEVICE_MODEL_ITEM->text.value, serial_number);
 
-				indigo_define_property(device, X_CALLIBRATE_PROPERTY, NULL);
+				X_EMERGENCY_CLOSE_PROPERTY->state =
+				X_EMERGENCY_RAIN_ITEM->light.value =
+				X_EMERGENCY_WIND_ITEM->light.value =
+				X_EMERGENCY_OPERATION_TIMEOUT_ITEM->light.value =
+				X_EMERGENCY_POWERCUT_ITEM->light.value = INDIGO_IDLE_STATE;
+				indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 
 				if ((rc = baader_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error %d", rc);
@@ -607,7 +653,7 @@ static void dome_connect_callback(indigo_device *device) {
 	} else {
 		if (device->is_connected) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_timer);
-			indigo_delete_property(device, X_CALLIBRATE_PROPERTY, NULL);
+			indigo_delete_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			int res = close(PRIVATE_DATA->handle);
 			if (res < 0) {
@@ -857,25 +903,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_CALLIBRATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_CALLIBRATE
-		indigo_property_copy_values(X_CALLIBRATE_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		if (X_CALLIBRATE_ITEM->sw.value) {
-			X_CALLIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (!baader_callibrate(device)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_callibrate(%d): returned error", PRIVATE_DATA->handle);
-				indigo_set_switch(X_CALLIBRATE_PROPERTY, X_CALLIBRATE_ITEM, false);
-				X_CALLIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, X_CALLIBRATE_PROPERTY, "Callibration failed. Is the dome in home position?");
-				return INDIGO_OK;
-			} else {
-				//PRIVATE_DATA->callibration_requested = true;
-			}
-		}
-		indigo_update_property(device, X_CALLIBRATE_PROPERTY, NULL);
-		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_dome_change_property(device, client, property);
@@ -888,7 +915,7 @@ static indigo_result dome_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		dome_connect_callback(device);
 	}
-	indigo_release_property(X_CALLIBRATE_PROPERTY);
+	indigo_release_property(X_EMERGENCY_CLOSE_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
