@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION         0x0002
+#define DRIVER_VERSION         0x0003
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #include <stdlib.h>
@@ -1858,7 +1858,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		X_SKY_CONDITION_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_SKY_CONDITION_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_SKY_CONDITION_THRESHOLDS_PROPERTY, property)) {
+	} else if (indigo_property_match(X_ANEMOMETER_TYPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_ANEMOMETER_TYPE
 		indigo_property_copy_values(X_ANEMOMETER_TYPE_PROPERTY, property, false);
 		X_ANEMOMETER_TYPE_PROPERTY->state = INDIGO_OK_STATE;
