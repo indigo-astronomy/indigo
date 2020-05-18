@@ -1695,6 +1695,11 @@ static void handle_aux_connect_property(indigo_device *device) {
 					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 					aag_get_swith(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
 					aag_reset_properties(device);
+					if (X_ANEMOMETER_TYPE_BLACK_ITEM->sw.value) {
+						PRIVATE_DATA->anemometer_black = true;
+					} else {
+						PRIVATE_DATA->anemometer_black = false;
+					}
 					PRIVATE_DATA->heating_state = normal;
 					PRIVATE_DATA->pulse_start_time = -1;
 					PRIVATE_DATA->wet_start_time = -1;
