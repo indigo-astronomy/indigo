@@ -357,7 +357,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 			device->access_token = 0;
 			if (device->attach != NULL)
 				device->last_result = device->attach(device);
-			if (device->change_property) {
+			if (!device->is_remote && device->change_property) {
 				indigo_property *property = indigo_init_switch_property(NULL, device->name, CONFIG_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 				indigo_init_switch_item(property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
 				device->change_property(device, NULL, property);
@@ -1279,7 +1279,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	else if (string == string_4)
 		string = string_1;
 	if (format == NULL)
-		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, s);
+		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, (int)(s*100.0)/100.0);
 	else if (format[strlen(format) - 1] == 'd')
 		snprintf(string, 128, format, (int)d, (int)m, (int)s);
 	else

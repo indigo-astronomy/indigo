@@ -22,6 +22,8 @@ indigo_server indigo_mount_synscan
 
 Driver is developed and tested with:
 * SkyWatcher NEQ6 Pro
+* SkyWatcher EQAZ6
+* SkyWatcher EQ8
 * SkyWatcher AZ-GTi
 
 ## Comments

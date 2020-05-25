@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION         0x0001
+#define DRIVER_VERSION         0x0003
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #include <stdlib.h>
@@ -1266,7 +1266,7 @@ static int aag_init_properties(indigo_device *device) {
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Temerature difference (°C)", 0, 9, 0, 2);
+	indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Temperature difference (°C)", 0, 9, 0, 2);
 	// -------------------------------------------------------------------------------- WIND_THRESHOLD
 	AUX_WIND_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WIND_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Wind warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_WIND_THRESHOLD_PROPERTY == NULL)
@@ -1695,6 +1695,11 @@ static void handle_aux_connect_property(indigo_device *device) {
 					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 					aag_get_swith(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
 					aag_reset_properties(device);
+					if (X_ANEMOMETER_TYPE_BLACK_ITEM->sw.value) {
+						PRIVATE_DATA->anemometer_black = true;
+					} else {
+						PRIVATE_DATA->anemometer_black = false;
+					}
 					PRIVATE_DATA->heating_state = normal;
 					PRIVATE_DATA->pulse_start_time = -1;
 					PRIVATE_DATA->wet_start_time = -1;
@@ -1824,10 +1829,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, AUX_WIND_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_CONSTANTS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
+		// -------------------------------------------------------------------------------- X_CONSTANTS
 		indigo_property_copy_values(X_CONSTANTS_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
-
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_RH_CONDITION_THRESHOLDS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RH_CONDITION_THRESHOLDS
@@ -1859,7 +1863,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		X_SKY_CONDITION_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_SKY_CONDITION_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_SKY_CONDITION_THRESHOLDS_PROPERTY, property)) {
+	} else if (indigo_property_match(X_ANEMOMETER_TYPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_ANEMOMETER_TYPE
 		indigo_property_copy_values(X_ANEMOMETER_TYPE_PROPERTY, property, false);
 		X_ANEMOMETER_TYPE_PROPERTY->state = INDIGO_OK_STATE;

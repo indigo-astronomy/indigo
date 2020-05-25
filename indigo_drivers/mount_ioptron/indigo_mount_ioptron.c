@@ -237,9 +237,9 @@ static bool ieq_open(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		if (ieq_command(device, ":V#", response, sizeof(response))) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
-		}
+//		if (ieq_command(device, ":V#", response, sizeof(response))) {
+//			INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
+//		}
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "iOptron");
 		PRIVATE_DATA->protocol = 0x0000;
 		PRIVATE_DATA->gotonova = false;
@@ -584,6 +584,8 @@ static void position_timer_callback(indigo_device *device) {
 							MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 						}
+						MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '2': // slewing
@@ -816,6 +818,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			} else {
 				ieq_command(device, ":MSH#", response, 1);
 			}
+			MOUNT_HOME_ITEM->sw.value = false;
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
 		}

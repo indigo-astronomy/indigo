@@ -522,15 +522,17 @@ static void mount_connect_callback(indigo_device *device) {
 				if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
 					ALIGNMENT_MODE_PROPERTY->hidden = false;
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					if (*response == 'P' || *response == 'G') {
 						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+						if (response[1] == 'T')
+							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 					} else if (*response == 'A') {
 						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+						if (response[1] == 'T')
+							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 					} else {
 						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, false);
 					}
 					indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 				}
@@ -669,15 +671,18 @@ static void mount_connect_callback(indigo_device *device) {
 				if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
 					ALIGNMENT_MODE_PROPERTY->hidden = false;
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					if (*response == 'P' || *response == 'G') {
 						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, POLAR_MODE_ITEM, true);
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+						if (response[1] == 'T')
+							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+
 					} else if (*response == 'A') {
 						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, response[1] == 'T');
+						if (response[1] == 'T')
+							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 					} else {
 						indigo_set_switch(ALIGNMENT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					}
 					indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 				}
@@ -709,6 +714,7 @@ static void mount_connect_callback(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 		if (--PRIVATE_DATA->device_count == 0) {
 			meade_command(device, ":Q#", NULL, 0, 0);
+			indigo_usleep(ONE_SECOND_DELAY);
 			meade_close(device);
 		}
 		indigo_delete_property(device, ALIGNMENT_MODE_PROPERTY, NULL);

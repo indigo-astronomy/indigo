@@ -23,7 +23,7 @@
  \file indigo_focuser_dmfc.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_focuser_dmfc"
 
 #include <stdlib.h>
@@ -142,8 +142,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_ITEM->number.min = -9999999;
-		FOCUSER_POSITION_ITEM->number.max = 9999999;
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -9999999;
+		FOCUSER_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 9999999;
 		FOCUSER_POSITION_ITEM->number.step = 1;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
