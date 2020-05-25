@@ -108,6 +108,7 @@ typedef struct {
 	char name[INDIGO_NAME_SIZE];            ///< service name
 	char host[INDIGO_NAME_SIZE];            ///< server host name
 	int port;                               ///< server port
+	uint32_t interfaceIndex;                ///< client network interface index
 	pthread_t thread;                       ///< client thread ID
 	bool thread_started;                    ///< client thread started/stopped
 	int socket;                             ///< stream socket
@@ -127,6 +128,7 @@ void indigo_service_name(const char *host, int port, char *name);
 /** Connect and start thread for remote server.
  */
 extern indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server);
+extern indigo_result indigo_connect_server_with_interface(const char *name, const char *host, int port, uint32_t interfaceIndex, indigo_server_entry **server);
 
 /** If connected to the server returns true else returns false and last_error (if not NULL) will contain the last error
     reported within client thread. Last_error should have length of 256.
