@@ -62,11 +62,11 @@
 #### Dome
 2. UNIVERSAL dome driver
 3. Maxdome II
-3. Lunatico Astronomia Dragonfly dome driver
+3. Lunatico Astronomia Dragonfly dome driver __DONE__
 
 #### AUX
-1. Lunatico Astronomia AAG CloudWatcher driver
-2. Lunatico Astronomia Dragonfly GPIO driver
+1. Lunatico Astronomia AAG CloudWatcher driver __DONE__
+2. Lunatico Astronomia Dragonfly GPIO driver __DONE__
 
 #### AO
 1. a-Box AO driver

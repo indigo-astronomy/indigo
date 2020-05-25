@@ -239,12 +239,12 @@ Properties are implemented by guider driver base class in [indigo_guider_driver.
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| AO_GUIDE_DEC | number | no | yes | NORTH | yes | | 
-|  |  |  |  | SOUTH | yes | | 
-| AO_GUIDE_RA | number | no | yes | EAST | yes | | 
-|  |  |  |  | WEST | yes | | 
-| AO_RESET | switch | no | yes | CENTER | yes | | 
-|  |  |  |  | UNJAM | no | | 
+| AO_GUIDE_DEC | number | no | yes | NORTH | yes | |
+|  |  |  |  | SOUTH | yes | |
+| AO_GUIDE_RA | number | no | yes | EAST | yes | |
+|  |  |  |  | WEST | yes | |
+| AO_RESET | switch | no | yes | CENTER | yes | |
+|  |  |  |  | UNJAM | no | |
 
 
 Properties are implemented by AO driver base class in [indigo_ao_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_ao_driver.c).
@@ -253,18 +253,53 @@ Properties are implemented by AO driver base class in [indigo_ao_driver.c](https
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| GPS_STATUS | light | yes | yes | NO_FIX | yes | GPS fix status | 
-|  |  |  |  | 2D_FIX | yes | | 
-|  |  |  |  | 3D_FIX | yes | | 
-| GPS_ADVANCED | switch | no | yes | ENABLED | yes |  Enable advanced status report | 
-|  |  |  |  | DISABLED | yes | | 
-| GPS_ADVANCED_STATUS | number | yes | yes | SVS_IN_USE | yes | Advanced status report | 
-|  |  |  |  | SVS_IN_VIEW | yes | | 
-|  |  |  |  | PDOP | yes | | 
-|  |  |  |  | HDOP | yes | | 
-|  |  |  |  | VDOP | yes | | 
+| GPS_STATUS | light | yes | yes | NO_FIX | yes | GPS fix status |
+|  |  |  |  | 2D_FIX | yes | |
+|  |  |  |  | 3D_FIX | yes | |
+| GPS_ADVANCED | switch | no | yes | ENABLED | yes |  Enable advanced status report |
+|  |  |  |  | DISABLED | yes | |
+| GPS_ADVANCED_STATUS | number | yes | yes | SVS_IN_USE | yes | Advanced status report |
+|  |  |  |  | SVS_IN_VIEW | yes | |
+|  |  |  |  | PDOP | yes | |
+|  |  |  |  | HDOP | yes | |
+|  |  |  |  | VDOP | yes | |
 
 Properties are implemented by GPS driver base class in [indigo_gps_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_gps_driver.c).
+
+## Dome specific properties
+
+TBD
+
+| Property name  | Type   | RO | Required | Item name        | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| DOME_SPEED     | number | no | no       | SPEED            | yes      |          |
+| DOME_ROTATION  | switch | no | no       | CLOCKWISE        | yes      |          |
+|                |        |    |          | COUNTERCLOCKWISE | yes      |          |
+| DOME_DIRECTION | switch | no | no       | CLOCKWISE        | yes      |          |
+|                |        |    |          | COUNTERCLOCKWISE | yes      |          |
+| DOME_ON_HORIZONTAL_COORDINATES_SET | switch | no | no       | GOTO        | yes      |          |
+|                |        |    |          | SYNC | yes      |          |
+
+For complete list see below:
+
+Properties are implemented by dome driver base class in [indigo_dome_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_dome_driver.c)
+
+## Rotator specific properties
+
+| Property name  | Type   | RO | Required | Item name        | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| ROTATOR_ON_POSITION_SET | switch | no  | no       | GOTO        | yes      |          |
+|                         |        |     |          | SYNC        | yes      |          |
+| ROTATOR_POSITION        | number | no  | yes      | POSITION    | yes      |          |
+| ROTATOR_DIRECTION       | switch | no  | no      | NORMAL      | yes      |          |
+|                         |        |     |          | REVERSED    | yes      |          |
+| ROTATOR_ABORT_MOTION    | switch | no  | yes      | ABORT_MOTION | yes     |          |
+| ROTATOR_BACKLASH        | number | no  | no       | BACKLASH     | yes     |          |
+| ROTATOR_LIMITS          | number | no  | no       | MIN_POSITION | yes     |          |
+|                         |        |     |          | MAX_POSITION | yes     |          |
+| ROTATOR_STEPS_PER_REVOLUTION | number | no | no | STEPS_PER_REVOLUTION| yes |         |
+
+Properties are implemented by rotator driver base class in [indigo_rotator_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_rotator_driver.c)
 
 ## Auxiliary properties
 
@@ -329,42 +364,42 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| SNOOP_ADD_RULE | text | no | yes | SOURCE_DEVICE | yes | Add new rule | 
-|  |  |  |  | SOURCE_PROPERTY | yes | | 
-|  |  |  |  | TARGET_DEVICE | yes | | 
-|  |  |  |  | TARGET_PROPERTY | yes | | 
-| SNOOP_REMOVE_RULE | text | no | yes | SOURCE_DEVICE | yes | Remove existing rule | 
-|  |  |  |  | SOURCE_PROPERTY | yes | | 
-|  |  |  |  | TARGET_DEVICE | yes | | 
-|  |  |  |  | TARGET_PROPERTY | yes | | 
-| SNOOP_RULES | light | yes | yes | ... | yes | Lists all rules | 
+| SNOOP_ADD_RULE | text | no | yes | SOURCE_DEVICE | yes | Add new rule |
+|  |  |  |  | SOURCE_PROPERTY | yes | |
+|  |  |  |  | TARGET_DEVICE | yes | |
+|  |  |  |  | TARGET_PROPERTY | yes | |
+| SNOOP_REMOVE_RULE | text | no | yes | SOURCE_DEVICE | yes | Remove existing rule |
+|  |  |  |  | SOURCE_PROPERTY | yes | |
+|  |  |  |  | TARGET_DEVICE | yes | |
+|  |  |  |  | TARGET_PROPERTY | yes | |
+| SNOOP_RULES | light | yes | yes | ... | yes | Lists all rules |
 
 ### LX200 server agent
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| LX200_DEVICES | text | no | yes | MOUNT | yes | Select snooped mount | 
-|  |  |  |  | GUIDER | yes | Select snooped guider (not used yet) | 
-| LX200_CONFIGURATION | number | no | yes | PORT | yes | Server port number | 
-| LX200_SERVER | switch | no | yes | STARTED | yes | Select server state | 
-|  |  |  |  | STOPPED | yes | | 
+| LX200_DEVICES | text | no | yes | MOUNT | yes | Select snooped mount |
+|  |  |  |  | GUIDER | yes | Select snooped guider (not used yet) |
+| LX200_CONFIGURATION | number | no | yes | PORT | yes | Server port number |
+| LX200_SERVER | switch | no | yes | STARTED | yes | Select server state |
+|  |  |  |  | STOPPED | yes | |
 
 ### Imager agent
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD | 
-| FILTER_WHEEL_LIST | switch | no | yes | ... | yes | Select wheel | 
-| FILTER_FOCUSER_LIST | switch | no | yes | ... | yes | Select focuser | 
-| AGENT_START_PROCESS | switch | no | yes | EXPOSURE | yes | Start exposure | 
-|  |  |  |  | STREAMING | yes | Start streaming | 
-| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process | 
-| AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count | 
-|  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) | 
+| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD |
+| FILTER_WHEEL_LIST | switch | no | yes | ... | yes | Select wheel |
+| FILTER_FOCUSER_LIST | switch | no | yes | ... | yes | Select focuser |
+| AGENT_START_PROCESS | switch | no | yes | EXPOSURE | yes | Start exposure |
+|  |  |  |  | STREAMING | yes | Start streaming |
+| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
+| AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count |
+|  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) |
 |  |  |  |  | DELAY | yes | Delay between exposures duration (in seconds) |
-| AGENT_IMAGER_DOWNLOADFILE | text | no | yes | FILE | yes | Files to load into AGENT_IMAGER_DOWNLOAD_IMAGE property and remove on the host | 
-| AGENT_IMAGER_DOWNLOADFILES | switch | no | yes | REFRESH | yes | Refresh the list of available files | 
-|  |  |  |  | file name | yes | Set the file to AGENT_IMAGER_DOWNLOADFILE | 
+| AGENT_IMAGER_DOWNLOADFILE | text | no | yes | FILE | yes | Files to load into AGENT_IMAGER_DOWNLOAD_IMAGE property and remove on the host |
+| AGENT_IMAGER_DOWNLOADFILES | switch | no | yes | REFRESH | yes | Refresh the list of available files |
+|  |  |  |  | file name | yes | Set the file to AGENT_IMAGER_DOWNLOADFILE |
 | AGENT_IMAGER_DOWNLOAD_IMAGE | blob | no | yes | IMAGE | yes |  |
 | AGENT_IMAGER_SEQUENCE | text | no | yes | SEQUENCE | yes | Sequence control string |
 |  |  |  |  | 01...16 | yes | Batch control string |
@@ -375,61 +410,61 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD | 
-| FILTER_GUIDER_LIST | switch | no | yes | ... | yes | Select guider | 
-| AGENT_IMAGER_BATCH | switch | no | yes | PREVIEW | yes | Start preview | 
-|  |  |  |  | CALIBRATION | yes | Start calibration | 
-|  |  |  |  | GUIDING | yes | Start guiding | 
-| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process | 
-| AGENT_GUIDER_DETECTION_MODE | switch | no | yes | DONUTS | yes | Use DONUTS algorithm | 
-|  |  |  |  | CENTROID | yes | Use full frame centroid algorithm | 
-|  |  |  |  | SELECTION | yes | Use selected star centroid algorithm | 
-| AGENT_GUIDER_DEC_MODE | switch | no | yes | BOTH | yes | Guide both north and south | 
-|  |  |  |  | NORTH | yes | Guide north only | 
-|  |  |  |  | SOUTH | yes | Guide south only | 
-|  |  |  |  | NONE | yes | Don't guide in declination axis | 
-| AGENT_GUIDER_SELECTION | switch | no | yes | X | yes | Selected star coordinates (pixels) | 
-|  |  |  |  | Y | yes | Guide north only | 
-| AGENT_GUIDER_SETTINGS | number | no | yes | EXPOSURE | yes | Exposure duration (in seconds) | 
-|  |  |  |  | STEP0 | yes | Initial step size (in pixels) | 
-|  |  |  |  | ANGLE | yes | Measured angle (in degrees) | 
-|  |  |  |  | BACKLASH | yes | Measured backlash (in pixels) | 
-|  |  |  |  | SPEED_RA | yes | Measured RA speed (in pixels/second) | 
-|  |  |  |  | SPEED_DEC | yes | Measured dec speed (in pixels/seconds) | 
-|  |  |  |  | MAX_BL_STEPS | yes | Max backlash clearing steps | 
-|  |  |  |  | MIN_BL_DRIFT | yes | Min required backlash drift (in pixels) | 
-|  |  |  |  | MAX_CALIBRATION_STEPS | yes | Max calibration steps | 
-|  |  |  |  | AGGRESSIVITY_RA | yes | RA aggressivity (in %) | 
-|  |  |  |  | AGGRESSIVITY_DEC | yes | Dec aggressivity (in %) | 
-|  |  |  |  | MIN_ERROR | yes | Min error to coorect (in pixels) | 
-|  |  |  |  | MIN_PULSE | yes | Min pulse length to emit (in seconds) | 
-|  |  |  |  | MAX_PULSE | yes | Max pulse length to emit (in seconds) | 
-|  |  |  |  | DITHERING_X | yes | Dithering offset (in pixels) | 
-|  |  |  |  | DITHERING_Y | yes |  | 
-| AGENT_GUIDER_STATS | number | yes | yes | PHASE | yes | Process phase | 
-|  |  |  |  | FRAME | yes | Frame number | 
-|  |  |  |  | DRIFT_X | yes | Measured drift (X/Y) | 
-|  |  |  |  | DRIFT_Y | yes |  | 
-|  |  |  |  | DRIFT_RA | yes | Measured drift (RA/dec) | 
-|  |  |  |  | DRIFT_DEC | yes |  | 
-|  |  |  |  | CORR_RA | yes | Correction (RA/dec) | 
-|  |  |  |  | CORR_DEC | yes | | 
-|  |  |  |  | RMSE_RA | yes | Root Mean Square Error (RA/dec) | 
-|  |  |  |  | RMSE_DEC | yes | | 
+| FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD |
+| FILTER_GUIDER_LIST | switch | no | yes | ... | yes | Select guider |
+| AGENT_IMAGER_BATCH | switch | no | yes | PREVIEW | yes | Start preview |
+|  |  |  |  | CALIBRATION | yes | Start calibration |
+|  |  |  |  | GUIDING | yes | Start guiding |
+| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
+| AGENT_GUIDER_DETECTION_MODE | switch | no | yes | DONUTS | yes | Use DONUTS algorithm |
+|  |  |  |  | CENTROID | yes | Use full frame centroid algorithm |
+|  |  |  |  | SELECTION | yes | Use selected star centroid algorithm |
+| AGENT_GUIDER_DEC_MODE | switch | no | yes | BOTH | yes | Guide both north and south |
+|  |  |  |  | NORTH | yes | Guide north only |
+|  |  |  |  | SOUTH | yes | Guide south only |
+|  |  |  |  | NONE | yes | Don't guide in declination axis |
+| AGENT_GUIDER_SELECTION | switch | no | yes | X | yes | Selected star coordinates (pixels) |
+|  |  |  |  | Y | yes | Guide north only |
+| AGENT_GUIDER_SETTINGS | number | no | yes | EXPOSURE | yes | Exposure duration (in seconds) |
+|  |  |  |  | STEP0 | yes | Initial step size (in pixels) |
+|  |  |  |  | ANGLE | yes | Measured angle (in degrees) |
+|  |  |  |  | BACKLASH | yes | Measured backlash (in pixels) |
+|  |  |  |  | SPEED_RA | yes | Measured RA speed (in pixels/second) |
+|  |  |  |  | SPEED_DEC | yes | Measured dec speed (in pixels/seconds) |
+|  |  |  |  | MAX_BL_STEPS | yes | Max backlash clearing steps |
+|  |  |  |  | MIN_BL_DRIFT | yes | Min required backlash drift (in pixels) |
+|  |  |  |  | MAX_CALIBRATION_STEPS | yes | Max calibration steps |
+|  |  |  |  | AGGRESSIVITY_RA | yes | RA aggressivity (in %) |
+|  |  |  |  | AGGRESSIVITY_DEC | yes | Dec aggressivity (in %) |
+|  |  |  |  | MIN_ERROR | yes | Min error to coorect (in pixels) |
+|  |  |  |  | MIN_PULSE | yes | Min pulse length to emit (in seconds) |
+|  |  |  |  | MAX_PULSE | yes | Max pulse length to emit (in seconds) |
+|  |  |  |  | DITHERING_X | yes | Dithering offset (in pixels) |
+|  |  |  |  | DITHERING_Y | yes |  |
+| AGENT_GUIDER_STATS | number | yes | yes | PHASE | yes | Process phase |
+|  |  |  |  | FRAME | yes | Frame number |
+|  |  |  |  | DRIFT_X | yes | Measured drift (X/Y) |
+|  |  |  |  | DRIFT_Y | yes |  |
+|  |  |  |  | DRIFT_RA | yes | Measured drift (RA/dec) |
+|  |  |  |  | DRIFT_DEC | yes |  |
+|  |  |  |  | CORR_RA | yes | Correction (RA/dec) |
+|  |  |  |  | CORR_DEC | yes | |
+|  |  |  |  | RMSE_RA | yes | Root Mean Square Error (RA/dec) |
+|  |  |  |  | RMSE_DEC | yes | |
 
 ### Mount agent
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| FILTER_DOME_LIST | switch | no | yes | ... | yes | Select dome | 
-| FILTER_MOUNT_LIST | switch | no | yes | ... | yes | Select mount | 
-| FILTER_GPS_LIST | switch | no | yes | ... | yes | Select GPS | 
-| GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Observatory coordinates | 
-|  |  |  |  | LONGITUDE | yes | | 
-|  |  |  |  | ELEVATION | yes | | 
-| AGENT_SITE_DATA_SOURCE | switch | no | yes | HOST | yes | Use host coordinates | 
-|  |  |  |  | MOUNT | yes | Use mount controller coordinates | 
-|  |  |  |  | DOME | yes | Use dome controller coordinates | 
-|  |  |  |  | GPS | yes | Use GPS coordinates | 
-| AGENT_LIMITS | number | no | yes | HA_TRACKING | yes | HA limit for tracking; park when reached; use 24:00:00 to turn it off | 
-|  |  |  |  | LOCAL_TIME | yes | Time limit for tracking; park when reached; use 12:00:00 to turn it off  | 
+| FILTER_DOME_LIST | switch | no | yes | ... | yes | Select dome |
+| FILTER_MOUNT_LIST | switch | no | yes | ... | yes | Select mount |
+| FILTER_GPS_LIST | switch | no | yes | ... | yes | Select GPS |
+| GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Observatory coordinates |
+|  |  |  |  | LONGITUDE | yes | |
+|  |  |  |  | ELEVATION | yes | |
+| AGENT_SITE_DATA_SOURCE | switch | no | yes | HOST | yes | Use host coordinates |
+|  |  |  |  | MOUNT | yes | Use mount controller coordinates |
+|  |  |  |  | DOME | yes | Use dome controller coordinates |
+|  |  |  |  | GPS | yes | Use GPS coordinates |
+| AGENT_LIMITS | number | no | yes | HA_TRACKING | yes | HA limit for tracking; park when reached; use 24:00:00 to turn it off |
+|  |  |  |  | LOCAL_TIME | yes | Time limit for tracking; park when reached; use 12:00:00 to turn it off  |

@@ -20,6 +20,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//#define OLD_FIRMWARE
+
 #include <EEPROM.h>
 
 #ifdef ARDUINO_SAM_DUE
@@ -106,7 +108,7 @@ void setup() {
   Serial.setTimeout(SERIAL_TIMEOUT);
   Serial.begin(BAUD_RATE);
   while (!Serial);
-  
+
   delay_start = r_delay_start = s_delay_start = f_delay_start = millis();
   r_state = R_STATE_STOPPED;
   r_requested_state = R_STATE_STOPPED;
@@ -124,7 +126,7 @@ void loop() {
           current_symbol = Serial.read();
           bytes_received++;
           command_receiver_state = STATE_COMMAND_STARTED;
-          recv_buffer[bytes_received-1] = current_symbol; 
+          recv_buffer[bytes_received-1] = current_symbol;
           if (bytes_received == COMMAND_LENGTH){
              recv_buffer[bytes_received] = 0;
              command_receiver_state = STATE_COMMAND_RECEIVED;
@@ -139,7 +141,7 @@ void loop() {
         bytes_received = 0;
         break;
     }
-  
+
     // check if delay has timed out
     if (((millis() - delay_start) >= BASE_DELAY_TIME)) {
       delay_start += BASE_DELAY_TIME; // this prevents delay drifting
@@ -192,7 +194,7 @@ void loop() {
             break;
         }
       }
-    
+
       // Change Rotator state
       if (r_requested_state != r_state) {
         switch (r_requested_state) {
@@ -217,7 +219,7 @@ void loop() {
             break;
         }
       }
-    
+
       // Process Shutter move request
       if (((millis() - s_delay_start) >= S_DELAY_TIME)) {
         s_delay_start += S_DELAY_TIME; // this prevents delay drifting
@@ -232,7 +234,7 @@ void loop() {
         else if (s_position == 0) s_state = S_STATE_CLOSED;
         else if (s_requested_position == s_position) s_state = S_STATE_ABORTED;
       }
-  
+
       // Process Flap move request
       if (((millis() - f_delay_start) >= F_DELAY_TIME)) {
         f_delay_start += F_DELAY_TIME; // this prevents delay drifting
@@ -247,7 +249,7 @@ void loop() {
           }
         }
       }
-    
+
       // Process Rotator request
       if (((millis() - r_delay_start) >= R_DELAY_TIME)) {
         r_delay_start += R_DELAY_TIME; // this prevents delay drifting
@@ -284,6 +286,17 @@ String baader_process_command(char command_buffer[]) {
       response = "d#3141592";
     }
     //======================================
+#ifdef OLD_FIRMWARE
+    else if (command.equals("d#getshut")) {
+      if (s_state == S_STATE_OPEN) {
+        response = "d#shutope";
+      } else if (s_state == S_STATE_CLOSED) {
+        response = "d#shutclo";
+      } else {
+        response = "d#shutrun";
+      }
+    }
+#else
     else if (command.equals("d#getshut")) {
       if (s_state == S_STATE_OPEN) {
         response = "d#shutope";
@@ -295,6 +308,7 @@ String baader_process_command(char command_buffer[]) {
         response = "d#shut_" + String(buffer);
       }
     }
+#endif
     //=======================================
     else if (command.equals("d#opeshut")) {
       if (s_state == S_STATE_CLOSING) {
@@ -335,11 +349,22 @@ String baader_process_command(char command_buffer[]) {
         }
     }
     //=======================================
+#ifdef OLD_FIRMWARE
+    else if (command.equals("d#getazim")) {
+      char buffer[5];
+      snprintf(buffer, sizeof(buffer), "%04d", r_position);
+      if (r_state == R_STATE_STOPPED)
+          response = "d#azr" + String(buffer);
+      else
+          response = "d#azi" + String(buffer);
+    }
+#else
     else if (command.equals("d#getazim")) {
       char buffer[5];
       snprintf(buffer, sizeof(buffer), "%04d", r_position);
       response = "d#azi" + String(buffer);
     }
+#endif
     //========================================
     else if (command.equals("d#stopdom")) {
       r_requested_state = R_STATE_STOPPED;
@@ -351,13 +376,24 @@ String baader_process_command(char command_buffer[]) {
       int pos = command.substring(7).toInt();
       s_requested_position = pos;
       long int delta = s_position - s_requested_position;
-      if (0 > delta){ 
+      if (0 > delta){
         s_requested_state = S_STATE_OPENING;
       } else {
         s_requested_state = S_STATE_CLOSING;
       }
     }
     //======================================
+#ifdef OLD_FIRMWARE
+    else if (command.equals("d#getflap")) {
+      if (f_state == F_STATE_OPEN) {
+        response = "d#flapope";
+      } else if (f_state == F_STATE_CLOSED) {
+        response = "d#flapclo";
+      } else {
+        response = "d#flaprun";
+      }
+    }
+#else
     else if (command.equals("d#getflap")) {
       if (f_state == F_STATE_OPEN) {
         response = "d#flapope";
@@ -371,6 +407,7 @@ String baader_process_command(char command_buffer[]) {
         response = "d#flaprim";
       }
     }
+#endif
     //=======================================
     else if (command.equals("d#opeflap")) {
       if (s_position < 5) response = "d#err_sht";

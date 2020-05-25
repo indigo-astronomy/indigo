@@ -112,7 +112,7 @@ static void gps_refresh_callback(indigo_device *device) {
 	char buffer[128];
 	char **tokens;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader started");
-	while (IS_CONNECTED && PRIVATE_DATA->handle > 0) {
+	while (IS_CONNECTED && PRIVATE_DATA->handle >= 0) {
 		//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		if (indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0 && (tokens = parse(buffer))) {
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
@@ -305,7 +305,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, gps_connect_callback, &PRIVATE_DATA->timer_callback);
+		indigo_set_timer(device, 0, gps_connect_callback, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);
