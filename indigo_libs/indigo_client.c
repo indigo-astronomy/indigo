@@ -447,11 +447,11 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
 	return indigo_connect_server_with_interface(name, host, port, 0, server);
 }
 
-indigo_result indigo_connect_server_with_interface(const char *name, const char *host, int port, uint32_t interfaceIndex, indigo_server_entry **server) {
+indigo_result indigo_connect_server_with_interface(const char *name, const char *host, int port, uint32_t interface_index, indigo_server_entry **server) {
 	int empty_slot = used_server_slots;
 	pthread_mutex_lock(&mutex);
 	for (int dc = 0; dc < used_server_slots; dc++) {
-		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port && indigo_available_servers[dc].interfaceIndex == interfaceIndex) {
+		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port && indigo_available_servers[dc].interface_index == interface_index) {
 			INDIGO_LOG(indigo_log("Server %s:%d already connected", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
 			if (server != NULL)
 			*server = &indigo_available_servers[dc];
@@ -476,7 +476,7 @@ indigo_result indigo_connect_server_with_interface(const char *name, const char 
 	strncpy(indigo_available_servers[empty_slot].host, host, INDIGO_NAME_SIZE);
 	indigo_available_servers[empty_slot].port = port;
 	indigo_available_servers[empty_slot].socket = 0;
-	indigo_available_servers[empty_slot].interfaceIndex = interfaceIndex;
+	indigo_available_servers[empty_slot].interface_index = interface_index;
 	*indigo_available_servers[empty_slot].last_error = 0;
 	if (pthread_create(&indigo_available_servers[empty_slot].thread, NULL, (void*) (void *) server_thread, &indigo_available_servers[empty_slot]) != 0) {
 		pthread_mutex_unlock(&mutex);
