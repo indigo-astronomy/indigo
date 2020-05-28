@@ -263,6 +263,9 @@
 							a.download = downloadFileName;
 							a.click();
 							URL.revokeObjectURL(url);
+							var values = { };
+							values["FILE"] = downloadFileName;
+							changeProperty("Imager Agent", "AGENT_IMAGER_DELETE_FILE", values);
 							setTimeout(download, 100);
 						};
 						xhr.send();
