@@ -748,7 +748,7 @@ static void mount_connect_callback(indigo_device *device) {
 					MOUNT_TRACKING_PROPERTY->hidden = false;
 					MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 					MOUNT_PEC_PROPERTY->hidden = false;
-					MOUNT_PARK_PROPERTY->count = 1;
+					MOUNT_PARK_PROPERTY->count = 2;
 					MOUNT_PARK_PARKED_ITEM->sw.value = false;
 					PRIVATE_DATA->parked = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
