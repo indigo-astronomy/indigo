@@ -50,7 +50,7 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 	}
 	FILTER_DEVICE_CONTEXT->device = device;
 	if (FILTER_DEVICE_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, 0) == INDIGO_OK) {
+		if (indigo_device_attach(device, version, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
 			CONNECTION_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD property
 			FILTER_CCD_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_CCD_LIST_PROPERTY_NAME, "Main", "Camera list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
