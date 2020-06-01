@@ -23,7 +23,7 @@
 
 #define LCD
 
-//#define CELESTRON
+#define CELESTRON
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
@@ -36,8 +36,9 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
 uint32_t current_position = 0;
 uint32_t target_position = 0;
-uint32_t min_position = 0;
-uint32_t max_position = 3799422;
+uint32_t min_position = 0x010203;
+uint32_t max_position = 0x403020;
+bool calibration_state = false;
 bool stop_detect = true;
 bool fans_on = false;
 
@@ -140,16 +141,35 @@ void loop() {
           packet[5] = 1;
           break;
 #ifdef CELESTRON
-        case 0x2B: // MTR_GET_CALIBRATION_STATE
-          packet[1] = 4;
-          packet[5] = 0x00;
+        case 0x2A: // ENABLE_CALIBRATION
+          if (packet[5]) {
+            min_position = 0x000102;
+            max_position = 0x010203;
+            calibration_state = true;
+          } else {
+            calibration_state = false;
+          }
+          break;
+        case 0x2B: // CALIBRATION_DONE
+          packet[1] = 5;
+          if (calibration_state) {
+            packet[5] = 1;
+            packet[6] = 0;
+          } else {
+            packet[5] = 0;
+            packet[6] = 1;
+          }
           break;
         case 0x2C: // MTR_GET_CALIBRATION
-          packet[1] = 7;
-          packet[5] = 0x01;
-          packet[6] = 0x00;
-          packet[7] = 0xFF;
-          packet[8] = 0x00;
+          packet[1] = 11;
+          packet[5] = 0;
+          packet[6] = (min_position >> 16) & 0xFF;
+          packet[7] = (min_position >> 8) & 0xFF;
+          packet[8] = (min_position) & 0xFF;
+          packet[9] = 0;
+          packet[10] = (max_position >> 16) & 0xFF;
+          packet[11] = (max_position >> 8) & 0xFF;
+          packet[12] = (max_position) & 0xFF;
           break;
 #else
         case 0x30: // MTR_GET_CALIBRATION_STATE
