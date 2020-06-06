@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -355,6 +355,8 @@ static void focuser_calibration_handler(indigo_device *device) {
 			goto failure;
 		while (true) {
 			indigo_usleep(300000);
+			FOCUSER_POSITION_ITEM->number.value = focuser_position(device);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			if (efa_command(device, check_calibration_packet, response_packet)) {
 				if (response_packet[5] > 0) {
 					if (efa_command(device, get_limits_packet, response_packet)) {
@@ -451,13 +453,13 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_send_message(device, "Warning! Focuser is not calibrated!");
 				}
 				uint8_t get_limits_packet[10] = { SOM, 0x03, APP, FOC, 0x2C, 0 };
-				if (!efa_command(device, get_limits_packet, response_packet)) {
+				if (efa_command(device, get_limits_packet, response_packet)) {
 					FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = (response_packet[5] << 24) + (response_packet[6] << 16) + (response_packet[7] << 8) + response_packet[8];
 					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (response_packet[9] << 24) + (response_packet[10] << 16) + (response_packet[11] << 8) + response_packet[12];
 				}
-				X_FOCUSER_FANS_PROPERTY->hidden = true;
 				X_FOCUSER_CALIBRATION_PROPERTY->hidden = false;
 				indigo_define_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
+				X_FOCUSER_FANS_PROPERTY->hidden = true;
 				FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 				FOCUSER_ON_POSITION_SET_PROPERTY->hidden = true;
 				FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RO_PERM;
