@@ -404,7 +404,7 @@ bool ptp_fuji_initialise(indigo_device *device) {
 		if (buffer)
 			free(buffer);
 	}
-	PRIVATE_DATA->event_checker = indigo_set_timer(device, 0.5, ptp_check_event);
+	indigo_set_timer(device, 0.5, ptp_check_event, PRIVATE_DATA->event_checker);
 	return true;
 }
 
@@ -449,18 +449,6 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 	}
 	return false;
 }
-bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
-	int retry_count = 0;
-	while (!ptp_set_property(device, property)) {
-		if (retry_count++ > 100) {
-			return false;
-		}
-	}
-	if (property->code == ptp_property_fuji_CompressionSetting) {
-		FUJI_PRIVATE_DATA->is_dual_compression = property->value.sw.value == 4 || property->value.sw.value == 5 || property->value.sw.value == 7;
-	}
-	return true;
-}
 
 bool ptp_fuji_set_control_priority(indigo_device *device, bool pc) {
 	void *buffer = NULL;
@@ -479,6 +467,25 @@ bool ptp_fuji_set_control_priority(indigo_device *device, bool pc) {
 		}
 	}
 	return result;
+}
+
+bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
+	if (property->code != ptp_property_fuji_ControlPriority) {
+		ptp_property *control_priority = ptp_property_supported(device, ptp_property_fuji_ControlPriority);
+		if (control_priority) {
+			ptp_fuji_set_control_priority(device, true);
+		}
+	}
+	int retry_count = 0;
+	while (!ptp_set_property(device, property)) {
+		if (retry_count++ > 100) {
+			return false;
+		}
+	}
+	if (property->code == ptp_property_fuji_CompressionSetting) {
+		FUJI_PRIVATE_DATA->is_dual_compression = property->value.sw.value == 4 || property->value.sw.value == 5 || property->value.sw.value == 7;
+	}
+	return true;
 }
 
 bool ptp_fuji_exposure(indigo_device *device) {
@@ -550,7 +557,6 @@ bool ptp_fuji_exposure(indigo_device *device) {
 			}
 		}
 	}
-	ptp_fuji_set_control_priority(device, false);
 	return result;
 }
 
@@ -566,7 +572,6 @@ bool ptp_fuji_liveview(indigo_device *device) {
 	while (!PRIVATE_DATA->abort_capture && !ptp_transaction_2_0(device, ptp_operation_InitiateOpenCapture, 0, 0)) {
 		indigo_usleep(200000); // 200ms
 		if (retry_count++ > 100) {
-			ptp_fuji_set_control_priority(device, false);
 			return false;
 		}
 	}
@@ -587,7 +592,6 @@ bool ptp_fuji_liveview(indigo_device *device) {
 					if (buffer)
 						free(buffer);
 					ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
-					ptp_fuji_set_control_priority(device, false);
 					return false;
 				}
 				continue;
@@ -615,7 +619,6 @@ bool ptp_fuji_liveview(indigo_device *device) {
 	}
 
 	ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
-	ptp_fuji_set_control_priority(device, false);
 	return !PRIVATE_DATA->abort_capture;
 }
 
