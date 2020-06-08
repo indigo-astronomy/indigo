@@ -306,7 +306,7 @@ static uint16_t FUJI_CHECK_PROPERTIES[] = {
 	0,
 };
 
-static void ptp_check_event(indigo_device *device) {
+static void ptp_fuji_get_event(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size = 0;
 	uint16_t *properties = FUJI_CHECK_PROPERTIES;
@@ -376,6 +376,11 @@ static void ptp_check_event(indigo_device *device) {
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
 }
 
+static void ptp_fuji_check_event(indigo_device *device) {
+	ptp_fuji_get_event(device);
+	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+}
+
 bool ptp_fuji_initialise(indigo_device *device) {
 	PRIVATE_DATA->vendor_private_data = malloc(sizeof(fuji_private_data));
 	memset(FUJI_PRIVATE_DATA, 0, sizeof(fuji_private_data));
@@ -404,40 +409,9 @@ bool ptp_fuji_initialise(indigo_device *device) {
 		if (buffer)
 			free(buffer);
 	}
-	indigo_set_timer(device, 0.5, ptp_check_event, PRIVATE_DATA->event_checker);
+	ptp_fuji_get_event(device);
+	indigo_set_timer(device, 0.5, ptp_fuji_check_event, &PRIVATE_DATA->event_checker);
 	return true;
-}
-
-bool ptp_fuji_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
-	INDIGO_LOG(indigo_log("ptp_fuji_handle_event(%x)", code));
-/*
-	switch (code) {
-		case ptp_event_ObjectAdded: {
-			if (params[1] == 0x80000001) {
-				// lv ready
-				void *buffer = NULL;
-				if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[1], &buffer, NULL)) {
-					uint32_t size;
-					char filename[PTP_MAX_CHARS];
-					uint8_t *source = buffer;
-					source = ptp_decode_uint32(source + 8, &size);
-					source = ptp_decode_string(source + 40 , filename);
-					free(buffer);
-					buffer = NULL;
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", params[0], size, filename);
-					if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[1], &buffer, NULL)) {
-						const char *ext = strchr(filename, '.');
-						indigo_process_dslr_image(device, buffer, size, ".jpeg");
-						FUJI_PRIVATE_DATA->liveview_requested = false;
-					}
-				}
-				if (buffer)
-					free(buffer);
-			}
-		}
-	}
-*/
-	return ptp_handle_event(device, code, params);
 }
 
 bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {

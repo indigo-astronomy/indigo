@@ -1297,7 +1297,6 @@ bool ptp_initialise(indigo_device *device) {
 		uint32_t size = 0;
 		for (int i = 0; properties[i]; i++) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, &size)) {
-ptp_debug_dump(buffer, size);
 				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
 			}
 			if (buffer)
