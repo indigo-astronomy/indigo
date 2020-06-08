@@ -40,6 +40,8 @@
 #define FUJI_PRIVATE_DATA	((fuji_private_data *)(PRIVATE_DATA->vendor_private_data))
 #define FUJI_CONTROL_PRIORITY_CAMERA 0x0001
 #define FUJI_CONTROL_PRIORITY_PC 0x0002
+#define FUJI_CARD_SAVE_ON_RAW_JPEG 0x0001
+#define FUJI_CARD_SAVE_OFF 0x0004
 #define FUJI_LIVEVIEW_HANDLE 0x80000001
 
 char *ptp_operation_fuji_code_label(uint16_t code) {
@@ -424,23 +426,26 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 	return false;
 }
 
-bool ptp_fuji_set_control_priority(indigo_device *device, bool pc) {
-	void *buffer = NULL;
-	uint32_t size = 0;
+static bool ptp_set_switch_property(indigo_device *device, ptp_property *property, uint16_t value) {
 	bool result = true;
-	const uint16_t target = pc ? FUJI_CONTROL_PRIORITY_PC : FUJI_CONTROL_PRIORITY_CAMERA;
-	result = result && ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, ptp_property_fuji_ControlPriority, &buffer, &size);
-	result = result && size == 2;
-	if (result) {
-		uint8_t *source = buffer;
-		uint16_t priority = 0;
-		source = ptp_decode_uint16(source, &priority);
-		if (priority != target) {
-			priority = target;
-			result = ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_ControlPriority, &priority, sizeof(uint16_t));
+	if (property->value.sw.value != value) {
+		for (int i=0; i < property->property->count; i++) {
+			property->property->items[i].sw.value = property->value.sw.values[i] == value;
 		}
+		property->value.sw.value = value;
+		result = ptp_set_property(device, property);
+		indigo_update_property(device, property->property, NULL);
 	}
 	return result;
+}
+
+bool ptp_fuji_set_control_priority(indigo_device *device, bool pc) {
+	ptp_property *property = ptp_property_supported(device, ptp_property_fuji_ControlPriority);
+	if (!property) {
+		return false;
+	}
+	const uint16_t target = pc ? FUJI_CONTROL_PRIORITY_PC : FUJI_CONTROL_PRIORITY_CAMERA;
+	return ptp_set_switch_property(device, property, target);
 }
 
 bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
@@ -466,6 +471,14 @@ bool ptp_fuji_exposure(indigo_device *device) {
 	ptp_property *property = ptp_property_supported(device, ptp_property_ExposureTime);
 	bool result = true;
 	result = ptp_fuji_set_control_priority(device, true);
+	ptp_property *card_save = ptp_property_supported(device, ptp_property_fuji_CardSave);
+	if (result && card_save) {
+		if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value) {
+			result = result && ptp_set_switch_property(device, card_save, FUJI_CARD_SAVE_OFF);
+		} else {
+			result = result && ptp_set_switch_property(device, card_save, FUJI_CARD_SAVE_ON_RAW_JPEG);
+		}
+	}
 	if (result && property && ptp_operation_supported(device, ptp_operation_InitiateCapture)) {
 		// focus
 		uint16_t value = 0x0200;
@@ -565,6 +578,7 @@ bool ptp_fuji_liveview(indigo_device *device) {
 					// abort
 					if (buffer)
 						free(buffer);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "liveview failed to start.");
 					ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
 					return false;
 				}
