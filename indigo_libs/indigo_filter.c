@@ -50,7 +50,7 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 	}
 	FILTER_DEVICE_CONTEXT->device = device;
 	if (FILTER_DEVICE_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, 0) == INDIGO_OK) {
+		if (indigo_device_attach(device, version, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
 			CONNECTION_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD property
 			FILTER_CCD_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_CCD_LIST_PROPERTY_NAME, "Main", "Camera list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
@@ -257,12 +257,27 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 }
 
 static indigo_result update_device_list(indigo_device *device, indigo_client *client, indigo_property *device_list, indigo_property *property, char *device_name) {
+	device_list->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, device_list, NULL);
 	device_name = 0;
 	indigo_property *connection_property = indigo_init_switch_property(NULL, "", CONNECTION_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 	for (int i = 1; i < device_list->count; i++) {
 		if (device_list->items[i].sw.value) {
 			device_list->items[i].sw.value = false;
 			strcpy(connection_property->device, device_list->items[i].name);
+			indigo_property **device_cache = FILTER_DEVICE_CONTEXT->device_property_cache;
+			indigo_property **agent_cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
+			for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
+				indigo_property *device_property = device_cache[i];
+				if (device_property && !strcmp(connection_property->device, device_property->device)) {
+					device_cache[i] = NULL;
+					if (agent_cache[i]) {
+						indigo_delete_property(device, agent_cache[i], NULL);
+						indigo_release_property(agent_cache[i]);
+						agent_cache[i] = NULL;
+					}
+				}
+			}
 			indigo_init_switch_item(connection_property->items, CONNECTION_DISCONNECTED_ITEM_NAME, NULL, true);
 			indigo_change_property(client, connection_property);
 			break;

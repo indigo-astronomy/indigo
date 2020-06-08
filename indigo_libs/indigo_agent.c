@@ -45,7 +45,7 @@ indigo_result indigo_agent_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_agent_context));
 	}
 	if (AGENT_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, 0) == INDIGO_OK) {
+		if (indigo_device_attach(device, version, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
 			CONNECTION_PROPERTY->hidden = true;
 			CONFIG_PROPERTY->hidden = true;
 			PROFILE_PROPERTY->hidden = true;

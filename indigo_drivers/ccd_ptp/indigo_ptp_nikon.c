@@ -39,6 +39,7 @@
 #define NIKON_PRIVATE_DATA	((nikon_private_data *)(PRIVATE_DATA->vendor_private_data))
 
 // Nikon D3XXX series
+#define NIKON_PRODUCT_D3000 0x0424
 #define NIKON_PRODUCT_D3100 0x0427
 #define NIKON_PRODUCT_D3200 0x042c
 #define NIKON_PRODUCT_D3300 0x0433
@@ -55,8 +56,13 @@
 #define NIKON_PRODUCT_Z6    0x0443
 #define NIKON_PRODUCT_Z50   0x0444
 
-#define IS_NIKON_D3XXX_SERIES() \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3100 || \
+#define IS_NIKON_D3000_OR_D3100() \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3000 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3100
+
+// TODO: there is a doubt if 3200 and 3300 can really zoom in LV and control the lens!!!
+
+#define IS_NIKON_D3200_OR_LATER() \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3200 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3300 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3400 || \
@@ -680,6 +686,7 @@ static void ptp_check_event(indigo_device *device) {
 			free(buffer);
 	} else {
 		uint32_t size = 0;
+		ptp_get_event(device);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, PRIVATE_DATA->info_properties_supported[i], &buffer, &size)) {
 				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
@@ -698,10 +705,17 @@ bool ptp_nikon_initialise(indigo_device *device) {
 	if (!ptp_initialise(device))
 		return false;
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
-	if (IS_NIKON_D3XXX_SERIES()) {
+	if (IS_NIKON_D3000_OR_D3100()) {
+		static uint32_t operations[] = { ptp_operation_nikon_DeviceReady, ptp_operation_nikon_GetPreviewImg, 0 };
+		ptp_append_uint16_32_array(PRIVATE_DATA->info_operations_supported, operations);
+		INDIGO_LOG(indigo_log("operations (D3000-3100):"));
+		for (uint32_t *operation = operations; *operation; operation++) {
+			INDIGO_LOG(indigo_log("  %04x %s", *operation, ptp_operation_nikon_code_label(*operation)));
+		}
+	} else if (IS_NIKON_D3200_OR_LATER()) {
 		static uint32_t operations[] = { ptp_operation_nikon_GetVendorPropCodes, ptp_operation_nikon_CheckEvent, ptp_operation_nikon_Capture, ptp_operation_nikon_AfDrive, ptp_operation_nikon_SetControlMode, ptp_operation_nikon_DeviceReady, ptp_operation_nikon_AfCaptureSDRAM, ptp_operation_nikon_DelImageSDRAM, ptp_operation_nikon_GetPreviewImg, ptp_operation_nikon_StartLiveView, ptp_operation_nikon_EndLiveView, ptp_operation_nikon_GetLiveViewImg, ptp_operation_nikon_MfDrive, ptp_operation_nikon_ChangeAfArea, ptp_operation_nikon_AfDriveCancel, 0 };
 		ptp_append_uint16_32_array(PRIVATE_DATA->info_operations_supported, operations);
-		INDIGO_LOG(indigo_log("operations:"));
+		INDIGO_LOG(indigo_log("operations (D3200-3500):"));
 		for (uint32_t *operation = operations; *operation; operation++) {
 			INDIGO_LOG(indigo_log("  %04x %s", *operation, ptp_operation_nikon_code_label(*operation)));
 		}

@@ -2,6 +2,37 @@
 
 All notable changes to INDIGO framewark will be documented in this file.
 
+
+## [2.0-122] - Fri May 05 2020
+### Overal:
+- Device access control finished
+- New more robust timer handling
+- INDIGO_AGENT class added
+- Dynamic libraries ARE NOT binary compatible due to changes in indigo_device structure
+- Drivers can not be unloaded if any of the handled devices is connected
+
+### Driver Fixes:
+- ALL DRIVERS are updated due to the new timer handling
+- indigo_efa_focuser: calibration added for celestron devices
+- indigo_lx200_mount: unpark added for OneStep dialect, tracking status fixed, ...
+- indigo_ioptron_mount: iEQ25 parking fixed, protocol 2.5+ guiding rate setting fixed, ...
+- indigo_focuser_optec: relative move orientation fixed, reverse orientation property added
+- indigo_focuser_dmfc: relative move response reading fixed
+- indigo_aux_sqm: crash on lost connection fixed
+- indigo_aux_rts: disconnect sequence fixed
+- indigo_aux_ppb: dev heater initial target values fixed, P3/P4 fixed, ...
+- indigo_aux_flipflat: light intensity reading fixed
+- indigo_focuser_moonlite: timeout fixed
+- indigo_ccd_ptp: D3000/3100 capture fixed
+- indigo_ccd_atik: AtikOne wheel control fixed, new SDK used
+- indigo_ccd_mi: support for new CMOS cameras added
+
+### New Drivers:
+- indigo_dome_baader
+- indigo_aux_mgbox
+- indigo_wheel_manual
+- indigo_aux_cloudwatcher
+
 ## [2.0-120] - Sat Apr 04 2020
 ### Overall:
 - New experimental feature: Add device access control

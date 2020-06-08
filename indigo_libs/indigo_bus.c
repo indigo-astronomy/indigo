@@ -357,7 +357,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 			device->access_token = 0;
 			if (device->attach != NULL)
 				device->last_result = device->attach(device);
-			if (device->change_property) {
+			if (!device->is_remote && device->change_property) {
 				indigo_property *property = indigo_init_switch_property(NULL, device->name, CONFIG_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 				indigo_init_switch_item(property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
 				device->change_property(device, NULL, property);
@@ -1095,12 +1095,9 @@ indigo_result indigo_change_text_property(indigo_client *client, const char *dev
 	return indigo_change_text_property_with_token(client, device, indigo_get_device_or_master_token(device), name, count, items, values);
 }
 
-indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...) {
+static indigo_result _indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, va_list args) {
 	char value[INDIGO_VALUE_SIZE];
-	va_list args;
-	va_start(args, format);
 	vsnprintf(value, INDIGO_VALUE_SIZE, format, args);
-	va_end(args);
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, 1);
 	property->access_token = token;
 	indigo_init_text_item(property->items, item, NULL, value);
@@ -1109,10 +1106,18 @@ indigo_result indigo_change_text_property_1_with_token(indigo_client *client, co
 	return result;
 }
 
+indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	indigo_result result = _indigo_change_text_property_1_with_token(client, device, token, name, item, format, args);
+	va_end(args);
+	return result;
+}
+
 indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...) {
 	va_list args;
 	va_start(args, format);
-	indigo_result result = indigo_change_text_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, format, args);
+	indigo_result result = _indigo_change_text_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, format, args);
 	va_end(args);
 	return result;
 }
