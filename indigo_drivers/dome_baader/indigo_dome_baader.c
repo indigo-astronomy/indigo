@@ -23,7 +23,7 @@
  \file indigo_dome_baader.c
  */
 
-#define DRIVER_VERSION 0x00005
+#define DRIVER_VERSION 0x00001
 #define DRIVER_NAME	"indigo_dome_baader"
 
 #include <stdlib.h>
@@ -47,11 +47,16 @@
 
 #define X_SETTINGS_GROUP                    "Settings"
 
-
-#define X_CALLIBRATE_PROPERTY               (PRIVATE_DATA->callibrate_property)
-#define X_CALLIBRATE_ITEM                   (X_CALLIBRATE_PROPERTY->items+0)
-#define X_CALLIBRATE_PROPERTY_NAME          "X_CALLIBRATE"
-#define X_CALLIBRATE_ITEM_NAME              "CALLIBRATE"
+#define X_EMERGENCY_CLOSE_PROPERTY               (PRIVATE_DATA->emergency_property)
+#define X_EMERGENCY_RAIN_ITEM                    (X_EMERGENCY_CLOSE_PROPERTY->items+0)
+#define X_EMERGENCY_WIND_ITEM                    (X_EMERGENCY_CLOSE_PROPERTY->items+1)
+#define X_EMERGENCY_OPERATION_TIMEOUT_ITEM       (X_EMERGENCY_CLOSE_PROPERTY->items+2)
+#define X_EMERGENCY_POWERCUT_ITEM                (X_EMERGENCY_CLOSE_PROPERTY->items+3)
+#define X_EMERGENCY_CLOSE_PROPERTY_NAME          "X_EMERGENCY_CLOSE"
+#define X_EMERGENCY_RAIN_ITEM_NAME               "RAIN"
+#define X_EMERGENCY_WIND_ITEM_NAME               "WIND"
+#define X_EMERGENCY_OPERATION_TIMEOUT_ITEM_NAME  "OPERATION_TIMEOUT"
+#define X_EMERGENCY_POWERCUT_ITEM_NAME           "POWER_CUT"
 
 typedef enum {
 	FLAP_CLOSED = 0,
@@ -62,17 +67,26 @@ typedef enum {
 	FLAP_MOVING = 5 // Old firmware uses it instead of FLAP_STOPPED, FLAP_CLOSING and FLAP_OPENING
 } baader_flap_state_t;
 
+typedef enum {
+	BD_SUCCESS = 0,
+	BD_PARAM_ERROR = 1,
+	BD_COMMAND_ERROR = 2,
+	BD_NO_RESPONSE = 3,
+	BD_DOME_ERROR = 4
+} baader_rc_t;
+
 typedef struct {
 	int handle;
 	float target_position, current_position;
 	int shutter_position;
+	bool rain, wind, timeout, powercut;
 	baader_flap_state_t flap_state;
 	bool park_requested;
 	bool aborted;
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
-	indigo_property *callibrate_property;
+	indigo_property *emergency_property;
 } baader_private_data;
 
 #define BAADER_CMD_LEN 10
@@ -111,7 +125,7 @@ static bool baader_command(indigo_device *device, const char *command, char *res
 	if (response != NULL) {
 		int index = 0;
 		int timeout = 3;
-		while (index < BAADER_CMD_LEN-1) {
+		while (index < BAADER_CMD_LEN - 1) {
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
@@ -138,188 +152,214 @@ static bool baader_command(indigo_device *device, const char *command, char *res
 }
 
 
-static bool baader_get_serial_number(indigo_device *device, char *serial_num) {
-	if(!serial_num) return false;
-
+static baader_rc_t baader_get_serial_number(indigo_device *device, char *serial_num) {
 	char response[BAADER_CMD_LEN]={0};
+
+	if (!serial_num) return BD_PARAM_ERROR;
+
 	if (baader_command(device, "d#ser_num", response, 100)) {
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
 		int parsed = sscanf(response, "d#%s", serial_num);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#ser_num -> %s, '%s'", response, serial_num);
-		if (parsed != 1) return false;
-		return true;
+		if (parsed == 1) return BD_SUCCESS;
+		return BD_COMMAND_ERROR;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_abort(indigo_device *device) {
+static baader_rc_t baader_abort(indigo_device *device) {
 	char response[BAADER_CMD_LEN]={0};
+
 	if (baader_command(device, "d#stopdom", response, 100)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#stopdom -> %s", response);
-		if (strcmp(response, "d#gotmess")) return false;
-		return true;
+		if (!strcmp(response, "d#gotmess")) return BD_SUCCESS;
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		return BD_COMMAND_ERROR;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_get_azimuth(indigo_device *device, float *azimuth) {
-	if(!azimuth) return false;
+static baader_rc_t baader_get_azimuth(indigo_device *device, float *azimuth) {
 	int azim;
 	char ch;
 	char response[BAADER_CMD_LEN]={0};
+
+	if (!azimuth) return BD_PARAM_ERROR;
+
 	if (baader_command(device, "d#getazim", response, 100)) {
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
 		int parsed = sscanf(response, "d#az%c%d", &ch, &azim);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#getazim -> %s, %d, ch = %c", response, azim, ch);
-		if (parsed != 2) return false;
+		if (parsed != 2) return BD_COMMAND_ERROR;
 		*azimuth = azim / 10.0;
-		return true;
+		return BD_SUCCESS;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_get_shutter_position(indigo_device *device, int *pos) {
-	if(!pos) return false;
-	bool success = false;
+static baader_rc_t baader_get_shutter_position(indigo_device *device, int *pos) {
+	baader_rc_t rc = BD_COMMAND_ERROR;
 	char response[BAADER_CMD_LEN]={0};
+
+	if (!pos) return BD_PARAM_ERROR;
+
 	if (baader_command(device, "d#getshut", response, 100)) {
-		if (!strcmp(response, "d#shutope")) {
-			success = true;
+		if (!strcmp(response, "d#domerro")) {
+			rc = BD_DOME_ERROR;
+		} else if (!strcmp(response, "d#shutope")) {
+			rc = BD_SUCCESS;
 			*pos = 100;
 		} else if (!strcmp(response, "d#shutclo")) {
-			success = true;
+			rc = BD_SUCCESS;
 			*pos = 0;
 		} else if (!strcmp(response, "d#shutrun")){
-			success = true;
+			rc = BD_SUCCESS;
 			*pos = 50;
 		} else {
 			int parsed = sscanf(response, "d#shut_%d", pos);
-			if (parsed == 1) success = true;
+			if (parsed == 1) rc = BD_SUCCESS;
 		}
-		if(success) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#getshut -> %s, %d", response, *pos);
-			return true;
-		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#getshut -> %s, %d", response, *pos);
+		return rc;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_open_shutter(indigo_device *device) {
+static baader_rc_t baader_open_shutter(indigo_device *device) {
 	char response[BAADER_CMD_LEN]={0};
+
 	if (baader_command(device, "d#opeshut", response, 100)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#openshut -> %s", response);
-		if (strcmp(response, "d#gotmess")) return false;
-		return true;
+		if (!strcmp(response, "d#gotmess")) return BD_SUCCESS;
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		return BD_COMMAND_ERROR;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_close_shutter(indigo_device *device) {
+static baader_rc_t baader_close_shutter(indigo_device *device) {
 	char response[BAADER_CMD_LEN]={0};
+
 	if (baader_command(device, "d#closhut", response, 100)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#closhut -> %s", response);
-		if (strcmp(response, "d#gotmess")) return false;
-		return true;
+		if (!strcmp(response, "d#gotmess")) return BD_SUCCESS;
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		return BD_COMMAND_ERROR;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_get_flap_state(indigo_device *device, int *flap_state) {
-	if(!flap_state) return false;
-	bool success = false;
+static baader_rc_t baader_get_flap_state(indigo_device *device, int *flap_state) {
+	baader_rc_t rc = BD_COMMAND_ERROR;
 	char response[BAADER_CMD_LEN]={0};
+
+	if (!flap_state) return BD_PARAM_ERROR;
+
 	if (baader_command(device, "d#getflap", response, 100)) {
-		if (!strcmp(response, "d#flapope")) {
-			success = true;
+		if (!strcmp(response, "d#domerro")) {
+			rc = BD_DOME_ERROR;
+		} else if (!strcmp(response, "d#flapope")) {
+			rc = BD_SUCCESS;
 			*flap_state = FLAP_OPEN;
 		} else if (!strcmp(response, "d#flapclo")) {
-			success = true;
+			rc = BD_SUCCESS;
 			*flap_state = FLAP_CLOSED;
-		} else if (!strcmp(response, "d#flaprim")){
-			success = true;
+		} else if (!strcmp(response, "d#flaprim")) {
+			rc = BD_SUCCESS;
 			*flap_state = FLAP_STOPPED;
-		} else if (!strcmp(response, "d#flaprop")){
-			success = true;
+		} else if (!strcmp(response, "d#flaprop")) {
+			rc = BD_SUCCESS;
 			*flap_state = FLAP_OPENING;
 		} else if (!strcmp(response, "d#flaprcl")) {
-			success = true;
+			rc = BD_SUCCESS;
 			*flap_state = FLAP_CLOSING;
 		} else if (!strcmp(response, "d#flaprun")) {
-			success = true;
+			rc = BD_SUCCESS;
 			*flap_state = FLAP_MOVING;
 		}
-		if(success) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#getshut -> %s, %d", response, *flap_state);
-			return true;
-		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#getshut -> %s, %d", response, *flap_state);
+		return rc;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_open_flap(indigo_device *device) {
+static baader_rc_t baader_open_flap(indigo_device *device) {
 	char response[BAADER_CMD_LEN]={0};
+
 	if (baader_command(device, "d#opeflap", response, 100)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#opeflap -> %s", response);
-		if (strcmp(response, "d#gotmess")) return false;
-		return true;
+		if (!strcmp(response, "d#gotmess")) return BD_SUCCESS;
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		return BD_COMMAND_ERROR;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 
-static bool baader_close_flap(indigo_device *device) {
+static baader_rc_t baader_close_flap(indigo_device *device) {
 	char response[BAADER_CMD_LEN]={0};
+
 	if (baader_command(device, "d#cloflap", response, 100)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#cloflap -> %s", response);
-		if (strcmp(response, "d#gotmess")) return false;
-		return true;
+		if (!strcmp(response, "d#gotmess")) return BD_SUCCESS;
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		return BD_COMMAND_ERROR;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
-//static bool baader_set_shutter_position(indigo_device *device, float position) {
-//	char command[BAADER_CMD_LEN];
-//	char response[BAADER_CMD_LEN] = {0};
-//
-//	snprintf(command, BAADER_CMD_LEN, "f %.2f\n", position);
-//
-//	if (baader_command(device, command, response, 100)) {
-//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "f %.2f -> %s", position, response);
-//		if (response[0] != 'F') return false;
-//		return true;
-//	}
-//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-//	return false;
-//}
+
+static baader_rc_t baader_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
+	char r,w,t,p;
+	char response[BAADER_CMD_LEN]={0};
+
+	if (!rain || !wind || !timeout || !powercut) return BD_PARAM_ERROR;
+
+	if (baader_command(device, "d#get_eme", response, 100)) {
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		int parsed = sscanf(response, "d#eme%c%c%c%c", &r, &w, &t, &p);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "d#get_eme -> %s, %c %c %c %c", response, r, w, t, p);
+		if (parsed != 4) return BD_COMMAND_ERROR;
+		*rain = (r == '0') ? false : true;
+		*wind = (w == '0') ? false : true;
+		*timeout = (t == '0') ? false : true;
+		*powercut = (p == '0') ? false : true;
+		return BD_SUCCESS;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
+	return BD_NO_RESPONSE;
+}
 
 
-static bool baader_goto_azimuth(indigo_device *device, float azimuth) {
+static baader_rc_t baader_goto_azimuth(indigo_device *device, float azimuth) {
 	char command[BAADER_CMD_LEN];
 	char response[BAADER_CMD_LEN] = {0};
 
 	snprintf(command, BAADER_CMD_LEN, "d#azi%04d", (int)(azimuth *10));
-
 	if (baader_command(device, command, response, 100)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s", command, response);
-		if (strcmp(response, "d#gotmess")) return false;
-		return true;
+		if (!strcmp(response, "d#gotmess")) return BD_SUCCESS;
+		if (!strcmp(response, "d#domerro")) return BD_DOME_ERROR;
+		return BD_COMMAND_ERROR;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response");
-	return false;
+	return BD_NO_RESPONSE;
 }
 
 static bool baader_callibrate(indigo_device *device) {
@@ -332,12 +372,12 @@ static bool baader_callibrate(indigo_device *device) {
 static void dome_timer_callback(indigo_device *device) {
 	static int prev_shutter_position = -1;
 	static baader_flap_state_t prev_flap_state = -1;
+	baader_rc_t rc;
 
 	/* Handle dome rotation */
-	if(!baader_get_azimuth(device, &PRIVATE_DATA->current_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error");
+	if ((rc = baader_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error %d", rc);
 	}
-
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ||
 	    DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE ||
 	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1
@@ -359,51 +399,57 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome parked");
 		}
 	}
 
 	/* Handle dome shutter */
-	if(!baader_get_shutter_position(device, &PRIVATE_DATA->shutter_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_shutter_position(): returned error");
+	if ((rc = baader_get_shutter_position(device, &PRIVATE_DATA->shutter_position)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_shutter_position(): returned error %d", rc);
 	}
 	if (PRIVATE_DATA->shutter_position != prev_shutter_position) {
 		if (PRIVATE_DATA->shutter_position == 100) {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter open");
 		} else if (PRIVATE_DATA->shutter_position == 0) {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter closed");
 		} else {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-		//	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			//DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		}
 		prev_shutter_position = PRIVATE_DATA->shutter_position;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+
 	}
 
 	/* Handle dome flap */
-	if(!baader_get_flap_state(device, (int *)&PRIVATE_DATA->flap_state)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_flap_state(): returned error");
+	if ((rc = baader_get_flap_state(device, (int *)&PRIVATE_DATA->flap_state)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_flap_state(): returned error %d", rc);
 	}
 	if (PRIVATE_DATA->flap_state != prev_flap_state) {
 		if (PRIVATE_DATA->flap_state == FLAP_OPEN) {
 			indigo_set_switch(DOME_FLAP_PROPERTY, DOME_FLAP_OPENED_ITEM, true);
 			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap open");
 		} else if (PRIVATE_DATA->flap_state == FLAP_CLOSED) {
 			indigo_set_switch(DOME_FLAP_PROPERTY, DOME_FLAP_CLOSED_ITEM, true);
 			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap closed");
 		} else if (PRIVATE_DATA->flap_state == FLAP_STOPPED) {
 			indigo_set_switch(DOME_FLAP_PROPERTY, DOME_FLAP_OPENED_ITEM, false);
 			indigo_set_switch(DOME_FLAP_PROPERTY, DOME_FLAP_CLOSED_ITEM, false);
 			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
 		} else {
 			indigo_set_switch(DOME_FLAP_PROPERTY, DOME_FLAP_OPENED_ITEM, false);
 			indigo_set_switch(DOME_FLAP_PROPERTY, DOME_FLAP_CLOSED_ITEM, false);
-		//	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			//DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
 		}
 		prev_flap_state = PRIVATE_DATA->flap_state;
-		indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
 	}
 
 	/* Keep the dome in sync if needed */
@@ -412,10 +458,14 @@ static void dome_timer_callback(indigo_device *device) {
 		if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) &&
 		   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE)) {
 			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
-			if(!baader_goto_azimuth(device, PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+			if ((rc = baader_goto_azimuth(device, PRIVATE_DATA->target_position)) != BD_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				if (rc == BD_DOME_ERROR) {
+					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome sync failed with DOME_ERROR. Please inspect the dome!");
+				} else {
+					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+				}
 				return;
 			}
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -443,14 +493,39 @@ static void dome_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->aborted = false;
 	}
 
+	/* Emergency flags state */
+	bool rain, wind, timeout, powercut;
+	if ((rc = baader_get_emergency_status(device, &rain, &wind, &timeout, &powercut)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_emergency_status(): returned error %d", rc);
+	} else {
+		if (X_EMERGENCY_CLOSE_PROPERTY->state == INDIGO_IDLE_STATE ||
+		    PRIVATE_DATA->rain != rain ||
+		    PRIVATE_DATA->wind != wind ||
+		    PRIVATE_DATA->timeout != timeout ||
+		    PRIVATE_DATA->powercut != powercut)
+		{
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating X_EMERGENCY_CLOSE");
+			X_EMERGENCY_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
+			X_EMERGENCY_RAIN_ITEM->light.value = rain ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->rain = rain;
+			X_EMERGENCY_WIND_ITEM->light.value = wind ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->wind = wind;
+			X_EMERGENCY_OPERATION_TIMEOUT_ITEM->light.value = timeout ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->timeout = timeout;
+			X_EMERGENCY_POWERCUT_ITEM->light.value = powercut ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			PRIVATE_DATA->powercut = powercut;
+			indigo_update_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
+		}
+	}
+
 	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
 }
 
 
 static indigo_result baader_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_CALLIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_CALLIBRATE_PROPERTY, NULL);
+		if (indigo_property_match(X_EMERGENCY_CLOSE_PROPERTY, property))
+			indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -479,12 +554,14 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- X_CALLIBRATE_PROPERTY
-		X_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALLIBRATE_PROPERTY_NAME, X_SETTINGS_GROUP, "Callibrate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (X_CALLIBRATE_PROPERTY == NULL)
+		// -------------------------------------------------------------------------------- X_EMERGENCY_CLOSE_PROPERTY
+		X_EMERGENCY_CLOSE_PROPERTY = indigo_init_light_property(NULL, device->name, X_EMERGENCY_CLOSE_PROPERTY_NAME, DOME_MAIN_GROUP, "Energency close flags", INDIGO_IDLE_STATE, 4);
+		if (X_EMERGENCY_CLOSE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		X_CALLIBRATE_PROPERTY->hidden = false;
-		indigo_init_switch_item(X_CALLIBRATE_ITEM, X_CALLIBRATE_ITEM_NAME, "Callibrate", false);
+		indigo_init_light_item(X_EMERGENCY_RAIN_ITEM, X_EMERGENCY_RAIN_ITEM_NAME, "Rain alert", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_EMERGENCY_WIND_ITEM, X_EMERGENCY_WIND_ITEM_NAME, "Wind alert", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_EMERGENCY_OPERATION_TIMEOUT_ITEM, X_EMERGENCY_OPERATION_TIMEOUT_ITEM_NAME, "Operation timeout alert", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_EMERGENCY_POWERCUT_ITEM, X_EMERGENCY_POWERCUT_ITEM_NAME, "Power coutage alert", INDIGO_IDLE_STATE);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -494,6 +571,7 @@ static indigo_result dome_attach(indigo_device *device) {
 
 
 static void dome_connect_callback(indigo_device *device) {
+	baader_rc_t rc;
 	if (!device->is_connected) {
 		char serial_number[INDIGO_VALUE_SIZE] = "N/A";
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -501,7 +579,7 @@ static void dome_connect_callback(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -522,7 +600,7 @@ static void dome_connect_callback(indigo_device *device) {
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				indigo_global_unlock(device);
 				return;
-			} else if (!baader_get_serial_number(device, serial_number)) {
+			} else if ((rc = baader_get_serial_number(device, serial_number)) != BD_SUCCESS) {
 				int res = close(PRIVATE_DATA->handle);
 				if (res < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
@@ -531,24 +609,29 @@ static void dome_connect_callback(indigo_device *device) {
 				}
 				indigo_global_unlock(device);
 				device->is_connected = false;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Baader dome did not respond.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connect failed: Baader dome did not respond");
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_update_property(device, CONNECTION_PROPERTY, "Baader dome did not respond.");
+				indigo_update_property(device, CONNECTION_PROPERTY, "Baader dome did not respond");
 				return;
 			} else { // Successfully connected
 				strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with serial No.%s connected.", INFO_DEVICE_MODEL_ITEM->text.value, serial_number);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with serial No.%s connected", INFO_DEVICE_MODEL_ITEM->text.value, serial_number);
 
-				indigo_define_property(device, X_CALLIBRATE_PROPERTY, NULL);
+				X_EMERGENCY_CLOSE_PROPERTY->state =
+				X_EMERGENCY_RAIN_ITEM->light.value =
+				X_EMERGENCY_WIND_ITEM->light.value =
+				X_EMERGENCY_OPERATION_TIMEOUT_ITEM->light.value =
+				X_EMERGENCY_POWERCUT_ITEM->light.value = INDIGO_IDLE_STATE;
+				indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 
-				if(!baader_get_azimuth(device, &PRIVATE_DATA->current_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error");
+				if ((rc = baader_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error %d", rc);
 				}
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 				PRIVATE_DATA->aborted = false;
-				PRIVATE_DATA->park_azimuth = 180;
+				PRIVATE_DATA->park_azimuth = 0;
 				if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
 					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 				} else {
@@ -570,7 +653,7 @@ static void dome_connect_callback(indigo_device *device) {
 	} else {
 		if (device->is_connected) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_timer);
-			indigo_delete_property(device, X_CALLIBRATE_PROPERTY, NULL);
+			indigo_delete_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			int res = close(PRIVATE_DATA->handle);
 			if (res < 0) {
@@ -593,6 +676,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
+	baader_rc_t rc;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -603,7 +687,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		if (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed.");
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
 			return INDIGO_OK_STATE;
 		}
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
@@ -615,24 +699,29 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		}
 
-		if(!baader_get_azimuth(device, &PRIVATE_DATA->current_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(%d): returned error", PRIVATE_DATA->handle);
+		if ((rc = baader_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 		}
 
-		DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
 		if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value + 360) % 360;
+			PRIVATE_DATA->target_position = ((int)(10 * (PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value) + 3600) % 3600) / 10.0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PRIVATE_DATA->target_position = %f\n", PRIVATE_DATA->target_position);
 		} else if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value + 360) % 360;
+			PRIVATE_DATA->target_position = ((int)(10 * (PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value) + 3600) % 3600) / 10.0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PRIVATE_DATA->target_position = %f\n", PRIVATE_DATA->target_position);
 		}
 
-		if(!baader_goto_azimuth(device, PRIVATE_DATA->target_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+		if ((rc = baader_goto_azimuth(device, PRIVATE_DATA->target_position)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed.");
+			if (rc == BD_DOME_ERROR) {
+				indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed with DOME_ERROR. Please inspect the dome!");
+			} else {
+				indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed");
+			}
 			return INDIGO_OK;
 		}
 
@@ -645,26 +734,31 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is moving: request can not be completed.");
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is moving: request can not be completed");
 			return INDIGO_OK_STATE;
 		}
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
-			if(!baader_get_azimuth(device, &PRIVATE_DATA->current_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(%d): returned error", PRIVATE_DATA->handle);
+			if ((rc = baader_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			}
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
 			return INDIGO_OK;
 		}
 		PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
-		if(!baader_goto_azimuth(device, PRIVATE_DATA->target_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+		if ((rc = baader_goto_azimuth(device, PRIVATE_DATA->target_position)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			if (rc == BD_DOME_ERROR) {
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Goto azimuth failed with DOME_ERROR. Please inspect the dome!");
+			} else {
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Goto azimuth failed");
+			}
 			return INDIGO_OK;
 		}
 
@@ -691,11 +785,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
-		if(!baader_abort(device)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_abort(%d): returned error", PRIVATE_DATA->handle);
+		if ((rc = baader_abort(device)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_abort(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_ABORT_MOTION_ITEM->sw.value = false;
-			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+			if (rc == BD_DOME_ERROR) {
+				indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed with DOME_ERROR. Please inspect the dome!");
+			} else {
+				indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed");
+			}
 			return INDIGO_OK;
 		}
 
@@ -715,30 +813,38 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is moving: request can not be completed.");
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is moving: request can not be completed");
 			return INDIGO_OK_STATE;
 		 }
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
-		bool success;
+		char message[INDIGO_VALUE_SIZE] = {0};
+		baader_rc_t rc;
 		if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
-			success = baader_open_shutter(device);
+			rc = baader_open_shutter(device);
+			strncpy(message,"Opening shutter...", INDIGO_VALUE_SIZE);
 		} else {
-			success = baader_close_shutter(device);
+			rc = baader_close_shutter(device);
+			strncpy(message,"Closing shutter...", INDIGO_VALUE_SIZE);
 		}
-		if (!success) {
+		if (rc != BD_SUCCESS) {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (rc == BD_DOME_ERROR) {
+				indigo_update_property(device, DOME_STEPS_PROPERTY, "Shutter open/close failed with DOME_ERROR. Please inspect the dome!");
+			} else {
+				indigo_update_property(device, DOME_STEPS_PROPERTY, "Shutter open/close failed");
+			}
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, message);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_FLAP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_FLAP
 		if (DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap is moving: request can not be completed.");
+			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap is moving: request can not be completed");
 			return INDIGO_OK_STATE;
 		}
 		bool is_opened = DOME_FLAP_OPENED_ITEM->sw.value;
@@ -746,21 +852,28 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_FLAP_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 
-		bool success;
+		char message[INDIGO_VALUE_SIZE] = {0};
+		baader_rc_t rc;
 		if (DOME_FLAP_OPENED_ITEM->sw.value) {
-			success = baader_open_flap(device);
+			rc = baader_open_flap(device);
+			strncpy(message,"Opening flap...", INDIGO_VALUE_SIZE);
 		} else {
-			success = baader_close_flap(device);
+			rc = baader_close_flap(device);
+			strncpy(message,"Closing flap...", INDIGO_VALUE_SIZE);
 		}
-		if (!success) {
+		if (rc != BD_SUCCESS) {
 			DOME_FLAP_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_FLAP_CLOSED_ITEM->sw.value = is_closed;
 			DOME_FLAP_OPENED_ITEM->sw.value = is_opened;
-			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap operation failed. Is the shutter open enough?");
+			if (rc == BD_DOME_ERROR) {
+				indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap open/close failed with DOME_ERROR. Please inspect the dome!");
+			} else {
+				indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap open/close failed. Is the shutter open enough?");
+			}
 			return INDIGO_OK;
 		}
 		DOME_FLAP_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_FLAP_PROPERTY, NULL);
+		indigo_update_property(device, DOME_FLAP_PROPERTY, message);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
@@ -770,11 +883,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		if (DOME_PARK_UNPARKED_ITEM->sw.value) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
+			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome unparked");
 		} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
 
-			if(!baader_goto_azimuth(device, PRIVATE_DATA->park_azimuth)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error", PRIVATE_DATA->handle);
+			if ((rc = baader_goto_azimuth(device, PRIVATE_DATA->park_azimuth)) != BD_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			}
 			PRIVATE_DATA->target_position = PRIVATE_DATA->park_azimuth;
 			PRIVATE_DATA->park_requested = true;
@@ -784,27 +898,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome parking...");
+		} else {
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		}
-		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(X_CALLIBRATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_CALLIBRATE
-		indigo_property_copy_values(X_CALLIBRATE_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		if (X_CALLIBRATE_ITEM->sw.value) {
-			X_CALLIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			if(!baader_callibrate(device)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_callibrate(%d): returned error.", PRIVATE_DATA->handle);
-				indigo_set_switch(X_CALLIBRATE_PROPERTY, X_CALLIBRATE_ITEM, false);
-				X_CALLIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, X_CALLIBRATE_PROPERTY, "Callibration failed. Is the dome in home position?");
-				return INDIGO_OK;
-			} else {
-				//PRIVATE_DATA->callibration_requested = true;
-			}
-		}
-		indigo_update_property(device, X_CALLIBRATE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -818,7 +915,7 @@ static indigo_result dome_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		dome_connect_callback(device);
 	}
-	indigo_release_property(X_CALLIBRATE_PROPERTY);
+	indigo_release_property(X_EMERGENCY_CLOSE_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);

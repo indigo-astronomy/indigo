@@ -176,7 +176,9 @@ extern "C" {
 	bool			ArtemisDeviceIsCamera( int iDevice);
     bool			ArtemisDeviceHasFilterWheel(int iDevice);
 	bool			ArtemisDeviceHasGuidePort(int iDevice);
+#ifndef WIN32
     int  			ArtemisDeviceGetLibUSBDevice(int iDevice, libusb_device ** device);
+#endif
 	ArtemisHandle	ArtemisConnect(        int iDevice);
 	bool			ArtemisIsConnected(ArtemisHandle hCam);
 	bool			ArtemisDisconnect( ArtemisHandle handle);
@@ -228,6 +230,10 @@ extern "C" {
 	float ArtemisLastExposureDuration(      ArtemisHandle hCam);
 	char* ArtemisLastStartTime(             ArtemisHandle hCam);
 	int   ArtemisLastStartTimeMilliseconds( ArtemisHandle hCam);
+
+	bool ArtemisHasFastMode(ArtemisHandle handle);
+	bool ArtemisStartFastExposure(ArtemisHandle handle, int ms);
+	bool ArtemisSetFastCallback(ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer));
 
 #ifdef WIN32
 	int ArtemisExposureReadyCallback(       ArtemisHandle hCam, HWND hWnd, int msg, int wParam, int lParam);

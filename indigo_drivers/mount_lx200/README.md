@@ -8,7 +8,7 @@
 * 10micron mounts
 * EQMac
 * Astro-Physics GTO mounts
-* OnStep controllers
+* OnStep controllers (http://www.stellarjourney.com/index.php?r=site/software_telescope)
 
 Connection over serial port or network.
 
