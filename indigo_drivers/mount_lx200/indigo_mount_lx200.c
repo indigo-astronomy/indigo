@@ -83,6 +83,7 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	double lastRA, lastDec;
+	bool motioned;
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
 	indigo_property *alignment_mode_property;
@@ -309,11 +310,24 @@ static void meade_get_coords(indigo_device *device) {
 		if (meade_command(device, ":X34#", response, sizeof(response), 0))
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = (response[1] == '5' || response[2] == '5') ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 	} else {
-		if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target) < 2.0/60.0 && fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target) < 2.0/60.0)
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		if (PRIVATE_DATA->motioned) {
+			// After Motion NS or EW
+			if (MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			} else {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		} else {
+			// After Track or Slew
+			if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - PRIVATE_DATA->lastRA) < 2.0/60.0 && fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - PRIVATE_DATA->lastDec) < 2.0/60.0)
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
 	}
+	// for Unknown case
+	PRIVATE_DATA->lastRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+	PRIVATE_DATA->lastDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 }
 
 static void meade_get_utc(indigo_device *device) {
@@ -791,6 +805,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_coordinates(device, "Mount is parked!");
 		} else {
+			PRIVATE_DATA->motioned = false;
 			indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'q') {
@@ -864,6 +879,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked!");
 		} else {
+			PRIVATE_DATA->motioned = true;
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 				meade_command(device, ":Q#", NULL, 0, 0);
