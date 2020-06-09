@@ -31,7 +31,7 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
 unsigned current_position = 0x8000;
 unsigned target_position = 0x8000;
-float temperature = 0x0031;
+float temperature = 0x00EC;
 unsigned moving_status = 0x00;
 unsigned speed = 0x02;
 unsigned step_mode = 0x00;
