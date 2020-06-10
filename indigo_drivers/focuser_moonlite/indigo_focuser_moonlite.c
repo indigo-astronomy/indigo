@@ -23,7 +23,7 @@
  \file indigo_focuser_moonlite.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_focuser_moonlite"
 
 #include <stdlib.h>
@@ -170,7 +170,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	char response[16];
 	if (read_temperature) {
 		if (moonlite_command(device, ":GT#", response, sizeof(response))) {
-			double temp = ((int)strtol(response, NULL, 16)) / 2.0;
+			double temp = ((int8_t)strtol(response, NULL, 16)) / 2.0;
 			if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
 				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -244,7 +244,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			moonlite_command(device, ":SD02#", NULL, 0);
 			indigo_usleep(750000);
 			if (moonlite_command(device, ":GT#", response, sizeof(response))) {
-				FOCUSER_TEMPERATURE_ITEM->number.value = ((int)strtol(response, NULL, 16)) / 2.0;
+				FOCUSER_TEMPERATURE_ITEM->number.value = ((int8_t)strtol(response, NULL, 16)) / 2.0;
 			}
 			if (moonlite_command(device, ":GP#", response, sizeof(response))) {
 				FOCUSER_POSITION_ITEM->number.value = strtol(response, NULL, 16);
