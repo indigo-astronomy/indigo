@@ -737,32 +737,38 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->count++ == 0) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
-				if (upb_command(device, "P#", response, sizeof(response))) {
-					if (!strcmp(response, "UPB_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 1;
-						AUX_HEATER_OUTLET_PROPERTY->count = 2;
-						AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
-						AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
-						X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
-					} else if (!strcmp(response, "UPB2_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 2;
-						AUX_HEATER_OUTLET_PROPERTY->count = 3;
-						AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
-						AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
-						X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
-						AUX_USB_PORT_PROPERTY->hidden = false;
-						AUX_USB_PORT_STATE_PROPERTY->hidden = true;
-					} else {
+				bool connected = false;
+				int attempt = 0;
+				while (!connected) {
+					if (upb_command(device, "P#", response, sizeof(response))) {
+						if (!strcmp(response, "UPB_OK")) {
+							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
+							PRIVATE_DATA->version = 1;
+							AUX_HEATER_OUTLET_PROPERTY->count = 2;
+							AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
+							AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
+							X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
+							break;
+						} else if (!strcmp(response, "UPB2_OK")) {
+							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
+							PRIVATE_DATA->version = 2;
+							AUX_HEATER_OUTLET_PROPERTY->count = 3;
+							AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
+							AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
+							X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
+							AUX_USB_PORT_PROPERTY->hidden = false;
+							AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+							break;
+						}
+					}
+					if (attempt++ == 3) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
 						close(PRIVATE_DATA->handle);
 						PRIVATE_DATA->handle = 0;
+						break;
 					}
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_usleep(ONE_SECOND_DELAY);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying...");
 				}
 			}
 		}
