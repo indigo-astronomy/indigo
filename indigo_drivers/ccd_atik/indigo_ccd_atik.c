@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -208,13 +208,13 @@ static void ccd_connect_callback(indigo_device *device) {
 						CCD_GAIN_PROPERTY->hidden = false;
 						CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 						CCD_GAIN_ITEM->number.min = value[0];
-						CCD_GAIN_ITEM->number.min = value[1];
+						CCD_GAIN_ITEM->number.max = value[1];
 						CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value[2];
 						CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 						CCD_OFFSET_PROPERTY->hidden = false;
 						CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 						CCD_OFFSET_ITEM->number.min = value[0];
-						CCD_OFFSET_ITEM->number.min = value[1];
+						CCD_OFFSET_ITEM->number.max = value[1];
 						CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value[2];
 						CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_CUSTOM_ITEM, true);
