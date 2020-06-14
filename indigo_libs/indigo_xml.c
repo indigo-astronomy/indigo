@@ -1092,6 +1092,13 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 				indigo_property *tmp = context->properties[i];
 				if (tmp != NULL && !strncmp(tmp->device, property->device, INDIGO_NAME_SIZE) && !strncmp(tmp->name, property->name, INDIGO_NAME_SIZE)) {
 					indigo_delete_property(device, tmp, *message ? message : NULL);
+					if (tmp->type == INDIGO_BLOB_VECTOR) {
+						for (int i = 0; i < tmp->count; i++) {
+							void *blob = tmp->items[i].blob.value;
+							if (blob)
+								free(blob);
+						}
+					}
 					indigo_release_property(tmp);
 					context->properties[i] = NULL;
 					break;
