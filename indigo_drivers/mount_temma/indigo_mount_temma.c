@@ -706,6 +706,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, false);
 				}
 				// send zenith
+				temma_set_lst(device);
 				temma_command(device, TEMMA_ZENITH, false);
 				ZENITH_EAST_ITEM->sw.value = false;
 				ZENITH_WEST_ITEM->sw.value = false;
