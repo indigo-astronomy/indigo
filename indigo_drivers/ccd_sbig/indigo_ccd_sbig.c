@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -1030,6 +1030,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 
 static void ccd_connect_callback(indigo_device *device) {
 	char b1[32];
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1288,7 +1289,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			clear_connected_flag(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	}	
+	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
@@ -1528,6 +1529,7 @@ static void guider_timer_callback_dec(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1823,6 +1825,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static void wheel_connect_callback(indigo_device *device) {
 	int res;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2005,6 +2008,7 @@ static indigo_result ao_attach(indigo_device *device) {
 
 static void ao_connect_callback(indigo_device *device) {
 	int res = CE_NO_ERROR;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;

@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -904,6 +904,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 
 static void handle_ccd_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (asi_open(device)) {
@@ -1343,6 +1344,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 
 static void handle_guider_connection_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (asi_open(device)) {

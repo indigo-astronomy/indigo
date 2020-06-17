@@ -25,7 +25,7 @@
 
 #include "indigo_dome_dragonfly.h"
 
-#define DRIVER_VERSION         0x0003
+#define DRIVER_VERSION         0x0004
 
 #define DOME_DRAGONFLY_NAME    "Dome Dragonfly"
 #define AUX_DRAGONFLY_NAME     "Dragonfly Controller"
@@ -478,6 +478,7 @@ static indigo_result aux_attach(indigo_device *device) {
 }
 
 static void handle_aux_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			if (lunatico_open(device)) {
@@ -964,6 +965,7 @@ static indigo_result dome_attach(indigo_device *device) {
 
 
 static void handle_dome_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			if (lunatico_open(device)) {
