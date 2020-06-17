@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -649,6 +649,7 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static void mount_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1081,6 +1082,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (mount_open(device)) {

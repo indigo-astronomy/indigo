@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION         0x0003
+#define DRIVER_VERSION         0x0004
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #include <stdlib.h>
@@ -1679,6 +1679,7 @@ static indigo_result aux_attach(indigo_device *device) {
 
 
 static void handle_aux_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			if (aag_open(device)) {

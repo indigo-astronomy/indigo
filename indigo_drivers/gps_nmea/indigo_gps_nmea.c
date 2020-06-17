@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
@@ -266,6 +266,7 @@ static indigo_result gps_attach(indigo_device *device) {
 }
 
 static void gps_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == -1) {
 			if (gps_open(device)) {
