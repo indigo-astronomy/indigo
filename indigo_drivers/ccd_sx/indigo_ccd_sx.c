@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -752,6 +752,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			bool result = true;
@@ -945,6 +946,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			bool result = true;
@@ -1102,7 +1104,7 @@ static struct {
 	{ 0x0509, "SX SuperStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0x0525, "SX UltraStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0x0519, "SX Oculus", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
-	
+
 	{ 0x0719, "LSI9", INDIGO_INTERFACE_CCD },
 	{ 0x0720, "HLSI9", INDIGO_INTERFACE_CCD },
 	{ 0, NULL }
