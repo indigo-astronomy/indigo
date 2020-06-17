@@ -24,7 +24,7 @@
  \file indigo_ccd_apogee.cpp
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	   "indigo_ccd_apogee"
 
 #include <stdlib.h>
@@ -696,6 +696,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (apogee_open(device)) {
@@ -1121,6 +1122,7 @@ static indigo_result ethernet_attach(indigo_device *device) {
 
 static void ethernet_connect_callback(indigo_device *device) {
 	char message[1024] = {0};
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;

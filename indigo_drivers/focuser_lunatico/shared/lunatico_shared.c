@@ -1209,6 +1209,7 @@ static indigo_result aux_attach(indigo_device *device) {
 }
 
 static void handle_aux_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1423,6 +1424,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 
 
 static void handle_rotator_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1904,6 +1906,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 
 static void handle_focuser_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;

@@ -24,7 +24,7 @@
  \file indigo_guider_asi.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_guider_asi"
 
 #include <stdlib.h>
@@ -163,6 +163,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (asi_open(device)) {
@@ -427,7 +428,7 @@ static void process_unplug_event(indigo_device *unused) {
 			removed = true;
 			slot = find_device_slot(id);
 		}
-		
+
 		if (private_data) {
 			USB2ST4Close(id);
 			free(private_data);

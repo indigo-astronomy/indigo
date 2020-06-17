@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -752,6 +752,7 @@ static void update_coils_mode_switches(indigo_device * device) {
 
 static void focuser_connect_callback(indigo_device *device) {
 	uint32_t position;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);

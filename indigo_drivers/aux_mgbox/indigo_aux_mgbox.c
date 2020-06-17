@@ -24,7 +24,7 @@
  \file indigo_aux_mgbox.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"idnigo_aux_mgbox"
 
 #define DEFAULT_BAUDRATE "38400"
@@ -550,6 +550,7 @@ static indigo_result gps_attach(indigo_device *device) {
 
 
 static void gps_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (mgbox_open(device)) {
@@ -811,6 +812,7 @@ static indigo_result aux_attach(indigo_device *device) {
 
 
 static void handle_aux_connect_property(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (mgbox_open(device)) {
