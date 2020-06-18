@@ -23,7 +23,7 @@
  \file indigo_guider_cgusbst4.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_guider_cgusbst4"
 
 #include <stdlib.h>
@@ -44,6 +44,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_guider_cgusbst4.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA        ((cgusbst4_private_data *)device->private_data)
 
@@ -150,24 +153,29 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		result = cgusbst4_open(device);
-		if (result) {
-			char response[2];
-			result = cgusbst4_command(device, "\006", response, 1, 1) && *response == 'A';
-		}
-		if (result) {
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if (!device->is_connected) {
+			bool result = true;
+			result = cgusbst4_open(device);
+			if (result) {
+				char response[2];
+				result = cgusbst4_command(device, "\006", response, 1, 1) && *response == 'A';
+			}
+			if (result) {
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
 		}
 	} else {
-		cgusbst4_close(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			cgusbst4_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
