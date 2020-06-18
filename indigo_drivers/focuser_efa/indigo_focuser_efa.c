@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -46,6 +46,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_focuser_efa.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define SOM 0x3B
 #define APP	0x20
@@ -283,7 +286,7 @@ static long focuser_position(indigo_device *device) {
 static void focuser_goto(indigo_device *device, long target) {
 	uint8_t response_packet[16];
 	uint8_t check_state_packet[10] = { SOM, 0x03, APP, FOC, 0x13, 0 };
-	
+
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -389,98 +392,104 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	uint8_t response_packet[16];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-		if (PRIVATE_DATA->handle > 0) {
-			int bits = TIOCM_RTS;
-			int result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
-		}
-		if (PRIVATE_DATA->handle > 0) {
-			PRIVATE_DATA->is_efa = true;
-			PRIVATE_DATA->is_celestron = false;
-			uint8_t get_version_packet[10] = { SOM, 0x03, APP, FOC, 0xFE, 0 };
-			if (efa_command(device, get_version_packet, response_packet)) {
-				if (response_packet[1] == 5) {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PlaneWave EFA");
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d", response_packet[5], response_packet[6]);
-					PRIVATE_DATA->is_efa = true;
-					PRIVATE_DATA->is_celestron = false;
-				} else if (response_packet[1] == 7) {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron Focus Motor");
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d", response_packet[5], response_packet[6], (response_packet[7] << 8) + response_packet[8]);
-					PRIVATE_DATA->is_efa = false;
-					PRIVATE_DATA->is_celestron = true;
+		if (!device->is_connected) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
+			if (PRIVATE_DATA->handle > 0) {
+				int bits = TIOCM_RTS;
+				int result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
+			}
+			if (PRIVATE_DATA->handle > 0) {
+				PRIVATE_DATA->is_efa = true;
+				PRIVATE_DATA->is_celestron = false;
+				uint8_t get_version_packet[10] = { SOM, 0x03, APP, FOC, 0xFE, 0 };
+				if (efa_command(device, get_version_packet, response_packet)) {
+					if (response_packet[1] == 5) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PlaneWave EFA");
+						sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d", response_packet[5], response_packet[6]);
+						PRIVATE_DATA->is_efa = true;
+						PRIVATE_DATA->is_celestron = false;
+					} else if (response_packet[1] == 7) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron Focus Motor");
+						sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d", response_packet[5], response_packet[6], (response_packet[7] << 8) + response_packet[8]);
+						PRIVATE_DATA->is_efa = false;
+						PRIVATE_DATA->is_celestron = true;
+					} else {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Uknown device");
+						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Uknown version");
+					}
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s detected", INFO_DEVICE_MODEL_ITEM->text.value, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
 				} else {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Uknown device");
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Uknown version");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFA not detected");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
 				}
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s detected", INFO_DEVICE_MODEL_ITEM->text.value, INFO_DEVICE_FW_REVISION_ITEM->text.value);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFA not detected");
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, "Failed to open port %s (%s)", DEVICE_PORT_ITEM->text.value, strerror(errno));
+			}
+			if (PRIVATE_DATA->handle > 0) {
+				FOCUSER_POSITION_ITEM->number.value = focuser_position(device);
+				if (PRIVATE_DATA->is_efa) {
+					uint8_t get_calibration_status_packet[10] = { SOM, 0x03, APP, FOC, 0x30, 0 };
+					if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
+						indigo_send_message(device, "Warning! Focuser is not calibrated!");
+					}
+					uint8_t set_stop_detect_packet[10] = { SOM, 0x04, APP, FOC, 0xEF, 0x01, 0 };
+					efa_command(device, set_stop_detect_packet, response_packet);
+					uint8_t get_fans_packet[10] = { SOM, 0x03, APP, FAN, 0x28, 0 };
+					if (efa_command(device, get_fans_packet, response_packet)) {
+						indigo_set_switch(X_FOCUSER_FANS_PROPERTY, X_FOCUSER_FANS_ON_ITEM, response_packet[5] == 0);
+					}
+					X_FOCUSER_FANS_PROPERTY->hidden = false;
+					X_FOCUSER_CALIBRATION_PROPERTY->hidden = true;
+					indigo_define_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
+					FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+					FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
+					FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RW_PERM;
+					indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+				} else {
+					uint8_t get_calibration_status_packet[10] = { SOM, 0x03, APP, FOC, 0x2B, 0 };
+					if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
+						indigo_send_message(device, "Warning! Focuser is not calibrated!");
+					}
+					uint8_t get_limits_packet[10] = { SOM, 0x03, APP, FOC, 0x2C, 0 };
+					if (efa_command(device, get_limits_packet, response_packet)) {
+						FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = (response_packet[5] << 24) + (response_packet[6] << 16) + (response_packet[7] << 8) + response_packet[8];
+						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (response_packet[9] << 24) + (response_packet[10] << 16) + (response_packet[11] << 8) + response_packet[12];
+					}
+					X_FOCUSER_CALIBRATION_PROPERTY->hidden = false;
+					indigo_define_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
+					X_FOCUSER_FANS_PROPERTY->hidden = true;
+					FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
+					FOCUSER_ON_POSITION_SET_PROPERTY->hidden = true;
+					FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RO_PERM;
+				}
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+	} else {
+		if (device->is_connected) {
+			if (PRIVATE_DATA->handle > 0) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+				uint8_t stop_packet[10] = { SOM, 0x06, APP, FOC, 0x24, 0x00, 0 };
+				efa_command(device, stop_packet, response_packet);
+				indigo_delete_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
+				indigo_delete_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, "Failed to open port %s (%s)", DEVICE_PORT_ITEM->text.value, strerror(errno));
-		}
-		if (PRIVATE_DATA->handle > 0) {
-			FOCUSER_POSITION_ITEM->number.value = focuser_position(device);
-			if (PRIVATE_DATA->is_efa) {
-				uint8_t get_calibration_status_packet[10] = { SOM, 0x03, APP, FOC, 0x30, 0 };
-				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
-					indigo_send_message(device, "Warning! Focuser is not calibrated!");
-				}
-				uint8_t set_stop_detect_packet[10] = { SOM, 0x04, APP, FOC, 0xEF, 0x01, 0 };
-				efa_command(device, set_stop_detect_packet, response_packet);
-				uint8_t get_fans_packet[10] = { SOM, 0x03, APP, FAN, 0x28, 0 };
-				if (efa_command(device, get_fans_packet, response_packet)) {
-					indigo_set_switch(X_FOCUSER_FANS_PROPERTY, X_FOCUSER_FANS_ON_ITEM, response_packet[5] == 0);
-				}
-				X_FOCUSER_FANS_PROPERTY->hidden = false;
-				X_FOCUSER_CALIBRATION_PROPERTY->hidden = true;
-				indigo_define_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
-				FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-				FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
-				FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RW_PERM;
-				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
-			} else {
-				uint8_t get_calibration_status_packet[10] = { SOM, 0x03, APP, FOC, 0x2B, 0 };
-				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
-					indigo_send_message(device, "Warning! Focuser is not calibrated!");
-				}
-				uint8_t get_limits_packet[10] = { SOM, 0x03, APP, FOC, 0x2C, 0 };
-				if (efa_command(device, get_limits_packet, response_packet)) {
-					FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = (response_packet[5] << 24) + (response_packet[6] << 16) + (response_packet[7] << 8) + response_packet[8];
-					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (response_packet[9] << 24) + (response_packet[10] << 16) + (response_packet[11] << 8) + response_packet[12];
-				}
-				X_FOCUSER_CALIBRATION_PROPERTY->hidden = false;
-				indigo_define_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
-				X_FOCUSER_FANS_PROPERTY->hidden = true;
-				FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
-				FOCUSER_ON_POSITION_SET_PROPERTY->hidden = true;
-				FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RO_PERM;
-			}
+			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-	} else {
-		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-			uint8_t stop_packet[10] = { SOM, 0x06, APP, FOC, 0x24, 0x00, 0 };
-			efa_command(device, stop_packet, response_packet);
-			indigo_delete_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
-			indigo_delete_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
-		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
