@@ -23,7 +23,7 @@
  \file indigo_ao_sx.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_ao_sx"
 
 #include <stdlib.h>
@@ -160,8 +160,6 @@ static indigo_result ao_attach(indigo_device *device) {
 static void ao_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		if (sx_open(device)) {
 			char response[2];
 			if (sx_command(device, "L", response, 1)) {
@@ -245,7 +243,11 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ao_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AO_GUIDE_DEC_PROPERTY, property)) {
