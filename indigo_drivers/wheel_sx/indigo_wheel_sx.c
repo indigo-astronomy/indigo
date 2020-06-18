@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_wheel_sx"
 
 #include <stdlib.h>
@@ -46,6 +46,9 @@
 #include <indigo/indigo_usb_utils.h>
 
 #include "indigo_wheel_sx.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
 
@@ -112,19 +115,26 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (sx_open(device)) {
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count;
-			PRIVATE_DATA->target_slot = 1;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if (!device->is_connected) {
+			if (sx_open(device)) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count;
+				PRIVATE_DATA->target_slot = 1;
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
 		}
 	} else {
-		sx_close(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			sx_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
