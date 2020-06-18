@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_wheel_atik"
 
 #include <stdlib.h>
@@ -45,6 +45,9 @@
 #include <indigo/indigo_driver_xml.h>
 
 #include "indigo_wheel_atik.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 // -------------------------------------------------------------------------------- ATIK USB interface implementation
 
@@ -82,26 +85,33 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if ((PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL)) != NULL) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
-			while (true) {
-				libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9)
-					break;
-					indigo_usleep(ONE_SECOND_DELAY);
+		if (!device->is_connected) {
+			if ((PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL)) != NULL) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
+				while (true) {
+					libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+					if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9)
+						break;
+						indigo_usleep(ONE_SECOND_DELAY);
+				}
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		hid_close(PRIVATE_DATA->handle);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			hid_close(PRIVATE_DATA->handle);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
