@@ -50,8 +50,6 @@ static indigo_device *devices[MAX_DEVICES];
 
 #include "ptp_camera_model.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
@@ -140,88 +138,81 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void handle_connection(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
-			if (PRIVATE_DATA->handle == NULL) {
-				bool result = true;
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					result = false;
-				} else {
-					result = ptp_open(device);
+		pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+		if (PRIVATE_DATA->handle == NULL) {
+			bool result = true;
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				result = false;
+			} else {
+				result = ptp_open(device);
+			}
+			if (result) {
+				PRIVATE_DATA->transaction_id = 0;
+				PRIVATE_DATA->session_id = 0;
+				result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
+				if (!result && PRIVATE_DATA->last_error == ptp_response_SessionAlreadyOpen) {
+					ptp_transaction_0_0(device, ptp_operation_CloseSession);
+					result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
 				}
 				if (result) {
-					PRIVATE_DATA->transaction_id = 0;
-					PRIVATE_DATA->session_id = 0;
-					result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
-					if (!result && PRIVATE_DATA->last_error == ptp_response_SessionAlreadyOpen) {
-						ptp_transaction_0_0(device, ptp_operation_CloseSession);
-						result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
-					}
-					if (result) {
-						if (PRIVATE_DATA->initialise(device)) {
-							device->is_connected = true;
-							CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-						} else {
-							ptp_close(device);
-							indigo_global_unlock(device);
-							CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						}
+					if (PRIVATE_DATA->initialise(device)) {
+						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					} else {
 						ptp_close(device);
 						indigo_global_unlock(device);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 				} else {
+					ptp_close(device);
 					indigo_global_unlock(device);
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
-					indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
-					for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
-						indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
-					if (PRIVATE_DATA->focuser)
-						indigo_attach_device(PRIVATE_DATA->focuser);
-				} else {
-					for (int i = 0; PRIVATE_DATA->properties[i].property; i++)
-						indigo_release_property(PRIVATE_DATA->properties[i].property);
-					memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
-				}
+			} else {
+				indigo_global_unlock(device);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+			if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
+				indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
+				for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
+					indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
+				if (PRIVATE_DATA->focuser)
+					indigo_attach_device(PRIVATE_DATA->focuser);
+			} else {
+				for (int i = 0; PRIVATE_DATA->properties[i].property; i++)
+					indigo_release_property(PRIVATE_DATA->properties[i].property);
+				memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
+			}
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 	} else {
-		if (device->is_connected) {
-			indigo_detach_device(PRIVATE_DATA->focuser);
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->event_checker);
-			ptp_transaction_0_0(device, ptp_operation_CloseSession);
-			ptp_close(device);
-			indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
-			indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
-			indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
-			indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
-			indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
-			indigo_delete_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
-			for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
-				indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
-				indigo_release_property(PRIVATE_DATA->properties[i].property);
-			}
-			memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
-			if (PRIVATE_DATA->image_buffer) {
-				free(PRIVATE_DATA->image_buffer);
-				PRIVATE_DATA->image_buffer = NULL;
-			}
-			indigo_global_unlock(device);
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_detach_device(PRIVATE_DATA->focuser);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->event_checker);
+		ptp_transaction_0_0(device, ptp_operation_CloseSession);
+		ptp_close(device);
+		indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
+		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
+			indigo_delete_property(device, PRIVATE_DATA->properties[i].property, NULL);
+			indigo_release_property(PRIVATE_DATA->properties[i].property);
 		}
+		memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
+		if (PRIVATE_DATA->image_buffer) {
+			free(PRIVATE_DATA->image_buffer);
+			PRIVATE_DATA->image_buffer = NULL;
+		}
+		indigo_global_unlock(device);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -324,6 +315,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
