@@ -117,8 +117,6 @@ static void wheel_connect_callback(indigo_device *device) {
 	} else {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 				if (indigo_try_global_lock(device) != INDIGO_OK) {

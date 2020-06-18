@@ -919,7 +919,6 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
-					return;
 				}
 				ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
 				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
@@ -942,7 +941,6 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_LOG( DRIVER_NAME, "ASIGetGainOffset(%d) = %d", id, res);
-					return;
 				}
 
 				PRIVATE_DATA->gain_unity_gain = get_unity_gain(device);
