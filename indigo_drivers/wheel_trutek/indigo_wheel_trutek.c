@@ -23,7 +23,7 @@
  \file indigo_ccd_trutek.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_wheel_trutek"
 
 #include <stdlib.h>
@@ -36,6 +36,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_wheel_trutek.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 // -------------------------------------------------------------------------------- interface implementation
 
@@ -127,17 +130,24 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (trutek_open(device)) {
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_timer(device, 0, trutek_query, NULL);
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if (!device->is_connected) {
+			if (trutek_open(device)) {
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_timer(device, 0, trutek_query, NULL);
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
 		}
 	} else {
-		trutek_close(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			device->is_connected = false;
+			trutek_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
