@@ -24,7 +24,7 @@
  \file indigo_focuser_nstep.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_nstep"
 
 #include <stdlib.h>
@@ -42,6 +42,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_focuser_nstep.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA													((nstep_private_data *)device->private_data)
 
@@ -216,93 +219,99 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[8];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-		if (PRIVATE_DATA->handle > 0) {
-			if (nstep_command(device, "\006", response, 1) && *response == 'S') {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "nSTEP detected");
+		if (!device->is_connected) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
+			if (PRIVATE_DATA->handle > 0) {
+				if (nstep_command(device, "\006", response, 1) && *response == 'S') {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "nSTEP detected");
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "nSTEP not detected");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
+			}
+			if (PRIVATE_DATA->handle > 0) {
+				if (nstep_command(device, ":RT", response, 4)) {
+					if (strcmp(response, "-888") == 0) {
+						FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
+						FOCUSER_COMPENSATION_PROPERTY->hidden = true;
+						FOCUSER_MODE_PROPERTY->hidden = true;
+					} else {
+						FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+						FOCUSER_TEMPERATURE_ITEM->number.value = atoi(response) / 10.0;
+						FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+						double tt = 0;
+						if (nstep_command(device, ":RA", response, 4)) {
+							tt = atoi(response) / 10.0;
+						}
+						int ts = 0;
+						if (nstep_command(device, ":RB", response, 3)) {
+							ts = atoi(response);
+						}
+						if (tt == 0)
+							FOCUSER_COMPENSATION_ITEM->number.value = 0;
+						else
+							FOCUSER_COMPENSATION_ITEM->number.value = ts / tt;
+						FOCUSER_MODE_PROPERTY->hidden = false;
+						if (nstep_command(device, ":RG", response, 1)) {
+							indigo_set_switch(FOCUSER_MODE_PROPERTY, *response == '2' ? FOCUSER_MODE_AUTOMATIC_ITEM : FOCUSER_MODE_MANUAL_ITEM, true);
+						}
+						if (nstep_command(device, ":RE", response, 3)) {
+							FOCUSER_BACKLASH_ITEM->number.value = atoi(response);
+						}
+					}
+				}
+				if (nstep_command(device, ":RP", response, 7)) {
+					FOCUSER_POSITION_ITEM->number.value = atol(response);
+				}
+				if (nstep_command(device, ":RO", response, 3)) {
+					FOCUSER_SPEED_ITEM->number.value = 255 - atoi(response);
+				}
+				if (nstep_command(device, ":RW", response, 1)) {
+					switch (*response) {
+						case '0':
+							indigo_set_switch(X_FOCUSER_PHASE_WIRING_PROPERTY, X_FOCUSER_PHASE_WIRING_0_ITEM, true);
+							break;
+						case '1':
+							indigo_set_switch(X_FOCUSER_PHASE_WIRING_PROPERTY, X_FOCUSER_PHASE_WIRING_1_ITEM, true);
+							break;
+						case '2':
+							indigo_set_switch(X_FOCUSER_PHASE_WIRING_PROPERTY, X_FOCUSER_PHASE_WIRING_2_ITEM, true);
+							break;
+					}
+				}
+			}
+			if (PRIVATE_DATA->handle > 0) {
+				indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+				indigo_define_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
+				nstep_command(device, ":CC1", NULL, 0);
+				nstep_command(device, ":CS001#", NULL, 0);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nSTEP not detected");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else {
+		if (device->is_connected) {
+			if (PRIVATE_DATA->handle > 0) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+				nstep_command(device, ":F10000#", NULL, 0);
+				indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
-		}
-		if (PRIVATE_DATA->handle > 0) {
-			if (nstep_command(device, ":RT", response, 4)) {
-				if (strcmp(response, "-888") == 0) {
-					FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
-					FOCUSER_COMPENSATION_PROPERTY->hidden = true;
-					FOCUSER_MODE_PROPERTY->hidden = true;
-				} else {
-					FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-					FOCUSER_TEMPERATURE_ITEM->number.value = atoi(response) / 10.0;
-					FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-					double tt = 0;
-					if (nstep_command(device, ":RA", response, 4)) {
-						tt = atoi(response) / 10.0;
-					}
-					int ts = 0;
-					if (nstep_command(device, ":RB", response, 3)) {
-						ts = atoi(response);
-					}
-					if (tt == 0)
-						FOCUSER_COMPENSATION_ITEM->number.value = 0;
-					else
-						FOCUSER_COMPENSATION_ITEM->number.value = ts / tt;
-					FOCUSER_MODE_PROPERTY->hidden = false;
-					if (nstep_command(device, ":RG", response, 1)) {
-						indigo_set_switch(FOCUSER_MODE_PROPERTY, *response == '2' ? FOCUSER_MODE_AUTOMATIC_ITEM : FOCUSER_MODE_MANUAL_ITEM, true);
-					}
-					if (nstep_command(device, ":RE", response, 3)) {
-						FOCUSER_BACKLASH_ITEM->number.value = atoi(response);
-					}
-				}
-			}
-			if (nstep_command(device, ":RP", response, 7)) {
-				FOCUSER_POSITION_ITEM->number.value = atol(response);
-			}
-			if (nstep_command(device, ":RO", response, 3)) {
-				FOCUSER_SPEED_ITEM->number.value = 255 - atoi(response);
-			}
-			if (nstep_command(device, ":RW", response, 1)) {
-				switch (*response) {
-					case '0':
-						indigo_set_switch(X_FOCUSER_PHASE_WIRING_PROPERTY, X_FOCUSER_PHASE_WIRING_0_ITEM, true);
-						break;
-					case '1':
-						indigo_set_switch(X_FOCUSER_PHASE_WIRING_PROPERTY, X_FOCUSER_PHASE_WIRING_1_ITEM, true);
-						break;
-					case '2':
-						indigo_set_switch(X_FOCUSER_PHASE_WIRING_PROPERTY, X_FOCUSER_PHASE_WIRING_2_ITEM, true);
-						break;
-				}
-			}			
-		}
-		if (PRIVATE_DATA->handle > 0) {
-			indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
-			indigo_define_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
-			nstep_command(device, ":CC1", NULL, 0);
-			nstep_command(device, ":CS001#", NULL, 0);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-	} else {
-		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-			nstep_command(device, ":F10000#", NULL, 0);
-			indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
-			indigo_delete_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
-		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
