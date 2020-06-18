@@ -23,7 +23,7 @@
  \file indigo_focuser_dmfc.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_focuser_dmfc"
 
 #include <stdlib.h>
@@ -42,6 +42,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_focuser_dmfc.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA	((dmfc_private_data *)device->private_data)
 
@@ -214,95 +217,101 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-		if (PRIVATE_DATA->handle > 0) {
-			if (dmfc_command(device, "#", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s OK", response + 3);
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser not detected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
-			}
-		}
-		if (PRIVATE_DATA->handle > 0) {
-			if (dmfc_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
-				char *pnt, *token = strtok_r(response, ":", &pnt);
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
-				token = strtok_r(NULL, ":", &pnt); // status
-				if (token) { // version
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // motor
-					indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, *token == '1' ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // temperature
-					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = indigo_atod(token);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // position
-					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // moving status
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // led status
-					indigo_set_switch(X_FOCUSER_LED_PROPERTY, *token == '1' ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // reverse
-					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // encoder
-					indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, *token == '1' ? X_FOCUSER_ENCODER_DISABLED_ITEM: X_FOCUSER_ENCODER_ENABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // backlash
-					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
+		if (!device->is_connected) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
+			if (PRIVATE_DATA->handle > 0) {
+				if (dmfc_command(device, "#", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s OK", response + 3);
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'A' response");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser not detected");
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
+			}
+			if (PRIVATE_DATA->handle > 0) {
+				if (dmfc_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
+					char *pnt, *token = strtok_r(response, ":", &pnt);
+					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
+					token = strtok_r(NULL, ":", &pnt); // status
+					if (token) { // version
+						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // motor
+						indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, *token == '1' ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // temperature
+						FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = indigo_atod(token);
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // position
+						FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // moving status
+						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // led status
+						indigo_set_switch(X_FOCUSER_LED_PROPERTY, *token == '1' ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // reverse
+						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // encoder
+						indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, *token == '1' ? X_FOCUSER_ENCODER_DISABLED_ITEM: X_FOCUSER_ENCODER_ENABLED_ITEM, true);
+					}
+					token = strtok_r(NULL, ":", &pnt);
+					if (token) { // backlash
+						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'A' response");
+						close(PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = 0;
+					}
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'A' response");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
+			}
+			if (PRIVATE_DATA->handle > 0) {
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
+				indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
+				indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'A' response");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else {
+		if (device->is_connected) {
+			if (PRIVATE_DATA->handle > 0) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+				dmfc_command(device, "H", response, sizeof(response));
+				indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
+				indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
+				indigo_delete_property(device, X_FOCUSER_LED_PROPERTY, NULL);
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
-		}
-		if (PRIVATE_DATA->handle > 0) {
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
-			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-			indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-	} else {
-		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-			dmfc_command(device, "H", response, sizeof(response));
-			indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
-			indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-			indigo_delete_property(device, X_FOCUSER_LED_PROPERTY, NULL);
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
-		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
