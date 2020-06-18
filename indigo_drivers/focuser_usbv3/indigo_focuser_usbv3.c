@@ -23,7 +23,7 @@
  \file indigo_focuser_usbv3.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_usbv3"
 
 #include <stdlib.h>
@@ -41,6 +41,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_focuser_usbv3.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA													((usbv3_private_data *)device->private_data)
 
@@ -245,29 +248,36 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 }
 
 static void focuser_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (usbv3_open(device)) {
-			indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_temperature_callback, &PRIVATE_DATA->temperature_timer);
-			usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
-			usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
-			usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
-			if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
-				usbv3_command(device, "SMSTPF");
+		if (!device->is_connected) {
+			if (usbv3_open(device)) {
+				indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+				indigo_set_timer(device, 0, focuser_temperature_callback, &PRIVATE_DATA->temperature_timer);
+				usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
+				usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
+				usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
+				if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
+					usbv3_command(device, "SMSTPF");
+				} else {
+					usbv3_command(device, "SMSTPD");
+				}
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				usbv3_command(device, "SMSTPD");
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-		usbv3_command(device, "FQUITx");
-		indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
-		usbv3_close(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			usbv3_command(device, "FQUITx");
+			indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+			usbv3_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
