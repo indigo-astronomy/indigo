@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -44,6 +44,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_mount_rainbow.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA        ((rainbow_private_data *)device->private_data)
 
@@ -216,59 +219,63 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 static void mount_connect_callback(indigo_device *device) {
 	char response[128];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		bool result = rainbow_open(device);
-		if (result) {
-			if (rainbow_command(device, ":AV#", response, sizeof(response), 0)) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response + 3);
-				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "RainbowAstro");
-				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
-				strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response + 3, INDIGO_VALUE_SIZE);
-			}
-			MOUNT_UTC_TIME_PROPERTY->hidden = true; // TBD - unclear
-			// TBD - park state
-			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-			PRIVATE_DATA->parked = false;
-			if (rainbow_command(device, ":AT#", response, sizeof(response), 0)) {
-				if (!strcmp(response, ":AT1")) {
-					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-				} else {
-					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+		if (!device->is_connected) {
+			bool result = rainbow_open(device);
+			if (result) {
+				if (rainbow_command(device, ":AV#", response, sizeof(response), 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response + 3);
+					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "RainbowAstro");
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
+					strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response + 3, INDIGO_VALUE_SIZE);
 				}
-			}
-			if (rainbow_command(device, ":Ct?#", response, sizeof(response), 0)) {
-				if (!strcmp(response, ":CT0")) {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-					PRIVATE_DATA->lastTrackRate = 'R';
-				} else if (!strcmp(response, ":CT1")) {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
-					PRIVATE_DATA->lastTrackRate = 'S';
-				} else if (!strcmp(response, ":CT2")) {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
-					PRIVATE_DATA->lastTrackRate = 'M';
-				} else {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_CUSTOM_ITEM, true);
-					PRIVATE_DATA->lastTrackRate = 'U';
+				MOUNT_UTC_TIME_PROPERTY->hidden = true; // TBD - unclear
+				// TBD - park state
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+				PRIVATE_DATA->parked = false;
+				if (rainbow_command(device, ":AT#", response, sizeof(response), 0)) {
+					if (!strcmp(response, ":AT1")) {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					} else {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+					}
 				}
+				if (rainbow_command(device, ":Ct?#", response, sizeof(response), 0)) {
+					if (!strcmp(response, ":CT0")) {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+						PRIVATE_DATA->lastTrackRate = 'R';
+					} else if (!strcmp(response, ":CT1")) {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+						PRIVATE_DATA->lastTrackRate = 'S';
+					} else if (!strcmp(response, ":CT2")) {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+						PRIVATE_DATA->lastTrackRate = 'M';
+					} else {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_CUSTOM_ITEM, true);
+						PRIVATE_DATA->lastTrackRate = 'U';
+					}
+				}
+				if (rainbow_command(device, ":CU0", response, sizeof(response), 0)) {
+					MOUNT_GUIDE_RATE_RA_ITEM->number.value = round(100 * atof(response + 5));
+				}
+				rainbow_get_observatory(device);
+				rainbow_get_coords(device);
+				rainbow_get_utc(device);
+				indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
-			if (rainbow_command(device, ":CU0", response, sizeof(response), 0)) {
-				MOUNT_GUIDE_RATE_RA_ITEM->number.value = round(100 * atof(response + 5));
-			}
-			rainbow_get_observatory(device);
-			rainbow_get_coords(device);
-			rainbow_get_utc(device);
-			indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-		PRIVATE_DATA->position_timer = NULL;
-		rainbow_close(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+			PRIVATE_DATA->position_timer = NULL;
+			rainbow_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 }
