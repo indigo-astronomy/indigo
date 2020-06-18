@@ -23,7 +23,7 @@
  \file indigo_focuser_steeldrive2.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_focuser_steeldrive2"
 
 #include <stdlib.h>
@@ -41,6 +41,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_focuser_steeldrive2.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA									((steeldrive2_private_data *)device->private_data)
 
@@ -442,135 +445,141 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[256];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		if (PRIVATE_DATA->count++ == 0)
-			steeldrive2_connect(device);
-		if (PRIVATE_DATA->handle > 0) {
-			int value;
-			if (steeldrive2_command(device, "$BS GET NAME", response, sizeof(response)) && sscanf(response, "$BS STATUS NAME:%s", X_NAME_ITEM->text.value) == 1) {
-				X_NAME_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (!device->is_connected) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			if (PRIVATE_DATA->count++ == 0)
+				steeldrive2_connect(device);
+			if (PRIVATE_DATA->handle > 0) {
+				int value;
+				if (steeldrive2_command(device, "$BS GET NAME", response, sizeof(response)) && sscanf(response, "$BS STATUS NAME:%s", X_NAME_ITEM->text.value) == 1) {
+					X_NAME_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_define_property(device, X_NAME_PROPERTY, NULL);
+				X_SAVED_VALUES_PROPERTY->state = INDIGO_OK_STATE;
+				if (steeldrive2_command(device, "$BS GET FOCUS", response, sizeof(response)) && sscanf(response, "$BS STATUS FOCUS:%lg", &X_SAVED_FOCUS_ITEM->number.value) == 1) {
+					X_SAVED_FOCUS_ITEM->number.target = X_SAVED_FOCUS_ITEM->number.value;
+				} else {
+					X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET JOGSTEPS", response, sizeof(response)) && sscanf(response, "$BS STATUS JOGSTEPS:%lg", &X_SAVED_JOGSTEPS_ITEM->number.value) == 1) {
+					X_SAVED_JOGSTEPS_ITEM->number.target = X_SAVED_JOGSTEPS_ITEM->number.value;
+				} else {
+					X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET SINGLESTEPS", response, sizeof(response)) && sscanf(response, "$BS STATUS SINGLESTEPS:%lg", &X_SAVED_SINGLESTEPS_ITEM->number.value) == 1) {
+					X_SAVED_SINGLESTEPS_ITEM->number.target = X_SAVED_SINGLESTEPS_ITEM->number.value;
+				} else {
+					X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET BKLGT", response, sizeof(response)) && sscanf(response, "$BS STATUS BKLGT:%lg", &X_SAVED_BKLGT_ITEM->number.value) == 1) {
+					X_SAVED_BKLGT_ITEM->number.target = X_SAVED_BKLGT_ITEM->number.value;
+				} else {
+					X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET TEMP0_OFS", response, sizeof(response)) && sscanf(response, "$BS STATUS TEMP0_OFS:%lg", &X_SAVED_TEMP0_OFS_ITEM->number.value) == 1) {
+					X_SAVED_TEMP0_OFS_ITEM->number.target = X_SAVED_TEMP0_OFS_ITEM->number.value;
+				} else {
+					X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET TEMP1_OFS", response, sizeof(response)) && sscanf(response, "$BS STATUS TEMP1_OFS:%lg", &X_SAVED_TEMP1_OFS_ITEM->number.value) == 1) {
+					X_SAVED_TEMP1_OFS_ITEM->number.target = X_SAVED_TEMP1_OFS_ITEM->number.value;
+				} else {
+					X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_define_property(device, X_SAVED_VALUES_PROPERTY, NULL);
+				FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+				if (steeldrive2_command(device, "$BS GET TCOMP", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP:%d", &value) == 1) {
+					if (value)
+						indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_AUTOMATIC_ITEM, true);
+					else
+						indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_MANUAL_ITEM, true);
+				} else {
+					FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+				if (steeldrive2_command(device, "$BS GET TCOMP_FACTOR", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_FACTOR:%lg", &FOCUSER_COMPENSATION_ITEM->number.value) == 1) {
+					FOCUSER_COMPENSATION_ITEM->number.target = FOCUSER_COMPENSATION_ITEM->number.value;
+				} else {
+					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET TCOMP_PERIOD", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_PERIOD:%lg", &FOCUSER_COMPENSATION_PERIOD_ITEM->number.value) == 1) {
+					FOCUSER_COMPENSATION_PERIOD_ITEM->number.target = FOCUSER_COMPENSATION_PERIOD_ITEM->number.value = FOCUSER_COMPENSATION_PERIOD_ITEM->number.value / 1000;
+				} else {
+					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET TCOMP_DELTA", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_DELTA:%lg", &FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) == 1) {
+					FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value;
+				} else {
+					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (steeldrive2_command(device, "$BS GET TCOMP_DELTA", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_DELTA:%lg", &FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) == 1) {
+					FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value;
+				} else {
+					FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
+				if (steeldrive2_command(device, "$BS GET TCOMP_SENSOR", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_SENSOR:%d", &value) == 1) {
+					if (value == 0)
+						indigo_set_switch(X_SELECT_TC_SENSOR_PROPERTY, X_SELECT_TC_SENSOR_0_ITEM, true);
+					else if (value == 1)
+						indigo_set_switch(X_SELECT_TC_SENSOR_PROPERTY, X_SELECT_TC_SENSOR_1_ITEM, true);
+					else
+						indigo_set_switch(X_SELECT_TC_SENSOR_PROPERTY, X_SELECT_TC_SENSOR_AVG_ITEM, true);
+				} else {
+					X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_define_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
+				X_USE_ENDSTOP_PROPERTY->state = INDIGO_OK_STATE;
+				if (steeldrive2_command(device, "$BS GET USE_ENDSTOP", response, sizeof(response)) && sscanf(response, "$BS STATUS USE_ENDSTOP:%d", &value) == 1) {
+					if (value)
+						indigo_set_switch(X_USE_ENDSTOP_PROPERTY, X_USE_ENDSTOP_ENABLED_ITEM, true);
+					else
+						indigo_set_switch(X_USE_ENDSTOP_PROPERTY, X_USE_ENDSTOP_DISABLED_ITEM, true);
+				} else {
+					X_USE_ENDSTOP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_define_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
+				indigo_define_property(device, X_STATUS_PROPERTY, NULL);
+				indigo_define_property(device, X_RESET_PROPERTY, NULL);
+				indigo_define_property(device, X_START_ZEROING_PROPERTY, NULL);
 			}
-			indigo_define_property(device, X_NAME_PROPERTY, NULL);
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_OK_STATE;
-			if (steeldrive2_command(device, "$BS GET FOCUS", response, sizeof(response)) && sscanf(response, "$BS STATUS FOCUS:%lg", &X_SAVED_FOCUS_ITEM->number.value) == 1) {
-				X_SAVED_FOCUS_ITEM->number.target = X_SAVED_FOCUS_ITEM->number.value;
+			if (PRIVATE_DATA->handle > 0) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+				if (PRIVATE_DATA->count == 1)
+					indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+				PRIVATE_DATA->count = 0;
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
-			if (steeldrive2_command(device, "$BS GET JOGSTEPS", response, sizeof(response)) && sscanf(response, "$BS STATUS JOGSTEPS:%lg", &X_SAVED_JOGSTEPS_ITEM->number.value) == 1) {
-				X_SAVED_JOGSTEPS_ITEM->number.target = X_SAVED_JOGSTEPS_ITEM->number.value;
-			} else {
-				X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			if (steeldrive2_command(device, "$BS GET SINGLESTEPS", response, sizeof(response)) && sscanf(response, "$BS STATUS SINGLESTEPS:%lg", &X_SAVED_SINGLESTEPS_ITEM->number.value) == 1) {
-				X_SAVED_SINGLESTEPS_ITEM->number.target = X_SAVED_SINGLESTEPS_ITEM->number.value;
-			} else {
-				X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			if (steeldrive2_command(device, "$BS GET BKLGT", response, sizeof(response)) && sscanf(response, "$BS STATUS BKLGT:%lg", &X_SAVED_BKLGT_ITEM->number.value) == 1) {
-				X_SAVED_BKLGT_ITEM->number.target = X_SAVED_BKLGT_ITEM->number.value;
-			} else {
-				X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			if (steeldrive2_command(device, "$BS GET TEMP0_OFS", response, sizeof(response)) && sscanf(response, "$BS STATUS TEMP0_OFS:%lg", &X_SAVED_TEMP0_OFS_ITEM->number.value) == 1) {
-				X_SAVED_TEMP0_OFS_ITEM->number.target = X_SAVED_TEMP0_OFS_ITEM->number.value;
-			} else {
-				X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			if (steeldrive2_command(device, "$BS GET TEMP1_OFS", response, sizeof(response)) && sscanf(response, "$BS STATUS TEMP1_OFS:%lg", &X_SAVED_TEMP1_OFS_ITEM->number.value) == 1) {
-				X_SAVED_TEMP1_OFS_ITEM->number.target = X_SAVED_TEMP1_OFS_ITEM->number.value;
-			} else {
-				X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_define_property(device, X_SAVED_VALUES_PROPERTY, NULL);
-			FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-			if (steeldrive2_command(device, "$BS GET TCOMP", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP:%d", &value) == 1) {
-				if (value)
-					indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_AUTOMATIC_ITEM, true);
-				else
-					indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_MANUAL_ITEM, true);
-			} else {
-				FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-			if (steeldrive2_command(device, "$BS GET TCOMP_FACTOR", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_FACTOR:%lg", &FOCUSER_COMPENSATION_ITEM->number.value) == 1) {
-				FOCUSER_COMPENSATION_ITEM->number.target = FOCUSER_COMPENSATION_ITEM->number.value;
-			} else {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			if (steeldrive2_command(device, "$BS GET TCOMP_PERIOD", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_PERIOD:%lg", &FOCUSER_COMPENSATION_PERIOD_ITEM->number.value) == 1) {
-				FOCUSER_COMPENSATION_PERIOD_ITEM->number.target = FOCUSER_COMPENSATION_PERIOD_ITEM->number.value = FOCUSER_COMPENSATION_PERIOD_ITEM->number.value / 1000;
-			} else {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			if (steeldrive2_command(device, "$BS GET TCOMP_DELTA", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_DELTA:%lg", &FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) == 1) {
-				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value;
-			} else {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			if (steeldrive2_command(device, "$BS GET TCOMP_DELTA", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_DELTA:%lg", &FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) == 1) {
-				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value;
-			} else {
-				FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
-			if (steeldrive2_command(device, "$BS GET TCOMP_SENSOR", response, sizeof(response)) && sscanf(response, "$BS STATUS TCOMP_SENSOR:%d", &value) == 1) {
-				if (value == 0)
-					indigo_set_switch(X_SELECT_TC_SENSOR_PROPERTY, X_SELECT_TC_SENSOR_0_ITEM, true);
-				else if (value == 1)
-					indigo_set_switch(X_SELECT_TC_SENSOR_PROPERTY, X_SELECT_TC_SENSOR_1_ITEM, true);
-				else
-					indigo_set_switch(X_SELECT_TC_SENSOR_PROPERTY, X_SELECT_TC_SENSOR_AVG_ITEM, true);
-			} else {
-				X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_define_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
-			X_USE_ENDSTOP_PROPERTY->state = INDIGO_OK_STATE;
-			if (steeldrive2_command(device, "$BS GET USE_ENDSTOP", response, sizeof(response)) && sscanf(response, "$BS STATUS USE_ENDSTOP:%d", &value) == 1) {
-				if (value)
-					indigo_set_switch(X_USE_ENDSTOP_PROPERTY, X_USE_ENDSTOP_ENABLED_ITEM, true);
-				else
-					indigo_set_switch(X_USE_ENDSTOP_PROPERTY, X_USE_ENDSTOP_DISABLED_ITEM, true);
-			} else {
-				X_USE_ENDSTOP_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_define_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
-			indigo_define_property(device, X_STATUS_PROPERTY, NULL);
-			indigo_define_property(device, X_RESET_PROPERTY, NULL);
-			indigo_define_property(device, X_START_ZEROING_PROPERTY, NULL);
-		}
-		if (PRIVATE_DATA->handle > 0) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-			if (PRIVATE_DATA->count == 1)
-				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->count = 0;
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
-			steeldrive2_command(device, "$BS STOP", response, sizeof(response));
-			indigo_delete_property(device, X_NAME_PROPERTY, NULL);
-			indigo_delete_property(device, X_SAVED_VALUES_PROPERTY, NULL);
-			indigo_delete_property(device, X_STATUS_PROPERTY, NULL);
-			indigo_delete_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
-			indigo_delete_property(device, X_RESET_PROPERTY, NULL);
-			indigo_delete_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
-			indigo_delete_property(device, X_START_ZEROING_PROPERTY, NULL);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			if (--PRIVATE_DATA->count == 0) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+		if (device->is_connected) {
+			if (PRIVATE_DATA->handle > 0) {
+				steeldrive2_command(device, "$BS STOP", response, sizeof(response));
+				indigo_delete_property(device, X_NAME_PROPERTY, NULL);
+				indigo_delete_property(device, X_SAVED_VALUES_PROPERTY, NULL);
+				indigo_delete_property(device, X_STATUS_PROPERTY, NULL);
+				indigo_delete_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
+				indigo_delete_property(device, X_RESET_PROPERTY, NULL);
+				indigo_delete_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
+				indigo_delete_property(device, X_START_ZEROING_PROPERTY, NULL);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+				if (--PRIVATE_DATA->count == 0) {
+					indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
 			}
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1259,7 +1268,7 @@ indigo_result indigo_focuser_steeldrive2(indigo_driver_action action, indigo_dri
 		NULL,
 		aux_detach
 		);
-	
+
 	SET_DRIVER_INFO(info, "Baader Planetarium SteelDriveII Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
