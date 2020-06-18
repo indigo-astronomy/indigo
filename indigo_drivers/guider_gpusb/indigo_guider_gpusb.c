@@ -23,7 +23,7 @@
  \file indigo_guider_gpusb.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_guider_gpusb"
 
 #include <stdlib.h>
@@ -40,6 +40,9 @@
 
 #include "indigo_guider_gpusb.h"
 #include <libgpusb.h>
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA													((gpusb_private_data *)device->private_data)
 
@@ -87,17 +90,24 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (libgpusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if (!device->is_connected) {
+			if (libgpusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
-		libgpusb_close(PRIVATE_DATA->device_context);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
+			libgpusb_close(PRIVATE_DATA->device_context);
+			device->is_connected = true;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
