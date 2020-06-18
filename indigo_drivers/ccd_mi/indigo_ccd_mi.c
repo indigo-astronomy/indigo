@@ -459,31 +459,36 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (PRIVATE_DATA->device_count++ == 0) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-				PRIVATE_DATA->camera = NULL;
+		if (!device->is_connected) {
+			if (PRIVATE_DATA->device_count++ == 0) {
+				if (indigo_try_global_lock(device) != INDIGO_OK) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+					PRIVATE_DATA->camera = NULL;
+				} else {
+					PRIVATE_DATA->camera = gxccd_initialize_usb(PRIVATE_DATA->eid);
+				}
+			}
+			if (PRIVATE_DATA->camera) {
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				PRIVATE_DATA->camera = gxccd_initialize_usb(PRIVATE_DATA->eid);
+				PRIVATE_DATA->device_count--;
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		}
-		if (PRIVATE_DATA->camera) {
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			PRIVATE_DATA->device_count--;
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
-		if (--PRIVATE_DATA->device_count == 0) {
-			gxccd_release(PRIVATE_DATA->camera);
-			indigo_global_unlock(device);
+		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
+			if (--PRIVATE_DATA->device_count == 0) {
+				gxccd_release(PRIVATE_DATA->camera);
+				indigo_global_unlock(device);
+			}
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
