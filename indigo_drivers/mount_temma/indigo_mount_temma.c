@@ -25,7 +25,7 @@
  \file indigo_mount_temma.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_mount_temma"
 
 #include <stdlib.h>
@@ -48,6 +48,9 @@
 #include <indigo/indigo_novas.h>
 
 #include "indigo_mount_temma.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA        ((temma_private_data *)device->private_data)
 
@@ -402,55 +405,62 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 }
 
 static void mount_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			result = temma_open(device);
-		}
-		if (result) {
-			int repeat = 5;
-			while (repeat-- > 0)
-				if ((result = temma_command(device, TEMMA_GET_VERSION, true)))
-					break;
+		if (!device->is_connected) {
+			bool result = true;
+			if (PRIVATE_DATA->device_count++ == 0) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				result = temma_open(device);
+			}
 			if (result) {
-				temma_set_lst(device);
-				temma_set_latitude(device);
-				// TemmaPC set to 24V when TEMMA_GET_VERSION (`v`) command sent.
-				temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
-				temma_command(device, TEMMA_GET_POSITION, true);
-				temma_command(device, TEMMA_GET_CORRECTION_SPEED, true);
-				temma_command(device, TEMMA_GET_GOTO_STATE, true);
-				indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
-				indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-				indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
-				indigo_define_property(device, ZENITH_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				int repeat = 5;
+				while (repeat-- > 0)
+					if ((result = temma_command(device, TEMMA_GET_VERSION, true)))
+						break;
+				if (result) {
+					temma_set_lst(device);
+					temma_set_latitude(device);
+					// TemmaPC set to 24V when TEMMA_GET_VERSION (`v`) command sent.
+					temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
+					temma_command(device, TEMMA_GET_POSITION, true);
+					temma_command(device, TEMMA_GET_CORRECTION_SPEED, true);
+					temma_command(device, TEMMA_GET_GOTO_STATE, true);
+					indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
+					indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, ZENITH_PROPERTY, NULL);
+					device->is_connected = true;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get version, not temma mount?");
+					PRIVATE_DATA->device_count--;
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get version, not temma mount?");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open serial port");
 				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open serial port");
-			PRIVATE_DATA->device_count--;
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-		PRIVATE_DATA->position_timer = NULL;
-		indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-		indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
-		indigo_delete_property(device, ZENITH_PROPERTY, NULL);
-		if (--PRIVATE_DATA->device_count == 0) {
-			temma_command(device, TEMMA_SLEW_STOP, false);
-			temma_command(device, TEMMA_GOTO_STOP, false);
-			temma_close(device);
+		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+			PRIVATE_DATA->position_timer = NULL;
+			indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+			indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
+			indigo_delete_property(device, ZENITH_PROPERTY, NULL);
+			if (--PRIVATE_DATA->device_count == 0) {
+				temma_command(device, TEMMA_SLEW_STOP, false);
+				temma_command(device, TEMMA_GOTO_STOP, false);
+				temma_close(device);
+			}
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -752,25 +762,32 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			result = temma_open(device);
-		}
-		if (result) {
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			PRIVATE_DATA->device_count--;
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if (!device->is_connected) {
+			bool result = true;
+			if (PRIVATE_DATA->device_count++ == 0) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				result = temma_open(device);
+			}
+			if (result) {
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				PRIVATE_DATA->device_count--;
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
 		}
 	} else {
-		if (--PRIVATE_DATA->device_count == 0) {
-			temma_close(device);
+		if (device->is_connected) {
+			if (--PRIVATE_DATA->device_count == 0) {
+				temma_close(device);
+			}
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
