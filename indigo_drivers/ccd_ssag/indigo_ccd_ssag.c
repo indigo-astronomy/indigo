@@ -51,9 +51,6 @@
 #include "indigo_ccd_ssag.h"
 #include "indigo_ccd_ssag_firmware.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 #define PRIVATE_DATA        ((ssag_private_data *)device->private_data)
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
@@ -346,39 +343,32 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				result = ssag_open(device);
-			}
-			if (result) {
-				PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(FITS_HEADER_SIZE + BUFFER_SIZE);
-				assert(PRIVATE_DATA->buffer != NULL);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			result = ssag_open(device);
+		}
+		if (result) {
+			PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(FITS_HEADER_SIZE + BUFFER_SIZE);
+			assert(PRIVATE_DATA->buffer != NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else {
-		if (device->is_connected) {
-			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-				if (indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer))
-					ssag_abort_exposure(device);
-			}
-			if (PRIVATE_DATA->buffer != NULL) {
-				free(PRIVATE_DATA->buffer);
-				PRIVATE_DATA->buffer = NULL;
-			}
-			if (--PRIVATE_DATA->device_count == 0) {
-				ssag_close(device);
-			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer))
+				ssag_abort_exposure(device);
 		}
+		if (PRIVATE_DATA->buffer != NULL) {
+			free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+		}
+		if (--PRIVATE_DATA->device_count == 0) {
+			ssag_close(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -389,6 +379,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -471,29 +463,22 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				result = ssag_open(device);
-			}
-			if (result) {
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			result = ssag_open(device);
+		}
+		if (result) {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else {
-		if (device->is_connected) {
-			if (--PRIVATE_DATA->device_count == 0) {
-				ssag_close(device);
-			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (--PRIVATE_DATA->device_count == 0) {
+			ssag_close(device);
 		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -504,6 +489,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
