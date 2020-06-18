@@ -47,9 +47,6 @@
 #include "indigo_ccd_mi.h"
 #include <gxccd.h>
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 #define MI_VID				0x1347
 #define PRIVATE_DATA		((mi_private_data *)device->private_data)
 #define CCD_READ_MODE_ITEM	(CCD_READ_MODE_PROPERTY->items+0)
@@ -157,142 +154,133 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					PRIVATE_DATA->camera = NULL;
-				} else {
-					PRIVATE_DATA->camera = gxccd_initialize_usb(PRIVATE_DATA->eid);
-				}
-			}
-			if (PRIVATE_DATA->camera) {
-				int int_value;
-				bool bool_value;
-				float float_value;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_CHIP_W, &int_value);
-				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = int_value;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_CHIP_D, &int_value);
-				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = int_value;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_PIXEL_W, &int_value);
-				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(int_value / 100.0) / 10.0;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_PIXEL_D, &int_value);
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(int_value / 100.0) / 10.0;
-				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_X, &int_value);
-				CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-				CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = int_value;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_Y, &int_value);
-				CCD_BIN_VERTICAL_ITEM->number.min = 1;
-				CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = int_value;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MINIMAL_EXPOSURE, &int_value);
-				if (int_value > 0)
-					CCD_EXPOSURE_ITEM->number.min = int_value / 1000000.0;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAXIMAL_EXPOSURE, &int_value);
-				if (int_value > 0)
-					CCD_EXPOSURE_ITEM->number.max = int_value / 1000.0;
-
-				int_value = 1;
-				CCD_MODE_PROPERTY->count = 0;
-				while (int_value <= CCD_BIN_HORIZONTAL_ITEM->number.max && int_value <= CCD_BIN_VERTICAL_ITEM->number.max) {
-					char name[32], description[32];
-					sprintf(name, "BIN_%dx%d", int_value, int_value);
-					sprintf(description, "RAW 16 %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / int_value, (int)CCD_INFO_HEIGHT_ITEM->number.value / int_value);
-					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, int_value == 1);
-					CCD_MODE_PROPERTY->count++;
-					int_value *= 2;
-				}
-				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-
-				int_value = 0;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_READ_MODES, &int_value);
-				if (int_value == 0) {
-					CCD_READ_MODE_PROPERTY->count = 0;
-					CCD_READ_MODE_PROPERTY->hidden = true;
-					PRIVATE_DATA->read_mode = 0;
-				} else {
-					CCD_READ_MODE_PROPERTY = indigo_resize_property(CCD_READ_MODE_PROPERTY, int_value);
-					CCD_READ_MODE_PROPERTY->hidden = false;
-					gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_DEFAULT_READ_MODE, &PRIVATE_DATA->read_mode);
-					char name[32], description[32];
-					for (int i = 0; i < int_value; i++) {
-						gxccd_enumerate_read_modes(PRIVATE_DATA->camera, i, description, sizeof(description));
-						sprintf(name, "READ_MODE%d", i);
-						indigo_init_switch_item(CCD_READ_MODE_ITEM + i, name, description, i == PRIVATE_DATA->read_mode);
-					}
-				}
-
-				gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_COOLER, &bool_value);
-				if (bool_value) {
-					CCD_COOLER_PROPERTY->hidden = false;
-					PRIVATE_DATA->target_temperature = 0;
-				} else {
-					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-				}
-				CCD_TEMPERATURE_PROPERTY->hidden = false;
-				indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
-
-				gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_POWER_UTILIZATION, &bool_value);
-				if (bool_value) {
-					CCD_COOLER_POWER_PROPERTY->hidden = false;
-					indigo_set_timer(device, 0, ccd_power_util_callback, &PRIVATE_DATA->power_util_timer);
-				}
-
-				gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_GAIN, &bool_value);
-				if (bool_value) {
-					int_value = 0;
-					gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_GAIN, &int_value);
-					if (int_value > 0) { // it is possible to set camera gain
-						CCD_GAIN_PROPERTY->hidden = false;
-						CCD_GAIN_ITEM->number.min = 0.0;
-						CCD_GAIN_ITEM->number.max = int_value;
-						CCD_GAIN_ITEM->number.step = 1.0;
-						CCD_GAIN_ITEM->number.value = 0.0;
-					} else if (gxccd_get_value(PRIVATE_DATA->camera, GV_ADC_GAIN, &float_value) != -1) {
-						CCD_GAIN_PROPERTY->hidden = false;
-						CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
-						CCD_GAIN_ITEM->number.min = 0.0;
-						CCD_GAIN_ITEM->number.step = 0.1;
-						CCD_GAIN_ITEM->number.value = float_value;
-					}
-				}
-
-				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
-				assert(PRIVATE_DATA->buffer != NULL);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				PRIVATE_DATA->camera = NULL;
 			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				PRIVATE_DATA->camera = gxccd_initialize_usb(PRIVATE_DATA->eid);
 			}
+		}
+		if (PRIVATE_DATA->camera) {
+			int int_value;
+			bool bool_value;
+			float float_value;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_CHIP_W, &int_value);
+			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = int_value;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_CHIP_D, &int_value);
+			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = int_value;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_PIXEL_W, &int_value);
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(int_value / 100.0) / 10.0;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_PIXEL_D, &int_value);
+			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(int_value / 100.0) / 10.0;
+			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_X, &int_value);
+			CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+			CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = int_value;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_Y, &int_value);
+			CCD_BIN_VERTICAL_ITEM->number.min = 1;
+			CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = int_value;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MINIMAL_EXPOSURE, &int_value);
+			if (int_value > 0)
+				CCD_EXPOSURE_ITEM->number.min = int_value / 1000000.0;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAXIMAL_EXPOSURE, &int_value);
+			if (int_value > 0)
+				CCD_EXPOSURE_ITEM->number.max = int_value / 1000.0;
+
+			int_value = 1;
+			CCD_MODE_PROPERTY->count = 0;
+			while (int_value <= CCD_BIN_HORIZONTAL_ITEM->number.max && int_value <= CCD_BIN_VERTICAL_ITEM->number.max) {
+				char name[32], description[32];
+				sprintf(name, "BIN_%dx%d", int_value, int_value);
+				sprintf(description, "RAW 16 %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / int_value, (int)CCD_INFO_HEIGHT_ITEM->number.value / int_value);
+				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, int_value == 1);
+				CCD_MODE_PROPERTY->count++;
+				int_value *= 2;
+			}
+			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+
+			int_value = 0;
+			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_READ_MODES, &int_value);
+			if (int_value == 0) {
+				CCD_READ_MODE_PROPERTY->count = 0;
+				CCD_READ_MODE_PROPERTY->hidden = true;
+				PRIVATE_DATA->read_mode = 0;
+			} else {
+				CCD_READ_MODE_PROPERTY = indigo_resize_property(CCD_READ_MODE_PROPERTY, int_value);
+				CCD_READ_MODE_PROPERTY->hidden = false;
+				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_DEFAULT_READ_MODE, &PRIVATE_DATA->read_mode);
+				char name[32], description[32];
+				for (int i = 0; i < int_value; i++) {
+					gxccd_enumerate_read_modes(PRIVATE_DATA->camera, i, description, sizeof(description));
+					sprintf(name, "READ_MODE%d", i);
+					indigo_init_switch_item(CCD_READ_MODE_ITEM + i, name, description, i == PRIVATE_DATA->read_mode);
+				}
+			}
+
+			gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_COOLER, &bool_value);
+			if (bool_value) {
+				CCD_COOLER_PROPERTY->hidden = false;
+				PRIVATE_DATA->target_temperature = 0;
+			} else {
+				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+			}
+			CCD_TEMPERATURE_PROPERTY->hidden = false;
+			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
+
+			gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_POWER_UTILIZATION, &bool_value);
+			if (bool_value) {
+				CCD_COOLER_POWER_PROPERTY->hidden = false;
+				indigo_set_timer(device, 0, ccd_power_util_callback, &PRIVATE_DATA->power_util_timer);
+			}
+
+			gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_GAIN, &bool_value);
+			if (bool_value) {
+				int_value = 0;
+				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_GAIN, &int_value);
+				if (int_value > 0) { // it is possible to set camera gain
+					CCD_GAIN_PROPERTY->hidden = false;
+					CCD_GAIN_ITEM->number.min = 0.0;
+					CCD_GAIN_ITEM->number.max = int_value;
+					CCD_GAIN_ITEM->number.step = 1.0;
+					CCD_GAIN_ITEM->number.value = 0.0;
+				} else if (gxccd_get_value(PRIVATE_DATA->camera, GV_ADC_GAIN, &float_value) != -1) {
+					CCD_GAIN_PROPERTY->hidden = false;
+					CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
+					CCD_GAIN_ITEM->number.min = 0.0;
+					CCD_GAIN_ITEM->number.step = 0.1;
+					CCD_GAIN_ITEM->number.value = float_value;
+				}
+			}
+
+			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+			assert(PRIVATE_DATA->buffer != NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->power_util_timer);
-			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-				gxccd_abort_exposure(PRIVATE_DATA->camera, false);
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
-			}
-			PRIVATE_DATA->downloading = false;
-			if (PRIVATE_DATA->buffer != NULL) {
-				free(PRIVATE_DATA->buffer);
-				PRIVATE_DATA->buffer = NULL;
-			}
-			if (--PRIVATE_DATA->device_count == 0) {
-				gxccd_release(PRIVATE_DATA->camera);
-				PRIVATE_DATA->camera = NULL;
-				indigo_global_unlock(device);
-			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->power_util_timer);
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			gxccd_abort_exposure(PRIVATE_DATA->camera, false);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 		}
+		PRIVATE_DATA->downloading = false;
+		if (PRIVATE_DATA->buffer != NULL) {
+			free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+		}
+		if (--PRIVATE_DATA->device_count == 0) {
+			gxccd_release(PRIVATE_DATA->camera);
+			PRIVATE_DATA->camera = NULL;
+			indigo_global_unlock(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -303,6 +291,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE, CCD_BIN
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -459,36 +449,29 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			if (PRIVATE_DATA->device_count++ == 0) {
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					PRIVATE_DATA->camera = NULL;
-				} else {
-					PRIVATE_DATA->camera = gxccd_initialize_usb(PRIVATE_DATA->eid);
-				}
-			}
-			if (PRIVATE_DATA->camera) {
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				PRIVATE_DATA->camera = NULL;
 			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				PRIVATE_DATA->camera = gxccd_initialize_usb(PRIVATE_DATA->eid);
 			}
+		}
+		if (PRIVATE_DATA->camera) {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
-			if (--PRIVATE_DATA->device_count == 0) {
-				gxccd_release(PRIVATE_DATA->camera);
-				indigo_global_unlock(device);
-			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
+		if (--PRIVATE_DATA->device_count == 0) {
+			gxccd_release(PRIVATE_DATA->camera);
+			indigo_global_unlock(device);
 		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -499,6 +482,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -574,8 +559,6 @@ static indigo_result wheel_attach(indigo_device *device) {
 static void wheel_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				PRIVATE_DATA->camera = NULL;
@@ -610,6 +593,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
