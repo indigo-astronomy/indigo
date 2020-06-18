@@ -23,7 +23,7 @@
  \file indigo_ccd_quantum.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_wheel_quantum"
 
 #include <stdlib.h>
@@ -36,6 +36,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_wheel_quantum.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 // -------------------------------------------------------------------------------- interface implementation
 
@@ -106,20 +109,27 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (quantum_open(device)) {
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
-			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
-			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			quantum_goto(device,1);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if (!device->is_connected) {
+			if (quantum_open(device)) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+				quantum_goto(device,1);
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
 		}
 	} else {
-		quantum_close(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (device->is_connected) {
+			quantum_close(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
