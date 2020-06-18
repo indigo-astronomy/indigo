@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -44,6 +44,9 @@
 
 #include "indigo_ccd_iidc.h"
 #include <dc1394/dc1394.h>
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA        ((iidc_private_data *)device->private_data)
 
@@ -430,23 +433,29 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + 2 * 3 * (CCD_INFO_WIDTH_ITEM->number.value + 8) * (CCD_INFO_HEIGHT_ITEM->number.value + 8));
-		assert(PRIVATE_DATA->buffer != NULL);
-		if (PRIVATE_DATA->temperature_is_present) {
-			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperture_timer);
+		if (!device->is_connected) {
+			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + 2 * 3 * (CCD_INFO_WIDTH_ITEM->number.value + 8) * (CCD_INFO_HEIGHT_ITEM->number.value + 8));
+			assert(PRIVATE_DATA->buffer != NULL);
+			if (PRIVATE_DATA->temperature_is_present) {
+				indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperture_timer);
+			}
+			device->is_connected = true;
 		}
 	} else {
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (device->is_connected) {
+			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				stop_camera(device);
+			} else if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+				stop_camera(device);
+			}
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperture_timer);
 			stop_camera(device);
-		} else if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
-			stop_camera(device);
-		}
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperture_timer);
-		stop_camera(device);
-		if (PRIVATE_DATA->buffer != NULL) {
-			free(PRIVATE_DATA->buffer);
-			PRIVATE_DATA->buffer = NULL;
+			if (PRIVATE_DATA->buffer != NULL) {
+				free(PRIVATE_DATA->buffer);
+				PRIVATE_DATA->buffer = NULL;
+			}
+			device->is_connected = false;
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -654,7 +663,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 							err = dc1394_video_set_iso_speed(camera, DC1394_ISO_SPEED_400);
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_iso_speed(DC1394_ISO_SPEED_400) -> %s", dc1394_error_get_string(err));
 						}
-						
+
 						INDIGO_DEBUG_DRIVER(FILE *tmp = tmpfile());
 						INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, tmp));
 						INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
@@ -672,7 +681,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
             }
 						INDIGO_DEBUG_DRIVER(free(line));
 						INDIGO_DEBUG_DRIVER(fclose(tmp));
-						
+
 						iidc_private_data *private_data = malloc(sizeof(iidc_private_data));
 						assert(private_data != NULL);
 						memset(private_data, 0, sizeof(iidc_private_data));
