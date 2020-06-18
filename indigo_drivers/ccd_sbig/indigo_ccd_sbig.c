@@ -1033,8 +1033,6 @@ static void ccd_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				GetCCDInfoParams cip;
 				short res;
@@ -1532,8 +1530,6 @@ static void guider_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
@@ -1828,8 +1824,6 @@ static void wheel_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				pthread_mutex_lock(&driver_mutex);
 				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -2011,8 +2005,6 @@ static void ao_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				pthread_mutex_lock(&driver_mutex);
 				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
