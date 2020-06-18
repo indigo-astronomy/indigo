@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -732,8 +732,6 @@ static void aux_connection_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		if (PRIVATE_DATA->count++ == 0) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
@@ -1002,7 +1000,6 @@ static void aux_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->handle = 0;
 			}
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1202,7 +1199,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
@@ -1383,8 +1384,6 @@ static void focuser_connection_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		if (PRIVATE_DATA->count++ == 0) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
@@ -1460,7 +1459,6 @@ static void focuser_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->handle = 0;
 			}
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1594,7 +1592,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
