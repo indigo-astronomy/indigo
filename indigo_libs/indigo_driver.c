@@ -678,3 +678,22 @@ time_t indigo_isolocaltotime(char *isotime) {
 
 	return -1;
 }
+
+bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request) {
+	for (int i = 0; i < request->count; i++) {
+		indigo_item *item = request->items + i;
+		if (item->sw.value) {
+			if (!strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
+				if (CONNECTION_DISCONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state != INDIGO_BUSY_STATE) {
+					return false;
+				}
+			} else if (!strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME)) {
+				if (CONNECTION_CONNECTED_ITEM->sw.value && (CONNECTION_PROPERTY->state == INDIGO_OK_STATE || CONNECTION_PROPERTY->state == INDIGO_ALERT_STATE)) {
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
+
