@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -155,7 +155,6 @@ static struct {
 };
 
 static void ccd_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == 0) {
 			uvc_error_t res = uvc_open(PRIVATE_DATA->dev, &PRIVATE_DATA->handle);
@@ -212,6 +211,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					format = format->next;
 				}
 				PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value * 3);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
 	} else {
@@ -226,6 +226,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
 		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -237,6 +238,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
