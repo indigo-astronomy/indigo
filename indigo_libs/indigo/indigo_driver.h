@@ -329,6 +329,10 @@ time_t indigo_isolocaltotime(char *isotime);
  */
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
 
+/** Check for double connect/disconnect request.
+ */
+extern bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request);
+
 #ifdef __cplusplus
 }
 #endif
