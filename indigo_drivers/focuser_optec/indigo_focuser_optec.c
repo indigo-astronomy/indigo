@@ -23,7 +23,7 @@
  \file indigo_focuser_optec.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_optec"
 
 #include <stdlib.h>
@@ -41,6 +41,9 @@
 #include <indigo/indigo_io.h>
 
 #include "indigo_focuser_optec.h"
+
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
 
 #define PRIVATE_DATA													((optec_private_data *)device->private_data)
 
@@ -179,22 +182,28 @@ static void focuser_timer_callback(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		if (optec_open(device)) {
-			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if (!device->is_connected) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			if (optec_open(device)) {
+				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+				device->is_connected = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			optec_close(device);
+		if (device->is_connected) {
+			if (PRIVATE_DATA->handle > 0) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+				optec_close(device);
+			}
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
