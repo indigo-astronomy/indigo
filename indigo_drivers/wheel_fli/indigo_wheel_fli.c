@@ -23,7 +23,7 @@
  \file indigo_wheel_fli.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME		"indigo_wheel_fli"
 
 #include <stdlib.h>
@@ -110,9 +110,10 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	int index = find_index_by_device_fname(PRIVATE_DATA->dev_file_name);
 	if (index < 0) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;;
+		//WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;;
 	} else {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {

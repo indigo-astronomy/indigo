@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -93,9 +93,10 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static void wheel_connect_callback(indigo_device *device) {
 	EFW_INFO info;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
 	if (index < 0) {
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		//CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
