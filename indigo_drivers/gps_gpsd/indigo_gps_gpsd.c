@@ -38,9 +38,6 @@
 #include <indigo/indigo_io.h>
 #include "indigo_gps_gpsd.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 #define PRIVATE_DATA    ((gpsd_private_data *)device->private_data)
 
 typedef struct {
@@ -215,36 +212,27 @@ static void gps_refresh_callback(indigo_device *device) {
 }
 
 static void gps_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (gpsd_open(device)) {
-			if (!device->is_connected) {
-				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
-				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
-				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
-				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
-				indigo_set_timer(device, 0, gps_refresh_callback, NULL);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				indigo_set_switch(CONNECTION_PROPERTY,
-							CONNECTION_DISCONNECTED_ITEM,
-							true);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
+			indigo_set_timer(device, 0, gps_refresh_callback, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else {
-		if (device->is_connected) {
-			gpsd_close(device);
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		gpsd_close(device);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -257,6 +245,8 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
