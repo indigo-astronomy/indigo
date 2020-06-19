@@ -42,9 +42,6 @@
 
 #include "indigo_focuser_optec.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 #define PRIVATE_DATA													((optec_private_data *)device->private_data)
 
 typedef struct {
@@ -182,28 +179,20 @@ static void focuser_timer_callback(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			if (optec_open(device)) {
-				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
+		if (optec_open(device)) {
+			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				optec_close(device);
-			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+			optec_close(device);
 		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -274,7 +263,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {

@@ -23,7 +23,7 @@
  \file indigo_focuser_mjkzz.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_mjkzz"
 
 #include <stdlib.h>
@@ -42,9 +42,6 @@
 
 #include "indigo_focuser_mjkzz.h"
 #include "mjkzz_def.h"
-
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
 
 #define PRIVATE_DATA													((mjkzz_private_data *)device->private_data)
 
@@ -151,64 +148,56 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static void focuser_connect_callback(indigo_device *device) {
 	mjkzz_message message = { 0x01 };
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
-			if (PRIVATE_DATA->handle > 0) {
-				message.ucCMD = CMD_GVER;
+		PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+		if (PRIVATE_DATA->handle > 0) {
+			message.ucCMD = CMD_GVER;
+			if (mjkzz_command(device, &message)) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "MJKZZ detected");
+				message.ucCMD = CMD_SREG;
+				message.ucIDX = reg_HPWR;
+				mjkzz_set_int(&message, 16);
+				mjkzz_command(device, &message);
+				message.ucCMD = CMD_SREG;
+				message.ucIDX = reg_LPWR;
+				mjkzz_set_int(&message, 2);
+				mjkzz_command(device, &message);
+				message.ucCMD = CMD_SREG;
+				message.ucIDX = reg_MSTEP;
+				mjkzz_set_int(&message, 0);
+				mjkzz_command(device, &message);
+				message.ucCMD = CMD_GPOS;
 				if (mjkzz_command(device, &message)) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "MJKZZ detected");
-					message.ucCMD = CMD_SREG;
-					message.ucIDX = reg_HPWR;
-					mjkzz_set_int(&message, 16);
-					mjkzz_command(device, &message);
-					message.ucCMD = CMD_SREG;
-					message.ucIDX = reg_LPWR;
-					mjkzz_set_int(&message, 2);
-					mjkzz_command(device, &message);
-					message.ucCMD = CMD_SREG;
-					message.ucIDX = reg_MSTEP;
-					mjkzz_set_int(&message, 0);
-					mjkzz_command(device, &message);
-					message.ucCMD = CMD_GPOS;
-					if (mjkzz_command(device, &message)) {
-						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value = mjkzz_get_int(&message);
-					}
-					message.ucCMD = CMD_GSPD;
-					if (mjkzz_command(device, &message)) {
-						int speed = mjkzz_get_int(&message);
-						if (speed > FOCUSER_SPEED_ITEM->number.max)
-							speed = (int)FOCUSER_SPEED_ITEM->number.max;
-						FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value = speed;
-					}
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "MJKZZ not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value = mjkzz_get_int(&message);
 				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				message.ucCMD = CMD_GSPD;
+				if (mjkzz_command(device, &message)) {
+					int speed = mjkzz_get_int(&message);
+					if (speed > FOCUSER_SPEED_ITEM->number.max)
+						speed = (int)FOCUSER_SPEED_ITEM->number.max;
+					FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value = speed;
+				}
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		}
-	} else {
-		if (device->is_connected) {
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "MJKZZ not detected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		if (PRIVATE_DATA->handle > 0) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -220,6 +209,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	mjkzz_message message = { 0x01 };
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

@@ -43,9 +43,6 @@
 
 #include "indigo_focuser_nfocus.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 #define PRIVATE_DATA													((nfocus_private_data *)device->private_data)
 
 typedef struct {
@@ -154,55 +151,47 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[8];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-			if (PRIVATE_DATA->handle > 0) {
-				if (nfocus_command(device, "\006", response, 1) && *response == 'n') {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "nFOCUS detected");
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "nFOCUS not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
-				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				if (nfocus_command(device, ":RT", response, 4)) {
-					if (strcmp(response, "-888") == 0) {
-						FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
-					} else {
-						FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-					}
-				}
-				if (nfocus_command(device, ":RO", response, 3)) {
-					FOCUSER_SPEED_ITEM->number.value = 255 - atoi(response);
-				}
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				nfocus_command(device, ":CS001#", NULL, 0);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
+		if (PRIVATE_DATA->handle > 0) {
+			if (nfocus_command(device, "\006", response, 1) && *response == 'n') {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "nFOCUS detected");
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
-		}
-	} else {
-		if (device->is_connected) {
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-				nfocus_command(device, ":F11000#", NULL, 0);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nFOCUS not detected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		if (PRIVATE_DATA->handle > 0) {
+			if (nfocus_command(device, ":RT", response, 4)) {
+				if (strcmp(response, "-888") == 0) {
+					FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
+				} else {
+					FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+				}
+			}
+			if (nfocus_command(device, ":RO", response, 3)) {
+				FOCUSER_SPEED_ITEM->number.value = 255 - atoi(response);
+			}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			nfocus_command(device, ":CS001#", NULL, 0);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			nfocus_command(device, ":F11000#", NULL, 0);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
