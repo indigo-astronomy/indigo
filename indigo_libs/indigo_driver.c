@@ -680,20 +680,24 @@ time_t indigo_isolocaltotime(char *isotime) {
 }
 
 bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request) {
+	indigo_item *connected_item = NULL;
+	indigo_item *disconnected_item = NULL;
 	for (int i = 0; i < request->count; i++) {
 		indigo_item *item = request->items + i;
-		if (item->sw.value) {
-			if (!strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
-				if (CONNECTION_DISCONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state != INDIGO_BUSY_STATE) {
-					return false;
-				}
-			} else if (!strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME)) {
-				if (CONNECTION_CONNECTED_ITEM->sw.value && (CONNECTION_PROPERTY->state == INDIGO_OK_STATE || CONNECTION_PROPERTY->state == INDIGO_ALERT_STATE)) {
-					return false;
-				}
-			}
+		if (!strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
+			connected_item = item;
+		} else if (!strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME)) {
+			disconnected_item = item;
 		}
 	}
-	return true;
+	if (connected_item != NULL && disconnected_item != NULL && connected_item->sw.value == disconnected_item->sw.value)
+		return true;
+	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
+		return true;
+	if (CONNECTION_CONNECTED_ITEM->sw.value && connected_item != NULL && connected_item->sw.value)
+		return true;
+	if (CONNECTION_DISCONNECTED_ITEM->sw.value && disconnected_item != NULL && disconnected_item->sw.value)
+		return true;
+	return false;
 }
 
