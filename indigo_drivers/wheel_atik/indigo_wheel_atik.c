@@ -46,9 +46,6 @@
 
 #include "indigo_wheel_atik.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 // -------------------------------------------------------------------------------- ATIK USB interface implementation
 
 #define ATIK_VENDOR_ID                  0x04D8
@@ -85,33 +82,26 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			if ((PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL)) != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
-				while (true) {
-					libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-					if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9)
-						break;
-						indigo_usleep(ONE_SECOND_DELAY);
-				}
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
-				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		if ((PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL)) != NULL) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
+			while (true) {
+				libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9)
+					break;
+					indigo_usleep(ONE_SECOND_DELAY);
 			}
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			hid_close(PRIVATE_DATA->handle);
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		hid_close(PRIVATE_DATA->handle);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -123,6 +113,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

@@ -37,9 +37,6 @@
 
 #include "indigo_wheel_xagyl.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 // -------------------------------------------------------------------------------- interface implementation
 
 #define PRIVATE_DATA        ((xagyl_private_data *)device->private_data)
@@ -147,24 +144,17 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			if (xagyl_open(device)) {
-				device->is_connected = true;
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
+		if (xagyl_open(device)) {
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			device->is_connected = false;
-			xagyl_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		xagyl_close(device);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -175,6 +165,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
