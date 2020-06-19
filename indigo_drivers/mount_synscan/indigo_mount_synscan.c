@@ -177,7 +177,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		//  This will be a problem since we are updating shared state. Last request wins the race and the preceding requests will see
 		//  changing data and might experience issues.
 
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 
 		//  Talk to the mount - see if its there - read configuration data
 		//  Once we have it all, update the property to OK or ALERT state
@@ -432,7 +436,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		return synscan_guider_connect(device);
 	}
 	else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
