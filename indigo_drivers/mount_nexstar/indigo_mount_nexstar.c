@@ -649,7 +649,6 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static void mount_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (mount_open(device)) {
@@ -816,6 +815,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1080,7 +1081,6 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (mount_open(device)) {
@@ -1116,6 +1116,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

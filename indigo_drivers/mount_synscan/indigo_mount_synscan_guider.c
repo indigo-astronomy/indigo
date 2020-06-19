@@ -154,8 +154,6 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 	//  Open and configure the mount
 	bool result = true;
 	if (PRIVATE_DATA->device_count == 0) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		result = synscan_open(device->master_device);
 		if (result) {
 			result = synscan_configure(device->master_device);
@@ -191,9 +189,6 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 }
 
 indigo_result synscan_guider_connect(indigo_device* device) {
-	//  Ignore if we are already processing a connection change
-	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
-		return INDIGO_OK;
 	//  Handle connect/disconnect commands
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//  CONNECT to the mount
