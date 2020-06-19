@@ -40,9 +40,6 @@
 
 #include "indigo_focuser_wemacro.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 #define PRIVATE_DATA													((wemacro_private_data *)device->private_data)
 
 #define X_RAIL_BATCH													"Batch"
@@ -235,41 +232,34 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 }
 
 static void focuser_connect_callback(indigo_device *device) {
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			char *name = DEVICE_PORT_ITEM->text.value;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				PRIVATE_DATA->handle = indigo_open_serial(name);
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-				indigo_async((void * (*)(void*))wemacro_reader, device);
-				indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
-				indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
-				indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s -> %s (%d)", name, strerror(errno), errno);
-				PRIVATE_DATA->device_count--;
-				indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
+		char *name = DEVICE_PORT_ITEM->text.value;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			PRIVATE_DATA->handle = indigo_open_serial(name);
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
+			indigo_async((void * (*)(void*))wemacro_reader, device);
+			indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+			indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
+			indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s -> %s (%d)", name, strerror(errno), errno);
+			PRIVATE_DATA->device_count--;
+			indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+			indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
+			indigo_delete_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			if (--PRIVATE_DATA->device_count == 0) {
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
-			}
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (--PRIVATE_DATA->device_count == 0) {
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
 		}
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -280,6 +270,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

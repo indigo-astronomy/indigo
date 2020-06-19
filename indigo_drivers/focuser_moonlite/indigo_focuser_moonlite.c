@@ -42,9 +42,6 @@
 
 #include "indigo_focuser_moonlite.h"
 
-// gp_bits is used as boolean
-#define is_connected                    gp_bits
-
 #define PRIVATE_DATA													((moonlite_private_data *)device->private_data)
 
 #define X_FOCUSER_STEPPING_MODE_PROPERTY			(PRIVATE_DATA->stepping_mode_property)
@@ -220,68 +217,60 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
-			if (PRIVATE_DATA->handle > 0) {
-				for (int i = 0; true; i++) {
-					if (moonlite_command(device, ":GV#", response, sizeof(response)) && strlen(response) == 2) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "MoonLite focuser %c.%c", response[0], response[1]);
-						break;
-					} else if (i < 5) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from MoonLite focuser - retrying");
-						indigo_usleep(2 * ONE_SECOND_DELAY);
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "MoonLite focuser not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-						break;
-					}
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
+		if (PRIVATE_DATA->handle > 0) {
+			for (int i = 0; true; i++) {
+				if (moonlite_command(device, ":GV#", response, sizeof(response)) && strlen(response) == 2) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "MoonLite focuser %c.%c", response[0], response[1]);
+					break;
+				} else if (i < 5) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from MoonLite focuser - retrying");
+					indigo_usleep(2 * ONE_SECOND_DELAY);
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "MoonLite focuser not detected");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+					break;
 				}
 			}
-			if (PRIVATE_DATA->handle > 0) {
-				moonlite_command(device, ":C#", NULL, 0);
-				moonlite_command(device, ":FQ#", NULL, 0);
-				moonlite_command(device, ":SF#", NULL, 0);
-				moonlite_command(device, ":-#", NULL, 0);
-				moonlite_command(device, ":SD02#", NULL, 0);
-				indigo_usleep(750000);
-				if (moonlite_command(device, ":GT#", response, sizeof(response))) {
-					FOCUSER_TEMPERATURE_ITEM->number.value = ((int8_t)strtol(response, NULL, 16)) / 2.0;
-				}
-				if (moonlite_command(device, ":GP#", response, sizeof(response))) {
-					FOCUSER_POSITION_ITEM->number.value = strtol(response, NULL, 16);
-				}
-				if (moonlite_command(device, ":GC#", response, sizeof(response))) {
-					FOCUSER_COMPENSATION_ITEM->number.value = (char)strtol(response, NULL, 16);
-				}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			moonlite_command(device, ":C#", NULL, 0);
+			moonlite_command(device, ":FQ#", NULL, 0);
+			moonlite_command(device, ":SF#", NULL, 0);
+			moonlite_command(device, ":-#", NULL, 0);
+			moonlite_command(device, ":SD02#", NULL, 0);
+			indigo_usleep(750000);
+			if (moonlite_command(device, ":GT#", response, sizeof(response))) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = ((int8_t)strtol(response, NULL, 16)) / 2.0;
 			}
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
-				device->is_connected = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			if (moonlite_command(device, ":GP#", response, sizeof(response))) {
+				FOCUSER_POSITION_ITEM->number.value = strtol(response, NULL, 16);
 			}
+			if (moonlite_command(device, ":GC#", response, sizeof(response))) {
+				FOCUSER_COMPENSATION_ITEM->number.value = (char)strtol(response, NULL, 16);
+			}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			if (PRIVATE_DATA->handle > 0) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-				moonlite_command(device, ":FQ#", NULL, 0);
-				indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
-			}
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (PRIVATE_DATA->handle > 0) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			moonlite_command(device, ":FQ#", NULL, 0);
+			indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
 		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -410,7 +399,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connection_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
