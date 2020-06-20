@@ -273,7 +273,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 static void focuser_connect_callback(indigo_device *device) {
 	int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
 	if (index < 0) {
-		//CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
