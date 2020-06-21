@@ -550,7 +550,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				int relay_value[8];
-				if (!rpio_read(1, &relay_value[1])) {
+				if (!rpio_read_input_lines(relay_value)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_read(%d) failed", PRIVATE_DATA->handle);
 					AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
