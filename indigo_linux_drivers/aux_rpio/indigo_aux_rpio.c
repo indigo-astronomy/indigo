@@ -187,7 +187,7 @@ static bool rpio_set_input(int pin) {
 		return false;
 	}
 
-	if (write(fd, "in", 2) < 0) {
+	if (write(fd, "in\n", 3) < 0) {
 		fprintf(stderr, "Failed to set direction!\n");
 		return false;
 	}
@@ -208,7 +208,7 @@ static bool rpio_set_output(int pin) {
 		return false;
 	}
 
-	if (write(fd, "out", 3) < 0) {
+	if (write(fd, "out\n", 4) < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set direction!");
 		return false;
 	}
