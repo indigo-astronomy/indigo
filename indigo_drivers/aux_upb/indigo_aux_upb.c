@@ -1000,6 +1000,7 @@ static void aux_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->handle = 0;
 			}
 		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1459,6 +1460,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->handle = 0;
 			}
 		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
