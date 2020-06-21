@@ -285,7 +285,9 @@ static bool rpio_read_input_lines(int *values) {
 bool rpio_export_all() {
 	for (int i = 0; i < 8; i++) {
 		if (!rpio_export(output_pins[i])) return false;
+		if (!rpio_set_output(output_pins[i])) return false;
 		if (!rpio_export(input_pins[i])) return false;
+		if (!rpio_set_input(input_pins[i])) return false;
 	}
 	return true;
 }
