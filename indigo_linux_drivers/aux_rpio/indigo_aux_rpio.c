@@ -81,7 +81,7 @@
 #define AUX_OUTLET_PULSE_LENGTHS_7_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 6)
 #define AUX_OUTLET_PULSE_LENGTHS_8_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 7)
 
-#define AUX_SENSORS_GROUP	"Sensors"
+#define AUX_SENSORS_GROUP	"Inputs"
 
 #define AUX_SENSOR_NAMES_PROPERTY      (PRIVATE_DATA->sensor_names_property)
 #define AUX_SENSOR_NAME_1_ITEM         (AUX_SENSOR_NAMES_PROPERTY->items + 0)
@@ -134,6 +134,10 @@ static rpio_device_data device_data = {0};
 
 static void create_device();
 static void delete_device();
+
+
+static int input_pins[]  = { 4,17,27,22,23,24,25, 3};
+static int output_pins[] = {18,12,13,26,16, 5, 6, 2};
 
 
 static bool rpio_export(int pin) {
@@ -260,11 +264,37 @@ static bool rpio_write(int pin, int value) {
 	return true;
 }
 
-bool rpio_open() {
+static bool rpio_set_output_line(uint16_t line, int value) {
+	if (line >= 8) return false;
+	return rpio_write(output_pins[line], value);
+}
+
+static bool rpio_read_input_line(uint16_t line, int *value) {
+	if (line >= 8) return false;
+	return rpio_read(input_pins[line], value);
+}
+
+static bool rpio_read_input_lines(int *values) {
+	for (int i = 0; i < 8; i++) {
+		if (!rpio_read(input_pins[i], &values[i])) return false;
+	}
 	return true;
 }
 
-bool rpio_close() {
+
+bool rpio_export_all() {
+	for (int i = 0; i < 8; i++) {
+		if (!rpio_export(output_pins[i])) return false;
+		if (!rpio_export(input_pins[i])) return false;
+	}
+	return true;
+}
+
+bool rpio_unexport_all() {
+	for (int i = 0; i < 8; i++) {
+		if (!rpio_unexport(output_pins[i])) return false;
+		if (!rpio_unexport(input_pins[i])) return false;
+	}
 	return true;
 }
 
@@ -347,7 +377,7 @@ static void sensors_timer_callback(indigo_device *device) {
 	//bool success;
 	int sensors[8];
 
-	if (!rpio_read(1, &sensors[1])) {
+	if (!rpio_read_input_lines(sensors)) {
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		for (int i = 0; i < 8; i++) {
@@ -363,6 +393,7 @@ static void sensors_timer_callback(indigo_device *device) {
 static void relay_1_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[0] = false;
+	rpio_set_output_line(0, 0);
 	AUX_GPIO_OUTLET_1_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -371,6 +402,7 @@ static void relay_1_timer_callback(indigo_device *device) {
 static void relay_2_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[1] = false;
+	rpio_set_output_line(1, 0);
 	AUX_GPIO_OUTLET_2_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -379,6 +411,7 @@ static void relay_2_timer_callback(indigo_device *device) {
 static void relay_3_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[2] = false;
+	rpio_set_output_line(2, 0);
 	AUX_GPIO_OUTLET_3_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -387,6 +420,7 @@ static void relay_3_timer_callback(indigo_device *device) {
 static void relay_4_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[3] = false;
+	rpio_set_output_line(3, 0);
 	AUX_GPIO_OUTLET_4_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -395,6 +429,7 @@ static void relay_4_timer_callback(indigo_device *device) {
 static void relay_5_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[4] = false;
+	rpio_set_output_line(4, 0);
 	AUX_GPIO_OUTLET_5_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -403,6 +438,7 @@ static void relay_5_timer_callback(indigo_device *device) {
 static void relay_6_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[5] = false;
+	rpio_set_output_line(5, 0);
 	AUX_GPIO_OUTLET_6_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -411,6 +447,7 @@ static void relay_6_timer_callback(indigo_device *device) {
 static void relay_7_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[6] = false;
+	rpio_set_output_line(6, 0);
 	AUX_GPIO_OUTLET_7_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -419,6 +456,7 @@ static void relay_7_timer_callback(indigo_device *device) {
 static void relay_8_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->relay_mutex);
 	PRIVATE_DATA->relay_active[7] = false;
+	rpio_set_output_line(7, 0);
 	AUX_GPIO_OUTLET_8_ITEM->sw.value = false;
 	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->relay_mutex);
@@ -441,7 +479,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 	bool success = true;
 	int relay_value[8];
 
-	if (!rpio_read(1, &relay_value[1])) {
+	if (!rpio_read_input_lines(relay_value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_read(%d) failed", PRIVATE_DATA->handle);
 		return false;
 	}
@@ -449,7 +487,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 	for (int i = 0; i < 8; i++) {
 		if ((AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value != relay_value[i]) {
 			if (((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value > 0) && (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i]) {
-				if (!rpio_write(i, (int)(AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value)) {
+				if (!rpio_set_output_line(i, (int)(AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_write(%d) failed, did you authorize?", PRIVATE_DATA->handle);
 					success = false;
 				} else {
@@ -457,7 +495,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 					indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i], &PRIVATE_DATA->relay_timers[i]);
 				}
 			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i])) {
-				if (!rpio_write(i, (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
+				if (!rpio_set_output_line(i, (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_write(%d) failed, did you authorize?", PRIVATE_DATA->handle);
 					success = false;
 				}
@@ -503,7 +541,7 @@ static indigo_result aux_attach(indigo_device *device) {
 static void handle_aux_connect_property(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!IS_CONNECTED) {
-			if (rpio_open()) {
+			if (rpio_export_all()) {
 				char board[INDIGO_VALUE_SIZE] = "N/A";
 				char firmware[INDIGO_VALUE_SIZE] = "N/A";
 				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
@@ -536,7 +574,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->relay_timers[i]);
 			}
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
-			rpio_close();
+			rpio_unexport_all();
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
