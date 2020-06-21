@@ -183,7 +183,7 @@ static bool rpio_set_input(int pin) {
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio direction for writing!");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio%d direction for writing!", pin);
 		return false;
 	}
 
@@ -204,7 +204,7 @@ static bool rpio_set_output(int pin) {
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio direction for writing!");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio%d direction for writing", pin);
 		return false;
 	}
 
@@ -228,7 +228,7 @@ static int rpio_read(int pin, int *value) {
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio value for reading!");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio%d value for reading", pin);
 		return false;
 	}
 
@@ -249,7 +249,7 @@ static bool rpio_write(int pin, int value) {
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio value for writing!");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio%d value for writing", pin);
 		return false;
 	}
 
