@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -805,14 +805,13 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 
 static void ccd_connect_callback(indigo_device *device) {
 	int res;
-	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) { /* Do not double open device */
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
 				indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
-				return INDIGO_OK;
+				return;
 			}
 
 			pthread_mutex_lock(&driver_mutex);
@@ -822,7 +821,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				indigo_global_unlock(device);
 				pthread_mutex_unlock(&driver_mutex);
-				return INDIGO_OK;
+				return;
 			}
 			if (CAP_SET_VREADOUT) {
 				init_vsspeed_property(device);
@@ -976,6 +975,7 @@ static void ccd_connect_callback(indigo_device *device) {
 
 			pthread_mutex_unlock(&driver_mutex);
 			device->is_connected = true;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 		}
 	} else {
@@ -1015,6 +1015,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->buffer = NULL;
 			}
 			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -1027,6 +1028,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	int res;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
