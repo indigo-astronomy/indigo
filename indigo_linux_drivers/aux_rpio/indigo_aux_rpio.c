@@ -150,7 +150,7 @@ static bool rpio_export(int pin) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open export for writing!");
 		return false;
 	}
-
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "EXPORT pin = %d", pin);
 	bytes_written = snprintf(buffer, 10, "%d", pin);
 	write(fd, buffer, bytes_written);
 	close(fd);
@@ -169,6 +169,7 @@ static bool rpio_unexport(int pin) {
 		return false;
 	}
 
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UNEXPORT Pin = %d", pin);
 	bytes = snprintf(buffer, 10, "%d", pin);
 	write(fd, buffer, bytes);
 	close(fd);
@@ -187,7 +188,7 @@ static bool rpio_set_input(int pin) {
 		return false;
 	}
 
-	if (write(fd, "in\n", 3) < 0) {
+	if (write(fd, "in", 2) < 0) {
 		fprintf(stderr, "Failed to set direction!\n");
 		return false;
 	}
@@ -208,7 +209,7 @@ static bool rpio_set_output(int pin) {
 		return false;
 	}
 
-	if (write(fd, "out\n", 4) < 0) {
+	if (write(fd, "out", 3) < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set direction!");
 		return false;
 	}
@@ -253,8 +254,8 @@ static bool rpio_write(int pin, int value) {
 		return false;
 	}
 
-	char val = value ? '0' : '1';
-
+	char val = value ? '1' : '0';
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Value = %d (%c) pin = %d", value, val, pin);
 	if (write(fd, &val, 1) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write value!");
 		return false;
@@ -281,12 +282,22 @@ static bool rpio_read_input_lines(int *values) {
 	return true;
 }
 
+static bool rpio_read_output_lines(int *values) {
+	for (int i = 0; i < 8; i++) {
+		if (!rpio_read(output_pins[i], &values[i])) return false;
+	}
+	return true;
+}
+
 
 bool rpio_export_all() {
 	for (int i = 0; i < 8; i++) {
 		if (!rpio_export(output_pins[i])) return false;
-		if (!rpio_set_output(output_pins[i])) return false;
 		if (!rpio_export(input_pins[i])) return false;
+	}
+	indigo_usleep(1000000);
+	for (int i = 0; i < 8; i++) {
+		if (!rpio_set_output(output_pins[i])) return false;
 		if (!rpio_set_input(input_pins[i])) return false;
 	}
 	return true;
@@ -481,7 +492,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 	bool success = true;
 	int relay_value[8];
 
-	if (!rpio_read_input_lines(relay_value)) {
+	if (!rpio_read_output_lines(relay_value)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_read(%d) failed", PRIVATE_DATA->handle);
 		return false;
 	}
@@ -497,7 +508,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 					indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i], &PRIVATE_DATA->relay_timers[i]);
 				}
 			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i])) {
-				if (!rpio_set_output_line(i, (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
+				if (!rpio_set_output_line(i, (int)(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_write(%d) failed, did you authorize?", PRIVATE_DATA->handle);
 					success = false;
 				}
@@ -542,46 +553,43 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static void handle_aux_connect_property(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!IS_CONNECTED) {
-			if (rpio_export_all()) {
-				char board[INDIGO_VALUE_SIZE] = "N/A";
-				char firmware[INDIGO_VALUE_SIZE] = "N/A";
-				strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-				strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-				int relay_value[8];
-				if (!rpio_read_input_lines(relay_value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_read(%d) failed", PRIVATE_DATA->handle);
-					AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					for (int i = 0; i < 8; i++) {
-						(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
-						PRIVATE_DATA->relay_active[i] = false;
-					}
-				}
-				indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-				indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-				indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
-				indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (rpio_export_all()) {
+			char board[INDIGO_VALUE_SIZE] = "N/A";
+			char firmware[INDIGO_VALUE_SIZE] = "N/A";
+			strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+			strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			int relay_value[8];
+			if (!rpio_read_output_lines(relay_value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_read(%d) failed", PRIVATE_DATA->handle);
+				AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
+				for (int i = 0; i < 8; i++) {
+					(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
+					PRIVATE_DATA->relay_active[i] = false;
+				}
 			}
-		}
-	} else {
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			for (int i = 0; i < 8; i++) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->relay_timers[i]);
-			}
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
-			rpio_unexport_all();
-			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-			indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+			indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 		}
+	
+	} else {
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		for (int i = 0; i < 8; i++) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->relay_timers[i]);
+		}
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
+		rpio_unexport_all();
+		indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 }
