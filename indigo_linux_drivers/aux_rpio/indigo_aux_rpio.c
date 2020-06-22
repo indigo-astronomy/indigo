@@ -505,7 +505,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 					success = false;
 				} else {
 					PRIVATE_DATA->relay_active[i] = true;
-					indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value+20)/1000.0, relay_timer_callbacks[i], &PRIVATE_DATA->relay_timers[i]);
+					indigo_set_timer(device, ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value)/1000.0, relay_timer_callbacks[i], &PRIVATE_DATA->relay_timers[i]);
 				}
 			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i])) {
 				if (!rpio_set_output_line(i, (int)(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
