@@ -176,13 +176,22 @@ static void ccd_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &count) == ARTEMIS_OK && count > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
+// Temporary workaround for SDK_2020_06_23 +++++
+//				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &count) == ARTEMIS_OK && count > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
+				ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &count);
+				if (count > 0) {
+					ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature);
+// Temporary workaround for SDK_2020_06_23 -----
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 					CCD_TEMPERATURE_ITEM->number.value = round(temperature / 10.0) / 10.0;
 				}
-				if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point) == ARTEMIS_OK && (flags & 3) == 3) {
+// Temporary workaround for SDK_2020_06_23 +++++
+//				if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point) == ARTEMIS_OK && (flags & 3) == 3) {
+				ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point);
+				if ((flags & 3) == 3) {
+// Temporary workaround for SDK_2020_06_23 -----
 					CCD_COOLER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
