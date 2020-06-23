@@ -149,7 +149,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle) {
 			struct ARTEMISPROPERTIES properties;
-			int temperature, flags, level, min_level, max_level, set_point, max_x_bin, max_y_bin;
+			int temperature = 0, flags, level, min_level, max_level, set_point, max_x_bin, max_y_bin, count = 0;
 			if (ArtemisProperties(PRIVATE_DATA->handle, &properties) == ARTEMIS_OK) {
 				if (properties.nPixelsX == 3354 && properties.nPixelsY == 2529) {
 					properties.nPixelsX = 3326;
@@ -176,7 +176,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &temperature) == ARTEMIS_OK && temperature > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
+				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &count) == ARTEMIS_OK && count > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
