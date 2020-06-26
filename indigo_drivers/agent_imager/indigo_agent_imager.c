@@ -1394,6 +1394,24 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TBD: plate solve etc...");
+			
+			indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+			if (!AGENT_IMAGER_START_FOCUSING_ITEM->sw.value && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0) {
+				indigo_property *remote_image_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_PROPERTY_NAME);
+				if (remote_image_property != NULL) {
+					if (strchr(remote_image_property->device, '@'))
+						indigo_populate_http_blob_item(remote_image_property->items);
+					indigo_raw_header *header = (indigo_raw_header *)(remote_image_property->items->blob.value);
+					if (header && (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48)) {
+						indigo_frame_digest digest;
+						if (indigo_selection_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), &AGENT_IMAGER_SELECTION_X_ITEM->number.value, &AGENT_IMAGER_SELECTION_Y_ITEM->number.value, SELECTION_RADIUS, header->width, header->height, &digest) == INDIGO_OK) {
+							indigo_selection_psf(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_IMAGER_SELECTION_X_ITEM->number.value, AGENT_IMAGER_SELECTION_Y_ITEM->number.value, 4, header->width, header->height, &AGENT_IMAGER_STATS_FWHM_ITEM->number.value, &AGENT_IMAGER_STATS_HFD_ITEM->number.value, &AGENT_IMAGER_STATS_PEAK_ITEM->number.value);
+							indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+						}
+					}
+				}
+			}
+			
 		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
 			pthread_mutex_lock(&CLIENT_PRIVATE_DATA->mutex);
 			setup_download(FILTER_CLIENT_CONTEXT->device);
