@@ -715,6 +715,7 @@ static void guider_connect_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
 	}
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
