@@ -257,6 +257,17 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 }
 
 static indigo_result update_device_list(indigo_device *device, indigo_client *client, indigo_property *device_list, indigo_property *property, char *device_name) {
+	for (int i = 0; i < property->count; i++) {
+		if (property->items[i].sw.value) {
+			for (int j = 0; j < device_list->count; j++) {
+				if (device_list->items[j].sw.value) {
+					if (!strcmp(property->items[i].name, device_list->items[j].name))
+						return INDIGO_OK;
+					break;
+				}
+			}
+		}
+	}
 	device_list->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, device_list, NULL);
 	device_name = 0;
