@@ -480,7 +480,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 							strcat(copy->label, property->label);
 						}
 						agent_cache[j] = copy;
-						indigo_define_property(device, copy, NULL);
+						indigo_define_property(device, copy, message);
 						break;
 					}
 				}
@@ -536,7 +536,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 					if (agent_cache[i]) {
 						memcpy(agent_cache[i]->items, device_cache[i]->items, device_cache[i]->count * sizeof(indigo_item));
 						agent_cache[i]->state = device_cache[i]->state;
-						indigo_update_property(device, agent_cache[i], NULL);
+						indigo_update_property(device, agent_cache[i], message);
 					}
 					return INDIGO_OK;
 				}
@@ -590,7 +590,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 			if (device_cache[i] && !strcmp(device_cache[i]->device, property->device)) {
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
-					indigo_delete_property(device, agent_cache[i], NULL);
+					indigo_delete_property(device, agent_cache[i], message);
 					indigo_release_property(agent_cache[i]);
 					agent_cache[i] = NULL;
 				}
