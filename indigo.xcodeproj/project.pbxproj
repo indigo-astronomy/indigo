@@ -2078,6 +2078,7 @@
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
+		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59AF31F621F25E7A0008CC52 /* d3.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.min.js; sourceTree = "<group>"; };
 		59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.geo.projection.min.js; sourceTree = "<group>"; };
@@ -10397,6 +10398,7 @@
 				59E5A29823C1238400E8BBBF /* indigo_mount_rainbow.c */,
 				59E5A2A023C1238400E8BBBF /* indigo_mount_rainbow_main.c */,
 				59E5A29523C1238400E8BBBF /* RainbowAstro_191217.pdf */,
+				59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */,
 				59E5A29E23C1238400E8BBBF /* rainbow_simulator */,
 			);
 			path = mount_rainbow;
