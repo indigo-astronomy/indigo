@@ -39,7 +39,7 @@ A basic common API shared by both **driver** and **client** roles is defined in 
 The **bus** instance should be initialized and started by *indigo_start()* call and stopped by *indigo_stop()* call.
 A **device** should be attached to the **bus** by calling *indigo_attach_device()* and detached with *indigo_detach_device()* call.
 
-There are four functions that cam be used by the **device** to send messages to the **client**:
+There are four functions that can be used by the **device** to send messages to the **client**:
 - *indigo_define_property()* - defines a new property
 - *indigo_update_property()* - one or more item values of the property are changed
 - *indigo_delete_property()* - property is not needed any more and shall not be used
