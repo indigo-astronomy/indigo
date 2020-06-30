@@ -270,7 +270,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 	}
 	device_list->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, device_list, NULL);
-	device_name = 0;
+	*device_name = 0;
 	indigo_property *connection_property = indigo_init_switch_property(NULL, "", CONNECTION_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 	for (int i = 1; i < device_list->count; i++) {
 		if (device_list->items[i].sw.value) {
