@@ -611,6 +611,8 @@
 		593287A32409ACC700ED61C0 /* indigo_rotator_lunatico_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_lunatico_main.c; sourceTree = "<group>"; };
 		593287A42409ACC700ED61C0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		593287A52409ACC700ED61C0 /* indigo_rotator_lunatico.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_lunatico.h; sourceTree = "<group>"; };
+		5932DD3524B20C1400B90A6A /* README.arm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.arm; sourceTree = "<group>"; };
+		5932DD3624B20C8D00B90A6A /* ASICamera2 Software Development Kit.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = "ASICamera2 Software Development Kit.pdf"; path = "doc/ASICamera2 Software Development Kit.pdf"; sourceTree = "<group>"; };
 		59399D892177D316002886CA /* indigo_focuser_optec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec.c; sourceTree = "<group>"; };
 		59399D8A2177D316002886CA /* indigo_focuser_optec_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec_main.c; sourceTree = "<group>"; };
 		59399D8B2177D316002886CA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -8040,6 +8042,7 @@
 		59D967EF21A2FDE70069A64C /* libasicamera */ = {
 			isa = PBXGroup;
 			children = (
+				5932DD3624B20C8D00B90A6A /* ASICamera2 Software Development Kit.pdf */,
 				59D967F221A2FDE70069A64C /* VERSION */,
 				59D967F021A2FDE70069A64C /* include */,
 				59D967F321A2FDE70069A64C /* lib */,
@@ -8320,6 +8323,7 @@
 		59D9684421A2FFF00069A64C /* Linux */ = {
 			isa = PBXGroup;
 			children = (
+				5932DD3524B20C1400B90A6A /* README.arm */,
 				59D967FC21A2FDE70069A64C /* asi.rules */,
 				59D967FF21A2FDE70069A64C /* x86 */,
 				59D967F421A2FDE70069A64C /* x64 */,
