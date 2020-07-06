@@ -254,7 +254,10 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 			previous = value;
 		}
 	}
-	*fwhm = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
+	double tmp = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
+	if (tmp < 1 || tmp > 2 * radius)
+		tmp = 0;
+	*fwhm = tmp;
 	return INDIGO_OK;
 }
 
