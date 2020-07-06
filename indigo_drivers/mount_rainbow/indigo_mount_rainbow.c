@@ -55,6 +55,7 @@ typedef struct {
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	double lastRA, lastDec;
 	char lastUTC[INDIGO_VALUE_SIZE];
+	unsigned long version;
 } rainbow_private_data;
 
 static bool rainbow_command(indigo_device *device, char *command, char *response, int max, int sleep);
@@ -223,6 +224,7 @@ static void mount_connect_callback(indigo_device *device) {
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "RainbowAstro");
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
 				strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response + 3, INDIGO_VALUE_SIZE);
+				PRIVATE_DATA->version = atol(response + 3);
 			}
 			MOUNT_UTC_TIME_PROPERTY->hidden = true; // TBD - unclear
 			// TBD - park state
