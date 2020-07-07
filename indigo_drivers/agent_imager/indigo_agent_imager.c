@@ -348,6 +348,17 @@ static bool exposure_batch(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE not found");
 		return false;
 	}
+	bool light_frame = true;
+	indigo_property *remote_frame_type_property = indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_FRAME_TYPE_PROPERTY_NAME);
+	if (remote_frame_type_property != NULL) {
+		for (int i = 0; i < remote_frame_type_property->count; i++) {
+			indigo_item *item = remote_frame_type_property->items + i;
+			if (item->sw.value) {
+				light_frame = strcmp(item->name, CCD_FRAME_TYPE_LIGHT_ITEM_NAME) == 0;
+				break;
+			}
+		}
+	}
 	set_headers(device);
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value++;
 	for (int remaining_exposures = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target; remaining_exposures != 0; remaining_exposures--) {
@@ -417,45 +428,47 @@ static bool exposure_batch(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 			return false;
 		}
-		if (remaining_exposures > 1 || AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target < 0) {
-			double delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
-			if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
-				for (int item_index = 0; item_index < FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->count; item_index++) {
-					indigo_item *agent = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->items + item_index;
-					if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
-						const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
-						double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (2 * drand48() - 1);
-						double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (2 * drand48() - 1) : 0;
-						double item_values[] = { x_value, y_value };
-						indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
-						delay_time = MAX(AGENT_IMAGER_BATCH_DELAY_ITEM->number.target, fabs(AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target));
-						break;
+		if (light_frame) {
+			if (remaining_exposures > 1 || AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target < 0) {
+				double delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
+				if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
+					for (int item_index = 0; item_index < FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->count; item_index++) {
+						indigo_item *agent = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->items + item_index;
+						if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
+							const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
+							double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (2 * drand48() - 1);
+							double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (2 * drand48() - 1) : 0;
+							double item_values[] = { x_value, y_value };
+							indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
+							delay_time = MAX(AGENT_IMAGER_BATCH_DELAY_ITEM->number.target, fabs(AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target));
+							break;
+						}
 					}
 				}
-			}
-			double reported_delay_time = delay_time;
-			AGENT_IMAGER_STATS_DELAY_ITEM->number.value = reported_delay_time;
-			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-			while (reported_delay_time > 0) {
-				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-					indigo_usleep(200000);
-				if (reported_delay_time < floor(AGENT_IMAGER_STATS_DELAY_ITEM->number.value)) {
-					double c = ceil(reported_delay_time);
-					if (AGENT_IMAGER_STATS_DELAY_ITEM->number.value > c) {
-						AGENT_IMAGER_STATS_DELAY_ITEM->number.value = c;
-						indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+				double reported_delay_time = delay_time;
+				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = reported_delay_time;
+				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+				while (reported_delay_time > 0) {
+					while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+						indigo_usleep(200000);
+					if (reported_delay_time < floor(AGENT_IMAGER_STATS_DELAY_ITEM->number.value)) {
+						double c = ceil(reported_delay_time);
+						if (AGENT_IMAGER_STATS_DELAY_ITEM->number.value > c) {
+							AGENT_IMAGER_STATS_DELAY_ITEM->number.value = c;
+							indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+						}
+					}
+					if (reported_delay_time > 1) {
+						reported_delay_time -= 0.2;
+						indigo_usleep(200000);
+					} else {
+						reported_delay_time -= 0.01;
+						indigo_usleep(10000);
 					}
 				}
-				if (reported_delay_time > 1) {
-					reported_delay_time -= 0.2;
-					indigo_usleep(200000);
-				} else {
-					reported_delay_time -= 0.01;
-					indigo_usleep(10000);
-				}
+				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
+				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			}
-			AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
-			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		}
 	}
 	return true;
