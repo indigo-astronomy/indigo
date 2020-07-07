@@ -218,12 +218,11 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	double half_max = *peak / 2 + min;
 	double d3[] = { radius, radius, radius, radius };
 	for (int d = 0; d < 4; d++) {
-		double previous = 0;
-		for (int k = 0; k < radius; k++) {
+		double previous = max;
+		for (int k = 1; k < radius; k++) {
 			int i = k * d2[d][0];
 			int j = k * d2[d][1];
 			int kk = (yy + j) * width + i + xx;
-			double value;
 			switch (raw_type) {
 				case INDIGO_RAW_MONO8: {
 					value = ((uint8_t *)data)[kk];
@@ -251,7 +250,8 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 					d3[d] = k - 1 + (previous - half_max) / (previous - value);
 				break;
 			}
-			previous = value;
+			if (value < previous)
+				previous = value;
 		}
 	}
 	double tmp = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
