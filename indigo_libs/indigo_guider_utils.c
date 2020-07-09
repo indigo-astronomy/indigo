@@ -440,7 +440,7 @@ static double calibrate_re(double (*vector)[2], int size) {
 			noise_count++;
 		}
 	}
-	
+
 	double snr = (signal_ms / signal_count) / (noise_ms / noise_count);
 	//INDIGO_DEBUG(indigo_debug("calibrate_re: threshold = %g, S/N = %g", threshold, snr));
 	return snr;
@@ -511,8 +511,8 @@ indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indig
 	if ((ref->width != new->width) || (ref->height != new->height))
 		return INDIGO_FAILED;
 	if (ref->algorithm == centroid) {
-		*drift_x = -(ref->centroid_x - new->centroid_x);
-		*drift_y = ref->centroid_y - new->centroid_y;
+		*drift_x = new->centroid_x - ref->centroid_x;
+		*drift_y = new->centroid_y - ref->centroid_y;
 		return INDIGO_OK;
 	}
 	if (ref->algorithm == donuts) {
@@ -520,10 +520,10 @@ indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indig
 		int max_dim = (ref->width > ref->height) ? ref->width : ref->height;
 		c_buf = malloc(2 * max_dim * sizeof(double));
 		/* find X correction */
-		corellate_fft(ref->width, ref->fft_x, new->fft_x, c_buf);
-		*drift_x = -find_distance(ref->width, c_buf);
+		corellate_fft(ref->width, new->fft_x, ref->fft_x, c_buf);
+		*drift_x = find_distance(ref->width, c_buf);
 		/* find Y correction */
-		corellate_fft(ref->height, ref->fft_y, new->fft_y, c_buf);
+		corellate_fft(ref->height, new->fft_y, ref->fft_y, c_buf);
 		*drift_y = find_distance(ref->height, c_buf);
 		free(c_buf);
 		return INDIGO_OK;
