@@ -518,7 +518,7 @@ static void calibrate_process(indigo_device *device) {
 							break;
 						} else {
 							last_drift = DEVICE_PRIVATE_DATA->drift;
-							dec_angle = atan2(AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
+							dec_angle = -atan2(AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
 							AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = round(180 * dec_angle / PI);
 							AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = round(1000 * last_drift / (i * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
 							indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
@@ -685,8 +685,8 @@ static void guide_process(indigo_device *device) {
 		double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
 		double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
 		double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
-		double drift_ra = DEVICE_PRIVATE_DATA->drift_x * cos_angle - DEVICE_PRIVATE_DATA->drift_y * sin_angle;
-		double drift_dec = DEVICE_PRIVATE_DATA->drift_x * sin_angle + DEVICE_PRIVATE_DATA->drift_y * cos_angle;
+		double drift_ra = DEVICE_PRIVATE_DATA->drift_x * cos_angle + DEVICE_PRIVATE_DATA->drift_y * sin_angle;
+		double drift_dec = DEVICE_PRIVATE_DATA->drift_x * sin_angle - DEVICE_PRIVATE_DATA->drift_y * cos_angle;
 		AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = round(1000 * drift_ra) / 1000;
 		AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
 		double correction_ra = 0, correction_dec = 0;
