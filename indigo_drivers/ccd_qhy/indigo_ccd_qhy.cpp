@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +46,12 @@
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
 
+#ifdef QHY2
+#include "../ccd_qhy2/indigo_ccd_qhy.h"
+#else
 #include "indigo_ccd_qhy.h"
+#endif
+
 #include "qhyccd.h"
 
 #ifdef USE_LOG4Z
@@ -87,6 +92,10 @@
 #define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)
 #define RAW8_NAME                  "RAW 8"
 #define RAW16_NAME                 "RAW 16"
+
+#ifdef QHY2
+#define READ_MODE_PROPERTY      (PRIVATE_DATA->read_mode_property)
+#endif
 
 #define QHY_ADVANCED_PROPERTY      (PRIVATE_DATA->qhy_advanced_property)
 
@@ -138,6 +147,9 @@ typedef struct {
 	char fw_target_slot;
 
 	indigo_property *pixel_format_property;
+#ifdef QHY2
+	indigo_property *read_mode_property;
+#endif
 	indigo_property *qhy_advanced_property;
 } qhy_private_data;
 
@@ -188,6 +200,10 @@ static indigo_result qhy_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
 			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+#ifdef QHY2
+		if (indigo_property_match(READ_MODE_PROPERTY, property))
+			indigo_define_property(device, READ_MODE_PROPERTY, NULL);
+#endif
 		if (indigo_property_match(QHY_ADVANCED_PROPERTY, property))
 			indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
 	}
@@ -681,6 +697,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "QHY_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
 		if (QHY_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
+#ifdef QHY2
+// -------------------------------------------------------------------------------- ASI_ADVANCED
+		READ_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "READ_MODE", CCD_ADVANCED_GROUP, "Read mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 16);
+		if (READ_MODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+#endif
 		// --------------------------------------------------------------------------------
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -847,6 +869,25 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_EXPOSURE_ITEM->number.max = (CCD_EXPOSURE_ITEM->number.max < 900) ? 900 : CCD_EXPOSURE_ITEM->number.max;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure params min = %fs max = %fs step = %fs", CCD_EXPOSURE_ITEM->number.min, CCD_EXPOSURE_ITEM->number.max, CCD_EXPOSURE_ITEM->number.step);
 
+#ifdef QHY2
+				// ---------------------------------------------------------------------------------- READ_MODE
+				uint32_t mode_count = 0;
+				if (GetQHYCCDNumberOfReadModes(PRIVATE_DATA->handle, &mode_count) == QHYCCD_SUCCESS && mode_count > 0) {
+					uint32_t current_mode = 0;
+					GetQHYCCDReadMode(PRIVATE_DATA->handle, &current_mode);
+					READ_MODE_PROPERTY->count = mode_count;
+					READ_MODE_PROPERTY->hidden = false;
+					for (int i = 0; i < mode_count; i++) {
+						char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
+						sprintf(name, "%d", i);
+						GetQHYCCDReadModeName(PRIVATE_DATA->handle, i, label);
+						indigo_init_switch_item(READ_MODE_PROPERTY->items + i, name, label, i == current_mode);
+					}
+				} else {
+					READ_MODE_PROPERTY->hidden = true;
+				}
+				indigo_define_property(device, READ_MODE_PROPERTY, NULL);
+#endif
 				// --------------------------------------------------------------------------------- ADVANCED
 				count = 0;
 				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC) == QHYCCD_SUCCESS) {
@@ -912,6 +953,9 @@ static void ccd_connect_callback(indigo_device *device) {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+#ifdef QHY2
+			indigo_delete_property(device, READ_MODE_PROPERTY, NULL);
+#endif
 			indigo_delete_property(device, QHY_ADVANCED_PROPERTY, NULL);
 			qhy_close(device);
 			device->is_connected = false;
@@ -1108,6 +1152,33 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+#ifdef QHY2
+	// -------------------------------------------------------------------------------- READ_MODE
+	} else if (indigo_property_match(READ_MODE_PROPERTY, property)) {
+		indigo_property_copy_values(READ_MODE_PROPERTY, property, false);
+		READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		for (int i = 0; i < READ_MODE_PROPERTY->count; i++) {
+			indigo_item *item = READ_MODE_PROPERTY->items + i;
+			if (item->sw.value) {
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				if (SetQHYCCDReadMode(PRIVATE_DATA->handle, i) == QHYCCD_SUCCESS) {
+					double chipw, chiph;
+					GetQHYCCDChipInfo(PRIVATE_DATA->handle, &chipw, &chiph, &PRIVATE_DATA->total_frame_width, &PRIVATE_DATA->total_frame_height, &PRIVATE_DATA->pixel_width, &PRIVATE_DATA->pixel_height, &PRIVATE_DATA->bpp);
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
+					indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
+					READ_MODE_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				break;
+			}
+		}
+		indigo_update_property(device, READ_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
+#endif
 		// -------------------------------------------------------------------------------- ADVANCED
 	} else if (indigo_property_match(QHY_ADVANCED_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
@@ -1212,6 +1283,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
+#ifdef QHY2
+	indigo_release_property(READ_MODE_PROPERTY);
+#endif
 	indigo_release_property(QHY_ADVANCED_PROPERTY);
 
 	return indigo_ccd_detach(device);
@@ -1800,7 +1874,7 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
-#if defined(QHY2) && !defined(__arm__) && !defined(__aarch64__)
+#ifdef QHY2
 			SetQHYCCDAutoDetectCamera(false);
 #endif  // new SDK
 			SetQHYCCDLogLevel(6);
