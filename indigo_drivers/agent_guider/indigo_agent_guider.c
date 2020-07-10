@@ -518,7 +518,7 @@ static void calibrate_process(indigo_device *device) {
 							break;
 						} else {
 							last_drift = DEVICE_PRIVATE_DATA->drift;
-							dec_angle = -atan2(AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
+							dec_angle = atan2(-AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
 							AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = round(180 * dec_angle / PI);
 							AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = round(1000 * last_drift / (i * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
 							indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
@@ -579,7 +579,7 @@ static void calibrate_process(indigo_device *device) {
 						} else {
 							last_drift = DEVICE_PRIVATE_DATA->drift;
 							if (!AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
-								double ra_angle = atan2(AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
+								double ra_angle = atan2(-AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
 								double dif_p = PI - fabs(fabs(ra_angle - dec_angle + PI2) - PI);
 								double dif_m = PI - fabs(fabs(ra_angle - dec_angle - PI2) - PI);
 								//indigo_send_message(device, "ra angle = %g, dec angle = %g, dif_p = %g, dif_m = %g", 180.0 * ra_angle / M_PI, 180.0 * dec_angle / M_PI, dif_p, dif_m);
