@@ -964,6 +964,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1155,6 +1156,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 #ifdef QHY2
 	// -------------------------------------------------------------------------------- READ_MODE
 	} else if (indigo_property_match(READ_MODE_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(READ_MODE_PROPERTY, property, false);
 		READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		for (int i = 0; i < READ_MODE_PROPERTY->count; i++) {
@@ -1267,6 +1269,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
+#ifdef QHY2
+			indigo_save_property(device, NULL, READ_MODE_PROPERTY);
+#endif
 			indigo_save_property(device, NULL, QHY_ADVANCED_PROPERTY);
 		}
 	}
