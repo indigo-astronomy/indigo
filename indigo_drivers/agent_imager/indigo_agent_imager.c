@@ -428,7 +428,7 @@ static bool exposure_batch(indigo_device *device) {
 			return false;
 		}
 		if (light_frame) {
-			if (remaining_exposures > 1 || AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target < 0) {
+			if (remaining_exposures > 1 || remaining_exposures == -1 || AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target < 0) {
 				double delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
 				if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
 					for (int item_index = 0; item_index < FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->count; item_index++) {
@@ -450,6 +450,8 @@ static bool exposure_batch(indigo_device *device) {
 				while (reported_delay_time > 0) {
 					while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 						indigo_usleep(200000);
+					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+						return false;
 					if (reported_delay_time < floor(AGENT_IMAGER_STATS_DELAY_ITEM->number.value)) {
 						double c = ceil(reported_delay_time);
 						if (AGENT_IMAGER_STATS_DELAY_ITEM->number.value > c) {
