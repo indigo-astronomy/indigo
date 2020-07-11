@@ -133,6 +133,7 @@
 #include "wheel_manual/indigo_wheel_manual.h"
 #include "aux_mgbox/indigo_aux_mgbox.h"
 #include "dome_baader/indigo_dome_baader.h"
+#include "mount_pcm8/indigo_mount_pcm8.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -245,6 +246,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_ioptron,
 	indigo_mount_lx200,
 	indigo_mount_nexstar,
+	indigo_mount_pcm8,
 	indigo_mount_rainbow,
 	indigo_mount_simulator,
 	indigo_mount_synscan,
