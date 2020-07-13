@@ -47,7 +47,17 @@
 
 #include "indigo_mount_pcm8.h"
 
-#define PRIVATE_DATA        ((pcm8_private_data *)device->private_data)
+#define PRIVATE_DATA        					((pcm8_private_data *)device->private_data)
+
+#define CONNECTION_MODE_PROPERTY     			(PRIVATE_DATA->connection_mode_property)
+#define CONNECTION_UDP_ITEM  							(CONNECTION_MODE_PROPERTY->items+0)
+#define CONNECTION_TCP_ITEM  							(CONNECTION_MODE_PROPERTY->items+1)
+#define CONNECTION_SERIAL_ITEM  					(CONNECTION_MODE_PROPERTY->items+2)
+
+#define CONNECTION_MODE_PROPERTY_NAME   	"CONNECTION_MODE"
+#define CONNECTION_UDP_ITEM_NAME   				"UDP"
+#define CONNECTION_TCP_ITEM_NAME					"TCP"
+#define CONNECTION_SERIAL_ITEM_NAME				"SERIAL"
 
 typedef struct {
 	char *name;
@@ -75,9 +85,11 @@ typedef struct {
 	model_type type;
 	int rate[3];
 	indigo_timer *position_timer;
+	indigo_property *connection_mode_property;
 	pthread_mutex_t port_mutex;
 	indigo_network_protocol proto;
 	bool park;
+	bool is_udp, is_tcp, is_serial;
 } pcm8_private_data;
 
 static bool pcm8_command(indigo_device *device, char *command, char *response, int max, int sleep);
@@ -160,7 +172,17 @@ static bool pcm8_command(indigo_device *device, char *command, char *response, i
 				long bytes_read = recv(PRIVATE_DATA->handle, response, max, 0);
 				response[bytes_read] = 0;
 			} else {
-				// TBD
+				int bytes_read = 0;
+				while (bytes_read < max) {
+					result = read(PRIVATE_DATA->handle, &c, 1);
+					if (result < 1) {
+						break;
+					}
+					response[bytes_read++] = c;
+					if (c == '!')
+						break;
+				}
+				response[bytes_read] = 0;
 			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 			for (char *tmp = response; *tmp; tmp++) {
@@ -298,6 +320,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
+		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 		// -------------------------------------------------------------------------------- MOUNT_INFO
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Explore Scientific");
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
@@ -313,6 +336,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
+		// -------------------------------------------------------------------------------- CONNECTION_MODE
+		CONNECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CONNECTION_MODE_PROPERTY_NAME, MAIN_GROUP, "Connnection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (CONNECTION_MODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(CONNECTION_UDP_ITEM, CONNECTION_UDP_ITEM_NAME, "UDP", true);
+		indigo_init_switch_item(CONNECTION_TCP_ITEM, CONNECTION_TCP_ITEM_NAME, "TCP", false);
+		indigo_init_switch_item(CONNECTION_SERIAL_ITEM, CONNECTION_SERIAL_ITEM_NAME, "Serial", false);
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -322,6 +352,8 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(CONNECTION_MODE_PROPERTY, property))
+		indigo_define_property(device, CONNECTION_MODE_PROPERTY, NULL);
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
@@ -384,7 +416,7 @@ static void mount_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = pcm8_open(device);
 		if (result) {
-			if (pcm8_command(device, "ESGv!", response, sizeof(response), 0)) {
+			if (pcm8_command(device, "ESGv!", response, sizeof(response), 0) && !strncmp(response, "ESGv", 4)) {
 				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response + 4);
 				if (strstr(response, "G11")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "G11");
@@ -414,6 +446,7 @@ static void mount_connect_callback(indigo_device *device) {
 				indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
+				pcm8_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
@@ -570,6 +603,61 @@ static void mount_motion_callback(indigo_device *device) {
 	}
 }
 
+static void mount_switch_connection(indigo_device *device) {
+	CONNECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	if (IS_CONNECTED) {
+		char response[32];
+		if (PRIVATE_DATA->is_udp && CONNECTION_TCP_ITEM->sw.value) {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
+			if (!pcm8_open(device) || !pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY0")) {
+				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else if (PRIVATE_DATA->is_udp && CONNECTION_SERIAL_ITEM->sw.value) {
+			indigo_send_message(device, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
+			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
+			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (PRIVATE_DATA->is_tcp && CONNECTION_UDP_ITEM->sw.value) {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
+			if (!pcm8_open(device) || !pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY1")) {
+				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else if (PRIVATE_DATA->is_tcp && CONNECTION_SERIAL_ITEM->sw.value) {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
+			if (!pcm8_open(device) || !pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
+				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else if (PRIVATE_DATA->is_serial && CONNECTION_UDP_ITEM->sw.value) {
+			indigo_send_message(device, "Can't switch from SERIAL to UDP directly, switch to TCP first!");
+			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_SERIAL_ITEM, true);
+			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (PRIVATE_DATA->is_serial && CONNECTION_TCP_ITEM->sw.value) {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
+			if (!pcm8_open(device) || !pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX1")) {
+				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+	}
+	if (CONNECTION_MODE_PROPERTY->state == INDIGO_OK_STATE) {
+		if (CONNECTION_UDP_ITEM->sw.value) {
+			strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
+		} else if (CONNECTION_TCP_ITEM->sw.value) {
+			strcpy(DEVICE_PORT_ITEM->text.value, "tcp://192.168.47.1");
+		} else {
+			if (DEVICE_PORTS_PROPERTY->count > 1)
+				strcpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
+			else
+				strcpy(DEVICE_PORT_ITEM->text.value, "");
+		}
+		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+	}
+	indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
+}
+
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -673,6 +761,21 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(CONNECTION_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION_MODE
+		PRIVATE_DATA->is_udp = CONNECTION_UDP_ITEM->sw.value;
+		PRIVATE_DATA->is_tcp = CONNECTION_TCP_ITEM->sw.value;
+		PRIVATE_DATA->is_serial = CONNECTION_SERIAL_ITEM->sw.value;
+		indigo_property_copy_values(CONNECTION_MODE_PROPERTY, property, false);
+		CONNECTION_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_switch_connection, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, CONNECTION_MODE_PROPERTY);
+		}
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -684,6 +787,7 @@ static indigo_result mount_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		mount_connect_callback(device);
 	}
+	indigo_release_property(CONNECTION_MODE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
