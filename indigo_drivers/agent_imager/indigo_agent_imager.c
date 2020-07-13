@@ -290,8 +290,6 @@ static bool capture_raw_frame(indigo_device *device) {
 				indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
 				if (indigo_selection_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), &AGENT_IMAGER_SELECTION_X_ITEM->number.value, &AGENT_IMAGER_SELECTION_Y_ITEM->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &DEVICE_PRIVATE_DATA->reference) == INDIGO_OK) {
 					indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-				} else {
-					return false;
 				}
 			} else {
 				indigo_frame_digest digest;
@@ -302,8 +300,6 @@ static bool capture_raw_frame(indigo_device *device) {
 						AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx, %.4gpx", DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
 					}
-				} else {
-					return false;
 				}
 				indigo_delete_frame_digest(&digest);
 			}
