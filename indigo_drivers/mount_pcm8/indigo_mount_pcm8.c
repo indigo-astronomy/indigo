@@ -49,9 +49,6 @@
 
 #define PRIVATE_DATA        ((pcm8_private_data *)device->private_data)
 
-// G11, EXOS2/iEXOS100
-// SIDEREAL, LUNAR, SOLAR
-
 typedef struct {
 	char *name;
 	uint32_t count[2];
@@ -81,10 +78,10 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	indigo_network_protocol proto;
 	bool park;
-	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 } pcm8_private_data;
 
 static bool pcm8_command(indigo_device *device, char *command, char *response, int max, int sleep);
+static void mount_equatorial_coordinates_callback(indigo_device *device);
 
 static bool pcm8_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
@@ -236,7 +233,7 @@ static bool pcm8_set_tracking_rate(indigo_device *device) {
 	return false;
 }
 
-static bool pcm8_point(indigo_device *device, uint32_t ha, uint32_t dec) {
+static bool pcm8_point(indigo_device *device, int32_t ha, int32_t dec) {
 	char command[32], response[32];
 	sprintf(command, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? "ESSp0%06X!" : "ESPt0%06X!", ha & 0xFFFFFF);
 	if (!pcm8_command(device, command, response, sizeof(response), 0)) {
@@ -247,6 +244,25 @@ static bool pcm8_point(indigo_device *device, uint32_t ha, uint32_t dec) {
 		return false;
 	}
 	return true;
+}
+
+static bool pcm8_get_position(indigo_device *device, int32_t *ha, int32_t *dec) {
+	char response[32];
+	int32_t raw_ha = 0, raw_dec = 0;
+	if (pcm8_command(device, "ESGp0!", response, sizeof(response), 0)) {
+		raw_ha = (int)strtol(response + 5, NULL, 16);
+		if (raw_ha & 0x800000)
+			raw_ha |= 0xFF000000;
+		if (pcm8_command(device, "ESGp1!", response, sizeof(response), 0)) {
+			raw_dec = (int)strtol(response + 5, NULL, 16);
+			if (raw_dec & 0x800000)
+				raw_dec |= 0xFF000000;
+			*ha = raw_ha;
+			*dec = raw_dec;
+			return true;
+		}
+	}
+	return false;
 }
 
 static bool pcm8_move(indigo_device *device, int axis, int direction, int rate) {
@@ -296,6 +312,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_GUIDE_RATE_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -310,32 +327,12 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
-		char response[32];
-		int32_t target_raw_ha = 0, target_raw_dec = 0;
-		if (pcm8_command(device, "ESGt0!", response, sizeof(response), 0)) {
-			target_raw_ha = (int)strtol(response + 5, NULL, 16);
-			if (target_raw_ha & 0x800000)
-				target_raw_ha |= 0xFF000000;
-			if (pcm8_command(device, "ESGt1!", response, sizeof(response), 0)) {
-				target_raw_dec = (int)strtol(response + 5, NULL, 16);
-				if (target_raw_dec & 0x800000)
-					target_raw_dec |= 0xFF000000;
-			}
-		}
 		int32_t raw_ha = 0, raw_dec = 0;
-		if (pcm8_command(device, "ESGp0!", response, sizeof(response), 0)) {
-			raw_ha = (int)strtol(response + 5, NULL, 16);
-			if (raw_ha & 0x800000)
-				raw_ha |= 0xFF000000;
-			if (pcm8_command(device, "ESGp1!", response, sizeof(response), 0)) {
-				raw_dec = (int)strtol(response + 5, NULL, 16);
-				if (raw_dec & 0x800000)
-					raw_dec |= 0xFF000000;
-				if (raw_ha == 0 && raw_dec == 0 && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
-					PRIVATE_DATA->park = false;
-					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
-				}
+		if (pcm8_get_position(device, &raw_ha, &raw_dec)) {
+			if (raw_ha == 0 && raw_dec == 0 && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
+				PRIVATE_DATA->park = false;
+				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 			}
 		}
 		indigo_item *side_of_pier;
@@ -372,21 +369,6 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha;
-		if (target_raw_ha != raw_ha || target_raw_dec != raw_dec) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-//				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-//				MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
-//				if (pcm8_set_tracking_rate(device)) {
-//					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-//				} else {
-//					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-//				}
-//				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-			}
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		}
 		if (!side_of_pier->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
@@ -449,40 +431,65 @@ static void mount_connect_callback(indigo_device *device) {
 }
 
 static void mount_equatorial_coordinates_callback(indigo_device *device) {
-	double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-	double ha_angle = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-	double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-	if (ha_angle < -12) {
-		ha_angle += 24;
-	} else if (ha_angle >= 12) {
-		ha_angle -= 24;
-	}
-	if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-		if (ha_angle < 0) {
-			ha_angle = ha_angle + 6;
-			dec_angle = -(dec_angle - 90);
-		} else {
-			ha_angle = ha_angle - 6;
-			dec_angle = dec_angle - 90;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+	for (int i = 0; i < 2 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
+		double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+		double ha_angle = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+		double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+		if (ha_angle < -12) {
+			ha_angle += 24;
+		} else if (ha_angle >= 12) {
+			ha_angle -= 24;
 		}
-	} else {
-		if (ha_angle < 0) {
-			ha_angle = -(ha_angle + 6);
-			dec_angle = -(dec_angle + 90);
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
+			if (ha_angle < 0) {
+				ha_angle = ha_angle + 6;
+				dec_angle = -(dec_angle - 90);
+			} else {
+				ha_angle = ha_angle - 6;
+				dec_angle = dec_angle - 90;
+			}
 		} else {
-			ha_angle = -(ha_angle - 6);
-			dec_angle = dec_angle + 90;
+			if (ha_angle < 0) {
+				ha_angle = -(ha_angle + 6);
+				dec_angle = -(dec_angle + 90);
+			} else {
+				ha_angle = -(ha_angle - 6);
+				dec_angle = dec_angle + 90;
+			}
+		}
+		uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
+		uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
+		int32_t raw_dec = (dec_angle / 360.0) * dec_count;
+		int32_t raw_ha = (ha_angle / 24.0) * ra_count;
+		if (!pcm8_point(device, raw_ha, raw_dec)) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value)
+			break;
+		while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			int32_t current_raw_ha = 0, current_raw_dec = 0;
+			if (pcm8_get_position(device, &current_raw_ha, &current_raw_dec)) {
+				if (current_raw_ha == raw_ha && current_raw_dec == raw_dec)
+					break;
+			} else {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_usleep(100000);
 		}
 	}
-	uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
-	uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
-	int32_t raw_dec = (dec_angle / 360.0) * dec_count;
-	int32_t raw_ha = (ha_angle / 24.0) * ra_count;
-	if (pcm8_point(device, raw_ha, raw_dec)) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	} else {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+		if (pcm8_set_tracking_rate(device)) {
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	}
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 }
 
 static void mount_tracking_callback(indigo_device *device) {
@@ -596,8 +603,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_coordinates(device, "Mount is parked!");
-		} else {
-			// TBD
+		} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
