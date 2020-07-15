@@ -444,7 +444,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 						add_to_list(device, tmp, property);
 				}
 			}
-			if (mask == 0) {
+			if ((mask & INDIGO_INTERFACE_AGENT) == INDIGO_INTERFACE_AGENT) {
 				tmp = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 				if (!tmp->hidden && !device_in_list(tmp, property))
 					add_to_list(device, tmp, property);
