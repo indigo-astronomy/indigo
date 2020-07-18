@@ -95,6 +95,7 @@
 #include "ccd_altair/indigo_ccd_altair.h"
 #include "focuser_optec/indigo_focuser_optec.h"
 #include "aux_ppb/indigo_aux_ppb.h"
+#include "aux_ppb/indigo_aux_ppba.h"
 #include "aux_upb/indigo_aux_upb.h"
 #include "aux_rts/indigo_aux_rts.h"
 #include "aux_dsusb/indigo_aux_dsusb.h"
@@ -177,6 +178,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_joystick,
 	indigo_aux_mgbox,
 	indigo_aux_ppb,
+	indigo_aux_ppba,
 	indigo_aux_rts,
 	indigo_aux_sqm,
 	indigo_aux_upb,
