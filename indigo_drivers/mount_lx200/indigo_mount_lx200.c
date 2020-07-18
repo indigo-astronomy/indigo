@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -54,6 +54,14 @@
 #define ALIGNMENT_MODE_PROPERTY_NAME		"X_ALIGNMENT_MODE"
 #define POLAR_MODE_ITEM_NAME            "POLAR"
 #define ALTAZ_MODE_ITEM_NAME            "ALTAZ"
+
+#define FORCE_FLIP_PROPERTY							(PRIVATE_DATA->force_flip_property)
+#define FORCE_FLIP_ENABLED_ITEM         (FORCE_FLIP_PROPERTY->items+0)
+#define FORCE_FLIP_DISABLED_ITEM        (FORCE_FLIP_PROPERTY->items+1)
+
+#define FORCE_FLIP_PROPERTY_NAME				"X_FORCE_FLIP"
+#define FORCE_FLIP_ENABLED_ITEM_NAME		"ENABLED"
+#define FORCE_FLIP_DISABLED_ITEM_NAME		"DISABLED"
 
 #define MOUNT_TYPE_PROPERTY							(PRIVATE_DATA->mount_type_property)
 #define MOUNT_TYPE_DETECT_ITEM          (MOUNT_TYPE_PROPERTY->items+0)
@@ -87,6 +95,7 @@ typedef struct {
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
 	indigo_property *alignment_mode_property;
+	indigo_property *force_flip_property;
 	indigo_property *mount_type_property;
 	indigo_timer *focuser_timer;
 	bool use_dst_commands;
@@ -450,6 +459,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", false);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		ALIGNMENT_MODE_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- FORCE_FLIP
+		FORCE_FLIP_PROPERTY = indigo_init_switch_property(NULL, device->name, FORCE_FLIP_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian flip mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (FORCE_FLIP_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(FORCE_FLIP_ENABLED_ITEM, FORCE_FLIP_ENABLED_ITEM_NAME, "Enabled", true);
+		indigo_init_switch_item(FORCE_FLIP_DISABLED_ITEM, FORCE_FLIP_DISABLED_ITEM_NAME, "Disabled", false);
+		FORCE_FLIP_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
 		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
 		if (MOUNT_TYPE_PROPERTY == NULL)
@@ -476,6 +492,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	if (IS_CONNECTED) {
 		if (indigo_property_match(ALIGNMENT_MODE_PROPERTY, property))
 			indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
+		if (indigo_property_match(FORCE_FLIP_PROPERTY, property))
+			indigo_define_property(device, FORCE_FLIP_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -509,6 +527,7 @@ static void mount_connect_callback(indigo_device *device) {
 			}
 			indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
 			ALIGNMENT_MODE_PROPERTY->hidden = true;
+			FORCE_FLIP_PROPERTY->hidden = true;
 			if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 				MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 				MOUNT_UTC_TIME_PROPERTY->hidden = false;
@@ -620,6 +639,7 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_TRACKING_PROPERTY->hidden = false;
 				MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 				MOUNT_HOME_PROPERTY->hidden = false;
+				FORCE_FLIP_PROPERTY->hidden = false;
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "AvalonGO");
 				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -645,6 +665,8 @@ static void mount_connect_callback(indigo_device *device) {
 						MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 				}
+				meade_command(device, ":TTSFd#",  NULL, 0, 0);
+				indigo_define_property(device, FORCE_FLIP_PROPERTY, NULL);
 				meade_get_observatory(device);
 				meade_get_coords(device);
 				meade_get_utc(device);
@@ -724,6 +746,7 @@ static void mount_connect_callback(indigo_device *device) {
 			meade_close(device);
 		}
 		indigo_delete_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
+		indigo_delete_property(device, FORCE_FLIP_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -1165,6 +1188,19 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(FORCE_FLIP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FORCE_FLIP
+		indigo_property_copy_values(FORCE_FLIP_PROPERTY, property, false);
+		FORCE_FLIP_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			if (FORCE_FLIP_ENABLED_ITEM->sw.value) {
+				meade_command(device, ":TTSFd#", NULL, 0, 0);
+			} else if (FORCE_FLIP_DISABLED_ITEM->sw.value) {
+				meade_command(device, ":TTRFd#", NULL, 0, 0);
+			}
+			indigo_update_property(device, FORCE_FLIP_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TYPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
 		indigo_property_copy_values(MOUNT_TYPE_PROPERTY, property, false);
@@ -1219,6 +1255,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, ALIGNMENT_MODE_PROPERTY);
+			indigo_save_property(device, NULL, FORCE_FLIP_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_TYPE_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
@@ -1233,6 +1270,7 @@ static indigo_result mount_detach(indigo_device *device) {
 		mount_connect_callback(device);
 	}
 	indigo_release_property(ALIGNMENT_MODE_PROPERTY);
+	indigo_release_property(FORCE_FLIP_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);

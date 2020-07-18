@@ -29,14 +29,13 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_guider_driver.h>
-#include <indigo/indigo_focuser_driver.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MOUNT_RAINBOW_NAME              "Mount PCM Eight"
-#define MOUNT_RAINBOW_GUIDER_NAME       "Mount PCM Eight (guider)"
+#define MOUNT_PCM8_NAME              "Mount PCM Eight"
+#define MOUNT_PCM8_GUIDER_NAME       "Mount PCM Eight (guider)"
 
 
 /** Create mount PCM Eight device instance

@@ -1031,6 +1031,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		header[t] = ' ';
+		t = sprintf(header += 80, "ROWORDER= 'TOP-DOWN'           / Image row order");
+		header[t] = ' ';
 		if (keywords) {
 			while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
 				switch (keywords->type) {
