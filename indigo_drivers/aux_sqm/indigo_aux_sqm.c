@@ -115,7 +115,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
-	char buffer[60] = {0}, *pnt;
+	char buffer[120] = {0}, *pnt;
 	memset(buffer, 0, sizeof(buffer));
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	indigo_printf(PRIVATE_DATA->handle, "rx");
@@ -143,7 +143,7 @@ static void aux_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
 		if (PRIVATE_DATA->handle > 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-			char buffer[60] = {0};
+			char buffer[120] = {0};
 			indigo_printf(PRIVATE_DATA->handle, "ix");
 			indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 			if (*buffer == 'i') {
