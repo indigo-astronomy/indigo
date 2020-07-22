@@ -49,7 +49,7 @@ static indigo_result test_define_property(indigo_client *client, indigo_device *
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			connected = true;
-			indigo_log("connected...");
+			indigo_log("already connected...");
 			static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
 			static double values[] = { 3.0 };
 			indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);

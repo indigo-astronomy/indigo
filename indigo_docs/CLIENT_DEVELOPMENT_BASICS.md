@@ -315,9 +315,9 @@ static indigo_result my_update_property(indigo_client *client,
 }
 ```
 
-If the device is already connected, the second connection attempt will be ignored and device property enumeration, and CONNECTION property update will not happen. The client should check the state of connection property before trying to connect. If the device is already connected and the client logic relays on property enumeration on device connect client can trigger property enumeration by calling *ndigo_enumerate_properties()* like this:
+If the device is already connected, the second connection attempt will be ignored and device property enumeration, and CONNECTION property update will not happen. The client should check the state of connection property before trying to connect. If the device is already connected and the client logic relays on property enumeration on device connect client can trigger property enumeration by calling *indigo_enumerate_properties()* like this:
 ```C
-ndigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
+indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 ```
 However, it is advised to design the client to use the cached properties defined at client attach rather than requesting proeprty enumeration.
 
@@ -369,7 +369,7 @@ static indigo_result test_define_property(indigo_client *client,
 		/* if already connected start exposure */
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			connected = true;
-			indigo_log("connected...");
+			indigo_log("already connected...");
 			static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
 			static double values[] = { 3.0 };
 			indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
