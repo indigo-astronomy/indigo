@@ -146,7 +146,8 @@ static void aux_connection_handler(indigo_device *device) {
 			char buffer[120] = {0};
 			indigo_printf(PRIVATE_DATA->handle, "ix");
 			indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
-			if (*buffer == 'i') {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unit info: %s", buffer);
+			if (buffer[0] == 'i' && buffer[1] == ',') {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unit info: %s", buffer);
 			} else {
 				close(PRIVATE_DATA->handle);
