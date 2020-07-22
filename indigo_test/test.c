@@ -47,8 +47,16 @@ static indigo_result test_define_property(indigo_client *client, indigo_device *
 	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		indigo_device_connect(client, CCD_SIMULATOR);
-		return INDIGO_OK;
+		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
+			connected = true;
+			indigo_log("connected...");
+			static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+			static double values[] = { 3.0 };
+			indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+		} else {
+			indigo_device_connect(client, CCD_SIMULATOR);
+			return INDIGO_OK;
+		}
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		if (device->version >= INDIGO_VERSION_2_0)
@@ -113,7 +121,7 @@ static indigo_result test_update_property(indigo_client *client, indigo_device *
 }
 
 static indigo_result test_detach(indigo_client *client) {
-	indigo_log("detached from INDI bus...");
+	indigo_log("detached from INDIGO bus...");
 	return INDIGO_OK;
 }
 

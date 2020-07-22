@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 24.01.2020 (draft)
+Revision: 22.07.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -295,7 +295,7 @@ indigo_device_connect(client, "CCD Imager Simulator @ indigosky");
 indigo_device_disconnect(client, "CCD Imager Simulator @ indigosky");
 ```
 
-Please remember calling these functions only requests connection or disconnection. The client has to wait for 'CONNECTION' property update and to check the state and item values as shown below:
+Please remember calling these functions only requests connection or disconnection. If the device is not connected the client has to wait for 'CONNECTION' property update and to check the state and item values as shown below:
 
 ```C
 static indigo_result my_update_property(indigo_client *client,
@@ -314,6 +314,12 @@ static indigo_result my_update_property(indigo_client *client,
 	...
 }
 ```
+
+If the device is already connected, the second connection attempt will be ignored and device property enumeration, and CONNECTION property update will not happen. The client should check the state of connection property before trying to connect. If the device is already connected and the client logic relays on property enumeration on device connect client can trigger property enumeration by calling *ndigo_enumerate_properties()* like this:
+```C
+ndigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
+```
+However, it is advised to design the client to use the cached properties defined at client attach rather than requesting proeprty enumeration.
 
 ## Several Notes About the Drivers
 
@@ -360,8 +366,17 @@ static indigo_result test_define_property(indigo_client *client,
 	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		indigo_device_connect(client, CCD_SIMULATOR);
-		return INDIGO_OK;
+		/* if already connected start exposure */
+		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
+			connected = true;
+			indigo_log("connected...");
+			static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+			static double values[] = { 3.0 };
+			indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+		} else {
+			indigo_device_connect(client, CCD_SIMULATOR);
+			return INDIGO_OK;
+		}
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		if (device->version >= INDIGO_VERSION_2_0)
