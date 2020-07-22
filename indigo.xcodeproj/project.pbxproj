@@ -1412,6 +1412,7 @@
 		598C583E21A890B5001CA8C0 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		598C584021A9A3C9001CA8C0 /* ASICamera2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASICamera2.h; sourceTree = "<group>"; };
 		598C584221A9A886001CA8C0 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
 		5992352722A826E3006E98B4 /* gpusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = gpusb.rules; sourceTree = "<group>"; };
 		5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_fli_main.c; sourceTree = "<group>"; };
@@ -5753,6 +5754,7 @@
 				5996615222CF3E0F00330652 /* indigo_aux_ppb_main.c */,
 				5996615722CF3E0F00330652 /* 99-indigo_aux_ppb.rules */,
 				59CB37BB22D0C3AE009CF506 /* Pocket_Powerbox_Serial_Command_Table.pdf */,
+				599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */,
 				5996615522CF3E0F00330652 /* ppb_simulator */,
 			);
 			path = aux_ppb;
