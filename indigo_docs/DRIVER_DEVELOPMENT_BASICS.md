@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 29.04.2020 (draft)
+Revision: 23.07.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -64,7 +64,7 @@ Standard property names are defined in [indigo_names.h](https://github.com/indig
 
 Properties can be in one of the four states:
 - *INDIGO_IDLE_STATE* - the values may not be initialized
-- *INDIGO_OK_STATE* - the property item values are valid and it is save to read or set them
+- *INDIGO_OK_STATE* - the property item values are valid and it is safe to read or set them
 - *INDIGO_BUSY_STATE* - the values are not reliable, some operation is in progress (like exposure is in progress)
 - *INDIGO_ALERT_STATE* - the values are not reliable, some operation has failed or the values set are not valid
 
