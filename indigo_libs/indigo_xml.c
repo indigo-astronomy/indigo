@@ -40,8 +40,8 @@
 #endif
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
-#include <basetsd.h> 
-#define ssize_t SSIZE_T 
+#include <basetsd.h>
+#define ssize_t SSIZE_T
 #define close indigo_close
 #pragma warning(disable:4996)
 #endif
@@ -186,7 +186,7 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 			record = malloc(sizeof(indigo_enable_blob_mode_record));
 			strncpy(record->device, property->device, INDIGO_NAME_SIZE);
 			strncpy(record->name, property->name, INDIGO_NAME_SIZE);
-			if (!strcmp(value, "URL"))
+			if (!strcmp(value, "URL") && indigo_use_blob_urls)
 				record->mode = INDIGO_ENABLE_BLOB_URL;
 			else
 				record->mode = INDIGO_ENABLE_BLOB_ALSO;
