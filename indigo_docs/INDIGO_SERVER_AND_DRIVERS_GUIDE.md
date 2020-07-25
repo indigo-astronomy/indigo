@@ -33,7 +33,7 @@ rumen@sirius:~ $
 
 The **indigo_server** is highly configurable trough command line options at start and also when already started:
 
-### **--** | **--do-not-fork**
+### -- | --do-not-fork
 By default **indigo_server** will start a child process called **indigo_worker**, and the drivers will be run in the boundaries of this process. This is done for a reason, if a single driver crashes this will crash **indigo_worker** process indigo server will detect it and start **indigo_worker** again. This switch prevents this behavior and if a driver fails the whole server will crash without an attempt to recover. This is is used for faulty driver debugging.
 
 ```
@@ -109,26 +109,26 @@ Clients can also be developed to be clients and servers at the same time.
 ### Dynamically Loaded Drivers
 These drivers are loaded by default by the INDIGO server. They are loaded and run in **indigo_worker** process of **indigo_server**.
 - PROS:
- * Extremely fast driver-client and driver-server data transfer.
- * Drivers can be dynamically loaded and unloaded at runtime.
+	* Extremely fast driver-client and driver-server data transfer.
+	* Drivers can be dynamically loaded and unloaded at runtime.
 - CONS:
- * A faulty driver can bring down the service or the application, however **indigo_server** can partly recover from this, as mentioned in the previous section.
+	* A faulty driver can bring down the service or the application, however **indigo_server** can partly recover from this, as mentioned in the previous section.
 
 ### Static Drivers
 These drivers are intended for use in the clients, **indigo_server** can not use them. They can not be dynamically loaded and unloaded. But can be enabled and disabled.
- - PROS:
-  * Extremely fast driver-client and driver-server data transfer.
-  * As drivers are linked in a monolithic client executable, there is no need to distribute many drivers as a separate files.
- - CONS:
-  * Drivers can not be updated without application re linking.
-  * A faulty driver can bring down the application.
+- PROS:
+	* Extremely fast driver-client and driver-server data transfer.
+	* As drivers are linked in a monolithic client executable, there is no need to distribute many drivers as a separate files.
+- CONS:
+	* Drivers can not be updated without application re linking.
+	* A faulty driver can bring down the application.
 
 ### Executable Drivers
 These are the INDI style drivers, They are run in a separate sub process of **indigo_worker** process. In clients they also run in a separate sub-process. They can be native INDIGO or drivers for INDI.
- - PROS:
-  * A faulty driver will not bring down the service or the application. Only the attached to the driver devices will stop working. **indigo_server** can partly recover by reloading the driver.
-  * This is how INDIGO can run INDI drivers.
- - CONS:
-  * driver-client and driver-server data transfer is in orders of magnitude slower.
-  * They require more resources to run.
-  * No dynamic loading and unloading in **indigo_server**. These drivers can be loaded only at server startup.
+- PROS:
+	* A faulty driver will not bring down the service or the application. Only the attached to the driver devices will stop working. **indigo_server** can partly recover by reloading the driver.
+	* This is how INDIGO can run INDI drivers.
+- CONS:
+	* driver-client and driver-server data transfer is in orders of magnitude slower.
+	* They require more resources to run.
+	* No dynamic loading and unloading in **indigo_server**. These drivers can be loaded only at server startup.
