@@ -8,7 +8,7 @@ e-mail: *rumen@skyarchive.org*
 ## The INDIGO server: **indigo_server**
 This is the help message of the indigo_server:
 ```
-umen@sirius:~ $ indigo_server -h
+rumen@sirius:~ $ indigo_server -h
 INDIGO server v.2.0-123 built on Jul 25 2020 01:06:15.
 usage: indigo_server [-h | --help]
        indigo_server [options] indigo_driver_name indigo_driver_name ...
@@ -66,7 +66,7 @@ Do not announce the service with Bonjour. The client should enter host and port 
 INDIGO provides 2 ways of BLOB (image) transfer. One is the legacy INDI style where image is base64 encoded and sent to the client in plain text and the client decodes the data on its end. This makes the data ~30% larger and the encoding and decoding is CPU intensive. The second INDIGO style is to use binary image transfer over http protocol avoiding encoding, decoding and data size overhead. By default The client can request any type of BLOB transfer. With this switch you can force the server to accept only legacy INDI style blob transfer.  
 
 ### -w- | --disable-web-apps
-This switch will disable INDIGO web applications like imager, telescope control etc.
+This switch will disable INDIGO web applications like Imager, Telescope control etc.
 
 ### -c- | --disable-control-panel
 This switch will disable the web based control panel.
@@ -75,20 +75,24 @@ This switch will disable the web based control panel.
 Show some information messages in the log
 
 ### -vv | --enable-debug
-Show more verbose messages useful for debugging and troubleshooting.
+Show more verbose messages, useful for debugging and troubleshooting.
 
 ### -vvv| --enable-trace
-Show even more messages like low level driver<->device communication and INDIGO protocol messages.
+Show a lot of messages, like low level driver-device communication and full INDIGO protocol chatter.
 
 ### -r  | --remote-server
-INDIGO server can connect to other servers and attach their INDIGO buses to its own bus. With this switch host names and ports of the remote servers to be attached can be provided. This switch can be used several times, once per remote INDIGO server.
+INDIGO server can connect to other servers and attach their buses to its own bus. This switch is used to provide host names and ports of the remote servers to be attached. This switch can be used multiple times, once per server.
 
 ### -i  | --indi-driver
-Run drivers in separate processes. If a driver name is preceded by this switch it will be run in a separate process. This is the way to run INDI drivers in INDIGO. The drawback of this approach is that the driver communication will be in orders of magnitude slower than running the driver in the **indigo_worker** process and those driver can not be dynamically loaded and unloaded.
+Run drivers in separate processes. If a driver name is preceded by this switch it will be run in a separate process. This is the way to run INDI drivers in INDIGO. The drawback of this approach is that the driver communication will be in orders of magnitude slower than running the driver in the **indigo_worker** process and those driver can not be dynamically loaded and unloaded. this switch will load the executable version of the driver.
+
+### indigo_driver_name
+This is the recommended way to load drivers at startup. Loading a driver without **-i** switch will load the dynamically loadable version of the driver. It will be run in **indigo_worker** process and can be unloaded and loaded any time. Dynamic drivers provide huge performance benefit over executable drivers.
+
 ```
-$ indigo_server indigo_ccd_asi -i indigo_ccd_simulator -i indigo_mount_simulator
+rumen@sirius:~ $ indigo_server indigo_ccd_asi -i indigo_ccd_simulator -i indigo_mount_simulator
 ```
-In this case **indigo_ccd_asi** driver will be loaded in the **indigo_worker** process, but **indigo_ccd_simulator** and **indigo_mount_simulator** will have their own processes forked from **indigo_worker**.
+In this case **indigo_ccd_asi** driver will be loaded in the **indigo_worker** process, but **indigo_ccd_simulator** and **indigo_mount_simulator** will have their own processes forked from **indigo_worker** as shown:
 ```
 indigo_server───indigo_worker─┬─indigo_ccd_simulator
                               ├─indigo_mount_simulator
@@ -102,11 +106,14 @@ indigo_server───indigo_worker─┬─indigo_ccd_simulator
 ```
 
 ## INDIGO Drivers
-There are three versions of each INDIGO driver, each coming with its benefits and drawbacks. The INDIGO drivers can be used by both **indigo_server** and clients. INDIGO does not require server to operate. Clients can load drivers and use them without the need of a server. In this case only locally attached devices can be accessed (much like in ASCOM). An example how to use INDIGO executable driver without a server can be found in [client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_test/client.c).
+The INDIGO drivers can be used by both **indigo_server** and clients. INDIGO does not require server to operate. Clients can load drivers and use them without the need of a server. In this case only locally attached devices can be accessed (much like ASCOM). An example how to use INDIGO executable driver without a server can be found in [client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_test/client.c).
 
 Clients can also be developed to be clients and servers at the same time.
 
-### Dynamically Loaded Drivers
+### Driver Types
+There are three versions of each INDIGO driver, compiled from the sane source code, each coming with its benefits and drawbacks.
+
+#### Dynamically Loaded Drivers
 These drivers are loaded by default by the INDIGO server. They are loaded and run in **indigo_worker** process of **indigo_server**.
 - PROS:
 	* Extremely fast driver-client and driver-server data transfer.
@@ -114,21 +121,58 @@ These drivers are loaded by default by the INDIGO server. They are loaded and ru
 - CONS:
 	* A faulty driver can bring down the service or the application, however **indigo_server** can partly recover from this, as mentioned in the previous section.
 
-### Static Drivers
+The dynamic drivers use **.so** file extension on Linux and **.dylib** on MacOSX.
+
+#### Static Drivers
 These drivers are intended for use in the clients, **indigo_server** can not use them. They can not be dynamically loaded and unloaded. But can be enabled and disabled.
 - PROS:
 	* Extremely fast driver-client and driver-server data transfer.
-	* As drivers are linked in a monolithic client executable, there is no need to distribute many drivers as a separate files.
+	* As drivers are linked together with the application in a monolithic executable, there is no need to distribute the drivers as separate files.
 - CONS:
 	* Drivers can not be updated without application re linking.
 	* A faulty driver can bring down the application.
 
-### Executable Drivers
+These drivers have **.a** file extension.
+
+#### Executable Drivers
 These are the INDI style drivers, They are run in a separate sub process of **indigo_worker** process. In clients they also run in a separate sub-process. They can be native INDIGO or drivers for INDI.
 - PROS:
 	* A faulty driver will not bring down the service or the application. Only the attached to the driver devices will stop working. **indigo_server** can partly recover by reloading the driver.
-	* This is how INDIGO can run INDI drivers.
+	* This is how INDIGO runs INDI drivers.
 - CONS:
-	* driver-client and driver-server data transfer is in orders of magnitude slower.
+	* Driver-client and driver-server data transfer is in orders of magnitude slower.
 	* They require more resources to run.
 	* No dynamic loading and unloading in **indigo_server**. These drivers can be loaded only at server startup.
+
+These drivers are standard ELF executables and do not have file extension.
+
+### Several Notes on Drivers
+
+#### Optimizing Performance
+Static drivers and dynamic drivers provide the best performance. But for ultimate performance clients should directly load drivers
+and communicate this way bypassing the network layer. However this will only work with locally attached devices.
+
+For remote devices the best approach is to use dynamic drivers loaded by **indigo_server** accessed over a gigabit network.
+
+#### Optimizing Robustness
+There is a huge variety of different astronomical hardware and the developers have no access to all of it. This means that sometimes drivers are developed without access to the physical device and is not well tested, just reported to work. Sometimes the software development kit used to create the driver is unstable. There are many factors that can affect driver stability.
+That is why the driver README there is a "Status" section and a list of devices used to test the driver.
+
+In case there is instability in a driver, before it is fixed, it is advised to use the executable version of the driver, this if the driver crashes only the devices handled by this driver will be affected. Everything else will continue to work without interruption.
+
+It is a good idea to report the instability or crash to the developers providing a trace log from the server.
+
+#### Hotplug vs Non Hotplug drivers
+
+Some devises support hotplug. If so, the chances are that the INDIGO driver will also support hotplug for this device.
+
+Usually USB devices are hotplug devices, but not all of them.
+Sometimes only the physical wiring is USB, but the device itself is a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to this serial port. In this case most likely the device can not be automatically recognized by the driver and a proper serial port name should be provided in order to connect the device to the INDIGO bus. Sometimes when the serial port manifests itself as a particular device the driver can make a good guess.
+
+The driver README can provide information if it supports hotplug or not.
+
+#### USB to Serial Port Enumeration
+On Linux most of the USB to serial devices will be named '/dev/ttyUSB0', '/dev/ttyUSB1' etc. or  '/dev/ttyACM0', '/dev/ttyACM1' etc. each device will always be ttyUSB or ttyACM but there is no way to know the number. Therefore it is advised to connect and power up (if they require external power) all USB to serial devices before booting up the Linux system (for example the Raspberry Pi). Then identify devices by connecting them to the INDIGO bus one by one. Once identified save each driver configuration to "Profile 0".
+Next time make sure all USB to serial devices are connected to the same USB ports and powered up before powering up the Linux machine.
+
+The same applys for MacOSX. The only difference is the device name on MacOSX USB to serial devices are usually called /dev/cu.serial. 
