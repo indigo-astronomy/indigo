@@ -160,7 +160,7 @@ In case there is instability in a particular driver, before it is fixed, it is a
 
 It is a good idea to report the instability or crash to the developers providing a trace log from the server.
 
-#### Hotplug vs Non Hotplug drivers
+#### Hotplug vs Non Hotplug Drivers
 
 Some devises support hotplug. If so, the chances are that the INDIGO driver will also support hotplug for this device.
 
