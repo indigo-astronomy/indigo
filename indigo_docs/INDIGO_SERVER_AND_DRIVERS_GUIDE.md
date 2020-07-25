@@ -149,16 +149,14 @@ These drivers are standard ELF executables and do not have file extension.
 ### Several Notes on Drivers
 
 #### Optimizing Performance
-Static drivers and dynamic drivers provide the best performance. But for ultimate performance clients should directly load drivers
-and communicate this way bypassing the network layer. However this will only work with locally attached devices.
+Static drivers and dynamic drivers provide the best performance. But for ultimate performance client software should directly load drivers, this way the network layer is bypassed and shared memory is used to communicate with the driver. However this will only work with locally attached devices.
 
-For remote devices the best approach is to use dynamic drivers loaded by **indigo_server** accessed over a gigabit network.
+For remote devices, the best approach is to use dynamic drivers, loaded by **indigo_server**, accessed over a gigabit network.
 
 #### Optimizing Robustness
-There is a huge variety of different astronomical hardware and the developers have no access to all of it. This means that sometimes drivers are developed without access to the physical device and is not well tested, just reported to work. Sometimes the software development kit used to create the driver is unstable. There are many factors that can affect driver stability.
-That is why the driver README there is a "Status" section and a list of devices used to test the driver.
+There is a huge variety of different astronomical hardware and the developers have no access to all of it. This means that sometimes drivers are developed without access to the physical device and is not well tested. They are just reported to work by the users. Sometimes the software development kit used to create the driver is unstable. There are many factors that can affect driver stability. This is why, in the driver's README, there is a "Status" section and a list of devices used to test the driver.
 
-In case there is instability in a driver, before it is fixed, it is advised to use the executable version of the driver, this if the driver crashes only the devices handled by this driver will be affected. Everything else will continue to work without interruption.
+In case there is instability in a particular driver, before it is fixed, it is advised to use the executable version of the driver, thus if the driver crashes only the devices handled by this driver will be affected. Everything else will continue to work without interruption.
 
 It is a good idea to report the instability or crash to the developers providing a trace log from the server.
 
@@ -167,12 +165,12 @@ It is a good idea to report the instability or crash to the developers providing
 Some devises support hotplug. If so, the chances are that the INDIGO driver will also support hotplug for this device.
 
 Usually USB devices are hotplug devices, but not all of them.
-Sometimes only the physical wiring is USB, but the device itself is a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to this serial port. In this case most likely the device can not be automatically recognized by the driver and a proper serial port name should be provided in order to connect the device to the INDIGO bus. Sometimes when the serial port manifests itself as a particular device the driver can make a good guess.
+Sometimes only the physical wiring is USB, but the device itself is a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to these serial ports. In this case most likely the devices can not be automatically recognized by the driver and a proper serial port name should be provided by the user in order to connect the driver to the device. Sometimes if the serial port manifests itself as a particular device the driver can make a good guess.
 
-The driver README can provide information if it supports hotplug or not.
+The driver README can provide information if hotplug is supported or not.
 
 #### USB to Serial Port Enumeration
-On Linux most of the USB to serial devices will be named '/dev/ttyUSB0', '/dev/ttyUSB1' etc. or  '/dev/ttyACM0', '/dev/ttyACM1' etc. each device will always be ttyUSB or ttyACM but there is no way to know the number. Therefore it is advised to connect and power up (if they require external power) all USB to serial devices before booting up the Linux system (for example the Raspberry Pi). Then identify devices by connecting them to the INDIGO bus one by one. Once identified save each driver configuration to "Profile 0".
-Next time make sure all USB to serial devices are connected to the same USB ports and powered up before powering up the Linux machine.
+On Linux most of the USB to serial devices will be named '/dev/ttyUSB0', '/dev/ttyUSB1' etc. or  '/dev/ttyACM0', '/dev/ttyACM1' etc. each device will always be ttyUSB or ttyACM but there is no way to know the number. Therefore it is advised to connect and power up (if external power is required) all USB serial devices before booting up the Linux system (for example the Raspberry Pi). Then identify devices by connecting the INDIGO drivers to them one by one. Once identified, save each driver configuration to "Profile 0".
+Next time you have to make sure all USB serial devices are connected to the same USB ports and powered up before booting the Linux machine.
 
-The same applys for MacOSX. The only difference is the device name on MacOSX USB to serial devices are usually called /dev/cu.serial. 
+The same applies for MacOSX. The only difference is the device name on MacOSX of the USB to serial devices are usually called /dev/cu.usbserial.
