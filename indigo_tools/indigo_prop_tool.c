@@ -354,6 +354,7 @@ void print_property_list(indigo_property *property, const char *message) {
 			} else if ((!save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
 				printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
 			} else {
+				// printf("save_blobs = %d, indigo_use_blob_urls = %d, item->blob.size = %d, item->blob.value = %p, property->state = %d\n", save_blobs, indigo_use_blob_urls, item->blob.size, item->blob.value, property->state);
 				printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
 			}
 			break;
@@ -435,6 +436,7 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 				} else if ((!save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
 					sprintf(value_string[items_found], "<BLOB NOT SHOWN>");
 				} else {
+					// printf("2 save_blobs = %d, indigo_use_blob_urls = %d, item->blob.size = %d, item->blob.value = %p, property->state = %d\n", save_blobs, indigo_use_blob_urls, item->blob.size, item->blob.value, property->state);
 					sprintf(value_string[items_found], "<NO BLOB DATA>");
 				}
 				break;
