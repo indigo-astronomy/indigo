@@ -18,6 +18,7 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 2.0.1 Added support for Pocket Powerbox Advanced
 
 /** INDIGO PegasusAstro PPB aux driver main
  \file indigo_aux_ppb_main.c
