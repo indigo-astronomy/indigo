@@ -1190,6 +1190,11 @@ static void server_main() {
 }
 
 static void signal_handler(int signo) {
+	if (signo == SIGCHLD) {
+		int status;
+		while ((waitpid(-1, &status, WNOHANG)) > 0);
+		return;
+	}
 	if (server_pid == 0) {
 		/* SIGINT is delivered twise with CTRL-C
 		   this leads to freeze during shutdown so
@@ -1255,6 +1260,7 @@ int main(int argc, const char * argv[]) {
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	signal(SIGHUP, signal_handler);
+	signal(SIGCHLD, signal_handler);
 	if (do_fork) {
 		while(keep_server_running) {
 			server_pid = fork();
