@@ -32,6 +32,8 @@
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
+	/* Executable drivers use pipes - no HTTP */
+	indigo_use_blob_urls = false;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
 	indigo_ccd_andor(INDIGO_DRIVER_INIT, NULL);
