@@ -24,6 +24,7 @@ LDFLAGS += -lstdc++ -lcurl
 INSTALL_SDK = install_sdk
 ifeq ($(OS_DETECTED),Linux)
 SDK_INCLUDE = -I bin_externals -I bin_externals/boost_regex
+SDK_LIB = bin_externals/libapogee/lib/Linux/$(ARCH_DETECTED)/libapogee.a bin_externals/boost_regex/lib/Linux/$(ARCH_DETECTED)/libboost_regex-gcc-1_53.a
 else
 SDK_INCLUDE = -I bin_externals
 endif
