@@ -1,4 +1,4 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
+// Copyright (c) 2020 CloudMakers, s. r. o. & Rumen G.Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,22 +18,24 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+//      & Rumen G.Bogdanovski <rumen@skyarchive.org>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
-#include <pthread.h>
 #include <signal.h>
 #include <fcntl.h>
 
 #include <indigo/indigo_bus.h>
-#include "indigo_client_xml.h"
-#include "ccd_simulator/indigo_ccd_simulator.h"
+#include <indigo/indigo_client.h>
+#include <indigo/indigo_client_xml.h>
 
 static int device_pid;
 static bool connected = false;
+
+#define CCD_SIMULATOR "CCD Imager Simulator @ indigo_ccd_simulator"
 
 static indigo_result client_attach(indigo_client *client) {
 	indigo_log("attached to INDI bus...");
@@ -42,7 +44,7 @@ static indigo_result client_attach(indigo_client *client) {
 }
 
 static indigo_result client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		indigo_device_connect(client, property->device);
@@ -52,7 +54,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 }
 
 static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
@@ -119,10 +121,11 @@ int main(int argc, const char * argv[]) {
 		dup2(output[0], 0);
 		close(1);
 		dup2(input[1], 1);
-		execl("./indigo_ccd_simulator", "indigo_ccd_simulator", NULL);
+		execl("../build/drivers/indigo_ccd_simulator", "indigo_ccd_simulator", NULL);
 	} else {
 		close(input[1]);
 		close(output[0]);
+		indigo_set_log_level(INDIGO_LOG_INFO);
 		indigo_start();
 		indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", input[0], output[1]);
 		indigo_attach_device(protocol_adapter);
@@ -132,4 +135,3 @@ int main(int argc, const char * argv[]) {
 	}
 	return 0;
 }
-
