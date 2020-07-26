@@ -88,6 +88,11 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 		return INDIGO_OK;
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		/* URL blob transfer is available only in client - server setup.
+		   This will never be called in case of a client loading a driver. */
+		if (*property->items[0].blob.url && indigo_populate_http_blob_item(&property->items[0]))
+			indigo_log("image URL received (%s, %d bytes)...", property->items[0].blob.url, property->items[0].blob.size);
+
 		if (property->items[0].blob.value) {
 			char name[32];
 			sprintf(name, "img_%02d.fits", count);
@@ -95,6 +100,11 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
 			fclose(f);
 			indigo_log("image saved to %s...", name);
+			/* In case we have URL BLOB transfer we need to release the blob ourselves */
+			if (*property->items[0].blob.url) {
+				free(property->items[0].blob.value);
+				property->items[0].blob.value = NULL;
+			}
 		}
 	}
 	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
