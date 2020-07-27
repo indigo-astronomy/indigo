@@ -140,7 +140,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "DSLR outlet", true); // In PPBA this can be 0 or 1, but can ALSO be set to variable power 3, 5, 8, 9 or 12 [Volts].
 
 		// PPBA ONLY
-		AUX_POWER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_POWER_OUTLET_STATE_PROPERTY_NAME, AUX_GROUP, "Power outlets state", INDIGO_OK_STATE, 4);
+		AUX_POWER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_POWER_OUTLET_STATE_PROPERTY_NAME, AUX_GROUP, "Power outlets state", INDIGO_OK_STATE, 1);
 		if (AUX_POWER_OUTLET_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_light_item(AUX_POWER_OUTLET_STATE_1_ITEM, AUX_POWER_OUTLET_STATE_1_ITEM_NAME, "Power warning state", INDIGO_OK_STATE);
