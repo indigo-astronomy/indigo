@@ -7,9 +7,9 @@ e-mail: *rumen@skyarchive.org*
 
 ## INDIGO Concepts
 
-INDIGO is a platform for the communication between software entities over a software **bus**.
-These entities are typically either in a **device** or a **client** role, but there are special
-entities often referred as **agents** which are in both **device** and **client** role.
+INDIGO is a platform for the communication between different software entities over a software **bus**.
+These entities are typically either in a **device** or in a **client** role, but there are special
+entities often referred as **agents** which act as both **devices** and **clients**.
 
 INDIGO is asynchronous in its nature, so to be able to communicate over the **bus** a set of
 properties are defined for each device. The communication between different entities attached to the
@@ -17,11 +17,11 @@ properties are defined for each device. The communication between different enti
 hand contain one or more **items** of a specified type. One can think of the properties as both set
 of variables and routines. Set of variables as they may store values like the *width* and *height*
 of the CCD frame or routines like *start 1 second exposure*. Messages sent over the INDIGO **bus**
-are abstraction of INDI messages.
+are abstractions of the INDI messages.
 
 The messages sent from the **device** to a **client** may contain one of the following events:
 - **definition** of a property - lets the client know that the property can be used, the message contains
-the property definition: name, type, list of items etc...
+the property definition: name, type, list of items, etc...
 - **update** of property item values - lets the client know that certain property items have changed their values.
 - **deletion** of a property - lets the client know that the property is removed and can not be used any more.
 
@@ -30,10 +30,10 @@ The messages sent from a **client** to the **device** can be:
 properties associated with the device.
 - **request for change** of property item values - client can request change of the values of one or several property items.
 
-There are three classes of properties: **mandatory**, **optional**, and **device specific**. Each device class has a set
-of mandatory properties that should always be defined, a set of optional properties that may or may not be defined and a set
-of device specific properties which may not exist if there is no need. The list of the well known properties is available
+There are three classes of properties: **mandatory**, **optional**, and **device specific**. Each device class has a set of **mandatory** properties, that must always be defined and a set of **optional** properties, that may or may not be defined, depending on if this device class feature is supported or not. The list of the well known properties is available
 in [PROPERTIES.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROPERTIES.md).
+
+Each device may have a set of **device specific** properties which exist only if there is a need to control some device specific features. In general clients should not care about the **device specific** properties.
 
 Different instances of the INDIGO **bus** can be connected in a hierarchical structure, but from a **driver** or a **client**
 point of view it is fully transparent.
@@ -51,7 +51,7 @@ Properties can be in one of the four states:
 - **BUSY** - the values are not reliable, some operation is in progress (like exposure is in progress)
 - **ALERT** - the values are not reliable, some operation has failed or the values set are not valid
 
-Each property has predefined type which is one of the following:
+Each property has a predefined type which is one of the following:
 - **TEXT_VECTOR** - strings of limited width
 - **NUMBER_VECTOR** - floating point numbers with defined min and max values and increment
 - **SWITCH_VECTOR** - logical values representing “on” and “off” state, there are several behavior rules for this type: *ONE_OF_MANY*
@@ -92,7 +92,7 @@ options:
        -t  | --time-to-wait seconds        (default: 2)
 ```
 
-The command are self explanatory
+The commands are self-explanatory:
 - **set** or no command - set listed property items
 - **get** - get listed item values
 - **get_state** - get the property state
@@ -117,7 +117,7 @@ indigo@indigosky:~ $ indigo_prop_tool get "CCD Imager Simulator.INFO.DEVICE_VERS
 CCD Imager Simulator
 ```
 
-The same applies for **get_state** and **list_state** they will return the requested property state:
+The same applies for **get_state** and **list_state**. They will return the requested property state:
 ```
 indigo@indigosky:~ $ indigo_prop_tool get_state "CCD Imager Simulator.INFO"
 OK
@@ -140,7 +140,7 @@ Server.DRIVERS.indigo_ccd_altair = OFF
 
 ### Getting Extended Property Information
 
-More information about properties, like types, permissions etc., can be obtained
+More information about properties, like types, permissions, etc., can be obtained
 using **-e** switch with **list** or **list_state** command:
 ```
 ndigo@indigosky:~ $ indigo_prop_tool list -e "CCD Imager Simulator.CCD_EXPOSURE"
@@ -164,8 +164,7 @@ CCD Imager Simulator.CCD_EXPOSURE = OK
 
 ### Setting Item Values
 
-Specific item value can be set only on **RW** and **WO** properties which are not of type **LIGHT_VECTOR**. This is achieved with
-**set** command.
+The values of the items can be set by the client only on **RW** and **WO** properties, which are not a **LIGHT_VECTOR** or a **BLOB_VECTOR**. This is achieved by **set** command.
 
 - Setting **SWITCH_VECTOR**:
 ```
@@ -174,7 +173,7 @@ CCD Imager Simulator.CONNECTION.CONNECTED = ON
 CCD Imager Simulator.CONNECTION.DISCONNECTED = OFF
 ```
 
-- Setting **TEXT_VECTOR** (please note quotes have to be escaped with \ as shown):
+- Setting **TEXT_VECTOR** (please note quotes have to be escaped with '\' as shown):
 ```
 indigo@indigosky:~ $ indigo_prop_tool set "CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_1=\"MYKEY = 5\""
 CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_1 = "MYKEY   = 5"
@@ -203,7 +202,7 @@ If you specify more than one item, like in the example above, you should separat
 
 ### Working with remote servers
 
-By default **indigo_prop_tool** works with localhost at default INDIGO port 7624. in case you need to manipulate proeprties on remote server or on a server running on a different port **-r** and **-p** switches can be used.
+By default **indigo_prop_tool** works with localhost and INDIGO's default port 7624. In case you need to set properties on remote servers or on servers running on a different port, **-r** and **-p** switches should be used.
 ```
 ndigo@indigosky:~ $ indigo_prop_tool list -r sirius.local:7624 "Server"
 Server.INFO.VERSION = "2.0-123"
@@ -213,10 +212,11 @@ Server.INFO.SERVICE = "sirius"
 
 ## A Working Example 1 - Loading and Unloading a Driver in indigo_server
 
-There are two ways to achieve this easiest way is to set it as **ON** or **OFF** in the **Server.DRIVERS** property,
-and the second way is to provide driver name to **Server.LOAD** or **Server.UNLOAD** respectively.
+There are two ways to achieve this goal. The easiest way is to set the driver's switch to **ON** or **OFF** in the **Server.DRIVERS** property, and the second way is to provide driver's name to **Server.LOAD** or **Server.UNLOAD** respectively.
 
-First let us list the drivers that the server sees:
+Let us assume we need **indigo_ccd_simulator** loaded and **indigo_wheel_asi** unloaded.
+
+First we need to list the drivers that the server sees:
 ```
 indigo@indigosky:~ $ indigo_prop_tool list Server.DRIVERS
 Server.DRIVERS.indigo_aux_cloudwatcher = OFF
@@ -234,8 +234,8 @@ Server.DRIVERS.indigo_guider_asi = OFF
 indigo@indigosky:~ $
 ```
 
-We saw the driver that we need, it is **indigo_ccd_simulator** and it is not loaded, also we see that
-**indigo_wheel_asi** is loaded but we do not need it. Let us load **indigo_ccd_simulator** and unload **indigo_wheel_asi**:
+We see that **indigo_ccd_simulator** is not loaded and **indigo_wheel_asi** is loaded.
+This means we need to load **indigo_ccd_simulator** and unload **indigo_wheel_asi**:
 ```
 indigo@indigosky:~ $ indigo_prop_tool set "Server.DRIVERS.indigo_ccd_simulator=ON;indigo_wheel_asi=OFF"
 ...
@@ -247,8 +247,8 @@ indigo@indigosky:~ $
 ```
 Now we see that the **indigo_ccd_simulator** driver is loaded and **indigo_wheel_asi** is not.
 
-Maybe it is a good idea to have the mount simulator also loaded. Let us do it the other way with using **Server.LOAD** property.
-If for some reason the driver is not listed by the server, like it is not in the standard path, this is the only way to load it:
+Maybe it is a good idea to have the mount simulator also loaded. Let us do this the other way, by using **Server.LOAD** property.
+If for some reason the driver is not listed by the server in **Server.DRIVERS**, e. g. because it is not in the standard path, this is the only way to load it:
 ```
 indigo@indigosky:~ $ indigo_prop_tool set "Server.LOAD.DRIVER=indigo_mount_simulator"
 ...
@@ -262,8 +262,7 @@ Now we have **indigo_mount_simulator** loaded.
 
 ## A Working Example 2 - Taking Exposure and Saving The Image.
 
-Let us take exposure with the **Imager Simulator** device provided by the already loaded **indigo_ccd_simulator** driver
-but let us make it native for PixInsight and use *XISF* image format.
+Let us take exposure with the **Imager Simulator** device provided by the already loaded **indigo_ccd_simulator** driver but let us make it native for PixInsight and use *XISF* image format.
 
 First We need to connect that device if not already connected:
 ```
@@ -281,7 +280,7 @@ CCD Imager Simulator.CONNECTION.CONNECTED = ON
 CCD Imager Simulator.CONNECTION.DISCONNECTED = OFF
 ```
 
-Next, make sure that we are using XISF format:
+Next, make sure that we are using *XISF* format:
 ```
 indigo@indigosky:~ $ indigo_prop_tool list "CCD Imager Simulator.CCD_IMAGE_FORMAT"
 CCD Imager Simulator.CCD_IMAGE_FORMAT.FITS = ON
@@ -300,7 +299,12 @@ CCD Imager Simulator.CCD_IMAGE_FORMAT.JPEG = OFF
 indigo@indigosky:~ $
 ```
 
-Now we are ready to take the exposure. This is the tricky part, By default images (BLOBs) are not delivered, so we need to explicitly request them. In **indigo_prop_tool** this is done with the **-b** switch, which also saves the image to a file. Another thing to consider is that we have to wait for the exposure to complete. To do so we need to specify timeout, which is longer than the exposure with  **-t** switch to make sure we will receive the image. Exposure is taken by setting **CCD_EXPOSURE.EXPOSURE** and the image will be available when the exposure is complete in **CCD_IMAGE.IMAGE**. Now let us get the frame. We request BLOBs with **-b**, set the timeout to 5 sec with **-t 5** and start the 4 second exposure:
+Now we are ready to take an exposure. This is the tricky part. By default the image related events (BLOB updates) are not delivered to the clients, so we need to register our client explicitly in order to receive them. In **indigo_prop_tool** this is done with the **-b** switch, which also saves the image to a file. Another tricky part is that we have to wait for the exposure to complete, in order to receive the image. To do so, we need to specify a timeout, which is longer than the exposure time, using **-t** switch. Exposure itself is taken by setting **CCD_EXPOSURE.EXPOSURE** to the desired duration. The value is in seconds. When the exposure is ready, the **CCD_EXPOSURE.EXPOSURE** value will become 0 again, **CCD_EXPOSURE** state will be set to **OK** and the image data will be available in **CCD_IMAGE.IMAGE**.
+
+Let us get the frame:
+- request BLOB updates with **-b**
+- set the timeout to 5 seconds with **-t 5**
+- start the 4 second exposure by setting **CCD_EXPOSURE.EXPOSURE=4**
 ```
 indigo@indigosky:~ $ indigo_prop_tool set -b -t 5 "CCD Imager Simulator.CCD_EXPOSURE.EXPOSURE=4"
 CCD Imager Simulator.CCD_EXPOSURE.EXPOSURE = 4.000000
@@ -311,7 +315,7 @@ CCD Imager Simulator.CCD_EXPOSURE.EXPOSURE = 0.000000
 CCD Imager Simulator.CCD_IMAGE.IMAGE = <http://localhost:7624/blob/0xaf68b730.xisf => CCD Imager Simulator.CCD_IMAGE.IMAGE.xisf>
 CCD Imager Simulator.CCD_EXPOSURE.EXPOSURE = 0.000000
 ```
-Voila, we have the image in *CCD Imager Simulator.CCD_IMAGE.IMAGE.xisf* file let us check it:
+Et voila, we have the image in *CCD Imager Simulator.CCD_IMAGE.IMAGE.xisf* file let us check it:
 ```
 indigo@indigosky:~ $ ls -l *.xisf
 -rw-r--r-- 1 indigo indigo 3842880 Jul 23 12:41 'CCD Imager Simulator.CCD_IMAGE.IMAGE.xisf'
