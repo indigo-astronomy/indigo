@@ -427,6 +427,7 @@ static void aux_connection_handler(indigo_device *device) {
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
+			ppb_command(device, "PL:1", response, sizeof(response));
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
