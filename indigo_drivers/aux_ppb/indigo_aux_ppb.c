@@ -18,13 +18,13 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-// 2.0.1 Added support for Pocket Powerbox Advance
+// 2020-07-27 by Aaron Freimark <abf@mac.com> added support for Pocket Powerbox Advance
 
 /** INDIGO PegasusAstro PPB aux driver
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -93,7 +93,7 @@ typedef struct {
 	indigo_property *info_property;
 	indigo_property *reboot_property;
 	int count;
-	bool advance; // PPB or PPBA?
+	bool is_advance; // PPB or PPBA?
 	pthread_mutex_t mutex;
 } ppb_private_data;
 
@@ -303,7 +303,7 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 
 		// PPBA
-        if ((token = strtok_r(NULL, ":", &pnt))) { // Power Alert
+		if ((token = strtok_r(NULL, ":", &pnt))) { // Power Alert
 			indigo_property_state state = token[0] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 			if (AUX_POWER_OUTLET_STATE_1_ITEM->light.value != state) {
 				AUX_POWER_OUTLET_STATE_1_ITEM->light.value = state;
@@ -354,12 +354,12 @@ static void aux_connection_handler(indigo_device *device) {
 					if (ppb_command(device, "P#", response, sizeof(response))) {
 						if (!strcmp(response, "PPB_OK")) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPB %s", DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->advance = 0;
+							PRIVATE_DATA->is_advance = 0;
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 							break;
 						} else if (!strcmp(response, "PPBA_OK")) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPBA %s", DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->advance = 1;
+							PRIVATE_DATA->is_advance = 1;
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 							break;
 						}
@@ -408,7 +408,7 @@ static void aux_connection_handler(indigo_device *device) {
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 1 ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 				}
-				if (PRIVATE_DATA->advance && (token = strtok_r(NULL, ":", &pnt))) { // Power warning
+				if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt))) { // Power warning
 					AUX_POWER_OUTLET_STATE_1_ITEM->light.value = token[0] == 1 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
@@ -423,18 +423,19 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			if (ppb_command(device, "PV", response, sizeof(response)) ) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->advance ? "PPBA" : "PPB");
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->is_advance ? "PPBA" : "PPB");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-			// abf
-			if(PRIVATE_DATA->advance) indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+			if(PRIVATE_DATA->is_advance) {
+				indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+			}
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -447,12 +448,14 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
 		ppb_command(device, "PE:1111", response, sizeof(response));
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		if(PRIVATE_DATA->advance) indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+		if(PRIVATE_DATA->is_advance) {
+			indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+		}
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -474,19 +477,25 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (IS_CONNECTED) {
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		if(PRIVATE_DATA->advance) indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+		if(PRIVATE_DATA->is_advance) {
+			indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+		}
 	}
 	snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
-	if(PRIVATE_DATA->advance) snprintf(AUX_POWER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+	if(PRIVATE_DATA->is_advance) {
+		snprintf(AUX_POWER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
+	}
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 	if (IS_CONNECTED) {
 		indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		if(PRIVATE_DATA->advance) indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+		if(PRIVATE_DATA->is_advance) {
+			indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+		}
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -597,13 +606,15 @@ static indigo_result aux_detach(indigo_device *device) {
 		aux_connection_handler(device);
 	}
 	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
-	if(PRIVATE_DATA->advance) indigo_release_property(AUX_POWER_OUTLET_STATE_PROPERTY);
 	indigo_release_property(AUX_HEATER_OUTLET_PROPERTY);
 	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(X_AUX_REBOOT_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
+	if(PRIVATE_DATA->is_advance) {
+		indigo_release_property(AUX_POWER_OUTLET_STATE_PROPERTY);
+	}
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
