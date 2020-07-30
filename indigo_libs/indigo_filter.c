@@ -458,11 +458,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 			for (int j = 1; j < device_list->count; j++) {
 				if (!strcmp(property->device, device_list->items[j].name) && device_list->items[j].sw.value) {
 					if (device_list->state == INDIGO_BUSY_STATE) {
-						if (property->state == INDIGO_ALERT_STATE) {
-							indigo_set_switch(device_list, device_list->items, true);
-							device_list->state = INDIGO_ALERT_STATE;
-							strcpy(FILTER_CLIENT_CONTEXT->device_name[i], "");
-						} else if (connected_device->sw.value && property->state == INDIGO_OK_STATE) {
+						if (connected_device->sw.value && property->state == INDIGO_OK_STATE) {
 							indigo_property *configuration_property = indigo_init_switch_property(NULL, property->device, CONFIG_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 							indigo_init_switch_item(configuration_property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
 							indigo_change_property(client, configuration_property);
