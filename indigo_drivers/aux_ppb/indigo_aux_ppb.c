@@ -255,7 +255,7 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-			double value =  indigo_atod(token) / (PRIVATE_DATA->is_advance ? 600.0 : 65.0);
+			double value =  indigo_atod(token) / 65.0;
 			if (X_AUX_CURRENT_ITEM->number.value != value) {
 				updateInfo = true;
 				X_AUX_CURRENT_ITEM->number.value = value;
@@ -421,7 +421,7 @@ static void aux_connection_handler(indigo_device *device) {
 					X_AUX_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-					X_AUX_CURRENT_ITEM->number.value = indigo_atod(token) / (PRIVATE_DATA->is_advance ? 600.0 : 65.0);
+					X_AUX_CURRENT_ITEM->number.value = indigo_atod(token) / 65.0;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
 					AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(token);
