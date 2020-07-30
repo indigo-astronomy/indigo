@@ -24,7 +24,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME		"indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -269,6 +269,8 @@ static void ccd_connect_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s set temperature", canSetTemp ? "Can" : "Can't");
 			cam.get_HasShutter(&hasShutter);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s shutter", hasShutter ? "Has" : "Hasn't");
+			cam.get_MinExposureTime(&CCD_EXPOSURE_ITEM->number.min);
+			cam.get_MaxExposureTime(&CCD_EXPOSURE_ITEM->number.max);
 			cam.get_HasFilterWheel(&hasFilterWheel);
 			if (hasFilterWheel) {
 				cam.get_FilterCount(PRIVATE_DATA->filter_count);
