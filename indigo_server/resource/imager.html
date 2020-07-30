@@ -60,7 +60,7 @@
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]" :tooltip="'Image count'"></indigo-edit-number>
 											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'" :tooltip="'Folder for saved images'"></indigo-edit-text>
 											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'" :tooltip="'File name prefix for saved images'"></indigo-edit-text>
-											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :enabler="findProperty('Imager Agent', 'CCD_COOLER')" :tooltip="'Cooling state'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :tooltip="'Cooling state'"></indigo-show-number>
 											<indigo-show-number v-if="!useAgent" :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :tooltip="'Exposure time'"></indigo-show-number>
 											<indigo-show-number v-else :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :tooltip="'Exposure time'"></indigo-show-number>
 											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :tooltip="'Delay between exposures'"></indigo-show-number>
