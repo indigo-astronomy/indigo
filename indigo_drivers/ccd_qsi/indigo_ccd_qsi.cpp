@@ -117,7 +117,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			try {
 				short slot;
 				cam.get_Position(&slot);
-				WHEEL_SLOT_ITEM->number.value = slot;
+				WHEEL_SLOT_ITEM->number.value = slot + 1;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
