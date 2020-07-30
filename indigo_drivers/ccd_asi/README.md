@@ -4,7 +4,7 @@ https://astronomy-imaging-camera.com
 
 ## Supported devices
 
-All ASI cameras.
+All ASI cameras with exception of non-S ASI120 models (USB 2.0).
 
 This driver supports hot-plug (multiple devices).
 
