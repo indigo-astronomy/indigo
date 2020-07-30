@@ -677,7 +677,6 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_POWER_OUTLET_STATE_PROPERTY);
 	indigo_release_property(AUX_DSLR_POWER_PROPERTY);
-	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(X_AUX_REBOOT_PROPERTY);
