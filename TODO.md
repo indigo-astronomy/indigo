@@ -54,8 +54,8 @@
 2. NexStar EVO protocol mount driver
 
 #### GPS
-1. GPSD GPS driver
-2. Celestron GPS driver
+1. GPSD GPS driver __DONE__
+2. Celestron GPS driver __DONE__
 3. SkyWatcher GPS driver
 4. Meade GPS driver
 
