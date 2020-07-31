@@ -478,7 +478,7 @@ static void mount_connect_callback(indigo_device *device) {
 static void mount_equatorial_coordinates_callback(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-	for (int i = 0; i < 2 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
+	for (int i = 0; i < 3 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
 		double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha_angle = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 		double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
@@ -523,6 +523,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 			}
 			indigo_usleep(100000);
 		}
+		indigo_usleep(500000);
 	}
 	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
