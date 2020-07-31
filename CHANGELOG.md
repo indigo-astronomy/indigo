@@ -2,6 +2,25 @@
 
 All notable changes to INDIGO framewark will be documented in this file.
 
+## [2.0-124] - Sat Aug 01 2020
+### Overal:
+- Double connection issue fixed
+- PSF computation fixed
+
+### Driver Fixes:
+- indigo_aux_ppb: PPB Advanced support added
+- indigo_aux_sqm: crash fixed
+- indigo_ccd_qsi: initial slot position fixed
+- indigo_ccd_mi: SDK updated to 0.5.6
+- indigo_ccd_asi: SDK updated to 1.15.0617
+- indigo_wheel_asi: SDK updated to 1.5.0615
+- indigo_focuser_asi: SDK updated to 0.2.0605
+- indigo_mount_lx200: meridian flip control added to AvalonGO dialect
+- indigo_ccd_atik: SDK updated to 2020_06_23
+- indigo_ccd_qhy2: SDK updated to V2020.06.05 for macOS and  V2020.05.22 for linux
+
+### New Drivers:
+- indigo_mount_pcm8
 
 ## [2.0-122] - Fri May 05 2020
 ### Overal:
