@@ -6,11 +6,21 @@ All notable changes to INDIGO framewark will be documented in this file.
 ### Overal:
 - Double connection issue fixed
 - PSF computation fixed
+- several executable drivers were not built
+- indigo_server: better process handling
+- added indigo_examples folder and created new examples
+- Documentation update
+- added user documentation about indigo_prop_tool and indigo_server
+- fixed blob transfer for executable drivers
+- blob transfer improvements - name resolution is done only once
+- support ROWORDER keyword in fits.
 
 ### Driver Fixes:
+- indigo_agent_guider: PSF radius added, fixes
+- indigo_agent_imager: PSF radius added, fixes
 - indigo_aux_ppb: PPB Advanced support added
 - indigo_aux_sqm: crash fixed
-- indigo_ccd_qsi: initial slot position fixed
+- indigo_ccd_qsi: initial slot position fixed, added rules
 - indigo_ccd_mi: SDK updated to 0.5.6
 - indigo_ccd_asi: SDK updated to 1.15.0617
 - indigo_wheel_asi: SDK updated to 1.5.0615
@@ -21,6 +31,7 @@ All notable changes to INDIGO framewark will be documented in this file.
 
 ### New Drivers:
 - indigo_mount_pcm8: PCM8 mount controller driver
+- indigo_aux_rpio: Raspberry Pi GPIO driver
 
 ## [2.0-122] - Fri May 05 2020
 ### Overal:
