@@ -456,7 +456,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			char *color_string = get_bayer_string(device);
 			if ((color_string) &&   /* if colour (bayer) image but not RGB */
 			    (PRIVATE_DATA->exp_bpp != 24) &&
-				(PRIVATE_DATA->exp_bpp != 48)) {
+			    (PRIVATE_DATA->exp_bpp != 48)) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
@@ -510,7 +510,9 @@ static void streaming_timer_callback(indigo_device *device) {
 					break;
 				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetVideoData((%d) = %d", id, res);
-				if (color_string) {
+				if ((color_string) &&   /* if colour (bayer) image but not RGB */
+				    (PRIVATE_DATA->exp_bpp != 24) &&
+				    (PRIVATE_DATA->exp_bpp != 48)) {
 					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, keywords);
 				} else {
 					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL);
