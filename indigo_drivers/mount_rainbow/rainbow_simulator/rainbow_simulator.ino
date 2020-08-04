@@ -74,7 +74,6 @@ int time_hour = 22;
 int time_minute = 15;
 int time_second = 30;
 int time_offset = 2;
-int time_dst = 1;
 
 char latitude[16] = "+48*08'10";
 char longitude[16] = "-17*06'20";
@@ -179,6 +178,22 @@ void loop() {
       if (!strcmp(buffer, "GL")) {
         sprintf(buffer, ":GL%02d:%02d:%02d#", time_hour, time_minute, time_second);
         Serial.print(buffer);
+      } else if (!strncmp(buffer, "SL", 2)) {
+        time_hour = atoi(buffer + 2);
+        time_minute = atoi(buffer + 5);
+        time_second = atoi(buffer + 8);
+      } else if (!strcmp(buffer, "GG")) {
+        sprintf(buffer, ":GG%+02d#", -time_offset);
+        Serial.print(buffer);
+      } else if (!strncmp(buffer, "SG", 2)) {
+        time_offset = -atoi(buffer + 2);
+      } else if (!strcmp(buffer, "GC")) {
+        sprintf(buffer, ":GC%02d/%02d/%02d#", date_month, date_day, date_year % 100);
+        Serial.print(buffer);
+      } else if (!strncmp(buffer, "SC", 2)) {
+        date_month = atoi(buffer + 2);
+        date_day = atoi(buffer + 5);
+        date_year = atoi(buffer + 8) + 2000;
       } else if (!strncmp(buffer, "Sg", 2)) {
         strcpy(longitude, buffer + 2);
       } else if (!strcmp(buffer, "Gg")) {
@@ -247,7 +262,8 @@ void loop() {
         Serial.print(guide_rate);
         Serial.print("#");
       } else if (!strcmp(buffer, "AV")) {
-        Serial.print(":AV190905#");
+        //Serial.print(":AV190905#");
+        Serial.print(":AV200625#");
       } else if (!strcmp(buffer, "CL")) {
         if (is_slewing)
           Serial.print(":CL1#");
