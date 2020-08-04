@@ -1,5 +1,5 @@
 # Guide to indigo_server and INDIGO Drivers
-Revision: 26.07.2020 (draft)
+Revision: 04.08.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -120,6 +120,8 @@ These drivers are loaded by default by the INDIGO server. They are loaded and ru
 	* Drivers can be dynamically loaded and unloaded at runtime.
 - CONS:
 	* A faulty driver can bring down the service or the application, however **indigo_server** can partly recover from this, as mentioned in the previous section.
+
+While **indigo_server** is running the dynamically loaded drivers can be loaded and unloaded by modifying *Server.DRIVERS*, *Server.LOAD* and *Server.UNLOAD* properties as described in [PROPERTY_MANIPULATION.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROPERTY_MANIPULATION.md)
 
 The dynamic drivers use **.so** file extension on Linux and **.dylib** on MacOSX.
 
