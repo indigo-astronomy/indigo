@@ -157,7 +157,36 @@ static void rainbow_get_coords(indigo_device *device) {
 }
 
 static void rainbow_get_utc(indigo_device *device) {
-	// TBD
+	struct tm tm;
+	char response[128];
+	memset(&tm, 0, sizeof(tm));
+	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	char separator[2];
+	if (PRIVATE_DATA->version >= 200625) {
+		if (rainbow_command(device, ":GC#", response, sizeof(response), 0) && sscanf(response + 3, "%d%c%d%c%d", &tm.tm_mon, separator, &tm.tm_mday, separator, &tm.tm_year) == 5) {
+			if (rainbow_command(device, ":GL#", response, sizeof(response), 0) && sscanf(response + 3, "%d%c%d%c%d", &tm.tm_hour, separator, &tm.tm_min, separator, &tm.tm_sec) == 5) {
+				tm.tm_year += 100;
+				tm.tm_mon -= 1;
+				if (rainbow_command(device, ":GG#", response, sizeof(response), 0)) {
+					int offset = -atoi(response + 3);
+					tm.tm_gmtoff =  offset * 3600;
+					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", offset);
+					time_t secs = mktime(&tm);
+					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		}
+	} else {
+		time_t secs = time(NULL);
+		tm = *localtime(&secs);
+		if (rainbow_command(device, ":GL#", response, sizeof(response), 0) && sscanf(response + 3, "%d%c%d%c%d", &tm.tm_hour, separator, &tm.tm_min, separator, &tm.tm_sec) == 5) {
+			secs = mktime(&tm);
+			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+			sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%ld", tm.tm_gmtoff / 3600);
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
 }
 
 static void rainbow_get_observatory(indigo_device *device) {
@@ -202,6 +231,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EPOCH_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
 		MOUNT_GUIDE_RATE_PROPERTY->count = 1;
+		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -225,8 +256,11 @@ static void mount_connect_callback(indigo_device *device) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
 				strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response + 3, INDIGO_VALUE_SIZE);
 				PRIVATE_DATA->version = atol(response + 3);
+				if (PRIVATE_DATA->version < 200625) {
+					indigo_send_message(device, "Please update firmware of your mount to the version 200625 or later!");
+				}
 			}
-			MOUNT_UTC_TIME_PROPERTY->hidden = true; // TBD - unclear
+			MOUNT_UTC_TIME_PROPERTY->hidden = false;
 			// TBD - park state
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 			PRIVATE_DATA->parked = false;
@@ -307,17 +341,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 			if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
 				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"));
-			if (!rainbow_command(device, command, NULL, 0, 0)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
+			if (rainbow_command(device, command, NULL, 0, 0)) {
 				double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
 				sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
-				if (!rainbow_command(device, command, NULL, 0, 0) || *response != '1') {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-					MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (rainbow_command(device, command, NULL, 0, 0) || *response != '1') {
+					MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
 			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
@@ -330,6 +360,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_coordinates(device, "Mount is parked!");
 		} else {
 			indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'R') {
 					rainbow_command(device, ":CtR#", NULL, 0, 0);
@@ -344,28 +375,19 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					rainbow_command(device, ":CtU#", NULL, 0, 0);
 					PRIVATE_DATA->lastTrackRate = 'U';
 				}
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%04.1f"));
-				if (!rainbow_command(device, command, response, 1, 0) || *response != '1') {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
+				if (rainbow_command(device, command, response, 1, 0) || *response != '1') {
 					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%04.1f"));
-					if (!rainbow_command(device, command, response, 1, 0) || *response != '1') {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-					} else {
-						if (!rainbow_command(device, ":MS#", NULL, 0, 0)) { // TBD - unclear
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed");
-							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					if (rainbow_command(device, command, response, 1, 0) || *response != '1') {
+						if (rainbow_command(device, ":MS#", NULL, 0, 0)) { // TBD - unclear
+							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						}
 					}
 				}
 			} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				sprintf(command, ":Ck%07.3f%+7.3f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
-				if (!rainbow_command(device, command, NULL, 0, 0)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (rainbow_command(device, command, NULL, 0, 0)) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
 			indigo_update_coordinates(device, NULL);
@@ -475,7 +497,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME
 		indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
 		if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
-			// TBD
+			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			time_t secs = time(NULL);
+			struct tm tm = *localtime(&secs);
+			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+			if (rainbow_command(device, command, NULL, 0, 0)) {
+				sprintf(command, ":SG%+03ld#", -(tm.tm_gmtoff / 3600));
+				if (rainbow_command(device, command, NULL, 0, 0)) {
+					sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+					if (rainbow_command(device, command, response, 0, 0)) {
+						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+						indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+					}
+				}
+			}
 		}
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
