@@ -1145,13 +1145,16 @@ time_t indigo_get_mount_utc(indigo_device *device) {
 }
 
 void indigo_update_coordinates(indigo_device *device, const char *message) {
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 	time_t utc = indigo_get_mount_utc(device);
 	if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 		indigo_eq2hor(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
-		indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		if (IS_CONNECTED)
+			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	}
 	MOUNT_LST_TIME_ITEM->number.value = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+	if (IS_CONNECTED) {
+		indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
+	}
 }
