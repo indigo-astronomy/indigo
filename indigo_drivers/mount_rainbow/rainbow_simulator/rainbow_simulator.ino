@@ -63,8 +63,8 @@ static char __buffer__[32];
 #define DISPLAY_END() Heltec.display->display()
 #endif
 
-#define DEC_PER_SEC 1440
-#define RA_PER_SEC 96
+#define DEC_PER_SEC (1440 * 5)
+#define RA_PER_SEC (96 * 5)
 
 int date_day = 1;
 int date_month = 1;
@@ -79,10 +79,10 @@ char latitude[16] = "+48*08'10";
 char longitude[16] = "-17*06'20";
 
 long ra = 0;
-long dec = 90L * 360000L;
+long dec = 90L * 3600000L;
 
 long target_ra = 0;
-long target_dec = 90L * 360000L;
+long target_dec = 90L * 3600000L;
 
 int ra_slew = 0;
 int dec_slew = 0;
@@ -121,7 +121,7 @@ void update_state() {
       Serial.print(":MM0#");
     }
   } else if (!is_tracking) {
-    ra = (ra + lapse) % (24L * 60L * 60L);
+    ra = (ra + lapse) % (24L * 60L * 60000L);
   }
   if (ra_slew || dec_slew) {
     long rate;
@@ -134,12 +134,12 @@ void update_state() {
     else
       rate = 1500 * lapse;
     ra += ra_slew * rate / 15;
-    ra = (ra + 24L * 360000L) % (24L * 360000L);
+    ra = (ra + 24L * 3600000L) % (24L * 3600000L);
     dec += dec_slew * rate;
-    if (dec < -90L * 360000L)
-      dec = -90L * 360000L; 
-    if (dec > 90L * 360000L)
-      dec = 90L * 360000L; 
+    if (dec < -90L * 3600000L)
+      dec = -90L * 3600000L; 
+    if (dec > 90L * 3600000L)
+      dec = 90L * 3600000L; 
   }
   int s = time_second + time_lapse / 1000;
   int m = time_minute + s / 60;
@@ -149,7 +149,7 @@ void update_state() {
   time_hour = h % 24;
   time_lapse %= 1000;
   DISPLAY_BEGIN();
-  DISPLAY_TEXTF(0, "%02d%02d%02d %02d%02d%02d %c%c", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60, dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60, is_tracking ? 'T' : 't', is_slewing ? 'S' : 's');
+  DISPLAY_TEXTF(0, "%02ld%02ld%02ld %02ld%02ld%02ld %c%c", ra / 3600000L, (ra / 60000L) % 60, (ra / 1000L) % 60, dec / 3600000L, (abs(dec) / 60000L) % 60, (abs(dec) / 1000L) % 60, is_tracking ? 'T' : 't', is_slewing ? 'S' : 's');
   DISPLAY_TEXTF(1, "%02d%02d%02d %c %c%c %c %c", time_hour, time_minute, time_second, slew_rate, (ra_slew < 0 ? 'E' : ra_slew > 0 ? 'W' : '0'), (dec_slew < 0 ? 'S' : dec_slew > 0 ? 'N' : '0'), tracking_rate, is_parked ? 'P' : 'p');
   DISPLAY_END();
 }
@@ -207,26 +207,33 @@ void loop() {
         Serial.print(latitude);
         Serial.print(".0#");
       } else if (!strncmp(buffer, "Sr", 2)) {
-        target_ra = atol(buffer + 2) * 360000L + atol(buffer + 5) * 6000L + atof(buffer + 8) * 100L;
+        target_ra = atol(buffer + 2) * 3600000L + atol(buffer + 5) * 60000L + atof(buffer + 8) * 1000L;
         Serial.print("1");
       } else if (!strcmp(buffer, "GR")) {
-        sprintf(buffer, ":GR%02d:%02d:%02d.0#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);          
+        sprintf(buffer, ":GR%02ld:%02ld:%02ld.0#", ra / 3600000L, (ra / 60000L) % 60, (ra / 1000L) % 60);          
         Serial.print(buffer);
       } else if (!strncmp(buffer, "Sd", 2)) {
-        target_dec = atol(buffer + 2) * 360000L;
+        target_dec = atol(buffer + 2) * 3600000L;
         if (target_dec < 0)
-          target_dec -= atol(buffer + 6) * 6000L + atof(buffer + 9) * 100L;
+          target_dec -= atol(buffer + 6) * 60000L + atof(buffer + 9) * 1000L;
         else
-          target_dec += atol(buffer + 6) * 6000L + atof(buffer + 9) * 100L;
+          target_dec += atol(buffer + 6) * 60000L + atof(buffer + 9) * 1000L;
         Serial.print("1");
       } else if (!strcmp(buffer, "GD")) {
-         sprintf(buffer, ":GD%+03d*%02d'%02d.0#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
+         sprintf(buffer, ":GD%+03ld*%02ld'%02ld.0#", dec / 3600000L, (abs(dec) / 60000L) % 60, (abs(dec) / 1000L) % 60);
          Serial.print(buffer);
       } else if (!strcmp(buffer, "MS")) {
         is_slewing = true;
       } else if (!strcmp(buffer, "Q")) {
-        is_slewing = false;
+        if (is_slewing) {
+          Serial.print(":MME#");
+          is_slewing = false;
+        }
         ra_slew = 0;
+        dec_slew = 0;
+      } else if (!strcmp(buffer, "Qe") || !strcmp(buffer, "Qw")) {
+        ra_slew = 0;
+      } else if (!strcmp(buffer, "Qn") || !strcmp(buffer, "Qs")) {
         dec_slew = 0;
       } else if (!strcmp(buffer, "CtR")) {
         tracking_rate = '0';
@@ -253,8 +260,8 @@ void loop() {
       } else if (!strcmp(buffer, "Me")) {
         ra_slew = -1;
       } else if (!strncmp(buffer, "Ck", 2)) {
-        ra = atof(buffer + 2) * 360000L;
-        dec = atof(buffer + 9) * 360000L;
+        ra = atof(buffer + 2) * 3600000L;
+        dec = atof(buffer + 9) * 3600000L;
       } else if (!strncmp(buffer, "CU0=", 4)) {
         strncpy(guide_rate, buffer + 4, 3);
       } else if (!strcmp(buffer, "CU0")) {
