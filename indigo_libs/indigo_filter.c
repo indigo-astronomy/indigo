@@ -290,6 +290,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 				}
 			}
 			indigo_init_switch_item(connection_property->items, CONNECTION_DISCONNECTED_ITEM_NAME, NULL, true);
+			connection_property->access_token = indigo_get_device_or_master_token(connection_property->device);
 			indigo_change_property(client, connection_property);
 			break;
 		}
@@ -302,6 +303,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 			strcpy(connection_property->device, device_list->items[i].name);
 			indigo_init_switch_item(connection_property->items, CONNECTION_CONNECTED_ITEM_NAME, NULL, true);
 			indigo_enumerate_properties(client, connection_property);
+			connection_property->access_token = indigo_get_device_or_master_token(connection_property->device);
 			indigo_change_property(client, connection_property);
 			return INDIGO_OK;
 		}
@@ -366,6 +368,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			memcpy(copy, property, size);
 			strcpy(copy->device, FILTER_DEVICE_CONTEXT->device_property_cache[i]->device);
 			strcpy(copy->name, FILTER_DEVICE_CONTEXT->device_property_cache[i]->name);
+			copy->access_token = indigo_get_device_or_master_token(copy->device);
 			indigo_change_property(client, copy);
 			indigo_release_property(copy);
 			return INDIGO_OK;
@@ -461,6 +464,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 						if (connected_device->sw.value && property->state == INDIGO_OK_STATE) {
 							indigo_property *configuration_property = indigo_init_switch_property(NULL, property->device, CONFIG_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 							indigo_init_switch_item(configuration_property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
+							configuration_property->access_token = indigo_get_device_or_master_token(configuration_property->device);
 							indigo_change_property(client, configuration_property);
 							strcpy(FILTER_CLIENT_CONTEXT->device_name[i], property->device);
 							device_list->state = INDIGO_OK_STATE;
@@ -542,6 +546,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 						} else if (connected_device->sw.value && property->state == INDIGO_OK_STATE) {
 							indigo_property *configuration_property = indigo_init_switch_property(NULL, property->device, CONFIG_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 							indigo_init_switch_item(configuration_property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
+							configuration_property->access_token = indigo_get_device_or_master_token(configuration_property->device);
 							indigo_change_property(client, configuration_property);
 							strcpy(FILTER_CLIENT_CONTEXT->device_name[i], property->device);
 							device_list->state = INDIGO_OK_STATE;
@@ -668,9 +673,9 @@ indigo_result indigo_filter_forward_change_property(indigo_client *client, indig
 	indigo_property *local_property = malloc(size);
 	memcpy(local_property, property, size);
 	strcpy(local_property->device, device_name);
+	local_property->access_token = indigo_get_device_or_master_token(local_property->device);
 	property->perm = INDIGO_RW_PERM;
 	indigo_result result = indigo_change_property(client, local_property);
 	free(local_property);
 	return result;
 }
-

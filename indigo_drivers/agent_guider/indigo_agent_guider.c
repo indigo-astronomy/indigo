@@ -155,6 +155,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			if (item->sw.value && strcmp(item->name, CCD_IMAGE_FORMAT_RAW_ITEM_NAME)) {
 				indigo_property *local_format_property = indigo_init_switch_property(NULL, remote_format_property->device, remote_format_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 				indigo_init_switch_item(local_format_property->items, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, NULL, true);
+				local_format_property->access_token = indigo_get_device_or_master_token(local_format_property->device);
 				indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_format_property);
 				indigo_release_property(local_format_property);
 			}
@@ -166,6 +167,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			memcpy(local_exposure_property, remote_exposure_property, sizeof(indigo_property) + remote_exposure_property->count * sizeof(indigo_item));
 			double time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
 			local_exposure_property->items[0].number.value = time;
+			local_exposure_property->access_token = indigo_get_device_or_master_token(local_exposure_property->device);
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_exposure_property);
 			for (int i = 0; remote_exposure_property->state != INDIGO_BUSY_STATE && i < 1000 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 				indigo_usleep(1000);
@@ -303,6 +305,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 						item->number.value = ra < 0 ? -ra * 1000 : 0;
 					}
 				}
+				local_guide_property->access_token = indigo_get_device_or_master_token(local_guide_property->device);
 				indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_guide_property);
 				while (remote_guide_property->state == INDIGO_BUSY_STATE) {
 					indigo_usleep(50000);
@@ -330,6 +333,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 						item->number.value = dec < 0 ? -dec * 1000 : 0;
 					}
 				}
+				local_guide_property->access_token = indigo_get_device_or_master_token(local_guide_property->device);
 				indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_guide_property);
 				while (remote_guide_property->state == INDIGO_BUSY_STATE) {
 					indigo_usleep(50000);
@@ -771,6 +775,7 @@ static void abort_process(indigo_device *device) {
 		indigo_property *abort_property = indigo_init_switch_property(NULL, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_ABORT_EXPOSURE_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (abort_property) {
 			indigo_init_switch_item(abort_property->items, CCD_ABORT_EXPOSURE_ITEM_NAME, "", true);
+			abort_property->access_token = indigo_get_device_or_master_token(abort_property->device);
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, abort_property);
 			indigo_release_property(abort_property);
 		}
