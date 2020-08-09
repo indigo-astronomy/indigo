@@ -1015,6 +1015,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 		if (property->type == other->type) {
 			if (with_state)
 				property->state = other->state;
+			property->access_token = other->access_token;
 			if (property->type == INDIGO_SWITCH_VECTOR && property->rule != INDIGO_ANY_OF_MANY_RULE) {
 				for (int j = 0; j < property->count; j++) {
 					property->items[j].sw.value = false;
