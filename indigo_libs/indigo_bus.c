@@ -144,6 +144,17 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp) {
 }
 #endif
 
+#if defined(INDIGO_MACOS)
+int clock_gettime(clockid_t clk_id, struct timespec *ts) {
+	struct timeval tv;
+	if (gettimeofday(&tv, NULL) < 0)
+		return -1;
+	ts->tv_sec = tv.tv_sec;
+	ts->tv_nsec = tv.tv_usec * 1000;
+	return 0;
+}
+#endif
+
 void indigo_log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
