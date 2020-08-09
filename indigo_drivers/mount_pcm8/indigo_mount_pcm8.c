@@ -23,7 +23,7 @@
  \file indigo_mount_pcm8.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_mount_pcm8"
 
 #include <stdlib.h>
@@ -407,28 +407,22 @@ static void position_timer_callback(indigo_device *device) {
 		double dec_angle = ((double)raw_dec / dec_count) * 360;
 		double ha;
 		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-			if (dec_angle >= 0) {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 - dec_angle;
-			} else {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 + dec_angle;
-			}
 			if (raw_dec >= 0) {
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 - dec_angle;
 				ha = ha_angle - 6;
 				side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
 			} else {
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 + dec_angle;
 				ha = ha_angle + 6;
 				side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
 			}
 		} else {
-			if (dec_angle >= 0) {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 + dec_angle;
-			} else {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 - dec_angle;
-			}
 			if (raw_dec >= 0) {
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 + dec_angle;
 				ha = -(ha_angle - 6);
 				side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
 			} else {
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 - dec_angle;
 				ha = -(ha_angle + 6);
 				side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
 			}
@@ -621,37 +615,37 @@ static void mount_switch_connection(indigo_device *device) {
 	if (IS_CONNECTED) {
 		char response[32];
 		if (PRIVATE_DATA->is_udp && CONNECTION_TCP_ITEM->sw.value) {
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
-			if (!pcm8_open(device) || !pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY0")) {
+			if (!pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
 		} else if (PRIVATE_DATA->is_udp && CONNECTION_SERIAL_ITEM->sw.value) {
 			indigo_send_message(device, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (PRIVATE_DATA->is_tcp && CONNECTION_UDP_ITEM->sw.value) {
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
-			if (!pcm8_open(device) || !pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY1")) {
+			if (!pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY1")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
 		} else if (PRIVATE_DATA->is_tcp && CONNECTION_SERIAL_ITEM->sw.value) {
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
-			if (!pcm8_open(device) || !pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
+			if (!pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
 		} else if (PRIVATE_DATA->is_serial && CONNECTION_UDP_ITEM->sw.value) {
 			indigo_send_message(device, "Can't switch from SERIAL to UDP directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_SERIAL_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (PRIVATE_DATA->is_serial && CONNECTION_TCP_ITEM->sw.value) {
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
-			if (!pcm8_open(device) || !pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX1")) {
+			if (!pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX1")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			mount_connect_callback(device);
 		}
 	}
 	if (CONNECTION_MODE_PROPERTY->state == INDIGO_OK_STATE) {
