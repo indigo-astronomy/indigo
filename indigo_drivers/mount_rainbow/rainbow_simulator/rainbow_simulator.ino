@@ -63,8 +63,8 @@ static char __buffer__[32];
 #define DISPLAY_END() Heltec.display->display()
 #endif
 
-#define DEC_PER_SEC (1440 * 5)
-#define RA_PER_SEC (96 * 5)
+#define DEC_PER_SEC (1440 * 10)
+#define RA_PER_SEC (96 * 10)
 
 int date_day = 1;
 int date_month = 1;
@@ -93,7 +93,7 @@ char slew_rate = 'M';
 char guide_rate[4] = "0.3";
 
 bool is_slewing = false;
-bool is_tracking = true;
+bool is_tracking = false;
 bool is_parked = false;
 
 void update_state() {
@@ -118,7 +118,10 @@ void update_state() {
     }
     if (ra == target_ra && dec == target_dec) {
       is_slewing = false;
-      Serial.print(":MM0#");
+      if (is_parked)
+        Serial.print(":CHO#");
+      else
+        Serial.print(":MM0#");
     }
   } else if (!is_tracking) {
     ra = (ra + lapse) % (24L * 60L * 60000L);
@@ -224,6 +227,12 @@ void loop() {
          Serial.print(buffer);
       } else if (!strcmp(buffer, "MS")) {
         is_slewing = true;
+      } else if (!strcmp(buffer, "Ch")) {
+        target_ra = 0;
+        target_dec = 90L * 3600000L;
+        is_slewing = true;
+        is_parked = true;
+        is_tracking = false;
       } else if (!strcmp(buffer, "Q")) {
         if (is_slewing) {
           Serial.print(":MME#");
@@ -289,6 +298,16 @@ void loop() {
         is_tracking = true;
       } else if (!strcmp(buffer, "CtL")) {
         is_tracking = false;
+      } else if (!strcmp(buffer, "AH")) {
+        if (is_parked && is_slewing)
+          Serial.print(":AH1#");
+        else
+          Serial.print(":AH0#");
+      } else if (!strcmp(buffer, "GH")) {
+        if (is_parked && !is_slewing)
+          Serial.print(":GH0#");
+        else
+          Serial.print(":GH0#");
       }
     }
   }

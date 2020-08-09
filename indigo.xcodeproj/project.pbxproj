@@ -664,6 +664,11 @@
 		59463C1620DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main_bt.c; sourceTree = "<group>"; };
 		59463C1720DE6781004950F2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59463C1820DE6781004950F2 /* indigo_focuser_wemacro_bt.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_focuser_wemacro_bt.m; sourceTree = "<group>"; };
+		594C6FBB24DF2900000E4BF0 /* MAKEFILES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MAKEFILES.md; sourceTree = "<group>"; };
+		594C6FBC24DF2900000E4BF0 /* INDIGO_SERVER_AND_DRIVERS_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_SERVER_AND_DRIVERS_GUIDE.md; sourceTree = "<group>"; };
+		594C6FBD24DF2901000E4BF0 /* INDIGO_AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_AGENTS.md; sourceTree = "<group>"; };
+		594C6FBE24DF2901000E4BF0 /* INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md; sourceTree = "<group>"; };
+		594C6FBF24DF2901000E4BF0 /* PROPERTY_MANIPULATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROPERTY_MANIPULATION.md; sourceTree = "<group>"; };
 		59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_ssag.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag.h; sourceTree = "<group>"; };
 		59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag_firmware.h; sourceTree = "<group>"; };
@@ -4268,6 +4273,11 @@
 		5912C80723D2447400A48B75 /* indigo_docs */ = {
 			isa = PBXGroup;
 			children = (
+				594C6FBD24DF2901000E4BF0 /* INDIGO_AGENTS.md */,
+				594C6FBE24DF2901000E4BF0 /* INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md */,
+				594C6FBC24DF2900000E4BF0 /* INDIGO_SERVER_AND_DRIVERS_GUIDE.md */,
+				594C6FBB24DF2900000E4BF0 /* MAKEFILES.md */,
+				594C6FBF24DF2901000E4BF0 /* PROPERTY_MANIPULATION.md */,
 				5912C80A23D2447400A48B75 /* PROPERTIES.md */,
 				5912C80D23D2447400A48B75 /* DEVELOPMENT.md */,
 				5912C80E23D2447400A48B75 /* PROTOCOLS.md */,
