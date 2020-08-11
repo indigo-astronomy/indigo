@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -195,7 +195,7 @@ static void rainbow_reader(indigo_device *device) {
 				PRIVATE_DATA->utc = *localtime(&secs);
 			}
 			sscanf(response + 3, "%d%c%d%c%d", &PRIVATE_DATA->utc.tm_hour, &separator, &PRIVATE_DATA->utc.tm_min, &separator, &PRIVATE_DATA->utc.tm_sec);
-			PRIVATE_DATA->utc.tm_isdst = 1;
+			PRIVATE_DATA->utc.tm_isdst = -1;
 			time_t secs = mktime(&PRIVATE_DATA->utc);
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
@@ -382,7 +382,7 @@ static void mount_geographic_coordinates_callback(indigo_device *device) {
 	char command[128];
 	if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
 		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-	double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
+	double longitude = (360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - 360;
 	sprintf(command, ":St%s#:Sg%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"), indigo_dtos(longitude, "%03d*%02d"));
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	rainbow_command(device, command, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
@@ -505,9 +505,19 @@ static void mount_set_host_time_callback(indigo_device *device) {
 }
 
 static void mount_utc_time_callback(indigo_device *device) {
-	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	// TBD
-	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+	char command[128];
+	time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
+	if (secs == -1) {
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
+	} else {
+		struct tm tm = *localtime(&secs);
+		sprintf(command, ":SC%02d/%02d/%02d#:SG%+03ld#:SL%02d:%02d:%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100, -(tm.tm_gmtoff / 3600), tm.tm_hour, tm.tm_min, tm.tm_sec);
+		if (rainbow_command(device, command, NULL)) {
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+	}
 }
 
 static void mount_tracking_callback(indigo_device *device) {
