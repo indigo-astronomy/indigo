@@ -39,6 +39,7 @@
 #include <indigo/indigo_novas.h>
 #include <indigo/indigo_agent.h>
 
+# define DEG2RAD (M_PI/180.0)
 
 static double indigo_range24(double ha) {
 	return fmod(ha + (24000), 24);
@@ -971,7 +972,7 @@ static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* dev
 			indigo_eq_to_encoder(device, indigo_range24(point->lst - point->raw_ra), point->raw_dec, point->side_of_pier, &enc_p_ra, &enc_p_dec);
 		else
 			indigo_eq_to_encoder(device, indigo_range24(point->lst - point->ra), point->dec, point->side_of_pier, &enc_p_ra, &enc_p_dec);
-
+		//  FIXME!!! for closest point, GCD should be used Euclieadean distance is meaningless in spherical coordinates
 		//  Compute separation of encoder angles of RA/DEC and alignment point
 		//  Determine nearest point
 		double delta_ra = enc_p_ra - enc_ra;
@@ -1023,7 +1024,8 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 		  point = indigo_nearest_alignment_point(device, lst, ra, dec, side_of_pier, 0);
 		if (point) {
 			//  Transform coordinates
-			*raw_ra = ra + (point->raw_ra - point->ra);
+			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
+			*raw_ra = ra + (point->raw_ra - point->ra) * cos(point->dec * DEG2RAD) / cos(dec * DEG2RAD);;
 			*raw_dec = dec + (point->raw_dec - point->dec);
 
 			//**  Re-normalize coordinates to ensure they are in range
@@ -1097,8 +1099,9 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 		else
 			point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, side_of_pier, 1);
 		if (point) {
-			//  Transform coordinates
-			*ra = raw_ra + (point->ra - point->raw_ra);
+			// Transform coordinates
+			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
+			*ra = raw_ra + (point->ra - point->raw_ra) * cos(point->dec * DEG2RAD) / cos(raw_dec * DEG2RAD);
 			*dec = raw_dec + (point->dec - point->raw_dec);
 
 			//**  Re-normalize coordinates to ensure they are in range
