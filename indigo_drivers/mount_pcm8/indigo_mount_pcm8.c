@@ -612,42 +612,40 @@ static void mount_motion_callback(indigo_device *device) {
 
 static void mount_switch_connection(indigo_device *device) {
 	CONNECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
-	if (IS_CONNECTED) {
-		char response[32];
-		if (PRIVATE_DATA->is_udp && CONNECTION_TCP_ITEM->sw.value) {
+    char response[32];
+    if (PRIVATE_DATA->is_udp && CONNECTION_TCP_ITEM->sw.value) {
 			if (!pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_callback(device);
-		} else if (PRIVATE_DATA->is_udp && CONNECTION_SERIAL_ITEM->sw.value) {
+    } else if (PRIVATE_DATA->is_udp && CONNECTION_SERIAL_ITEM->sw.value) {
 			indigo_send_message(device, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (PRIVATE_DATA->is_tcp && CONNECTION_UDP_ITEM->sw.value) {
+    } else if (PRIVATE_DATA->is_tcp && CONNECTION_UDP_ITEM->sw.value) {
 			if (!pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY1")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_callback(device);
-		} else if (PRIVATE_DATA->is_tcp && CONNECTION_SERIAL_ITEM->sw.value) {
+    } else if (PRIVATE_DATA->is_tcp && CONNECTION_SERIAL_ITEM->sw.value) {
 			if (!pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_callback(device);
-		} else if (PRIVATE_DATA->is_serial && CONNECTION_UDP_ITEM->sw.value) {
+    } else if (PRIVATE_DATA->is_serial && CONNECTION_UDP_ITEM->sw.value) {
 			indigo_send_message(device, "Can't switch from SERIAL to UDP directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_SERIAL_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (PRIVATE_DATA->is_serial && CONNECTION_TCP_ITEM->sw.value) {
+    } else if (PRIVATE_DATA->is_serial && CONNECTION_TCP_ITEM->sw.value) {
 			if (!pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX1")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_callback(device);
-		}
-	}
+    }
 	if (CONNECTION_MODE_PROPERTY->state == INDIGO_OK_STATE) {
 		if (CONNECTION_UDP_ITEM->sw.value) {
 			strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
@@ -768,9 +766,26 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		PRIVATE_DATA->is_tcp = CONNECTION_TCP_ITEM->sw.value;
 		PRIVATE_DATA->is_serial = CONNECTION_SERIAL_ITEM->sw.value;
 		indigo_property_copy_values(CONNECTION_MODE_PROPERTY, property, false);
-		CONNECTION_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, mount_switch_connection, NULL);
+		if (IS_CONNECTED) {
+			CONNECTION_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, mount_switch_connection, NULL);
+		} else {
+			if (CONNECTION_UDP_ITEM->sw.value) {
+				strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
+			} else if (CONNECTION_TCP_ITEM->sw.value) {
+				strcpy(DEVICE_PORT_ITEM->text.value, "tcp://192.168.47.1");
+			} else {
+				if (DEVICE_PORTS_PROPERTY->count > 1)
+					strcpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
+				else
+					strcpy(DEVICE_PORT_ITEM->text.value, "");
+			}
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+			CONNECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
