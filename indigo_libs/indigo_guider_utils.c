@@ -163,12 +163,12 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 				}
 				case INDIGO_RAW_RGB24: {
 					kk *= 3;
-					value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+					value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
 					break;
 				}
 				case INDIGO_RAW_RGB48: {
 					kk *= 3;
-					value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
+					value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
 					break;
 				}
 			}
@@ -181,7 +181,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	}
 	*peak = max - min;
 	*hfd = *fwhm = 0;
-	double half_flux = total / 2;
+	double half_flux = (total - min * (2 * radius + 1) * (2 * radius + 1)) / 2;
 	total = 0;
 	for (int k = 0; k < sizeof(d1); k++) {
 		int i = d1[k][0];
@@ -200,16 +200,16 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 			}
 			case INDIGO_RAW_RGB24: {
 				kk *= 3;
-				value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+				value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
 				break;
 			}
 			case INDIGO_RAW_RGB48: {
 				kk *= 3;
-				value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
+				value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
 				break;
 			}
 		}
-		total += value;
+		total += value - min;
 		if (total >= half_flux) {
 			*hfd = 2 * sqrt(i * i + j * j);
 			break;
