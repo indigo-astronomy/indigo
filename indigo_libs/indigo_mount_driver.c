@@ -952,6 +952,7 @@ static indigo_alignment_point* indigo_find_single_alignment_point(indigo_device*
 	return NULL;
 }
 
+/*
 static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* device, double lst, double ra, double dec, int side_of_pier, int raw) {
 	//  Compute virtual encoder angles for RA/DEC
 	double enc_ra, enc_dec;
@@ -978,6 +979,40 @@ static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* dev
 		double delta_ra = enc_p_ra - enc_ra;
 		double delta_dec = enc_p_dec - enc_dec;
 		double d = (delta_ra * delta_ra) + (delta_dec * delta_dec);
+		if (d < min_d) {
+			nearest_point = point;
+			min_d = d;
+		}
+	}
+
+	//  Return nearest point
+	return nearest_point;
+}
+*/
+
+static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* device, double ra, double dec, int raw) {
+	//  Find nearest alignment point
+	double sin_dec = sin(dec * DEG2RAD);
+	double cos_dec = cos(dec * DEG2RAD);
+	double min_d = 180.0;   //  Larger than 2.0
+	indigo_alignment_point* nearest_point = 0;
+
+	for (int i = 0; i < MOUNT_CONTEXT->alignment_point_count; i++) {
+		//  Skip unused points
+		indigo_alignment_point *point = MOUNT_CONTEXT->alignment_points + i;
+		if (!point->used)
+			continue;
+
+		//  Compute virtual encoder angles for alignment point
+		double p_ra, p_dec;
+		if (raw) {
+			p_ra = point->raw_ra * DEG2RAD;
+			p_dec = point->raw_dec * DEG2RAD;
+		} else {
+			p_ra = point->ra * DEG2RAD;
+			p_dec = point->dec * DEG2RAD;
+		}
+		double d = acos(sin_dec * sin(p_dec) + cos_dec * cos(p_dec) * cos(ra * DEG2RAD - p_ra)) / DEG2RAD;
 		if (d < min_d) {
 			nearest_point = point;
 			min_d = d;
@@ -1021,7 +1056,8 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 		if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value)
 			point = indigo_find_single_alignment_point(device);
 		else
-		  point = indigo_nearest_alignment_point(device, lst, ra, dec, side_of_pier, 0);
+		  //point = indigo_nearest_alignment_point(device, lst, ra, dec, side_of_pier, 0);
+		  point = indigo_nearest_alignment_point(device, ra, dec, 0);
 		if (point) {
 			//  Transform coordinates
 			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
@@ -1103,7 +1139,8 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 		if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value)
 			point = indigo_find_single_alignment_point(device);
 		else
-			point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, side_of_pier, 1);
+			//point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, side_of_pier, 1);
+			point = indigo_nearest_alignment_point(device, raw_ra, raw_dec, 1);
 		if (point) {
 			// Transform coordinates
 			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
