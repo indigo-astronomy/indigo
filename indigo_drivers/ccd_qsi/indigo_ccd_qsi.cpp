@@ -237,7 +237,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->can_check_temperature = true;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' (%s) attached", device->name, PRIVATE_DATA->serial);
+		INFO_PROPERTY->count = 7;
+		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->serial);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -247,8 +249,10 @@ static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		try {
 			std::string serial(PRIVATE_DATA->serial);
-			std::string desc("");
+			std::string modelNumber("");
+			std::string driverInfo("");
 			long width, height;
+
 			double pixelWidth, pixelHeight;
 			bool hasShutter, canSetTemp, canGetCoolerPower, canSetGain, hasFilterWheel, power2Binning;
 			short maxBinX, maxBinY;
@@ -256,8 +260,10 @@ static void ccd_connect_callback(indigo_device *device) {
 			cam.put_SelectCamera(serial);
 			cam.put_IsMainCamera(true);
 			cam.put_Connected(true);
-			cam.get_Description(desc);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s connected", desc.c_str());
+			cam.get_ModelNumber(modelNumber);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (Model: %s) connected.", device->name, modelNumber.c_str());
+			snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "QSI %s", modelNumber.c_str());
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			cam.get_CameraXSize(&width);
 			cam.get_CameraYSize(&height);
 			cam.get_PixelSizeX(&pixelWidth);
@@ -287,7 +293,11 @@ static void ccd_connect_callback(indigo_device *device) {
 				assert(wheel != NULL);
 				memcpy(wheel, &wheel_template, sizeof(indigo_device));
 				strncpy(wheel->name, device->name, INDIGO_NAME_SIZE - 10);
-				strcat(wheel->name, " (wheel)");
+				char *p = strrchr(wheel->name, '#');
+				if (p != NULL) *p = 0;
+				strcat(wheel->name, "(wheel)");
+				strcat(wheel->name, " #");
+				strcat(wheel->name, PRIVATE_DATA->serial);
 				wheel->private_data = PRIVATE_DATA;
 				PRIVATE_DATA->wheel = wheel;
 				indigo_async((void *(*)(void *))indigo_attach_device, wheel);
@@ -514,7 +524,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		ccd_connect_callback(device);
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' (%s) detached.", device->name, PRIVATE_DATA->serial);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
 
@@ -572,7 +582,7 @@ static void process_plug_event(indigo_device *unused) {
 		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
-		strncpy(device->name, desc, INDIGO_NAME_SIZE);
+		snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", desc, serial);
 		device->private_data = private_data;
 		for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
 			if (devices[j] == NULL) {
