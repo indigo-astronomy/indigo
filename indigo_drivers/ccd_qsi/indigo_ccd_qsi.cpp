@@ -87,10 +87,8 @@ static void wheel_timer_callback(indigo_device *device) {
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		std::string last("");
-		cam.get_LastError(last);
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Get position failed  %s %s", text.c_str(), last.c_str());
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, text.c_str());
 	}
 }
 
@@ -121,10 +119,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
-				std::string last("");
-				cam.get_LastError(last);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, "Connection failed  %s %s", text.c_str(), last.c_str());
+				indigo_update_property(device, CONNECTION_PROPERTY, "Connection failed: %s", text.c_str());
 				return INDIGO_OK;
 			}
 		} else {
@@ -149,10 +145,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			}
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set position failed  %s %s", text.c_str(), last.c_str());
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, text.c_str());
 			return INDIGO_OK;
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -197,10 +191,8 @@ static void exposure_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed  %s %s", text.c_str(), last.c_str());
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, text.c_str());
 		}
 	}
 	PRIVATE_DATA->can_check_temperature = true;
@@ -223,10 +215,8 @@ static void ccd_temperature_callback(indigo_device *device) {
 			}
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Temperature check failed  %s %s", text.c_str(), last.c_str());
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, text.c_str());
 		}
 	}
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->temperature_timer);
@@ -362,9 +352,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
-			indigo_send_message(device, "Connection failed  %s %s", text.c_str(), last.c_str());
+			indigo_send_message(device, text.c_str());
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else {
@@ -378,9 +366,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
-				std::string last("");
-				cam.get_LastError(last);
-				indigo_send_message(device, "Abort exposure failed  %s %s", text.c_str(), last.c_str());
+				indigo_send_message(device, text.c_str());
 			}
 		}
 		try {
@@ -393,9 +379,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
-			indigo_send_message(device, "Disconnection failed  %s %s", text.c_str(), last.c_str());
+			indigo_send_message(device, "Disconnect failed: %s", text.c_str());
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -435,10 +419,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
-				std::string last("");
-				cam.get_LastError(last);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Start exposure failed  %s %s", text.c_str(), last.c_str());
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, text.c_str());
 				return INDIGO_OK;
 			}
 		}
@@ -455,10 +437,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
-				std::string last("");
-				cam.get_LastError(last);
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, "Abort exposure failed  %s %s", text.c_str(), last.c_str());
+				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, text.c_str());
 				return INDIGO_OK;
 			}
 		}
@@ -471,10 +451,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
 			CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_COOLER_PROPERTY, "Cooler setup failed  %s %s", text.c_str(), last.c_str());
+			indigo_update_property(device, CCD_COOLER_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
@@ -491,10 +469,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", CCD_TEMPERATURE_ITEM->number.value);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Temperature setup failed  %s %s", text.c_str(), last.c_str());
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
@@ -507,10 +483,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_GAIN_PROPERTY, "Gain = %d", gain);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			std::string last("");
-			cam.get_LastError(last);
 			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_GAIN_PROPERTY, "Gain setup failed %s %s", text.c_str(), last.c_str());
+			indigo_update_property(device, CCD_GAIN_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
 	}
@@ -553,9 +527,7 @@ static void process_plug_event(indigo_device *unused) {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		std::string last("");
-		cam.get_LastError(last);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot plug failed  %s %s", text.c_str(), last.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot plug failed: %s", text.c_str());
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
@@ -605,9 +577,7 @@ static void process_unplug_event(indigo_device *unused) {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		std::string last("");
-		cam.get_LastError(last);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot unplug failed  %s %s", text.c_str(), last.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot unplug failed: %s", text.c_str());
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
