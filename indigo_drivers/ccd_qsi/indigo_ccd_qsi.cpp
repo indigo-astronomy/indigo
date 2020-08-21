@@ -24,7 +24,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME		"indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -333,15 +333,22 @@ static void ccd_connect_callback(indigo_device *device) {
 			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
 			CCD_BIN_VERTICAL_ITEM->number.max = maxBinY;
 			if (canSetTemp) {
+				bool coolerOn;
 				CCD_TEMPERATURE_PROPERTY->hidden = false;
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_TEMPERATURE_ITEM->number.min = -60;
 				CCD_TEMPERATURE_ITEM->number.max = 60;
-				CCD_TEMPERATURE_ITEM->number.step = 0;
+				CCD_TEMPERATURE_ITEM->number.step = 1;
 				CCD_COOLER_PROPERTY->hidden = false;
 				CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_COOLER_ON_ITEM->sw.value = false;
-				CCD_COOLER_OFF_ITEM->sw.value = true;
+				cam.get_CoolerOn(&coolerOn);
+				if (coolerOn) {
+					CCD_COOLER_ON_ITEM->sw.value = true;
+					CCD_COOLER_OFF_ITEM->sw.value = false;
+				} else {
+					CCD_COOLER_ON_ITEM->sw.value = false;
+					CCD_COOLER_OFF_ITEM->sw.value = true;
+				}
 			}
 			cam.get_CanGetCoolerPower(&canGetCoolerPower);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s get cooler power", canGetCoolerPower ? "Can" : "Can't");
@@ -462,6 +469,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (CCD_COOLER_OFF_ITEM->sw.value) {
 				cam.put_CoolerOn(true);
 				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 			}
 			cam.put_SetCCDTemperature(CCD_TEMPERATURE_ITEM->number.value);
