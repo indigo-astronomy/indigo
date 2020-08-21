@@ -52,6 +52,17 @@
 #define QSI_PRODUCT_ID1						0xEB48
 #define QSI_PRODUCT_ID2						0xEB49
 
+
+#define QSI_READOUT_SPEED_PROPERTY      (PRIVATE_DATA->qsi_readout_speed_property)
+#define QSI_READOUT_SPEED_PROPERTY_NAME "QSI_READOUT_SPEED"
+
+#define QSI_READOUT_HQ_ITEM             (QSI_READOUT_SPEED_PROPERTY->items+0)
+#define QSI_READOUT_HQ_ITEM_NAME        "HIGH_QUALITY"
+
+#define QSI_READOUT_FAST_ITEM           (QSI_READOUT_SPEED_PROPERTY->items+1)
+#define QSI_READOUT_FAST_ITEM_NAME      "FAST_READOUT"
+
+
 #define PRIVATE_DATA              ((qsi_private_data *)device->private_data)
 
 #undef INDIGO_DEBUG_DRIVER
@@ -68,6 +79,7 @@ typedef struct {
 	bool can_check_temperature;
 	indigo_device *wheel;
 	int filter_count;
+	indigo_property *qsi_readout_speed_property;
 } qsi_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
@@ -222,6 +234,15 @@ static void ccd_temperature_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->temperature_timer);
 }
 
+static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(QSI_READOUT_SPEED_PROPERTY, property))
+			indigo_define_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
+	}
+	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+}
+
+
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -229,8 +250,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 		PRIVATE_DATA->can_check_temperature = true;
 		INFO_PROPERTY->count = 7;
 		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->serial);
+		// -------------------------------------------------------------------------------- ASI_PRESETS
+		QSI_READOUT_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_READOUT_SPEED_PROPERTY_NAME, "Advanced", "CCD Readout Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		if (QSI_READOUT_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(QSI_READOUT_HQ_ITEM, QSI_READOUT_HQ_ITEM_NAME, "High Quality", false);
+		indigo_init_switch_item(QSI_READOUT_FAST_ITEM, QSI_READOUT_FAST_ITEM_NAME, "Fast Readout", false);
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -355,6 +383,19 @@ static void ccd_connect_callback(indigo_device *device) {
 			if (canGetCoolerPower) {
 				CCD_COOLER_POWER_PROPERTY->hidden = false;
 			}
+
+			QSICamera::ReadoutSpeed readoutSpeed;
+			cam.get_ReadoutSpeed(readoutSpeed);
+			switch (readoutSpeed) {
+				case QSICamera::HighImageQuality:
+					indigo_set_switch(QSI_READOUT_SPEED_PROPERTY, QSI_READOUT_HQ_ITEM, true);
+					break;
+				case QSICamera::FastReadout:
+					indigo_set_switch(QSI_READOUT_SPEED_PROPERTY, QSI_READOUT_FAST_ITEM, true);
+					break;
+			}
+			indigo_define_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
+
 			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
@@ -364,6 +405,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+		indigo_delete_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			try {
 				bool canAbort;
@@ -495,6 +537,31 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_GAIN_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(QSI_READOUT_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- QSI_READOUT_SPEED
+		indigo_property_copy_values(QSI_READOUT_SPEED_PROPERTY, property, false);
+		QSICamera::ReadoutSpeed requestedSpeed = QSICamera::HighImageQuality;
+		if (QSI_READOUT_HQ_ITEM->sw.value) {
+			requestedSpeed = QSICamera::HighImageQuality;
+		} else if (QSI_READOUT_FAST_ITEM->sw.value) {
+			requestedSpeed = QSICamera::FastReadout;
+		}
+		try {
+			cam.put_ReadoutSpeed(requestedSpeed);
+			QSI_READOUT_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cam.put_ReadoutSpeed(%d)", requestedSpeed);
+			indigo_update_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			QSI_READOUT_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, QSI_READOUT_SPEED_PROPERTY, text.c_str());
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, QSI_READOUT_SPEED_PROPERTY);
+		}
 	}
 	// -----------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
@@ -507,6 +574,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		ccd_connect_callback(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	indigo_release_property(QSI_READOUT_SPEED_PROPERTY);
+
 	return indigo_ccd_detach(device);
 }
 
@@ -519,7 +588,7 @@ static void process_plug_event(indigo_device *unused) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
-		indigo_ccd_enumerate_properties,
+		ccd_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
@@ -624,12 +693,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot-plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
+			indigo_set_timer(NULL, 0.1, process_plug_event, NULL);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot-unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
+			indigo_set_timer(NULL, 0.1, process_unplug_event, NULL);
 			break;
 		}
 	}
