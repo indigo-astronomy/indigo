@@ -250,7 +250,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			std::string desc("");
 			long width, height;
 			double pixelWidth, pixelHeight;
-			bool hasShutter, canSetTemp, hasFilterWheel, power2Binning;
+			bool hasShutter, canSetTemp, canGetCoolerPower, canSetGain, hasFilterWheel, power2Binning;
 			short maxBinX, maxBinY;
 			char name[32], label[128];
 			cam.put_SelectCamera(serial);
@@ -296,6 +296,16 @@ static void ccd_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hasn't filter wheel");
 				PRIVATE_DATA->wheel = NULL;
 			}
+			cam.get_CanSetGain(&canSetGain);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s set gain", canSetGain ? "Can" : "Can't");
+			if (canSetGain) {
+				QSICamera::CameraGain gain;
+				CCD_GAIN_PROPERTY->hidden = false;
+				CCD_GAIN_ITEM->number.min = 0;
+				CCD_GAIN_ITEM->number.max = 2;
+				cam.get_CameraGain(&gain);
+				CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = (double)gain;
+			}
 			cam.get_MaxBinX(&maxBinX);
 			cam.get_MaxBinY(&maxBinY);
 			cam.get_PowerOfTwoBinning(&power2Binning);
@@ -332,6 +342,11 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_COOLER_ON_ITEM->sw.value = false;
 				CCD_COOLER_OFF_ITEM->sw.value = true;
+			}
+			cam.get_CanGetCoolerPower(&canGetCoolerPower);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s get cooler power", canGetCoolerPower ? "Can" : "Can't");
+			if (canGetCoolerPower) {
+				CCD_COOLER_POWER_PROPERTY->hidden = false;
 			}
 			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -463,13 +478,29 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			cam.put_SetCCDTemperature(CCD_TEMPERATURE_ITEM->number.value);
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", CCD_TEMPERATURE_ITEM->number.value);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
 			std::string last("");
 			cam.get_LastError(last);
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Temperature setup failed  %s %s", text.c_str(), last.c_str());
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_GAIN
+		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+		try {
+			int gain = (int)CCD_GAIN_ITEM->number.value;
+			cam.put_CameraGain((QSICamera::CameraGain)gain);
+			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_GAIN_PROPERTY, "Gain = %d", gain);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			std::string last("");
+			cam.get_LastError(last);
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_GAIN_PROPERTY, "Gain setup failed %s %s", text.c_str(), last.c_str());
 		}
 		return INDIGO_OK;
 	}
