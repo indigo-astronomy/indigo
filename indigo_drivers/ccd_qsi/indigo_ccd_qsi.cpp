@@ -114,30 +114,41 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void wheel_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		assert(PRIVATE_DATA->filter_count > 0);
+		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->filter_count;
+		try {
+			short slot;
+			cam.get_Position(&slot);
+			WHEEL_SLOT_ITEM->number.value = slot + 1;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, "Connection failed: %s", text.c_str());
+			return;
+		}
+	} else {
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			assert(PRIVATE_DATA->filter_count > 0);
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->filter_count;
-			try {
-				short slot;
-				cam.get_Position(&slot);
-				WHEEL_SLOT_ITEM->number.value = slot + 1;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} catch (std::runtime_error err) {
-				std::string text = err.what();
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, "Connection failed: %s", text.c_str());
-				return INDIGO_OK;
-			}
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
+		return INDIGO_OK;
+
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
@@ -169,8 +180,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		wheel_connect_callback(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
@@ -318,7 +331,8 @@ static void ccd_connect_callback(indigo_device *device) {
 				strcat(wheel->name, PRIVATE_DATA->serial);
 				wheel->private_data = PRIVATE_DATA;
 				PRIVATE_DATA->wheel = wheel;
-				indigo_async((void *(*)(void *))indigo_attach_device, wheel);
+				//indigo_async((void *(*)(void *))indigo_attach_device, PRIVATE_DATA->wheel);
+				indigo_attach_device(PRIVATE_DATA->wheel);
 			} else {
 				PRIVATE_DATA->filter_count = 0;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hasn't filter wheel");
@@ -420,11 +434,13 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		try {
 			if (PRIVATE_DATA->wheel) {
-				wheel_detach(PRIVATE_DATA->wheel);
+				indigo_detach_device(PRIVATE_DATA->wheel);
 				free(PRIVATE_DATA->wheel);
 				PRIVATE_DATA->wheel = NULL;
 			}
 			cam.put_Connected(false);
+			free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
@@ -599,7 +615,7 @@ static void process_plug_event(indigo_device *unused) {
 	char desc[INDIGO_NAME_SIZE];
 	int count;
 	pthread_mutex_lock(&device_mutex);
-	  indigo_usleep(3 * ONE_SECOND_DELAY);
+	indigo_usleep(1 * ONE_SECOND_DELAY);
 	try {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {
@@ -649,7 +665,7 @@ static void process_unplug_event(indigo_device *unused) {
 	char serial[INDIGO_NAME_SIZE];
 	int count;
 	pthread_mutex_lock(&device_mutex);
-	  indigo_usleep(3 * ONE_SECOND_DELAY);
+	indigo_usleep(1 * ONE_SECOND_DELAY);
 	try {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {
