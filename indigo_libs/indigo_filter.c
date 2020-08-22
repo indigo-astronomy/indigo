@@ -508,7 +508,10 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 						indigo_property *copy = (indigo_property *)malloc(size);
 						memcpy(copy, property, size);
 						strcpy(copy->device, device->name);
-						if (strncmp(name_prefix, copy->name, name_prefix_length)) {
+						bool translate = strncmp(name_prefix, copy->name, name_prefix_length);
+						if (translate && !strcmp(name_prefix, "CCD_") && !strncmp(copy->name, "DSLR_", 5))
+							translate = false;
+						if (translate) {
 							strcpy(copy->name, name_prefix);
 							strcat(copy->name, property->name);
 							strcpy(copy->label, property_name_label[i]);
