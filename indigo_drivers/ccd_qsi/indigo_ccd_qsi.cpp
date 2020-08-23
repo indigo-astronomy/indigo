@@ -124,7 +124,7 @@ static void wheel_timer_callback(indigo_device *device) {
 		WHEEL_SLOT_ITEM->number.value = slot + 1;
 		if (slot == -1) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+			indigo_set_timer(device, 0.1, wheel_timer_callback, NULL);
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -193,10 +193,12 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				cam.get_Position(&slot);
 				if (WHEEL_SLOT_ITEM->number.value - 1 == slot) {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 				} else {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 					cam.put_Position(WHEEL_SLOT_ITEM->number.value - 1);
-					indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+					indigo_set_timer(device, 0.1, wheel_timer_callback, NULL);
 				}
 			}
 		} catch (std::runtime_error err) {
@@ -205,7 +207,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, WHEEL_SLOT_PROPERTY, text.c_str());
 			return INDIGO_OK;
 		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);
@@ -241,9 +242,8 @@ static void exposure_timer_callback(indigo_device *device) {
 				indigo_usleep(5000);
 				cam.get_ImageReady(&ready);
 			}
-			long width, height;
-			cam.get_NumX(&width);
-			cam.get_NumY(&height);
+			int width, height, depth;
+			cam.get_ImageArraySize(width, height, depth);
 			cam.get_ImageArray(PRIVATE_DATA->buffer + FITS_HEADER_SIZE / 2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image %ld x %ld", width, height);
 			indigo_process_image(device, PRIVATE_DATA->buffer, (int)width, (int)height, 16, true, true, NULL);
@@ -279,7 +279,30 @@ static void ccd_temperature_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, text.c_str());
 		}
 	}
-	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->temperature_timer);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
+}
+
+static void handle_ccd_exposure(indigo_device *device) {
+	if (IS_CONNECTED) {
+		indigo_use_shortest_exposure_if_bias(device);
+		try {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			cam.put_StartX(CCD_FRAME_LEFT_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value);
+			cam.put_StartY(CCD_FRAME_TOP_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
+			cam.put_NumX(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value);
+			cam.put_NumY(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
+			cam.put_BinX(CCD_BIN_HORIZONTAL_ITEM->number.value);
+			cam.put_BinY(CCD_BIN_VERTICAL_ITEM->number.value);
+			cam.StartExposure(CCD_EXPOSURE_ITEM->number.value, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value));
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, text.c_str());
+		}
+	}
+	indigo_ccd_change_property(device, NULL, CCD_EXPOSURE_PROPERTY);
 }
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -524,6 +547,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				bool canAbort;
 				cam.get_CanAbortExposure(&canAbort);
 				if (canAbort) {
+					indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 					cam.AbortExposure();
 				}
 			} catch (std::runtime_error err) {
@@ -564,31 +588,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
-
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			indigo_use_shortest_exposure_if_bias(device);
-			try {
-				cam.put_StartX(CCD_FRAME_LEFT_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value);
-				cam.put_StartY(CCD_FRAME_TOP_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
-				cam.put_NumX(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value);
-				cam.put_NumY(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
-				cam.put_BinX(CCD_BIN_HORIZONTAL_ITEM->number.value);
-				cam.put_BinY(CCD_BIN_VERTICAL_ITEM->number.value);
-				cam.StartExposure(CCD_EXPOSURE_ITEM->number.value, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value));
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-			} catch (std::runtime_error err) {
-				std::string text = err.what();
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, text.c_str());
-				return INDIGO_OK;
-			}
-		}
+		//cam.StartExposure() may take up to 10 secinds to return, so it should be aync
+		indigo_set_timer(device, 0, handle_ccd_exposure, NULL);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
@@ -597,9 +604,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				bool canAbort;
 				cam.get_CanAbortExposure(&canAbort);
 				if (canAbort) {
+					indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 					cam.AbortExposure();
 				}
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
