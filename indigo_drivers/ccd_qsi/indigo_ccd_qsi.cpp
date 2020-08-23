@@ -53,24 +53,43 @@
 #define QSI_PRODUCT_ID2						0xEB49
 
 
-#define QSI_READOUT_SPEED_PROPERTY      (PRIVATE_DATA->qsi_readout_speed_property)
-#define QSI_READOUT_SPEED_PROPERTY_NAME "QSI_READOUT_SPEED"
+#define QSI_READOUT_SPEED_PROPERTY              (PRIVATE_DATA->qsi_readout_speed_property)
+#define QSI_READOUT_SPEED_PROPERTY_NAME         "QSI_READOUT_SPEED"
 
-#define QSI_READOUT_HQ_ITEM             (QSI_READOUT_SPEED_PROPERTY->items+0)
-#define QSI_READOUT_HQ_ITEM_NAME        "HIGH_QUALITY"
+#define QSI_READOUT_HQ_ITEM                     (QSI_READOUT_SPEED_PROPERTY->items+0)
+#define QSI_READOUT_HQ_ITEM_NAME                "HIGH_QUALITY"
 
-#define QSI_READOUT_FAST_ITEM           (QSI_READOUT_SPEED_PROPERTY->items+1)
-#define QSI_READOUT_FAST_ITEM_NAME      "FAST_READOUT"
+#define QSI_READOUT_FAST_ITEM                   (QSI_READOUT_SPEED_PROPERTY->items+1)
+#define QSI_READOUT_FAST_ITEM_NAME              "FAST_READOUT"
 
 
-#define QSI_ANTI_BLOOM_PROPERTY         (PRIVATE_DATA->qsi_anti_bloom_property)
-#define QSI_ANTI_BLOOM_PROPERTY_NAME    "QSI_ANTI_BLOOM"
+#define QSI_ANTI_BLOOM_PROPERTY                 (PRIVATE_DATA->qsi_anti_bloom_property)
+#define QSI_ANTI_BLOOM_PROPERTY_NAME            "QSI_ANTI_BLOOM"
 
-#define QSI_ANTI_BLOOM_NORMAL_ITEM      (QSI_ANTI_BLOOM_PROPERTY->items+0)
-#define QSI_ANTI_BLOOM_NORMAL_ITEM_NAME "NORMAL"
+#define QSI_ANTI_BLOOM_NORMAL_ITEM              (QSI_ANTI_BLOOM_PROPERTY->items+0)
+#define QSI_ANTI_BLOOM_NORMAL_ITEM_NAME         "NORMAL"
 
-#define QSI_ANTI_BLOOM_HIGH_ITEM        (QSI_ANTI_BLOOM_PROPERTY->items+1)
-#define QSI_ANTI_BLOOM_HIGH_ITEM_NAME   "HIGH"
+#define QSI_ANTI_BLOOM_HIGH_ITEM                (QSI_ANTI_BLOOM_PROPERTY->items+1)
+#define QSI_ANTI_BLOOM_HIGH_ITEM_NAME           "HIGH"
+
+
+#define QSI_PRE_EXPOSURE_FLUSH_PROPERTY                   (PRIVATE_DATA->qsi_pre_exposure_flush_property)
+#define QSI_PRE_EXPOSURE_FLUSH_PROPERTY_NAME              "QSI_PRE_EXPOSURE_FLUSH"
+
+#define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM                  (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+0)
+#define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM_NAME             "NONE"
+
+#define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM                (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+1)
+#define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM_NAME           "MODEST"
+
+#define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM                (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+2)
+#define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM_NAME           "NORMAL"
+
+#define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM            (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+3)
+#define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM_NAME       "AGGRESSIVE"
+
+#define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM          (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+4)
+#define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM_NAME     "VERY_AGGRESSIVE"
 
 
 #define PRIVATE_DATA              ((qsi_private_data *)device->private_data)
@@ -90,7 +109,9 @@ typedef struct {
 	bool wheel_attached;
 	indigo_device *wheel;
 	int filter_count;
-	indigo_property *qsi_readout_speed_property, *qsi_anti_bloom_property;
+	indigo_property *qsi_readout_speed_property,
+	                *qsi_anti_bloom_property,
+	                *qsi_pre_exposure_flush_property;
 } qsi_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
@@ -267,6 +288,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
 		if (indigo_property_match(QSI_ANTI_BLOOM_PROPERTY, property))
 			indigo_define_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
+		if (indigo_property_match(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property))
+			indigo_define_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -291,6 +314,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(QSI_ANTI_BLOOM_NORMAL_ITEM, QSI_ANTI_BLOOM_NORMAL_ITEM_NAME, "Normal", false);
 		indigo_init_switch_item(QSI_ANTI_BLOOM_HIGH_ITEM, QSI_ANTI_BLOOM_HIGH_ITEM_NAME, "High", false);
+		// -------------------------------------------------------------------------------- QSI_PRE_EXPOSURE_FLUSH
+		QSI_PRE_EXPOSURE_FLUSH_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_PRE_EXPOSURE_FLUSH_PROPERTY_NAME, "Advanced", "Pre Exposure Flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 5);
+		if (QSI_PRE_EXPOSURE_FLUSH_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM, QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM_NAME, "Off", false);
+		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM, QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM_NAME, "Modest", false);
+		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM, QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM_NAME, "Normal", false);
+		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM, QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM_NAME, "Aggressive", false);
+		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM, QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM_NAME, "Verry Aggressive", false);
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
@@ -451,6 +483,30 @@ static void ccd_connect_callback(indigo_device *device) {
 			}
 			indigo_define_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
 
+			QSICamera::PreExposureFlush peFlush;
+			cam.get_PreExposureFlush(&peFlush);
+			switch (peFlush) {
+				case QSICamera::FlushNone:
+					indigo_set_switch(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM, true);
+					break;
+				case QSICamera::FlushModest:
+					indigo_set_switch(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM, true);
+					break;
+				case QSICamera::FlushNormal:
+					indigo_set_switch(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM, true);
+					break;
+				case QSICamera::FlushAggressive:
+					indigo_set_switch(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM, true);
+					break;
+				case QSICamera::FlushVeryAggressive:
+					indigo_set_switch(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM, true);
+					break;
+				default:
+					QSI_PRE_EXPOSURE_FLUSH_PROPERTY->hidden = true;
+					break;
+			}
+			indigo_define_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
+
 			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
@@ -462,6 +518,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 		indigo_delete_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
+		indigo_delete_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			try {
 				bool canAbort;
@@ -636,11 +693,38 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, QSI_ANTI_BLOOM_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- QSI_PRE_EXPOSURE_FLUSH
+		indigo_property_copy_values(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property, false);
+		QSICamera::PreExposureFlush requestedPEFlush = QSICamera::FlushNormal;
+		if (QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM->sw.value) {
+			requestedPEFlush = QSICamera::FlushNone;
+		} else if (QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM->sw.value) {
+			requestedPEFlush = QSICamera::FlushModest;
+		} else if (QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM->sw.value) {
+			requestedPEFlush = QSICamera::FlushNormal;
+		} else if (QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM->sw.value) {
+			requestedPEFlush = QSICamera::FlushAggressive;
+		} else if (QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM->sw.value) {
+			requestedPEFlush = QSICamera::FlushVeryAggressive;
+		}
+		try {
+			cam.put_PreExposureFlush(requestedPEFlush);
+			QSI_PRE_EXPOSURE_FLUSH_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cam.put_PreExposureFlush(%d)", requestedPEFlush);
+			indigo_update_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			QSI_PRE_EXPOSURE_FLUSH_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, text.c_str());
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, QSI_READOUT_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, QSI_ANTI_BLOOM_PROPERTY);
+			indigo_save_property(device, NULL, QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
 		}
 	}
 	// -----------------------------------------------------------------------------
@@ -656,6 +740,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	indigo_release_property(QSI_READOUT_SPEED_PROPERTY);
 	indigo_release_property(QSI_ANTI_BLOOM_PROPERTY);
+	indigo_release_property(QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
