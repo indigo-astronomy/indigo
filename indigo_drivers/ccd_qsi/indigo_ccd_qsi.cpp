@@ -87,6 +87,7 @@ typedef struct {
 	long int buffer_size;
 	unsigned short *buffer;
 	bool can_check_temperature;
+	bool wheel_attached;
 	indigo_device *wheel;
 	int filter_count;
 	indigo_property *qsi_readout_speed_property, *qsi_anti_bloom_property;
@@ -118,6 +119,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		PRIVATE_DATA->wheel_attached = true;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
@@ -190,10 +192,12 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
+	if (!PRIVATE_DATA->wheel_attached) return INDIGO_FAILED;
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		wheel_connect_callback(device);
 	}
+	PRIVATE_DATA->wheel_attached = false;
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
@@ -353,6 +357,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_attach_device(PRIVATE_DATA->wheel);
 			} else {
 				PRIVATE_DATA->filter_count = 0;
+				PRIVATE_DATA->wheel_attached = false;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hasn't filter wheel");
 				PRIVATE_DATA->wheel = NULL;
 			}
@@ -468,9 +473,10 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		try {
 			if (PRIVATE_DATA->wheel) {
-				indigo_detach_device(PRIVATE_DATA->wheel);
-				free(PRIVATE_DATA->wheel);
-				PRIVATE_DATA->wheel = NULL;
+				if (indigo_detach_device(PRIVATE_DATA->wheel) == INDIGO_OK) {
+					free(PRIVATE_DATA->wheel);
+					PRIVATE_DATA->wheel = NULL;
+				}
 			}
 			cam.put_Connected(false);
 			free(PRIVATE_DATA->buffer);
