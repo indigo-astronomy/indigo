@@ -430,6 +430,9 @@ static void ccd_connect_callback(indigo_device *device) {
 				case QSICamera::FastReadout:
 					indigo_set_switch(QSI_READOUT_SPEED_PROPERTY, QSI_READOUT_FAST_ITEM, true);
 					break;
+				default:
+					QSI_READOUT_SPEED_PROPERTY->hidden = true;
+					break;
 			}
 			indigo_define_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
 
