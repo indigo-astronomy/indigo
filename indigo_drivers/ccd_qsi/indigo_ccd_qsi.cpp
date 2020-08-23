@@ -63,6 +63,16 @@
 #define QSI_READOUT_FAST_ITEM_NAME      "FAST_READOUT"
 
 
+#define QSI_ANTI_BLOOM_PROPERTY         (PRIVATE_DATA->qsi_anti_bloom_property)
+#define QSI_ANTI_BLOOM_PROPERTY_NAME    "QSI_ANTI_BLOOM"
+
+#define QSI_ANTI_BLOOM_NORMAL_ITEM      (QSI_ANTI_BLOOM_PROPERTY->items+0)
+#define QSI_ANTI_BLOOM_NORMAL_ITEM_NAME "NORMAL"
+
+#define QSI_ANTI_BLOOM_HIGH_ITEM        (QSI_ANTI_BLOOM_PROPERTY->items+1)
+#define QSI_ANTI_BLOOM_HIGH_ITEM_NAME   "HIGH"
+
+
 #define PRIVATE_DATA              ((qsi_private_data *)device->private_data)
 
 #undef INDIGO_DEBUG_DRIVER
@@ -79,7 +89,7 @@ typedef struct {
 	bool can_check_temperature;
 	indigo_device *wheel;
 	int filter_count;
-	indigo_property *qsi_readout_speed_property;
+	indigo_property *qsi_readout_speed_property, *qsi_anti_bloom_property;
 } qsi_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
@@ -251,6 +261,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(QSI_READOUT_SPEED_PROPERTY, property))
 			indigo_define_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
+		if (indigo_property_match(QSI_ANTI_BLOOM_PROPERTY, property))
+			indigo_define_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -263,12 +275,18 @@ static indigo_result ccd_attach(indigo_device *device) {
 		PRIVATE_DATA->can_check_temperature = true;
 		INFO_PROPERTY->count = 7;
 		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->serial);
-		// -------------------------------------------------------------------------------- ASI_PRESETS
+		// -------------------------------------------------------------------------------- QSI_READOUT_SPEED
 		QSI_READOUT_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_READOUT_SPEED_PROPERTY_NAME, "Advanced", "CCD Readout Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 		if (QSI_READOUT_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(QSI_READOUT_HQ_ITEM, QSI_READOUT_HQ_ITEM_NAME, "High Quality", false);
 		indigo_init_switch_item(QSI_READOUT_FAST_ITEM, QSI_READOUT_FAST_ITEM_NAME, "Fast Readout", false);
+		// -------------------------------------------------------------------------------- QSI_ANTI_BLOOM
+		QSI_ANTI_BLOOM_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_ANTI_BLOOM_PROPERTY_NAME, "Advanced", "Anti Blooming", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		if (QSI_ANTI_BLOOM_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(QSI_ANTI_BLOOM_NORMAL_ITEM, QSI_ANTI_BLOOM_NORMAL_ITEM_NAME, "Normal", false);
+		indigo_init_switch_item(QSI_ANTI_BLOOM_HIGH_ITEM, QSI_ANTI_BLOOM_HIGH_ITEM_NAME, "High", false);
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
@@ -410,6 +428,21 @@ static void ccd_connect_callback(indigo_device *device) {
 			}
 			indigo_define_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
 
+			QSICamera::AntiBloom antiBloom;
+			cam.get_AntiBlooming(&antiBloom);
+			switch (antiBloom) {
+				case QSICamera::AntiBloomNormal:
+					indigo_set_switch(QSI_ANTI_BLOOM_PROPERTY, QSI_ANTI_BLOOM_NORMAL_ITEM, true);
+					break;
+				case QSICamera::AntiBloomHigh:
+					indigo_set_switch(QSI_ANTI_BLOOM_PROPERTY, QSI_ANTI_BLOOM_HIGH_ITEM, true);
+					break;
+				default:
+					QSI_ANTI_BLOOM_PROPERTY->hidden = true;
+					break;
+			}
+			indigo_define_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
+
 			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
@@ -420,6 +453,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 		indigo_delete_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
+		indigo_delete_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			try {
 				bool canAbort;
@@ -573,10 +607,31 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, QSI_READOUT_SPEED_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(QSI_ANTI_BLOOM_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- QSI_ANTI_BLOOM
+		indigo_property_copy_values(QSI_ANTI_BLOOM_PROPERTY, property, false);
+		QSICamera::AntiBloom requestedAntiBloom = QSICamera::AntiBloomNormal;
+		if (QSI_ANTI_BLOOM_NORMAL_ITEM->sw.value) {
+			requestedAntiBloom = QSICamera::AntiBloomNormal;
+		} else if (QSI_ANTI_BLOOM_HIGH_ITEM->sw.value) {
+			requestedAntiBloom = QSICamera::AntiBloomHigh;
+		}
+		try {
+			cam.put_AntiBlooming(requestedAntiBloom);
+			QSI_ANTI_BLOOM_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cam.put_AntiBlooming(%d)", requestedAntiBloom);
+			indigo_update_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			QSI_ANTI_BLOOM_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, QSI_ANTI_BLOOM_PROPERTY, text.c_str());
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, QSI_READOUT_SPEED_PROPERTY);
+			indigo_save_property(device, NULL, QSI_ANTI_BLOOM_PROPERTY);
 		}
 	}
 	// -----------------------------------------------------------------------------
@@ -591,6 +646,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	indigo_release_property(QSI_READOUT_SPEED_PROPERTY);
+	indigo_release_property(QSI_ANTI_BLOOM_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
