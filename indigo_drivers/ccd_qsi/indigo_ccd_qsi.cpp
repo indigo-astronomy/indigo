@@ -18,14 +18,16 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
+//
+// 23.08.2020 by Rumen.G.Bogdanovski <rumen@skyarchive.org>
+// - major rework: made driver stable with access to QSI camera
 
 /** INDIGO CCD driver for Quantum Scientific Imaging
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION 0x0009
-#define DRIVER_NAME		"indigo_ccd_qsi"
+#define DRIVER_VERSION    0x0009
+#define DRIVER_NAME       "indigo_ccd_qsi"
 
 #include <stdlib.h>
 #include <string.h>
@@ -49,50 +51,37 @@
 #include "qsiapi.h"
 
 #define QSI_VENDOR_ID             0x0403
-#define QSI_PRODUCT_ID1						0xEB48
-#define QSI_PRODUCT_ID2						0xEB49
+#define QSI_PRODUCT_ID1           0xEB48
+#define QSI_PRODUCT_ID2           0xEB49
 
+#define QSI_READOUT_SPEED_PROPERTY                       (PRIVATE_DATA->qsi_readout_speed_property)
+#define QSI_READOUT_SPEED_PROPERTY_NAME                  "QSI_READOUT_SPEED"
+#define QSI_READOUT_HQ_ITEM                              (QSI_READOUT_SPEED_PROPERTY->items+0)
+#define QSI_READOUT_HQ_ITEM_NAME                         "HIGH_QUALITY"
+#define QSI_READOUT_FAST_ITEM                            (QSI_READOUT_SPEED_PROPERTY->items+1)
+#define QSI_READOUT_FAST_ITEM_NAME                       "FAST_READOUT"
 
-#define QSI_READOUT_SPEED_PROPERTY              (PRIVATE_DATA->qsi_readout_speed_property)
-#define QSI_READOUT_SPEED_PROPERTY_NAME         "QSI_READOUT_SPEED"
-
-#define QSI_READOUT_HQ_ITEM                     (QSI_READOUT_SPEED_PROPERTY->items+0)
-#define QSI_READOUT_HQ_ITEM_NAME                "HIGH_QUALITY"
-
-#define QSI_READOUT_FAST_ITEM                   (QSI_READOUT_SPEED_PROPERTY->items+1)
-#define QSI_READOUT_FAST_ITEM_NAME              "FAST_READOUT"
-
-
-#define QSI_ANTI_BLOOM_PROPERTY                 (PRIVATE_DATA->qsi_anti_bloom_property)
-#define QSI_ANTI_BLOOM_PROPERTY_NAME            "QSI_ANTI_BLOOM"
-
-#define QSI_ANTI_BLOOM_NORMAL_ITEM              (QSI_ANTI_BLOOM_PROPERTY->items+0)
-#define QSI_ANTI_BLOOM_NORMAL_ITEM_NAME         "NORMAL"
-
-#define QSI_ANTI_BLOOM_HIGH_ITEM                (QSI_ANTI_BLOOM_PROPERTY->items+1)
-#define QSI_ANTI_BLOOM_HIGH_ITEM_NAME           "HIGH"
-
+#define QSI_ANTI_BLOOM_PROPERTY                          (PRIVATE_DATA->qsi_anti_bloom_property)
+#define QSI_ANTI_BLOOM_PROPERTY_NAME                     "QSI_ANTI_BLOOM"
+#define QSI_ANTI_BLOOM_NORMAL_ITEM                       (QSI_ANTI_BLOOM_PROPERTY->items+0)
+#define QSI_ANTI_BLOOM_NORMAL_ITEM_NAME                  "NORMAL"
+#define QSI_ANTI_BLOOM_HIGH_ITEM                         (QSI_ANTI_BLOOM_PROPERTY->items+1)
+#define QSI_ANTI_BLOOM_HIGH_ITEM_NAME                    "HIGH"
 
 #define QSI_PRE_EXPOSURE_FLUSH_PROPERTY                   (PRIVATE_DATA->qsi_pre_exposure_flush_property)
 #define QSI_PRE_EXPOSURE_FLUSH_PROPERTY_NAME              "QSI_PRE_EXPOSURE_FLUSH"
-
 #define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM                  (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+0)
 #define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM_NAME             "NONE"
-
 #define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM                (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+1)
 #define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM_NAME           "MODEST"
-
 #define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM                (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+2)
 #define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM_NAME           "NORMAL"
-
 #define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM            (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+3)
 #define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM_NAME       "AGGRESSIVE"
-
 #define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM          (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+4)
 #define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM_NAME     "VERY_AGGRESSIVE"
 
-
-#define PRIVATE_DATA              ((qsi_private_data *)device->private_data)
+#define PRIVATE_DATA                                      ((qsi_private_data *)device->private_data)
 
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
@@ -184,7 +173,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- CONNECTION
+		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -192,9 +181,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
 		return INDIGO_OK;
-
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- WHEEL_SLOT
+		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		indigo_set_timer(device, 0, wheel_slot_callback, NULL);
 		return INDIGO_OK;
@@ -306,7 +294,6 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
-
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -787,8 +774,9 @@ static void process_plug_event(indigo_device *unused) {
 				}
 			}
 		}
-		if (found)
+		if (found) {
 			continue;
+		}
 		qsi_private_data *private_data = (qsi_private_data *)malloc(sizeof(qsi_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(qsi_private_data));
