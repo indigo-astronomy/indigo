@@ -1,4 +1,4 @@
-# QSI CCD driver
+# QSI CCD and Filter Wheel driver
 
 http://www.qsimaging.com
 
@@ -6,7 +6,7 @@ http://www.qsimaging.com
 
 QSI 500, 600, and RS Series CCD Imaging Cameras (SDK version 7.6).
 
-This driver supports hot-plug (multiple devices, only one device can be active at the same time).
+This driver supports hot-plug (multiple devices, only one camera and filter wheel can be active at the same time).
 
 ## Supported platforms
 
@@ -20,8 +20,10 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_ccd_qsi
 
-## Status: Under Development
+## Status: Stable
 
-Driver is developed without access to the hardware
+Driver is developed and tested with:
+* QSI 683ws
 
 ## NOTES:
+Only one camera and one filter wheel can be active at the same time.
