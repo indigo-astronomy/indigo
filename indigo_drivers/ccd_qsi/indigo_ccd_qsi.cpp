@@ -116,26 +116,6 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
 
-static void wheel_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	try {
-		short slot;
-		cam.get_Position(&slot);
-		WHEEL_SLOT_ITEM->number.value = slot + 1;
-		if (slot == -1) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_set_timer(device, 0.1, wheel_timer_callback, NULL);
-		} else {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-	} catch (std::runtime_error err) {
-		std::string text = err.what();
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, text.c_str());
-	}
-}
-
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -145,6 +125,37 @@ static indigo_result wheel_attach(indigo_device *device) {
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
+}
+
+static void wheel_slot_callback(indigo_device *device) {
+	try {
+		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			short slot;
+			cam.get_Position(&slot);
+			if (WHEEL_SLOT_ITEM->number.value - 1 == slot) {
+				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			} else {
+				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+				cam.put_Position(WHEEL_SLOT_ITEM->number.value - 1);
+				cam.get_Position(&slot);
+				while(slot == -1) {
+					indigo_usleep(100000);
+					cam.get_Position(&slot);
+				}
+				WHEEL_SLOT_ITEM->number.value = slot + 1;
+				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, text.c_str());
+	}
 }
 
 static void wheel_connect_callback(indigo_device *device) {
@@ -185,28 +196,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
-		try {
-			if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
-				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				short slot;
-				cam.get_Position(&slot);
-				if (WHEEL_SLOT_ITEM->number.value - 1 == slot) {
-					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-				} else {
-					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-					cam.put_Position(WHEEL_SLOT_ITEM->number.value - 1);
-					indigo_set_timer(device, 0.1, wheel_timer_callback, NULL);
-				}
-			}
-		} catch (std::runtime_error err) {
-			std::string text = err.what();
-			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, WHEEL_SLOT_PROPERTY, text.c_str());
-			return INDIGO_OK;
-		}
+		indigo_set_timer(device, 0, wheel_slot_callback, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);
@@ -282,7 +272,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
 
-static void handle_ccd_exposure(indigo_device *device) {
+static void ccd_exposure_callback(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_use_shortest_exposure_if_bias(device);
 		try {
@@ -594,7 +584,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		//cam.StartExposure() may take up to 10 secinds to return, so it should be aync
-		indigo_set_timer(device, 0, handle_ccd_exposure, NULL);
+		indigo_set_timer(device, 0, ccd_exposure_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
