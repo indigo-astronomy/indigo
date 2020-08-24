@@ -217,11 +217,11 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			CCD_COOLER_POWER_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_COOLER_POWER_ITEM, CCD_COOLER_POWER_ITEM_NAME, "Power (%)", 0, 100, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_TEMPERATURE
-			CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_COOLER_GROUP, "Temperature", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_COOLER_GROUP, "Sensor temperature", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_TEMPERATURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_TEMPERATURE_ITEM, CCD_TEMPERATURE_ITEM_NAME, "Temperature (C)", -50, 50, 1, 0);
+			indigo_init_number_item(CCD_TEMPERATURE_ITEM, CCD_TEMPERATURE_ITEM_NAME, "Temperature (\u00B0C)", -50, 50, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
 			CCD_FITS_HEADERS_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_FITS_HEADERS_PROPERTY_NAME, CCD_IMAGE_GROUP, "Custom FITS headers", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
 			if (CCD_FITS_HEADERS_PROPERTY == NULL)
