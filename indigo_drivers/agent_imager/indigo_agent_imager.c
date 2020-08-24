@@ -243,25 +243,20 @@ static bool capture_raw_frame(indigo_device *device) {
 			indigo_usleep(ONE_SECOND_DELAY);
 			continue;
 		}
-		double reported_exposure_time = exposure_time;
+		double reported_exposure_time = remote_exposure_property->items[0].number.value;
 		AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = reported_exposure_time;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
-			double c = ceil(reported_exposure_time);
-			if (AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value > c) {
-				AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = c;
+			if (reported_exposure_time != remote_exposure_property->items[0].number.value) {
+				AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = reported_exposure_time = remote_exposure_property->items[0].number.value;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			}
 			if (reported_exposure_time > 1) {
-				reported_exposure_time -= 0.2;
 				indigo_usleep(200000);
 			} else {
-				reported_exposure_time -= 0.01;
 				indigo_usleep(10000);
 			}
 		}
-		AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = 0;
-		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				indigo_usleep(200000);
@@ -383,27 +378,20 @@ static bool exposure_batch(indigo_device *device) {
 				indigo_usleep(ONE_SECOND_DELAY);
 				continue;
 			}
-			double reported_exposure_time = exposure_time;
+			double reported_exposure_time = remote_exposure_property->items[0].number.value;
 			AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = reported_exposure_time;
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
-				if (reported_exposure_time < floor(AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value)) {
-					double c = ceil(reported_exposure_time);
-					if (AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value > c) {
-						AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = c;
-						indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-					}
+				if (reported_exposure_time != remote_exposure_property->items[0].number.value) {
+					AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = reported_exposure_time = remote_exposure_property->items[0].number.value;
+					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				}
 				if (reported_exposure_time > 1) {
-					reported_exposure_time -= 0.2;
 					indigo_usleep(200000);
 				} else {
-					reported_exposure_time -= 0.01;
 					indigo_usleep(10000);
 				}
 			}
-			AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = 0;
-			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 					indigo_usleep(200000);
