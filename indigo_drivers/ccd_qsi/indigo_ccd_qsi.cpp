@@ -68,20 +68,29 @@
 #define QSI_ANTI_BLOOM_HIGH_ITEM                         (QSI_ANTI_BLOOM_PROPERTY->items+1)
 #define QSI_ANTI_BLOOM_HIGH_ITEM_NAME                    "HIGH"
 
-#define QSI_PRE_EXPOSURE_FLUSH_PROPERTY                   (PRIVATE_DATA->qsi_pre_exposure_flush_property)
-#define QSI_PRE_EXPOSURE_FLUSH_PROPERTY_NAME              "QSI_PRE_EXPOSURE_FLUSH"
-#define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM                  (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+0)
-#define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM_NAME             "NONE"
-#define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM                (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+1)
-#define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM_NAME           "MODEST"
-#define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM                (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+2)
-#define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM_NAME           "NORMAL"
-#define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM            (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+3)
-#define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM_NAME       "AGGRESSIVE"
-#define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM          (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+4)
-#define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM_NAME     "VERY_AGGRESSIVE"
+#define QSI_PRE_EXPOSURE_FLUSH_PROPERTY                  (PRIVATE_DATA->qsi_pre_exposure_flush_property)
+#define QSI_PRE_EXPOSURE_FLUSH_PROPERTY_NAME             "QSI_PRE_EXPOSURE_FLUSH"
+#define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM                 (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+0)
+#define QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM_NAME            "NONE"
+#define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM               (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+1)
+#define QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM_NAME          "MODEST"
+#define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM               (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+2)
+#define QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM_NAME          "NORMAL"
+#define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM           (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+3)
+#define QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM_NAME      "AGGRESSIVE"
+#define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM         (QSI_PRE_EXPOSURE_FLUSH_PROPERTY->items+4)
+#define QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM_NAME    "VERY_AGGRESSIVE"
 
-#define PRIVATE_DATA                                      ((qsi_private_data *)device->private_data)
+#define QSI_FAN_MODE_PROPERTY                            (PRIVATE_DATA->qsi_fan_mode_property)
+#define QSI_FAN_MODE_PROPERTY_NAME                       "QSI_FAN_MODE"
+#define QSI_FAN_MODE_OFF_ITEM                            (QSI_FAN_MODE_PROPERTY->items+0)
+#define QSI_FAN_MODE_OFF_ITEM_NAME                       "OFF"
+#define QSI_FAN_MODE_QUIET_ITEM                          (QSI_FAN_MODE_PROPERTY->items+1)
+#define QSI_FAN_MODE_QUIET_ITEM_NAME                     "QUIET"
+#define QSI_FAN_MODE_FULL_ITEM                           (QSI_FAN_MODE_PROPERTY->items+2)
+#define QSI_FAN_MODE_FULL_ITEM_NAME                      "FULL_SPEED"
+
+#define PRIVATE_DATA                                     ((qsi_private_data *)device->private_data)
 
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
@@ -100,7 +109,8 @@ typedef struct {
 	int filter_count;
 	indigo_property *qsi_readout_speed_property,
 	                *qsi_anti_bloom_property,
-	                *qsi_pre_exposure_flush_property;
+	                *qsi_pre_exposure_flush_property,
+	                *qsi_fan_mode_property;
 } qsi_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
@@ -291,6 +301,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
 		if (indigo_property_match(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property))
 			indigo_define_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
+		if (indigo_property_match(QSI_FAN_MODE_PROPERTY, property))
+			indigo_define_property(device, QSI_FAN_MODE_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -323,6 +335,13 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM, QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM_NAME, "Normal", false);
 		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM, QSI_PRE_EXPOSURE_FLUSH_AGGRESSIVE_ITEM_NAME, "Aggressive", false);
 		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM, QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM_NAME, "Verry Aggressive", false);
+		// -------------------------------------------------------------------------------- QSI_FAN_MODE
+		QSI_FAN_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_FAN_MODE_PROPERTY_NAME, "Advanced", "Cooler Fan Mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+		if (QSI_FAN_MODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(QSI_FAN_MODE_OFF_ITEM, QSI_FAN_MODE_OFF_ITEM_NAME, "Fan Off", false);
+		indigo_init_switch_item(QSI_FAN_MODE_QUIET_ITEM, QSI_FAN_MODE_QUIET_ITEM_NAME, "Quiet", false);
+		indigo_init_switch_item(QSI_FAN_MODE_FULL_ITEM, QSI_FAN_MODE_FULL_ITEM_NAME, "Full Speed", false);
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
@@ -430,6 +449,24 @@ static void ccd_connect_callback(indigo_device *device) {
 			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
 
+			QSICamera::FanMode fanMode;
+			cam.get_FanMode(fanMode);
+			switch (fanMode) {
+				case QSICamera::fanOff:
+					indigo_set_switch(QSI_FAN_MODE_PROPERTY, QSI_FAN_MODE_OFF_ITEM, true);
+					break;
+				case QSICamera::fanQuiet:
+					indigo_set_switch(QSI_FAN_MODE_PROPERTY, QSI_FAN_MODE_QUIET_ITEM, true);
+					break;
+				case QSICamera::fanFull:
+					indigo_set_switch(QSI_FAN_MODE_PROPERTY, QSI_FAN_MODE_FULL_ITEM, true);
+					break;
+				default:
+					QSI_FAN_MODE_PROPERTY->hidden = true;
+					break;
+			}
+			indigo_define_property(device, QSI_FAN_MODE_PROPERTY, NULL);
+
 			int maxBin = maxBinX > maxBinY ? maxBinY : maxBinX;
 			CCD_MODE_PROPERTY->count = 0;
 			for (int bin = 1; bin <= maxBin; bin = power2Binning ? (bin * 2) : (bin + 1)) {
@@ -532,6 +569,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
 		indigo_delete_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
+		indigo_delete_property(device, QSI_FAN_MODE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			try {
 				bool canAbort;
@@ -718,12 +756,35 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(QSI_FAN_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- QSI_FAN_MODE
+		indigo_property_copy_values(QSI_FAN_MODE_PROPERTY, property, false);
+		QSICamera::FanMode requestedFanMode = QSICamera::fanQuiet;
+		if (QSI_FAN_MODE_OFF_ITEM->sw.value) {
+			requestedFanMode = QSICamera::fanOff;
+		} else if (QSI_FAN_MODE_QUIET_ITEM->sw.value) {
+			requestedFanMode = QSICamera::fanQuiet;
+		} else if (QSI_FAN_MODE_FULL_ITEM->sw.value) {
+			requestedFanMode = QSICamera::fanFull;
+		}
+		try {
+			cam.put_FanMode(requestedFanMode);
+			QSI_FAN_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cam.put_FanMode(%d)", requestedFanMode);
+			indigo_update_property(device, QSI_FAN_MODE_PROPERTY, NULL);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			QSI_FAN_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, QSI_FAN_MODE_PROPERTY, text.c_str());
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, QSI_READOUT_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, QSI_ANTI_BLOOM_PROPERTY);
 			indigo_save_property(device, NULL, QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
+			indigo_save_property(device, NULL, QSI_FAN_MODE_PROPERTY);
 		}
 	}
 	// -----------------------------------------------------------------------------
@@ -740,6 +801,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	indigo_release_property(QSI_READOUT_SPEED_PROPERTY);
 	indigo_release_property(QSI_ANTI_BLOOM_PROPERTY);
 	indigo_release_property(QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
+	indigo_release_property(QSI_FAN_MODE_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
