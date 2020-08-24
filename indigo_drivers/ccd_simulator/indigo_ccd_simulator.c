@@ -402,8 +402,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
 		if (device == PRIVATE_DATA->dslr) {
-			DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
+			indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 1, "B", "Bulb", false);
 			DSLR_CAPTURE_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_CAPTURE_MODE_PROPERTY_NAME, "DSLR", "Drive mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			indigo_init_switch_item(DSLR_CAPTURE_MODE_PROPERTY->items + 0, "S", "Single frame", true);
 			DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SHUTTER_PROPERTY_NAME, "DSLR", "Shutter time", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
@@ -658,7 +659,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
+	} else if (DSLR_APERTURE_PROPERTY && indigo_property_match(DSLR_PROGRAM_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSLR_PROGRAM
+		indigo_property_copy_values(DSLR_PROGRAM_PROPERTY, property, false);
+		indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+		if (DSLR_PROGRAM_PROPERTY->items[1].sw.value)
+			DSLR_SHUTTER_PROPERTY->hidden = true;
+		else
+			DSLR_SHUTTER_PROPERTY->hidden = false;
+		indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+		DSLR_PROGRAM_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (DSLR_APERTURE_PROPERTY && indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_APERTURE
 		indigo_property_copy_values(DSLR_APERTURE_PROPERTY, property, false);
