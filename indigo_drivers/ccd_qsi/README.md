@@ -26,4 +26,6 @@ Driver is developed and tested with:
 * QSI 683ws
 
 ## NOTES:
-Only one camera and one filter wheel can be active at the same time.
+The driver will show all plugged devices but can be connected to one camera and one filter wheel.
+If one needs to switch between cameras or filter wheels the connected one should be disconnected.
+This is a limitation of the underlaying QSI SDK, which can use one camera and one filter wheel at the same time.

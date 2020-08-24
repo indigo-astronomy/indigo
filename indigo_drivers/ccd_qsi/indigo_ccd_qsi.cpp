@@ -334,14 +334,27 @@ static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		try {
 			std::string serial(PRIVATE_DATA->serial);
+			std::string selectedCamera("");
 			std::string modelNumber("");
 			std::string driverInfo("");
 			long width, height;
-
 			double pixelWidth, pixelHeight;
-			bool hasShutter, canSetTemp, canGetCoolerPower, canSetGain, hasFilterWheel, power2Binning;
+			bool hasShutter, canSetTemp, canGetCoolerPower, canSetGain, hasFilterWheel, power2Binning, isConnected;
 			short maxBinX, maxBinY;
 			char name[32], label[128];
+
+			// Second connect is not allowed by the SDK, so handle this nicely
+			cam.put_Connected(isConnected);
+			if (isConnected) {
+				cam.get_SelectCamera(selectedCamera);
+				char message[INDIGO_VALUE_SIZE];
+				snprintf(message, INDIGO_VALUE_SIZE, "Camera #%s is already connected, to use #%s disconnect it first.", selectedCamera.c_str(), PRIVATE_DATA->serial);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, message);
+				indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+				return;
+			}
 			cam.put_SelectCamera(serial);
 			cam.put_IsMainCamera(true);
 			cam.put_Connected(true);
