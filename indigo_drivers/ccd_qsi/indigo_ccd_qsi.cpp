@@ -618,6 +618,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
@@ -627,6 +628,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			try {
 				bool canAbort;
@@ -635,6 +637,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 					cam.AbortExposure();
 				}
+				PRIVATE_DATA->can_check_temperature = true;
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			} catch (std::runtime_error err) {
@@ -647,6 +650,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		try {
 			cam.put_CoolerOn(CCD_COOLER_ON_ITEM->sw.value);
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
@@ -660,6 +664,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		try {
 			if (CCD_COOLER_OFF_ITEM->sw.value) {
 				cam.put_CoolerOn(true);
@@ -679,6 +684,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		try {
 			int gain = (int)CCD_GAIN_ITEM->number.value;
 			cam.put_CameraGain((QSICamera::CameraGain)gain);
@@ -693,6 +699,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(QSI_READOUT_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_READOUT_SPEED
 		indigo_property_copy_values(QSI_READOUT_SPEED_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		QSICamera::ReadoutSpeed requestedSpeed = QSICamera::HighImageQuality;
 		if (QSI_READOUT_HQ_ITEM->sw.value) {
 			requestedSpeed = QSICamera::HighImageQuality;
@@ -713,6 +720,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(QSI_ANTI_BLOOM_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_ANTI_BLOOM
 		indigo_property_copy_values(QSI_ANTI_BLOOM_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		QSICamera::AntiBloom requestedAntiBloom = QSICamera::AntiBloomNormal;
 		if (QSI_ANTI_BLOOM_NORMAL_ITEM->sw.value) {
 			requestedAntiBloom = QSICamera::AntiBloomNormal;
@@ -733,6 +741,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_PRE_EXPOSURE_FLUSH
 		indigo_property_copy_values(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		QSICamera::PreExposureFlush requestedPEFlush = QSICamera::FlushNormal;
 		if (QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM->sw.value) {
 			requestedPEFlush = QSICamera::FlushNone;
@@ -759,6 +768,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(QSI_FAN_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_FAN_MODE
 		indigo_property_copy_values(QSI_FAN_MODE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		QSICamera::FanMode requestedFanMode = QSICamera::fanQuiet;
 		if (QSI_FAN_MODE_OFF_ITEM->sw.value) {
 			requestedFanMode = QSICamera::fanOff;
