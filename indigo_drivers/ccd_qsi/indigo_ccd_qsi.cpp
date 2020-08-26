@@ -638,8 +638,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					cam.AbortExposure();
 				}
 				PRIVATE_DATA->can_check_temperature = true;
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
