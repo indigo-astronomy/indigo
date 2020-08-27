@@ -990,12 +990,13 @@ static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* dev
 }
 */
 
-static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* device, double ra, double dec, int raw) {
+static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* device, double lst, double ra, double dec, int raw) {
 	//  Find nearest alignment point
 	double sin_dec = sin(dec * DEG2RAD);
 	double cos_dec = cos(dec * DEG2RAD);
 	double min_d = 180.0;   //  Larger than 2.0
 	indigo_alignment_point* nearest_point = 0;
+	double ha = 15 * indigo_range24(lst - ra) * DEG2RAD;
 
 	for (int i = 0; i < MOUNT_CONTEXT->alignment_point_count; i++) {
 		//  Skip unused points
@@ -1004,15 +1005,15 @@ static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* dev
 			continue;
 
 		//  Compute virtual encoder angles for alignment point
-		double p_ra, p_dec;
+		double p_ha, p_dec;
 		if (raw) {
-			p_ra = point->raw_ra * DEG2RAD;
+			p_ha = 15 * indigo_range24(point->lst - point->raw_ra) * DEG2RAD;
 			p_dec = point->raw_dec * DEG2RAD;
 		} else {
-			p_ra = point->ra * DEG2RAD;
+			p_ha = 15 * indigo_range24(point->lst - point->ra) * DEG2RAD;
 			p_dec = point->dec * DEG2RAD;
 		}
-		double d = acos(sin_dec * sin(p_dec) + cos_dec * cos(p_dec) * cos(ra * DEG2RAD - p_ra)) / DEG2RAD;
+		double d = acos(sin_dec * sin(p_dec) + cos_dec * cos(p_dec) * cos(ha - p_ha)) / DEG2RAD;
 		if (d < min_d) {
 			nearest_point = point;
 			min_d = d;
@@ -1057,9 +1058,9 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 			point = indigo_find_single_alignment_point(device);
 		else
 		  //point = indigo_nearest_alignment_point(device, lst, ra, dec, side_of_pier, 0);
-		  point = indigo_nearest_alignment_point(device, ra, dec, 0);
+		  point = indigo_nearest_alignment_point(device, lst, ra, dec, 0);
 		if (point) {
-			//  Transform coordinates
+			// Transform coordinates
 			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
 			double cos_dec = cos(dec * DEG2RAD);
 			if (cos_dec != 0) {
@@ -1140,7 +1141,7 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 			point = indigo_find_single_alignment_point(device);
 		else
 			//point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, side_of_pier, 1);
-			point = indigo_nearest_alignment_point(device, raw_ra, raw_dec, 1);
+			point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, 1);
 		if (point) {
 			// Transform coordinates
 			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
