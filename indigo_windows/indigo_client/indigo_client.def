@@ -1,6 +1,9 @@
 LIBRARY indigo_client
 EXPORTS
 INDIGO_ALL_PROPERTIES
+indigo_main_argv
+indigo_main_argc
+indigo_use_host_suffix
 indigo_available_servers
 indigo_alloc_blob_buffer
 indigo_async
