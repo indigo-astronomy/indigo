@@ -769,12 +769,25 @@ uint8_t *ptp_decode_property(uint8_t *source, indigo_device *device, ptp_propert
 						target->value.sw.values[i] = value;
 						break;
 					}
+					case ptp_uint64_type: {
+						uint64_t value;
+						source = ptp_decode_uint64(source, &value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					case ptp_int64_type: {
+						int64_t value;
+						source = ptp_decode_uint64(source, (uint64_t *)&value);
+						target->value.sw.values[i] = value;
+						break;
+					}
 					case ptp_str_type: {
 						if (i < 16)
 							source = ptp_decode_string(source, target->value.sw_str.values[i]);
 						break;
 					}
 					default:
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown target type: %d code=%x", target->type, target->code);
 						assert(false);
 				}
 			}
