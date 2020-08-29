@@ -55,6 +55,7 @@
 #define NIKON_PRODUCT_Z7    0x0442
 #define NIKON_PRODUCT_Z6    0x0443
 #define NIKON_PRODUCT_Z50   0x0444
+#define NIKON_PRODUCT_Z5    0x0448
 
 #define IS_NIKON_D3000_OR_D3100() \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3000 || \
@@ -77,7 +78,8 @@
 #define IS_NIKON_EXPEED6_SERIES() \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z7 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z6 || \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z50
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z50 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z5
 
 #define IS_NIKON_EXPEED5_OR_LATER() \
 	IS_NIKON_EXPEED5_SERIES() || \
@@ -500,7 +502,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_FocusMeteringMode: {
-			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39/51 points"; case 0x8015: return "Expansion"; }
+			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39/51 points"; case 0x8015: return "Expansion"; case 0x8017: return "Pinpoint"; case 0x8018: return "Wide area (S)"; case 0x8019: return "Wide area (L)"; }
 			break;
 		}
 		case ptp_property_FlashMode: {
@@ -537,7 +539,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_nikon_MovScreenSize: {
-			switch (code) { case 0: return "1920x1080 50p"; case 1: return "1920x1080 25p"; case 2: return "1920x1080 24p"; case 3: return "1280x720 50p"; case 4: return "640x424 25p"; case 5: return "1920x1080 25p"; case 6: return "1920x1080 24p"; case 7: return "1280x720 50p"; }
+			switch (code) { case 0: return "1920x1080 50p"; case 1: return "1920x1080 25p"; case 2: return "1920x1080 24p"; case 3: return "1280x720 50p"; case 4: return "640x424 25p"; case 5: return "1920x1080 25p"; case 6: return "1920x1080 24p"; case 7: return "1280x720 50p"; case 0x0f000870001e0000: return "3840x2160 30p"; case 0x0f00087000190000: return "3840x2160 25p"; case 0x0f00087000180000: return "3840x2160 24p"; case 0x07800438003c0000: return "1920x1080 60p"; case 0x0780043800320000: return "1920x1080 50p"; case 0x07800438001e0000: return "1920x1080 30p"; case 0x0780043800190000: return "1920x1080 25p"; case 0x0780043800180000: return "1920x1080 24p"; }
 			break;
 		}
 		case ptp_property_nikon_EnableCopyright:
