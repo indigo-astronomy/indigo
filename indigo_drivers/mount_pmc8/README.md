@@ -19,7 +19,7 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-indigo_server indigo_mount_pcm8
+indigo_server indigo_mount_pmc8
 
 ## Comments
 
