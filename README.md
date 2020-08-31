@@ -106,7 +106,7 @@ This is the list of requirements taken into the consideration:
 77. Baader Planetarium Classic (Rotating) dome driver 
 78. MGBox driver
 79. Manual wheel driver
-80. PCM8 mount controller driver
+80. PMC8 mount controller driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

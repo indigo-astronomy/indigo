@@ -51,9 +51,9 @@
 		595567C924B882DD00DF303D /* qhyccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC823EEE637007E0BF8 /* qhyccd.h */; };
 		595567CA24B8841000DF303D /* indigo_ccd_qhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */; };
 		595567CE24B88F5B00DF303D /* indigo_ccd_qhy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */; };
-		595567D624BA00DA00DF303D /* indigo_mount_pcm8.h in Headers */ = {isa = PBXBuildFile; fileRef = 595567D024BA00DA00DF303D /* indigo_mount_pcm8.h */; };
-		595567D824BA00DA00DF303D /* indigo_mount_pcm8_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D224BA00DA00DF303D /* indigo_mount_pcm8_main.c */; };
-		595567D924BA00DA00DF303D /* indigo_mount_pcm8.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D424BA00DA00DF303D /* indigo_mount_pcm8.c */; };
+		595567D624BA00DA00DF303D /* indigo_mount_pmc8.h in Headers */ = {isa = PBXBuildFile; fileRef = 595567D024BA00DA00DF303D /* indigo_mount_pmc8.h */; };
+		595567D824BA00DA00DF303D /* indigo_mount_pmc8_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D224BA00DA00DF303D /* indigo_mount_pmc8_main.c */; };
+		595567D924BA00DA00DF303D /* indigo_mount_pmc8.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D424BA00DA00DF303D /* indigo_mount_pmc8.c */; };
 		595705A42186740F00E713A9 /* indigo_drivers.c in Sources */ = {isa = PBXBuildFile; fileRef = 595705A321866D9700E713A9 /* indigo_drivers.c */; };
 		59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
 		59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */; };
@@ -682,10 +682,10 @@
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		59550A4822F33FFC00C719C4 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		595567CB24B886FA00DF303D /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
-		595567D024BA00DA00DF303D /* indigo_mount_pcm8.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_pcm8.h; sourceTree = "<group>"; };
-		595567D224BA00DA00DF303D /* indigo_mount_pcm8_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_pcm8_main.c; sourceTree = "<group>"; };
+		595567D024BA00DA00DF303D /* indigo_mount_pmc8.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_pmc8.h; sourceTree = "<group>"; };
+		595567D224BA00DA00DF303D /* indigo_mount_pmc8_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_pmc8_main.c; sourceTree = "<group>"; };
 		595567D324BA00DA00DF303D /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		595567D424BA00DA00DF303D /* indigo_mount_pcm8.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_pcm8.c; sourceTree = "<group>"; };
+		595567D424BA00DA00DF303D /* indigo_mount_pmc8.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_pmc8.c; sourceTree = "<group>"; };
 		595567DB24BA017E00DF303D /* PMC_Eight_ProgrammersReferenceManual_Release2_2019_March_07.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = PMC_Eight_ProgrammersReferenceManual_Release2_2019_March_07.pdf; sourceTree = "<group>"; };
 		5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.01.pdf; sourceTree = "<group>"; };
 		5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.0.pdf; sourceTree = "<group>"; };
@@ -4711,16 +4711,16 @@
 			path = usbdp_simulator;
 			sourceTree = "<group>";
 		};
-		595567CF24BA00DA00DF303D /* mount_pcm8 */ = {
+		595567CF24BA00DA00DF303D /* mount_pmc8 */ = {
 			isa = PBXGroup;
 			children = (
 				595567D324BA00DA00DF303D /* README.md */,
-				595567D024BA00DA00DF303D /* indigo_mount_pcm8.h */,
-				595567D424BA00DA00DF303D /* indigo_mount_pcm8.c */,
-				595567D224BA00DA00DF303D /* indigo_mount_pcm8_main.c */,
+				595567D024BA00DA00DF303D /* indigo_mount_pmc8.h */,
+				595567D424BA00DA00DF303D /* indigo_mount_pmc8.c */,
+				595567D224BA00DA00DF303D /* indigo_mount_pmc8_main.c */,
 				595567DB24BA017E00DF303D /* PMC_Eight_ProgrammersReferenceManual_Release2_2019_March_07.pdf */,
 			);
-			path = mount_pcm8;
+			path = mount_pmc8;
 			sourceTree = "<group>";
 		};
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
@@ -7771,7 +7771,7 @@
 				9DAD522921246EB5002FCC79 /* mount_ioptron */,
 				9DB917FE1DF8543800678721 /* mount_lx200 */,
 				599A63A11DE3733200ABC827 /* mount_nexstar */,
-				595567CF24BA00DA00DF303D /* mount_pcm8 */,
+				595567CF24BA00DA00DF303D /* mount_pmc8 */,
 				59E5A29423C1238400E8BBBF /* mount_rainbow */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
@@ -11567,7 +11567,7 @@
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
 				9DAD522521246C18002FCC79 /* indigo_mount_synscan_private.h in Headers */,
 				5911B6CA22630FE900D6B9EC /* indigo_guider_utils.h in Headers */,
-				595567D624BA00DA00DF303D /* indigo_mount_pcm8.h in Headers */,
+				595567D624BA00DA00DF303D /* indigo_mount_pmc8.h in Headers */,
 				59A52FB821A34266000B6F27 /* toupcam.h in Headers */,
 				590BF1B321EBCF7500C24DBA /* indigo_ao_sx.h in Headers */,
 				595567C724B882DD00DF303D /* qhyccdstruct.h in Headers */,
@@ -11892,7 +11892,7 @@
 				9DAD523D21258801002FCC79 /* indigo_guider_cgusbst4.c in Sources */,
 				9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */,
 				594122A11FD2DE7800D792FF /* indigo_dome_azimuth.c in Sources */,
-				595567D824BA00DA00DF303D /* indigo_mount_pcm8_main.c in Sources */,
+				595567D824BA00DA00DF303D /* indigo_mount_pmc8_main.c in Sources */,
 				59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */,
 				59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
@@ -11955,7 +11955,7 @@
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 				9D73E61821FF37F9003CEC15 /* libuvc_frame.c in Sources */,
 				9D73E61A21FF37F9003CEC15 /* libuvc_ctrl_gen.c in Sources */,
-				595567D924BA00DA00DF303D /* indigo_mount_pcm8.c in Sources */,
+				595567D924BA00DA00DF303D /* indigo_mount_pmc8.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

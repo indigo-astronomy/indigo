@@ -19,12 +19,12 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PCM Eight driver
- \file indigo_mount_pcm8.c
+/** INDIGO PMC Eight driver
+ \file indigo_mount_pmc8.c
  */
 
 #define DRIVER_VERSION 0x0002
-#define DRIVER_NAME	"indigo_mount_pcm8"
+#define DRIVER_NAME	"indigo_mount_pmc8"
 
 #include <stdlib.h>
 #include <string.h>
@@ -45,9 +45,9 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_novas.h>
 
-#include "indigo_mount_pcm8.h"
+#include "indigo_mount_pmc8.h"
 
-#define PRIVATE_DATA        					((pcm8_private_data *)device->private_data)
+#define PRIVATE_DATA        					((pmc8_private_data *)device->private_data)
 
 #define CONNECTION_MODE_PROPERTY     			(PRIVATE_DATA->connection_mode_property)
 #define CONNECTION_UDP_ITEM  							(CONNECTION_MODE_PROPERTY->items+0)
@@ -65,11 +65,11 @@ typedef struct {
 } mount_type_data;
 
 typedef enum {
-	PCM8_G11 = 0,
-	PCM8_TITAN,
-	PCM8_EXOS2,
-	PCM8_IEXOS100,
-	PCM8_IEXOS300
+	PMC8_G11 = 0,
+	PMC8_TITAN,
+	PMC8_EXOS2,
+	PMC8_IEXOS100,
+	PMC8_IEXOS300
 } model_type;
 
 static mount_type_data MODELS[] = {
@@ -91,17 +91,17 @@ typedef struct {
 	bool park;
 	bool is_udp, is_tcp, is_serial;
 	int count_open;
-} pcm8_private_data;
+} pmc8_private_data;
 
-static bool pcm8_command(indigo_device *device, char *command, char *response, int max, int sleep);
-static void pcm8_close(indigo_device *device);
+static bool pmc8_command(indigo_device *device, char *command, char *response, int max, int sleep);
+static void pmc8_close(indigo_device *device);
 static void mount_equatorial_coordinates_callback(indigo_device *device);
 
-static bool pcm8_open(indigo_device *device) {
+static bool pmc8_open(indigo_device *device) {
 	char response[32];
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (PRIVATE_DATA->count_open++ == 0) {
-		if (!indigo_is_device_url(name, "pcm8")) {
+		if (!indigo_is_device_url(name, "pmc8")) {
 			PRIVATE_DATA->proto = -1;
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
 		} else {
@@ -112,20 +112,20 @@ static bool pcm8_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		indigo_device *d = device, *device = d->master_device;
-		if (pcm8_command(device, "ESGv!", response, sizeof(response), 0) && !strncmp(response, "ESGv", 4)) {
+		if (pmc8_command(device, "ESGv!", response, sizeof(response), 0) && !strncmp(response, "ESGv", 4)) {
 			strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response + 4);
 			if (strstr(response, "G11")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "G11");
-				PRIVATE_DATA->type = PCM8_G11;
+				PRIVATE_DATA->type = PMC8_G11;
 			} else if (strstr(response, "TITAN")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "TITAN");
-				PRIVATE_DATA->type = PCM8_EXOS2;
+				PRIVATE_DATA->type = PMC8_EXOS2;
 			} else if (strstr(response, "EXOS2")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "EXOS2");
-				PRIVATE_DATA->type = PCM8_EXOS2;
+				PRIVATE_DATA->type = PMC8_EXOS2;
 			} else {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEXOS100");
-				PRIVATE_DATA->type = PCM8_IEXOS100;
+				PRIVATE_DATA->type = PMC8_IEXOS100;
 			}
 			double sec_per_count = 1296000.0/MODELS[PRIVATE_DATA->type].count[0];
 			PRIVATE_DATA->rate[0] = round(15.0 / sec_per_count * 25);
@@ -134,7 +134,7 @@ static bool pcm8_open(indigo_device *device) {
 			return true;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize to %s", name);
-			pcm8_close(device);
+			pmc8_close(device);
 			return false;
 		}
 	} else {
@@ -144,7 +144,7 @@ static bool pcm8_open(indigo_device *device) {
 	}
 }
 
-static bool pcm8_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+static bool pmc8_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
@@ -229,7 +229,7 @@ static bool pcm8_command(indigo_device *device, char *command, char *response, i
 	return true;
 }
 
-static void pcm8_close(indigo_device *device) {
+static void pmc8_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		if (PRIVATE_DATA->handle > 0) {
 			close(PRIVATE_DATA->handle);
@@ -239,9 +239,9 @@ static void pcm8_close(indigo_device *device) {
 	}
 }
 
-static bool pcm8_get_tracking_rate(indigo_device *device) {
+static bool pmc8_get_tracking_rate(indigo_device *device) {
 	char response[32];
-	if (pcm8_command(device, "ESGx!", response, sizeof(response), 0)) {
+	if (pmc8_command(device, "ESGx!", response, sizeof(response), 0)) {
 		int rate = (int)strtol(response + 4, NULL, 16);
 		if (rate == 0) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
@@ -260,7 +260,7 @@ static bool pcm8_get_tracking_rate(indigo_device *device) {
 	return false;
 }
 
-static bool pcm8_set_tracking_rate(indigo_device *device, int offset) {
+static bool pmc8_set_tracking_rate(indigo_device *device, int offset) {
 	char command[32], response[32];
 	int rate = 0;
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
@@ -273,42 +273,42 @@ static bool pcm8_set_tracking_rate(indigo_device *device, int offset) {
 		}
 	}
 	if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-		if (!pcm8_command(device, "ESSd01!", response, sizeof(response), 0)) {
+		if (!pmc8_command(device, "ESSd01!", response, sizeof(response), 0)) {
 			return false;
 		}
 	} else {
-		if (!pcm8_command(device, "ESSd00!", response, sizeof(response), 0)) {
+		if (!pmc8_command(device, "ESSd00!", response, sizeof(response), 0)) {
 			return false;
 		}
 	}
 	sprintf(command, "ESTr%04X!", rate + offset);
-	if (pcm8_command(device, command, response, sizeof(response), 0)) {
+	if (pmc8_command(device, command, response, sizeof(response), 0)) {
 		return true;
 	}
 	return false;
 }
 
-static bool pcm8_point(indigo_device *device, int32_t ha, int32_t dec) {
+static bool pmc8_point(indigo_device *device, int32_t ha, int32_t dec) {
 	char command[32], response[32];
 	sprintf(command, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? "ESSp0%06X!" : "ESPt0%06X!", ha & 0xFFFFFF);
-	if (!pcm8_command(device, command, response, sizeof(response), 0)) {
+	if (!pmc8_command(device, command, response, sizeof(response), 0)) {
 		return false;
 	}
 	sprintf(command, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? "ESSp1%06X!" :"ESPt1%06X!", dec & 0xFFFFFF);
-	if (!pcm8_command(device, command, response, sizeof(response), 0)) {
+	if (!pmc8_command(device, command, response, sizeof(response), 0)) {
 		return false;
 	}
 	return true;
 }
 
-static bool pcm8_get_position(indigo_device *device, int32_t *ha, int32_t *dec) {
+static bool pmc8_get_position(indigo_device *device, int32_t *ha, int32_t *dec) {
 	char response[32];
 	int32_t raw_ha = 0, raw_dec = 0;
-	if (pcm8_command(device, "ESGp0!", response, sizeof(response), 0)) {
+	if (pmc8_command(device, "ESGp0!", response, sizeof(response), 0)) {
 		raw_ha = (int)strtol(response + 5, NULL, 16);
 		if (raw_ha & 0x800000)
 			raw_ha |= 0xFF000000;
-		if (pcm8_command(device, "ESGp1!", response, sizeof(response), 0)) {
+		if (pmc8_command(device, "ESGp1!", response, sizeof(response), 0)) {
 			raw_dec = (int)strtol(response + 5, NULL, 16);
 			if (raw_dec & 0x800000)
 				raw_dec |= 0xFF000000;
@@ -320,21 +320,21 @@ static bool pcm8_get_position(indigo_device *device, int32_t *ha, int32_t *dec) 
 	return false;
 }
 
-static bool pcm8_move(indigo_device *device, int axis, int direction, int rate) {
+static bool pmc8_move(indigo_device *device, int axis, int direction, int rate) {
 	char command[32], response[32];
 	if (rate == 0) {
 		if (axis == 0) {
-			return pcm8_set_tracking_rate(device, 0);
+			return pmc8_set_tracking_rate(device, 0);
 		} else {
-			return pcm8_command(device, "ESSr10000!", response, sizeof(response), 0);
+			return pmc8_command(device, "ESSr10000!", response, sizeof(response), 0);
 		}
 	} else {
 		sprintf(command, "ESSd%d%d!", axis, direction);
-		if (!pcm8_command(device, command, response, sizeof(response), 0)) {
+		if (!pmc8_command(device, command, response, sizeof(response), 0)) {
 			return false;
 		}
 		sprintf(command, "ESSr%d%04X!", axis, abs(rate));
-		if (!pcm8_command(device, command, response, sizeof(response), 0)) {
+		if (!pmc8_command(device, command, response, sizeof(response), 0)) {
 			return false;
 		}
 	}
@@ -393,7 +393,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		int32_t raw_ha = 0, raw_dec = 0;
-		if (pcm8_get_position(device, &raw_ha, &raw_dec)) {
+		if (pmc8_get_position(device, &raw_ha, &raw_dec)) {
 			if (raw_ha == 0 && raw_dec == 0 && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
 				PRIVATE_DATA->park = false;
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -444,10 +444,10 @@ static void position_timer_callback(indigo_device *device) {
 
 static void mount_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = pcm8_open(device);
+		bool result = pmc8_open(device);
 		if (result) {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-			if (pcm8_get_tracking_rate(device)) {
+			if (pmc8_get_tracking_rate(device)) {
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -463,7 +463,7 @@ static void mount_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 		PRIVATE_DATA->position_timer = NULL;
-		pcm8_close(device);
+		pmc8_close(device);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -502,14 +502,14 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 		uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
 		int32_t raw_dec = (dec_angle / 360.0) * dec_count;
 		int32_t raw_ha = (ha_angle / 24.0) * ra_count;
-		if (!pcm8_point(device, raw_ha, raw_dec)) {
+		if (!pmc8_point(device, raw_ha, raw_dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value)
 			break;
 		while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			int32_t current_raw_ha = 0, current_raw_dec = 0;
-			if (pcm8_get_position(device, &current_raw_ha, &current_raw_dec)) {
+			if (pmc8_get_position(device, &current_raw_ha, &current_raw_dec)) {
 				if (current_raw_ha == raw_ha && current_raw_dec == raw_dec)
 					break;
 			} else {
@@ -521,7 +521,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 	}
 	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-		if (pcm8_set_tracking_rate(device, 0)) {
+		if (pmc8_set_tracking_rate(device, 0)) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -533,7 +533,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 }
 
 static void mount_tracking_callback(indigo_device *device) {
-	if (pcm8_set_tracking_rate(device, 0)) {
+	if (pmc8_set_tracking_rate(device, 0)) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -542,7 +542,7 @@ static void mount_tracking_callback(indigo_device *device) {
 }
 
 static void mount_track_rate_callback(indigo_device *device) {
-	if (pcm8_set_tracking_rate(device, 0)) {
+	if (pmc8_set_tracking_rate(device, 0)) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -555,14 +555,14 @@ static void mount_park_callback(indigo_device *device) {
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	mount_tracking_callback(device);
 	PRIVATE_DATA->park = true;
-	if (!pcm8_point(device, 0, 0)) {
+	if (!pmc8_point(device, 0, 0)) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 	}
 }
 
 static void mount_abort_motion_callback(indigo_device *device) {
-	if (pcm8_move(device, 0, 0, 0) && pcm8_move(device, 1, 0, 0)) {
+	if (pmc8_move(device, 0, 0, 0) && pmc8_move(device, 1, 0, 0)) {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -596,13 +596,13 @@ static void mount_motion_callback(indigo_device *device) {
 		rate = 0;
 	}
 	if (MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (pcm8_move(device, 1, direction, rate))
+		if (pmc8_move(device, 1, direction, rate))
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 	} else if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (pcm8_move(device, 0, direction, rate))
+		if (pmc8_move(device, 0, direction, rate))
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -614,7 +614,7 @@ static void mount_switch_connection(indigo_device *device) {
 	CONNECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
     char response[32];
     if (PRIVATE_DATA->is_udp && CONNECTION_TCP_ITEM->sw.value) {
-			if (!pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY0")) {
+			if (!pmc8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -624,13 +624,13 @@ static void mount_switch_connection(indigo_device *device) {
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
     } else if (PRIVATE_DATA->is_tcp && CONNECTION_UDP_ITEM->sw.value) {
-			if (!pcm8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY1")) {
+			if (!pmc8_command(device, "ESY!", response, sizeof(response), 0) || strcmp(response, "ESY1")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_callback(device);
     } else if (PRIVATE_DATA->is_tcp && CONNECTION_SERIAL_ITEM->sw.value) {
-			if (!pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
+			if (!pmc8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -640,7 +640,7 @@ static void mount_switch_connection(indigo_device *device) {
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_SERIAL_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
     } else if (PRIVATE_DATA->is_serial && CONNECTION_TCP_ITEM->sw.value) {
-			if (!pcm8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX1")) {
+			if (!pmc8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX1")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -825,7 +825,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = pcm8_open(device);
+		bool result = pmc8_open(device);
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -833,7 +833,7 @@ static void guider_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		pcm8_close(device);
+		pmc8_close(device);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -844,13 +844,13 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 100.0);
 	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-		pcm8_set_tracking_rate(device->master_device, -rate);
+		pmc8_set_tracking_rate(device->master_device, -rate);
 		indigo_usleep(1000 * GUIDER_GUIDE_EAST_ITEM->number.value);
-		pcm8_set_tracking_rate(device->master_device, 0);
+		pmc8_set_tracking_rate(device->master_device, 0);
 	} else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-		pcm8_set_tracking_rate(device->master_device, rate);
+		pmc8_set_tracking_rate(device->master_device, rate);
 		indigo_usleep(1000 * GUIDER_GUIDE_WEST_ITEM->number.value);
-		pcm8_set_tracking_rate(device->master_device, 0);
+		pmc8_set_tracking_rate(device->master_device, 0);
 	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -863,13 +863,13 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 2500.0);
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-		pcm8_move(device, 1, 1, rate);
+		pmc8_move(device, 1, 1, rate);
 		indigo_usleep(1000 * GUIDER_GUIDE_NORTH_ITEM->number.value);
-		pcm8_move(device, 1, 1, 0);
+		pmc8_move(device, 1, 1, 0);
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-		pcm8_move(device, 1, 0, rate);
+		pmc8_move(device, 1, 0, rate);
 		indigo_usleep(1000 * GUIDER_GUIDE_SOUTH_ITEM->number.value);
-		pcm8_move(device, 1, 0, 0);
+		pmc8_move(device, 1, 0, 0);
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -927,14 +927,14 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static pcm8_private_data *private_data = NULL;
+static pmc8_private_data *private_data = NULL;
 
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 
-indigo_result indigo_mount_pcm8(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_mount_pmc8(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_PCM8_NAME,
+		MOUNT_PMC8_NAME,
 		mount_attach,
 		mount_enumerate_properties,
 		mount_change_property,
@@ -943,7 +943,7 @@ indigo_result indigo_mount_pcm8(indigo_driver_action action, indigo_driver_info 
 	);
 
 	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_PCM8_GUIDER_NAME,
+		MOUNT_PMC8_GUIDER_NAME,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -953,7 +953,7 @@ indigo_result indigo_mount_pcm8(indigo_driver_action action, indigo_driver_info 
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "PCM Eight Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "PMC Eight Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -961,9 +961,9 @@ indigo_result indigo_mount_pcm8(indigo_driver_action action, indigo_driver_info 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(pcm8_private_data));
+			private_data = malloc(sizeof(pmc8_private_data));
 			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(pcm8_private_data));
+			memset(private_data, 0, sizeof(pmc8_private_data));
 			mount = malloc(sizeof(indigo_device));
 			assert(mount != NULL);
 			memcpy(mount, &mount_template, sizeof(indigo_device));

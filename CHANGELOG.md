@@ -30,7 +30,7 @@ All notable changes to INDIGO framewark will be documented in this file.
 - indigo_ccd_qhy2: SDK updated to V2020.06.05 for macOS and  V2020.05.22 for linux
 
 ### New Drivers:
-- indigo_mount_pcm8: PCM8 mount controller driver
+- indigo_mount_pmc8: PMC8 mount controller driver
 - indigo_aux_rpio: Raspberry Pi GPIO driver
 
 ## [2.0-122] - Fri May 05 2020

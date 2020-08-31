@@ -8,7 +8,7 @@
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
 // ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTnexstarIAL
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
 // GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
@@ -19,33 +19,25 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PCM Eight driver
- \file indigo_mount_pcm8.h
+/** INDIGO PMC Eight driver main
+ \file indigo_mount_pmc8_main.c
  */
 
-#ifndef mount_pcm8_h
-#define mount_pcm8_h
+#include <stdio.h>
 
-#include <indigo/indigo_driver.h>
-#include <indigo/indigo_mount_driver.h>
-#include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_driver_xml.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "indigo_mount_pmc8.h"
 
-#define MOUNT_PCM8_NAME              "Mount PCM Eight"
-#define MOUNT_PCM8_GUIDER_NAME       "Mount PCM Eight (guider)"
-
-
-/** Create mount PCM Eight device instance
- */
-
-extern indigo_result indigo_mount_pcm8(indigo_driver_action action, indigo_driver_info *info);
-
-#ifdef __cplusplus
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	indigo_mount_pmc8(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_mount_pmc8(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
 }
-#endif
-
-#endif /* mount_pcm8_h */
-
