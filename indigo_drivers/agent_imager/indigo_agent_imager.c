@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1193,8 +1193,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			abort_process(device);
-		} else {
-			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
