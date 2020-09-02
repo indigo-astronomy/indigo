@@ -2,6 +2,25 @@
 
 All notable changes to INDIGO framewark will be documented in this file.
 
+## [2.0-126] - Wed Sep 01 2020
+### Overal:
+- alignment routines improved
+- security token support fixed
+- DLL build added to Windows makefile
+- PSF calculation fixed
+
+### Driver Fixes:
+- indigo_ccd_atik: macOS Horizon issues fixed
+- indigo_ccd_qsi: improved, fixed and tested with physical hardware
+- indigo_mount_pmc8: protocol switching fixed
+- indigo_ccd_ptp: Nikon Z5 support added
+- indigo_ccd_simulator: streaming and BULB support added
+-indigo_agent_mount: stops capture on related ccd agent on park etc.
+
+### New Drivers:
+- indigo_mount_rainbow: RainbowAstro mount driver
+
+
 ## [2.0-124] - Sat Aug 01 2020
 ### Overal:
 - Double connection issue fixed
