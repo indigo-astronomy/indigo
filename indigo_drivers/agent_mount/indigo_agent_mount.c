@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -145,6 +145,20 @@ static void set_eq_coordinates(indigo_device *device) {
 			indigo_property *property = indigo_init_text_property(NULL, item->name, CCD_FITS_HEADERS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			indigo_init_text_item(property->items + 0, "HEADER_7", NULL, "OBJCTRA='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 			indigo_init_text_item(property->items + 1, "HEADER_8", NULL,  "OBJCTDEC='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
+			property->access_token = indigo_get_device_or_master_token(property->device);
+			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+			indigo_release_property(property);
+		}
+	}
+}
+
+static void abort_capture(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Imager Agent", item->name, 12)) {
+			indigo_property *property = indigo_init_switch_property(NULL, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(property->items + 0, AGENT_ABORT_PROCESS_ITEM_NAME, NULL, true);
 			property->access_token = indigo_get_device_or_master_token(property->device);
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
 			indigo_release_property(property);
@@ -706,6 +720,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 			if (property->state == INDIGO_OK_STATE) {
 				set_eq_coordinates(FILTER_CLIENT_CONTEXT->device);
 			} else {
+				abort_capture(FILTER_CLIENT_CONTEXT->device);
 				abort_guiding(FILTER_CLIENT_CONTEXT->device);
 			}
 		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
@@ -733,6 +748,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
 					if (property->items[i].sw.value) {
+						abort_capture(FILTER_CLIENT_CONTEXT->device);
 						abort_guiding(FILTER_CLIENT_CONTEXT->device);
 					}
 				}
@@ -771,6 +787,8 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
 									}
 									if (park) {
+										abort_capture(FILTER_CLIENT_CONTEXT->device);
+										abort_guiding(FILTER_CLIENT_CONTEXT->device);
 										indigo_property *park_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 										indigo_init_switch_item(park_property->items, MOUNT_PARK_PARKED_ITEM_NAME, NULL, true);
 										park_property->access_token = indigo_get_device_or_master_token(park_property->device);
