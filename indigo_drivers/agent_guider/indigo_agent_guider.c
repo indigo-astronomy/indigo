@@ -927,7 +927,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_DEC_MODE_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
-	if (!FILTER_CCD_LIST_PROPERTY->items->sw.value && !FILTER_GUIDER_LIST_PROPERTY->items->sw.value) {
+	if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
 		if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
 			indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
@@ -972,25 +972,43 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
+			char message[INDIGO_VALUE_SIZE] = {0};
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				if (AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_process, NULL);
-				} else if (AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0, calibrate_process, NULL);
-				} else if (AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0, calibrate_and_guide_process, NULL);
-				} else if (AGENT_GUIDER_START_GUIDING_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_timer(device, 0, guide_process, NULL);
+				} else if (!FILTER_GUIDER_LIST_PROPERTY->items->sw.value) {
+					if (AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value) {
+						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_set_timer(device, 0, calibrate_process, NULL);
+					} else if (AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value) {
+						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_set_timer(device, 0, calibrate_and_guide_process, NULL);
+					} else if (AGENT_GUIDER_START_GUIDING_ITEM->sw.value) {
+						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_set_timer(device, 0, guide_process, NULL);
+					} else {
+						AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+						AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+						AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+						AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+						AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				} else {
+					AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+					AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+					AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+					AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+					strncpy(message, "No guider selected", INDIGO_VALUE_SIZE);
 				}
 			}
-			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			if (message[0] != 0) {
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, message);
+			} else {
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			}
 		} else {
 			AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
 			AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
@@ -1033,8 +1051,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (!strcmp(property->device, GUIDER_AGENT_NAME) && (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME) || !strcmp(property->name, FILTER_GUIDER_LIST_PROPERTY_NAME))) {
-		if (FILTER_CCD_LIST_PROPERTY->items->sw.value || FILTER_GUIDER_LIST_PROPERTY->items->sw.value) {
+	if (!strcmp(property->device, GUIDER_AGENT_NAME) && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
+		if (FILTER_CCD_LIST_PROPERTY->items->sw.value) {
 			abort_process(device);
 			if (CLIENT_PRIVATE_DATA->properties_defined) {
 				indigo_delete_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
