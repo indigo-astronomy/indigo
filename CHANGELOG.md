@@ -15,7 +15,7 @@ All notable changes to INDIGO framewark will be documented in this file.
 - indigo_mount_pmc8: protocol switching fixed
 - indigo_ccd_ptp: Nikon Z5 support added
 - indigo_ccd_simulator: streaming and BULB support added
--indigo_agent_mount: stops capture on related ccd agent on park etc.
+- indigo_agent_mount: stops capture on related ccd agent on park etc.
 
 ### New Drivers:
 - indigo_mount_rainbow: RainbowAstro mount driver
