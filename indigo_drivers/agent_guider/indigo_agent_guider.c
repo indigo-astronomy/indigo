@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -60,7 +60,8 @@
 #define AGENT_START_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_start_process_property)
 #define AGENT_GUIDER_START_PREVIEW_ITEM  			(AGENT_START_PROCESS_PROPERTY->items+0)
 #define AGENT_GUIDER_START_CALIBRATION_ITEM 	(AGENT_START_PROCESS_PROPERTY->items+1)
-#define AGENT_GUIDER_START_GUIDING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+2)
+#define AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM 	(AGENT_START_PROCESS_PROPERTY->items+2)
+#define AGENT_GUIDER_START_GUIDING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+3)
 
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
@@ -396,7 +397,10 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_SELECTION_PROPERTY->perm = INDIGO_RW_PERM;
 	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+	AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+	AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 }
 
@@ -435,7 +439,7 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 
 static void guide_process(indigo_device *device);
 
-static void calibrate_process(indigo_device *device) {
+static void _calibrate_process(indigo_device *device, bool will_guide) {
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RO_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
@@ -679,15 +683,27 @@ static void calibrate_process(indigo_device *device) {
 	AGENT_GUIDER_SELECTION_PROPERTY->perm = INDIGO_RW_PERM;
 	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+	AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+	AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
+	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE && will_guide) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 		AGENT_GUIDER_START_GUIDING_ITEM->sw.value = true;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guide_process, NULL);
 	}
 }
+
+static void calibrate_process(indigo_device *device) {
+	_calibrate_process(device, false);
+}
+
+static void calibrate_and_guide_process(indigo_device *device) {
+	_calibrate_process(device, true);
+}
+
 
 static void guide_process(indigo_device *device) {
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
@@ -786,7 +802,10 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_SELECTION_PROPERTY->perm = INDIGO_RW_PERM;
 	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+	AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+	AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	indigo_send_message(device, "Guiding finished");
 }
@@ -806,7 +825,10 @@ static void abort_process(indigo_device *device) {
 			indigo_change_property(FILTER_DEVICE_CONTEXT->client, abort_property);
 			indigo_release_property(abort_property);
 		}
-		AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+		AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+		AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+		AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+		AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 }
@@ -836,11 +858,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_NORTH_ITEM, AGENT_GUIDER_DEC_MODE_NORTH_ITEM_NAME, "North only", false);
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_SOUTH_ITEM, AGENT_GUIDER_DEC_MODE_SOUTH_ITEM_NAME, "South only", false);
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_NONE_ITEM, AGENT_GUIDER_DEC_MODE_NONE_ITEM_NAME, "None", false);
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_GUIDER_START_PREVIEW_ITEM, AGENT_GUIDER_START_PREVIEW_ITEM_NAME, "Start preview", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_ITEM, AGENT_GUIDER_START_CALIBRATION_ITEM_NAME, "Start calibration", false);
+		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM, AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM_NAME, "Start calibration and guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_GUIDING_ITEM, AGENT_GUIDER_START_GUIDING_ITEM_NAME, "Start guiding", false);
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
@@ -969,6 +992,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				} else if (AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, calibrate_process, NULL);
+				} else if (AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value) {
+					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_set_timer(device, 0, calibrate_and_guide_process, NULL);
 				} else if (AGENT_GUIDER_START_GUIDING_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, guide_process, NULL);
@@ -978,7 +1004,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		} else {
-			AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+			AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+			AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+			AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+			AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No CCD is selected");
 		}
