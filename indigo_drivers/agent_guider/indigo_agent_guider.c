@@ -182,7 +182,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			}
 			while ((remote_exposure_property->state == INDIGO_BUSY_STATE || remote_image_property->state == INDIGO_BUSY_STATE) && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				if (time > 1) {
-					  indigo_usleep(ONE_SECOND_DELAY);
+					indigo_usleep(ONE_SECOND_DELAY);
 					time -= 1;
 				} else {
 					indigo_usleep(10000);
@@ -212,7 +212,20 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
 							result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &DEVICE_PRIVATE_DATA->reference);
 						} else {
-							result = indigo_selection_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), &AGENT_GUIDER_SELECTION_X_ITEM->number.value, &AGENT_GUIDER_SELECTION_Y_ITEM->number.value, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &DEVICE_PRIVATE_DATA->reference);
+							if (AGENT_GUIDER_SELECTION_X_ITEM->number.value != 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value != 0) {
+								result = indigo_selection_frame_digest(
+									header->signature,
+									(void*)header + sizeof(indigo_raw_header),
+									&AGENT_GUIDER_SELECTION_X_ITEM->number.value,
+									&AGENT_GUIDER_SELECTION_Y_ITEM->number.value,
+									AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+									header->width,
+									header->height,
+									&DEVICE_PRIVATE_DATA->reference
+								);
+							} else {
+								result = INDIGO_OK;
+							}
 							if (result == INDIGO_OK)
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 						}
@@ -223,7 +236,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 							return INDIGO_ALERT_STATE;
 						}
 					} else {
-						indigo_frame_digest digest;
+						indigo_frame_digest digest = {0};
 						indigo_result result;
 						if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 							result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
@@ -235,7 +248,21 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
 							result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
 						} else {
-							result = indigo_selection_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), &AGENT_GUIDER_SELECTION_X_ITEM->number.value, &AGENT_GUIDER_SELECTION_Y_ITEM->number.value, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &digest);
+							if (AGENT_GUIDER_SELECTION_X_ITEM->number.value != 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value != 0) {
+								result = indigo_selection_frame_digest(
+									header->signature,
+									(void*)header + sizeof(indigo_raw_header),
+									&AGENT_GUIDER_SELECTION_X_ITEM->number.value,
+									&AGENT_GUIDER_SELECTION_Y_ITEM->number.value,
+									AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+									header->width,
+									header->height,
+									&digest
+								);
+							} else {
+								result = INDIGO_OK;
+								AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+							}
 							if (result == INDIGO_OK)
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 						}
