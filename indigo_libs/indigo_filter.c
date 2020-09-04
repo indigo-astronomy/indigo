@@ -328,7 +328,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 			} else {
 				indigo_set_switch(device_list, device_list->items, true);
 				device_list->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, device_list, "%s is already connected and maybe in use, please disconnect it first.", name);
+				indigo_update_property(device, device_list, "'%s' is already connected and maybe in use, please disconnect it first.", name);
 			}
 			return INDIGO_OK;
 		}
