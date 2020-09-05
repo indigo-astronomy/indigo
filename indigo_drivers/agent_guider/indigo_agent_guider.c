@@ -369,7 +369,14 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RO_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = -1;
-	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value =
+	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		capture_raw_frame(device);
@@ -691,11 +698,15 @@ static void guide_process(indigo_device *device) {
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RO_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
-	indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-	AGENT_GUIDER_SELECTION_PROPERTY->perm = INDIGO_RO_PERM;
-	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = 0;
-	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value =
+	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
 	indigo_send_message(device, "Guiding started");
@@ -780,9 +791,6 @@ static void guide_process(indigo_device *device) {
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
-	indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-	AGENT_GUIDER_SELECTION_PROPERTY->perm = INDIGO_RW_PERM;
-	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
 	AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
