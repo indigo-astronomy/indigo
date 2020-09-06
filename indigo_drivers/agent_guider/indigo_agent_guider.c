@@ -708,7 +708,6 @@ static void guide_process(indigo_device *device) {
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = 0;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
-	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
@@ -978,6 +977,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SELECTION
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
+		AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+		AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
+		AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
+		AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
+		AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value =
+		AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
+		AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
+		AGENT_GUIDER_STATS_SNR_ITEM->number.value =
 		DEVICE_PRIVATE_DATA->stack_size = 0;
 		AGENT_GUIDER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
