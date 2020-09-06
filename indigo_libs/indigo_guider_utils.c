@@ -262,21 +262,24 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 }
 
 indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *c) {
-	if ((width <= 2 * radius) || (height <= 2 * radius))
-		return INDIGO_FAILED;
 	int xx = (int)round(*x);
 	int yy = (int)round(*y);
+
+	if ((width <= 2 * radius) || (height <= 2 * radius))
+		return INDIGO_FAILED;
 	if (xx < radius || width - radius < xx)
 		return INDIGO_FAILED;
 	if (yy < radius || height - radius < yy)
 		return INDIGO_FAILED;
 	if ((data == NULL) || (c == NULL))
 		return INDIGO_FAILED;
-	double m10 = 0, m01 = 0, m00 = 0, min = 1e20, max = 0;
+
+	double m10 = 0, m01 = 0, m00 = 0, max = 0, sum = 0;
 	int ce = xx + radius, le = yy + radius;
-	for (int j = yy - radius; j <= le; j++) {
+	int cs = xx - radius, ls = yy - radius;
+	for (int j = ls; j <= le; j++) {
 		int k = j * width;
-		for (int i = xx - radius; i <= ce; i++) {
+		for (int i = cs; i <= ce; i++) {
 			int kk = k + i;
 			double value;
 			switch (raw_type) {
@@ -299,49 +302,57 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 					break;
 				}
 			}
+			sum += value;
 			if (value > max)
 				max = value;
-			if (value < min)
-				min = value;
 		}
 	}
-	double scale = (max - min) / 10000;
-	if (scale == 0)
-		return INDIGO_FAILED;
-	for (int j = yy - radius; j <= le; j++) {
+
+	/* Set threshold 10% above average value */
+	double threshold = 1.10 * sum / ((2 * radius + 1) * (2 * radius + 1));
+
+	/* If max is below the thresold no guiding is possible */
+	if (max - threshold <= 0) return INDIGO_FAILED;
+
+	for (int j = ls; j <= le; j++) {
 		int k = j * width;
-		for (int i = xx - radius; i <= ce; i++) {
+		for (int i = cs; i <= ce; i++) {
 			int kk = k + i;
 			double value;
 			switch (raw_type) {
 				case INDIGO_RAW_MONO8: {
-					value = (((uint8_t *)data)[kk] - min) / scale;
+					value = (((uint8_t *)data)[kk] - threshold);
 					break;
 				}
 				case INDIGO_RAW_MONO16: {
-					value = (((uint16_t *)data)[kk] - min) / scale;
+					value = (((uint16_t *)data)[kk] - threshold);
 					break;
 				}
 				case INDIGO_RAW_RGB24: {
 					kk *= 3;
-					value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] - min) / scale;
+					value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] - threshold);
 					break;
 				}
 				case INDIGO_RAW_RGB48: {
 					kk *= 3;
-					value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2] - min) / scale;
+					value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2] - threshold);
 					break;
 				}
 			}
-			m10 += i * value;
-			m01 += j * value;
+
+			/* Set all values below the threshold to 0 */
+			if (value < 0) value = 0;
+
+			m10 += (i - cs) * value;
+			m01 += (j - ls) * value;
 			m00 += value;
 		}
 	}
 	c->width = width;
 	c->height = height;
-	c->centroid_x = *x = m10 / m00;
-	c->centroid_y = *y = m01 / m00;
+	/* calculate centroid for the selection only and add the offset */
+	c->centroid_x = *x = cs + m10 / m00;
+	c->centroid_y = *y = ls + m01 / m00;
 	c->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
