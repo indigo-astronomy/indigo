@@ -227,7 +227,6 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 							} else if (result == INDIGO_GUIDE_ERROR) {
 								indigo_send_message(device, "Can not detect star in the selection");
-								DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
 							}
 						}
 						if (result == INDIGO_OK) {
@@ -264,6 +263,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 							} else if (result == INDIGO_GUIDE_ERROR) {
 								indigo_send_message(device, "Can not detect star in the selection");
 								DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
+								return INDIGO_OK_STATE;
 							}
 						}
 						if (result == INDIGO_OK) {
@@ -727,7 +727,7 @@ static void guide_process(indigo_device *device) {
 			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			break;
 		}
-		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y == 0) {
+		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
 			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
 			double sin_angle = sin(angle);
 			double cos_angle = cos(angle);
