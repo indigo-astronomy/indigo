@@ -312,7 +312,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	double threshold = 1.10 * sum / ((2 * radius + 1) * (2 * radius + 1));
 
 	/* If max is below the thresold no guiding is possible */
-	if (max - threshold <= 0) return INDIGO_FAILED;
+	if (max - threshold <= 0) return INDIGO_GUIDE_ERROR;
 
 	for (int j = ls; j <= le; j++) {
 		int k = j * width;
