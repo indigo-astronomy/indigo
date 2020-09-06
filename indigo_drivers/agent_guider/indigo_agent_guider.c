@@ -223,8 +223,11 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								header->height,
 								&DEVICE_PRIVATE_DATA->reference
 							);
-							if (result == INDIGO_OK)
+							if (result == INDIGO_OK) {
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+							} else if (result == INDIGO_GUIDE_ERROR) {
+								indigo_send_message(device, "Can not detect star in the selection");
+							}
 						}
 						if (result == INDIGO_OK) {
 							AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
@@ -255,8 +258,11 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								header->height,
 								&digest
 							);
-							if (result == INDIGO_OK)
+							if (result == INDIGO_OK) {
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+							} else if (result == INDIGO_GUIDE_ERROR) {
+								indigo_send_message(device, "Can not detect star in the selection");
+							}
 						}
 						if (result == INDIGO_OK) {
 							double drift_x, drift_y;
