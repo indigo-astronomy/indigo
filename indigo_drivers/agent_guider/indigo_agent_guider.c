@@ -203,6 +203,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						indigo_result result;
 						indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
 						DEVICE_PRIVATE_DATA->stack_size = 0;
+						DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
 						if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 							result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &DEVICE_PRIVATE_DATA->reference);
 							AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
@@ -261,8 +262,10 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 							if (result == INDIGO_OK) {
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 							} else if (result == INDIGO_GUIDE_ERROR) {
-								indigo_send_message(device, "Can not detect star in the selection");
-								DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
+								if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
+									indigo_send_message(device, "Can not detect star in the selection");
+									DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
+								}
 								return INDIGO_OK_STATE;
 							}
 						}
