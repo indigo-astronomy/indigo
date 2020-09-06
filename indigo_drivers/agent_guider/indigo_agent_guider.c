@@ -174,7 +174,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				indigo_usleep(1000);
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_release_property(local_exposure_property);
-				return false;
+				return INDIGO_ALERT_STATE;
 			}
 			if (remote_exposure_property->state != INDIGO_BUSY_STATE) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
@@ -192,7 +192,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_release_property(local_exposure_property);
-				return false;
+				return INDIGO_ALERT_STATE;
 			}
 			if (remote_exposure_property->state == INDIGO_OK_STATE) {
 				if (strchr(remote_image_property->device, '@'))
@@ -227,6 +227,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 							} else if (result == INDIGO_GUIDE_ERROR) {
 								indigo_send_message(device, "Can not detect star in the selection");
+								DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
 							}
 						}
 						if (result == INDIGO_OK) {
@@ -262,6 +263,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 							} else if (result == INDIGO_GUIDE_ERROR) {
 								indigo_send_message(device, "Can not detect star in the selection");
+								DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
 							}
 						}
 						if (result == INDIGO_OK) {
@@ -725,51 +727,53 @@ static void guide_process(indigo_device *device) {
 			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			break;
 		}
-		double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
-		double sin_angle = sin(angle);
-		double cos_angle = cos(angle);
-		double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
-		double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
-		double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
-		double drift_ra = DEVICE_PRIVATE_DATA->drift_x * cos_angle + DEVICE_PRIVATE_DATA->drift_y * sin_angle;
-		double drift_dec = DEVICE_PRIVATE_DATA->drift_x * sin_angle - DEVICE_PRIVATE_DATA->drift_y * cos_angle;
-		AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = round(1000 * drift_ra) / 1000;
-		AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
-		double correction_ra = 0, correction_dec = 0;
-		if (fabs(drift_ra) > min_error) {
-			correction_ra = -drift_ra * AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
-			if (correction_ra > max_pulse)
-				correction_ra = max_pulse;
-			else if (correction_ra < -max_pulse)
-				correction_ra = -max_pulse;
-			else if (fabs(correction_ra) < min_pulse)
-				correction_ra = 0;
-		}
-		if (fabs(drift_dec) > min_error) {
-			correction_dec = -drift_dec * AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
-			if (correction_dec > max_pulse)
-				correction_dec = max_pulse;
-			else if (correction_dec < -max_pulse)
-				correction_dec = -max_pulse;
-			else if (fabs(correction_dec) < min_pulse)
+		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y == 0) {
+			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
+			double sin_angle = sin(angle);
+			double cos_angle = cos(angle);
+			double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
+			double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
+			double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
+			double drift_ra = DEVICE_PRIVATE_DATA->drift_x * cos_angle + DEVICE_PRIVATE_DATA->drift_y * sin_angle;
+			double drift_dec = DEVICE_PRIVATE_DATA->drift_x * sin_angle - DEVICE_PRIVATE_DATA->drift_y * cos_angle;
+			AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = round(1000 * drift_ra) / 1000;
+			AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
+			double correction_ra = 0, correction_dec = 0;
+			if (fabs(drift_ra) > min_error) {
+				correction_ra = -drift_ra * AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
+				if (correction_ra > max_pulse)
+					correction_ra = max_pulse;
+				else if (correction_ra < -max_pulse)
+					correction_ra = -max_pulse;
+				else if (fabs(correction_ra) < min_pulse)
+					correction_ra = 0;
+			}
+			if (fabs(drift_dec) > min_error) {
+				correction_dec = -drift_dec * AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
+				if (correction_dec > max_pulse)
+					correction_dec = max_pulse;
+				else if (correction_dec < -max_pulse)
+					correction_dec = -max_pulse;
+				else if (fabs(correction_dec) < min_pulse)
+					correction_dec = 0;
+			}
+			if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value)
 				correction_dec = 0;
+			else if (AGENT_GUIDER_DEC_MODE_NORTH_ITEM->sw.value && correction_dec < 0)
+				correction_dec = 0;
+			else if (AGENT_GUIDER_DEC_MODE_SOUTH_ITEM->sw.value && correction_dec > 0)
+				correction_dec = 0;
+			AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = round(1000 * correction_ra) / 1000;
+			AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = round(1000 * correction_dec) / 1000;
+			if (pulse_guide(device, correction_ra, correction_dec) != INDIGO_OK_STATE) {
+				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				break;
+			}
+			DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
+			DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
+			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / AGENT_GUIDER_STATS_FRAME_ITEM->number.value)) / 1000;
+			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / AGENT_GUIDER_STATS_FRAME_ITEM->number.value)) / 1000;
 		}
-		if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value)
-			correction_dec = 0;
-		else if (AGENT_GUIDER_DEC_MODE_NORTH_ITEM->sw.value && correction_dec < 0)
-			correction_dec = 0;
-		else if (AGENT_GUIDER_DEC_MODE_SOUTH_ITEM->sw.value && correction_dec > 0)
-			correction_dec = 0;
-		AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = round(1000 * correction_ra) / 1000;
-		AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = round(1000 * correction_dec) / 1000;
-		if (pulse_guide(device, correction_ra, correction_dec) != INDIGO_OK_STATE) {
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-			break;
-		}
-		DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
-		DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
-		AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / AGENT_GUIDER_STATS_FRAME_ITEM->number.value)) / 1000;
-		AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / AGENT_GUIDER_STATS_FRAME_ITEM->number.value)) / 1000;
 		double reported_delay_time = AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.target;
 		if (reported_delay_time > 0) {
 			AGENT_GUIDER_STATS_DELAY_ITEM->number.value = reported_delay_time;
