@@ -247,9 +247,9 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 							}
 							// just for test!!!!
-							//indigo_star_entry stars[50];
-							//int star_count;
-							//indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, 50, &stars, &star_count);
+							indigo_star_entry stars[50];
+							int star_count;
+							indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, 50, &stars, &star_count);
 						} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
 							result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
 						} else {
