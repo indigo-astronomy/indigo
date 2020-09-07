@@ -850,12 +850,9 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 					lmax = buf[off];
 					star.x = (double)i;
 					star.y = (double)j;
-					star.center_distance = 0;
-					//p.z = !(p - Vector( m_video_width/2, m_video_height/2, 0 ));
-					//if( p.z / std::min(m_video_width, m_video_height)/2 > 0.5 )
-					//	p.z = p.z / std::min(m_video_width, m_video_height)/2;
-					//else
-					//	p.z = 0.5;
+					star.nc_distance = sqrt((star.x - width/2) * (star.x - width/2) + (star.y - height/2) * (star.y - height/2));
+					int divider = (width > height) ? height / 2 : width / 2;
+					star.nc_distance /= divider;
 				}
 			}
 		}
@@ -887,7 +884,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	free(buf);
 
 	for( size_t i = 0;i < found; i++ ) {
-		INDIGO_DEBUG(indigo_log("indigo_find_stars: star #%u: x = %lf, y = %lf, cdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].center_distance, star_list[i].luminance));
+		INDIGO_DEBUG(indigo_log("indigo_find_stars: star #%u: x = %lf, y = %lf, ncdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].nc_distance, star_list[i].luminance));
 	}
 
 	*stars_found = found;

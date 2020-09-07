@@ -25,10 +25,10 @@
 #include <stdio.h>
 
 typedef struct {
-	double x;                 /* Star X */
-	double y;                 /* Star Y */
-	double center_distance;   /* Distance from center of the frame, not calculated yet */
-	double luminance;         /* Star Brightness */
+	double x;             /* Star X */
+	double y;             /* Star Y */
+	double nc_distance;   /* Normalized distance from center of the frame */
+	double luminance;     /* Star Brightness */
 } indigo_star_entry;
 
 typedef enum {
