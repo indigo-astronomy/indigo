@@ -858,8 +858,8 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
-				/* Check neighbouring pixels to avoid hot pixel detection */
-				if (buf[off] > threshold && buf[off-1] > threshold && buf[off+1] > threshold && lmax < buf[off]) {
+				/* Check median of the neighbouring pixels to avoid hot pixels */
+				if (buf[off] > threshold && lmax < buf[off] && median(buf[off-1], buf[off], buf[off+1]) > threshold) {
 					lmax = buf[off];
 					star.x = (double)i;
 					star.y = (double)j;
