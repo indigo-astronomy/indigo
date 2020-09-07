@@ -303,16 +303,17 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				}
 			}
 			sum += value;
-			if (value > max)
-				max = value;
+			if (value > max) max = value;
 		}
 	}
 
 	/* Set threshold 10% above average value */
 	double threshold = 1.10 * sum / ((2 * radius + 1) * (2 * radius + 1));
 
+	INDIGO_DEBUG(indigo_log("threshold = %.3f, max = %.3f", threshold, max));
+
 	/* If max is below the thresold no guiding is possible */
-	if (max - threshold <= 0) return INDIGO_GUIDE_ERROR;
+	if (max <= threshold) return INDIGO_GUIDE_ERROR;
 
 	for (int j = ls; j <= le; j++) {
 		int k = j * width;
@@ -462,14 +463,10 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		return INDIGO_FAILED;
 	if ((data == NULL) || (c == NULL))
 		return INDIGO_FAILED;
-	c->width = next_power_2(width);
-	c->height = next_power_2(height);
-	double (*col_x)[2] = calloc(2 * c->width * sizeof(double), 1);
-	double (*col_y)[2] = calloc(2 * c->height * sizeof(double), 1);
-	c->fft_x = malloc(2 * c->width * sizeof(double));
-	c->fft_y = malloc(2 * c->height * sizeof(double));
-	int ci = 0, li = 0, max = width * height;
-	for (int i = 0; i < max; i++) {
+
+	int ci = 0, li = 0, size = width * height;
+	double sum = 0, max = 0;
+	for (int i = 0; i < size; i++) {
 		double value;
 		switch (raw_type) {
 			case INDIGO_RAW_MONO8: {
@@ -489,6 +486,55 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 				break;
 			}
 		}
+		sum += value;
+		if (value > max) max = value;
+		ci++;
+		if (ci == width) {
+			ci = 0;
+			li++;
+		}
+	}
+
+	/* Set threshold 10% above average value */
+	double threshold = 1.10 * sum / size;
+
+	INDIGO_DEBUG(indigo_log("threshold = %.3f, max = %.3f", threshold, max));
+
+	/* If max is below the thresold no guiding is possible */
+	if (max <= threshold) return INDIGO_GUIDE_ERROR;
+
+	c->width = next_power_2(width);
+	c->height = next_power_2(height);
+	double (*col_x)[2] = calloc(2 * c->width * sizeof(double), 1);
+	double (*col_y)[2] = calloc(2 * c->height * sizeof(double), 1);
+	c->fft_x = malloc(2 * c->width * sizeof(double));
+	c->fft_y = malloc(2 * c->height * sizeof(double));
+
+	ci = 0; li = 0;
+	for (int i = 0; i < size; i++) {
+		double value;
+		switch (raw_type) {
+			case INDIGO_RAW_MONO8: {
+				value = ((uint8_t *)data)[i] - threshold;
+				break;
+			}
+			case INDIGO_RAW_MONO16: {
+				value = ((uint16_t *)data)[i] - threshold;
+				break;
+			}
+			case INDIGO_RAW_RGB24: {
+				value = ((uint8_t *)data)[i] + ((uint8_t *)data)[i + 1] + ((uint8_t *)data)[i + 2] - threshold;
+				break;
+			}
+			case INDIGO_RAW_RGB48: {
+				value = ((uint16_t *)data)[i] + ((uint16_t *)data)[i + 1] + ((uint16_t *)data)[i + 2] - threshold;
+				break;
+			}
+		}
+
+		/* Set all values below the threshold to 0 */
+		if (value < 0) value = 0;
+
 		col_x[ci][RE] += value;
 		col_y[li][RE] += value;
 		ci++;
