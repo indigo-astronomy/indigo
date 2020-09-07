@@ -795,7 +795,7 @@ static int median(int a, int b, int c) {
 
 static const double FIND_STAR_CLIP_EDGE = 48;
 
-indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star star_list[], int *stars_found) {
+indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
 
 	int  size = width * height;
@@ -849,7 +849,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	int found = 0;
 	while (lmax > 0) {
 		lmax = 0;
-		indigo_star star = {0};
+		indigo_star_detection star = {0};
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
