@@ -280,9 +280,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	double m10 = 0, m01 = 0, m00 = 0, max = 0, sum = 0;
 	const int ce = xx + radius, le = yy + radius;
 	const int cs = xx - radius, ls = yy - radius;
-
+	double value;
 	switch (raw_type) {
-		double value;
 		case INDIGO_RAW_MONO8: {
 			for (int j = ls; j <= le; j++) {
 				int k = j * width;
@@ -340,7 +339,6 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
 
 	switch (raw_type) {
-		double value;
 		case INDIGO_RAW_MONO8: {
 			for (int j = ls; j <= le; j++) {
 				int k = j * width;
@@ -423,8 +421,8 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	double m10 = 0, m01 = 0, m00 = 0;
 	int ci = 0, li = 0, size = width * height;
 	double sum = 0, max = 0;
+	double value;
 	switch (raw_type) {
-		double value;
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
 				value = data8[i];
@@ -468,7 +466,6 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 
 	ci = 0; li = 0;
 	switch (raw_type) {
-		double value;
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
 				value = data8[i];
@@ -600,8 +597,8 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	uint16_t *data16 = (uint16_t *)data;
 	int size = width * height;
 	double sum = 0, max = 0;
+	double value;
 	switch (raw_type) {
-		double value;
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
 				value = data8[i];
@@ -655,7 +652,6 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 
 	int ci = 0, li = 0;
 	switch (raw_type) {
-		double value;
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
 				value = data8[i] - threshold;
@@ -815,7 +811,6 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	double threshold = 0;
 
 	switch (raw_type) {
-		double value;
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
 				buf[i] = data8[i];
@@ -873,7 +868,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 			star_list[found] = star;
 			for (int j = -star_size; j < star_size; j++) {
 				for (int i = -star_size; i < star_size; i++) {
-					if( (int)star.x + i < 0 || star.x + i >= width || (int)star.y + j < 0 || star.y + i >= height ) {
+					if ((int)star.x + i < 0 || star.x + i >= width || (int)star.y + j < 0 || star.y + i >= height) {
 						star_list[found] = star;
 						found++;
 						continue;
@@ -889,14 +884,14 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 			star_list[found] = star;
 			found++;
 		}
-		if(found >= stars_max) {
+		if (found >= stars_max) {
 			break;
 		}
 	}
 
 	free(buf);
 
-	for( size_t i = 0;i < found; i++ ) {
+	for (size_t i = 0;i < found; i++) {
 		INDIGO_DEBUG(indigo_log("indigo_find_stars: star #%u: x = %lf, y = %lf, ncdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].nc_distance, star_list[i].luminance));
 	}
 
