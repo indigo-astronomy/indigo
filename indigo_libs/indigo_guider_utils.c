@@ -785,6 +785,18 @@ indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 	return INDIGO_FAILED;
 }
 
+static int median(int a, int b, int c) {
+	if (a > b) {
+		if (b > c) return b;
+		else if (a > c) return c;
+		else return a;
+	} else {
+		if (a > c) return a;
+		else if (b > c) return c;
+		else return b;
+	}
+}
+
 static const double FIND_STAR_CLIP_EDGE = 48;
 
 indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_entry star_list[], int *stars_found) {
@@ -846,7 +858,8 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
-				if(buf[off] > threshold && lmax < buf[off]) {
+				/* Check neighbouring pixels to avoid hot pixel detection */
+				if (buf[off] > threshold && buf[off-1] > threshold && buf[off+1] > threshold && lmax < buf[off]) {
 					lmax = buf[off];
 					star.x = (double)i;
 					star.y = (double)j;
