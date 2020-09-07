@@ -442,7 +442,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data8[i] + data8[i + 1] + data8[i + 2];
 				i += 2;
 				sum += value;
@@ -451,7 +451,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data16[i] + data16[i + 1] + data16[i + 2];
 				i += 2;
 				sum += value;
@@ -498,7 +498,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data8[i] + data8[i + 1] + data8[i + 2];
 				i += 2;
 				m10 += ci * value;
@@ -513,7 +513,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data16[i] + data16[i + 1] + data16[i + 2];
 				i += 2;
 				m10 += ci * value;
@@ -619,7 +619,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data8[i] + data8[i + 1] + data8[i + 2];
 				i += 2;
 				sum += value;
@@ -628,7 +628,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data16[i] + data16[i + 1] + data16[i + 2];
 				i += 2;
 				sum += value;
@@ -689,7 +689,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data8[i] + data8[i + 1] + data8[i + 2] - threshold;
 				i += 2;
 				/* Set all values below the threshold to 0 */
@@ -706,7 +706,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < 3 * size; i++) {
 				value = data16[i] + data16[i + 1] + data16[i + 2] - threshold;
 				i += 2;
 				/* Set all values below the threshold to 0 */
