@@ -24,7 +24,18 @@
 
 #include <stdio.h>
 
-typedef enum { none = 0, centroid, donuts } indigo_guide_algorithm;
+typedef struct {
+	double x;                 /* Star X */
+	double y;                 /* Star Y */
+	double center_distance;   /* Distance from center of the frame, not calculated yet */
+	double luminance;         /* Star Brightness */
+} indigo_star_entry;
+
+typedef enum {
+	none = 0,
+	centroid,
+	donuts
+} indigo_guide_algorithm;
 
 typedef struct {
 	indigo_guide_algorithm algorithm;
@@ -41,6 +52,7 @@ typedef struct {
 	double snr;
 } indigo_frame_digest;
 
+extern indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_entry star_list[], int *stars_found);
 extern indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, double x, double y, const int radius, const int width, const int height, double *fwhm, double *hfd, double *peak);
 
 extern indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *c);

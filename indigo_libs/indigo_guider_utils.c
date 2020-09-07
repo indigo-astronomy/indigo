@@ -784,3 +784,112 @@ indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 	}
 	return INDIGO_FAILED;
 }
+
+static const double FIND_STAR_CLIP_EDGE = 48;
+
+indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_entry star_list[], int *stars_found) {
+	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
+
+	int  size = width * height;
+	double *buf = malloc(size * sizeof(double));
+	int star_size = 10;
+	int clip_edge   = height >= FIND_STAR_CLIP_EDGE * 4 ? FIND_STAR_CLIP_EDGE : (height / 4);
+	int clip_width  = width - clip_edge;
+	int clip_height = height - clip_edge;
+	double lmax = 1;
+
+	uint8_t *data8 = (uint8_t *)data;
+	uint16_t *data16 = (uint16_t *)data;
+	double threshold = 0;
+
+	switch (raw_type) {
+		double value;
+		case INDIGO_RAW_MONO8: {
+			for (int i = 0; i < size; i++) {
+				buf[i] = data8[i];
+				threshold += buf[i];
+			}
+			break;
+		}
+		case INDIGO_RAW_MONO16: {
+			for (int i = 0; i < size; i++) {
+				buf[i] = data16[i];
+				threshold += buf[i];
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
+				buf[j] = data8[i] + data8[i + 1] + data8[i + 2];
+				threshold += buf[j];
+				i += 2;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
+				buf[j] = data16[i] + data16[i + 1] + data16[i + 2];
+				threshold += buf[j];
+				i += 2;
+			}
+			break;
+		}
+	}
+
+	/* Look for stars 30% brighter than the frame average */
+	threshold = 1.30 * threshold / (double)size;
+
+	int found = 0;
+	while (lmax > 0) {
+		lmax = 0;
+		indigo_star_entry star = {0};
+		for (int j = clip_edge; j < clip_height; j++) {
+			for (int i = clip_edge; i < clip_width; i++) {
+				int off = j * width + i;
+				if(buf[off] > threshold && lmax < buf[off]) {
+					lmax = buf[off];
+					star.x = (double)i;
+					star.y = (double)j;
+					star.center_distance = 0;
+					//p.z = !(p - Vector( m_video_width/2, m_video_height/2, 0 ));
+					//if( p.z / std::min(m_video_width, m_video_height)/2 > 0.5 )
+					//	p.z = p.z / std::min(m_video_width, m_video_height)/2;
+					//else
+					//	p.z = 0.5;
+				}
+			}
+		}
+		if (lmax > 0) {
+			star_list[found] = star;
+			for (int j = -star_size; j < star_size; j++) {
+				for (int i = -star_size; i < star_size; i++) {
+					if( (int)star.x + i < 0 || star.x + i >= width || (int)star.y + j < 0 || star.y + i >= height ) {
+						star_list[found] = star;
+						found++;
+						continue;
+					}
+					int off = ((int)star.y + j) * width + (int)star.x + i;
+					if (buf[off] > star.luminance) {
+						star.luminance = buf[off];
+					}
+					buf[off] = 0;
+				}
+			}
+			star.luminance = log(fabs(star.luminance));
+			star_list[found] = star;
+			found++;
+		}
+		if(found >= stars_max) {
+			break;
+		}
+	}
+
+	free(buf);
+
+	for( size_t i = 0;i < found; i++ ) {
+		INDIGO_DEBUG(indigo_log("indigo_find_stars: star #%u: x = %lf, y = %lf, cdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].center_distance, star_list[i].luminance));
+	}
+
+	*stars_found = found;
+	return INDIGO_OK;
+}
