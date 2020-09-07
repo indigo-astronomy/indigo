@@ -142,7 +142,7 @@ typedef struct {
 	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
 	int focuser_position;
-	indigo_star stars[MAX_STAR_COUNT];
+	indigo_star_detection stars[MAX_STAR_COUNT];
 	indigo_frame_digest reference;
 	double drift_x, drift_y;
 	int bin_x, bin_y;
@@ -290,7 +290,7 @@ static bool capture_raw_frame(indigo_device *device) {
 			if (AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE || (AGENT_IMAGER_START_FOCUSING_ITEM->sw.value && AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0)) {
 				int star_count;
 				indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-				indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, MAX_STAR_COUNT, (indigo_star *)&DEVICE_PRIVATE_DATA->stars, &star_count);
+				indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, MAX_STAR_COUNT, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
 				AGENT_IMAGER_STARS_PROPERTY->count = star_count + 1;
 				for (int i = 0; i < star_count; i++) {
 					char name[8];
