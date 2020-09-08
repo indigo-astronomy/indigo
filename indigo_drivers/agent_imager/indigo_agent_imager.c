@@ -282,7 +282,7 @@ static bool capture_raw_frame(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 		return false;
 	}
-	if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0) || AGENT_IMAGER_START_FOCUSING_ITEM->sw.value) {
+	if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0) || AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_IMAGER_START_FOCUSING_ITEM->sw.value) {
 		if (strchr(remote_image_property->device, '@'))
 			indigo_populate_http_blob_item(remote_image_property->items);
 		indigo_raw_header *header = (indigo_raw_header *)(remote_image_property->items->blob.value);
