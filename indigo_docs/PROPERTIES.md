@@ -50,8 +50,8 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 |  |  |  |  | PIXEL_WIDTH | yes | in microns |
 |  |  |  |  | PIXEL_HEIGHT | yes | in microns |
 |  |  |  |  | BITS_PER_PIXEL | yes |  |
-| CCD_LENS | number | no | yes | APERTURE | yes | in meters |
-|  |  |  | FOCAL_LENGTH | yes | in meters |
+| CCD_LENS | number | no | yes | APERTURE | yes | in centimeters |
+|  |  |  | FOCAL_LENGTH | yes | in centimeters |
 | CCD_UPLOAD_MODE | switch | no | yes | CLIENT | yes |  |
 |  |  |  |  | LOCAL | yes |  |
 |  |  |  |  | BOTH | yes |  |
