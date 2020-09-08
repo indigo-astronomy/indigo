@@ -85,6 +85,20 @@ extern "C" {
  */
 #define CCD_INFO_BITS_PER_PIXEL_ITEM      (CCD_INFO_PROPERTY->items+7)
 
+/** CCD_LENS property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_LENS_PROPERTY                 (CCD_CONTEXT->ccd_lens_property)
+
+/** CCD_LENS.APERTURE property item pointer.
+ */
+
+#define CCD_LENS_APERTURE_ITEM      			(CCD_LENS_PROPERTY->items+0)
+
+/** CCD_LENS.FOCAL_LENGTH property item pointer.
+ */
+
+#define CCD_LENS_FOCAL_LENGTH_ITEM      			(CCD_LENS_PROPERTY->items+1)
+
 /** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_UPLOAD_MODE_PROPERTY          (CCD_CONTEXT->ccd_upload_mode_property)
@@ -388,8 +402,9 @@ typedef struct {
 	bool countdown_enabled;												///< countdown enabled
 	indigo_timer *countdown_timer;								///< countdown timer
 	void *preview_image;													///< preview image buffer
-	unsigned long preview_image_size;												///< preview image buffer size
+	unsigned long preview_image_size;							///< preview image buffer size
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
+	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
 	indigo_property *ccd_preview_property;				///< CCD_PREVIEW property pointer
 	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer

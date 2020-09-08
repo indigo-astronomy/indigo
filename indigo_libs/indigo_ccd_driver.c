@@ -81,10 +81,16 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(CCD_INFO_HEIGHT_ITEM, CCD_INFO_HEIGHT_ITEM_NAME, "Vertical resolution", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME, "Max vertical binning", 0, 0, 0, 1);
 			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME, "Max horizontal binning", 0, 0, 0, 1);
-			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, CCD_INFO_PIXEL_SIZE_ITEM_NAME, "Pixel size", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, CCD_INFO_PIXEL_WIDTH_ITEM_NAME, "Pixel width", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, CCD_INFO_PIXEL_SIZE_ITEM_NAME, "Pixel size (um)", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, CCD_INFO_PIXEL_WIDTH_ITEM_NAME, "Pixel width (um)", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height (um)", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_BITS_PER_PIXEL_ITEM, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME, "Bits/pixel", 0, 0, 0, 0);
+			// -------------------------------------------------------------------------------- CCD_LENS
+			CCD_LENS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_PROPERTY_NAME, CCD_MAIN_GROUP, "Lens profile", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			if (CCD_LENS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(CCD_LENS_APERTURE_ITEM, CCD_LENS_APERTURE_ITEM_NAME, "Aperture (m)", 0, 100, 1, 0);
+			indigo_init_number_item(CCD_LENS_FOCAL_LENGTH_ITEM, CCD_LENS_FOCAL_LENGTH_ITEM_NAME, "Focal length (m)", 0, 100, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_UPLOAD_MODE
 			CCD_UPLOAD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Image upload", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (CCD_UPLOAD_MODE_PROPERTY == NULL)
@@ -269,6 +275,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(CCD_INFO_PROPERTY, property))
 			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
+		if (indigo_property_match(CCD_LENS_PROPERTY, property))
+			indigo_define_property(device, CCD_LENS_PROPERTY, NULL);
 		if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property))
 			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 		if (indigo_property_match(CCD_IMAGE_FILE_PROPERTY, property))
@@ -331,6 +339,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
 			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
+			indigo_define_property(device, CCD_LENS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
@@ -365,6 +374,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_LENS_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_PREVIEW_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
@@ -394,6 +404,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, CCD_LENS_PROPERTY);
 			indigo_save_property(device, NULL, CCD_MODE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_READ_MODE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_UPLOAD_MODE_PROPERTY);
@@ -409,6 +420,11 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, CCD_RBI_FLUSH_ENABLE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_RBI_FLUSH_PROPERTY);
 		}
+	} else if (indigo_property_match(CCD_LENS_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_LENS_PROPERTY, property, false);
+		CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_LENS_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -731,6 +747,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 indigo_result indigo_ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(CCD_INFO_PROPERTY);
+	indigo_release_property(CCD_LENS_PROPERTY);
 	indigo_release_property(CCD_UPLOAD_MODE_PROPERTY);
 	indigo_release_property(CCD_PREVIEW_PROPERTY);
 	indigo_release_property(CCD_LOCAL_MODE_PROPERTY);

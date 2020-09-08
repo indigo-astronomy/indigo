@@ -271,6 +271,20 @@
 
 //----------------------------------------------------------------------
 
+/** CCD_LENS property name.
+*/
+#define CCD_LENS_PROPERTY_NAME								"CCD_LENS"
+
+/** CCD_LENS.APERTURE property item name.
+ */
+#define CCD_LENS_APERTURE_ITEM_NAME		        "APERTURE"
+
+/** CCD_LENS.FOCAL_LENGTH property item name.
+*/
+#define CCD_LENS_FOCAL_LENGTH_ITEM_NAME				"FOCAL_LENGTH"
+
+//----------------------------------------------------------------------
+
 /** CCD_PREVIEW property name.
  */
 #define CCD_PREVIEW_PROPERTY_NAME							"CCD_PREVIEW"

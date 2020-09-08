@@ -46,10 +46,12 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 |  |  |  |  | HEIGHT | yes |  |
 |  |  |  |  | MAX_HORIZONTAL_BIN | yes |  |
 |  |  |  |  | MAX_VERTICAL_BIN | yes |  |
-|  |  |  |  | PIXEL_SIZE | yes |  |
-|  |  |  |  | PIXEL_WIDTH | yes |  |
-|  |  |  |  | PIXEL_HEIGHT | yes |  |
+|  |  |  |  | PIXEL_SIZE | yes | in microns |
+|  |  |  |  | PIXEL_WIDTH | yes | in microns |
+|  |  |  |  | PIXEL_HEIGHT | yes | in microns |
 |  |  |  |  | BITS_PER_PIXEL | yes |  |
+| CCD_LENS | number | no | yes | APERTURE | yes | in meters |
+|  |  |  | FOCAL_LENGTH | yes | in meters |
 | CCD_UPLOAD_MODE | switch | no | yes | CLIENT | yes |  |
 |  |  |  |  | LOCAL | yes |  |
 |  |  |  |  | BOTH | yes |  |
