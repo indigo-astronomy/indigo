@@ -721,6 +721,21 @@ static void autofocus_process(indigo_device *device) {
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 }
 
+
+static void park_mount(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Mount Agent", item->name, 11)) {
+			indigo_property *property = indigo_init_switch_property(NULL, item->name, MOUNT_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(property->items + 0, MOUNT_PARK_PARKED_ITEM_NAME, NULL, true);
+			property->access_token = indigo_get_device_or_master_token(property->device);
+			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
+			indigo_release_property(property);
+		}
+	}
+}
+
 static void set_property(indigo_device *device, char *name, char *value) {
 	indigo_property *remote_property = NULL;
 	if (!strcasecmp(name, "focus")) {
@@ -850,6 +865,8 @@ static void sequence_process(indigo_device *device) {
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		if (strchr(token, '='))
 			continue;
+		if (!strcmp(token, "park"))
+			continue;
 		int batch_index = atoi(token);
 		if (batch_index < 1 || batch_index > SEQUENCE_SIZE)
 			continue;
@@ -881,6 +898,10 @@ static void sequence_process(indigo_device *device) {
 		if (value) {
 			*value++ = 0;
 			set_property(device, token, value);
+			continue;
+		}
+		if (!strcmp(token, "park")) {
+			park_mount(device);
 			continue;
 		}
 		int batch_index = atoi(token);
