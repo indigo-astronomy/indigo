@@ -208,6 +208,7 @@
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
 		59F1AD1223FB15B300008F02 /* indigo_focuser_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */; };
 		59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */; };
+		59F682AB250FE9C400ABD731 /* indigo_focuser_robofocus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F682A4250FD48200ABD731 /* indigo_focuser_robofocus.c */; };
 		59F7E5EA2457669D00EF273A /* indigo_aux_cloudwatcher.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F7E5E62457616400EF273A /* indigo_aux_cloudwatcher.c */; };
 		59F7E5ED245878C700EF273A /* indigo_token.h in Headers */ = {isa = PBXBuildFile; fileRef = 59F7E5EC245878C700EF273A /* indigo_token.h */; };
 		59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */; };
@@ -3529,6 +3530,12 @@
 		59F4EC721E941D1700CC7772 /* indigo_ccd_sbig_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sbig_main.c; sourceTree = "<group>"; };
 		59F654691EE47388007B8C93 /* indigo_ccd_qhy_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_qhy_main.c; sourceTree = "<group>"; };
 		59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qhy.cpp; sourceTree = "<group>"; };
+		59F682A4250FD48200ABD731 /* indigo_focuser_robofocus.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_robofocus.c; sourceTree = "<group>"; };
+		59F682A5250FD48200ABD731 /* indigo_focuser_robofocus_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_robofocus_main.c; sourceTree = "<group>"; };
+		59F682A7250FD48200ABD731 /* robofocus_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = robofocus_simulator.ino; sourceTree = "<group>"; };
+		59F682A8250FD48200ABD731 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59F682A9250FD48200ABD731 /* indigo_focuser_robofocus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_robofocus.h; sourceTree = "<group>"; };
+		59F682AA250FD56D00ABD731 /* robofocusins31.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = robofocusins31.pdf; sourceTree = "<group>"; };
 		59F7E5E62457616400EF273A /* indigo_aux_cloudwatcher.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_cloudwatcher.c; sourceTree = "<group>"; };
 		59F7E5E72457616400EF273A /* indigo_aux_cloudwatcher_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_cloudwatcher_main.c; sourceTree = "<group>"; };
 		59F7E5E82457616400EF273A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -7758,6 +7765,7 @@
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
 				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
 				59399D882177D316002886CA /* focuser_optec */,
+				59F682A3250FD48200ABD731 /* focuser_robofocus */,
 				591FAB761E391AFA0076BD6E /* focuser_fli */,
 				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
 				9D2696E222A56BD8008BE82C /* focuser_steeldrive2 */,
@@ -10298,6 +10306,27 @@
 			path = ccd_qhy;
 			sourceTree = "<group>";
 		};
+		59F682A3250FD48200ABD731 /* focuser_robofocus */ = {
+			isa = PBXGroup;
+			children = (
+				59F682A8250FD48200ABD731 /* README.md */,
+				59F682A9250FD48200ABD731 /* indigo_focuser_robofocus.h */,
+				59F682A4250FD48200ABD731 /* indigo_focuser_robofocus.c */,
+				59F682A5250FD48200ABD731 /* indigo_focuser_robofocus_main.c */,
+				59F682AA250FD56D00ABD731 /* robofocusins31.pdf */,
+				59F682A6250FD48200ABD731 /* robofocus_simulator */,
+			);
+			path = focuser_robofocus;
+			sourceTree = "<group>";
+		};
+		59F682A6250FD48200ABD731 /* robofocus_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59F682A7250FD48200ABD731 /* robofocus_simulator.ino */,
+			);
+			path = robofocus_simulator;
+			sourceTree = "<group>";
+		};
 		59F7E5E52457616400EF273A /* aux_cloudwatcher */ = {
 			isa = PBXGroup;
 			children = (
@@ -11822,6 +11851,7 @@
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
+				59F682AB250FE9C400ABD731 /* indigo_focuser_robofocus.c in Sources */,
 				595F292F211E211200380EF4 /* DDHidUsage.m in Sources */,
 				59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */,
 				599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */,
