@@ -99,16 +99,18 @@
 #define AGENT_GUIDER_STATS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stats_property)
 #define AGENT_GUIDER_STATS_PHASE_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+0)
 #define AGENT_GUIDER_STATS_FRAME_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+1)
-#define AGENT_GUIDER_STATS_DRIFT_X_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+2)
-#define AGENT_GUIDER_STATS_DRIFT_Y_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+3)
-#define AGENT_GUIDER_STATS_DRIFT_RA_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+4)
-#define AGENT_GUIDER_STATS_DRIFT_DEC_ITEM     (AGENT_GUIDER_STATS_PROPERTY->items+5)
-#define AGENT_GUIDER_STATS_CORR_RA_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+6)
-#define AGENT_GUIDER_STATS_CORR_DEC_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+7)
-#define AGENT_GUIDER_STATS_RMSE_RA_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+8)
-#define AGENT_GUIDER_STATS_RMSE_DEC_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+9)
-#define AGENT_GUIDER_STATS_SNR_ITEM      			(AGENT_GUIDER_STATS_PROPERTY->items+10)
-#define AGENT_GUIDER_STATS_DELAY_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+11)
+#define AGENT_GUIDER_STATS_REFERENCE_X_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+2)
+#define AGENT_GUIDER_STATS_REFERENCE_Y_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+3)
+#define AGENT_GUIDER_STATS_DRIFT_X_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+4)
+#define AGENT_GUIDER_STATS_DRIFT_Y_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+5)
+#define AGENT_GUIDER_STATS_DRIFT_RA_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+6)
+#define AGENT_GUIDER_STATS_DRIFT_DEC_ITEM     (AGENT_GUIDER_STATS_PROPERTY->items+7)
+#define AGENT_GUIDER_STATS_CORR_RA_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+8)
+#define AGENT_GUIDER_STATS_CORR_DEC_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+9)
+#define AGENT_GUIDER_STATS_RMSE_RA_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+10)
+#define AGENT_GUIDER_STATS_RMSE_DEC_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+11)
+#define AGENT_GUIDER_STATS_SNR_ITEM      			(AGENT_GUIDER_STATS_PROPERTY->items+12)
+#define AGENT_GUIDER_STATS_DELAY_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+13)
 
 typedef struct {
 	indigo_property *agent_guider_detection_mode_property;
@@ -233,6 +235,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 							result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &DEVICE_PRIVATE_DATA->reference);
 							AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
+							AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
+							AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
 							if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >=0 && DEVICE_PRIVATE_DATA->reference.snr < 9) {
 								result = INDIGO_FAILED;
 								indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
@@ -251,6 +255,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								&DEVICE_PRIVATE_DATA->reference
 							);
 							if (result == INDIGO_OK) {
+								AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_x;
+								AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_y;
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 							} else if (result == INDIGO_GUIDE_ERROR) {
 								indigo_send_message(device, "Can not detect star in the selection");
@@ -286,6 +292,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								&digest
 							);
 							if (result == INDIGO_OK) {
+								AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_x;
+								AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_y;
 								indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 							} else if (result == INDIGO_GUIDE_ERROR) {
 								if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
@@ -405,6 +413,8 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = PREVIEW;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
@@ -471,6 +481,8 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INIT;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
@@ -737,6 +749,8 @@ static void guide_process(indigo_device *device) {
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = GUIDING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
@@ -842,6 +856,8 @@ static void find_stars_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = PREVIEW;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
@@ -952,11 +968,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_Y_ITEM, AGENT_GUIDER_SELECTION_Y_ITEM_NAME, "Selection Y (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		// -------------------------------------------------------------------------------- Guiding stats
-		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
+		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 14);
 		if (AGENT_GUIDER_STATS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_STATS_PHASE_ITEM, AGENT_GUIDER_STATS_PHASE_ITEM_NAME, "Phase #", -1, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_FRAME_ITEM, AGENT_GUIDER_STATS_FRAME_ITEM_NAME, "Frame #", 0, 0xFFFFFFFF, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_REFERENCE_X_ITEM, AGENT_GUIDER_STATS_REFERENCE_X_ITEM_NAME, "Reference X (px)", 0, 100000, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_REFERENCE_Y_ITEM, AGENT_GUIDER_STATS_REFERENCE_Y_ITEM_NAME, "Reference Y (px)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DRIFT_X_ITEM, AGENT_GUIDER_STATS_DRIFT_X_ITEM_NAME, "Drift X (px)", -1000, 1000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DRIFT_Y_ITEM, AGENT_GUIDER_STATS_DRIFT_Y_ITEM_NAME, "Drift Y (px)", -1000, 1000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DRIFT_RA_ITEM, AGENT_GUIDER_STATS_DRIFT_RA_ITEM_NAME, "Drift RA (px)", -1000, 1000, 0, 0);
