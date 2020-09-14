@@ -107,6 +107,7 @@ This is the list of requirements taken into the consideration:
 78. MGBox driver
 79. Manual wheel driver
 80. PMC8 mount controller driver
+81. RoboFocus focuser driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
