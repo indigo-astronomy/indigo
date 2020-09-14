@@ -23,7 +23,7 @@
  \file indigo_focuser_robofocus.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_focuser_robofocus"
 
 #include <stdlib.h>
