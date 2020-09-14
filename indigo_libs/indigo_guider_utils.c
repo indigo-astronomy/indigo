@@ -265,7 +265,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	const int xx = (int)round(*x);
 	const int yy = (int)round(*y);
 
-	if ((width <= 2 * radius) || (height <= 2 * radius))
+	if ((width <= 2 * radius + 1) || (height <= 2 * radius + 1))
 		return INDIGO_FAILED;
 	if (xx < radius || width - radius < xx)
 		return INDIGO_FAILED;
@@ -401,9 +401,11 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 
 	c->width = width;
 	c->height = height;
-	/* calculate centroid for the selection only and add the offset */
-	c->centroid_x = *x = cs + m10 / m00;
-	c->centroid_y = *y = ls + m01 / m00;
+	/* Calculate centroid for the selection only, add the offset and add 0.5
+	   as the centroid of a single pixel is 0.5,0.5 not 0,0.
+	*/
+	c->centroid_x = *x = cs + m10 / m00 + 0.5;
+	c->centroid_y = *y = ls + m01 / m00 + 0.5;
 	c->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
