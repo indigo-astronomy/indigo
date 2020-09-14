@@ -134,6 +134,7 @@
 #include "aux_mgbox/indigo_aux_mgbox.h"
 #include "dome_baader/indigo_dome_baader.h"
 #include "mount_pmc8/indigo_mount_pmc8.h"
+#include "focuser_robofocus/indigo_focuser_robofocus.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -228,6 +229,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_nfocus,
 	indigo_focuser_nstep,
 	indigo_focuser_optec,
+	indigo_focuser_robofocus,
 	indigo_focuser_usbv3,
 	indigo_focuser_steeldrive2,
 	indigo_focuser_wemacro,
