@@ -269,6 +269,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_y + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 							}
 							AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+							indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 						} else {
 							indigo_release_property(local_exposure_property);
 							return INDIGO_ALERT_STATE;
@@ -422,6 +423,8 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
@@ -498,6 +501,8 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
@@ -773,6 +778,8 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
@@ -887,6 +894,8 @@ static void find_stars_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value =
+	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
