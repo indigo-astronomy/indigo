@@ -41,6 +41,7 @@
 #define HEIGHT              1200
 #define TEMP_UPDATE         5.0
 #define STARS               30
+#define HOTPIXELS						5
 #define ECLIPSE							360
 
 // gp_bits is used as boolean
@@ -83,7 +84,7 @@ typedef struct {
 	indigo_property *guider_mode_property;
 	indigo_property *guider_settings_property;
 
-	int star_x[STARS], star_y[STARS], star_a[STARS];
+	int star_x[STARS], star_y[STARS], star_a[STARS], hotpixel_x[HOTPIXELS], hotpixel_y[HOTPIXELS];
 	char imager_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char guider_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char dslr_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
@@ -297,7 +298,6 @@ static void create_frame(indigo_device *device) {
 					if (PRIVATE_DATA->eclipse > ECLIPSE)
 						PRIVATE_DATA->eclipse = -ECLIPSE;
 				}
-
 			}
 		}
 		for (int i = 0; i < size; i++) {
@@ -308,6 +308,19 @@ static void create_frame(indigo_device *device) {
 			if (value > 65535)
 				value = 65535;
 			raw[i] = (unsigned short)value;
+		}
+		for (int i = 0; i < HOTPIXELS; i++) {
+			unsigned x = private_data->hotpixel_x[i] / horizontal_bin - frame_left;
+			unsigned y = private_data->hotpixel_y[i] / vertical_bin - frame_top;
+			if (x < 0 || x >= frame_width || y < 0 || y > frame_height)
+				continue;
+			if (i) {
+				raw[y * frame_width + x] = 0xFFFF;
+			} else {
+				for (int j = 0; j < y; j++) {
+					raw[j * frame_width + x] = 0xFFFF;
+				}
+			}
 		}
 		if (private_data->current_position != 0) {
 			unsigned short *tmp = malloc(2 * size);
@@ -484,14 +497,18 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 			// -------------------------------------------------------------------------------- CCD_IMAGE
 			for (int i = 0; i < 5; i++) {
-				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
+				PRIVATE_DATA->star_x[i] = rand() % WIDTH;
 				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 100 * (rand() % 100);       // and brightness
+				PRIVATE_DATA->star_a[i] = 100 * (rand() % 100);
 			}
-			for (int i = 10; i < STARS; i++) {
-				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
+			for (int i = 5; i < STARS; i++) {
+				PRIVATE_DATA->star_x[i] = rand() % WIDTH;
 				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 30 * (rand() % 100);       // and brightness
+				PRIVATE_DATA->star_a[i] = 30 * (rand() % 100);
+			}
+			for (int i = 0; i < HOTPIXELS; i++) {
+				PRIVATE_DATA->hotpixel_x[i] = rand() % WIDTH;
+				PRIVATE_DATA->hotpixel_y[i] = rand() % HEIGHT;
 			}
 			// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 			CCD_COOLER_PROPERTY->hidden = false;
