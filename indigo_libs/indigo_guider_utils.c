@@ -346,8 +346,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 					value = data8[k + i] - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
-					m10 += (i - cs) * value;
-					m01 += (j - ls) * value;
+					m10 += (i + 1 - cs) * value;
+					m01 += (j + 1 - ls) * value;
 					m00 += value;
 				}
 			}
@@ -360,8 +360,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 					value = data16[k + i] - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
-					m10 += (i - cs) * value;
-					m01 += (j - ls) * value;
+					m10 += (i + 1 - cs) * value;
+					m01 += (j + 1 - ls) * value;
 					m00 += value;
 				}
 			}
@@ -375,8 +375,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 					value = data8[kk] + data8[kk + 1] + data8[kk + 2] - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
-					m10 += (i - cs) * value;
-					m01 += (j - ls) * value;
+					m10 += (i + 1 - cs) * value;
+					m01 += (j + 1 - ls) * value;
 					m00 += value;
 				}
 			}
@@ -390,8 +390,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 					value = data16[kk] + data16[kk + 1] + data16[kk + 2] - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
-					m10 += (i - cs) * value;
-					m01 += (j - ls) * value;
+					m10 += (i + 1 - cs) * value;
+					m01 += (j + 1 - ls) * value;
 					m00 += value;
 				}
 			}
@@ -401,11 +401,11 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 
 	c->width = width;
 	c->height = height;
-	/* Calculate centroid for the selection only, add the offset and add 0.5
-	   as the centroid of a single pixel is 0.5,0.5 not 0,0.
+	/* Calculate centroid for the selection only, add the offset and subtract 0.5
+	   as the centroid of a single pixel is 0.5,0.5 not 1,1.
 	*/
-	c->centroid_x = *x = cs + m10 / m00 + 0.5;
-	c->centroid_y = *y = ls + m01 / m00 + 0.5;
+	c->centroid_x = *x = cs + m10 / m00 - 0.5;
+	c->centroid_y = *y = ls + m01 / m00 - 0.5;
 	c->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
@@ -466,7 +466,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 
 	INDIGO_DEBUG(indigo_log("Centroid threshold = %.3f, max = %.3f", threshold, max));
 
-	ci = 0; li = 0;
+	ci = 1; li = 1;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
@@ -475,8 +475,8 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 				m01 += li * value;
 				m00 += value;
 				ci++;
-				if (ci == width) {
-					ci = 0;
+				if (ci > width) {
+					ci = 1;
 					li++;
 				}
 			}
@@ -489,8 +489,8 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 				m01 += li * value;
 				m00 += value;
 				ci++;
-				if (ci == width) {
-					ci = 0;
+				if (ci > width) {
+					ci = 1;
 					li++;
 				}
 			}
@@ -504,8 +504,8 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 				m01 += li * value;
 				m00 += value;
 				ci++;
-				if (ci == width) {
-					ci = 0;
+				if (ci > width) {
+					ci = 1;
 					li++;
 				}
 			}
@@ -519,8 +519,8 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 				m01 += li * value;
 				m00 += value;
 				ci++;
-				if (ci == width) {
-					ci = 0;
+				if (ci > width) {
+					ci = 1;
 					li++;
 				}
 			}
@@ -530,8 +530,11 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 
 	c->width = width;
 	c->height = height;
-	c->centroid_x = m10 / m00;
-	c->centroid_y = m01 / m00;
+	/* Calculate centroid for the frame and subtract 0.5
+	   as the centroid of a single pixel is 0.5,0.5 not 1,1.
+	*/
+	c->centroid_x = m10 / m00 - 0.5;
+	c->centroid_y = m01 / m00 - 0.5;
 	c->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
 	return INDIGO_OK;
