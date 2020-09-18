@@ -338,6 +338,21 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								}
 								DEVICE_PRIVATE_DATA->drift_x = (avg_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value) / DEVICE_PRIVATE_DATA->stack_size;
 								DEVICE_PRIVATE_DATA->drift_y = (avg_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value) / DEVICE_PRIVATE_DATA->stack_size;
+								if (digest.algorithm == centroid) {
+									INDIGO_DRIVER_ERROR(
+										DRIVER_NAME,
+										"My fix: stack size = %.0g Refernce = (%.4g, %.4g) Current = (%.4g, %.4g) drift = (%.4g, %.4g) dither = (%.4g, %.4g)",
+										AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target,
+										DEVICE_PRIVATE_DATA->reference.centroid_x,
+										DEVICE_PRIVATE_DATA->reference.centroid_y,
+										digest.centroid_x,
+										digest.centroid_y,
+										DEVICE_PRIVATE_DATA->drift_x,
+										DEVICE_PRIVATE_DATA->drift_y,
+										AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value,
+										AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value
+									);
+								}
 							}
 							if (result == INDIGO_OK) {
 								AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
