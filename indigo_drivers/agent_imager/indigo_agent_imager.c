@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -173,6 +173,9 @@ static void save_config(indigo_device *device) {
 
 static int save_switch_state(indigo_device *device, int index, char *name) {
 	indigo_property *remote_property = indigo_filter_cached_property(device, index, name);
+	if (remote_property == NULL) {
+		return -1;
+	}
 	for (int i = 0; i < remote_property->count; i++) {
 		if (remote_property->items[i].sw.value)
 			return i;
@@ -183,6 +186,7 @@ static int save_switch_state(indigo_device *device, int index, char *name) {
 static void restore_switch_state(indigo_device *device, int index, char *name, int state) {
 	if (state >= 0) {
 		indigo_property *remote_property = indigo_filter_cached_property(device, index, name);
+		if (remote_property == NULL) return;
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, remote_property->device, remote_property->name, remote_property->items[state].name, true);
 	}
 }
