@@ -325,8 +325,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 									avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
 									avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 								}
-								DEVICE_PRIVATE_DATA->drift_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value + avg_x / DEVICE_PRIVATE_DATA->stack_size;
-								DEVICE_PRIVATE_DATA->drift_y = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value + avg_y / DEVICE_PRIVATE_DATA->stack_size;
+								DEVICE_PRIVATE_DATA->drift_x = avg_x / DEVICE_PRIVATE_DATA->stack_size - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
+								DEVICE_PRIVATE_DATA->drift_y = avg_y / DEVICE_PRIVATE_DATA->stack_size - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 							}
 							if (result == INDIGO_OK) {
 								AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
