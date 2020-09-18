@@ -236,7 +236,12 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						DEVICE_PRIVATE_DATA->stack_size = 0;
 						DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
 						if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-							result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &DEVICE_PRIVATE_DATA->reference);
+							result = indigo_donuts_frame_digest(
+								header->signature,
+								(void*)header + sizeof(indigo_raw_header),
+								header->width, header->height,
+								&DEVICE_PRIVATE_DATA->reference
+							);
 							AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
 							AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
 							AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
@@ -245,7 +250,13 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 							}
 						} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
-							result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &DEVICE_PRIVATE_DATA->reference);
+							result = indigo_centroid_frame_digest(
+								header->signature,
+								(void*)header + sizeof(indigo_raw_header),
+								header->width,
+								header->height,
+								&DEVICE_PRIVATE_DATA->reference
+							);
 						} else {
 							result = indigo_selection_frame_digest(
 								header->signature,
@@ -325,8 +336,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 									avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
 									avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 								}
-								DEVICE_PRIVATE_DATA->drift_x = avg_x / DEVICE_PRIVATE_DATA->stack_size - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-								DEVICE_PRIVATE_DATA->drift_y = avg_y / DEVICE_PRIVATE_DATA->stack_size - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+								DEVICE_PRIVATE_DATA->drift_x = (avg_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value) / DEVICE_PRIVATE_DATA->stack_size;
+								DEVICE_PRIVATE_DATA->drift_y = (avg_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value) / DEVICE_PRIVATE_DATA->stack_size;
 							}
 							if (result == INDIGO_OK) {
 								AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
@@ -538,7 +549,9 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 					DEVICE_PRIVATE_DATA->phase = MOVE_NORTH;
 					break;
 				}
-				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+				AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+				AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
+				AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
@@ -569,7 +582,9 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 					DEVICE_PRIVATE_DATA->phase = MOVE_NORTH;
 					break;
 				}
-				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+				AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
+				AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
+				AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 					DEVICE_PRIVATE_DATA->phase = FAILED;
 					break;
