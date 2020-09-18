@@ -328,20 +328,20 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								double avg_x, avg_y;
 								memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, 4);
 								memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, 4);
-								avg_x = DEVICE_PRIVATE_DATA->stack_x[0] = drift_x;
-								avg_y = DEVICE_PRIVATE_DATA->stack_y[0] = drift_y;
+								avg_x = DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
+								avg_y = DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
 								if (DEVICE_PRIVATE_DATA->stack_size < AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target)
 									DEVICE_PRIVATE_DATA->stack_size++;
 								for (int i = 1; i < DEVICE_PRIVATE_DATA->stack_size; i++) {
 									avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
 									avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 								}
-								DEVICE_PRIVATE_DATA->drift_x = (avg_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value) / DEVICE_PRIVATE_DATA->stack_size;
-								DEVICE_PRIVATE_DATA->drift_y = (avg_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value) / DEVICE_PRIVATE_DATA->stack_size;
+								DEVICE_PRIVATE_DATA->drift_x = avg_x / DEVICE_PRIVATE_DATA->stack_size;
+								DEVICE_PRIVATE_DATA->drift_y = avg_y / DEVICE_PRIVATE_DATA->stack_size;
 								if (digest.algorithm == centroid) {
 									INDIGO_DRIVER_ERROR(
 										DRIVER_NAME,
-										"My fix: stack size = %.0g Refernce = (%.4g, %.4g) Current = (%.4g, %.4g) drift = (%.4g, %.4g) dither = (%.4g, %.4g)",
+										"My fix 2: stack size = %.0g Refernce = (%.4g, %.4g) Current = (%.4g, %.4g) drift = (%.4g, %.4g) dither = (%.4g, %.4g)",
 										AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target,
 										DEVICE_PRIVATE_DATA->reference.centroid_x,
 										DEVICE_PRIVATE_DATA->reference.centroid_y,
