@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -41,7 +41,7 @@
 #define HEIGHT              1200
 #define TEMP_UPDATE         5.0
 #define STARS               30
-#define HOTPIXELS						5
+#define HOTPIXELS						50
 #define ECLIPSE							360
 
 // gp_bits is used as boolean
@@ -69,6 +69,9 @@
 #define GUIDER_IMAGE_GRADIENT_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 4)
 #define GUIDER_IMAGE_ANGLE_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 5)
 #define GUIDER_IMAGE_AO_ANGLE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 6)
+#define GUIDER_IMAGE_HOTPIXELS_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 7)
+#define GUIDER_IMAGE_HOTCOL_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 8)
+#define GUIDER_IMAGE_HOTROW_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 9)
 
 extern unsigned short indigo_ccd_simulator_raw_image[];
 extern unsigned char indigo_ccd_simulator_rgb_image[];
@@ -84,7 +87,7 @@ typedef struct {
 	indigo_property *guider_mode_property;
 	indigo_property *guider_settings_property;
 
-	int star_x[STARS], star_y[STARS], star_a[STARS], hotpixel_x[HOTPIXELS], hotpixel_y[HOTPIXELS];
+	int star_x[STARS], star_y[STARS], star_a[STARS], hotpixel_x[HOTPIXELS + 1], hotpixel_y[HOTPIXELS + 1];
 	char imager_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char guider_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char dslr_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
@@ -309,7 +312,13 @@ static void create_frame(indigo_device *device) {
 				value = 65535;
 			raw[i] = (unsigned short)value;
 		}
-		for (int i = 0; i < HOTPIXELS; i++) {
+		if (private_data->current_position != 0) {
+			unsigned short *tmp = malloc(2 * size);
+			gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
+			memcpy(raw, tmp, 2 * size);
+			free(tmp);
+		}
+		for (int i = 0; i <= GUIDER_IMAGE_HOTPIXELS_ITEM->number.target; i++) {
 			unsigned x = private_data->hotpixel_x[i] / horizontal_bin - frame_left;
 			unsigned y = private_data->hotpixel_y[i] / vertical_bin - frame_top;
 			if (x < 0 || x >= frame_width || y < 0 || y > frame_height)
@@ -317,16 +326,15 @@ static void create_frame(indigo_device *device) {
 			if (i) {
 				raw[y * frame_width + x] = 0xFFFF;
 			} else {
-				for (int j = 0; j < y; j++) {
+				int col_length = fmin(frame_height, GUIDER_IMAGE_HOTCOL_ITEM->number.target);
+				int row_length = fmin(frame_width, GUIDER_IMAGE_HOTROW_ITEM->number.target);
+				for (int j = 0; j < col_length; j++) {
 					raw[j * frame_width + x] = 0xFFFF;
 				}
+				for (int j = 0; j < row_length; j++) {
+					raw[y * frame_width + j] = 0xFFFF;
+				}
 			}
-		}
-		if (private_data->current_position != 0) {
-			unsigned short *tmp = malloc(2 * size);
-			gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
-			memcpy(raw, tmp, 2 * size);
-			free(tmp);
 		}
 		indigo_process_image(device, device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image, frame_width, frame_height, 16, true, true, NULL);
 	}
@@ -465,7 +473,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_IMAGE", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 7);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_IMAGE", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "NOISE_FIX", "Noise offset", 0, 5000, 0, 500);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "NOISE_VAR", "Noise range", 1, 1000, 0, 100);
 				indigo_init_number_item(GUIDER_IMAGE_PERR_SPD_ITEM, "PER_ERR_SPD", "Periodic error speed", 0, 1, 0, 0.5);
@@ -473,6 +481,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_GRADIENT_ITEM, "GRADIENT", "Gradient intensity", 0, 0.5, 0, 0.2);
 				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "ANGLE", "Angle", 0, 360, 0, 36);
 				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle", 0, 360, 0, 74);
+				indigo_init_number_item(GUIDER_IMAGE_HOTPIXELS_ITEM, "HOTPIXELS", "Hot pixel count", 0, HOTPIXELS, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTCOL_ITEM, "HOTCOL", "Hot column length", 0, WIDTH, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTROW_ITEM, "HOTROW", "Hot row length", 0, HEIGHT, 0, 0);
 			}
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
@@ -506,9 +517,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
 				PRIVATE_DATA->star_a[i] = 30 * (rand() % 100);
 			}
-			for (int i = 0; i < HOTPIXELS; i++) {
-				PRIVATE_DATA->hotpixel_x[i] = rand() % WIDTH;
-				PRIVATE_DATA->hotpixel_y[i] = rand() % HEIGHT;
+			for (int i = 0; i <= HOTPIXELS; i++) {
+				PRIVATE_DATA->hotpixel_x[i] = rand() % (WIDTH - 200) + 100;
+				PRIVATE_DATA->hotpixel_y[i] = rand() % (HEIGHT - 200) + 100;
 			}
 			// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 			CCD_COOLER_PROPERTY->hidden = false;
