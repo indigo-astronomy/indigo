@@ -21,6 +21,18 @@
 #define IM (1)
 #define PI_2 (6.2831853071795864769252867665590057683943L)
 
+static int median(int a, int b, int c) {
+	if (a > b) {
+		if (b > c) return b;
+		else if (a > c) return c;
+		else return a;
+	} else {
+		if (a > c) return a;
+		else if (b > c) return c;
+		else return b;
+	}
+}
+
 static void _fft(const int n, const int offset, const int delta, const double (*x)[2], double (*X)[2], double (*_X)[2]);
 
 static void fft(const int n, const double (*x)[2], double (*X)[2]) {
@@ -650,8 +662,10 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 
 	c->width = next_power_2(width);
 	c->height = next_power_2(height);
-	double (*col_x)[2] = calloc(2 * c->width * sizeof(double), 1);
-	double (*col_y)[2] = calloc(2 * c->height * sizeof(double), 1);
+	double (*col_x)[2] = calloc(2 * width * sizeof(double), 1);
+	double (*col_y)[2] = calloc(2 * height * sizeof(double), 1);
+	double (*fcol_x)[2] = calloc(2 * c->width * sizeof(double), 1);
+	double (*fcol_y)[2] = calloc(2 * c->height * sizeof(double), 1);
 	c->fft_x = malloc(2 * c->width * sizeof(double));
 	c->fft_y = malloc(2 * c->height * sizeof(double));
 
@@ -725,7 +739,20 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		}
 	}
 
-	c->snr = (calibrate_re(col_x, width) + calibrate_re(col_y, height)) / 2;
+	/* Remove hot from the digest */
+	fcol_x[0][RE] = median(0, col_x[0][RE], col_x[1][RE]);
+	for (int i = 1; i < width-1; i++) {
+		fcol_x[i][RE] = median(col_x[i - 1][RE], col_x[i][RE], col_x[i + 1][RE]);
+	}
+	fcol_x[width - 1][RE] = median(col_x[width - 2][RE], col_x[width - 1][RE], 0);
+
+	fcol_y[0][RE] = median(0, col_y[0][RE], col_y[1][RE]);
+	for (int i = 1; i < height-1; i++) {
+		fcol_y[i][RE] = median(col_y[i - 1][RE], col_y[i][RE], col_y[i + 1][RE]);
+	}
+	fcol_y[height - 1][RE] = median(col_y[height - 2][RE], col_y[height - 1][RE], 0);
+
+	c->snr = (calibrate_re(fcol_x, width) + calibrate_re(fcol_y, height)) / 2;
 //	printf("col_x:");
 //	for (i=0; i < c->width; i++) {
 //		printf(" %5.2f\n",col_x[i][RE]);
@@ -736,11 +763,13 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 //		printf(" %5.2f",col_y[i][RE]);
 //	}
 //	printf("\n");
-	fft(c->width, col_x, c->fft_x);
-	fft(c->height, col_y, c->fft_y);
+	fft(c->width, fcol_x, c->fft_x);
+	fft(c->height, fcol_y, c->fft_y);
 	c->algorithm = donuts;
 	free(col_x);
 	free(col_y);
+	free(fcol_x);
+	free(fcol_y);
 	return INDIGO_OK;
 }
 
@@ -784,18 +813,6 @@ indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
-}
-
-static int median(int a, int b, int c) {
-	if (a > b) {
-		if (b > c) return b;
-		else if (a > c) return c;
-		else return a;
-	} else {
-		if (a > c) return a;
-		else if (b > c) return c;
-		else return b;
-	}
 }
 
 static const double FIND_STAR_CLIP_EDGE = 20;
