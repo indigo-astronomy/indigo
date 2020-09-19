@@ -96,11 +96,12 @@
 #define AGENT_GUIDER_SELECTION_Y_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+1)
 #define AGENT_GUIDER_SELECTION_RADIUS_ITEM  	(AGENT_GUIDER_SELECTION_PROPERTY->items+2)
 
+#define MAX_STACK															10
 #define AGENT_GUIDER_STATS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stats_property)
 #define AGENT_GUIDER_STATS_PHASE_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+0)
 #define AGENT_GUIDER_STATS_FRAME_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+1)
-#define AGENT_GUIDER_STATS_REFERENCE_X_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+2)
-#define AGENT_GUIDER_STATS_REFERENCE_Y_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+3)
+#define AGENT_GUIDER_STATS_REFERENCE_X_ITEM		(AGENT_GUIDER_STATS_PROPERTY->items+2)
+#define AGENT_GUIDER_STATS_REFERENCE_Y_ITEM		(AGENT_GUIDER_STATS_PROPERTY->items+3)
 #define AGENT_GUIDER_STATS_DRIFT_X_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+4)
 #define AGENT_GUIDER_STATS_DRIFT_Y_ITEM      	(AGENT_GUIDER_STATS_PROPERTY->items+5)
 #define AGENT_GUIDER_STATS_DRIFT_RA_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+6)
@@ -111,6 +112,7 @@
 #define AGENT_GUIDER_STATS_RMSE_DEC_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+11)
 #define AGENT_GUIDER_STATS_SNR_ITEM      			(AGENT_GUIDER_STATS_PROPERTY->items+12)
 #define AGENT_GUIDER_STATS_DELAY_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+13)
+
 
 typedef struct {
 	indigo_property *agent_guider_detection_mode_property;
@@ -127,7 +129,7 @@ typedef struct {
 	double drift_x, drift_y, drift;
 	double rmse_ra_sum, rmse_dec_sum;
 	enum { PREVIEW = -1, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
-	double stack_x[5], stack_y[5];
+	double stack_x[MAX_STACK], stack_y[MAX_STACK];
 	int stack_size;
 	pthread_mutex_t mutex;
 } agent_private_data;
@@ -229,7 +231,6 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					}
 					if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
 						indigo_result result;
-
 						AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
 						AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
 						indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
@@ -245,7 +246,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 							AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
 							AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
 							AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
-							if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >=0 && DEVICE_PRIVATE_DATA->reference.snr < 9) {
+							if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && DEVICE_PRIVATE_DATA->reference.snr < 9) {
 								result = INDIGO_FAILED;
 								indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 							}
@@ -291,7 +292,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 							result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
 							AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
-							if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >=0 && digest.snr < 9) {
+							if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && digest.snr < 9) {
 								result = INDIGO_FAILED;
 								indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 							}
@@ -321,13 +322,13 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						if (result == INDIGO_OK) {
 							double drift_x, drift_y;
 							result = indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
-							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != 0) {
+							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING) {
 								DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 								DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 							} else {
 								double avg_x, avg_y;
-								memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, 4);
-								memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, 4);
+								memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, MAX_STACK - 1);
+								memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, MAX_STACK - 1);
 								avg_x = DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 								avg_y = DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
 								if (DEVICE_PRIVATE_DATA->stack_size < AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target)
@@ -1017,7 +1018,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM, AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM_NAME, "DEC speed (px/s)", -500, 500, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_X_ITEM, AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, "Dithering offset X (px)", -15, 15, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME, "Dithering offset Y (px)", -15, 15, 0, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Stacking", 1, 10, 1, 1);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Stacking", 1, MAX_STACK, 1, 1);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_GUIDER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);
 		if (AGENT_GUIDER_STARS_PROPERTY == NULL)
