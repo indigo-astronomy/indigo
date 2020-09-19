@@ -444,15 +444,16 @@ static bool exposure_batch(indigo_device *device) {
 		if (light_frame) {
 			if (remaining_exposures > 1 || remaining_exposures == -1 || AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target < 0) {
 				double delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
+				indigo_item *agent = NULL;
 				if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
 					for (int item_index = 0; item_index < FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->count; item_index++) {
-						indigo_item *agent = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->items + item_index;
+						agent = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->items + item_index;
 						if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
-							const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
+							const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME };
 							double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (2 * drand48() - 1);
 							double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (2 * drand48() - 1) : 0;
-							double item_values[] = { x_value, y_value };
-							indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
+							double item_values[] = { x_value, y_value, 1 };
+							indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 3, item_names, item_values);
 							delay_time = MAX(AGENT_IMAGER_BATCH_DELAY_ITEM->number.target, fabs(AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target));
 							break;
 						}
@@ -481,6 +482,8 @@ static bool exposure_batch(indigo_device *device) {
 						indigo_usleep(10000);
 					}
 				}
+				if (agent)
+					indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, 0);
 				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			}
