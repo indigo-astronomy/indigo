@@ -130,7 +130,7 @@ typedef struct {
 	double rmse_ra_sum, rmse_dec_sum;
 	enum { PREVIEW = -1, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
-	int stack_size;
+	int stack_size, saved_stack_size;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
@@ -322,7 +322,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						if (result == INDIGO_OK) {
 							double drift_x, drift_y;
 							result = indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
-							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING) {
+							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING) {
 								DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 								DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 							} else {
@@ -331,7 +331,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 								memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, MAX_STACK - 1);
 								avg_x = DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 								avg_y = DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
-								if (DEVICE_PRIVATE_DATA->stack_size < AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target)
+								if (DEVICE_PRIVATE_DATA->stack_size < AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value)
 									DEVICE_PRIVATE_DATA->stack_size++;
 								for (int i = 1; i < DEVICE_PRIVATE_DATA->stack_size; i++) {
 									avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
@@ -343,7 +343,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 									INDIGO_DRIVER_ERROR(
 										DRIVER_NAME,
 										"My fix 2: stack size = %.0g Refernce = (%.4g, %.4g) Current = (%.4g, %.4g) drift = (%.4g, %.4g) dither = (%.4g, %.4g)",
-										AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target,
+										AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value,
 										DEVICE_PRIVATE_DATA->reference.centroid_x,
 										DEVICE_PRIVATE_DATA->reference.centroid_y,
 										digest.centroid_x,
@@ -1018,7 +1018,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM, AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM_NAME, "DEC speed (px/s)", -500, 500, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_X_ITEM, AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, "Dithering offset X (px)", -15, 15, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME, "Dithering offset Y (px)", -15, 15, 0, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Stacking", 1, MAX_STACK, 1, 1);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Stacking", 0, MAX_STACK, 1, 1);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_GUIDER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);
 		if (AGENT_GUIDER_STARS_PROPERTY == NULL)
@@ -1104,12 +1104,18 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
+		int saved_stack_size = AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
 		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		if (DEVICE_PRIVATE_DATA->reference.algorithm == centroid) {
 			AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_x + AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 			AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_y + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+		}
+		if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target == 0) {
+			AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_stack_size;
+		} else {
+			DEVICE_PRIVATE_DATA->saved_stack_size = saved_stack_size;
 		}
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
