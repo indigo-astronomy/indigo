@@ -104,6 +104,7 @@
 #define AGENT_IMAGER_STATS_FWHM_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+8)
 #define AGENT_IMAGER_STATS_HFD_ITEM      			(AGENT_IMAGER_STATS_PROPERTY->items+9)
 #define AGENT_IMAGER_STATS_PEAK_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+10)
+#define AGENT_IMAGER_STATS_DITHERING_ITEM     (AGENT_IMAGER_STATS_PROPERTY->items+11)
 
 #define MAX_STAR_COUNT												50
 #define AGENT_IMAGER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
@@ -1143,7 +1144,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_Y_ITEM, AGENT_IMAGER_SELECTION_Y_ITEM_NAME, "Selection Y (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_RADIUS_ITEM, AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 10, 1, 5);
 		// -------------------------------------------------------------------------------- Focusing stats
-		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 11);
+		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
 		if (AGENT_IMAGER_STATS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_STATS_EXPOSURE_ITEM, AGENT_IMAGER_STATS_EXPOSURE_ITEM_NAME, "Elapsed exposure", 0, 3600, 0, 0);
@@ -1157,6 +1158,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_STATS_FWHM_ITEM, AGENT_IMAGER_STATS_FWHM_ITEM_NAME, "FWHM", 0, 0xFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_HFD_ITEM, AGENT_IMAGER_STATS_HFD_ITEM_NAME, "HFD", 0, 0xFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_PEAK_ITEM, AGENT_IMAGER_STATS_PEAK_ITEM_NAME, "Peak", 0, 0xFFFF, 0, 0);
+		indigo_init_number_item(AGENT_IMAGER_STATS_DITHERING_ITEM, AGENT_IMAGER_STATS_DITHERING_ITEM_NAME, "Dithering RMSE", 0, 0xFFFF, 0, 0);
 		// -------------------------------------------------------------------------------- Sequencer
 		AGENT_IMAGER_SEQUENCE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_IMAGER_SEQUENCE_PROPERTY_NAME, "Agent", "Sequence", INDIGO_OK_STATE, INDIGO_RW_PERM, 1 + SEQUENCE_SIZE);
 		if (AGENT_IMAGER_SEQUENCE_PROPERTY == NULL)
@@ -1467,19 +1469,22 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-static void snoop_guider_stats(indigo_client *client, indigo_device *device, indigo_property *property) {
+static void snoop_guider_stats(indigo_client *client, indigo_device *other_device, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_GUIDER_STATS_PROPERTY_NAME)) {
 		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
 			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
 			if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
-				if (!strcmp(agent->name, device->name)) {
+				if (!strcmp(agent->name, other_device->name)) {
+					indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 					for (int i = 0; i < property->count; i++) {
 						indigo_item *item = property->items + i;
 						if (!strcmp(item->name, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME)) {
+							AGENT_IMAGER_STATS_DITHERING_ITEM->number.value = item->number.value;
+							indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 							if (item->number.value)
-								CLIENT_PRIVATE_DATA->dithering_started = true;
+								DEVICE_PRIVATE_DATA->dithering_started = true;
 							else
-								CLIENT_PRIVATE_DATA->dithering_finished = true;
+								DEVICE_PRIVATE_DATA->dithering_finished = true;
 							break;
 						}
 					}
