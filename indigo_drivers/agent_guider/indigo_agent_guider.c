@@ -112,6 +112,7 @@
 #define AGENT_GUIDER_STATS_RMSE_DEC_ITEM      (AGENT_GUIDER_STATS_PROPERTY->items+11)
 #define AGENT_GUIDER_STATS_SNR_ITEM      			(AGENT_GUIDER_STATS_PROPERTY->items+12)
 #define AGENT_GUIDER_STATS_DELAY_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+13)
+#define AGENT_GUIDER_STATS_DITHERING_ITEM			(AGENT_GUIDER_STATS_PROPERTY->items+14)
 
 
 typedef struct {
@@ -128,6 +129,8 @@ typedef struct {
 	indigo_frame_digest reference;
 	double drift_x, drift_y, drift;
 	double rmse_ra_sum, rmse_dec_sum;
+	double rmse_ra_threshold, rmse_dec_threshold;
+	unsigned long rmse_count;
 	enum { PREVIEW = -1, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
 	int stack_size;
@@ -322,27 +325,30 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						if (result == INDIGO_OK) {
 							double drift_x, drift_y;
 							result = indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
-							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING) {
+							memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
+							memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
+							DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
+							DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
+							if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK)
+								DEVICE_PRIVATE_DATA->stack_size++;
+							if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING || AGENT_GUIDER_STATS_DITHERING_ITEM->number.value) {
 								DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 								DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 							} else {
 								double avg_x, avg_y;
-								memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
-								memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
-								avg_x = DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-								avg_y = DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
-								if (DEVICE_PRIVATE_DATA->stack_size < AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value)
-									DEVICE_PRIVATE_DATA->stack_size++;
-								for (int i = 1; i < DEVICE_PRIVATE_DATA->stack_size; i++) {
+								avg_x = DEVICE_PRIVATE_DATA->stack_x[0];
+								avg_y = DEVICE_PRIVATE_DATA->stack_y[0];
+								int count = (int)fmin(AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value, DEVICE_PRIVATE_DATA->stack_size);
+								for (int i = 1; i < count; i++) {
 									avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
 									avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 								}
-								DEVICE_PRIVATE_DATA->drift_x = avg_x / DEVICE_PRIVATE_DATA->stack_size;
-								DEVICE_PRIVATE_DATA->drift_y = avg_y / DEVICE_PRIVATE_DATA->stack_size;
+								DEVICE_PRIVATE_DATA->drift_x = avg_x / count;
+								DEVICE_PRIVATE_DATA->drift_y = avg_y / count;
 								if (digest.algorithm == centroid) {
-									INDIGO_DRIVER_ERROR(
+									INDIGO_DRIVER_DEBUG(
 										DRIVER_NAME,
-										"My fix 2: stack size = %.0g Refernce = (%.4g, %.4g) Current = (%.4g, %.4g) drift = (%.4g, %.4g) dither = (%.4g, %.4g)",
+										"stack size = %.0g Refernce = (%.4g, %.4g) Current = (%.4g, %.4g) drift = (%.4g, %.4g) dither = (%.4g, %.4g)",
 										AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value,
 										DEVICE_PRIVATE_DATA->reference.centroid_x,
 										DEVICE_PRIVATE_DATA->reference.centroid_y,
@@ -821,7 +827,7 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
 
 	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
+	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_count = 0;
 	indigo_send_message(device, "Guiding started");
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
@@ -874,10 +880,29 @@ static void guide_process(indigo_device *device) {
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				break;
 			}
-			DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
-			DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
-			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / AGENT_GUIDER_STATS_FRAME_ITEM->number.value)) / 1000;
-			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / AGENT_GUIDER_STATS_FRAME_ITEM->number.value)) / 1000;
+			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value == 0) {
+				DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
+				DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
+				DEVICE_PRIVATE_DATA->rmse_count++;
+			} else {
+				DEVICE_PRIVATE_DATA->rmse_ra_sum = 0;
+				DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
+				if (DEVICE_PRIVATE_DATA->rmse_count < 5)
+					DEVICE_PRIVATE_DATA->rmse_count++;
+				for (int i = 0; i < DEVICE_PRIVATE_DATA->rmse_count; i++) {
+					DEVICE_PRIVATE_DATA->rmse_ra_sum += DEVICE_PRIVATE_DATA->stack_x[i] * DEVICE_PRIVATE_DATA->stack_x[i];
+					DEVICE_PRIVATE_DATA->rmse_dec_sum += DEVICE_PRIVATE_DATA->stack_y[i] * DEVICE_PRIVATE_DATA->stack_y[i];
+				}
+			}
+			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0) {
+				if (AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold) {
+					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
+				} else {
+					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value - DEVICE_PRIVATE_DATA->rmse_ra_threshold, AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value - DEVICE_PRIVATE_DATA->rmse_dec_threshold);
+				}
+			}
 		}
 		double reported_delay_time = AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.target;
 		if (reported_delay_time > 0) {
@@ -1033,10 +1058,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_Y_ITEM, AGENT_GUIDER_SELECTION_Y_ITEM_NAME, "Selection Y (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		// -------------------------------------------------------------------------------- Guiding stats
-		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 14);
+		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 15);
 		if (AGENT_GUIDER_STATS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_GUIDER_STATS_PHASE_ITEM, AGENT_GUIDER_STATS_PHASE_ITEM_NAME, "Phase #", -1, 100, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_PHASE_ITEM, AGENT_GUIDER_STATS_PHASE_ITEM_NAME, "Phase #", -1, 100, 0, DONE);
 		indigo_init_number_item(AGENT_GUIDER_STATS_FRAME_ITEM, AGENT_GUIDER_STATS_FRAME_ITEM_NAME, "Frame #", 0, 0xFFFFFFFF, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_REFERENCE_X_ITEM, AGENT_GUIDER_STATS_REFERENCE_X_ITEM_NAME, "Reference X (px)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_REFERENCE_Y_ITEM, AGENT_GUIDER_STATS_REFERENCE_Y_ITEM_NAME, "Reference Y (px)", 0, 100000, 0, 0);
@@ -1050,6 +1075,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_RMSE_DEC_ITEM, AGENT_GUIDER_STATS_RMSE_DEC_ITEM_NAME, "RMSE Dec (px)", -1000, 1000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_SNR_ITEM, AGENT_GUIDER_STATS_SNR_ITEM_NAME, "SNR", 0, 1000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DELAY_ITEM, AGENT_GUIDER_STATS_DELAY_ITEM_NAME, "Remaining delay (s)", 0, 100, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_DITHERING_ITEM, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME, "Dithering RMSE (px)", 0, 100, 0, 0);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
@@ -1104,11 +1130,27 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
+		double dith_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
+		double dith_y = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
 		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		bool update_stats = false;
 		if (DEVICE_PRIVATE_DATA->reference.algorithm == centroid) {
 			AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_x + AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 			AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_y + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+			update_stats = true;
+		}
+		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == GUIDING && (dith_x != AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value || dith_y != AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value)) {
+			double diff_x = fabs(AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value - dith_x);
+			double diff_y = fabs(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value - dith_y);
+			DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_count = 0;
+			DEVICE_PRIVATE_DATA->rmse_ra_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value;
+			DEVICE_PRIVATE_DATA->rmse_dec_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RMSE RA threshold = %g, RMSE DEC threshold = %g ", DEVICE_PRIVATE_DATA->rmse_ra_threshold, DEVICE_PRIVATE_DATA->rmse_dec_threshold);
+			AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = round(1000 * fmax(fabs(diff_x), fabs(diff_y))) / 1000;
+			update_stats = true;
+		}
+		if (update_stats) {
 			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 		}
 		save_config(device);
