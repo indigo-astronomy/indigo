@@ -901,7 +901,7 @@ static void guide_process(indigo_device *device) {
 				if (DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 				} else {
-					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value - DEVICE_PRIVATE_DATA->rmse_ra_threshold, AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value - DEVICE_PRIVATE_DATA->rmse_dec_threshold);
+					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value);
 				}
 			}
 		}
