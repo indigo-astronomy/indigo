@@ -97,6 +97,7 @@
 #define AGENT_GUIDER_SELECTION_RADIUS_ITEM  	(AGENT_GUIDER_SELECTION_PROPERTY->items+2)
 
 #define MAX_STACK															10
+#define MAX_DITHERING_RMSE_STACK							5
 #define AGENT_GUIDER_STATS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stats_property)
 #define AGENT_GUIDER_STATS_PHASE_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+0)
 #define AGENT_GUIDER_STATS_FRAME_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+1)
@@ -887,7 +888,7 @@ static void guide_process(indigo_device *device) {
 			} else {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum = 0;
 				DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
-				if (DEVICE_PRIVATE_DATA->rmse_count < 5)
+				if (DEVICE_PRIVATE_DATA->rmse_count < MAX_DITHERING_RMSE_STACK)
 					DEVICE_PRIVATE_DATA->rmse_count++;
 				for (int i = 0; i < DEVICE_PRIVATE_DATA->rmse_count; i++) {
 					DEVICE_PRIVATE_DATA->rmse_ra_sum += DEVICE_PRIVATE_DATA->stack_x[i] * DEVICE_PRIVATE_DATA->stack_x[i];
@@ -897,7 +898,7 @@ static void guide_process(indigo_device *device) {
 			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0) {
-				if (AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold) {
+				if (DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 				} else {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value - DEVICE_PRIVATE_DATA->rmse_ra_threshold, AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value - DEVICE_PRIVATE_DATA->rmse_dec_threshold);
