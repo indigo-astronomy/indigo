@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -62,7 +62,6 @@
 
 #define AGENT_IMAGER_DITHERING_PROPERTY				(DEVICE_PRIVATE_DATA->agent_imager_dithering_property)
 #define AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM (AGENT_IMAGER_DITHERING_PROPERTY->items+0)
-#define AGENT_IMAGER_DITHERING_DELAY_ITEM  		(AGENT_IMAGER_DITHERING_PROPERTY->items+1)
 
 #define AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY		(DEVICE_PRIVATE_DATA->agent_imager_download_file_property)
 #define AGENT_IMAGER_DOWNLOAD_FILE_ITEM    		(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->items+0)
@@ -149,6 +148,7 @@ typedef struct {
 	int stack_size;
 	pthread_mutex_t mutex;
 	double focus_exposure;
+	bool dithering_started, dithering_finished;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -442,23 +442,48 @@ static bool exposure_batch(indigo_device *device) {
 			return false;
 		}
 		if (light_frame) {
-			if (remaining_exposures > 1 || remaining_exposures == -1 || AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target < 0) {
-				double delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
+			if (remaining_exposures > 1 || remaining_exposures == -1) {
 				if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
 					for (int item_index = 0; item_index < FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->count; item_index++) {
 						indigo_item *agent = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->items + item_index;
 						if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
 							const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
-							double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (2 * drand48() - 1);
-							double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (2 * drand48() - 1) : 0;
+							double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (drand48() - 0.5);
+							double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (drand48() - 0.5) : 0;
 							double item_values[] = { x_value, y_value };
+							DEVICE_PRIVATE_DATA->dithering_started = false;
 							indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
-							delay_time = MAX(AGENT_IMAGER_BATCH_DELAY_ITEM->number.target, fabs(AGENT_IMAGER_DITHERING_DELAY_ITEM->number.target));
+							for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
+								if (DEVICE_PRIVATE_DATA->dithering_started) {
+									break;
+								}
+								if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+									return false;
+								indigo_usleep(200000);
+							}
+							if (DEVICE_PRIVATE_DATA->dithering_started) {
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
+								DEVICE_PRIVATE_DATA->dithering_finished = false;
+								for (int i = 0; i < 300; i++) { // wait up to 60s to finish dithering
+									if (DEVICE_PRIVATE_DATA->dithering_finished) {
+										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
+										break;
+									}
+									if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+										return false;
+									indigo_usleep(200000);
+								}
+								if (!DEVICE_PRIVATE_DATA->dithering_finished) {
+									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed");
+									indigo_send_message(device, "Dithering failed to settle down");
+									return false;
+								}
+							}
 							break;
 						}
 					}
 				}
-				double reported_delay_time = delay_time;
+				double reported_delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
 				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = reported_delay_time;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				while (reported_delay_time > 0) {
@@ -1047,11 +1072,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_ITEM_NAME, "Backlash", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_STACK_ITEM, AGENT_IMAGER_FOCUS_STACK_ITEM_NAME, "Stacking", 1, 5, 1, 3);
 		// -------------------------------------------------------------------------------- Dithering properties
-		AGENT_IMAGER_DITHERING_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_DITHERING_PROPERTY_NAME, "Agent", "Dithering settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		AGENT_IMAGER_DITHERING_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_DITHERING_PROPERTY_NAME, "Agent", "Dithering settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_IMAGER_DITHERING_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM_NAME, "Aggressivity (px)", -10, 10, 1, 1);
-		indigo_init_number_item(AGENT_IMAGER_DITHERING_DELAY_ITEM, AGENT_IMAGER_DITHERING_DELAY_ITEM_NAME, "Settle down delay (s)", -60, 60, 1, 5);
 		// -------------------------------------------------------------------------------- Process properties
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 5);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
@@ -1443,6 +1467,29 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
+static void snoop_guider_stats(indigo_client *client, indigo_device *device, indigo_property *property) {
+	if (!strcmp(property->name, AGENT_GUIDER_STATS_PROPERTY_NAME)) {
+		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
+			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
+			if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
+				if (!strcmp(agent->name, device->name)) {
+					for (int i = 0; i < property->count; i++) {
+						indigo_item *item = property->items + i;
+						if (!strcmp(item->name, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME)) {
+							if (item->number.value)
+								CLIENT_PRIVATE_DATA->dithering_started = true;
+							else
+								CLIENT_PRIVATE_DATA->dithering_finished = true;
+							break;
+						}
+					}
+				}
+				break;
+			}
+		}
+	}
+}
+
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
@@ -1491,6 +1538,8 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+	} else {
+		snoop_guider_stats(client, device, property);
 	}
 	return indigo_filter_define_property(client, device, property, message);
 }
@@ -1594,6 +1643,8 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+	} else {
+		snoop_guider_stats(client, device, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
 }
