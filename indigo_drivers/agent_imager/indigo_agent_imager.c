@@ -1469,12 +1469,12 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-static void snoop_guider_stats(indigo_client *client, indigo_device *other_device, indigo_property *property) {
+static void snoop_guider_stats(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_GUIDER_STATS_PROPERTY_NAME)) {
 		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
 			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
 			if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
-				if (!strcmp(agent->name, other_device->name)) {
+				if (!strcmp(agent->name, property->device)) {
 					indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 					for (int i = 0; i < property->count; i++) {
 						indigo_item *item = property->items + i;
@@ -1544,7 +1544,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
 	} else {
-		snoop_guider_stats(client, device, property);
+		snoop_guider_stats(client, property);
 	}
 	return indigo_filter_define_property(client, device, property, message);
 }
@@ -1649,7 +1649,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
 	} else {
-		snoop_guider_stats(client, device, property);
+		snoop_guider_stats(client, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
 }
