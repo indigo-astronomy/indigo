@@ -443,7 +443,7 @@ static bool exposure_batch(indigo_device *device) {
 			return false;
 		}
 		if (light_frame) {
-			if (remaining_exposures > 1 || remaining_exposures == -1) {
+			if (remaining_exposures != 0) {
 				if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
 					for (int item_index = 0; item_index < FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->count; item_index++) {
 						indigo_item *agent = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->items + item_index;
