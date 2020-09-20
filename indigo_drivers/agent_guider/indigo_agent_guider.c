@@ -845,7 +845,7 @@ static void guide_process(indigo_device *device) {
 			AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
 			double correction_ra = 0, correction_dec = 0;
 			if (fabs(drift_ra) > min_error) {
-				correction_ra = -drift_ra * AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
+				correction_ra = -drift_ra * AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / DEVICE_PRIVATE_DATA->stack_size / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
 				if (correction_ra > max_pulse)
 					correction_ra = max_pulse;
 				else if (correction_ra < -max_pulse)
@@ -854,7 +854,7 @@ static void guide_process(indigo_device *device) {
 					correction_ra = 0;
 			}
 			if (fabs(drift_dec) > min_error) {
-				correction_dec = -drift_dec * AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
+				correction_dec = -drift_dec * AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / DEVICE_PRIVATE_DATA->stack_size / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
 				if (correction_dec > max_pulse)
 					correction_dec = max_pulse;
 				else if (correction_dec < -max_pulse)
