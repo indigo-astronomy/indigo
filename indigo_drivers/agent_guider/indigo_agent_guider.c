@@ -1145,8 +1145,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			double diff_x = fabs(AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value - dith_x);
 			double diff_y = fabs(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value - dith_y);
 			DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_count = 0;
-			DEVICE_PRIVATE_DATA->rmse_ra_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value;
-			DEVICE_PRIVATE_DATA->rmse_dec_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value;
+			DEVICE_PRIVATE_DATA->rmse_ra_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value + AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value/2.0;
+			DEVICE_PRIVATE_DATA->rmse_dec_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value + AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value/2.0;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RMSE RA threshold = %g, RMSE DEC threshold = %g ", DEVICE_PRIVATE_DATA->rmse_ra_threshold, DEVICE_PRIVATE_DATA->rmse_dec_threshold);
 			AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = round(1000 * fmax(fabs(diff_x), fabs(diff_y))) / 1000;
 			update_stats = true;
