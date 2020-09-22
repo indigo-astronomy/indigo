@@ -344,8 +344,12 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 									avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
 									avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 								}
-								DEVICE_PRIVATE_DATA->drift_x = avg_x / count;
-								DEVICE_PRIVATE_DATA->drift_y = avg_y / count;
+								double p_x_gain = 0.5; /* should be calculated from P/I RA ratio using rotation angle */
+								double p_y_gain = 0.5; /* should be calculated form P/I Dec ratio using rotation angle */
+								double i_x_gain = 1 - p_x_gain;
+								double i_y_gain = 1 - p_y_gain;
+								DEVICE_PRIVATE_DATA->drift_x = p_x_gain * drift_x + i_x_gain * avg_x / count;
+								DEVICE_PRIVATE_DATA->drift_y = p_y_gain * drift_y + i_y_gain * avg_y / count;
 								if (digest.algorithm == centroid) {
 									INDIGO_DRIVER_DEBUG(
 										DRIVER_NAME,
