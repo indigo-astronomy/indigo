@@ -86,8 +86,8 @@
 #define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+16)
 #define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
 #define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
-#define AGENT_GUIDER_SETTINGS_PIR_RA_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
-#define AGENT_GUIDER_SETTINGS_PIR_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
+#define AGENT_GUIDER_SETTINGS_PW_RA_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
+#define AGENT_GUIDER_SETTINGS_PW_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
 
 #define MAX_STAR_COUNT												50
 #define AGENT_GUIDER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
@@ -844,7 +844,7 @@ static void guide_process(indigo_device *device) {
 			AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
 			double correction_ra = 0, correction_dec = 0;
 			if (fabs(drift_ra) > min_error) {
-				correction_ra = -AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value * (drift_ra * AGENT_GUIDER_SETTINGS_PIR_RA_ITEM->number.value + avg_drift_ra * (1 - AGENT_GUIDER_SETTINGS_PIR_RA_ITEM->number.value)) / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
+				correction_ra = -AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value * (drift_ra * AGENT_GUIDER_SETTINGS_PW_RA_ITEM->number.value + avg_drift_ra * (1 - AGENT_GUIDER_SETTINGS_PW_RA_ITEM->number.value)) / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
 				if (correction_ra > max_pulse)
 					correction_ra = max_pulse;
 				else if (correction_ra < -max_pulse)
@@ -853,7 +853,7 @@ static void guide_process(indigo_device *device) {
 					correction_ra = 0;
 			}
 			if (fabs(drift_dec) > min_error) {
-				correction_dec = -AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value * (drift_dec * AGENT_GUIDER_SETTINGS_PIR_DEC_ITEM->number.value + avg_drift_dec * (1 - AGENT_GUIDER_SETTINGS_PIR_DEC_ITEM->number.value))/ AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
+				correction_dec = -AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value * (drift_dec * AGENT_GUIDER_SETTINGS_PW_DEC_ITEM->number.value + avg_drift_dec * (1 - AGENT_GUIDER_SETTINGS_PW_DEC_ITEM->number.value))/ AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
 				if (correction_dec > max_pulse)
 					correction_dec = max_pulse;
 				else if (correction_dec < -max_pulse)
@@ -1037,8 +1037,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_X_ITEM, AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, "Dithering offset X (px)", -15, 15, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME, "Dithering offset Y (px)", -15, 15, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Stacking", 1, MAX_STACK, 1, 1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PIR_RA_ITEM, AGENT_GUIDER_SETTINGS_PIR_RA_ITEM_NAME, "P/I RA", 0, 1, 0, 0.5);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PIR_DEC_ITEM, AGENT_GUIDER_SETTINGS_PIR_DEC_ITEM_NAME, "P/I DEC", 0, 1, 0, 0.5);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PW_RA_ITEM, AGENT_GUIDER_SETTINGS_PW_RA_ITEM_NAME,  "RA Proportional weight", 0, 1, 0, 0.5);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PW_DEC_ITEM, AGENT_GUIDER_SETTINGS_PW_DEC_ITEM_NAME, "Dec Proportional weight", 0, 1, 0, 0.5);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_GUIDER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);
 		if (AGENT_GUIDER_STARS_PROPERTY == NULL)
