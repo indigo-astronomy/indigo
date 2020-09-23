@@ -1,10 +1,10 @@
-# Guider agent
+# Indigo Guider Agent
 
 Backend implementation of guiding process
 
 ## Supported devices
 
-N/A
+This is a meta driver that can control all underlaying CCD and Guider drivers.
 
 ## Supported platforms
 
@@ -48,10 +48,10 @@ RA and Dec drifts in percents.
 
 * **Stacking**, **P/I RA**, **P/I Dec** - These parameters are related to the drift controller and are explained below.
 
-Indigo_agent_guider uses *Proportional-Integral* (*PI*) controller to correct for the guiding errors. *Proportional* or *P*
+Indigo_agent_guider uses *Proportional-Integral* (*PI*) controller to correct for the telescope tracking errors. *Proportional* or *P*
 means that it will attempt to correct for any random errors like gusts of wind, random bumps etc. *Integral* or *I* means
 that it will look at the last several frames and compensate for any systematic drifts like bad polar alignment, periodic
-errors etc. **Stacking** is the history length in frames to be used for the *I* part of the controller. **P/I RA** and
+errors etc. **Stacking** is the history length (in number of frames) to be used for the *I* part of the controller. **P/I RA** and
 **P/I Dec** are numbers specifying how much of **RA Aggressivity** and **Dec Aggressivity** respectively, should correct
 for random (*P*) errors (the rest is used for systematic errors). **P/I RA** and **P/I Dec** are numbers between
 0 and 1 (1 - pure *Proportional*, 0.5 - equally *Proportional* and *Integral* and 0 - pure *Integral* controller).
