@@ -73,6 +73,6 @@ for it, then the corresponding **Proportional weight** should be decreased (take
 
 * The "P Controller* is stable and can be used alone. With sufficient **Aggressivity** it will always compensate for any random and systematic errors in a reasonable time. The *P Controller* is easy to tune and gives reasonably good results, this is why it is the default in indigo_guider_agent. However the guiding will not be as smooth as the guiding of a well tuned *PI Controller*.  
 
-* Typically the *I Controller* will over correct as a result of its over reaction to the random errors and will eventually slowly settle, while oscillating around the set point. For that reason *I controller* should not be used without a *P Controller*. A good Proportional weight balance is essential for the smooth guiding.     
+* Typically the *I Controller* will over correct as a result of its over reaction to the random errors and will eventually slowly settle, while oscillating around the set point. For that reason *I controller* should not be used without a *P Controller*. A good *P - I* balance is essential for the smooth guiding.     
 
 Fine tuning a *PI controller* is a tricky busyness and the defaults should produce good results in most cases, so our advise is to change the settings with care.
