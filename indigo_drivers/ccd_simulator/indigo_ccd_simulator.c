@@ -562,7 +562,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 				if (indigo_property_match(DSLR_ISO_PROPERTY, property))
 					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			}
-		} else if (device == PRIVATE_DATA->guider) {
+		}
+		if (device == PRIVATE_DATA->guider) {
 			if (indigo_property_match(GUIDER_MODE_PROPERTY, property))
 				indigo_define_property(device, GUIDER_MODE_PROPERTY, NULL);
 			if (indigo_property_match(GUIDER_SETTINGS_PROPERTY, property))
