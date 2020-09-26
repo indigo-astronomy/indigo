@@ -54,15 +54,15 @@ drift would become an issue. A good exposure time to start is 1 or 2 seconds.
 
 * **Delay time** - Delay between correction cycles cycles in seconds. Use 0 unless this delay is really necessary.
 
-* **Calibration step** - Guider pulse length in seconds used during calibration process. Use 1 second for start. If the drift is too much the value should be decreased.
+* **Calibration step** - Guider pulse length in seconds used during calibration process. Use 0.2 second for start. If the drift is too much or not enough the value is decreased or increased automatically.
 
-* **Max clear backlash steps** - TBD
+* **Max clear backlash steps** - A max number of steps to clear backlash (failes, if **Min clear backlash drift** is not achieved) during pre-calibration phase of calibration process.
 
-* **Min clear backlash drift** - TBD
+* **Min clear backlash drift** - A min drift to achieve with **Max clear backlash steps** during pre-calibration phase of calibration process.
 
 * **Max calibration steps** - Maximum number of pulses to reach **Min calibration drift** during calibration process. Value between 15-25 should work in most of the cases.
 
-* **Min calibration drift** - Minimum drift in pixels in each direction while calibrating. Value between 15-25 pixels would be fine in most of the cases.
+* **Min calibration drift** - Minimum drift in pixels in each direction while calibrating. Value between 10-25 pixels would be fine in most of the cases.
 
 * **Angle** - Camera rotation angle in degrees. Auto set during calibration.
 
