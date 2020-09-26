@@ -195,7 +195,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ica,
 #endif
 	indigo_ccd_iidc,
-	indigo_ccd_mi,
+	//indigo_ccd_mi,
 	indigo_ccd_ptp,
 	indigo_ccd_qhy2,
 	indigo_ccd_qsi,
