@@ -228,10 +228,13 @@ enum CONTROL_ID
 /*58*/  CAM_LIVEVIDEOMODE,
  /*59*/ CAM_IS_COLOR,
 /*60*/  hasHardwareFrameCounter,
-/*61*/  CONTROL_MAX_ID,
+/*61*/  CONTROL_MAX_ID_Error, //** No Use , last max index */
 /*62*/  CAM_HUMIDITY,			//!<check if camera has	 humidity sensor  20191021 LYL Unified humidity function
-/*63*/  CAM_PRESSURE             //check if camera has pressure sensor 
+/*63*/  CAM_PRESSURE,             //check if camera has pressure sensor
 
+
+/* Do not Put Item after  CONTROL_MAX_ID !! This should be the max index of the list */
+/*Last One */  CONTROL_MAX_ID
 };
 
 /**

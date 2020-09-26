@@ -357,6 +357,14 @@
 #define DEVICETYPE_QHY5III462C      4076
 #define DEVICETYPE_QHY5III462M      4077
 
+#define DEVICETYPE_QHY533C      	4078
+#define DEVICETYPE_QHY492M      	4079
+
+#define DEVICETYPE_QHY461     	    4080
+#define DEVICETYPE_QHY461M     	    4081
+#define DEVICETYPE_QHY461C     	    4082
+
+
 /**
  * Type define for QHY5IIIEND*/
 #define DEVICETYPE_QHY5IIIEND   	4999
@@ -939,8 +947,8 @@
 
 /**
  * Type define for QHY-DevelopDev*/
-#define QHY5IIICOMMON_MAX_WIDTH        		8000
-#define QHY5IIICOMMON_MAX_HEIGHT        	6000
+#define QHY5IIICOMMON_MAX_WIDTH        		9000
+#define QHY5IIICOMMON_MAX_HEIGHT        	7000
 
 /**
  * Type define for QHY247*/
@@ -1013,11 +1021,15 @@
 #define QHY600_MAX_WIDTH        	9600
 #define QHY600_MAX_HEIGHT        	6422
 
+
+#define QHY461_MAX_WIDTH		   11760
+#define QHY461_MAX_HEIGHT		   8842
+
 #define QHY268C_MAX_WIDTH        6280
 #define QHY268C_MAX_HEIGHT       4210
 
 #define QHY410C_MAX_WIDTH        6112
-#define QHY410C_MAX_HEIGHT       4094
+#define QHY410C_MAX_HEIGHT       4140-100
 
 #define QHY432_MAX_WIDTH        1624
 #define QHY432_MAX_HEIGHT       1136
@@ -1269,11 +1281,11 @@
 #define	SEND_MSG_PART				2
 
 
-
 #define   SINGLE_MODE 								0
 #define   LIVE_MODE 								1
 
-#define   GET_IMAGE_TIMEOUT							60000
+#define   GET_IMAGE_TIMEOUT							60000     //QHY09000 DRIFT SCAN MOD  600000  
+//#define   GET_IMAGE_TIMEOUT							900000     //QHY09000 DRIFT SCAN MOD  600000  
 
 #define   IS_OPERATOR_NONE						0
 #define   IS_CAMARA_INIT				1
