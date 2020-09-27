@@ -901,8 +901,8 @@ static void raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_set_defaults(&cinfo);
 	jpeg_set_quality(&cinfo, CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target, true);
 	JSAMPROW row_pointer[1];
-	jpeg_start_compress( &cinfo, TRUE);
-	while( cinfo.next_scanline < cinfo.image_height ) {
+	jpeg_start_compress(&cinfo, TRUE);
+	while (cinfo.next_scanline < cinfo.image_height) {
 		row_pointer[0] = &((JSAMPROW)copy)[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
 		jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
@@ -1087,7 +1087,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			} else {
 				for (int i = 0; i < size; i++) {
 					int value = *raw;
-					value = ((value & 0xff) << 8 | (value & 0xff00) >> 8 ) - 32768;
+					value = ((value & 0xff) << 8 | (value & 0xff00) >> 8) - 32768;
 					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				}
 			}
@@ -1201,9 +1201,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		}
 		header += strlen(header);
+		sprintf(header, "<FITSKeyword name='IMAGETYP' value='%s' comment='Frame type'/>", frame_type);
+		header += strlen(header);
 		sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
 		header += strlen(header);
-		sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs );
+		sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs);
 		header += strlen(header);
 		sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
 		header += strlen(header);
@@ -1225,7 +1227,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
 			header += strlen(header);
-			sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value );
+			sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);
 			header += strlen(header);
 
 		}
