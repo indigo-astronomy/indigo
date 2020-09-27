@@ -114,7 +114,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			FOCUSER_MODE_PROPERTY->hidden = true;
 			indigo_init_switch_item(FOCUSER_MODE_MANUAL_ITEM, FOCUSER_MODE_MANUAL_ITEM_NAME, "Manual control", true);
 			indigo_init_switch_item(FOCUSER_MODE_AUTOMATIC_ITEM, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, "Automatic control", false);
-			// -------------------------------------------------------------------------------- CCD_LIMITS
+			// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 			FOCUSER_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser Limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (FOCUSER_LIMITS_PROPERTY == NULL)
 				return INDIGO_FAILED;
@@ -239,6 +239,10 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
+		if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target) {
+			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+			FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
+		}
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
