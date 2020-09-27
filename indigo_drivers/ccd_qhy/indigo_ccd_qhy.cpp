@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 
 #include <stdlib.h>
 #include <string.h>
@@ -302,7 +302,7 @@ static bool qhy_open(indigo_device *device) {
 		);
 
 		if (PRIVATE_DATA->buffer == NULL) {
-			PRIVATE_DATA->buffer_size = /* PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 */ 64 * 1024 * 1024 + FITS_HEADER_SIZE;
+			PRIVATE_DATA->buffer_size = /* PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 */ 128 * 1024 * 1024 + FITS_HEADER_SIZE;
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
 	}
