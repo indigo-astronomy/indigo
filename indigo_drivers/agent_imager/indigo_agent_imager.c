@@ -258,6 +258,8 @@ static bool capture_raw_frame(indigo_device *device) {
 		AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = reported_exposure_time;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		while (remote_exposure_property->state == INDIGO_BUSY_STATE) {
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+				return false;
 			if (reported_exposure_time != remote_exposure_property->items[0].number.value) {
 				AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = reported_exposure_time = remote_exposure_property->items[0].number.value;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -1311,7 +1313,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
-		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
