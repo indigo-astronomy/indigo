@@ -956,7 +956,7 @@ static void find_stars_process(indigo_device *device) {
 }
 
 static void abort_process(indigo_device *device) {
-	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_GUIDER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value <= 0) {
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
