@@ -1245,23 +1245,25 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_IMAGER_STARS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_IMAGER_STARS
-		indigo_property_copy_values(AGENT_IMAGER_STARS_PROPERTY, property, false);
-		if (AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value) {
-			AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value = false;
-			AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-			indigo_set_timer(device, 0, find_stars_process, NULL);
-		} else {
-			for (int i = 1; i < AGENT_IMAGER_STARS_PROPERTY->count; i++) {
-				if (AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value) {
-					int j = atoi(AGENT_IMAGER_STARS_PROPERTY->items[i].name);
-					AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
-					AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].y;
-					indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-					AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value = false;
+		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_property_copy_values(AGENT_IMAGER_STARS_PROPERTY, property, false);
+			if (AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value) {
+				AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value = false;
+				AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+				indigo_set_timer(device, 0, find_stars_process, NULL);
+			} else {
+				for (int i = 1; i < AGENT_IMAGER_STARS_PROPERTY->count; i++) {
+					if (AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value) {
+						int j = atoi(AGENT_IMAGER_STARS_PROPERTY->items[i].name);
+						AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
+						AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].y;
+						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+						AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value = false;
+					}
 				}
+				AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_IMAGER_SELECTION_PROPERTY, property)) {
@@ -1273,8 +1275,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
-		indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, preview_process, NULL);
@@ -1291,8 +1293,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, sequence_process, NULL);
 			}
+			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		}
-		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else 	if (indigo_property_match(AGENT_PAUSE_PROCESS_PROPERTY, property)) {
