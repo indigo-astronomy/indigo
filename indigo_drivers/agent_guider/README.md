@@ -98,7 +98,7 @@ for it, then the corresponding **Proportional weight** should be decreased (take
 
 * If there are oscillations or over corrections which can not be compensated by increasing the values of **RA Proportional weight** or **Dec Proportional weight** (removing power from *Integral* component), then the **Aggressivity** for the corresponding axis is most likely to high and should be decreased.
 
-* The "P Controller* is stable and can be used alone. With sufficient **Aggressivity** it will always compensate for any random and systematic errors in a reasonable time. The *P Controller* is easy to tune and gives reasonably good results, this is why it is the default in indigo_guider_agent. However the guiding will not be as smooth as the guiding of a well tuned *PI Controller*.  
+* The *P Controller* is stable and can be used alone. With sufficient **Aggressivity** it will always compensate for any random and systematic errors in a reasonable time. The *P Controller* is easy to tune and gives reasonably good results, this is why it is the default in indigo_guider_agent. However the guiding will not be as smooth as the guiding of a well tuned *PI Controller*.
 
 * Typically the *I Controller* will over correct as a result of its over reaction to the random errors and will eventually slowly settle, while oscillating around the set point. For that reason *I controller* should not be used without a *P Controller*. A good balance between proportional and integral components is essential for the smooth guiding.
 
