@@ -1152,23 +1152,25 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_STARS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_GUIDER_STARS
-		indigo_property_copy_values(AGENT_GUIDER_STARS_PROPERTY, property, false);
-		if (AGENT_GUIDER_STARS_REFRESH_ITEM->sw.value) {
-			AGENT_GUIDER_STARS_REFRESH_ITEM->sw.value = false;
-			AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-			indigo_set_timer(device, 0, find_stars_process, NULL);
-		} else {
-			for (int i = 1; i < AGENT_GUIDER_STARS_PROPERTY->count; i++) {
-				if (AGENT_GUIDER_STARS_PROPERTY->items[i].sw.value) {
-					int j = atoi(AGENT_GUIDER_STARS_PROPERTY->items[i].name);
-					AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
-					AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].y;
-					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-					AGENT_GUIDER_STARS_PROPERTY->items[i].sw.value = false;
+		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_GUIDER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_property_copy_values(AGENT_GUIDER_STARS_PROPERTY, property, false);
+			if (AGENT_GUIDER_STARS_REFRESH_ITEM->sw.value) {
+				AGENT_GUIDER_STARS_REFRESH_ITEM->sw.value = false;
+				AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+				indigo_set_timer(device, 0, find_stars_process, NULL);
+			} else {
+				for (int i = 1; i < AGENT_GUIDER_STARS_PROPERTY->count; i++) {
+					if (AGENT_GUIDER_STARS_PROPERTY->items[i].sw.value) {
+						int j = atoi(AGENT_GUIDER_STARS_PROPERTY->items[i].name);
+						AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
+						AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].y;
+						indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+						AGENT_GUIDER_STARS_PROPERTY->items[i].sw.value = false;
+					}
 				}
+				AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property)) {
@@ -1180,8 +1182,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) {
 			char message[INDIGO_VALUE_SIZE] = {0};
-			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_GUIDER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
+				indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 				if (AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_process, NULL);
