@@ -80,7 +80,7 @@ drift would become an issue. A good exposure time to start is 1 or 2 seconds.
 
 * **RA Proportional weight**, **Dec Proportional weight** - *P* component weights of RA and Dec axis (*I* weight = 1 - *P* weight). They specify how much of **RA Aggressivity** and **Dec Aggressivity** respectively, should correct for the random (*Proportional*) errors (the rest is used for systematic (*Integral*) errors). **RA Proportional weight** and **Dec Proportional weight** are numbers between 0 and 1 (1 - pure *P Controller*, 0.5 - equally *P* and *I Controller* and 0 - pure *I controller*). If *PI controller* is needed a good value to start with would be 0.5 for both RA and Dec.
 
-* **Stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Proportional weight** and **Dec Proportional weight**) the controller is pure *Proportional* as there is no history.
+* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Proportional weight** and **Dec Proportional weight**) the controller is pure *Proportional* as there is no history.
 Default value is 1 which means that pure *P controller* is used, but if a *PI controller* is needed a good initial value would be between 3 and 6.
 
 * **Dithering offset X** and  **Dithering offset Y** - Add constant offset from the reference during guiding in pixels. The values are reset to 0 when a guiding process is started.
