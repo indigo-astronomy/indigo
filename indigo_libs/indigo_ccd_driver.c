@@ -1242,12 +1242,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			if (!strncmp(item->text.value, "FILTER  =", 9)) {
 				sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value=%s/>", item->text.value + 10);
 				header += strlen(header);
-				sprintf(header, "<FITSKeyword name='FILTER' value=%s/>", item->text.value + 10);
+				sprintf(header, "<FITSKeyword name='FILTER' value=%s comment='Name of the used filter'/>", item->text.value + 10);
 				header += strlen(header);
 			} else if (!strncmp(item->text.value, "FOCUS   =", 9)) {
 				sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value + 10);
 				header += strlen(header);
-				sprintf(header, "<FITSKeyword name='FOCUS' value='%s'/>", item->text.value + 10);
+				sprintf(header, "<FITSKeyword name='FOCUS' value='%s' comment='Focuser position'/>", item->text.value + 10);
 				header += strlen(header);
 			}
 		}
