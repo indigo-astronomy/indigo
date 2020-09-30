@@ -24,7 +24,7 @@ indigo_server indigo_agent_guider indigo_ccd_... indigo_guider_...
 
 ### Drift Detection Algorithms
 There are 3 algorithms to detect the tracking drift:
-1. **Donuts** - This mode uses the whole image and all stars on the image to detect the drift.
+1. **Donuts** - This mode uses the entire image and all the stars on the image to detect the drift.
 Because of that is has a "built in" scintillation resilience. It can operate nicely with highly
 de-focused stars hence the name Donuts. It will also work nicely with frames with many
 hot pixels but so far it will struggle with hot columns and lines (working to fix it).
