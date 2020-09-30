@@ -22,15 +22,15 @@ indigo_server indigo_agent_guider indigo_ccd_... indigo_guider_...
 
 ## Notes on Guiding Setup
 
-### Guiding Algorithms:
-There are 3 algorithms to detect drift:
-1. **Donuts** - This mode uses full frame images and all stars on the image to detect the drift.
-Because of that is has built in scintillation resilience. It can operate nicely with highly
+### Drift Detection Algorithms
+There are 3 algorithms to detect the tracking drift:
+1. **Donuts** - This mode uses the whole image and all stars on the image to detect the drift.
+Because of that is has a "built in" scintillation resilience. It can operate nicely with highly
 de-focused stars hence the name Donuts. It will also work nicely with frames with many
 hot pixels but so far it will struggle with hot columns and lines (working to fix it).
 
 2. **Selection** - It uses the centroid of a small area around the star with
-specified radius to detect the drift. This is universal method that should work in most of the cases.
+a specified radius to detect the drift. This is universal method that should work in most of the cases.
 It is resilient to hot lines and hot columns as ling as they are not in the selection.
 
 3. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
@@ -87,7 +87,7 @@ Default value is 1 which means that pure *P controller* is used, but if a *PI co
 
 ### Fine Tuning the Drift Controller
 
-Here are several tips ans guide lines, how to fine tune the *PI controller*:
+Here are several tips and guide lines, how to fine tune the *PI controller*:
 
 * The *P Controller* is stable and can be used alone. With sufficient **Aggressivity** it will always compensate for any random and systematic errors in a reasonable time. The *P Controller* is easy to tune and gives reasonably good results. This is why it is the default in indigo_guider_agent. However the guiding will not be as smooth as the guiding of a well tuned *PI Controller*.
 
