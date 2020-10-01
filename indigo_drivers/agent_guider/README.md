@@ -102,4 +102,4 @@ for it, then the corresponding **Proportional weight** should be decreased (take
 
 * If there are oscillations or over corrections which can not be compensated by increasing the values of **RA Proportional weight** or **Dec Proportional weight** (removing power from *Integral* component), then the **Aggressivity** for the corresponding axis is most likely to high and should be decreased.
 
-Fine tuning a *PI controller* is a tricky busyness and the defaults should produce good results in most cases, so our advise is to change the settings with care.
+Fine tuning a *PI controller* is a tricky business and the defaults should produce good results in most cases, so our advise is to change the settings with care.
