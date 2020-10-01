@@ -652,7 +652,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	/* Set threshold 10% above average value */
 	double threshold = 1.10 * sum / size;
 
-	INDIGO_DEBUG(indigo_log("Donuts threshold = %.3f, max = %.3f", threshold, max));
+	//INDIGO_DEBUG(indigo_log("Donuts threshold = %.3f, max = %.3f", threshold, max));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
