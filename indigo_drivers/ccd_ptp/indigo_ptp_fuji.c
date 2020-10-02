@@ -305,6 +305,7 @@ static uint16_t FUJI_CHECK_PROPERTIES[] = {
 	ptp_property_fuji_Zoom,
 	ptp_property_fuji_NoiseReduction,
 	ptp_property_fuji_LockSetting,
+	ptp_property_fuji_ControlPriority,
 	0,
 };
 
@@ -330,7 +331,11 @@ static void ptp_fuji_get_event(indigo_device *device) {
 	}
 	// check event?
 	if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, ptp_property_fuji_GetEvent, &buffer, &size)) {
-		if (size == 8 && memcmp(buffer, "\x01\x00\x0e\xd2\x1f\x00\x00\x00", 8) == 0) {
+		if (size == 8 && (
+		    // X-T3, X-T4
+		    memcmp(buffer, "\x01\x00\x0e\xd2\x1f\x00\x00\x00", 8) == 0 ||
+		    // GFX 50S
+		    memcmp(buffer, "\x01\x00\x0e\xd2\x05\x00\x00\x00", 8) == 0)) {
 			free(buffer);
 			buffer = NULL;
 			// capture ready
