@@ -6,7 +6,7 @@ http://www.qhyccd.com
 
 All QHY cameras and filter wheels plugged in to the camera.
 
-This driver supports hot-plug (multiple devices).
+This driver doesn't supports hot-plug. All devices should be connected at driver initialisation.
 
 ## Supported platforms
 
@@ -46,4 +46,4 @@ advised to use this driver with -i option like this:
 indigo_server -i indigo_ccd_qhy
 
 This will execute the driver in a separate process and in case of a driver crash the server will not be affected.
-This will come at the cost of somewhat reduced performance.
+This will come at the cost of substantially reduced performance.
