@@ -424,6 +424,10 @@ static void ccd_connect_callback(indigo_device *device) {
 			} else {
 				PRIVATE_DATA->temperature_timer = NULL;
 			}
+			// This option should fix the frame download failure for large chips
+			result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_CALLBACK_THREAD, 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_CALLBACK_THREAD, 1) -> %08x", result);
+
 			result = Altaircam_get_SerialNumber(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_SerialNumber() -> %08x", result);
 			result = Altaircam_get_HwVersion(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);

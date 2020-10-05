@@ -797,7 +797,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (X_CCD_ADVANCED_PROPERTY)
 		indigo_release_property(X_CCD_ADVANCED_PROPERTY);
 	if (X_CCD_FAN_PROPERTY)
-		indigo_release_property(X_CCD_FAN_PROPERTY);	
+		indigo_release_property(X_CCD_FAN_PROPERTY);
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -832,7 +832,11 @@ static void guider_connect_callback(indigo_device *device) {
 		}
 		device->gp_bits = 1;
 		if (PRIVATE_DATA->handle) {
-			HRESULT result = Toupcam_get_SerialNumber(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
+			// This option should fix the frame download failure for large chips
+			HRESULT result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_CALLBACK_THREAD, 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Tuopcam_put_Option(TOUPCAM_OPTION_CALLBACK_THREAD, 1) -> %08x", result);
+
+			result = Toupcam_get_SerialNumber(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_SerialNumber() -> %08x", result);
 			result = Toupcam_get_HwVersion(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_HwVersion() -> %08x", result);
@@ -1006,12 +1010,12 @@ static void hotplug_callback(void* pCallbackCtx) {
 
 indigo_result indigo_ccd_touptek(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	
+
 	SET_DRIVER_INFO(info, "ToupTek Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT: {
 			last_action = action;
@@ -1029,10 +1033,10 @@ indigo_result indigo_ccd_touptek(indigo_driver_action action, indigo_driver_info
 			for (int i = 0; i < TOUPCAM_MAX; i++)
 				VERIFY_NOT_CONNECTED(devices[i]);
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }
