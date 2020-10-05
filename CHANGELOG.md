@@ -1,6 +1,58 @@
 # Changelog
 
-All notable changes to INDIGO framewark will be documented in this file.
+All notable changes to INDIGO framework will be documented in this file.
+
+## [2.0-128] - Mon Oct 05 2020
+### Overall:
+- Agents can select only devises that are not currently being used.
+- Add star auto detection used for focusing and guiding via indigo_find_stars()
+- Better HFD calculation with unlimited radius
+- webGUI: auto focus, guiding mode and dithering added
+- XISF metadata fixed and extended
+
+### Driver Fixes:
+- indigo_agent_guider:  many enhancements the min ones are:
+  - Guiding now uses real Proportional-Integral (PI) controller. Explained in the driver README.md.
+  - Dithering process auto detects when the guiding settled.
+  - Selection guide: more robust, sensitive and stable implementation,
+    a suitable star is auto selected if no selection is made,
+    stars can be manually selected from a list too.
+  - Donuts guide: more robust, sensitive and stable implementation
+  - Centroid guide: more robust, sensitive and stable implementation
+  - Code optimizations
+  - Bug fixes
+
+
+- indigo_agent_imager:
+  - Auto select star for focusing process.
+  - dithering with remote guider agent fixed
+  - Bug fixes
+
+
+- indigo_ccd_simulator:
+  - simulate hotpixels and hot rows/columns
+  - RA/DEC_OFFSET items added to GUIDER_SETTINGS to simulate random tracking errors
+  - Bug fixes
+
+
+- ccd_qhy/ccd_qhy2:
+  - SDK & firmare updated
+  - Remove hot-plug support - SDK does not really support this
+  - increase buffer size for 60+ MPx cameras
+
+
+- ccd_altair:
+  - binning issues fixed
+  - SDK updated to 48.17729.2020.0922
+
+
+- ccd_touptek:
+  - binning issues fixed
+  - SDK updated to 46.17309.20200616
+
+
+- indigo_ccd_asi: SDK updated to 1.15.0915
+- indigo_ccd_ptp: bugfixes
 
 ## [2.0-126] - Wed Sep 01 2020
 ### Overal:
