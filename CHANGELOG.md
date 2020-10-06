@@ -4,14 +4,14 @@ All notable changes to INDIGO framework will be documented in this file.
 
 ## [2.0-128] - Mon Oct 05 2020
 ### Overall:
-- Agents can select only devises that are not currently being used.
+- Agents can select only devices that are not currently being used.
 - Add star auto detection used for focusing and guiding via indigo_find_stars()
 - Better HFD calculation with unlimited radius
 - webGUI: auto focus, guiding mode and dithering added
 - XISF metadata fixed and extended
 
 ### Driver Fixes:
-- indigo_agent_guider:  many enhancements the min ones are:
+- indigo_agent_guider:  many enhancements the main ones are:
   - Guiding now uses real Proportional-Integral (PI) controller. Explained in the driver README.md.
   - Dithering process auto detects when the guiding settled.
   - Selection guide: more robust, sensitive and stable implementation,
