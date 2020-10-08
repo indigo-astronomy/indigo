@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -530,7 +530,7 @@ static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->gps) {
 		nexstar_private_data *private_data = PRIVATE_DATA;
 		indigo_device *device = private_data->gps;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			char response[3];
 			if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0x37, 0, 0, 0, 1, response) == RC_OK) {
 				linked = response[0] > 0;
@@ -568,7 +568,7 @@ static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->gps) {
 		nexstar_private_data *private_data = PRIVATE_DATA;
 		indigo_device *device = private_data->gps;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			if (linked) {
 				if (GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
 					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -764,9 +764,9 @@ static void mount_connect_callback(indigo_device *device) {
 				}
 
 				if (vendor_id == VNDR_CELESTRON) {
-					char response[3];
-					if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0xFE, 0, 0, 0, 2, response) == RC_OK) {
-						sprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value + strlen(MOUNT_INFO_FIRMWARE_ITEM->text.value), " (GPS %d.%d)", response[0], response[1]);
+//					char response[3];
+//					if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0xFE, 0, 0, 0, 2, response) == RC_OK) {
+//						sprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value + strlen(MOUNT_INFO_FIRMWARE_ITEM->text.value), " (GPS %d.%d)", response[0], response[1]);
 						static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(
 							MOUNT_NEXSTAR_GPS_NAME,
 							gps_attach,
@@ -780,7 +780,7 @@ static void mount_connect_callback(indigo_device *device) {
 						memcpy(PRIVATE_DATA->gps, &gps_template, sizeof(indigo_device));
 						PRIVATE_DATA->gps->private_data = PRIVATE_DATA;
 						indigo_attach_device(PRIVATE_DATA->gps);
-					}
+//					}
 				}
 				device->is_connected = true;
 				/* start updates */
@@ -793,12 +793,12 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 	} else {
 		if (device->is_connected) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 			if (PRIVATE_DATA->gps) {
 				indigo_detach_device(PRIVATE_DATA->gps);
 				free(PRIVATE_DATA->gps);
 				PRIVATE_DATA->gps = NULL;
 			}
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 			indigo_delete_property(device, TRACKING_MODE_PROPERTY, NULL);
 			mount_close(device);
 			device->is_connected = false;
@@ -1210,6 +1210,8 @@ static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 5;
+		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron GPS");
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1218,6 +1220,29 @@ static indigo_result gps_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void gps_connect_callback(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		char response[3];
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		if (tc_pass_through_cmd(PRIVATE_DATA->dev_id, 1, 0xB0, 0xFE, 0, 0, 0, 2, response) == RC_OK) {
+			sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d", response[0], response[1]);
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_send_message(device, "No GPS unit detected");
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	} else {
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1225,7 +1250,9 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, gps_connect_callback, NULL);
 	}
 	return indigo_gps_change_property(device, client, property);
 }
