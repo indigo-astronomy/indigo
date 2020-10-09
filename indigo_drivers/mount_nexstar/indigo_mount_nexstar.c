@@ -339,9 +339,16 @@ static void mount_handle_utc(indigo_device *device) {
 	}
 
 	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
+	int dst = 0;
+	tzset(); /* make sure daylight is set */
+	if (daylight != 0) {
+		offset -=1;
+		dst = 1;
+	}
+
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	/* set mount time to local time */
-	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, offset, 0);
+	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, offset, dst);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res == RC_FORBIDDEN) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN (Can not set time when aligned)", PRIVATE_DATA->dev_id);
@@ -370,10 +377,16 @@ static bool mount_set_utc_from_host(indigo_device *device) {
 	localtime_r(&timenow, &tm_timenow);
 	/* tm_gmtoff is is in seconds and is corrected for tm_isdst */
 	int offset = (int)tm_timenow.tm_gmtoff/3600;
+	int dst = 0;
+	/* daylight is set by localtime_r() call */
+	if (daylight != 0) {
+		offset -=1;
+		dst = 1;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	/* set mount time to local time and UTC offset */
-	int res = tc_set_time(PRIVATE_DATA->dev_id, timenow, offset, 0);
+	int res = tc_set_time(PRIVATE_DATA->dev_id, timenow, offset, dst);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tc_set_time: '%02d/%02d/%04d %02d:%02d:%02d %+d'", tm_timenow.tm_mday, tm_timenow.tm_mon+1, tm_timenow.tm_year+1900, tm_timenow.tm_hour, tm_timenow.tm_min, tm_timenow.tm_sec, offset, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res == RC_FORBIDDEN) {
