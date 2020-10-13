@@ -251,6 +251,7 @@ typedef struct {
 	if (device)\
 		if (!IS_DISCONNECTED)\
 			return INDIGO_BUSY;\
+	indigo_usleep(100000);\
 }
 
 /** Try to aquire global lock
