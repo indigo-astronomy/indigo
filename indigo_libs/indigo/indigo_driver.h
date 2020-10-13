@@ -249,7 +249,7 @@ typedef struct {
 {\
 	indigo_device *device = dev;\
 	if (device)\
-		if (IS_CONNECTED)\
+		if (!IS_DISCONNECTED)\
 			return INDIGO_BUSY;\
 }
 
@@ -265,6 +265,11 @@ extern indigo_result indigo_global_unlock(indigo_device *device);
  */
 
 #define IS_CONNECTED	(DEVICE_CONTEXT != NULL && CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE)
+
+/** Device is disconnected.
+ */
+
+#define IS_DISCONNECTED	(DEVICE_CONTEXT != NULL && CONNECTION_DISCONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state != INDIGO_BUSY_STATE)
 
 /** Attach callback function.
  */
