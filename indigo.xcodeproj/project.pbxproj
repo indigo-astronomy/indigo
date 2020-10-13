@@ -27,6 +27,8 @@
 		591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
 		592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */; };
+		5931B7262535F8CC008F74A1 /* dynamic_driver_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 5931B7212535F726008F74A1 /* dynamic_driver_client.c */; };
+		5931B7282535FA8A008F74A1 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5931B7272535FA8A008F74A1 /* libindigo.dylib */; };
 		593287A62409AD1000ED61C0 /* indigo_rotator_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */; };
 		59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 59399D892177D316002886CA /* indigo_focuser_optec.c */; };
 		593A357E219DBAD500EDF481 /* indigo_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 593A357A219DB4BA00EDF481 /* indigo_filter.h */; };
@@ -94,8 +96,6 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
-		595F7478228224800091B366 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
-		595F7486228224900091B366 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 592662B01D9590630021746A /* test.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
 		5980010A22E4E76700021D67 /* libapogee.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598000FC22E4E6BD00021D67 /* libapogee.a */; };
 		598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598005FD22E4FFEA00021D67 /* libqsiapi.a */; };
@@ -116,7 +116,6 @@
 		599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382031D9720C200E87393 /* indigo_driver_xml.c */; };
 		599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382061D97314C00E87393 /* indigo_client_xml.c */; };
 		599C9A531DA022E3008BBCC1 /* indigo_server_tcp.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F8061D9A89ED00582EAF /* indigo_server_tcp.c */; };
-		599C9A611DA02956008BBCC1 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
 		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
 		59A242DA22A2C6AE001C38F8 /* indigo_system_ascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */; };
 		59A242E322A2C6CE001C38F8 /* libascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F921A6FCC7009859FD /* libascol.c */; };
@@ -176,7 +175,6 @@
 		59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59CBD47B1FAF6C80000DAFDB /* indigo_gps_simulator.c */; };
 		59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59CBD4781FAF6C19000DAFDB /* indigo_gps_driver.c */; };
 		59CC779D1F27BD07003AD2DB /* indigo_ica_ptp_sony.m in Sources */ = {isa = PBXBuildFile; fileRef = 59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */; };
-		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
 		59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */; };
 		59D6718E22FDBB7500D08A2A /* indigo_ptp_nikon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D6718C22FDBB7500D08A2A /* indigo_ptp_nikon.c */; };
 		59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D6718D22FDBB7500D08A2A /* indigo_ptp_nikon.h */; };
@@ -344,20 +342,6 @@
 /* End PBXBuildRule section */
 
 /* Begin PBXContainerItemProxy section */
-		595F7474228224800091B366 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 592662A51D9590630021746A /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 599C9A471DA022C0008BBCC1;
-			remoteInfo = indigo;
-		};
-		599C9A5F1DA02953008BBCC1 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 592662A51D9590630021746A /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 599C9A471DA022C0008BBCC1;
-			remoteInfo = indigo;
-		};
 		599C9A621DA02974008BBCC1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 592662A51D9590630021746A /* Project object */;
@@ -375,24 +359,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		595F7479228224800091B366 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
-		59D3820A1D97343000E87393 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
 		9D1880BA1E534B5E002F75D7 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -605,7 +571,6 @@
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_focuser_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fli.h; sourceTree = "<group>"; };
-		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		59292E5620D4224F0042E939 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		592E79122168DD7A00E856F3 /* indigo_focuser_mjkzz.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_mjkzz.h; sourceTree = "<group>"; };
 		592E79142168DD7A00E856F3 /* mjkzz_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = mjkzz_simulator.ino; sourceTree = "<group>"; };
@@ -613,6 +578,13 @@
 		592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz.c; sourceTree = "<group>"; };
 		592E79172168DD7A00E856F3 /* indigo_focuser_mjkzz_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz_main.c; sourceTree = "<group>"; };
 		592E79182168DDC700E856F3 /* MJKZZ.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = MJKZZ.pdf; sourceTree = "<group>"; };
+		5931B7202535F726008F74A1 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5931B7212535F726008F74A1 /* dynamic_driver_client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dynamic_driver_client.c; sourceTree = "<group>"; };
+		5931B7222535F726008F74A1 /* client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
+		5931B7232535F726008F74A1 /* executable_driver_client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = executable_driver_client.c; sourceTree = "<group>"; };
+		5931B7242535F726008F74A1 /* remote_server_client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = remote_server_client.c; sourceTree = "<group>"; };
+		5931B7272535FA8A008F74A1 /* libindigo.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libindigo.dylib; path = build/lib/libindigo.dylib; sourceTree = "<group>"; };
+		5931B72B2535FAE0008F74A1 /* indigo_ccd_simulator.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = indigo_ccd_simulator.dylib; path = build/drivers/indigo_ccd_simulator.dylib; sourceTree = "<group>"; };
 		5932879D2409AC3E00ED61C0 /* lunatico_main_shared.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lunatico_main_shared.c; path = shared/lunatico_main_shared.c; sourceTree = "<group>"; };
 		5932879E2409AC3E00ED61C0 /* lunatico_shared.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lunatico_shared.c; path = shared/lunatico_shared.c; sourceTree = "<group>"; };
 		593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_lunatico.c; sourceTree = "<group>"; };
@@ -2117,8 +2089,6 @@
 		59D382041D9720C200E87393 /* indigo_driver_xml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_driver_xml.h; sourceTree = "<group>"; };
 		59D382061D97314C00E87393 /* indigo_client_xml.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_client_xml.c; sourceTree = "<group>"; };
 		59D382071D97314C00E87393 /* indigo_client_xml.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_client_xml.h; sourceTree = "<group>"; };
-		59D3820C1D97343000E87393 /* client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = client; sourceTree = BUILT_PRODUCTS_DIR; };
-		59D382161D97348500E87393 /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
 		59D46EEB214AF4820018978D /* optec_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = optec_simulator.ino; sourceTree = "<group>"; };
 		59D46EED214AFB370018978D /* xagyl_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = xagyl_simulator.ino; sourceTree = "<group>"; };
 		59D46EEF214B08FF0018978D /* trutek_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = trutek_simulator.ino; sourceTree = "<group>"; };
@@ -3898,7 +3868,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				595F7478228224800091B366 /* libindigo.dylib in Frameworks */,
+				5931B7282535FA8A008F74A1 /* libindigo.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3930,14 +3900,6 @@
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
 				9D495737245601B400674101 /* libusb-1.0.0.dylib in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		59D382091D97343000E87393 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				599C9A611DA02956008BBCC1 /* libindigo.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4525,6 +4487,7 @@
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
 				592662AF1D9590630021746A /* indigo_test */,
+				5931B71F2535F726008F74A1 /* indigo_examples */,
 				599A240C1DBEC5820020BF8F /* tools */,
 				9DCB034822E9D8D600A7A2E5 /* indigo_windows */,
 				592662AE1D9590630021746A /* Products */,
@@ -4539,7 +4502,6 @@
 		592662AE1D9590630021746A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				59D3820C1D97343000E87393 /* client */,
 				9D97F8171D9A8A1900582EAF /* indigo_server */,
 				599C9A481DA022C0008BBCC1 /* libindigo.dylib */,
 				9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */,
@@ -4552,8 +4514,6 @@
 			isa = PBXGroup;
 			children = (
 				590BCDFC21BEF8A1004DE869 /* test_suite.sh */,
-				592662B01D9590630021746A /* test.c */,
-				59D382161D97348500E87393 /* client.c */,
 				59588C9F211B4A0200E9FC27 /* indigo.js */,
 				599A63AD1DEA070E00ABC827 /* websocket_test.html */,
 				59588CA0211B4ACA00E9FC27 /* wheel_test.html */,
@@ -4581,6 +4541,18 @@
 				592E79142168DD7A00E856F3 /* mjkzz_simulator.ino */,
 			);
 			path = mjkzz_simulator;
+			sourceTree = "<group>";
+		};
+		5931B71F2535F726008F74A1 /* indigo_examples */ = {
+			isa = PBXGroup;
+			children = (
+				5931B7202535F726008F74A1 /* Makefile */,
+				5931B7212535F726008F74A1 /* dynamic_driver_client.c */,
+				5931B7222535F726008F74A1 /* client.c */,
+				5931B7232535F726008F74A1 /* executable_driver_client.c */,
+				5931B7242535F726008F74A1 /* remote_server_client.c */,
+			);
+			path = indigo_examples;
 			sourceTree = "<group>";
 		};
 		593287A12409ACC700ED61C0 /* rotator_lunatico */ = {
@@ -11219,6 +11191,8 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				5931B72B2535FAE0008F74A1 /* indigo_ccd_simulator.dylib */,
+				5931B7272535FA8A008F74A1 /* libindigo.dylib */,
 				5942229E22E34AA9009DAD5C /* libdc1394.dylib */,
 				5942229C22E34AA4009DAD5C /* libusb-1.0.0.dylib */,
 				9DDEFC1D21EE39B300657C8F /* libnovas.a */,
@@ -11657,12 +11631,10 @@
 			buildPhases = (
 				595F7475228224800091B366 /* Sources */,
 				595F7477228224800091B366 /* Frameworks */,
-				595F7479228224800091B366 /* CopyFiles */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				595F7473228224800091B366 /* PBXTargetDependency */,
 			);
 			name = test;
 			productName = client;
@@ -11686,24 +11658,6 @@
 			productName = indigo;
 			productReference = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
-		};
-		59D3820B1D97343000E87393 /* client */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 59D382101D97343000E87393 /* Build configuration list for PBXNativeTarget "client" */;
-			buildPhases = (
-				59D382081D97343000E87393 /* Sources */,
-				59D382091D97343000E87393 /* Frameworks */,
-				59D3820A1D97343000E87393 /* CopyFiles */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				599C9A601DA02953008BBCC1 /* PBXTargetDependency */,
-			);
-			name = client;
-			productName = client;
-			productReference = 59D3820C1D97343000E87393 /* client */;
-			productType = "com.apple.product-type.tool";
 		};
 		9D1880A71E534B5E002F75D7 /* indigo_prop_tool */ = {
 			isa = PBXNativeTarget;
@@ -11756,10 +11710,6 @@
 						DevelopmentTeam = AG8BXW65A2;
 						ProvisioningStyle = Automatic;
 					};
-					59D3820B1D97343000E87393 = {
-						CreatedOnToolsVersion = 8.0;
-						ProvisioningStyle = Automatic;
-					};
 				};
 			};
 			buildConfigurationList = 592662A81D9590630021746A /* Build configuration list for PBXProject "indigo" */;
@@ -11777,7 +11727,6 @@
 			targets = (
 				599C9A471DA022C0008BBCC1 /* indigo */,
 				9D97F8091D9A8A1900582EAF /* indigo_server */,
-				59D3820B1D97343000E87393 /* client */,
 				9D1880A71E534B5E002F75D7 /* indigo_prop_tool */,
 				595F7472228224800091B366 /* test */,
 			);
@@ -11810,7 +11759,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				595F7486228224900091B366 /* test.c in Sources */,
+				5931B7262535F8CC008F74A1 /* dynamic_driver_client.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11985,14 +11934,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		59D382081D97343000E87393 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				59D382171D97348500E87393 /* client.c in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		9D1880AE1E534B5E002F75D7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -12016,16 +11957,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		595F7473228224800091B366 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 599C9A471DA022C0008BBCC1 /* indigo */;
-			targetProxy = 595F7474228224800091B366 /* PBXContainerItemProxy */;
-		};
-		599C9A601DA02953008BBCC1 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 599C9A471DA022C0008BBCC1 /* indigo */;
-			targetProxy = 599C9A5F1DA02953008BBCC1 /* PBXContainerItemProxy */;
-		};
 		599C9A631DA02974008BBCC1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 599C9A471DA022C0008BBCC1 /* indigo */;
@@ -12174,6 +12105,8 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
+					"$(PROJECT_DIR)/build/lib",
+					"$(PROJECT_DIR)/build/drivers",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -12187,6 +12120,8 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
+					"$(PROJECT_DIR)/build/lib",
+					"$(PROJECT_DIR)/build/drivers",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -12284,32 +12219,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
 				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
-			};
-			name = Release;
-		};
-		59D382111D97343000E87393 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_IDENTITY = "-";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/lib",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Debug;
-		};
-		59D382121D97343000E87393 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_IDENTITY = "-";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/lib",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
-				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -12431,15 +12340,6 @@
 			buildConfigurations = (
 				599C9A4A1DA022C0008BBCC1 /* Debug */,
 				599C9A4B1DA022C0008BBCC1 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		59D382101D97343000E87393 /* Build configuration list for PBXNativeTarget "client" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				59D382111D97343000E87393 /* Debug */,
-				59D382121D97343000E87393 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
