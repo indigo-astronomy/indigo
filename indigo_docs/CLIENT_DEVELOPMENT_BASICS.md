@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 26.07.2020 (draft)
+Revision: 12.10.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -185,6 +185,8 @@ if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) {
 }
 ```
 
+There is a special **delete property** event, which means that the device and all its properties are removed. In this case *property->name* is an empty string and *device->name* is the name of the removed device. Upon receiving such event the INDIGO client framework will automatically release all resources used by the device. Therefore if the client keeps property, device or any other pointers to resources of this device, they should not be used any more. It is a good idea such pointers to be be invalidated in the **delete property** handler callback by setting them to *NULL*.
+
 ### Properties
 
 Standard property names are defined in [indigo_names.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_names.h)
@@ -337,7 +339,7 @@ INDIGO framework can operate in an environment without a server. In this case th
 
 2. [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c) - Example of serverless operation using dynamic INDIGO driver.
 
-The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, only the the remote server example shown below can work on all supported operating systems. The two examples above can work only on Linux and MacOSX. The reason for this is that INDIGO drivers can run only on Linux and MacOSX but not on Windows. 
+The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, only the the remote server example shown below can work on all supported operating systems. The two examples above can work only on Linux and MacOSX. The reason for this is that INDIGO drivers can run only on Linux and MacOSX but not on Windows.
 
 ## Notes About the Automatic Service Discovery
 
