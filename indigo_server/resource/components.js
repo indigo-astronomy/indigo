@@ -71,7 +71,8 @@ Vue.component('indigo-edit-number', {
 					value = 0;
 				}
 			} else {
-				if (typeof value == "string") value = parseInt(value);
+				if (typeof value == "string")
+							value = parseFloat(value);
 				if (this.enabler != null) {
 					for (var i in this.enabler.items) {
 						var item = this.enabler.items[i];
@@ -358,7 +359,7 @@ Vue.component('indigo-stepper', {
 			values[this.direction_left] = true;
 			changeProperty(this.direction.device, this.direction.name, values);
 			values = {};
-			if (typeof value == "string") value = parseInt(value);
+			if (typeof value == "string") value = parseFloat(value);
 			values[this.name] = value;
 			changeProperty(this.property.device, this.property.name, values);
 		},
@@ -367,7 +368,7 @@ Vue.component('indigo-stepper', {
 			values[this.direction_right] = true;
 			changeProperty(this.direction.device, this.direction.name, values);
 			values = {};
-			if (typeof value == "string") value = parseInt(value);
+			if (typeof value == "string") value = parseFloat(value);
 			values[this.name] = value;
 			changeProperty(this.property.device, this.property.name, values);
 		},
