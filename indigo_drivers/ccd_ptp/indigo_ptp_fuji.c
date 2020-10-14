@@ -315,15 +315,16 @@ static void ptp_fuji_get_event(indigo_device *device) {
 	uint16_t *properties = FUJI_CHECK_PROPERTIES;
 	for (int i = 0; FUJI_CHECK_PROPERTIES[i]; i++) {
 		uint16_t code = FUJI_CHECK_PROPERTIES[i];
+		ptp_property *prop = ptp_property_supported(device, FUJI_CHECK_PROPERTIES[i]);
+		if ( ! prop ) {
+			continue;
+		}
 		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, code, &buffer, &size)) {
 			if (code == 0xd212) {
 				continue;
 			}
-			ptp_property *prop = ptp_property_supported(device, FUJI_CHECK_PROPERTIES[i]);
-			if ( prop ) {
-				ptp_decode_property_value(buffer, device, prop);
-				ptp_update_property(device, prop);
-			}
+			ptp_decode_property_value(buffer, device, prop);
+			ptp_update_property(device, prop);
 		}
 		if (buffer)
 			free(buffer);
