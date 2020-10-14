@@ -23,7 +23,7 @@ There are five basic agents - Imager Agent, Mount Agent, Guider Agent, Auxiliary
 
 - **Mount Agent** controls mounts, domes, GPS units and joysticks. It provides a common source of information about observatory position and source of the local time, creates links between the joysticks and the mounts and also acts as a gateway between INDIGO protocol and LX200 protocol for 3rd party applications like SkySafari. The agent name is "*indigo_agent_mount*".
 
-- **Guider Agent** controls guiding cameras and guiding devices. It can calibrate and guide with a different drift detection algorithms, it generates stats and data for different kinds of graphs. In future it will also control active optic devices. The agent name is "*indigo_agent_guider*".
+- **Guider Agent** controls guiding cameras and guiding devices. It can calibrate and guide with a different drift detection algorithms, it generates stats and data for different kinds of graphs. In future it will also control active optic devices. The agent name is "*indigo_agent_guider*". The agent's [README.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_guider/README.md) contains useful information how to setup your guiding.
 
 - **Auxiliary Agent** controls auxiliary devices like power boxes, flat boxes, weather stations, sky quality meters, etc. The agent name is "*indigo_agent_auxiliary*".
 
