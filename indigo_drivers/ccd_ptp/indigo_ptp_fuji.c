@@ -466,6 +466,7 @@ bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
 		if (retry_count++ > 100) {
 			return false;
 		}
+		indigo_usleep(100000);  // 100ms
 	}
 	if (property->code == ptp_property_fuji_CompressionSetting) {
 		FUJI_PRIVATE_DATA->is_dual_compression = property->value.sw.value == 4 || property->value.sw.value == 5 || property->value.sw.value == 7;
