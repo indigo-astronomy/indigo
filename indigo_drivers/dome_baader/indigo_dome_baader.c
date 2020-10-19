@@ -23,7 +23,7 @@
  \file indigo_dome_baader.c
  */
 
-#define DRIVER_VERSION 0x00001
+#define DRIVER_VERSION 0x00002
 #define DRIVER_NAME	"indigo_dome_baader"
 
 #include <stdlib.h>
@@ -572,82 +572,82 @@ static indigo_result dome_attach(indigo_device *device) {
 
 static void dome_connect_callback(indigo_device *device) {
 	baader_rc_t rc;
-	if (!device->is_connected) {
-		char serial_number[INDIGO_VALUE_SIZE] = "N/A";
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		} else {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			char *device_name = DEVICE_PORT_ITEM->text.value;
-			if (!indigo_is_device_url(device_name, "baader")) {
-				PRIVATE_DATA->handle = indigo_open_serial(device_name);
-			} else {
-				indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-				PRIVATE_DATA->handle = indigo_open_network_device(device_name, 8080, &proto);
-			}
-			if (PRIVATE_DATA->handle < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
-				device->is_connected = false;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			char serial_number[INDIGO_VALUE_SIZE] = "N/A";
+			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock");
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				indigo_global_unlock(device);
-				return;
-			} else if ((rc = baader_get_serial_number(device, serial_number)) != BD_SUCCESS) {
-				int res = close(PRIVATE_DATA->handle);
-				if (res < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+			} else {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				char *device_name = DEVICE_PORT_ITEM->text.value;
+				if (!indigo_is_device_url(device_name, "baader")) {
+					PRIVATE_DATA->handle = indigo_open_serial(device_name);
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+					PRIVATE_DATA->handle = indigo_open_network_device(device_name, 8080, &proto);
 				}
-				indigo_global_unlock(device);
-				device->is_connected = false;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connect failed: Baader dome did not respond");
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_update_property(device, CONNECTION_PROPERTY, "Baader dome did not respond");
-				return;
-			} else { // Successfully connected
-				strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with serial No.%s connected", INFO_DEVICE_MODEL_ITEM->text.value, serial_number);
+				if (PRIVATE_DATA->handle < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
+					device->is_connected = false;
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+					indigo_global_unlock(device);
+					return;
+				} else if ((rc = baader_get_serial_number(device, serial_number)) != BD_SUCCESS) {
+					int res = close(PRIVATE_DATA->handle);
+					if (res < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+					} else {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
+					}
+					indigo_global_unlock(device);
+					device->is_connected = false;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Connect failed: Baader dome did not respond");
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					indigo_update_property(device, CONNECTION_PROPERTY, "Baader dome did not respond");
+					return;
+				} else { // Successfully connected
+					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with serial No.%s connected", INFO_DEVICE_MODEL_ITEM->text.value, serial_number);
 
-				X_EMERGENCY_CLOSE_PROPERTY->state =
-				X_EMERGENCY_RAIN_ITEM->light.value =
-				X_EMERGENCY_WIND_ITEM->light.value =
-				X_EMERGENCY_OPERATION_TIMEOUT_ITEM->light.value =
-				X_EMERGENCY_POWERCUT_ITEM->light.value = INDIGO_IDLE_STATE;
-				indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
+					X_EMERGENCY_CLOSE_PROPERTY->state =
+					X_EMERGENCY_RAIN_ITEM->light.value =
+					X_EMERGENCY_WIND_ITEM->light.value =
+					X_EMERGENCY_OPERATION_TIMEOUT_ITEM->light.value =
+					X_EMERGENCY_POWERCUT_ITEM->light.value = INDIGO_IDLE_STATE;
+					indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 
-				if ((rc = baader_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error %d", rc);
+					if ((rc = baader_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_azimuth(): returned error %d", rc);
+					}
+					DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+					PRIVATE_DATA->aborted = false;
+					PRIVATE_DATA->park_azimuth = 0;
+					if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
+						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
+					} else {
+						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+					}
+					DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->park_requested = false;
+					indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					device->is_connected = true;
+
+					PRIVATE_DATA->flap_state = FLAP_CLOSED;
+
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
+					indigo_set_timer(device, 0.5, dome_timer_callback, &PRIVATE_DATA->dome_timer);
 				}
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-				PRIVATE_DATA->aborted = false;
-				PRIVATE_DATA->park_azimuth = 0;
-				if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
-					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-				} else {
-					indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
-				}
-				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				PRIVATE_DATA->park_requested = false;
-				indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
-
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				device->is_connected = true;
-
-				PRIVATE_DATA->flap_state = FLAP_CLOSED;
-
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %d", PRIVATE_DATA->handle);
-				indigo_set_timer(device, 0.5, dome_timer_callback, &PRIVATE_DATA->dome_timer);
 			}
 		}
 	} else {
@@ -679,6 +679,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	baader_rc_t rc;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

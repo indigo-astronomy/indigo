@@ -10,7 +10,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\indigo_test\test.c">
+    <ClCompile Include="..\..\indigo_examples\remote_server_client.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\indigo_libs\indigo_base64.c">

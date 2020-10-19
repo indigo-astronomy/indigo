@@ -189,10 +189,11 @@ static void start_worker_thread(int *client_socket) {
 						}
 					} else {
 						struct resource *resource = resources;
-						do {
+						while (resource) {
 							if (!strcmp(resource->path, path))
 								break;
-						} while ((resource = resource->next) != NULL);
+							resource = resource->next;
+						}
 						if (resource == NULL) {
 							indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
 							indigo_printf(socket, "Content-Type: text/plain\r\n");

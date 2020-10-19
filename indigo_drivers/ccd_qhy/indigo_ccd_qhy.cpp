@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000D
 
 #include <stdlib.h>
 #include <string.h>
@@ -46,12 +46,20 @@
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
 
+#ifdef QHY2
+#include "../ccd_qhy2/indigo_ccd_qhy.h"
+#else
 #include "indigo_ccd_qhy.h"
+#endif
+
 #include "qhyccd.h"
 
 #ifdef USE_LOG4Z
 #include "log4z.h"
 #endif
+
+
+//#define HOTPLUG
 
 #define MAX_SID_LEN                255
 #define QHY_MAX_FORMATS            4
@@ -87,6 +95,10 @@
 #define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)
 #define RAW8_NAME                  "RAW 8"
 #define RAW16_NAME                 "RAW 16"
+
+#ifdef QHY2
+#define READ_MODE_PROPERTY      (PRIVATE_DATA->read_mode_property)
+#endif
 
 #define QHY_ADVANCED_PROPERTY      (PRIVATE_DATA->qhy_advanced_property)
 
@@ -138,14 +150,16 @@ typedef struct {
 	char fw_target_slot;
 
 	indigo_property *pixel_format_property;
+#ifdef QHY2
+	indigo_property *read_mode_property;
+#endif
 	indigo_property *qhy_advanced_property;
 } qhy_private_data;
-
 
 static char *get_bayer_string(indigo_device *device) {
 	int pattern = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_COLOR);
 	if (pattern != QHYCCD_ERROR) {
-		if(pattern == BAYER_GB)
+		if (pattern == BAYER_GB)
 			return (char*)"GBRG";
 		else if (pattern == BAYER_GR)
 			return (char*)"GRBG";
@@ -157,24 +171,6 @@ static char *get_bayer_string(indigo_device *device) {
 	return NULL;
 }
 
-
-//static int get_pixel_depth(indigo_device *device) {
-//	int item = 0;
-//	while (item < QHY_MAX_FORMATS) {
-//		if (PIXEL_FORMAT_PROPERTY->items[item].sw.value) {
-//			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME)) {
-//				return 8;
-//			}
-//			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME)) {
-//				return 16;
-//			}
-//		}
-//		item++;
-//	}
-//	return CCD_INFO_BITS_PER_PIXEL_ITEM->number.value;
-//}
-
-
 static bool bpp_supported(indigo_device *device, int bpp) {
 	if ((CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min <= bpp) &&
 	    (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max >= bpp)) {
@@ -183,23 +179,24 @@ static bool bpp_supported(indigo_device *device, int bpp) {
 	return false;
 }
 
-
 static indigo_result qhy_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
 			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+#ifdef QHY2
+		if (indigo_property_match(READ_MODE_PROPERTY, property))
+			indigo_define_property(device, READ_MODE_PROPERTY, NULL);
+#endif
 		if (indigo_property_match(QHY_ADVANCED_PROPERTY, property))
 			indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
 
-
 static bool qhy_open(indigo_device *device) {
 	int res;
-
-	if (device->is_connected) return false;
-
+	if (device->is_connected)
+		return false;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -286,14 +283,13 @@ static bool qhy_open(indigo_device *device) {
 		);
 
 		if (PRIVATE_DATA->buffer == NULL) {
-			PRIVATE_DATA->buffer_size = /* PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 */ 64 * 1024 * 1024 + FITS_HEADER_SIZE;
+			PRIVATE_DATA->buffer_size = /* PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 */ 128 * 1024 * 1024 + FITS_HEADER_SIZE;
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
-
 
 static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	int res;
@@ -352,7 +348,6 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 	return true;
 }
 
-
 static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin, bool live) {
 	int res;
 	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
@@ -381,7 +376,6 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 	}
 	return true;
 }
-
 
 static bool qhy_read_pixels(indigo_device *device, bool live) {
 	int res;
@@ -424,7 +418,6 @@ static bool qhy_read_pixels(indigo_device *device, bool live) {
 	return true;
 }
 
-
 static bool qhy_abort_exposure(indigo_device *device, bool live) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int err = live ? StopQHYCCDLive(PRIVATE_DATA->handle) : CancelQHYCCDExposingAndReadout(PRIVATE_DATA->handle);
@@ -433,7 +426,6 @@ static bool qhy_abort_exposure(indigo_device *device, bool live) {
 	if (err !=  QHYCCD_SUCCESS) return false;
 	else return true;
 }
-
 
 static bool qhy_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
 	int res;
@@ -469,11 +461,9 @@ static bool qhy_set_cooler(indigo_device *device, bool status, double target, do
 	return true;
 }
 
-
 static void qhy_close(indigo_device *device) {
-
-	if (!device->is_connected) return;
-
+	if (!device->is_connected)
+		return;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Close %s: handle = %p\n", PRIVATE_DATA->dev_sid, PRIVATE_DATA->handle);
@@ -495,15 +485,15 @@ static void qhy_close(indigo_device *device) {
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (qhy_read_pixels(device, false)) {
 			char *color_string = get_bayer_string(device);
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
-			if(color_string) {
+			if (color_string) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
@@ -530,7 +520,6 @@ static void exposure_timer_callback(indigo_device *device) {
 	}
 	PRIVATE_DATA->can_check_temperature = true;
 }
-
 
 static void streaming_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
@@ -576,7 +565,8 @@ static void clear_reg_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (qhy_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -602,7 +592,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 	}
 	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->temperature_timer);
 }
-
 
 static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
@@ -634,12 +623,11 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
-
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
 	int res;
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+			return;
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
 		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
@@ -664,14 +652,13 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
-
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		CCD_STREAMING_PROPERTY->hidden = true;
+		CCD_STREAMING_PROPERTY->hidden = false;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 		// --------------------------------------------------------------------------------- PIXEL_FORMAT
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -681,25 +668,29 @@ static indigo_result ccd_attach(indigo_device *device) {
 		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "QHY_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
 		if (QHY_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
+#ifdef QHY2
+// -------------------------------------------------------------------------------- ASI_ADVANCED
+		READ_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "READ_MODE", CCD_ADVANCED_GROUP, "Read mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 16);
+		if (READ_MODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+#endif
 		// --------------------------------------------------------------------------------
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
 
-
 static indigo_result handle_advanced_property(indigo_device *device, indigo_property *property) {
 	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-	for(int item = 0; item < property->count; item++) {
-		if(!strncmp(USBSPEED_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
+	for (int item = 0; item < property->count; item++) {
+		if (!strncmp(USBSPEED_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
 			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_SPEED, property->items[item].number.value);
 			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBSPEED_NAME, res);
-		} else if(!strncmp(USBTRAFFIC_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
+		} else if (!strncmp(USBTRAFFIC_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
 			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC, property->items[item].number.value);
 			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBTRAFFIC_NAME, res);
-		} else if(!strncmp(SHUTTERHEATING_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
+		} else if (!strncmp(SHUTTERHEATING_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
 			res = SetQHYCCDParam(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE, property->items[item].number.value);
 			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, SHUTTERHEATING_NAME, res);
 		}
@@ -730,7 +721,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->has_shutter = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_MECHANICALSHUTTER) == QHYCCD_SUCCESS);
 
 				PRIVATE_DATA->has_cooler = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_COOLER) == QHYCCD_SUCCESS);
-				if(PRIVATE_DATA->has_cooler) {
+				if (PRIVATE_DATA->has_cooler) {
 					CCD_COOLER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->hidden = false;
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
@@ -847,6 +838,25 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_EXPOSURE_ITEM->number.max = (CCD_EXPOSURE_ITEM->number.max < 900) ? 900 : CCD_EXPOSURE_ITEM->number.max;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure params min = %fs max = %fs step = %fs", CCD_EXPOSURE_ITEM->number.min, CCD_EXPOSURE_ITEM->number.max, CCD_EXPOSURE_ITEM->number.step);
 
+#ifdef QHY2
+				// ---------------------------------------------------------------------------------- READ_MODE
+				uint32_t mode_count = 0;
+				if (GetQHYCCDNumberOfReadModes(PRIVATE_DATA->handle, &mode_count) == QHYCCD_SUCCESS && mode_count > 0) {
+					uint32_t current_mode = 0;
+					GetQHYCCDReadMode(PRIVATE_DATA->handle, &current_mode);
+					READ_MODE_PROPERTY->count = mode_count;
+					READ_MODE_PROPERTY->hidden = false;
+					for (int i = 0; i < mode_count; i++) {
+						char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
+						sprintf(name, "%d", i);
+						GetQHYCCDReadModeName(PRIVATE_DATA->handle, i, label);
+						indigo_init_switch_item(READ_MODE_PROPERTY->items + i, name, label, i == current_mode);
+					}
+				} else {
+					READ_MODE_PROPERTY->hidden = true;
+				}
+				indigo_define_property(device, READ_MODE_PROPERTY, NULL);
+#endif
 				// --------------------------------------------------------------------------------- ADVANCED
 				count = 0;
 				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC) == QHYCCD_SUCCESS) {
@@ -904,7 +914,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			}
 		}
 	} else {
-		if(device->is_connected) {
+		if (device->is_connected) {
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 				qhy_abort_exposure(device, false);
@@ -912,6 +922,9 @@ static void ccd_connect_callback(indigo_device *device) {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+#ifdef QHY2
+			indigo_delete_property(device, READ_MODE_PROPERTY, NULL);
+#endif
 			indigo_delete_property(device, QHY_ADVANCED_PROPERTY, NULL);
 			qhy_close(device);
 			device->is_connected = false;
@@ -920,6 +933,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -927,6 +941,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1106,6 +1122,34 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+#ifdef QHY2
+	// -------------------------------------------------------------------------------- READ_MODE
+	} else if (indigo_property_match(READ_MODE_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
+		indigo_property_copy_values(READ_MODE_PROPERTY, property, false);
+		READ_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		for (int i = 0; i < READ_MODE_PROPERTY->count; i++) {
+			indigo_item *item = READ_MODE_PROPERTY->items + i;
+			if (item->sw.value) {
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				if (SetQHYCCDReadMode(PRIVATE_DATA->handle, i) == QHYCCD_SUCCESS) {
+					double chipw, chiph;
+					GetQHYCCDChipInfo(PRIVATE_DATA->handle, &chipw, &chiph, &PRIVATE_DATA->total_frame_width, &PRIVATE_DATA->total_frame_height, &PRIVATE_DATA->pixel_width, &PRIVATE_DATA->pixel_height, &PRIVATE_DATA->bpp);
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
+					indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
+					READ_MODE_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				break;
+			}
+		}
+		indigo_update_property(device, READ_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
+#endif
 		// -------------------------------------------------------------------------------- ADVANCED
 	} else if (indigo_property_match(QHY_ADVANCED_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
@@ -1194,6 +1238,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
+#ifdef QHY2
+			indigo_save_property(device, NULL, READ_MODE_PROPERTY);
+#endif
 			indigo_save_property(device, NULL, QHY_ADVANCED_PROPERTY);
 		}
 	}
@@ -1210,6 +1257,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
+#ifdef QHY2
+	indigo_release_property(READ_MODE_PROPERTY);
+#endif
 	indigo_release_property(QHY_ADVANCED_PROPERTY);
 
 	return indigo_ccd_detach(device);
@@ -1259,6 +1309,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1306,9 +1358,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
-
 // -------------------------------------------------------------------------------- FILTER WHEEL
-
 
 static void wheel_timer_callback(indigo_device *device) {
 	int res;
@@ -1339,7 +1389,6 @@ static void wheel_timer_callback(indigo_device *device) {
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s filter = %d.", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
 }
-
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -1383,7 +1432,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			}
 		}
 	} else { /* disconnect */
-		if(device->is_connected) {
+		if (device->is_connected) {
 			qhy_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			device->is_connected = false;
@@ -1400,7 +1449,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	int res;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1439,7 +1489,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	return indigo_wheel_change_property(device, client, property);
 }
 
-
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
@@ -1459,19 +1508,48 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 
+static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+	"",
+	ccd_attach,
+	qhy_enumerate_properties,
+	ccd_change_property,
+	NULL,
+	ccd_detach
+);
+static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
+	"",
+	guider_attach,
+	indigo_guider_enumerate_properties,
+	guider_change_property,
+	NULL,
+	guider_detach
+);
+
+static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+	"",
+	wheel_attach,
+	indigo_wheel_enumerate_properties,
+	wheel_change_property,
+	NULL,
+	wheel_detach
+);
+
+#ifdef HOTPLUG
+
 static bool find_plugged_device_sid(char *new_sid) {
 	int i;
-	char sid[MAX_SID_LEN] = {0};
+	char sid[MAX_SID_LEN] = { 0 };
 	bool found = false;
 
 	int count = ScanQHYCCD();
-	for(i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		GetQHYCCDId(i, sid);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME,"+ %d of %d: %s", i , count, sid);
 		found = false;
-		for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		for (int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
-			if (device == NULL) continue;
+			if (device == NULL)
+				continue;
 			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN))) {
 				found = true;
 				break;
@@ -1487,24 +1565,13 @@ static bool find_plugged_device_sid(char *new_sid) {
 	return false;
 }
 
-
 static int find_available_device_slot() {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		if (devices[slot] == NULL) return slot;
+	for (int slot = 0; slot < MAX_DEVICES; slot++) {
+		if (devices[slot] == NULL)
+			return slot;
 	}
 	return NOT_FOUND;
 }
-
-
-//static int find_device_slot(const char *sid) {
-//	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-//		indigo_device *device = devices[slot];
-//		if (device == NULL) continue;
-//		if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) return slot;
-//	}
-//	return NOT_FOUND;
-//}
-
 
 static int find_unplugged_device_slot() {
 	int slot;
@@ -1513,11 +1580,11 @@ static int find_unplugged_device_slot() {
 	bool found = true;
 
 	int count = ScanQHYCCD();
-	for(slot = 0; slot < MAX_DEVICES; slot++) {
+	for (slot = 0; slot < MAX_DEVICES; slot++) {
 		device = devices[slot];
 		if (device == NULL) continue;
 		found = false;
-		for(int i = 0; i < count; i++) {
+		for (int i = 0; i < count; i++) {
 			GetQHYCCDId(i, sid);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"- %d of %d: %s", i , count, sid);
 			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN))) {
@@ -1530,33 +1597,7 @@ static int find_unplugged_device_slot() {
 	return NOT_FOUND;
 }
 
-
 static void process_plug_event() {
-	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		ccd_attach,
-		qhy_enumerate_properties,
-		ccd_change_property,
-		NULL,
-		ccd_detach
-	);
-	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		guider_attach,
-		indigo_guider_enumerate_properties,
-		guider_change_property,
-		NULL,
-		guider_detach
-	);
-
-	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		wheel_attach,
-		indigo_wheel_enumerate_properties,
-		wheel_change_property,
-		NULL,
-		wheel_detach
-	);
 
 	pthread_mutex_lock(&device_mutex);
 	int slot = find_available_device_slot();
@@ -1581,16 +1622,13 @@ static void process_plug_event() {
 	/* Check if there is a guider port and get usbpath */
 	qhyccd_handle *handle;
 	handle = OpenQHYCCD(sid);
-	if(handle == NULL) {
+	if (handle == NULL) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
 	int check_st4 = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	int check_wheel = QHYCCD_ERROR;
-	check_wheel = IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT);
-	//if (IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT) == QHYCCD_SUCCESS)
-	//	check_wheel = IsQHYCCDCFWPlugged(handle);
+	int check_wheel = IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT);
 	indigo_get_usb_path(libusb_get_device((libusb_device_handle *)handle), dev_usbpath);
 	CloseQHYCCD(handle);
 
@@ -1609,7 +1647,7 @@ static void process_plug_event() {
 	indigo_async((void *(*)(void *))indigo_attach_device, device);
 	devices[slot]=device;
 
-	if(check_st4 == QHYCCD_SUCCESS) {
+	if (check_st4 == QHYCCD_SUCCESS) {
 		slot = find_available_device_slot();
 		if (slot < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
@@ -1628,7 +1666,7 @@ static void process_plug_event() {
 		devices[slot]=device;
 	}
 
-	if(check_wheel == QHYCCD_SUCCESS) {
+	if (check_wheel == QHYCCD_SUCCESS) {
 		slot = find_available_device_slot();
 		if (slot < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
@@ -1648,7 +1686,6 @@ static void process_plug_event() {
 
 	pthread_mutex_unlock(&device_mutex);
 }
-
 
 static void process_unplug_event() {
 	int slot;
@@ -1682,7 +1719,6 @@ static void process_unplug_event() {
 	pthread_mutex_unlock(&device_mutex);
 }
 
-
 //#ifdef __APPLE__
 static void *plug_thread_func(void *sid) {
 	#ifdef __APPLE__
@@ -1710,7 +1746,6 @@ static void *unplug_thread_func(void *sid) {
 	pthread_exit(NULL);
 	return NULL;
 }
-
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
@@ -1742,43 +1777,96 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	return 0;
 };
 
+static libusb_hotplug_callback_handle callback_handle;
 
-static void remove_all_devices() {
-	int i, k;
-	qhy_private_data *pds[MAX_DEVICES] = {NULL};
-	qhy_private_data *freed_pds[MAX_DEVICES] = {NULL};
+#else
 
-	for(i = 0; i < MAX_DEVICES; i++) {
-		indigo_device *device = devices[i];
-		if (device == NULL) continue;
-		if (PRIVATE_DATA) pds[i] = PRIVATE_DATA; /* preserve pointers to private data */
-		qhy_close(device);
-		indigo_detach_device(device);
-		free(device);
-		device = NULL;
-		devices[i] = NULL;
-	}
-	/* free private data */
-	bool found;
-	for(i = 0; i < MAX_DEVICES; i++) {
-		found = false;
-		for(k = 0; k <= i; k++) {
-			if (freed_pds[k] == pds[i]) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME,"freed_pds[%d] = %10p  pds[%d] = %10p => prevent free", k,freed_pds[k],  i, pds[i]);
-				found = true; /* prevent double free */
-				break;
-			}
+static void add_all_devices() {
+	int count = ScanQHYCCD();
+	int slot = 0;
+	for (int i = 0; i < count; i++) {
+		if (slot == MAX_DEVICES)
+			break;
+		char sid[MAX_SID_LEN] = { 0 };
+		GetQHYCCDId(i, sid);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME,"%d of %d: %s", i + 1 , count, sid);
+		char dev_usbpath[MAX_SID_LEN];
+		char dev_name[MAX_SID_LEN];
+		GetQHYCCDModel(sid, dev_name);
+		qhyccd_handle *handle;
+		handle = OpenQHYCCD(sid);
+		if (handle == NULL) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
+			continue;
 		}
-		if (!found && pds[i]) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"freed_pds[%d] = %10p  pds[%d] = %10p => FREE", k,freed_pds[k],  i, pds[i]);
-			freed_pds[i] = pds[i];
-			free(pds[i]);
+		int check_st4 = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
+		int check_wheel = IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT);
+		indigo_get_usb_path(libusb_get_device((libusb_device_handle *)handle), dev_usbpath);
+		CloseQHYCCD(handle);
+		indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
+		indigo_device *master_device = device;
+		assert(device != NULL);
+		memcpy(device, &ccd_template, sizeof(indigo_device));
+		device->master_device = master_device;
+		sprintf(device->name, "%s #%s", dev_name, dev_usbpath);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
+		assert(private_data);
+		memset(private_data, 0, sizeof(qhy_private_data));
+		sprintf(private_data->dev_sid, "%s", sid);
+		device->private_data = private_data;
+		indigo_async((void *(*)(void *))indigo_attach_device, device);
+		devices[slot++] = device;
+		if (slot == MAX_DEVICES)
+			break;
+		if (check_st4 == QHYCCD_SUCCESS) {
+			device = (indigo_device*)malloc(sizeof(indigo_device));
+			assert(device != NULL);
+			memcpy(device, &guider_template, sizeof(indigo_device));
+			device->master_device = master_device;
+			sprintf(device->name, "%s Guider #%s", dev_name, dev_usbpath);
+			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+			private_data->fw_count = FW_COUNT;
+			device->private_data = private_data;
+			indigo_async((void *(*)(void *))indigo_attach_device, device);
+			devices[slot++] = device;
+		}
+		if (slot == MAX_DEVICES)
+			break;
+		if (check_wheel == QHYCCD_SUCCESS) {
+			device = (indigo_device*)malloc(sizeof(indigo_device));
+			assert(device != NULL);
+			memcpy(device, &wheel_template, sizeof(indigo_device));
+			device->master_device = master_device;
+			sprintf(device->name, "%s Wheel #%s", dev_name, dev_usbpath);
+			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+			device->private_data = private_data;
+			indigo_async((void *(*)(void *))indigo_attach_device, device);
+			devices[slot++] = device;
 		}
 	}
 }
 
+#endif
 
-static libusb_hotplug_callback_handle callback_handle;
+static void remove_all_devices() {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if (device == NULL)
+			continue;
+		qhy_close(device);
+		indigo_detach_device(device);
+	}
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if (device == NULL)
+			continue;
+		if (device->master_device == device)
+			free(device->private_data);
+		free(device);
+		devices[i] = NULL;
+	}
+}
 
 indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -1795,23 +1883,31 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
-#if defined(QHY2) && !defined(__arm__) && !defined(__aarch64__)
+#ifdef QHY2
 			SetQHYCCDAutoDetectCamera(false);
 #endif  // new SDK
 			SetQHYCCDLogLevel(6);
 			rc = InitQHYCCDResource();
-			if (rc != QHYCCD_SUCCESS) return INDIGO_FAILED;
+			if (rc != QHYCCD_SUCCESS)
+				return INDIGO_FAILED;
+#ifdef HOTPLUG
 			indigo_start_usb_event_handler();
 			rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+#else
+			add_all_devices();
+			return INDIGO_OK;
+#endif
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++)
 				VERIFY_NOT_CONNECTED(devices[i]);
 			last_action = action;
+#ifdef HOTPLUG
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+#endif
 			remove_all_devices();
 			ReleaseQHYCCDResource();
 			break;

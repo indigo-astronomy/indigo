@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 29.04.2020 (draft)
+Revision: 23.07.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -39,7 +39,7 @@ A basic common API shared by both **driver** and **client** roles is defined in 
 The **bus** instance should be initialized and started by *indigo_start()* call and stopped by *indigo_stop()* call.
 A **device** should be attached to the **bus** by calling *indigo_attach_device()* and detached with *indigo_detach_device()* call.
 
-There are four functions that cam be used by the **device** to send messages to the **client**:
+There are four functions that can be used by the **device** to send messages to the **client**:
 - *indigo_define_property()* - defines a new property
 - *indigo_update_property()* - one or more item values of the property are changed
 - *indigo_delete_property()* - property is not needed any more and shall not be used
@@ -64,7 +64,7 @@ Standard property names are defined in [indigo_names.h](https://github.com/indig
 
 Properties can be in one of the four states:
 - *INDIGO_IDLE_STATE* - the values may not be initialized
-- *INDIGO_OK_STATE* - the property item values are valid and it is save to read or set them
+- *INDIGO_OK_STATE* - the property item values are valid and it is safe to read or set them
 - *INDIGO_BUSY_STATE* - the values are not reliable, some operation is in progress (like exposure is in progress)
 - *INDIGO_ALERT_STATE* - the values are not reliable, some operation has failed or the values set are not valid
 

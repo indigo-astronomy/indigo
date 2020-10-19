@@ -23,7 +23,7 @@
  \file indigo_focuser_mjkzz.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_mjkzz"
 
 #include <stdlib.h>
@@ -148,8 +148,6 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static void focuser_connect_callback(indigo_device *device) {
 	mjkzz_message message = { 0x01 };
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 		if (PRIVATE_DATA->handle > 0) {
 			message.ucCMD = CMD_GVER;
@@ -211,6 +209,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	mjkzz_message message = { 0x01 };
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

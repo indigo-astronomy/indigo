@@ -353,6 +353,7 @@ static void *server_thread(indigo_server_entry *server) {
 		pthread_mutex_lock(&mutex);
 		reset_socket(server, 0);
 		pthread_mutex_unlock(&mutex);
+		char text[INET_ADDRSTRLEN];
 		struct addrinfo hints = { 0 }, *address = NULL;
 		int result;
 		/* server->socket > 0 is indication if connected,
@@ -378,26 +379,25 @@ static void *server_thread(indigo_server_entry *server) {
 			pthread_mutex_lock(&mutex);
 			server->socket = socket_buffer;
 			pthread_mutex_unlock(&mutex);
-			if (result < 0) {
-				char text[INET_ADDRSTRLEN];
 #if defined(INDIGO_WINDOWS)
-				if (is_pre_vista()) {
-					char *p;
-					memset(text, 0, sizeof(text));
-					p = inet_ntoa(((struct sockaddr_in *)address->ai_addr)->sin_addr);
-					if (p)
-						strncpy(text, p, strlen(p));
-				} else {
-					HMODULE hMod = LoadLibrary(TEXT("ws2_32.dll"));
-					if (hMod) {
-						PCTSTR(WINAPI *fn)(INT, PVOID, PTSTR, size_t) = GetProcAddress(hMod, "inet_ntop");
-						if (fn)
-							(*fn)(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
-					}
+			if (is_pre_vista()) {
+				char *p;
+				memset(text, 0, sizeof(text));
+				p = inet_ntoa(((struct sockaddr_in *)address->ai_addr)->sin_addr);
+				if (p)
+					strncpy(text, p, strlen(p));
+			} else {
+				HMODULE hMod = LoadLibrary(TEXT("ws2_32.dll"));
+				if (hMod) {
+					PCTSTR(WINAPI *fn)(INT, PVOID, PTSTR, size_t) = GetProcAddress(hMod, "inet_ntop");
+					if (fn)
+						(*fn)(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
 				}
+			}
 #else
-				inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
+			inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
 #endif
+			if (result < 0) {
 				INDIGO_LOG(indigo_error("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
 				pthread_mutex_lock(&mutex);
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
@@ -405,8 +405,11 @@ static void *server_thread(indigo_server_entry *server) {
 				pthread_mutex_unlock(&mutex);
 			}
 		}
-		if (address)
+		if (address) {
 			freeaddrinfo(address);
+		} else {
+			strncpy(text, server->host, sizeof(text));
+		}
 		if (server->socket > 0) {
 			pthread_mutex_lock(&mutex);
 			server->last_error[0] = '\0';
@@ -415,7 +418,7 @@ static void *server_thread(indigo_server_entry *server) {
 				indigo_service_name(server->host, server->port, server->name);
 			}
 			char  url[INDIGO_NAME_SIZE];
-			snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
+			snprintf(url, sizeof(url), "http://%s:%d", text, server->port);
 			INDIGO_LOG(indigo_log("Server %s:%d (%s, %s) connected", server->host, server->port, server->name, url));
 #if defined(INDIGO_WINDOWS)
 			indigo_send_message(server->protocol_adapter, "connected");

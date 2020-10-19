@@ -171,6 +171,7 @@ typedef struct {
 	indigo_property *filter_related_agent_list_property;
 	indigo_property *device_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
+	indigo_property *connection_property_cache[INDIGO_FILTER_MAX_DEVICES];
 } indigo_filter_context;
 
 /** Device attach callback function.

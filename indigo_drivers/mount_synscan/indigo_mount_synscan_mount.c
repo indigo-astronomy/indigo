@@ -173,8 +173,6 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 	bool result = true;
 	//  Open and configure the mount
 	if (PRIVATE_DATA->device_count == 0) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		result = synscan_open(device);
 		if (result) {
 			result = synscan_configure(device);
@@ -193,7 +191,6 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 	}
 	if (result) {
 		PRIVATE_DATA->device_count++;
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 		indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
@@ -202,6 +199,7 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 		//  Start position timer
 		indigo_set_timer(device, 1, position_timer_callback, &PRIVATE_DATA->position_timer);
@@ -233,12 +231,6 @@ static void synscan_disconnect_timer_callback(indigo_device* device) {
 }
 
 indigo_result synscan_mount_connect(indigo_device* device) {
-	//  Ignore if we are already processing a connection change
-	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
-		return INDIGO_OK;
-
-	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	//  Handle connect/disconnect commands
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//  CONNECT to the mount

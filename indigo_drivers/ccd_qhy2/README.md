@@ -6,7 +6,7 @@ http://www.qhyccd.com
 
 All QHY cameras and filter wheels plugged in to the camera.
 
-This driver supports hot-plug (multiple devices).
+This driver doesn't supports hot-plug. All devices should be connected at driver initialisation.
 
 ## Supported platforms
 

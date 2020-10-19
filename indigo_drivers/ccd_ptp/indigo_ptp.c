@@ -776,12 +776,25 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 						target->value.sw.values[i] = value;
 						break;
 					}
+					case ptp_uint64_type: {
+						uint64_t value;
+						source = ptp_decode_uint64(source, &value);
+						target->value.sw.values[i] = value;
+						break;
+					}
+					case ptp_int64_type: {
+						int64_t value;
+						source = ptp_decode_uint64(source, (uint64_t *)&value);
+						target->value.sw.values[i] = value;
+						break;
+					}
 					case ptp_str_type: {
 						if (i < 16)
 							source = ptp_decode_string(source, target->value.sw_str.values[i]);
 						break;
 					}
 					default:
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown target type: %d code=%x", target->type, target->code);
 						assert(false);
 				}
 			}
@@ -1268,14 +1281,17 @@ bool ptp_get_event(indigo_device *device) {
 	ptp_container event;
 	int length = 0;
 	memset(&event, 0, sizeof(event));
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, PTP_TIMEOUT);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 	if (rc < 0) {
 		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 	PTP_DUMP_CONTAINER(&event);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
 	return true;
 }

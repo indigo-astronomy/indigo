@@ -43,8 +43,13 @@ SOURCES = $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.m) $(ADDITIONAL_SOURCES
 DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 ifeq ($(wildcard $(DRIVER)_main.c),)
-	DRIVER_EXECUTABLE =
-	DRIVER_MAIN_O =
+	ifneq ($(wildcard $(DRIVER)_main.cpp),)
+		DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
+		DRIVER_MAIN_O = $(DRIVER)_main.o
+	else
+		DRIVER_EXECUTABLE =
+		DRIVER_MAIN_O =
+	endif
 else
 	DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 	DRIVER_MAIN_O = $(DRIVER)_main.o
@@ -193,4 +198,3 @@ endif
 
 $(SDK_DIR)/configure: $(SDK_CONFIGURE_IN)
 	cd $(SDK_DIR); autoreconf -fiv
-

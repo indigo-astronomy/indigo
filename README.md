@@ -99,10 +99,15 @@ This is the list of requirements taken into the consideration:
 70. Optec Flip-Flap driver
 71. GPS Service Daemon (GPSD) driver
 72. Lunatico Astronomy Limpet/Armadillo/Platypus Focuser/Rotator/Powerbox/GPIO Drivers
-73. Rotator Simulator Driver
+73. Lunatico Astronomy Limpet/Armadillo/Platypus Rotator/Focuser/Powerbox/GPIO driver
 74. Lunatico Astronomy Dragonfly Dome / Relay Controller GPIO driver
-75. Lunatico AAG CloudWacher driver
-76. Baader Planetarium Classic (Rotating) dome driver 
+75. Rotator Simulator Driver
+76. Lunatico AAG CloudWacher driver
+77. Baader Planetarium Classic (Rotating) dome driver 
+78. MGBox driver
+79. Manual wheel driver
+80. PMC8 mount controller driver
+81. RoboFocus focuser driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
@@ -117,7 +122,7 @@ This is the list of requirements taken into the consideration:
 ### Prerequisites
 #### Ubuntu / Debian / Raspbian
 
-`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils`
+`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils`
 
 It is advised to remove libraw1394-dev
 

@@ -51,4 +51,3 @@ extern char *indigo_xml_escape(char *string);
 #endif
 
 #endif /* indigo_xml_h */
-

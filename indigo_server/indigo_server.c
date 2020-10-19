@@ -64,7 +64,7 @@
 #include "wheel_asi/indigo_wheel_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
 #include "wheel_atik/indigo_wheel_atik.h"
-#include "ccd_qhy/indigo_ccd_qhy.h"
+#include "ccd_qhy2/indigo_ccd_qhy.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #include "mount_lx200/indigo_mount_lx200.h"
@@ -133,6 +133,8 @@
 #include "wheel_manual/indigo_wheel_manual.h"
 #include "aux_mgbox/indigo_aux_mgbox.h"
 #include "dome_baader/indigo_dome_baader.h"
+#include "mount_pmc8/indigo_mount_pmc8.h"
+#include "focuser_robofocus/indigo_focuser_robofocus.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -193,9 +195,9 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ica,
 #endif
 	indigo_ccd_iidc,
-	indigo_ccd_mi,
+	//indigo_ccd_mi,
 	indigo_ccd_ptp,
-	indigo_ccd_qhy,
+	indigo_ccd_qhy2,
 	indigo_ccd_qsi,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
@@ -227,6 +229,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_nfocus,
 	indigo_focuser_nstep,
 	indigo_focuser_optec,
+	indigo_focuser_robofocus,
 	indigo_focuser_usbv3,
 	indigo_focuser_steeldrive2,
 	indigo_focuser_wemacro,
@@ -245,6 +248,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_ioptron,
 	indigo_mount_lx200,
 	indigo_mount_nexstar,
+	indigo_mount_pmc8,
 	indigo_mount_rainbow,
 	indigo_mount_simulator,
 	indigo_mount_synscan,
@@ -1188,6 +1192,11 @@ static void server_main() {
 }
 
 static void signal_handler(int signo) {
+	if (signo == SIGCHLD) {
+		int status;
+		while ((waitpid(-1, &status, WNOHANG)) > 0);
+		return;
+	}
 	if (server_pid == 0) {
 		/* SIGINT is delivered twise with CTRL-C
 		   this leads to freeze during shutdown so
@@ -1253,6 +1262,7 @@ int main(int argc, const char * argv[]) {
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	signal(SIGHUP, signal_handler);
+	signal(SIGCHLD, signal_handler);
 	if (do_fork) {
 		while(keep_server_running) {
 			server_pid = fork();

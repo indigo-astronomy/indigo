@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 42.$WCREV$.$WCDATE=%Y.%m%d$</li></ul>
+<ul><li>Version: 46.17309.2020.0616</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -27,9 +27,9 @@
 	    <ul>
 		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
 		  <li>x64: GLIBC 2.14 or above</li>
-		  <li>armel: GLIBC 2.17 or above; built by toolchain arm-linux-gnueabi (version 4.9.2)</li>
-		  <li>armhf: GLIBC 2.17 or above; built by toolchain arm-linux-gnueabihf (version 4.9.2)</li>
-		  <li>arm64: GLIBC 2.17 or above; built by toolchain aarch64-linux-gnu (version 4.9.2)</li>
+		  <li>armel: GLIBC 2.17 or above; built by arm-linux-gnueabi (version 4.9.2)</li>
+		  <li>armhf: GLIBC 2.17 or above; built by arm-linux-gnueabihf (version 4.9.2)</li>
+		  <li>arm64: GLIBC 2.17 or above; built by aarch64-linux-gnu (version 4.9.2)</li>
 		</ul>
 	  </li>
       <li>Android: arm, arm64, x86, x64; built by android-ndk-r18b; __ANDROID_API__ = 23</li>
@@ -90,6 +90,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
        <ol>
          <li>x86 folder contains the kernel mode drivers for x86, including toupcam.cat, toupcam.inf and toupcam.sys.</li>
          <li>x64 folder contains the kennel mode driver for x64, including toupcam.cat, toupcam.inf and toupcam.sys.</li>
+		 It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table>
        </ol>
      </li>
      <li>samples
@@ -266,11 +268,15 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	<blockquote>
 		Camera could be triggered by external trigger signal. By now Toupcam camera only supports positive-edge trigger mode.
 	</blockquote>
-<p>5. Simulated Trigger Mode</p>
+<p>5. Mix Trigger Mode</p>
+	<blockquote>
+		Both external and software trigger are enabled.
+	</blockquote>
+<p>6. Simulated Trigger Mode</p>
 	<blockquote>
 		For cameras that do not support software trigger and external trigger, simulated trigger mode could be available. When in simulated trigger mode, the camera hardware actually works in the same mode as the video mode. But the up-level software will not obtain any images from the camera. The software buffer will stay empty until the user set the trigger conditions by software. 
 	</blockquote>
-<p>6. How to Enter the Trigger Mode</p>
+<p>7. How to Enter the Trigger Mode</p>
 	<blockquote>
 		After the numeration of the connected camera, you can check the flag and find out what trigger mode does the camera support according to the following definition.
 			<blockquote><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define TOUPCAM_FLAG_TRIGGER_SOFTWARE   0x00080000  /* support software trigger */
@@ -278,11 +284,11 @@ The SDK zip file contains all of the necessary resources and information:</p>
 #define TOUPCAM_FLAG_TRIGGER_SINGLE     0x00200000  /* only support trigger single: one trigger, one image */</pre></td></tr></table></blockquote>
 		Function Toupcam_put_Option(HToupcam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign TOUPCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
 			<blockquote>
-<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define TOUPCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, default value =  0 */</pre></td></tr></table>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define TOUPCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, 3 = external + software trigger, default value =  0 */</pre></td></tr></table>
 			</blockquote>
 		Function Toupcam_get_Option(HToupcam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
 	</blockquote>
-<p>7. How to Trigger the camera</p>
+<p>8. How to Trigger the camera</p>
 	<blockquote>
 		Function Toupcam_Trigger(HToupcam h, unsigned short nNumber) could be used to trigger the camera. Assigning different value to nNumber means different:
 			<blockquote>
@@ -292,7 +298,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 			</blockquote>
 		If the TOUPCAM_FLAG_TRIGGER_SINGLE flag is checked, the nNumber parameter must be assigned to 1 and 1 image will come out from the camera when Toupcam_Trigger is called.<br/>Enter the trigger mode first and then call Toupcam_Trigger function to trigger the camera.
 	</blockquote>
-<p>8. Trigger timeout</p>
+<p>9. Trigger timeout</p>
 	<blockquote>
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
@@ -301,6 +307,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <hr/>
 <ul><li><h2><font color="#0000FF">HRESULT return value</font></h2>
 	<p>HRESULT is not uncommon on the Windows platform. It's borrowed to macOS and Linux, see the table:</p>
+	<p><strong>Please note that the return value >=0 means success (especially S_FALSE is also successful, indicating that the internal value and the value set by the user is equivalent, which means "no operation"). Therefore, the SUCCEEDED and FAILED macros should generally be used to determine whether the return value is successful or failed.<br/>
+(Unless there are special needs, do not use "==S_OK" or "==0" to judge the return value)</strong></p>
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
@@ -315,7 +323,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	  </tr>
 	  <tr>
         <td>S_FALSE</td>
-        <td>Operation successful</td>
+        <td>Operation successful, nothing changed</td>
 		<td>0x00000001</td>
 	  </tr>
 	  <tr>
@@ -370,7 +378,10 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	<p>macOS, Linux and Android: __cdecl</p>
 </li></ul>
 <ul><li><h2><a id="callback"><font color="#0000FF">Callback: PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK_V3</font></a></h2>
-	<p>These callback functions are called back from the internal thread in toupcam.dll, so great attention should be paid to multithread issue.</p>
+	<p>These callback functions are called back from the internal thread in toupcam.dll, so great attention should be paid to multithread issue.<br/>
+        Please ensure that the callback funcion is simple and return quickly.<br/>
+        Otherwise, in callback mode, TOUPCAM_OPTION_CALLBACK_THREAD can be setted to use a dedicated thread for callback.
+    </p>
 	<p><strong>There are limitations in the callback context:</strong></p>
 	<p><strong>(a) Do NOT call Toupcam_Stop and Toupcam_Close in this callback function, otherwise, deadlocks.</strong></p>
 	<p><strong>(b) Do NOT call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE, the return value is E_WRONG_THREAD.</strong></p>
@@ -922,7 +933,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>TOUPCAM_OPTION_TRIGGER</td>
       	<td>0 = video mode<br/>
       	  1 = software or simulated trigger mode<br/>
-      	  2 = external trigger mode</td>
+      	  2 = external trigger mode<br/>
+		  <a id="mix">3 = external + software trigger</a></td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
@@ -968,7 +980,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_AUTOEXP_THRESHOLD</td>
-      	<td>threshold of auto exposure, range: [5~15]</td>
+      	<td>threshold of auto exposure, range: [2~15]</td>
       	<td>5</td>
       	<td>Yes</td>
       </tr>
@@ -992,9 +1004,18 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 					0x02 (add, 2*2)<br/>
 					0x03 (add, 3*3)<br/>
 					0x04 (add, 4*4)<br/>
+					0x05 (add, 5*5)<br/>
+					0x06 (add, 6*6)<br/>
+					0x07 (add, 7*7)<br/>
+					0x08 (add, 8*8)<br/>
 					0x82 (average, 2*2)<br/>
 					0x83 (average, 3*3)<br/>
-					0x84 (average, 4*4)</td>
+					0x84 (average, 4*4)<br/>
+					0x85 (average, 5*5)<br/>
+					0x86 (average, 6*6)<br/>
+					0x87 (average, 7*7)<br/>
+					0x88 (average, 8*8)<br/>
+                    The final image size is rounded down to an even number, such as 640/3 to get 212</td>
       	<td>1</td>
       	<td>Yes</td>
       </tr>
@@ -1148,16 +1169,75 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 		<td>NA</td>
 		<td>NA</td>
       </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_MIN_PRECISE_FRAMERATE</td>
+        <td>get the precise frame minimum value in 0.1fps, such as 15 means 1.5fps<br/>
+          the minimum value depends the resolution/bitdepth/ROI, etc<br/>
+          E_NOTIMPL means not supported</td>
+		<td>NA</td>
+		<td>NA</td>
+      </tr>
 	  <tr>
         <td>TOUPCAM_OPTION_PRECISE_FRAMERATE</td>
-        <td>in 0.1fps, such as 115 means 11.5fps. range:[1~maximum]<br/>
-		<td>85% of the maximum</td>
-		<td>是</td>
+        <td>in 0.1fps, such as 115 means 11.5fps. range:[1~maximum]</td>
+		<td>90% of the maximum</td>
+		<td>Yes</td>
       </tr>
 	  <tr>
         <td>TOUPCAM_OPTION_BANDWIDTH</td>
-        <td>bandwidth, [1-100]%<br/>
-		<td>85%</td>
+        <td>bandwidth, [1-100]%</td>
+		<td>90%</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td><a id="reload">TOUPCAM_OPTION_RELOAD</a></td>
+        <td>Reload the last frame in the trigger mode<br/>
+        get return value S_OK means supporting this feature, E_NOTIMPL means not supported</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_OPTION_CALLBACK_THREAD</td>
+        <td>dedicated thread for callback, only available in pull mode</td>
+		<td>0</td>
+		<td>No</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_OPTION_FRAME_DEQUE_LENGTH</td>
+        <td>frame deque length, range: [2, 1024]</td>
+		<td>3</td>
+		<td>No</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_OPTION_SEQUENCER_ONOFF</td>
+        <td>sequencer trigger: on/off</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_OPTION_SEQUENCER_NUMBER</td>
+        <td>sequencer trigger: number, range = [1, 255]</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_OPTION_SEQUENCER_EXPOTIME</td>
+        <td>sequencer trigger: exposure time<br/>iOption = TOUPCAM_OPTION_SEQUENCER_EXPOTIME | index<br/>iValue = exposure time<br/><br/>
+		For example, to set the exposure time of the third group to 50ms, call<br/>Toupcam_put_Option(TOUPCAM_OPTION_SEQUENCER_EXPOTIME | 3, 50000)</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_OPTION_SEQUENCER_EXPOGAIN</td>
+        <td>sequencer trigger: exposure gain<br/>iOption = TOUPCAM_OPTION_SEQUENCER_EXPOGAIN | index<br/>iValue = gain</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td><a id="denoise">TOUPCAM_OPTION_DENOISE</a></td>
+        <td>Denoise<br/>
+		strength range: [0, 100], 0 means disable</td>
+		<td>0</td>
 		<td>是</td>
       </tr>
       <tr>
@@ -1207,7 +1287,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td width="28%"><a id="demosaic">TOUPCAM_OPTION_DEMOSAIC</a></td>
       	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
       			0 = BILINEAR<br/>
-      			1 = VNG(Variable Number of Gradients interpolation)<br/>
+      			1 = VNG(Variable Number of Gradients interpolation)(Temporarily unavailable)<br/>
       			2 = PPG(Patterned Pixel Grouping interpolation)<br/>
       			3 = AHD(Adaptive Homogeneity-Directed interpolation)<br/>
       			Always return E_NOTIMPL for monochromatic camera.</td>
@@ -1222,8 +1302,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_DEMOSAIC_STILL</td>
-      	<td>Demosaic mothod for still image<br/>
-      			Always return E_NOTIMPL for camera that don't support sill image capture.</td>
+      	<td>Demosaic mothod for still image</td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
@@ -1244,14 +1323,20 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p>c. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
 </blockquote>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Toupcam_put_RealTime, Toupcam_get_RealTime</font></h2>
+<ul><li><h2><font color="#0000FF"><a id="realtime">Toupcam_put_RealTime, Toupcam_get_RealTime</a></font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HToupcam h: camera instance handle</p>
-      <p>int bEnable: TRUE or FALSE</p>
+      <p>int val:<br/>
+      0: stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full<br/>
+    1: realtime<br/>
+          use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full<br/>
+          If DDR present, also limit the DDR frame buffer to only one frame.
+    2: soft realtime<br/>
+          Drop the oldest frame when the queue is full and then enqueue the new frame</p>
     </blockquote>
-    <p><strong>Remarks:</strong> If you set RealTime mode as TRUE, then you get shorter frame delay but lower frame rate which damages fluency. The default value is FALSE.</p>
+    <p><strong>Remarks:</strong> If you set RealTime mode as 1, then you get shorter frame delay but lower frame rate which damages fluency. The default value is 0.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_get_AutoExpoEnable, Toupcam_put_AutoExpoEnable, Toupcam_get_AutoExpoTarget, Toupcam_put_AutoExpoTarget, Toupcam_put_MaxAutoExpoTimeAGain, Toupcam_get_MaxAutoExpoTimeAGain, Toupcam_put_MinAutoExpoTimeAGain, Toupcam_get_MinAutoExpoTimeAGain</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1641,6 +1726,30 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_USERVALUE</td>
    <td>&nbsp;</td>
+ </tr> <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_GET_UART_ENABLE</td>
+   <td>UART enable: 1-> on; 0-> off</td>
+ </tr>
+ <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_SET_UART_ENABLE</td>
+   <td>&nbsp;</td>
+ </tr>
+ <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_GET_UART_BAUDRATE</td>
+   <td>baud rate:<br/>
+   0-> 9600<br/>1-> 19200<br/>2-> 38400<br/>3-> 57600<br/>4-> 115200</td>
+ </tr>
+ <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_SET_UART_BAUDRATE</td>
+   <td>&nbsp;</td>
+ </tr>
+ <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_GET_UART_LINEMODE</td>
+   <td>Line Mode:<br/>0->TX(GPIO_0)/RX(GPIO_1)<br/>1->TX(GPIO_1)/RX(GPIO_0)</td>
+ </tr>
+ <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_SET_UART_LINEMODE</td>
+   <td>&nbsp;</td>
  </tr>
     </table>
   </div>
@@ -1670,24 +1779,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <blockquote>
     <p>HToupcam h: camera instance handle</p>
   </blockquote>
-</li></ul>
-<ul><li><h2><font color="#0000FF">Toupcam_put_ExpoCallback</font></h2>
-      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
-      <p><strong>Parameters:</strong></p>
-  <blockquote>
-    <p>HToupcam h: camera instance handle</p>
-    <p>PITOUPCAM_EXPOSURE_CALLBACK fnExpoProc, void* pExpoCtx: exposure callback function and callback context. If we set fnExpoProc as NULL, then it means stop calling back.</p>
-  </blockquote>
-  <p><strong>Remarks:</strong> Once we set non-NULL callback function, then callback happens whenever the exposure time changes.</p>
-</li></ul>
-<ul><li><h2><font color="#0000FF">Toupcam_put_ChromeCallback</font></h2>
-      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
-      <p><strong>Parameters:</strong></p>
-  <blockquote>
-    <p>HToupcam h: camera instance handle</p>
-    <p>PITOUPCAM_CHROME_CALLBACK fnChromeProc, void* pChromeCtx: color/gray switches callback function and callback context. If we set fnChromeProc as NULL, then it means stop calling back.</p>
-  </blockquote>
-  <p><strong>Remarks:</strong> once we set non-NULL callback function, then callback happens whenever the color/gray switches, eg, call Toupcam_put_Chrome</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_LevelRangeAuto</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1729,7 +1820,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </tr>
   <tr>
     <td colspan="3">Auto Exposure Target</td>
-    <td width="15%">16~235</td>
+    <td width="15%">16~220</td>
     <td width="8%">120</td>
     <td width="17%">Toupcam_get_AutoExpoTarget</td>
     <td width="17%">Toupcam_put_AutoExpoTarget</td>
@@ -1895,6 +1986,11 @@ public bool Snap(uint nResolutionIndex)
 <hr/>
 <h1><font color="#0000FF">8. Changelog</font></h1>
 <hr/>
+<p>v46: Add support denose. Please see <a href="#denoise">here</a></p>
+<p>v45: Add sequencer trigger, UART, mix trigger (<a href="#mix">external and software trigger both are enabled</a>)</p>
+<p>v44: Extend the realtime mode, Please see <a href="#realtime">here</a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add TOUPCAM_OPTION_CALLBACK_THREAD and TOUPCAM_OPTION_FRAME_DEQUE_LENGTH</p>
+<p>v43: Reload the last frame in the trigger mode. Please see <a href="#reload">TOUPCAM_OPTION_RELOAD</a></p>
 <p>v42: Precise frame rate and bandwidth. Please see <a href="#precise">here</a> and TOUPCAM_FLAG_PRECISE_FRAMERATE</p>
 <p>v41: no packet timeout. Please see <a href="#nopacket">here</a></p>
 <p>v40: Auto test tool, see samples\AutoTestTool</p>

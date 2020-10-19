@@ -23,7 +23,7 @@
  \file indigo_ccd_gphoto2.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 #define FIT_FORMAT_AMATEUR_CCD
 
@@ -2405,8 +2405,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 
 	/*------------------------ CONNECTION --------------------------*/
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		indigo_property_copy_values(CONNECTION_PROPERTY, property,
-					    false);
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			device->is_connected = !!(PRIVATE_DATA->camera && context);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2446,6 +2447,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
 				indigo_delete_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
 				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
 	}

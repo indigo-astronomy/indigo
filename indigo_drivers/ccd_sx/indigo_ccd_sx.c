@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -232,7 +232,7 @@ static bool sx_open(indigo_device *device) {
 			if (rc >=0 && transferred == 2) {
 				int result=setup_data[0] | (setup_data[1] << 8);
 				PRIVATE_DATA->model = result & 0x1F;
-				PRIVATE_DATA->is_color = result & 0x80;
+				PRIVATE_DATA->is_color = result > 0x50;
 				PRIVATE_DATA->is_interlaced = result & 0x40;
 				if (result == 0x84)
 					PRIVATE_DATA->is_interlaced = true;
@@ -569,9 +569,9 @@ static bool sx_read_pixels(indigo_device *device) {
 					int i1subW = (i + 1) * frame_width;
 					int j2 = j * 2;
 					buf16[isubW + j]  = evenBuf16[isubW + j2];
-					buf16[isubW + j + 1]  = evenBuf16[isubW + j2 + 2];
+					buf16[isubW + j + 1]  = evenBuf16[isubW + j2 + 3];
 					buf16[i1subW + j]  = evenBuf16[isubW + j2 + 1];
-					buf16[i1subW + j + 1]  = evenBuf16[isubW + j2 + 3];
+					buf16[i1subW + j + 1]  = evenBuf16[isubW + j2 + 2];
 				}
 			}
 		} else {
@@ -756,8 +756,6 @@ static void ccd_connect_callback(indigo_device *device) {
 		if (!device->is_connected) {
 			bool result = true;
 			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					result = false;
@@ -813,6 +811,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -949,8 +949,6 @@ static void guider_connect_callback(indigo_device *device) {
 		if (!device->is_connected) {
 			bool result = true;
 			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					result = false;
@@ -989,7 +987,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

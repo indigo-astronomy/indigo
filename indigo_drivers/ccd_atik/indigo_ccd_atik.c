@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -149,7 +149,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle) {
 			struct ARTEMISPROPERTIES properties;
-			int temperature, flags, level, min_level, max_level, set_point, max_x_bin, max_y_bin;
+			int temperature = 0, flags, level, min_level, max_level, set_point, max_x_bin, max_y_bin, count = 0;
 			if (ArtemisProperties(PRIVATE_DATA->handle, &properties) == ARTEMIS_OK) {
 				if (properties.nPixelsX == 3354 && properties.nPixelsY == 2529) {
 					properties.nPixelsX = 3326;
@@ -176,13 +176,22 @@ static void ccd_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &temperature) == ARTEMIS_OK && temperature > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
+// Temporary workaround for SDK_2020_06_23 +++++
+//				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &count) == ARTEMIS_OK && count > 0 && ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) == ARTEMIS_OK) {
+				ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &count);
+				if (count > 0) {
+					ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature);
+// Temporary workaround for SDK_2020_06_23 -----
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 					CCD_TEMPERATURE_ITEM->number.value = round(temperature / 10.0) / 10.0;
 				}
-				if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point) == ARTEMIS_OK && (flags & 3) == 3) {
+// Temporary workaround for SDK_2020_06_23 +++++
+//				if (ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point) == ARTEMIS_OK && (flags & 3) == 3) {
+				ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min_level, &max_level, &set_point);
+				if ((flags & 3) == 3) {
+// Temporary workaround for SDK_2020_06_23 -----
 					CCD_COOLER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
@@ -208,13 +217,13 @@ static void ccd_connect_callback(indigo_device *device) {
 						CCD_GAIN_PROPERTY->hidden = false;
 						CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 						CCD_GAIN_ITEM->number.min = value[0];
-						CCD_GAIN_ITEM->number.min = value[1];
+						CCD_GAIN_ITEM->number.max = value[1];
 						CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value[2];
 						CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 						CCD_OFFSET_PROPERTY->hidden = false;
 						CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionGetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value), &actualLength) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 						CCD_OFFSET_ITEM->number.min = value[0];
-						CCD_OFFSET_ITEM->number.min = value[1];
+						CCD_OFFSET_ITEM->number.max = value[1];
 						CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value[2];
 						CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_set_switch(ATIK_PRESETS_PROPERTY, ATIK_PRESETS_CUSTOM_ITEM, true);
@@ -329,6 +338,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -570,6 +581,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -719,6 +732,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

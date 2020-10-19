@@ -102,7 +102,7 @@ indigo_token indigo_get_device_token(const char *device) {
 		}
 	}
 	pthread_mutex_unlock(&token_mutex);
-	INDIGO_DEBUG(indigo_debug("ACL: No token for '%s'", device));
+	//INDIGO_DEBUG(indigo_debug("ACL: No token for '%s'", device));
 	return 0;
 }
 

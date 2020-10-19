@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 24.01.2020 (draft)
+Revision: 12.10.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -185,6 +185,8 @@ if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) {
 }
 ```
 
+There is a special **delete property** event, which means that the device and all its properties are removed. In this case *property->name* is an empty string and *device->name* is the name of the removed device. Upon receiving such event the INDIGO client framework will automatically release all resources used by the device. Therefore if the client keeps property, device or any other pointers to resources of this device, they should not be used any more. It is a good idea such pointers to be be invalidated in the **delete property** handler callback by setting them to *NULL*.
+
 ### Properties
 
 Standard property names are defined in [indigo_names.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_names.h)
@@ -295,7 +297,7 @@ indigo_device_connect(client, "CCD Imager Simulator @ indigosky");
 indigo_device_disconnect(client, "CCD Imager Simulator @ indigosky");
 ```
 
-Please remember calling these functions only requests connection or disconnection. The client has to wait for 'CONNECTION' property update and to check the state and item values as shown below:
+Please remember calling these functions only requests connection or disconnection. If the device is not connected the client has to wait for 'CONNECTION' property update and to check the state and item values as shown below:
 
 ```C
 static indigo_result my_update_property(indigo_client *client,
@@ -315,11 +317,29 @@ static indigo_result my_update_property(indigo_client *client,
 }
 ```
 
+If the device is already connected, the second connection attempt will be ignored and device property enumeration, and CONNECTION property update will not happen. The client should check the state of connection property before trying to connect. If the device is already connected and the client logic relays on property enumeration on device connect, the client can trigger property enumeration by calling *indigo_enumerate_properties()* like this:
+```C
+indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
+```
+However, it is advised to design the client to use the cached properties, defined at client attach, rather than requesting property enumeration.
+
 ## Several Notes About the Drivers
 
 There are three groups of structures and functions – for management of standard **local dynamic drivers** (loaded as dynamic libraries and connected to the local **bus**), **local executable drivers** (loaded as executable, e.g. legacy INDI drivers, connected to the local **bus** over pipes) and **remote servers** (connected to the local **bus** over a network). The above example uses the third approach using **remote servers**.
 
+More information about available driver types in INDIGO is available in [INDIGO_SERVER_AND_DRIVERS_GUIDE.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/INDIGO_SERVER_AND_DRIVERS_GUIDE.md)
+
 In INDIGO drivers are dynamically loaded and unloaded. This means that device can be attached to the **bus** or detached at any given time. The client should be able to handle these events for one more reason: most USB devices are hot-plug devices. Which means that these devices will be attached to the **bus** when plugged to the host computer and detached from the **bus** when unplugged (provided the corresponding driver is loaded).
+
+## Serverless Operation - Applications Loading INDIGO Drivers
+
+INDIGO framework can operate in an environment without a server. In this case the application must load the INDIGO driver instead of connecting to the server. The rest of the code will remain the same. Examples how to do this are available in indigo_examples folder of the INDIGO source tree:
+
+1. [indigo_examples/executable_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/executable_driver_client.c) - Example of serverless operation using executable INDIGO driver.
+
+2. [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c) - Example of serverless operation using dynamic INDIGO driver.
+
+The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, only the the remote server example shown below can work on all supported operating systems. The two examples above can work only on Linux and MacOSX. The reason for this is that INDIGO drivers can run only on Linux and MacOSX but not on Windows.
 
 ## Notes About the Automatic Service Discovery
 
@@ -333,7 +353,7 @@ Dealing with the service discovery is beyond the scope of this document.
 
 ## INDIGO Imaging Client - Example
 
-The following code is a working example of INDIGO client that connects to "*indigosky.local:7624*", and uses camera named "**CCD Imager Simulator @ indigosky**" to take 10 exposures, 3 seconds each and save the images in FITS format. Please make sure that **indigo_ccd_simulator** driver is loaded on *indigosky* otherwise the example will not work because it does not check if the camera is present for simplicity.
+The following code is a working example of INDIGO client that connects to "*indigosky.local:7624*", and uses camera named "**CCD Imager Simulator @ indigosky**" to take 5 exposures, 3 seconds each and save the images in FITS format. Please make sure that **indigo_ccd_simulator** driver is loaded on *indigosky* otherwise the example will not work because it does not check if the camera is present for simplicity.
 
 ```C
 #include <stdio.h>
@@ -346,22 +366,33 @@ The following code is a working example of INDIGO client that connects to "*indi
 #define CCD_SIMULATOR "CCD Imager Simulator @ indigosky"
 
 static bool connected = false;
-static int count = 10;
+static int count = 5;
 
-static indigo_result test_attach(indigo_client *client) {
+static indigo_result client_attach(indigo_client *client) {
 	indigo_log("attached to INDIGO bus...");
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
 }
 
-static indigo_result test_define_property(indigo_client *client,
-	indigo_device *device, indigo_property *property, const char *message) {
-
+static indigo_result client_define_property(
+	indigo_client *client,
+	indigo_device *device,
+	indigo_property *property,
+	const char *message
+) {
 	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		indigo_device_connect(client, CCD_SIMULATOR);
-		return INDIGO_OK;
+		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
+			connected = true;
+			indigo_log("already connected...");
+			static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+			static double values[] = { 3.0 };
+			indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+		} else {
+			indigo_device_connect(client, CCD_SIMULATOR);
+			return INDIGO_OK;
+		}
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		if (device->version >= INDIGO_VERSION_2_0)
@@ -372,28 +403,27 @@ static indigo_result test_define_property(indigo_client *client,
 	if (!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
 		static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
 		static bool values[] = { true };
-		indigo_change_switch_property(client, CCD_SIMULATOR,
-			CCD_IMAGE_FORMAT_PROPERTY_NAME, 1, items, values);
+		indigo_change_switch_property(client, CCD_SIMULATOR, CCD_IMAGE_FORMAT_PROPERTY_NAME, 1, items, values);
 	}
 	return INDIGO_OK;
 }
 
-static indigo_result test_update_property(indigo_client *client,
-	indigo_device *device, indigo_property *property, const char *message) {
-
-	if (strcmp(property->device, CCD_SIMULATOR)) return INDIGO_OK;
-
+static indigo_result client_update_property(
+	indigo_client *client,
+	indigo_device *device,
+	indigo_property *property,
+	const char *message
+) {
+	if (strcmp(property->device, CCD_SIMULATOR))
+		return INDIGO_OK;
 	static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
 	static double values[] = { 3.0 };
-	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) &&
-		property->state == INDIGO_OK_STATE) {
-
+	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			if (!connected) {
 				connected = true;
 				indigo_log("connected...");
-				indigo_change_number_property(client, CCD_SIMULATOR,
-					CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 			}
 		} else {
 			if (connected) {
@@ -403,24 +433,25 @@ static indigo_result test_update_property(indigo_client *client,
 		}
 		return INDIGO_OK;
 	}
-	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) &&
-		property->state == INDIGO_OK_STATE) {
+	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		/* URL blob transfer is available only in client - server setup.
+		   This will never be called in case of a client loading a driver. */
+		if (*property->items[0].blob.url && indigo_populate_http_blob_item(&property->items[0]))
+			indigo_log("image URL received (%s, %d bytes)...", property->items[0].blob.url, property->items[0].blob.size);
 
-		if (*property->items[0].blob.url &&
-			indigo_populate_http_blob_item(&property->items[0])) {
-
-			indigo_log("image URL received (%s, %d bytes)...",
-				property->items[0].blob.url, property->items[0].blob.size);
+		if (property->items[0].blob.value) {
+			char name[32];
+			sprintf(name, "img_%02d.fits", count);
+			FILE *f = fopen(name, "wb");
+			fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
+			fclose(f);
+			indigo_log("image saved to %s...", name);
+			/* In case we have URL BLOB transfer we need to release the blob ourselves */
+			if (*property->items[0].blob.url) {
+				free(property->items[0].blob.value);
+				property->items[0].blob.value = NULL;
+			}
 		}
-		char name[32];
-		sprintf(name, "img_%02d.fits", count);
-		FILE *f = fopen(name, "wb");
-		fwrite(property->items[0].blob.value,
-		       property->items[0].blob.size, 1, f);
-		fclose(f);
-		indigo_log("image saved to %s...", name);
-		free(property->items[0].blob.value);
-		property->items[0].blob.value = NULL;
 	}
 	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_BUSY_STATE) {
@@ -429,8 +460,7 @@ static indigo_result test_update_property(indigo_client *client,
 			indigo_log("exposure done...");
 			if (--count > 0) {
 				indigo_change_number_property(
-					client,
-					CCD_SIMULATOR,
+					client, CCD_SIMULATOR,
 					CCD_EXPOSURE_PROPERTY_NAME,
 					1,
 					items,
@@ -445,36 +475,39 @@ static indigo_result test_update_property(indigo_client *client,
 	return INDIGO_OK;
 }
 
-static indigo_result test_detach(indigo_client *client) {
+static indigo_result client_detach(indigo_client *client) {
 	indigo_log("detached from INDIGO bus...");
 	return INDIGO_OK;
 }
 
-static indigo_client test = {
-	"Test", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
-	test_attach,
-	test_define_property,
-	test_update_property,
+static indigo_client client = {
+	"Remote server client", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+	client_attach,
+	client_define_property,
+	client_update_property,
 	NULL,
 	NULL,
-	test_detach
+	client_detach
 };
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
+#if defined(INDIGO_WINDOWS)
+	freopen("indigo.log", "w", stderr);
+#endif
 
-	indigo_start();
 	indigo_set_log_level(INDIGO_LOG_INFO);
+	indigo_start();
 
 	indigo_server_entry *server;
-	indigo_attach_client(&test);
-	indigo_connect_server("indigosky", "indigosky.local", 7624, &server);
+	indigo_attach_client(&client);
+	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
 	while (count > 0) {
 		  indigo_usleep(ONE_SECOND_DELAY);
 	}
 	indigo_disconnect_server(server);
-	indigo_detach_client(&test);
+	indigo_detach_client(&client);
 	indigo_stop();
 	return 0;
 }
@@ -484,7 +517,7 @@ int main(int argc, const char * argv[]) {
 
 An open source examples of client API usage are the following pieces of code:
 
-1. [indigo_test/client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_test/client.c) - Basic API example
+1. [indigo_examples/remote_server_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/remote_server_client.c) - Basic API example
 
 1. [indigo_tools/indigo_prop_tool.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c) - Command line property management tool
 

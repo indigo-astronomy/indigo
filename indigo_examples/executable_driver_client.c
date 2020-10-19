@@ -1,4 +1,4 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
+// Copyright (c) 2020 CloudMakers, s. r. o. & Rumen G.Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,50 +18,70 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+//      & Rumen G.Bogdanovski <rumen@skyarchive.org>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
 #include <string.h>
-#include <pthread.h>
+#include <unistd.h>
+#include <errno.h>
 #include <signal.h>
-#include <fcntl.h>
-
 #include <indigo/indigo_bus.h>
-#include "indigo_client_xml.h"
-#include "ccd_simulator/indigo_ccd_simulator.h"
+#include <indigo/indigo_client.h>
+#include <indigo/indigo_client_xml.h>
+
+#define CCD_SIMULATOR "CCD Imager Simulator @ indigo_ccd_simulator"
 
 static int device_pid;
 static bool connected = false;
+static int count = 5;
 
 static indigo_result client_attach(indigo_client *client) {
-	indigo_log("attached to INDI bus...");
+	indigo_log("attached to INDIGO bus...");
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
 }
 
 static indigo_result client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		indigo_device_connect(client, property->device);
-		return INDIGO_OK;
+		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
+			connected = true;
+			indigo_log("already connected...");
+			static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+			static double values[] = { 3.0 };
+			indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+		} else {
+			indigo_device_connect(client, CCD_SIMULATOR);
+			return INDIGO_OK;
+		}
+	}
+	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+		if (device->version >= INDIGO_VERSION_2_0)
+			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
+		else
+			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
+	}
+	if (!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
+		static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
+		static bool values[] = { true };
+		indigo_change_switch_property(client, CCD_SIMULATOR, CCD_IMAGE_FORMAT_PROPERTY_NAME, 1, items, values);
 	}
 	return INDIGO_OK;
 }
 
 static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
+	static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+	static double values[] = { 3.0 };
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			if (!connected) {
 				connected = true;
 				indigo_log("connected...");
-				static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
-				static double values[] = { 3.0 };
-				indigo_change_number_property(client, property->device, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 			}
 		} else {
 			if (connected) {
@@ -72,31 +92,51 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 		}
 		return INDIGO_OK;
 	}
+	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		/* URL blob transfer is available only in client - server setup.
+		   This will never be called in case of a client loading a driver. */
+		if (*property->items[0].blob.url && indigo_populate_http_blob_item(&property->items[0]))
+			indigo_log("image URL received (%s, %d bytes)...", property->items[0].blob.url, property->items[0].blob.size);
+
+		if (property->items[0].blob.value) {
+			char name[32];
+			sprintf(name, "img_%02d.fits", count);
+			FILE *f = fopen(name, "wb");
+			fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
+			fclose(f);
+			indigo_log("image saved to %s...", name);
+			/* In case we have URL BLOB transfer we need to release the blob ourselves */
+			if (*property->items[0].blob.url) {
+				free(property->items[0].blob.value);
+				property->items[0].blob.value = NULL;
+			}
+		}
+	}
 	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_BUSY_STATE) {
 			indigo_log("exposure %gs...", property->items[0].number.value);
 		} else if (property->state == INDIGO_OK_STATE) {
 			indigo_log("exposure done...");
+			if (--count > 0) {
+				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+			} else {
+				indigo_device_disconnect(client, CCD_SIMULATOR);
+			}
 		}
 		return INDIGO_OK;
-	}
-	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-		indigo_log("image received (%d bytes)...", property->items[0].blob.size);
-		indigo_device_disconnect(client, property->device);
 	}
 	return INDIGO_OK;
 }
 
-
 static indigo_result client_detach(indigo_client *client) {
-	indigo_log("detached from INDI bus...");
+	indigo_log("detached from INDIGO bus...");
 	kill(device_pid, SIGKILL);
 	exit(0);
 	return INDIGO_OK;
 }
 
 static indigo_client client = {
-	"Test", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+	"Executable driver client", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 	client_attach,
 	client_define_property,
 	client_update_property,
@@ -119,10 +159,11 @@ int main(int argc, const char * argv[]) {
 		dup2(output[0], 0);
 		close(1);
 		dup2(input[1], 1);
-		execl("./indigo_ccd_simulator", "indigo_ccd_simulator", NULL);
+		execl("../build/drivers/indigo_ccd_simulator", "indigo_ccd_simulator", NULL);
 	} else {
 		close(input[1]);
 		close(output[0]);
+		indigo_set_log_level(INDIGO_LOG_INFO);
 		indigo_start();
 		indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", input[0], output[1]);
 		indigo_attach_device(protocol_adapter);
@@ -132,4 +173,3 @@ int main(int argc, const char * argv[]) {
 	}
 	return 0;
 }
-

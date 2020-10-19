@@ -228,10 +228,27 @@ EFW_SUCCESS: operation succeeds
 EFW_API	EFW_ERROR_CODE EFWClose(int ID);
 
 /***************************************************************************
-Descriptions£º
+Descriptions:
 get version string, like "0, 4, 0824"
 ***************************************************************************/
 EFW_API char* EFWGetSDKVersion();
+
+
+/***************************************************************************
+Descriptions:
+get hardware error code of filter wheel
+
+Paras:
+int ID: the ID of filter wheel
+
+bool *pErrCode: pointer to error code .
+
+Return: 
+EFW_ERROR_INVALID_ID: invalid ID value
+EFW_ERROR_CLOSED: not opened
+EFW_SUCCESS: operation succeeds
+***************************************************************************/
+EFW_API EFW_ERROR_CODE EFWGetHWErrorCode(int ID, int *pErrCode);
 
 #ifdef __cplusplus
 }

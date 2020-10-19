@@ -4,6 +4,7 @@ https://pegasusastro.com/products/pocket-powerbox/
 
 ## Supported devices
 * PegasusAstro Pocket Powerbox
+* PegasusAstro Pocket Powerbox Advance
 
 Single device is present on startup (no hot-plug support).
 

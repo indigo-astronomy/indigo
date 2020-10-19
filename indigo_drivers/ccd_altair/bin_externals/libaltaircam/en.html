@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 39.15529.2019.0906</li></ul>
+<ul><li>Version: 48.17729.2020.0922</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -27,9 +27,9 @@
 	    <ul>
 		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
 		  <li>x64: GLIBC 2.14 or above</li>
-		  <li>armel: GLIBC 2.17 or above; built by toolchain arm-linux-gnueabi (version 4.9.2)</li>
-		  <li>armhf: GLIBC 2.17 or above; built by toolchain arm-linux-gnueabihf (version 4.9.2)</li>
-		  <li>arm64: GLIBC 2.17 or above; built by toolchain aarch64-linux-gnu (version 4.9.2)</li>
+		  <li>armel: GLIBC 2.17 or above; built by arm-linux-gnueabi (version 4.9.2)</li>
+		  <li>armhf: GLIBC 2.17 or above; built by arm-linux-gnueabihf (version 4.9.2)</li>
+		  <li>arm64: GLIBC 2.17 or above; built by aarch64-linux-gnu (version 4.9.2)</li>
 		</ul>
 	  </li>
       <li>Android: arm, arm64, x86, x64; built by android-ndk-r18b; __ANDROID_API__ = 23</li>
@@ -90,6 +90,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
        <ol>
          <li>x86 folder contains the kernel mode drivers for x86, including altaircam.cat, altaircam.inf and altaircam.sys.</li>
          <li>x64 folder contains the kennel mode driver for x64, including altaircam.cat, altaircam.inf and altaircam.sys.</li>
+		 It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table>
        </ol>
      </li>
      <li>samples
@@ -187,8 +189,12 @@ The SDK zip file contains all of the necessary resources and information:</p>
    <td>Camera disconnected, maybe has been pulled out</td>
  </tr>
   <tr>
-   <td>ALTAIRCAM_EVENT_TIMEOUT</td>
-   <td>Grab image timeout error, data acquisition cannot continue</td>
+   <td>ALTAIRCAM_EVENT_NOFRAMETIMEOUT</td>
+   <td>Grab image no frame timeout error, data acquisition cannot continue</td>
+ </tr>
+  <tr>
+   <td>ALTAIRCAM_EVENT_NOPACKETIMEOUT</td>
+   <td>Grab image no packet timeout</td>
  </tr>
   <tr>
    <td>ALTAIRCAM_EVENT_TRIGGERFAIL</td>
@@ -205,6 +211,26 @@ The SDK zip file contains all of the necessary resources and information:</p>
   <tr>
    <td>ALTAIRCAM_EVENT_DFC</td>
    <td>dark field correction status changed</td>
+ </tr>
+  <tr>
+   <td>ALTAIRCAM_EVENT_ROI</td>
+   <td>roi changed</td>
+ </tr>
+  <tr>
+   <td>ALTAIRCAM_EVENT_LEVELRANGE</td>
+   <td>level range changed</td>
+ </tr>
+ <tr>
+   <td><a id="hwevent">ALTAIRCAM_EVENT_EXPO_START</a></td>
+   <td>exposure start</td>
+ </tr>
+ <tr>
+   <td>ALTAIRCAM_EVENT_EXPO_STOP</td>
+   <td>exposure stop</td>
+ </tr>
+ <tr>
+   <td>ALTAIRCAM_EVENT_TRIGGER_ALLOW</td>
+   <td>next trigger allow</td>
  </tr>
   <tr>
    <td>ALTAIRCAM_EVENT_FACTORY</td>
@@ -225,21 +251,21 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <h2><font color="#0000FF"><a id="raw">c. Data format: RGB vs RAW</a></font></h2>
 <p>Altaircam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning ALTAIRCAM_OPTION_RAW parameter to 1 when calling Altaircam_put_Option function.</p>
 <ul><li>RGB format: The output of every pixel contains 3 componants which stand for R/G/B value respectively. This output is a processed output from the internal color processing engine.</li></ul>
-<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Altaircam_put_Hue or Altaircam_AwbOnePush function and so on.</li></ul>
+<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Altaircam_put_Hue or Altaircam_AwbOnce function and so on.</li></ul>
 <p>Users could switch these two format by calling Altaircam_put_Option function with different value setting to ALTAIRCAM_OPTION_RAW. You must call this function BEFORE the camera start function (Altaircam_StartPullModeWithWndMsg or Altaircam_StartPullModeWithCallback or Altaircam_StartPushMode).</p>
 <h2><font color="#0000FF"><a id="wb">d. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
 <p>1. Altaircam sdk supports two independent modes for white balance: a) Temp/Tint Mode; b) RGB Gain Mode</p>
 <blockquote>
-<p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Altaircam_get_TempTint function is used to acquire the temp and tint values and Altaircam_put_TempTint is used to set the temp and tint values. Function Altaircam_AwbOnePush is used to execute the auto white balance. When the white balance parameters change, ALTAIRCAM_EVENT_TEMPTINT event will be notified for external use.</p>
+<p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Altaircam_get_TempTint function is used to acquire the temp and tint values and Altaircam_put_TempTint is used to set the temp and tint values. Function Altaircam_AwbOnce is used to execute the auto white balance. When the white balance parameters change, ALTAIRCAM_EVENT_TEMPTINT event will be notified for external use.</p>
 <p>b) In RGB Gain mode, the while balace is controled by the gain values of the R,G,B channels. Altaircam_get_WhiteBalanceGain is used to acquire the parameters and Altaircam_put_WhiteBalanceGain is used to set the white balance parameters. Altaircam_AwbInit is used to execute the execute the auto white balance. When the white balance parameters change, ALTAIRCAM_EVENT_WBGAIN event will be notified for external use.</p>
 <p>The functions for these two modes cannot be misused:</p>
 	<blockquote>
-	a) In Temp/Tint mode, please use Altaircam_get_TempTint and Altaircam_put_TempTint and Altaircam_AwbOnePush. Altaircam_get_WhiteBalanceGain and Altaircam_put_WhiteBalanceGain and Altaircam_AwbInit cannot be used, they always return E_NOTIMPL.<br/>
-	b) In RGB Gain mode, please use Altaircam_get_WhiteBalanceGain and Altaircam_put_WhiteBalanceGain and Altaircam_AwbInit. Altaircam_get_TempTint and Altaircam_put_TempTint and Altaircam_AwbOnePush cannot be used, they always return E_NOTIMPL<br/>
+	a) In Temp/Tint mode, please use Altaircam_get_TempTint and Altaircam_put_TempTint and Altaircam_AwbOnce. Altaircam_get_WhiteBalanceGain and Altaircam_put_WhiteBalanceGain and Altaircam_AwbInit cannot be used, they always return E_NOTIMPL.<br/>
+	b) In RGB Gain mode, please use Altaircam_get_WhiteBalanceGain and Altaircam_put_WhiteBalanceGain and Altaircam_AwbInit. Altaircam_get_TempTint and Altaircam_put_TempTint and Altaircam_AwbOnce cannot be used, they always return E_NOTIMPL<br/>
 	</blockquote>
 <p>When calling Altaircam_Open function, whether to add a '@' character at the beginning of the id parameter will determine the white balance mode. Add a '@' character at the beginning of the id parameter means the RGB gain mode. If you want to use the RGB Gain mode, for example, if the id parameter is "abcdef", please call the Altaircam_Open function with the id parameter "@abcdef".</p>
 </blockquote>
-<p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "one push" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "one push" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Altaircam cameras support "one push" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
+<p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "once" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "once" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Altaircam cameras support "once" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
 <p>3. Monochromatic camera does not support white balance. The functions metioned above always return E_NOTIMPL.</p>
 <h2><font color="#0000FF">e. <a id="trigger">Trigger Mode</a></font></h2>
 <p>1. What is Trigger Mode</p>
@@ -258,11 +284,15 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	<blockquote>
 		Camera could be triggered by external trigger signal. By now Altaircam camera only supports positive-edge trigger mode.
 	</blockquote>
-<p>5. Simulated Trigger Mode</p>
+<p>5. Mix Trigger Mode</p>
+	<blockquote>
+		Both external and software trigger are enabled.
+	</blockquote>
+<p>6. Simulated Trigger Mode</p>
 	<blockquote>
 		For cameras that do not support software trigger and external trigger, simulated trigger mode could be available. When in simulated trigger mode, the camera hardware actually works in the same mode as the video mode. But the up-level software will not obtain any images from the camera. The software buffer will stay empty until the user set the trigger conditions by software. 
 	</blockquote>
-<p>6. How to Enter the Trigger Mode</p>
+<p>7. How to Enter the Trigger Mode</p>
 	<blockquote>
 		After the numeration of the connected camera, you can check the flag and find out what trigger mode does the camera support according to the following definition.
 			<blockquote><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define ALTAIRCAM_FLAG_TRIGGER_SOFTWARE   0x00080000  /* support software trigger */
@@ -270,11 +300,11 @@ The SDK zip file contains all of the necessary resources and information:</p>
 #define ALTAIRCAM_FLAG_TRIGGER_SINGLE     0x00200000  /* only support trigger single: one trigger, one image */</pre></td></tr></table></blockquote>
 		Function Altaircam_put_Option(HAltaircam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign ALTAIRCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
 			<blockquote>
-<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define ALTAIRCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, default value =  0 */</pre></td></tr></table>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define ALTAIRCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, 3 = external + software trigger, default value =  0 */</pre></td></tr></table>
 			</blockquote>
 		Function Altaircam_get_Option(HAltaircam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
 	</blockquote>
-<p>7. How to Trigger the camera</p>
+<p>8. How to Trigger the camera</p>
 	<blockquote>
 		Function Altaircam_Trigger(HAltaircam h, unsigned short nNumber) could be used to trigger the camera. Assigning different value to nNumber means different:
 			<blockquote>
@@ -284,7 +314,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 			</blockquote>
 		If the ALTAIRCAM_FLAG_TRIGGER_SINGLE flag is checked, the nNumber parameter must be assigned to 1 and 1 image will come out from the camera when Altaircam_Trigger is called.<br/>Enter the trigger mode first and then call Altaircam_Trigger function to trigger the camera.
 	</blockquote>
-<p>8. Trigger timeout</p>
+<p>9. Trigger timeout</p>
 	<blockquote>
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
@@ -293,6 +323,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <hr/>
 <ul><li><h2><font color="#0000FF">HRESULT return value</font></h2>
 	<p>HRESULT is not uncommon on the Windows platform. It's borrowed to macOS and Linux, see the table:</p>
+	<p><strong>Please note that the return value >=0 means success (especially S_FALSE is also successful, indicating that the internal value and the value set by the user is equivalent, which means "no operation"). Therefore, the SUCCEEDED and FAILED macros should generally be used to determine whether the return value is successful or failed.<br/>
+(Unless there are special needs, do not use "==S_OK" or "==0" to judge the return value)</strong></p>
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
@@ -307,7 +339,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	  </tr>
 	  <tr>
         <td>S_FALSE</td>
-        <td>Operation successful</td>
+        <td>Operation successful, nothing changed</td>
 		<td>0x00000001</td>
 	  </tr>
 	  <tr>
@@ -362,7 +394,10 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	<p>macOS, Linux and Android: __cdecl</p>
 </li></ul>
 <ul><li><h2><a id="callback"><font color="#0000FF">Callback: PALTAIRCAM_EVENT_CALLBACK and PALTAIRCAM_DATA_CALLBACK_V3</font></a></h2>
-	<p>These callback functions are called back from the internal thread in altaircam.dll, so great attention should be paid to multithread issue.</p>
+	<p>These callback functions are called back from the internal thread in altaircam.dll, so great attention should be paid to multithread issue.<br/>
+        Please ensure that the callback funcion is simple and return quickly.<br/>
+        Otherwise, in callback mode, ALTAIRCAM_OPTION_CALLBACK_THREAD can be setted to use a dedicated thread for callback.
+    </p>
 	<p><strong>There are limitations in the callback context:</strong></p>
 	<p><strong>(a) Do NOT call Altaircam_Stop and Altaircam_Close in this callback function, otherwise, deadlocks.</strong></p>
 	<p><strong>(b) Do NOT call Altaircam_put_Option with ALTAIRCAM_OPTION_TRIGGER, ALTAIRCAM_OPTION_BITDEPTH, ALTAIRCAM_OPTION_PIXEL_FORMAT, ALTAIRCAM_OPTION_BINNING, ALTAIRCAM_OPTION_ROTATE, the return value is E_WRONG_THREAD.</strong></p>
@@ -407,7 +442,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2" valign="top">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="37" valign="top">flag</td>
+   <td width="8%" rowspan="40" valign="top">flag</td>
    <td colspan="2" valign="top">Bitwise flag</td>
    </tr>
  <tr>
@@ -454,10 +489,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td width="29%" valign="top">ALTAIRCAM_FLAG_GETTEMPERATURE</td>
    <td width="63%" valign="top">support to get the temperature of the sensor, Altaircam_get_Temperature</td>
  </tr>
- <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_PUTTEMPERATURE</td>
-   <td width="63%" valign="top">support to put the target temperature of the sensor, Altaircam_put_Temperature</td>
- </tr> 
   <tr>
    <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW10</td>
    <td width="63%" valign="top">Pixel format, RAW 10 bits</td>
@@ -529,6 +560,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td valign="top">Conversion Gain: LCG, HCG, HDR</td>
   </tr>
   <tr>
+    <td valign="top">ALTAIRCAM_FLAG_EVENT_HARDWARE</td>
+    <td valign="top">hardware event, such as exposure start &amp; stop</td>
+  </tr>
+  <tr>
     <td valign="top">ALTAIRCAM_FLAG_YUV411</td>
     <td valign="top">pixel format, yuv411</td>
   </tr>
@@ -559,6 +594,14 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <tr>
     <td valign="top">ALTAIRCAM_FLAG_GLOBALSHUTTER</td>
     <td valign="top">global shutter</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_PRECISE_FRAMERATE</td>
+    <td valign="top">support precise framerate &amp; bandwidth, see ALTAIRCAM_OPTION_PRECISE_FRAMERATE &amp; ALTAIRCAM_OPTION_BANDWIDTH</td>
+  </tr>
+  <tr>
+    <td valign="top"><a id="hwlevelrange">ALTAIRCAM_FLAG_LEVELRANGE_HARDWARE</a></td>
+    <td valign="top">hardware level range</td>
   </tr>
  <tr>
    <td width="8%" valign="top">maxspeed</td>
@@ -819,7 +862,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <blockquote>
     <p>HAltaircam h: camera instance handle</p>
     <p>unsigned* nFourCC: raw format, see the table below</p>
-    <p>unsigned* bitdepth: Bit Depth, such as 8, 12, 14, 16</p>
+    <p>unsigned* bitdepth: bit depth, such as 8, 10, 12, 14, 16</p>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
   <tr>
    <td>#ifndef MAKEFOURCC<br/>
@@ -910,7 +953,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>ALTAIRCAM_OPTION_TRIGGER</td>
       	<td>0 = video mode<br/>
       	  1 = software or simulated trigger mode<br/>
-      	  2 = external trigger mode</td>
+      	  2 = external trigger mode<br/>
+		  <a id="mix">3 = external + software trigger</a></td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
@@ -956,7 +1000,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
       	<td>ALTAIRCAM_OPTION_AUTOEXP_THRESHOLD</td>
-      	<td>threshold of auto exposure, range: [5~15]</td>
+      	<td>threshold of auto exposure, range: [2~15]</td>
       	<td>5</td>
       	<td>Yes</td>
       </tr>
@@ -980,9 +1024,18 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 					0x02 (add, 2*2)<br/>
 					0x03 (add, 3*3)<br/>
 					0x04 (add, 4*4)<br/>
+					0x05 (add, 5*5)<br/>
+					0x06 (add, 6*6)<br/>
+					0x07 (add, 7*7)<br/>
+					0x08 (add, 8*8)<br/>
 					0x82 (average, 2*2)<br/>
 					0x83 (average, 3*3)<br/>
-					0x84 (average, 4*4)</td>
+					0x84 (average, 4*4)<br/>
+					0x85 (average, 5*5)<br/>
+					0x86 (average, 6*6)<br/>
+					0x87 (average, 7*7)<br/>
+					0x88 (average, 8*8)<br/>
+                    The final image size is rounded down to an even number, such as 640/3 to get 212</td>
       	<td>1</td>
       	<td>Yes</td>
       </tr>
@@ -1091,7 +1144,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
 	  <tr>
       	<td>ALTAIRCAM_OPTION_AFMODE</td>
-      	<td>auto focus mode:<br/>0: manul focus<br/>1: auto focus<br/>2: onepush focus<br/>3: conjugate calibration</td>
+      	<td>auto focus mode:<br/>0: manul focus<br/>1: auto focus<br/>2: once focus<br/>3: conjugate calibration</td>
       	<td>NA</td>
       	<td>Yes</td>
       </tr>
@@ -1115,10 +1168,97 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
 	  <tr>
         <td>ALTAIRCAM_OPTION_NOFRAME_TIMEOUT</td>
-        <td>Report error if cannot grab frame in a certain time.<br/>
+        <td>Report error if cannot grab frame in maximum exposure time.<br/>
           1 = enable this feature;<br/>0 = disable this feature.</td>
         <td>0</td>
         <td>Yes</td>
+      </tr>
+	  <tr>
+        <td><a id="nopacket">ALTAIRCAM_OPTION_NOPACKET_TIMEOUT</a></td>
+        <td>Report event if cannot grab packet in the set time.<br/>
+          0 = disable this feature<br/>
+          positive value = timeout milliseconds</td>
+        <td>0</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td><a id="precise">ALTAIRCAM_OPTION_MAX_PRECISE_FRAMERATE</a></td>
+        <td>get the precise frame maximum value in 0.1fps, such as 115 means 11.5fps<br/>
+          the maximum value depends the resolution/bitdepth/ROI, etc<br/>
+          E_NOTIMPL means not supported</td>
+		<td>NA</td>
+		<td>NA</td>
+      </tr>
+      <tr>
+        <td>ALTAIRCAM_OPTION_MIN_PRECISE_FRAMERATE</td>
+        <td>get the precise frame minimum value in 0.1fps, such as 15 means 1.5fps<br/>
+          the minimum value depends the resolution/bitdepth/ROI, etc<br/>
+          E_NOTIMPL means not supported</td>
+		<td>NA</td>
+		<td>NA</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_PRECISE_FRAMERATE</td>
+        <td>in 0.1fps, such as 115 means 11.5fps. range:[1~maximum]</td>
+		<td>90% of the maximum</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_BANDWIDTH</td>
+        <td>bandwidth, [1-100]%</td>
+		<td>90%</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td><a id="reload">ALTAIRCAM_OPTION_RELOAD</a></td>
+        <td>Reload the last frame in the trigger mode<br/>
+        get return value S_OK means supporting this feature, E_NOTIMPL means not supported</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_CALLBACK_THREAD</td>
+        <td>dedicated thread for callback, only available in pull mode</td>
+		<td>0</td>
+		<td>No</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH</td>
+        <td>frame deque length, range: [2, 1024]</td>
+		<td>3</td>
+		<td>No</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_SEQUENCER_ONOFF</td>
+        <td>sequencer trigger: on/off</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_SEQUENCER_NUMBER</td>
+        <td>sequencer trigger: number, range = [1, 255]</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_SEQUENCER_EXPOTIME</td>
+        <td>sequencer trigger: exposure time<br/>iOption = ALTAIRCAM_OPTION_SEQUENCER_EXPOTIME | index<br/>iValue = exposure time<br/><br/>
+		For example, to set the exposure time of the third group to 50ms, call<br/>Altaircam_put_Option(ALTAIRCAM_OPTION_SEQUENCER_EXPOTIME | 3, 50000)</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_SEQUENCER_EXPOGAIN</td>
+        <td>sequencer trigger: exposure gain<br/>iOption = ALTAIRCAM_OPTION_SEQUENCER_EXPOGAIN | index<br/>iValue = gain</td>
+		<td>NA</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td><a id="denoise">ALTAIRCAM_OPTION_DENOISE</a></td>
+        <td>Denoise<br/>
+		strength range: [0, 100], 0 means disable</td>
+		<td>0</td>
+		<td>是</td>
       </tr>
       <tr>
         <td>ALTAIRCAM_OPTION_THREAD_PRIORITY</td>
@@ -1167,7 +1307,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td width="28%"><a id="demosaic">ALTAIRCAM_OPTION_DEMOSAIC</a></td>
       	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
       			0 = BILINEAR<br/>
-      			1 = VNG(Variable Number of Gradients interpolation)<br/>
+      			1 = VNG(Variable Number of Gradients interpolation)(Temporarily unavailable)<br/>
       			2 = PPG(Patterned Pixel Grouping interpolation)<br/>
       			3 = AHD(Adaptive Homogeneity-Directed interpolation)<br/>
       			Always return E_NOTIMPL for monochromatic camera.</td>
@@ -1182,8 +1322,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
       	<td>ALTAIRCAM_OPTION_DEMOSAIC_STILL</td>
-      	<td>Demosaic mothod for still image<br/>
-      			Always return E_NOTIMPL for camera that don't support sill image capture.</td>
+      	<td>Demosaic mothod for still image</td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
@@ -1204,14 +1343,20 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p>c. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
 </blockquote>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Altaircam_put_RealTime, Altaircam_get_RealTime</font></h2>
+<ul><li><h2><font color="#0000FF"><a id="realtime">Altaircam_put_RealTime, Altaircam_get_RealTime</a></font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HAltaircam h: camera instance handle</p>
-      <p>int bEnable: TRUE or FALSE</p>
+      <p>int val:<br/>
+      0: stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full<br/>
+    1: realtime<br/>
+          use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full<br/>
+          If DDR present, also limit the DDR frame buffer to only one frame.
+    2: soft realtime<br/>
+          Drop the oldest frame when the queue is full and then enqueue the new frame</p>
     </blockquote>
-    <p><strong>Remarks:</strong> If you set RealTime mode as TRUE, then you get shorter frame delay but lower frame rate which damages fluency. The default value is FALSE.</p>
+    <p><strong>Remarks:</strong> If you set RealTime mode as 1, then you get shorter frame delay but lower frame rate which damages fluency. The default value is 0.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Altaircam_get_AutoExpoEnable, Altaircam_put_AutoExpoEnable, Altaircam_get_AutoExpoTarget, Altaircam_put_AutoExpoTarget, Altaircam_put_MaxAutoExpoTimeAGain, Altaircam_get_MaxAutoExpoTimeAGain, Altaircam_put_MinAutoExpoTimeAGain, Altaircam_get_MinAutoExpoTimeAGain</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1293,7 +1438,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃).</p>
     </blockquote>
     <p><strong>Remarks:</strong> get the temperature of the sensor. see ALTAIRCAM_FLAG_GETTEMPERATURE.</p>
-	<blockquote><p>set the target temperature of the sensor.</p></blockquote>
+	<blockquote><p>set the target temperature of the sensor, equivalent to Altaircam_put_Option(, ALTAIRCAM_OPTION_TECTARGET, ).</p></blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Altaircam_put_Mode, Altaircam_get_Mode</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1313,7 +1458,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Altaircam_AwbOnePush</font></h2>
+<ul><li><h2><font color="#0000FF">Altaircam_AwbOnce</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1340,7 +1485,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, ALTAIRCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
-<ul><li><h2><a id="black"><font color="#0000FF">Altaircam_AbbOnePush</font></a></h2>
+<ul><li><h2><a id="black"><font color="#0000FF">Altaircam_AbbOnce</font></a></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1601,6 +1746,30 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  <tr>
    <td>ALTAIRCAM_IOCONTROLTYPE_SET_USERVALUE</td>
    <td>&nbsp;</td>
+ </tr> <tr>
+   <td>ALTAIRCAM_IOCONTROLTYPE_GET_UART_ENABLE</td>
+   <td>UART enable: 1-> on; 0-> off</td>
+ </tr>
+ <tr>
+   <td>ALTAIRCAM_IOCONTROLTYPE_SET_UART_ENABLE</td>
+   <td>&nbsp;</td>
+ </tr>
+ <tr>
+   <td>ALTAIRCAM_IOCONTROLTYPE_GET_UART_BAUDRATE</td>
+   <td>baud rate:<br/>
+   0-> 9600<br/>1-> 19200<br/>2-> 38400<br/>3-> 57600<br/>4-> 115200</td>
+ </tr>
+ <tr>
+   <td>ALTAIRCAM_IOCONTROLTYPE_SET_UART_BAUDRATE</td>
+   <td>&nbsp;</td>
+ </tr>
+ <tr>
+   <td>ALTAIRCAM_IOCONTROLTYPE_GET_UART_LINEMODE</td>
+   <td>Line Mode:<br/>0->TX(GPIO_0)/RX(GPIO_1)<br/>1->TX(GPIO_1)/RX(GPIO_0)</td>
+ </tr>
+ <tr>
+   <td>ALTAIRCAM_IOCONTROLTYPE_SET_UART_LINEMODE</td>
+   <td>&nbsp;</td>
  </tr>
     </table>
   </div>
@@ -1617,37 +1786,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </blockquote>
   <p><strong>Remarks:</strong> If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Altaircam_FfcOnePush</font></h2>
+<ul><li><h2><font color="#0000FF">Altaircam_FfcOnce</font></h2>
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HAltaircam h: camera instance handle</p>
   </blockquote>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Altaircam_DfcOnePush</font></h2>
+<ul><li><h2><font color="#0000FF">Altaircam_DfcOnce</font></h2>
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HAltaircam h: camera instance handle</p>
   </blockquote>
-</li></ul>
-<ul><li><h2><font color="#0000FF">Altaircam_put_ExpoCallback</font></h2>
-      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
-      <p><strong>Parameters:</strong></p>
-  <blockquote>
-    <p>HAltaircam h: camera instance handle</p>
-    <p>PIALTAIRCAM_EXPOSURE_CALLBACK fnExpoProc, void* pExpoCtx: exposure callback function and callback context. If we set fnExpoProc as NULL, then it means stop calling back.</p>
-  </blockquote>
-  <p><strong>Remarks:</strong> Once we set non-NULL callback function, then callback happens whenever the exposure time changes.</p>
-</li></ul>
-<ul><li><h2><font color="#0000FF">Altaircam_put_ChromeCallback</font></h2>
-      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
-      <p><strong>Parameters:</strong></p>
-  <blockquote>
-    <p>HAltaircam h: camera instance handle</p>
-    <p>PIALTAIRCAM_CHROME_CALLBACK fnChromeProc, void* pChromeCtx: color/gray switches callback function and callback context. If we set fnChromeProc as NULL, then it means stop calling back.</p>
-  </blockquote>
-  <p><strong>Remarks:</strong> once we set non-NULL callback function, then callback happens whenever the color/gray switches, eg, call Altaircam_put_Chrome</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Altaircam_LevelRangeAuto</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1662,6 +1813,37 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HAltaircam h: camera instance handle</p>
+      <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Gray. RGB is only available for color image, and gray is only available for gray image.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> level range related.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF"><a id="levelrangev2">Altaircam_put_LevelRangeV2, Altaircam_get_LevelRangeV2</a></font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltaircam h: camera instance handle</p>
+	  <p>unsigned short mode:</p>
+	  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td width="50%">ALTAIRCAM_LEVELRANGE_MANUAL</td>
+        <td width="50%">Manual mode</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_LEVELRANGE_ONCE</td>
+        <td>Once</td>
+	  </tr>
+	  <tr>
+        <td>ALTAIRCAM_LEVELRANGE_CONTINUE</td>
+        <td>Continue mode</td>
+	  </tr>
+	  <tr>
+        <td>ALTAIRCAM_LEVELRANGE_ROI</td>
+        <td>Update the ROI rectangle</td>
+	  </tr>
+    </table>
+  </div>
+	<p>RECT* pRoiRect: ROI rectangle</p>
       <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Gray. RGB is only available for color image, and gray is only available for gray image.</p>
     </blockquote>
     <p><strong>Remarks:</strong> level range related.</p>
@@ -1689,7 +1871,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </tr>
   <tr>
     <td colspan="3">Auto Exposure Target</td>
-    <td width="15%">16~235</td>
+    <td width="15%">16~220</td>
     <td width="8%">120</td>
     <td width="17%">Altaircam_get_AutoExpoTarget</td>
     <td width="17%">Altaircam_put_AutoExpoTarget</td>
@@ -1703,7 +1885,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td width="8%">6503</td>
     <td width="17%" rowspan="2">Altaircam_get_TempTint</td>
     <td width="17%" rowspan="2">Altaircam_put_TempTint</td>
-    <td width="14%" rowspan="2">Altaircam_AwbOnePush</td>
+    <td width="14%" rowspan="2">Altaircam_AwbOnce</td>
   </tr>
   <tr>
     <td width="10%">Tint</td>
@@ -1726,13 +1908,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td>Blue Gain</td>
     </tr>
   <tr>
-    <td colspan="3">LevelRange</td>
-    <td width="15%">0~255</td>
-    <td width="8%">Low = 0<br/>
+    <td colspan="2" rowspan="2">LevelRange</td>
+	<td width="10%">Software</td>
+    <td width="15%" rowspan="2">0~255</td>
+    <td width="8%" rowspan="2">Low = 0<br/>
       High = 255</td>
     <td width="17%">Altaircam_get_LevelRange</td>
     <td width="17%">Altaircam_put_LevelRange</td>
     <td width="14%">Altaircam_LevelRangeAuto</td>
+  </tr>
+  <tr>
+	<td width="10%">Hardware</td>
+    <td width="17%">Altaircam_get_LevelRangeV2</td>
+    <td colspan="2">Altaircam_put_LevelRangeV2</td>
   </tr>
   <tr>
     <td colspan="3">Contrast</td>
@@ -1855,6 +2043,15 @@ public bool Snap(uint nResolutionIndex)
 <hr/>
 <h1><font color="#0000FF">8. Changelog</font></h1>
 <hr/>
+<p>v48: hardware event. Please see <a href="#hwevent">here</a></p>
+<p>v47: hardware level range. Please see <a href="#hwlevelrange">here</a> and <a href="#levelrangev2">here</a></p>
+<p>v46: Add support denose. Please see <a href="#denoise">here</a></p>
+<p>v45: Add sequencer trigger, UART, mix trigger (<a href="#mix">external and software trigger both are enabled</a>)</p>
+<p>v44: Extend the realtime mode, Please see <a href="#realtime">here</a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add ALTAIRCAM_OPTION_CALLBACK_THREAD and ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH</p>
+<p>v43: Reload the last frame in the trigger mode. Please see <a href="#reload">ALTAIRCAM_OPTION_RELOAD</a></p>
+<p>v42: Precise frame rate and bandwidth. Please see <a href="#precise">here</a> and ALTAIRCAM_FLAG_PRECISE_FRAMERATE</p>
+<p>v41: no packet timeout. Please see <a href="#nopacket">here</a></p>
 <p>v40: Auto test tool, see samples\AutoTestTool</p>
 <p>v39: Update C#/VB.NET/Java/Python</p>
 <p>v38: Add support to byte order, change BGR/RGB. Please see <a href="#bgr">here</a></p>

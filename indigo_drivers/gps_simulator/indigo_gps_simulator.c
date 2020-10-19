@@ -24,7 +24,7 @@
  \file indigo_gps_simulator.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"idnigo_gps_simulator"
 
 #include <stdlib.h>
@@ -56,9 +56,6 @@
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
-// gp_bits is used as boolean
-#define is_connected                   gp_bits
-
 typedef struct {
 	int timer_ticks;
 	indigo_timer *gps_timer;
@@ -67,7 +64,6 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO GPS device implementation
 
 static bool gps_open(indigo_device *device) {
-	if (device->is_connected) return false;
 	if (indigo_try_global_lock(device) != INDIGO_OK) {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
@@ -80,7 +76,6 @@ static bool gps_open(indigo_device *device) {
 
 
 static void gps_close(indigo_device *device) {
-	if (!device->is_connected) return;
 	indigo_global_unlock(device);
 	PRIVATE_DATA->timer_ticks = 0;
 }
@@ -182,28 +177,22 @@ static indigo_result gps_attach(indigo_device *device) {
 
 static void gps_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			if (gps_open(device)) {
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-				device->is_connected = true;
-				/* start updates */
-				indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}
+		if (gps_open(device)) {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			/* start updates */
+			indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (device->is_connected) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
-			gps_close(device);
-			device->is_connected = false;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
+		gps_close(device);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -215,6 +204,8 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
