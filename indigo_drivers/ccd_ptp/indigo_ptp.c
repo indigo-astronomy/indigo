@@ -634,6 +634,7 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 			INDIGO_LOG(indigo_log("Unsupported type=%x", target->type));
 			assert(false);
 	}
+	// Some models are not given a form flag.
 	CHECK_SENTINEL();
 	source = ptp_decode_uint8(source, &target->form);
 	switch (target->form) {
@@ -861,7 +862,6 @@ uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_p
 			break;
 		}
 		case ptp_str_type: {
-			source += *source *2 + 1;
 			source = ptp_decode_string(source, target->value.text.value);
 			break;
 		}
