@@ -144,6 +144,17 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp) {
 }
 #endif
 
+#if defined(INDIGO_MACOS)
+int clock_gettime(clockid_t clk_id, struct timespec *ts) {
+	struct timeval tv;
+	if (gettimeofday(&tv, NULL) < 0)
+		return -1;
+	ts->tv_sec = tv.tv_sec;
+	ts->tv_nsec = tv.tv_usec * 1000;
+	return 0;
+}
+#endif
+
 void indigo_log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
@@ -459,7 +470,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
 			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route) {
-				INDIGO_DEBUG(indigo_debug("INDIGO Bus: Change request - Device '%s' token 0x%x, Proprerty '%s' token 0x%x", device->name, device->access_token, property->name, property->access_token));
+				INDIGO_TRACE(indigo_trace("INDIGO Bus: Change request - Device '%s' token 0x%x, Proprerty '%s' token 0x%x", device->name, device->access_token, property->name, property->access_token));
 				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
 					indigo_send_message(device, "Device '%s' is protected or locked for exclusive access", device->name);
 					continue;
@@ -1004,6 +1015,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 		if (property->type == other->type) {
 			if (with_state)
 				property->state = other->state;
+			property->access_token = other->access_token;
 			if (property->type == INDIGO_SWITCH_VECTOR && property->rule != INDIGO_ANY_OF_MANY_RULE) {
 				for (int j = 0; j < property->count; j++) {
 					property->items[j].sw.value = false;

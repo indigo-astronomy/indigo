@@ -81,10 +81,16 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(CCD_INFO_HEIGHT_ITEM, CCD_INFO_HEIGHT_ITEM_NAME, "Vertical resolution", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME, "Max vertical binning", 0, 0, 0, 1);
 			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME, "Max horizontal binning", 0, 0, 0, 1);
-			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, CCD_INFO_PIXEL_SIZE_ITEM_NAME, "Pixel size", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, CCD_INFO_PIXEL_WIDTH_ITEM_NAME, "Pixel width", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, CCD_INFO_PIXEL_SIZE_ITEM_NAME, "Pixel size (um)", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, CCD_INFO_PIXEL_WIDTH_ITEM_NAME, "Pixel width (um)", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height (um)", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_BITS_PER_PIXEL_ITEM, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME, "Bits/pixel", 0, 0, 0, 0);
+			// -------------------------------------------------------------------------------- CCD_LENS
+			CCD_LENS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_PROPERTY_NAME, CCD_MAIN_GROUP, "Lens profile", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			if (CCD_LENS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(CCD_LENS_APERTURE_ITEM, CCD_LENS_APERTURE_ITEM_NAME, "Aperture (cm)", 0, 2000, 0, 0);
+			indigo_init_number_item(CCD_LENS_FOCAL_LENGTH_ITEM, CCD_LENS_FOCAL_LENGTH_ITEM_NAME, "Focal length (cm)", 0, 10000, 0, 0);
 			// -------------------------------------------------------------------------------- CCD_UPLOAD_MODE
 			CCD_UPLOAD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Image upload", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (CCD_UPLOAD_MODE_PROPERTY == NULL)
@@ -217,11 +223,11 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			CCD_COOLER_POWER_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_COOLER_POWER_ITEM, CCD_COOLER_POWER_ITEM_NAME, "Power (%)", 0, 100, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_TEMPERATURE
-			CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_COOLER_GROUP, "Temperature", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_COOLER_GROUP, "Sensor temperature", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_TEMPERATURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_TEMPERATURE_ITEM, CCD_TEMPERATURE_ITEM_NAME, "Temperature (C)", -50, 50, 1, 0);
+			indigo_init_number_item(CCD_TEMPERATURE_ITEM, CCD_TEMPERATURE_ITEM_NAME, "Temperature (\u00B0C)", -50, 50, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
 			CCD_FITS_HEADERS_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_FITS_HEADERS_PROPERTY_NAME, CCD_IMAGE_GROUP, "Custom FITS headers", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
 			if (CCD_FITS_HEADERS_PROPERTY == NULL)
@@ -269,6 +275,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(CCD_INFO_PROPERTY, property))
 			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
+		if (indigo_property_match(CCD_LENS_PROPERTY, property))
+			indigo_define_property(device, CCD_LENS_PROPERTY, NULL);
 		if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property))
 			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 		if (indigo_property_match(CCD_IMAGE_FILE_PROPERTY, property))
@@ -331,6 +339,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
 			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
+			indigo_define_property(device, CCD_LENS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
@@ -365,6 +374,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_LENS_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_PREVIEW_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
@@ -394,6 +404,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, CCD_LENS_PROPERTY);
 			indigo_save_property(device, NULL, CCD_MODE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_READ_MODE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_UPLOAD_MODE_PROPERTY);
@@ -409,6 +420,11 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, CCD_RBI_FLUSH_ENABLE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_RBI_FLUSH_PROPERTY);
 		}
+	} else if (indigo_property_match(CCD_LENS_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_LENS_PROPERTY, property, false);
+		CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_LENS_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -731,6 +747,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 indigo_result indigo_ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(CCD_INFO_PROPERTY);
+	indigo_release_property(CCD_LENS_PROPERTY);
 	indigo_release_property(CCD_UPLOAD_MODE_PROPERTY);
 	indigo_release_property(CCD_PREVIEW_PROPERTY);
 	indigo_release_property(CCD_LOCAL_MODE_PROPERTY);
@@ -884,8 +901,8 @@ static void raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_set_defaults(&cinfo);
 	jpeg_set_quality(&cinfo, CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target, true);
 	JSAMPROW row_pointer[1];
-	jpeg_start_compress( &cinfo, TRUE);
-	while( cinfo.next_scanline < cinfo.image_height ) {
+	jpeg_start_compress(&cinfo, TRUE);
+	while (cinfo.next_scanline < cinfo.image_height) {
 		row_pointer[0] = &((JSAMPROW)copy)[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
 		jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
@@ -1031,6 +1048,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		header[t] = ' ';
+		t = sprintf(header += 80, "ROWORDER= 'TOP-DOWN'           / Image row order");
+		header[t] = ' ';
 		if (keywords) {
 			while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
 				switch (keywords->type) {
@@ -1068,7 +1087,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			} else {
 				for (int i = 0; i < size; i++) {
 					int value = *raw;
-					value = ((value & 0xff) << 8 | (value & 0xff00) >> 8 ) - 32768;
+					value = ((value & 0xff) << 8 | (value & 0xff00) >> 8) - 32768;
 					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				}
 			}
@@ -1182,9 +1201,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		}
 		header += strlen(header);
+		sprintf(header, "<FITSKeyword name='IMAGETYP' value='%s' comment='Frame type'/>", frame_type);
+		header += strlen(header);
 		sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
 		header += strlen(header);
-		sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs );
+		sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs);
 		header += strlen(header);
 		sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
 		header += strlen(header);
@@ -1206,7 +1227,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
 			header += strlen(header);
-			sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value );
+			sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);
 			header += strlen(header);
 
 		}
@@ -1218,13 +1239,15 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
-			if (!strncmp(item->text.value, "FILTER=", 7)) {
-				sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value='%s'/>", item->text.value + 7);
+			if (!strncmp(item->text.value, "FILTER  =", 9)) {
+				sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value=%s/>", item->text.value + 10);
 				header += strlen(header);
-				sprintf(header, "<FITSKeyword name='FILTER' value='%s'/>", item->text.value + 7);
+				sprintf(header, "<FITSKeyword name='FILTER' value=%s comment='Name of the used filter'/>", item->text.value + 10);
 				header += strlen(header);
-			} else if (!strncmp(item->text.value, "FOCUS=", 6)) {
-				sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value + 6);
+			} else if (!strncmp(item->text.value, "FOCUS   =", 9)) {
+				sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value + 10);
+				header += strlen(header);
+				sprintf(header, "<FITSKeyword name='FOCUS' value='%s' comment='Focuser position'/>", item->text.value + 10);
 				header += strlen(header);
 			}
 		}

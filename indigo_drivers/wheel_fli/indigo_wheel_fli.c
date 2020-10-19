@@ -23,7 +23,7 @@
  \file indigo_wheel_fli.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME		"indigo_wheel_fli"
 
 #include <stdlib.h>
@@ -116,8 +116,6 @@ static void wheel_connect_callback(indigo_device *device) {
 	} else {
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -216,6 +214,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

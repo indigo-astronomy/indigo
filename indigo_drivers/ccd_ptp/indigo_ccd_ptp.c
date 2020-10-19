@@ -144,8 +144,6 @@ static void handle_connection(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 		if (PRIVATE_DATA->handle == NULL) {
 			bool result = true;
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				result = false;
@@ -319,6 +317,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

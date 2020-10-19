@@ -83,6 +83,7 @@ indigo_result indigo_add_snoop_rule(indigo_property *target, const char *source_
 	indigo_init_text_item(property->items + 1, SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM_NAME, NULL, source_property);
 	indigo_init_text_item(property->items + 2, SNOOP_ADD_RULE_TARGET_DEVICE_ITEM_NAME, NULL, target->device);
 	indigo_init_text_item(property->items + 3, SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM_NAME, NULL, target->name);
+	property->access_token = indigo_get_device_or_master_token(property->device);
 	indigo_result result = indigo_change_property(NULL, property);
 	indigo_release_property(property);
 	return result;
@@ -98,6 +99,7 @@ indigo_result indigo_remove_snoop_rule(indigo_property *target, const char *sour
 	indigo_init_text_item(property->items + 1, SNOOP_REMOVE_RULE_SOURCE_PROPERTY_ITEM_NAME, NULL, source_property);
 	indigo_init_text_item(property->items + 2, SNOOP_REMOVE_RULE_TARGET_DEVICE_ITEM_NAME, NULL, target->device);
 	indigo_init_text_item(property->items + 3, SNOOP_REMOVE_RULE_TARGET_PROPERTY_ITEM_NAME, NULL, target->name);
+	property->access_token = indigo_get_device_or_master_token(property->device);
 	indigo_result result = indigo_change_property(NULL, property);
 	indigo_release_property(property);
 	return result;

@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -456,7 +456,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			char *color_string = get_bayer_string(device);
 			if ((color_string) &&   /* if colour (bayer) image but not RGB */
 			    (PRIVATE_DATA->exp_bpp != 24) &&
-				(PRIVATE_DATA->exp_bpp != 48)) {
+			    (PRIVATE_DATA->exp_bpp != 48)) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
@@ -510,7 +510,9 @@ static void streaming_timer_callback(indigo_device *device) {
 					break;
 				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetVideoData((%d) = %d", id, res);
-				if (color_string) {
+				if ((color_string) &&   /* if colour (bayer) image but not RGB */
+				    (PRIVATE_DATA->exp_bpp != 24) &&
+				    (PRIVATE_DATA->exp_bpp != 48)) {
 					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, keywords);
 				} else {
 					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL);
@@ -918,7 +920,6 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
-					return;
 				}
 				ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
 				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
@@ -941,7 +942,6 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_LOG( DRIVER_NAME, "ASIGetGainOffset(%d) = %d", id, res);
-					return;
 				}
 
 				PRIVATE_DATA->gain_unity_gain = get_unity_gain(device);
@@ -1000,6 +1000,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1377,6 +1379,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

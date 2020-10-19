@@ -39,6 +39,7 @@
 #include <indigo/indigo_novas.h>
 #include <indigo/indigo_agent.h>
 
+# define DEG2RAD (M_PI/180.0)
 
 static double indigo_range24(double ha) {
 	return fmod(ha + (24000), 24);
@@ -951,6 +952,7 @@ static indigo_alignment_point* indigo_find_single_alignment_point(indigo_device*
 	return NULL;
 }
 
+/*
 static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* device, double lst, double ra, double dec, int side_of_pier, int raw) {
 	//  Compute virtual encoder angles for RA/DEC
 	double enc_ra, enc_dec;
@@ -971,12 +973,47 @@ static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* dev
 			indigo_eq_to_encoder(device, indigo_range24(point->lst - point->raw_ra), point->raw_dec, point->side_of_pier, &enc_p_ra, &enc_p_dec);
 		else
 			indigo_eq_to_encoder(device, indigo_range24(point->lst - point->ra), point->dec, point->side_of_pier, &enc_p_ra, &enc_p_dec);
-
+		//  FIXME!!! for closest point, GCD should be used Euclieadean distance is meaningless in spherical coordinates
 		//  Compute separation of encoder angles of RA/DEC and alignment point
 		//  Determine nearest point
 		double delta_ra = enc_p_ra - enc_ra;
 		double delta_dec = enc_p_dec - enc_dec;
 		double d = (delta_ra * delta_ra) + (delta_dec * delta_dec);
+		if (d < min_d) {
+			nearest_point = point;
+			min_d = d;
+		}
+	}
+
+	//  Return nearest point
+	return nearest_point;
+}
+*/
+
+static indigo_alignment_point* indigo_nearest_alignment_point(indigo_device* device, double lst, double ra, double dec, int raw) {
+	//  Find nearest alignment point
+	double sin_dec = sin(dec * DEG2RAD);
+	double cos_dec = cos(dec * DEG2RAD);
+	double min_d = 180.0;   //  Larger than 2.0
+	indigo_alignment_point* nearest_point = 0;
+	double ha = 15 * indigo_range24(lst - ra) * DEG2RAD;
+
+	for (int i = 0; i < MOUNT_CONTEXT->alignment_point_count; i++) {
+		//  Skip unused points
+		indigo_alignment_point *point = MOUNT_CONTEXT->alignment_points + i;
+		if (!point->used)
+			continue;
+
+		//  Compute virtual encoder angles for alignment point
+		double p_ha, p_dec;
+		if (raw) {
+			p_ha = 15 * indigo_range24(point->lst - point->raw_ra) * DEG2RAD;
+			p_dec = point->raw_dec * DEG2RAD;
+		} else {
+			p_ha = 15 * indigo_range24(point->lst - point->ra) * DEG2RAD;
+			p_dec = point->dec * DEG2RAD;
+		}
+		double d = acos(sin_dec * sin(p_dec) + cos_dec * cos(p_dec) * cos(ha - p_ha)) / DEG2RAD;
 		if (d < min_d) {
 			nearest_point = point;
 			min_d = d;
@@ -1020,10 +1057,18 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 		if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value)
 			point = indigo_find_single_alignment_point(device);
 		else
-		  point = indigo_nearest_alignment_point(device, lst, ra, dec, side_of_pier, 0);
+		  //point = indigo_nearest_alignment_point(device, lst, ra, dec, side_of_pier, 0);
+		  point = indigo_nearest_alignment_point(device, lst, ra, dec, 0);
 		if (point) {
-			//  Transform coordinates
-			*raw_ra = ra + (point->raw_ra - point->ra);
+			// Transform coordinates
+			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
+			double cos_dec = cos(dec * DEG2RAD);
+			if (cos_dec != 0) {
+				*raw_ra = ra + (point->raw_ra - point->ra) * cos(point->dec * DEG2RAD) / cos_dec;
+			} else { /* if dec = 90 or -90 math fail so use another approximation -> ignore cos() tems,  anyway ra does not matter */
+				*raw_ra = ra + (point->raw_ra - point->ra);
+			}
+
 			*raw_dec = dec + (point->raw_dec - point->dec);
 
 			//**  Re-normalize coordinates to ensure they are in range
@@ -1095,10 +1140,17 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 		if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value)
 			point = indigo_find_single_alignment_point(device);
 		else
-			point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, side_of_pier, 1);
+			//point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, side_of_pier, 1);
+			point = indigo_nearest_alignment_point(device, lst, raw_ra, raw_dec, 1);
 		if (point) {
-			//  Transform coordinates
-			*ra = raw_ra + (point->ra - point->raw_ra);
+			// Transform coordinates
+			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
+			double cos_raw_dec = cos(raw_dec * DEG2RAD);
+			if (cos_raw_dec != 0) {
+				*ra = raw_ra + (point->ra - point->raw_ra) * cos(point->dec * DEG2RAD) / cos_raw_dec;
+			} else { /* if dec = 90 or -90 math fail so use another approximation -> ignore cos() tems, anyway ra does not matter */
+				*ra = raw_ra + (point->ra - point->raw_ra);
+			}
 			*dec = raw_dec + (point->dec - point->raw_dec);
 
 			//**  Re-normalize coordinates to ensure they are in range
@@ -1145,13 +1197,16 @@ time_t indigo_get_mount_utc(indigo_device *device) {
 }
 
 void indigo_update_coordinates(indigo_device *device, const char *message) {
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 	time_t utc = indigo_get_mount_utc(device);
 	if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 		indigo_eq2hor(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
-		indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		if (IS_CONNECTED)
+			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	}
 	MOUNT_LST_TIME_ITEM->number.value = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+	if (IS_CONNECTED) {
+		indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
+	}
 }

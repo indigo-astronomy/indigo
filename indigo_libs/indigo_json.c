@@ -397,7 +397,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 				}
 				break;
 			case NUMBER_VALUE:
-				if ((isdigit(c) || c == '.') && value_pointer - value_buffer <INDIGO_VALUE_SIZE) {
+				if ((isdigit(c) || c == '.' || c == 'e' || c == 'E' || c == '-') && value_pointer - value_buffer <INDIGO_VALUE_SIZE) {
 					*value_pointer++ = c;
 				} else {
 					state = VALUE1;

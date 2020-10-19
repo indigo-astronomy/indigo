@@ -23,7 +23,7 @@
  \file indigo_aux_dsusb.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_aux_dsusb"
 
 #include <stdlib.h>
@@ -114,8 +114,6 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		if (libdsusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 			indigo_define_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
@@ -172,7 +170,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_CCD_EXPOSURE

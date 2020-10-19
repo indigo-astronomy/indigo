@@ -23,7 +23,7 @@
  \file indigo_aux_sqm.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_aux_sqm"
 
 #include <stdlib.h>
@@ -115,16 +115,16 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
-	char buffer[60], *pnt;
+	char buffer[120] = {0}, *pnt;
 	memset(buffer, 0, sizeof(buffer));
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	indigo_printf(PRIVATE_DATA->handle, "rx");
 	indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
 	char *tok = strtok_r(buffer, ",", &pnt);
-	if (tok == NULL || *tok != 'r') {
+	if (tok == NULL) {
 		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
+	} else if (*tok == 'r') {
 		X_AUX_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 		X_AUX_SENSOR_FREQUENCY_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 		X_AUX_SENSOR_COUNTS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
@@ -140,15 +140,13 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
 		if (PRIVATE_DATA->handle > 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-			char buffer[60];
+			char buffer[120] = {0};
 			indigo_printf(PRIVATE_DATA->handle, "ix");
 			indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
-			if (*buffer == 'i') {
+			if (buffer[0] == 'i' && buffer[1] == ',') {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unit info: %s", buffer);
 			} else {
 				close(PRIVATE_DATA->handle);
@@ -183,7 +181,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------

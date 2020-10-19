@@ -248,9 +248,11 @@ typedef struct {
 #define VERIFY_NOT_CONNECTED(dev)\
 {\
 	indigo_device *device = dev;\
-	if (device)\
-		if (IS_CONNECTED)\
+	if (device) {\
+		if (!IS_DISCONNECTED)\
 			return INDIGO_BUSY;\
+		indigo_usleep(100000);\
+	}\
 }
 
 /** Try to aquire global lock
@@ -265,6 +267,11 @@ extern indigo_result indigo_global_unlock(indigo_device *device);
  */
 
 #define IS_CONNECTED	(DEVICE_CONTEXT != NULL && CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE)
+
+/** Device is disconnected.
+ */
+
+#define IS_DISCONNECTED	(DEVICE_CONTEXT != NULL && CONNECTION_DISCONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state != INDIGO_BUSY_STATE)
 
 /** Attach callback function.
  */
@@ -328,6 +335,10 @@ time_t indigo_isolocaltotime(char *isotime);
 /** Enumerate serial ports.
  */
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
+
+/** Check for double connect/disconnect request.
+ */
+extern bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request);
 
 #ifdef __cplusplus
 }

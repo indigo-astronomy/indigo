@@ -64,6 +64,9 @@
 							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-block d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')"></indigo-select-item>
+										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_RA'" :icon="'glyphicons-option-vertical'" :tooltip="'Aggressivity RA'"></indigo-edit-number>
+										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-option-horizontal'" :tooltip="'Aggressivity Dec'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]" :tooltip="'Exposure Time'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'"></indigo-edit-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'"></indigo-show-number>
@@ -78,6 +81,10 @@
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_DEC'" :icon="'drft δ'" :tooltip="'Declination Drift'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_RA'" :icon="'cor α'" :tooltip="'Right Ascension Correction'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_DEC'" :icon="'cor δ'" :tooltip="'Declination Correction'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DELAY'" :icon="'delay'" :tooltip="'Delay between frames'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'SNR'" :icon="'S/N'" :tooltip="'Signal/noise ratio'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DITHERING'" :icon="'dithering'" :tooltip="'Dithering RMSE'"></indigo-show-number>
+										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'" :tooltip="'Calibration phase'"></indigo-show-number>
 										<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
 											<button id="calibrate_button" class="btn btn-svg idle-state mr-2" onclick="calibrate()" data-toggle="tooltip" title="Calibrate">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -173,8 +180,9 @@
 		var decDrift = [];
 		var raCorr = [];
 		var decCorr = [];
+		var rmse = [];
 
-		function paintGraph(graph, ra, dec) {
+		function paintGraph(graph, ra, dec, rmse) {
 			var canvas = document.getElementById(graph);
 			canvas.width = $("#" + graph).outerWidth();
 			canvas.height = $("#" + graph).outerHeight();
@@ -184,12 +192,12 @@
 			var height2 = height / 2;
 			var ctx = canvas.getContext("2d");
 			var maxValue = 0;
-			for (i in raDrift) {
+			for (i in ra) {
 				var value = Math.abs(ra[i]);
 				if (maxValue < value)
 					maxValue = value;
 			}
-			for (i in decDrift) {
+			for (i in dec) {
 				var value = Math.abs(dec[i]);
 				if (maxValue < value)
 					maxValue = value;
@@ -234,13 +242,27 @@
 			}
 			ctx.stroke(path);
 			ctx.restore();
+
+			ctx.save();
+			ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+			path = new Path2D();
+			x = 0;
+			for (i in rmse) {
+				if (rmse[i])
+					path.rect(x, 0, xScale, height);
+				x += xScale;
+			}
+			ctx.fill(path);
+			ctx.restore();
+
+			
 			ctx.save();
 			ctx.strokeStyle = "#00F";
 			path = new Path2D();
 			var x = 0;
 			var y = height2 + ra[0]*yScale;
 			path.moveTo(x, y);
-			for (i in raDrift) {
+			for (i in ra) {
 				y = height2 + ra[i]*yScale;
 				path.lineTo(x, y);
 				x += xScale;
@@ -255,7 +277,7 @@
 			x = 0;
 			y = height2 + dec[0]*yScale;
 			path.moveTo(x, y);
-			for (i in raDrift) {
+			for (i in dec) {
 				y = height2 + dec[i]*yScale;
 				path.lineTo(x, y);
 				x += xScale;
@@ -285,6 +307,7 @@
 						decDrift = [];
 						raCorr = [];
 						decCorr = [];
+						rmse = [];
 					}
 					while (raDrift.length >= 200)
 						raDrift.shift();
@@ -294,6 +317,8 @@
 						raCorr.shift();
 					while (decCorr.length >= 200)
 						decCorr.shift();
+					while (rmse.length >= 200)
+						rmse.shift();
 					if (phase > 0) {
 						raDrift.push(property.item("DRIFT_X").value);
 						decDrift.push(property.item("DRIFT_Y").value);
@@ -303,8 +328,9 @@
 					}
 					raCorr.push(property.item("CORR_RA").value);
 					decCorr.push(property.item("CORR_DEC").value);
-					paintGraph("graph_drift", raDrift, decDrift);
-					paintGraph("graph_corr", raCorr, decCorr);
+					rmse.push(property.item("DITHERING").value);
+					paintGraph("graph_drift", raDrift, decDrift, rmse);
+					paintGraph("graph_corr", raCorr, decCorr, rmse);
 				}
 			}
 			guiSetup();

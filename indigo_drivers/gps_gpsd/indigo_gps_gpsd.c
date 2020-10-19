@@ -24,7 +24,7 @@
  \file indigo_gps_gpsd.c
  */
 
-#define DRIVER_VERSION	0x0003
+#define DRIVER_VERSION	0x0004
 #define DRIVER_NAME	"indigo_gps_gpsd"
 
 #include <stdlib.h>
@@ -227,9 +227,7 @@ static void gps_connect_callback(indigo_device *device) {
 			indigo_set_timer(device, 0, gps_refresh_callback, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			indigo_set_switch(CONNECTION_PROPERTY,
-						CONNECTION_DISCONNECTED_ITEM,
-						true);
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else {
@@ -247,6 +245,8 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

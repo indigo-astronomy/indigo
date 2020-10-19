@@ -100,7 +100,8 @@ typedef enum {
 	INDIGO_NOT_FOUND,           ///< unknown client/device/property/item etc.
 	INDIGO_CANT_START_SERVER,   ///< network server start failure
 	INDIGO_DUPLICATED,			///< duplicated items etc.
-	INDIGO_BUSY                 ///< operation failed because the resourse is busy.
+	INDIGO_BUSY,                ///< operation failed because the resourse is busy.
+	INDIGO_GUIDE_ERROR          ///< Guide process error (srar lost, SNR too low etc..).
 } indigo_result;
 
 /** Property data type.

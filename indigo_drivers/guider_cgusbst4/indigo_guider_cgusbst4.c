@@ -23,7 +23,7 @@
  \file indigo_guider_cgusbst4.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_guider_cgusbst4"
 
 #include <stdlib.h>
@@ -152,8 +152,6 @@ static indigo_result guider_attach(indigo_device *device) {
 static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		result = cgusbst4_open(device);
 		if (result) {
 			char response[2];
@@ -178,6 +176,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

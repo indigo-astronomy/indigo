@@ -89,7 +89,7 @@ static uint16_t axis_status[2] = { INITIALIZED, INITIALIZED };
 #else
 static uint16_t axis_status[2] = { 0, 0 };
 #endif
-static uint32_t axis_position[2] = { 0x800000, 0x834BC0 };
+static uint32_t axis_position[2] = { 0x800000, 0x800000 + STEPS_PER_REVOLUTION / 4 };
 static uint32_t axis_increment[2] = { 0, 0 };
 static uint32_t axis_target[2] = { 0, 0 };
 static bool axis_increment_set[2] = { 0, 0 };

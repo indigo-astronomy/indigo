@@ -678,3 +678,56 @@ time_t indigo_isolocaltotime(char *isotime) {
 
 	return -1;
 }
+
+bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request) {
+	indigo_item *connected_item = NULL;
+	indigo_item *disconnected_item = NULL;
+
+	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
+		return true;
+
+	for (int i = 0; i < request->count; i++) {
+		indigo_item *item = request->items + i;
+		if (!strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
+			connected_item = item;
+		} else if (!strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME)) {
+			disconnected_item = item;
+		}
+	}
+
+	// if CONNECTED and DISCONNECTED are set
+	if (connected_item != NULL && disconnected_item != NULL) {
+		// ON & ON and OFF & OFF is not valid
+		if (connected_item->sw.value == disconnected_item->sw.value)
+			return true;
+		/* REQUESTED == CURRENT is not a state change.
+		   Checking DISCONNECTED is not needed, as we already made sure CONNECTED = !DISCONNECTED
+		*/
+		if (connected_item->sw.value == CONNECTION_CONNECTED_ITEM->sw.value)
+			return true;
+	}
+
+	// if only CONNECTED is set
+	if (connected_item != NULL && disconnected_item == NULL) {
+		// CURRENT == REQUSTED is not a state change.
+		if (CONNECTION_CONNECTED_ITEM->sw.value == connected_item->sw.value)
+			return true;
+		/* request CONNECTED = OFF is illegal:
+		   1. If current CONNECTED = OFF -> not a state change.
+		   2. If current CONNECTED = ON -> reults in invalid state CONNECTED = OFF and DISCONNECTED = OFF.
+		*/
+		if (connected_item->sw.value == false)
+			return true;
+	}
+
+	// if only DISCONNECTED is set - analogous to CONNECTED
+	if (connected_item == NULL && disconnected_item != NULL) {
+		if (CONNECTION_DISCONNECTED_ITEM->sw.value == disconnected_item->sw.value)
+			return true;
+		if (disconnected_item->sw.value == false)
+			return true;
+	}
+
+	/* reqquest is valid */
+	return false;
+}

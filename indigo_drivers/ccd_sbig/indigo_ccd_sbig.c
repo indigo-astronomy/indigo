@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -1032,8 +1032,6 @@ static void ccd_connect_callback(indigo_device *device) {
 	char b1[32];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				GetCCDInfoParams cip;
 				short res;
@@ -1288,7 +1286,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			clear_connected_flag(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	}	
+	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
@@ -1299,6 +1297,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1530,8 +1530,6 @@ static void guider_timer_callback_dec(indigo_device *device) {
 static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
@@ -1563,6 +1561,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1698,50 +1698,56 @@ static indigo_result eth_attach(indigo_device *device) {
 }
 
 
+static void eth_connect_callback(indigo_device *device) {
+	char message[1024] = {0};
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!DEVICE_CONNECTED) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			snprintf(message, 1024, "Conneting to %s. This may take several minutes.", DEVICE_PORT_ITEM->text.value);
+			indigo_update_property(device, CONNECTION_PROPERTY, message);
+			unsigned long ip_address;
+			bool ok;
+			ok = get_host_ip(DEVICE_PORT_ITEM->text.value, &ip_address);
+			if (ok) {
+				ok = plug_device(NULL, DEV_ETH, ip_address);
+			}
+			if (ok) {
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				set_connected_flag(device);
+				message[0] = '\0';
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				snprintf(message, 1024, "Conneting to %s failed.", DEVICE_PORT_ITEM->text.value);
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		}
+	} else { /* disconnect */
+		if (DEVICE_CONNECTED) {
+			remove_eth_devices();
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			clear_connected_flag(device);
+		}
+	}
+	if (message[0] == '\0')
+		indigo_device_change_property(device, NULL, CONNECTION_PROPERTY);
+	else
+		indigo_device_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+
 static indigo_result eth_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		char message[1024] = {0};
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!DEVICE_CONNECTED) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				snprintf(message, 1024, "Conneting to %s. This may take several minutes.", DEVICE_PORT_ITEM->text.value);
-				indigo_update_property(device, CONNECTION_PROPERTY, message);
-				unsigned long ip_address;
-				bool ok;
-				ok = get_host_ip(DEVICE_PORT_ITEM->text.value, &ip_address);
-				if (ok) {
-					ok = plug_device(NULL, DEV_ETH, ip_address);
-				}
-				if (ok) {
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					set_connected_flag(device);
-					message[0] = '\0';
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
-				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					snprintf(message, 1024, "Conneting to %s failed.", DEVICE_PORT_ITEM->text.value);
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				}
-			}
-		} else { /* disconnect */
-			if (DEVICE_CONNECTED) {
-				remove_eth_devices();
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				clear_connected_flag(device);
-			}
-		}
-
-		if (message[0] == '\0')
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		else
-			indigo_update_property(device, CONNECTION_PROPERTY, message);
-
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, eth_connect_callback, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_device_change_property(device, client, property);
@@ -1825,8 +1831,6 @@ static void wheel_connect_callback(indigo_device *device) {
 	int res;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				pthread_mutex_lock(&driver_mutex);
 				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -1926,6 +1930,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	int res;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -2007,8 +2013,6 @@ static void ao_connect_callback(indigo_device *device) {
 	int res = CE_NO_ERROR;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!DEVICE_CONNECTED) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				pthread_mutex_lock(&driver_mutex);
 				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -2052,6 +2056,8 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	int res = CE_NO_ERROR;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
