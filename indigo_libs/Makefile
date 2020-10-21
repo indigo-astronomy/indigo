@@ -65,7 +65,7 @@ endif
 	rm -rf $(INSTALL_INCLUDE)/indigo
 
 clean: status
-	rm -f *.o *.orig $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libusb-1.0.dylib $(LIBHIDAPI) $(BUILD_LIB)/libftd2xx.a
+	rm -f *.o *.orig $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libusb-1.0.dylib $(LIBHIDAPI) $(BUILD_LIB)/libftd2xx.a
 
 clean-all: clean
 
@@ -81,7 +81,7 @@ $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c))) $(BUILD_LIB)/libnovas.a
-	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl -lusb-1.0
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl -lusb-1.0
 
 #---------------------------------------------------------------------
 #
