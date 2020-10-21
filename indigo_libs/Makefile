@@ -75,7 +75,7 @@ clean-all: clean
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb libhidapi libjpeg libnovas libftd2xx $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: version libusb libhidapi libjpeg libtiff libnovas libftd2xx $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
@@ -105,6 +105,17 @@ libjpeg: $(BUILD_LIB)/libjpeg.a
 
 $(BUILD_LIB)/libjpeg.a:
 	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libjpeg; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB)  --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)"; make install
+
+#---------------------------------------------------------------------
+#
+#	Build libtiff
+#
+#---------------------------------------------------------------------
+
+libtiff: $(BUILD_LIB)/libtiff.a
+
+$(BUILD_LIB)/libtiff.a:
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libtiff; ./configure --disable-packbits --disable-lzw --disable-thunder --disable-next --disable-logluv --disable-mdi --disable-zlib --disable-pixarlog --disable-lzma --enable-shared=no --enable-static=yes --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) CFLAGS="$(CFLAGS)"; make install
 
 #---------------------------------------------------------------------
 #
