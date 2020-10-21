@@ -99,6 +99,8 @@
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
 		5980010A22E4E76700021D67 /* libapogee.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598000FC22E4E6BD00021D67 /* libapogee.a */; };
 		598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598005FD22E4FFEA00021D67 /* libqsiapi.a */; };
+		598786462540C69E00CE8B48 /* libtiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598786452540C62D00CE8B48 /* libtiff.a */; };
+		598786482540C6C500CE8B48 /* libtiffxx.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598786472540C69E00CE8B48 /* libtiffxx.a */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
 		5996615822CF44D500330652 /* indigo_aux_ppb.c in Sources */ = {isa = PBXBuildFile; fileRef = 5996615122CF3E0F00330652 /* indigo_aux_ppb.c */; };
@@ -1338,6 +1340,8 @@
 		598005FB22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		598005FD22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
+		598786452540C62D00CE8B48 /* libtiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiff.a; path = build/lib/libtiff.a; sourceTree = "<group>"; };
+		598786472540C69E00CE8B48 /* libtiffxx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiffxx.a; path = build/lib/libtiffxx.a; sourceTree = "<group>"; };
 		5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "CMOS Camera Specific Options.pdf"; sourceTree = "<group>"; };
 		5989C386246C48110005282C /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
 		5989C387246C48A90005282C /* make_source_tarball.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = make_source_tarball.sh; sourceTree = "<group>"; };
@@ -3880,6 +3884,7 @@
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
+				598786462540C69E00CE8B48 /* libtiff.a in Frameworks */,
 				9DDEFBFF21EE358F00657C8F /* libUSB2ST4Conv.a in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
@@ -3887,6 +3892,7 @@
 				59A5302121A35159000B6F27 /* libatik.a in Frameworks */,
 				59A52DF021A33E44000B6F27 /* libfli.a in Frameworks */,
 				599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */,
+				598786482540C6C500CE8B48 /* libtiffxx.a in Frameworks */,
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
@@ -11191,6 +11197,8 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				598786472540C69E00CE8B48 /* libtiffxx.a */,
+				598786452540C62D00CE8B48 /* libtiff.a */,
 				5931B72B2535FAE0008F74A1 /* indigo_ccd_simulator.dylib */,
 				5931B7272535FA8A008F74A1 /* libindigo.dylib */,
 				5942229E22E34AA9009DAD5C /* libdc1394.dylib */,
