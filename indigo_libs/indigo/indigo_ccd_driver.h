@@ -287,6 +287,10 @@ extern "C" {
  */
 #define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+3)
 
+/** CCD_IMAGE_FORMAT.TIFF property item pointer.
+ */
+#define CCD_IMAGE_FORMAT_TIFF_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+4)
+
 /** CCD_IMAGE_FILE property pointer, property is mandatory, read-only property.
  */
 #define CCD_IMAGE_FILE_PROPERTY           (CCD_CONTEXT->ccd_image_file_property)

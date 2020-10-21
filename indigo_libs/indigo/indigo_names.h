@@ -476,6 +476,10 @@
  */
 #define CCD_IMAGE_FORMAT_JPEG_ITEM_NAME       "JPEG"
 
+/** CCD_IMAGE_FORMAT.TIFF property item name.
+ */
+#define CCD_IMAGE_FORMAT_TIFF_ITEM_NAME       "TIFF"
+
 //----------------------------------------------------------------------
 /** CCD_IMAGE_FILE property name.
  */
