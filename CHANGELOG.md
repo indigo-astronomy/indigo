@@ -2,6 +2,23 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-130] - --- -- -- 2020
+### Overall:
+- TIFF image format added
+- indigo_server_tcp: empty resource list bug fixed
+- VERIFY_NOT_CONNECTED() macro fixed
+- scientific number notation support added to JSON
+- CLIENT_DEVELOPMENT_BASICS.md and INDIGO_AGENTS.md documents updated
+
+### Driver Fixes:
+- indigo_ccd_touptek: fix failing exposures problem
+- indigo_ccd_altair: fix failing exposures problem
+- indigo_mount_ioptron: CEM70 identification added
+- indigo_mount_nexstar:
+  - set correct timezone and DST
+  - gps detection changed
+  - deadlock fixed
+
 ## [2.0-128] - Mon Oct 05 2020
 ### Overall:
 - Agents can select only devices that are not currently being used.
