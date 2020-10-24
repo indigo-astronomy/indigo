@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -276,6 +276,8 @@ static bool ieq_open(indigo_device *device) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60");
 			} else if (!strcmp(PRIVATE_DATA->product, "0061")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60-EC");
+			} else if (!strcmp(PRIVATE_DATA->product, "0070")) {
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM70");
 			} else if (!strcmp(PRIVATE_DATA->product, "0120")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120");
 			} else if (!strcmp(PRIVATE_DATA->product, "0121")) {
@@ -328,7 +330,7 @@ static bool ieq_open(indigo_device *device) {
 				if (strncmp("170410", response, 6) <= 0 && (product == 5035)) {
 					PRIVATE_DATA->protocol = 0x0205;
 				}
-				if (strncmp("171001", response, 6) <= 0 && (product == 120 || product == 121 || product == 122)) {
+				if (strncmp("171001", response, 6) <= 0 && (product == 70 || product == 120 || product == 121 || product == 122)) {
 					PRIVATE_DATA->protocol = 0x0300;
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware #1:  %s", response);
