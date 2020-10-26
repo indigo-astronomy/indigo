@@ -33,6 +33,8 @@
 #include <assert.h>
 #include <pthread.h>
 #include <errno.h>
+#include <sys/select.h>
+#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_dome_driver.h>
