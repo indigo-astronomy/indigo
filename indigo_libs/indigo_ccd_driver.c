@@ -35,10 +35,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <jpeglib.h>
-#include <tiffio.h>
 
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_tiff.h>
 
 static void countdown_timer_callback(indigo_device *device) {
 	if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
@@ -916,80 +916,11 @@ static void raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 }
 
-typedef struct {
-		unsigned char *data;
-		tsize_t size;
-		tsize_t file_length;
-		toff_t file_offset;
-} tiff_memory_handle;
-
-static tsize_t tiff_read(thandle_t handle, tdata_t data, tsize_t size) {
-	tiff_memory_handle *memory_handle = (tiff_memory_handle *)handle;
-	tsize_t length;
-	if ((memory_handle->file_offset + size) <= memory_handle->file_length)
-		length = size;
-	else
-		length = memory_handle->file_length - memory_handle->file_offset;
-	memcpy(data, memory_handle->data + memory_handle->file_offset, length);
-	memory_handle->file_offset += length;
-	return length;
-}
-
-
-static tsize_t tiff_write(thandle_t handle, tdata_t data, tsize_t size) {
-	tiff_memory_handle *memory_handle = (tiff_memory_handle *)handle;
-	if ((memory_handle->file_offset + size) > memory_handle->size) {
-		memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->file_offset + size);
-		memory_handle->size = memory_handle->file_offset + size;
-	}
-	memcpy(memory_handle->data + memory_handle->file_offset, data, size);
-	memory_handle->file_offset += size;
-	if (memory_handle->file_offset > memory_handle->file_length)
-		memory_handle->file_length = memory_handle->file_offset;
-	return size;
-}
-
-static toff_t tiff_seek(thandle_t handle, toff_t off, int whence) {
-	tiff_memory_handle *memory_handle = (tiff_memory_handle *)handle;
-	switch (whence) {
-		case SEEK_SET: {
-			if ((tsize_t) off > memory_handle->size)
-				memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->size += off);
-			memory_handle->file_offset = off;
-			break;
-		}
-		case SEEK_CUR: {
-			if ((tsize_t)(memory_handle->file_offset + off) > memory_handle->size)
-				memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->size = memory_handle->file_offset + off);
-			memory_handle->file_offset += off;
-			break;
-		}
-		case SEEK_END: {
-			if ((tsize_t) (memory_handle->file_length + off) > memory_handle->size)
-				memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->size += off);
-			memory_handle->file_offset = memory_handle->file_length + off;
-			break;
-		}
-	}
-	if (memory_handle->file_offset > memory_handle->file_length)
-		memory_handle->file_length = memory_handle->file_offset;
-	return memory_handle->file_offset;
-}
-
-static int tiff_close(thandle_t handle) {
-	return 0;
-}
-
-static toff_t tiff_size(thandle_t handle) {
-	tiff_memory_handle *memory_handle = (tiff_memory_handle *)handle;
-	return memory_handle->file_length;
-}
-
 static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out) {
-	tiff_memory_handle *memory_handle = malloc(sizeof(tiff_memory_handle));
+	indigo_tiff_memory_handle *memory_handle = malloc(sizeof(indigo_tiff_memory_handle));
 	memory_handle->data = malloc(memory_handle->size = 10240);
 	memory_handle->file_length = memory_handle->file_offset = 0;
-	TIFF *tiff = TIFFClientOpen("", little_endian ? "wl" : "wb", (thandle_t)memory_handle, tiff_read, tiff_write, tiff_seek, tiff_close, tiff_size, NULL, NULL);
+	TIFF *tiff = TIFFClientOpen("", little_endian ? "wl" : "wb", (thandle_t)memory_handle, indigo_tiff_read, indigo_tiff_write, indigo_tiff_seek, indigo_tiff_close, indigo_tiff_size, NULL, NULL);
 	TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, frame_width);
 	TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, frame_height);
 	if (bpp == 8) {
@@ -1019,9 +950,10 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	TIFFSetField(tiff, TIFFTAG_SOFTWARE, "INDIGO");
 	TIFFWriteRawStrip(tiff, 0, data_in + FITS_HEADER_SIZE, frame_width * frame_height * bpp / 8);
 	TIFFWriteDirectory(tiff);
-	tiff_close(tiff);
+	indigo_tiff_close(tiff);
 	*data_out = memory_handle->data;
 	*size_out = memory_handle->file_length;
+	free(memory_handle);
 }
 
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords) {
