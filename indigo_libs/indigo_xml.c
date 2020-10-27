@@ -1276,7 +1276,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 #else
 			ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
 #endif
-			if (count <= 0) {
+			if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
+				indigo_debug("XML Parser: read timeout (errno = %d), reseting ...", errno);
+				*pointer--;
+				continue;
+			} else if (count <= 0) {
 				goto exit_loop;
 			}
 			pointer = buffer;
