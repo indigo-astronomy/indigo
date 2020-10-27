@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -196,7 +196,7 @@ static void create_frame(indigo_device *device) {
 			else
 				raw[i] = rgb;
 		}
-		indigo_process_image(device, private_data->dslr_image, WIDTH, HEIGHT, 24, true, true, NULL);
+		indigo_process_image(device, private_data->dslr_image, WIDTH, HEIGHT, 24, true, true, NULL, false);
 	} else {
 		unsigned short *raw = (unsigned short *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -338,7 +338,9 @@ static void create_frame(indigo_device *device) {
 				}
 			}
 		}
-		indigo_process_image(device, device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image, frame_width, frame_height, 16, true, true, NULL);
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_process_image(device, device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image, frame_width, frame_height, 16, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->image_mutex);
 }
@@ -367,6 +369,7 @@ static void streaming_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
 	}
+	indigo_finalize_video_stream(device);
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
@@ -538,6 +541,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_STREAMING_PROPERTY->hidden = false;
 			CCD_STREAMING_EXPOSURE_ITEM->number.min = 0.001;
 			CCD_STREAMING_EXPOSURE_ITEM->number.max = 0.5;
+			CCD_IMAGE_FORMAT_PROPERTY->count = 6;
 		}
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -636,6 +640,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		}
 		if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
@@ -649,6 +657,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		}
+		if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		}
 		indigo_set_timer(device, 0, streaming_timer_callback, NULL);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
