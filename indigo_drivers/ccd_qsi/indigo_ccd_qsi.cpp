@@ -26,7 +26,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION    0x0009
+#define DRIVER_VERSION    0x000A
 #define DRIVER_NAME       "indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -234,7 +234,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			cam.get_ImageArraySize(width, height, depth);
 			cam.get_ImageArray(PRIVATE_DATA->buffer + FITS_HEADER_SIZE / 2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image %ld x %ld", width, height);
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)width, (int)height, 16, true, true, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)width, (int)height, 16, true, true, NULL, false);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} catch (std::runtime_error err) {
@@ -274,6 +274,14 @@ static void ccd_exposure_callback(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_use_shortest_exposure_if_bias(device);
 		try {
+			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+			}
+			if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+				CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			cam.put_StartX(CCD_FRAME_LEFT_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value);

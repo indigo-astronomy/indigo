@@ -647,7 +647,7 @@ static int process_dslr_image_debayer(indigo_device *device,
                              libraw_image.bits * libraw_image.colors,
                              true, /* little_endian */
 			     true, /* RBG order */
-                             keywords);
+                             keywords, false);
 cleanup:
 	libraw_free_image(raw_data);
 	libraw_recycle(raw_data);
