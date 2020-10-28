@@ -24,3 +24,6 @@ indigo_server indigo_ccd_altair
 
 Tested with GP 224C and 183M
 
+## Comments
+
+There is a known issue with SDK and reopening the camera - exposure is not possible until the camera is reconnected.

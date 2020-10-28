@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
@@ -222,7 +222,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
 					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
 					DEFAULT_BPP,
-					true, true, keywords
+					true, true, keywords, false
 				);
 			} else {
 				indigo_process_image(
@@ -231,7 +231,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
 					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
 					DEFAULT_BPP,
-					true, true, NULL
+					true, true, NULL, false
 				);
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -294,16 +294,15 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	);
 
 	if (ok) {
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		} else {
+		}
+		if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);

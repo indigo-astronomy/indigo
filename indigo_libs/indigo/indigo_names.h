@@ -480,6 +480,10 @@
  */
 #define CCD_IMAGE_FORMAT_TIFF_ITEM_NAME       "TIFF"
 
+/** CCD_IMAGE_FORMAT.JPEG_AVI property item name.
+ */
+#define CCD_IMAGE_FORMAT_JPEG_AVI_ITEM_NAME   "JPEG_AVI"
+
 //----------------------------------------------------------------------
 /** CCD_IMAGE_FILE property name.
  */
