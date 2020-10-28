@@ -385,10 +385,14 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 			timeout.tv_sec = 5;
 			timeout.tv_usec = 0;
 
+			/* set 5s timeout on RECV/READ - Looks like there is no need for this and it may break http layer */
+			/*
 			if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
 				indigo_error("Can't set recv() timeout: %s", strerror(errno));
 			}
+			*/
 
+			// set 5s timeout on SEND/WRITE
 			if (setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
 				indigo_error("Can't set send() timeout: %s", strerror(errno));
 			}
