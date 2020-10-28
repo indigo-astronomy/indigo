@@ -24,3 +24,6 @@ indigo_server indigo_ccd_touptek
 
 Tested with GP-1200KMB
 
+## Comments
+
+There is a known issue with SDK and reopening the camera - exposure is not possible until the camera is reconnected.

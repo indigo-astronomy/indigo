@@ -291,6 +291,10 @@ extern "C" {
  */
 #define CCD_IMAGE_FORMAT_TIFF_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+4)
 
+/** CCD_IMAGE_FORMAT.JPEG_AVI property item pointer.
+ */
+#define CCD_IMAGE_FORMAT_JPEG_AVI_ITEM    (CCD_IMAGE_FORMAT_PROPERTY->items+5)
+
 /** CCD_IMAGE_FILE property pointer, property is mandatory, read-only property.
  */
 #define CCD_IMAGE_FILE_PROPERTY           (CCD_CONTEXT->ccd_image_file_property)
@@ -407,6 +411,7 @@ typedef struct {
 	indigo_timer *countdown_timer;								///< countdown timer
 	void *preview_image;													///< preview image buffer
 	unsigned long preview_image_size;							///< preview image buffer size
+	void *video_stream;														///< video stream control structure
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
@@ -477,13 +482,19 @@ typedef struct {
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
-extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords);
+extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming);
 
 /** Process DSLR image in image buffer (starting on data).
  */
 extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix);
 
+/** Process DSLR preview image in image buffer (starting on data).
+ */
 extern void indigo_process_dslr_preview_image(indigo_device *device, void *data, int blobsize);
+
+/** Finalize video stream.
+ */
+extern void indigo_finalize_video_stream(indigo_device *device);
 
 #ifdef __cplusplus
 }

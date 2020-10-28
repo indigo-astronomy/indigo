@@ -663,7 +663,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		if (andor_read_pixels(device)) {
 			frame_buffer = PRIVATE_DATA->buffer;
 			indigo_process_image(device, frame_buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x),
-			                    (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, true, NULL);
+			                    (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, true, NULL, false);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
@@ -703,16 +703,15 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	);
 
 	if (ok) {
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		} else {
+		}
+		if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
