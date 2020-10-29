@@ -156,11 +156,14 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 		return INDIGO_FAILED;
 	if ((data == NULL) || (hfd == NULL) || (peak == NULL))
 		return INDIGO_FAILED;
-	double min = 1e20, max = 0, value;
+
+	double background = 0, max = 0, value;
+	int background_count = 0;
 	int ce = xx + radius, le = yy + radius;
-	for (int j = yy - radius; j <= le; j++) {
+	int cb = xx - radius, lb = yy - radius;
+	for (int j = lb; j <= le; j++) {
 		int k = j * width;
-		for (int i = xx - radius; i <= ce; i++) {
+		for (int i = cb; i <= ce; i++) {
 			int kk = k + i;
 			switch (raw_type) {
 				case INDIGO_RAW_MONO8: {
@@ -182,12 +185,25 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 					break;
 				}
 			}
+
+			/* use border of the selection to calculate the background */
+			if (j == lb || j == le || i == cb || i == ce) {
+				background += value;
+				background_count++;
+			}
 			if (value > max)
 				max = value;
-			if (value < min)
-				min = value;
 		}
 	}
+
+	background = background / background_count;
+	// Selection is too flat
+	if (max < background * 1.05) {
+		*hfd = *fwhm = 2*radius+1;
+		*peak = max - background;
+		return INDIGO_FAILED;
+	}
+
 	double prod = 0, total = 0;
 	for (int j = yy - radius; j <= le; j++) {
 		int k = j * width;
@@ -213,7 +229,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 					break;
 				}
 			}
-			value -= min;
+			value -= background;
 				if (value > 0) {
 				double dist = sqrt((x - i) * (x - i) + (y - j) * (y - j));
 				prod += dist * value;
@@ -222,8 +238,8 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 		}
 	}
 	*hfd = 2 * prod / total;
-	*peak = max - min;
-	double half_max = *peak / 2 + min;
+	*peak = max - background;
+	double half_max = *peak / 2 + background;
 	static int d2[][2] = { { -1, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } };
 	double d3[] = { radius, radius, radius, radius };
 	for (int d = 0; d < 4; d++) {
