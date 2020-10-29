@@ -4,7 +4,7 @@
 
 * Trutek USB filter wheels
 
-This driver supports hot-plug (single devices).
+Single device is present on startup (no hot-plug support).
 
 ## Supported platforms
 
