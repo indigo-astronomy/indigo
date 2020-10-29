@@ -135,6 +135,7 @@
 #include "dome_baader/indigo_dome_baader.h"
 #include "mount_pmc8/indigo_mount_pmc8.h"
 #include "focuser_robofocus/indigo_focuser_robofocus.h"
+#include "wheel_qhy/indigo_wheel_qhy.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -261,6 +262,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_fli,
 	indigo_wheel_manual,
 	indigo_wheel_optec,
+	indigo_wheel_qhy,
 	indigo_wheel_quantum,
 	indigo_wheel_sx,
 	indigo_wheel_trutek,
