@@ -655,7 +655,7 @@ static bool autofocus(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak = %g, HFD = %g,  FWHM = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value);
 			if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0)
 				continue;
-			quality += AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_FWHM_ITEM->number.value / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
+			quality += AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_FWHM_ITEM->number.value;
 			frame_count++;
 		}
 		if (frame_count == 0 || quality == 0) {
@@ -729,7 +729,12 @@ static bool autofocus(indigo_device *device) {
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		return false;
 	indigo_usleep(ONE_SECOND_DELAY);
-	return capture_raw_frame(device);
+	capture_raw_frame(device);
+	if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value >= AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
+		return false;
+	} else {
+		return true;
+	}
 }
 
 static void autofocus_process(indigo_device *device) {
