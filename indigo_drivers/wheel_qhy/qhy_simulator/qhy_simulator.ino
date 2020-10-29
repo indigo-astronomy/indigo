@@ -17,12 +17,19 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// https://www.qhyccd.com/index.php?m=content&c=index&a=show&catid=68&id=234
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
 #endif
 
-char current_filter = '1';
+//#define CFW1
+//#define CFW2
+#define CFW3
+
+
+char current_filter = '0';
 
 void setup() {
   Serial.begin(9600);
@@ -32,11 +39,38 @@ void setup() {
 }
 
 void loop() {
-  String command = Serial.readStringUntil('\n');
-  if (command.startsWith("G")) {
-    current_filter = command.charAt(1);
+  char command = Serial.read();
+  if ((command >= '0' && command <= '9') || (command >= 'A' && command <= 'F')) {
+#ifdef CFW1
+    if (current_filter != command) {
+      delay(3000);
+      Serial.write('-');
+    }
+#endif    
+#ifdef CFW2
+    if (current_filter != command) {
+      delay(3000);
+      Serial.write(command);
+    }
+#endif    
+#ifdef CFW3
     delay(3000);
-    Serial.print("P");
-    Serial.println(current_filter);
+    Serial.write(command);
+#endif    
+    current_filter = command;
+#ifdef CFW3
+  } else if ((command == 'N')) {
+    Serial.read(); // O
+    Serial.read(); // W
+    Serial.write(current_filter);
+  } else if ((command == 'V')) {
+    Serial.read(); // R
+    Serial.read(); // S
+    Serial.write("20200903");
+  } else if ((command == 'M')) {
+    Serial.read(); // X
+    Serial.read(); // P
+    Serial.write('6');
+#endif    
   }
 }
