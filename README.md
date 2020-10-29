@@ -108,6 +108,7 @@ This is the list of requirements taken into the consideration:
 79. Manual wheel driver
 80. PMC8 mount controller driver
 81. RoboFocus focuser driver
+82. QHY CFW filter wheel driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
