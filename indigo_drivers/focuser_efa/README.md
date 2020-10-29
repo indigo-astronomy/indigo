@@ -22,6 +22,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_efa
 
-## Status: Under development
+## Status: Stable
 
 Open issues: wrong temperature report, can't set min value
