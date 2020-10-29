@@ -1,10 +1,13 @@
 # QHY CFW wheel driver
 
+https://www.qhyccd.com/index.php?m=content&c=index&a=show&catid=137&id=33
+https://www.qhyccd.com/index.php?m=content&c=index&a=show&catid=137&id=34
+
 ## Supported devices
 
-* QHY CFW USB filter wheel
+* QHY CFW1/2/3  filter wheels
 
-This driver supports hot-plug (single devices).
+Single device is present on startup (no hot-plug support).
 
 ## Supported platforms
 

@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
+#include <ctype.h>
+#include <errno.h>
 #include <sys/time.h>
 
 #include <indigo/indigo_io.h>
@@ -39,11 +41,22 @@
 
 // -------------------------------------------------------------------------------- interface implementation
 
+#define X_MODEL_PROPERTY                (PRIVATE_DATA->model)
+#define X_MODEL_1_ITEM                  (X_MODEL_PROPERTY->items+0)
+#define X_MODEL_2_ITEM                  (X_MODEL_PROPERTY->items+1)
+#define X_MODEL_3_ITEM                  (X_MODEL_PROPERTY->items+2)
+
+#define X_MODEL_PROPERTY_NAME           "X_MODEL"
+#define X_MODEL_1_ITEM_NAME             "1"
+#define X_MODEL_2_ITEM_NAME             "2"
+#define X_MODEL_3_ITEM_NAME             "3"
+
 #define PRIVATE_DATA        ((qhy_private_data *)device->private_data)
 
 typedef struct {
 	int handle;
-	int slot;
+	indigo_property *model;
+	pthread_mutex_t mutex;
 } qhy_private_data;
 
 static bool qhy_open(indigo_device *device) {
@@ -58,29 +71,19 @@ static bool qhy_open(indigo_device *device) {
 	}
 }
 
-static void qhy_query(indigo_device *device) {
-	for (int repeat = 0; repeat < 30; repeat++) {
-		int slot;
-		if (indigo_scanf(PRIVATE_DATA->handle, "P%d", &slot) == 1) {
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = slot + 1;
-			if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
-				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-				return;
-			} else {
-				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-			}
+static bool qhy_command(indigo_device *device, char *command, char *reply, int reply_length) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	size_t result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	if (result > 0 && reply) {
+		for (int i = 0; i < 10; i++) {
+			result = indigo_read(PRIVATE_DATA->handle, reply, reply_length);
+			if (result > 0)
+				break;
 		}
-		indigo_usleep(500000);
 	}
-	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-}
-
-static void qhy_goto(indigo_device *device, int slot) {
-	indigo_printf(PRIVATE_DATA->handle, "G%d\r\n", slot - 1);
-	indigo_set_timer(device, 1, qhy_query, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "command: %s -> %.*s (%s)", command, reply_length, reply, result > 0 ? "OK" : strerror(errno));
+	return result > 0;
 }
 
 static void qhy_close(indigo_device *device) {
@@ -91,28 +94,45 @@ static void qhy_close(indigo_device *device) {
 	}
 }
 
-// -------------------------------------------------------------------------------- INDIGO wheel device implementation
-
-static indigo_result wheel_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_wheel_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
 static void wheel_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (qhy_open(device)) {
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
-			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
-			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			qhy_goto(device,1);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (X_MODEL_3_ITEM->sw.value) {
+				char reply[8];
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW3");
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				if (qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8)) {
+					if (qhy_command(device, "MXP", reply, 1)) {
+						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
+					}
+					if (qhy_command(device, "NOW", reply, 1)) {
+						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
+					}
+				} else {
+					indigo_set_switch(X_MODEL_PROPERTY, X_MODEL_1_ITEM, true);
+					indigo_update_property(device, X_MODEL_PROPERTY, "Failed to connect to CFW3, trying to fallback to CFW1");
+				}
+			}
+			if (X_MODEL_2_ITEM->sw.value) {
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW2");
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				if (!qhy_command(device, "0", NULL, 0)) {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 16;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+			}
+			if (X_MODEL_1_ITEM->sw.value) {
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW1");
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				if (!qhy_command(device, "0", NULL, 0)) {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 16;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+			}
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -124,6 +144,51 @@ static void wheel_connect_callback(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void wheel_goto_handler(indigo_device *device) {
+	char command[2] = { '0' + WHEEL_SLOT_ITEM->number.target - 1, 0 };
+	char reply[2];
+	if (qhy_command(device, command, reply, 1)) {
+		if (X_MODEL_1_ITEM) {
+			WHEEL_SLOT_PROPERTY->state = reply[0] == '-';
+		} else if (X_MODEL_2_ITEM || X_MODEL_3_ITEM) {
+			WHEEL_SLOT_PROPERTY->state = reply[0] == command[0];
+		}
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+	}
+}
+
+// -------------------------------------------------------------------------------- INDIGO wheel device implementation
+
+static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result wheel_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- X_MODEL
+		X_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, X_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_MODEL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_MODEL_1_ITEM, X_MODEL_1_ITEM_NAME, "CFW 1", false);
+		indigo_init_switch_item(X_MODEL_2_ITEM, X_MODEL_2_ITEM_NAME, "CFW 2", false);
+		indigo_init_switch_item(X_MODEL_3_ITEM, X_MODEL_3_ITEM_NAME, "CFW 3", true);
+		// --------------------------------------------------------------------------------
+		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = false;
+		INFO_PROPERTY->count = 5;
+		WHEEL_SLOT_ITEM->number.value = 1;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
+		return wheel_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(X_MODEL_PROPERTY, property))
+		indigo_define_property(device, X_MODEL_PROPERTY, NULL);
+	return indigo_wheel_enumerate_properties(device, NULL, NULL);
+}
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -138,17 +203,19 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(X_MODEL_PROPERTY, property)) {
+		indigo_property_copy_values(X_MODEL_PROPERTY, property, false);
+		indigo_update_property(device, X_MODEL_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
+		int slot = WHEEL_SLOT_ITEM->number.value;
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
-		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->slot) {
+		if (WHEEL_SLOT_ITEM->number.target == slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-			qhy_goto(device, WHEEL_SLOT_ITEM->number.target);
+			indigo_set_timer(device, 0, wheel_goto_handler, NULL);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -163,6 +230,8 @@ static indigo_result wheel_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		wheel_connect_callback(device);
 	}
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
+	indigo_release_property(X_MODEL_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
@@ -172,9 +241,9 @@ static indigo_device *wheel = NULL;
 indigo_result indigo_wheel_qhy(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
-		"Quantum Filter Wheel",
+		"CFW Filter Wheel",
 		wheel_attach,
-		indigo_wheel_enumerate_properties,
+		wheel_enumerate_properties,
 		wheel_change_property,
 		NULL,
 		wheel_detach
