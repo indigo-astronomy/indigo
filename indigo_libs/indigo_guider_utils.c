@@ -159,6 +159,11 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 
 	double background = 0, max = 0, value;
 	int background_count = 0;
+
+	int *values = (int*)malloc(8 * radius * sizeof(int));
+	if (values == NULL)
+		return INDIGO_FAILED;
+
 	int ce = xx + radius, le = yy + radius;
 	int cb = xx - radius, lb = yy - radius;
 	for (int j = lb; j <= le; j++) {
@@ -189,6 +194,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 			/* use border of the selection to calculate the background */
 			if (j == lb || j == le || i == cb || i == ce) {
 				background += value;
+				values[background_count] = value;
 				background_count++;
 			}
 			if (value > max)
@@ -197,92 +203,108 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	}
 
 	background = background / background_count;
-	/* If selection is too flat -> set hfd abd fwhm to max value */
-	if (max < background * 1.15) {
-		*hfd = *fwhm = 2*radius+1;
-		*peak = max - background;
-		return INDIGO_FAILED;
+	*peak = max - background;
+
+	/* calculate stddev */
+	int sum = 0;
+	for (int i = 0; i < background_count; i++) {
+		sum += (values[i] - background) * (values[i] - background);
+	}
+	free(values);
+	double stddev = sqrt(sum / background_count);
+
+	indigo_debug("HFD : background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev,  background + 2 * stddev, max);
+	indigo_debug("FWHM: background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev,  background + 6 * stddev, max);
+
+	/* HFD works fine with gignal 2 * stddev */
+	if (max < background + 2 * stddev) {
+		*hfd = 2 * radius + 1;
+	} else {
+		double prod = 0, total = 0;
+		for (int j = yy - radius; j <= le; j++) {
+			int k = j * width;
+			for (int i = xx - radius; i <= ce; i++) {
+				int kk = k + i;
+				switch (raw_type) {
+					case INDIGO_RAW_MONO8: {
+						value = ((uint8_t *)data)[kk];
+						break;
+					}
+					case INDIGO_RAW_MONO16: {
+						value = ((uint16_t *)data)[kk];
+						break;
+					}
+					case INDIGO_RAW_RGB24: {
+						kk *= 3;
+						value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
+						break;
+					}
+					case INDIGO_RAW_RGB48: {
+						kk *= 3;
+						value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
+						break;
+					}
+				}
+				value -= background;
+					if (value > 0) {
+					double dist = sqrt((x - i) * (x - i) + (y - j) * (y - j));
+					prod += dist * value;
+					total += value;
+				}
+			}
+		}
+		*hfd = 2 * prod / total;
 	}
 
-	double prod = 0, total = 0;
-	for (int j = yy - radius; j <= le; j++) {
-		int k = j * width;
-		for (int i = xx - radius; i <= ce; i++) {
-			int kk = k + i;
-			switch (raw_type) {
-				case INDIGO_RAW_MONO8: {
-					value = ((uint8_t *)data)[kk];
+	/* FWFM is erratic with peak < 6*stddev */
+	if (max < background + 6 * stddev) {
+		*fwhm = 2 * radius + 1;
+	} else {
+		double half_max = *peak / 2 + background;
+		static int d2[][2] = { { -1, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } };
+		double d3[] = { radius, radius, radius, radius };
+		for (int d = 0; d < 4; d++) {
+			double previous = max;
+			for (int k = 1; k < radius; k++) {
+				int i = k * d2[d][0];
+				int j = k * d2[d][1];
+				int kk = (yy + j) * width + i + xx;
+				switch (raw_type) {
+					case INDIGO_RAW_MONO8: {
+						value = ((uint8_t *)data)[kk];
+						break;
+					}
+					case INDIGO_RAW_MONO16: {
+						value = ((uint16_t *)data)[kk];
+						break;
+					}
+					case INDIGO_RAW_RGB24: {
+						kk *= 3;
+						value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+						break;
+					}
+					case INDIGO_RAW_RGB48: {
+						kk *= 3;
+						value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
+						break;
+					}
+				}
+				if (value <= half_max) {
+					if (value == previous)
+						d3[d] = k;
+					else
+						d3[d] = k - 1 + (previous - half_max) / (previous - value);
 					break;
 				}
-				case INDIGO_RAW_MONO16: {
-					value = ((uint16_t *)data)[kk];
-					break;
-				}
-				case INDIGO_RAW_RGB24: {
-					kk *= 3;
-					value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
-					break;
-				}
-				case INDIGO_RAW_RGB48: {
-					kk *= 3;
-					value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
-					break;
-				}
-			}
-			value -= background;
-				if (value > 0) {
-				double dist = sqrt((x - i) * (x - i) + (y - j) * (y - j));
-				prod += dist * value;
-				total += value;
+				if (value < previous)
+					previous = value;
 			}
 		}
+		double tmp = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
+		if (tmp < 1 || tmp > 2 * radius)
+			tmp = 0;
+		*fwhm = tmp;
 	}
-	*hfd = 2 * prod / total;
-	*peak = max - background;
-	double half_max = *peak / 2 + background;
-	static int d2[][2] = { { -1, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } };
-	double d3[] = { radius, radius, radius, radius };
-	for (int d = 0; d < 4; d++) {
-		double previous = max;
-		for (int k = 1; k < radius; k++) {
-			int i = k * d2[d][0];
-			int j = k * d2[d][1];
-			int kk = (yy + j) * width + i + xx;
-			switch (raw_type) {
-				case INDIGO_RAW_MONO8: {
-					value = ((uint8_t *)data)[kk];
-					break;
-				}
-				case INDIGO_RAW_MONO16: {
-					value = ((uint16_t *)data)[kk];
-					break;
-				}
-				case INDIGO_RAW_RGB24: {
-					kk *= 3;
-					value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
-					break;
-				}
-				case INDIGO_RAW_RGB48: {
-					kk *= 3;
-					value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
-					break;
-				}
-			}
-			if (value <= half_max) {
-				if (value == previous)
-					d3[d] = k;
-				else
-					d3[d] = k - 1 + (previous - half_max) / (previous - value);
-				break;
-			}
-			if (value < previous)
-				previous = value;
-		}
-	}
-	double tmp = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
-	if (tmp < 1 || tmp > 2 * radius)
-		tmp = 0;
-	*fwhm = tmp;
 	return INDIGO_OK;
 }
 
