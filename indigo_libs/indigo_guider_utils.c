@@ -197,8 +197,8 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	}
 
 	background = background / background_count;
-	// Selection is too flat
-	if (max < background * 1.05) {
+	/* If selection is too flat -> set hfd abd fwhm to max value */
+	if (max < background * 1.15) {
 		*hfd = *fwhm = 2*radius+1;
 		*peak = max - background;
 		return INDIGO_FAILED;
