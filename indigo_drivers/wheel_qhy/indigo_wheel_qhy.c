@@ -104,7 +104,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 				if (qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8)) {
 					if (qhy_command(device, "MXP", reply, 1)) {
-						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
+						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = isdigit(reply[0]) ? reply[0] - '0' : reply[0] - 'A' + 10;
 					}
 					if (qhy_command(device, "NOW", reply, 1)) {
 						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
