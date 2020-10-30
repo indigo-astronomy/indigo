@@ -70,7 +70,7 @@ void loop() {
   } else if ((command == 'M')) {
     Serial.read(); // X
     Serial.read(); // P
-    Serial.write('6');
+    Serial.write('7');
 #endif    
   }
 }
