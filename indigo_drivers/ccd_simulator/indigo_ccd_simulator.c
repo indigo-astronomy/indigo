@@ -215,14 +215,14 @@ static void create_frame(indigo_device *device) {
 			for (int j = 0; j < frame_height; j++) {
 				int jj = (frame_top + j) * vertical_bin;
 				for (int i = 0; i < frame_width; i++) {
-					raw[j * frame_width + i] = indigo_ccd_simulator_raw_image[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x7F);
+					raw[j * frame_width + i] = indigo_ccd_simulator_raw_image[jj * WIDTH + (frame_left + i) * horizontal_bin];
 				}
 			}
 		} else if (device == PRIVATE_DATA->guider) {
 			for (int j = 0; j < frame_height; j++) {
 				int jj = j * j;
 				for (int i = 0; i < frame_width; i++) {
-					raw[j * frame_width + i] = GUIDER_IMAGE_GRADIENT_ITEM->number.target * sqrt(i * i + jj) + (rand() % (int)GUIDER_IMAGE_NOISE_VAR_ITEM->number.target) + GUIDER_IMAGE_NOISE_FIX_ITEM->number.target;
+					raw[j * frame_width + i] = GUIDER_IMAGE_GRADIENT_ITEM->number.target * sqrt(i * i + jj);
 				}
 			}
 		} else {
@@ -320,6 +320,23 @@ static void create_frame(indigo_device *device) {
 			memcpy(raw, tmp, 2 * size);
 			free(tmp);
 		}
+
+		int value;
+		if (device == PRIVATE_DATA->imager && light_frame) {
+			for (int i = 0; i < size; i++) {
+				value = raw[i] + (rand() & 0x7F);
+				raw[i] = (value > 65635) ? 65635 : value;
+			}
+		} else if (device == PRIVATE_DATA->guider) {
+			for (int i = 0; i < size; i++) {
+				value = raw[i] + (rand() % (int)GUIDER_IMAGE_NOISE_VAR_ITEM->number.target) + GUIDER_IMAGE_NOISE_FIX_ITEM->number.target;
+				raw[i] = (value > 65635) ? 65635 : value;
+			}
+		} else {
+			for (int i = 0; i < size; i++)
+				raw[i] = (rand() & 0x7F);
+		}
+
 		for (int i = 0; i <= GUIDER_IMAGE_HOTPIXELS_ITEM->number.target; i++) {
 			unsigned x = private_data->hotpixel_x[i] / horizontal_bin - frame_left;
 			unsigned y = private_data->hotpixel_y[i] / vertical_bin - frame_top;
