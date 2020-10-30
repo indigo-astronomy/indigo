@@ -325,12 +325,12 @@ static void create_frame(indigo_device *device) {
 		if (device == PRIVATE_DATA->imager && light_frame) {
 			for (int i = 0; i < size; i++) {
 				value = raw[i] + (rand() & 0x7F);
-				raw[i] = (value > 65635) ? 65635 : value;
+				raw[i] = (value > 65535) ? 65535 : value;
 			}
 		} else if (device == PRIVATE_DATA->guider) {
 			for (int i = 0; i < size; i++) {
 				value = raw[i] + (rand() % (int)GUIDER_IMAGE_NOISE_VAR_ITEM->number.target) + GUIDER_IMAGE_NOISE_FIX_ITEM->number.target;
-				raw[i] = (value > 65635) ? 65635 : value;
+				raw[i] = (value > 65535) ? 65535 : value;
 			}
 		} else {
 			for (int i = 0; i < size; i++)
