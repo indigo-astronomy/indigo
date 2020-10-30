@@ -361,6 +361,8 @@ int indigo_read(int handle, char *buffer, long length) {
 		long bytes_read = read(handle, buffer, remains);
 #endif
 		if (bytes_read <= 0) {
+			if (bytes_read < 0)
+				INDIGO_ERROR(indigo_error("%s(): %s", __FUNCTION__, strerror(errno)));
 			return (int)bytes_read;
 		}
 		total_bytes += bytes_read;
@@ -429,8 +431,10 @@ bool indigo_write(int handle, const char *buffer, long length) {
 #else
 		long bytes_written = write(handle, buffer, remains);
 #endif
-		if (bytes_written < 0)
+		if (bytes_written < 0) {
+			INDIGO_ERROR(indigo_error("%s(): %s", __FUNCTION__, strerror(errno)));
 			return false;
+		}
 		if (bytes_written == remains)
 			return true;
 		buffer += bytes_written;
