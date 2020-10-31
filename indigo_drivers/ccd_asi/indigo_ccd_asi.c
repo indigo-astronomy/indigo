@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -713,7 +713,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->count = mode_count;
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		CCD_STREAMING_PROPERTY->hidden = false;
-		CCD_IMAGE_FORMAT_PROPERTY->count = 6;
+		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 
 		// -------------------------------------------------------------------------------- ASI_PRESETS

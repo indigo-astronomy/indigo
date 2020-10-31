@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 
 #include <stdlib.h>
 #include <string.h>
@@ -661,7 +661,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		CCD_STREAMING_PROPERTY->hidden = false;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
-		CCD_IMAGE_FORMAT_PROPERTY->count = 6;
+		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------- PIXEL_FORMAT
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (PIXEL_FORMAT_PROPERTY == NULL)
