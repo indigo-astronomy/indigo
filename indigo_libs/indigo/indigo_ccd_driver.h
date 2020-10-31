@@ -295,6 +295,10 @@ extern "C" {
  */
 #define CCD_IMAGE_FORMAT_JPEG_AVI_ITEM    (CCD_IMAGE_FORMAT_PROPERTY->items+5)
 
+/** CCD_IMAGE_FORMAT.RAW_SER property item pointer.
+ */
+#define CCD_IMAGE_FORMAT_RAW_SER_ITEM    (CCD_IMAGE_FORMAT_PROPERTY->items+6)
+
 /** CCD_IMAGE_FILE property pointer, property is mandatory, read-only property.
  */
 #define CCD_IMAGE_FILE_PROPERTY           (CCD_CONTEXT->ccd_image_file_property)

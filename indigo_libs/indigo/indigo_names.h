@@ -484,6 +484,10 @@
  */
 #define CCD_IMAGE_FORMAT_JPEG_AVI_ITEM_NAME   "JPEG_AVI"
 
+/** CCD_IMAGE_FORMAT.RAW_SER property item name.
+ */
+#define CCD_IMAGE_FORMAT_RAW_SER_ITEM_NAME   "RAW_SER"
+
 //----------------------------------------------------------------------
 /** CCD_IMAGE_FILE property name.
  */
