@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -97,8 +97,7 @@ typedef struct {
 	double target_temperature, current_temperature;
 	int current_slot;
 	int target_position, current_position;
-	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
-//	double guider_ra_offset, guider_dec_offset;
+	indigo_timer *imager_exposure_timer, *guider_exposure_timer, *dslr_exposure_timer, *temperature_timer, *guider_timer;
 	double ao_ra_offset, ao_dec_offset;
 	int eclipse;
 	double guide_rate;
@@ -548,12 +547,18 @@ static indigo_result ccd_attach(indigo_device *device) {
 				PRIVATE_DATA->hotpixel_y[i] = rand() % (HEIGHT - 200) + 100;
 			}
 			// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
-			CCD_COOLER_PROPERTY->hidden = false;
-			CCD_TEMPERATURE_PROPERTY->hidden = false;
-			CCD_COOLER_POWER_PROPERTY->hidden = false;
-			PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-			CCD_COOLER_POWER_ITEM->number.value = 0;
+			if (device == PRIVATE_DATA->imager) {
+				CCD_COOLER_PROPERTY->hidden = false;
+				CCD_TEMPERATURE_PROPERTY->hidden = false;
+				CCD_COOLER_POWER_PROPERTY->hidden = false;
+				PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
+				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+				CCD_COOLER_POWER_ITEM->number.value = 0;
+			} else {
+				CCD_COOLER_PROPERTY->hidden = true;
+				CCD_COOLER_POWER_PROPERTY->hidden = true;
+				CCD_TEMPERATURE_PROPERTY->hidden = true;
+			}
 			// -------------------------------------------------------------------------------- CCD_STREAMING
 			CCD_STREAMING_PROPERTY->hidden = false;
 			CCD_STREAMING_EXPOSURE_ITEM->number.min = 0.001;
@@ -613,14 +618,21 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			}
-			indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
+			if (device == PRIVATE_DATA->imager) {
+				indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
+			}
 			device->is_connected = true;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
 		if (device->is_connected) {  /* Do not double close device */
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-			if (device == PRIVATE_DATA->dslr) {
+			if (device == PRIVATE_DATA->imager) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->imager_exposure_timer);
+			} else if (device == PRIVATE_DATA->guider) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_exposure_timer);
+			} else if (device == PRIVATE_DATA->dslr) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->dslr_exposure_timer);
 				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
@@ -665,7 +677,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+		if (device == PRIVATE_DATA->imager)
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->imager_exposure_timer);
+		else if (device == PRIVATE_DATA->guider)
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->guider_exposure_timer);
+		else if (device == PRIVATE_DATA->dslr)
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->dslr_exposure_timer);
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -688,7 +705,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
+		if (device == PRIVATE_DATA->imager)
+			indigo_cancel_timer(device, &PRIVATE_DATA->imager_exposure_timer);
+		else if (device == PRIVATE_DATA->guider)
+			indigo_cancel_timer(device, &PRIVATE_DATA->guider_exposure_timer);
+		else if (device == PRIVATE_DATA->dslr)
+			indigo_cancel_timer(device, &PRIVATE_DATA->dslr_exposure_timer);
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
