@@ -82,6 +82,8 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 |  |  |  |  | FITS | yes |  |
 |  |  |  |  | XISF | yes |  |
 |  |  |  |  | JPEG | yes |  |
+|  |  |  |  | JPEG_AVI | yes | JPEG for capture, AVI for streaming |
+|  |  |  |  | RAW_SER | yes | RAW for capture, SER for streaming |
 | CCD_IMAGE_FILE | text | no | yes | FILE | yes |  |
 | CCD_IMAGE | blob | no | yes | IMAGE | yes |  |
 | CCD_TEMPERATURE | number |  | no | TEMPERATURE | yes | It depends on hardware if it is undefined, read-only or read-write. |
