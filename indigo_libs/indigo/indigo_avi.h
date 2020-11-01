@@ -103,9 +103,9 @@ struct gwavi_t {
 	int offset_count;
 };
 
-struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned int height, const char *fourcc, unsigned int fps);
-bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len);
-bool gwavi_close(struct gwavi_t *gwavi);
+extern struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned int height, const char *fourcc, unsigned int fps);
+extern bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len);
+extern bool gwavi_close(struct gwavi_t *gwavi);
 
 #endif
 

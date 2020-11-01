@@ -40,6 +40,7 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_tiff.h>
 #include <indigo/indigo_avi.h>
+#include <indigo/indigo_ser.h>
 
 static void countdown_timer_callback(indigo_device *device) {
 	if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
@@ -188,7 +189,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, CCD_FRAME_TYPE_DARK_ITEM_NAME, "Dark", false);
 			indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, CCD_FRAME_TYPE_FLAT_ITEM_NAME, "Flat", false);
 			// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
-			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 6);
+			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 7);
 			if (CCD_IMAGE_FORMAT_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_FITS_ITEM, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, "FITS format", true);
@@ -197,6 +198,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_JPEG_ITEM, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME, "JPEG format", false);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_TIFF_ITEM, CCD_IMAGE_FORMAT_TIFF_ITEM_NAME, "TIFF format", false);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_JPEG_AVI_ITEM, CCD_IMAGE_FORMAT_JPEG_AVI_ITEM_NAME, "JPEG + AVI format", false);
+			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_SER_ITEM, CCD_IMAGE_FORMAT_RAW_SER_ITEM_NAME, "RAW + SER format", false);
 			CCD_IMAGE_FORMAT_PROPERTY->count = 5;
 			// -------------------------------------------------------------------------------- CCD_IMAGE
 			CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image data", INDIGO_OK_STATE, 1);
@@ -1377,7 +1379,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			}
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to XISF conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
-	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value || CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
 		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 		if (naxis == 2 && byte_per_pixel == 1)
 			header->signature = INDIGO_RAW_MONO8;
@@ -1459,6 +1461,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
 		char *suffix = "";
 		bool use_avi = false;
+		bool use_ser = false;
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			suffix = ".fits";
 		} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
@@ -1476,10 +1479,17 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			} else {
 				suffix = ".jpeg";
 			}
+		} else if (CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
+			if (streaming) {
+				suffix = ".ser";
+				use_ser = true;
+			} else {
+				suffix = ".raw";
+			}
 		}
 		char *message = NULL;
 		int handle = 0;
-		if (!use_avi || CCD_CONTEXT->video_stream == NULL) {
+		if (!(use_avi || use_ser) || CCD_CONTEXT->video_stream == NULL) {
 			if (strlen(dir) + strlen(prefix) + strlen(suffix) < INDIGO_VALUE_SIZE) {
 				char file_name[INDIGO_VALUE_SIZE];
 				char *placeholder = strstr(prefix, "XXX");
@@ -1512,6 +1522,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				strncpy(CCD_IMAGE_FILE_ITEM->text.value, file_name, INDIGO_VALUE_SIZE);
 				if (use_avi) {
 					CCD_CONTEXT->video_stream = gwavi_open(file_name, frame_width, frame_height, "MJPG", 5);
+				} else if (use_ser) {
+					CCD_CONTEXT->video_stream = indigo_ser_open(file_name, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), little_endian, byte_order_rgb);
 				} else {
 					handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 				}
@@ -1523,6 +1535,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		if (CCD_CONTEXT->video_stream != NULL) {
 			if (use_avi) {
 				if (!gwavi_add_frame((struct gwavi_t *)(CCD_CONTEXT->video_stream), data, blobsize)) {
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = strerror(errno);
+				}
+			} else if (use_ser) {
+				if (!indigo_ser_add_frame((indigo_ser *)(CCD_CONTEXT->video_stream), data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), blobsize + sizeof(indigo_raw_header))) {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = strerror(errno);
 				}
@@ -1539,7 +1556,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = strerror(errno);
 				}
-			} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+			} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value || CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
 				if (!indigo_write(handle, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), blobsize + sizeof(indigo_raw_header))) {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = strerror(errno);
@@ -1573,7 +1590,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			CCD_IMAGE_ITEM->blob.value = data;
 			CCD_IMAGE_ITEM->blob.size = FITS_HEADER_SIZE + blobsize;
 			strcpy(CCD_IMAGE_ITEM->blob.format, ".xisf");
-		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value || CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
 			CCD_IMAGE_ITEM->blob.value = data + FITS_HEADER_SIZE - sizeof(indigo_raw_header);
 			CCD_IMAGE_ITEM->blob.size = blobsize + sizeof(indigo_raw_header);
 			strcpy(CCD_IMAGE_ITEM->blob.format, ".raw");
@@ -1684,6 +1701,11 @@ void indigo_finalize_video_stream(indigo_device *device) {
 	if (CCD_CONTEXT->video_stream) {
 		if (CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value) {
 			gwavi_close((struct gwavi_t *)(CCD_CONTEXT->video_stream));
+			CCD_CONTEXT->video_stream = NULL;
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		} else if (CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
+			indigo_ser_close((indigo_ser *)(CCD_CONTEXT->video_stream));
 			CCD_CONTEXT->video_stream = NULL;
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
