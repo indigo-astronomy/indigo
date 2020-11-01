@@ -2,22 +2,42 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-130] - --- -- -- 2020
+## [2.0-130] - Sun Nov 01 2020
 ### Overall:
 - TIFF image format added
+- AVI format support added to streaming CCD drivers
+- indigo_guider_utils: more robust HFD/FWHM calculation
 - indigo_server_tcp: empty resource list bug fixed
 - VERIFY_NOT_CONNECTED() macro fixed
 - scientific number notation support added to JSON
 - CLIENT_DEVELOPMENT_BASICS.md and INDIGO_AGENTS.md documents updated
 
 ### Driver Fixes:
+- indigo_agent_imager:
+  - report failure if focusing did not converge
+  - more robust focusing
+  - fix rare crash due to unitialized frame digest
+
+
+- indigo_mount_nexstar:
+  - set correct timezone and DST
+  - GPS detection changed
+  - deadlock fixed
+
+
+- indigo_ccd_simulator:
+  - focuser: more realistic out of focus images
+  - bug fixes
+
+
 - indigo_ccd_touptek: fix failing exposures problem
 - indigo_ccd_altair: fix failing exposures problem
 - indigo_mount_ioptron: CEM70 identification added
-- indigo_mount_nexstar:
-  - set correct timezone and DST
-  - gps detection changed
-  - deadlock fixed
+- indigo_focuser_usbv3: bug fixes
+
+
+### New Drivers:
+- wheel_qhy: QHY standalone filter wheel driver
 
 ## [2.0-128] - Mon Oct 05 2020
 ### Overall:
