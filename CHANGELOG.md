@@ -4,9 +4,8 @@ All notable changes to INDIGO framework will be documented in this file.
 
 ## [2.0-130] - Sun Nov 01 2020
 ### Overall:
-- TIFF image format added
-- AVI format support added to streaming CCD drivers
-- SER format added
+- TIFF image format added to CCD drivers
+- AVI and SER format support added to streaming CCD drivers
 - indigo_guider_utils: more robust HFD/FWHM calculation
 - indigo_server_tcp: empty resource list bug fixed
 - VERIFY_NOT_CONNECTED() macro fixed
