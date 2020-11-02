@@ -53,6 +53,7 @@
 
 #define RAW_BUF_SIZE 98304
 #define BASE64_BUF_SIZE 131072  /* BASE64_BUF_SIZE >= (RAW_BUF_SIZE + 2) / 3 * 4 */
+#define INDIGO_PRINTF(...) if (!indigo_printf(__VA_ARGS__)) goto failure
 
 static pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -89,49 +90,60 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 	char b1[32], b2[32], b3[32], b4[32], b5[32];
 	switch (property->type) {
 	case INDIGO_TEXT_VECTOR:
-		indigo_printf(handle, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
+		INDIGO_PRINTF(handle, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), indigo_xml_escape(item->text.value));
+			INDIGO_PRINTF(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), indigo_xml_escape(item->text.value));
 		}
-		indigo_printf(handle, "</defTextVector>\n");
+		INDIGO_PRINTF(handle, "</defTextVector>\n");
 		break;
 	case INDIGO_NUMBER_VECTOR:
-		indigo_printf(handle, "<defNumberVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
+		INDIGO_PRINTF(handle, "<defNumberVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM)
-				indigo_printf(handle, "<defNumber name='%s' label='%s' format='%s' min='%s' max='%s' step='%s' target='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.target, b4), indigo_dtoa(item->number.value, b5));
-			else
-				indigo_printf(handle, "<defNumber name='%s' label='%s'%s format='%s' min='%s' max='%s' step='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.value, b4));
+			if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM) {
+				INDIGO_PRINTF(handle, "<defNumber name='%s' label='%s' format='%s' min='%s' max='%s' step='%s' target='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.target, b4), indigo_dtoa(item->number.value, b5));
+			} else {
+				INDIGO_PRINTF(handle, "<defNumber name='%s' label='%s'%s format='%s' min='%s' max='%s' step='%s'>%s</defNumber>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), item->number.format, indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), indigo_dtoa(item->number.value, b4));
+			}
 		}
-		indigo_printf(handle, "</defNumberVector>\n");
+		INDIGO_PRINTF(handle, "</defNumberVector>\n");
 		break;
 	case INDIGO_SWITCH_VECTOR:
-		indigo_printf(handle, "<defSwitchVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s' rule='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule], hints_attribute(property->hints), message_attribute(message));
+		INDIGO_PRINTF(handle, "<defSwitchVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s' rule='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, "<defSwitch name='%s' label='%s'%s>%s</defSwitch>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), item->sw.value ? "On" : "Off");
+			INDIGO_PRINTF(handle, "<defSwitch name='%s' label='%s'%s>%s</defSwitch>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), item->sw.value ? "On" : "Off");
 		}
-		indigo_printf(handle, "</defSwitchVector>\n");
+		INDIGO_PRINTF(handle, "</defSwitchVector>\n");
 		break;
 	case INDIGO_LIGHT_VECTOR:
-		indigo_printf(handle, "<defLightVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
+		INDIGO_PRINTF(handle, "<defLightVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, " <defLight name='%s' label='%s'%s>%s</defLight>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), indigo_property_state_text[item->light.value]);
+			INDIGO_PRINTF(handle, " <defLight name='%s' label='%s'%s>%s</defLight>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), indigo_property_state_text[item->light.value]);
 		}
-		indigo_printf(handle, "</defLightVector>\n");
+		INDIGO_PRINTF(handle, "</defLightVector>\n");
 		break;
 	case INDIGO_BLOB_VECTOR:
-		indigo_printf(handle, "<defBLOBVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
+		INDIGO_PRINTF(handle, "<defBLOBVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			indigo_printf(handle, "<defBLOB name='%s' label='%s'%s/>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints));
+			INDIGO_PRINTF(handle, "<defBLOB name='%s' label='%s'%s/>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints));
 		}
-		indigo_printf(handle, "</defBLOBVector>\n");
+		INDIGO_PRINTF(handle, "</defBLOBVector>\n");
 		break;
 	}
+	pthread_mutex_unlock(&write_mutex);
+	return INDIGO_OK;
+failure:
+	if (client_context->output == client_context->input) {
+		close(client_context->input);
+	} else {
+		close(client_context->input);
+		close(client_context->output);
+	}
+	client_context->output = client_context->input = -1;
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -153,39 +165,40 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 	char b1[32], b2[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
-			indigo_printf(handle, "<setTextVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
+			INDIGO_PRINTF(handle, "<setTextVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->text.value));
+				INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->text.value));
 			}
-			indigo_printf(handle, "</setTextVector>\n");
+			INDIGO_PRINTF(handle, "</setTextVector>\n");
 			break;
 		case INDIGO_NUMBER_VECTOR:
-			indigo_printf(handle, "<setNumberVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
+			INDIGO_PRINTF(handle, "<setNumberVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM)
-					indigo_printf(handle, "<oneNumber name='%s' target='%s'>%s</oneNumber>\n", indigo_item_name(client->version, property, item), indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
-				else
-					indigo_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", indigo_item_name(client->version, property, item), indigo_dtoa(item->number.value, b1));
+				if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM) {
+					INDIGO_PRINTF(handle, "<oneNumber name='%s' target='%s'>%s</oneNumber>\n", indigo_item_name(client->version, property, item), indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
+				} else {
+					INDIGO_PRINTF(handle, "<oneNumber name='%s'>%s</oneNumber>\n", indigo_item_name(client->version, property, item), indigo_dtoa(item->number.value, b1));
+				}
 			}
-			indigo_printf(handle, "</setNumberVector>\n");
+			INDIGO_PRINTF(handle, "</setNumberVector>\n");
 			break;
 		case INDIGO_SWITCH_VECTOR:
-			indigo_printf(handle, "<setSwitchVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
+			INDIGO_PRINTF(handle, "<setSwitchVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", indigo_item_name(client->version, property, item), item->sw.value ? "On" : "Off");
+				INDIGO_PRINTF(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", indigo_item_name(client->version, property, item), item->sw.value ? "On" : "Off");
 			}
-			indigo_printf(handle, "</setSwitchVector>\n");
+			INDIGO_PRINTF(handle, "</setSwitchVector>\n");
 			break;
 		case INDIGO_LIGHT_VECTOR:
-			indigo_printf(handle, "<setLightVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
+			INDIGO_PRINTF(handle, "<setLightVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneLight name='%s'>%s</oneLight>\n", indigo_item_name(client->version, property, item), indigo_property_state_text[item->light.value]);
+				INDIGO_PRINTF(handle, "<oneLight name='%s'>%s</oneLight>\n", indigo_item_name(client->version, property, item), indigo_property_state_text[item->light.value]);
 			}
-			indigo_printf(handle, "</setLightVector>\n");
+			INDIGO_PRINTF(handle, "</setLightVector>\n");
 			break;
 		case INDIGO_BLOB_VECTOR: {
 			indigo_enable_blob_mode mode = INDIGO_ENABLE_BLOB_NEVER;
@@ -198,19 +211,20 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 				record = record->next;
 			}
 			if (mode != INDIGO_ENABLE_BLOB_NEVER) {
-				indigo_printf(handle, "<setBLOBVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
+				INDIGO_PRINTF(handle, "<setBLOBVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 				if (property->state == INDIGO_OK_STATE) {
 					for (int i = 0; i < property->count; i++) {
 						indigo_item *item = &property->items[i];
 						long input_length = item->blob.size;
 						unsigned char *data = item->blob.value;
 						if (mode == INDIGO_ENABLE_BLOB_URL && client->version >= INDIGO_VERSION_2_0) {
-							if (*item->blob.url == 0)
-								indigo_printf(handle, "<oneBLOB name='%s' path='/blob/%p%s'/>\n", indigo_item_name(client->version, property, item), item, item->blob.format);
-							else
-								indigo_printf(handle, "<oneBLOB name='%s' url='%s'/>\n", indigo_item_name(client->version, property, item), item->blob.url);
+							if (*item->blob.url == 0) {
+								INDIGO_PRINTF(handle, "<oneBLOB name='%s' path='/blob/%p%s'/>\n", indigo_item_name(client->version, property, item), item, item->blob.format);
+							} else {
+								INDIGO_PRINTF(handle, "<oneBLOB name='%s' url='%s'/>\n", indigo_item_name(client->version, property, item), item->blob.url);
+							}
 						} else {
-							indigo_printf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
+							INDIGO_PRINTF(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
 							handle2 = dup(handle);
 							fh = fdopen(handle2, "w");
 							if (client->version >= INDIGO_VERSION_2_0) {
@@ -236,15 +250,25 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 							}
 							fflush(fh);
 							fclose(fh);
-							indigo_printf(handle, "</oneBLOB>\n");
+							INDIGO_PRINTF(handle, "</oneBLOB>\n");
 						}
 					}
 				}
-				indigo_printf(handle, "</setBLOBVector>\n");
+				INDIGO_PRINTF(handle, "</setBLOBVector>\n");
 			}
 			break;
 		}
 	}
+	pthread_mutex_unlock(&write_mutex);
+	return INDIGO_OK;
+failure:
+	if (client_context->output == client_context->input) {
+		close(client_context->input);
+	} else {
+		close(client_context->input);
+		close(client_context->output);
+	}
+	client_context->output = client_context->input = -1;
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -261,10 +285,21 @@ static indigo_result xml_device_adapter_delete_property(indigo_client *client, i
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	if (*property->name)
-		indigo_printf(handle, "<delProperty device='%s' name='%s'%s/>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), message_attribute(message));
-	else
-		indigo_printf(handle, "<delProperty device='%s'%s/>\n", device->name, message_attribute(message));
+	if (*property->name) {
+		INDIGO_PRINTF(handle, "<delProperty device='%s' name='%s'%s/>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), message_attribute(message));
+	} else {
+		INDIGO_PRINTF(handle, "<delProperty device='%s'%s/>\n", device->name, message_attribute(message));
+	}
+	pthread_mutex_unlock(&write_mutex);
+	return INDIGO_OK;
+failure:
+	if (client_context->output == client_context->input) {
+		close(client_context->input);
+	} else {
+		close(client_context->input);
+		close(client_context->output);
+	}
+	client_context->output = client_context->input = -1;
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -281,7 +316,17 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 	assert(client_context != NULL);
 	int handle = client_context->output;
 	if (message)
-		indigo_printf(handle, "<message%s/>\n", message_attribute(message));
+		INDIGO_PRINTF(handle, "<message%s/>\n", message_attribute(message));
+	pthread_mutex_unlock(&write_mutex);
+	return INDIGO_OK;
+failure:
+	if (client_context->output == client_context->input) {
+		close(client_context->input);
+	} else {
+		close(client_context->input);
+		close(client_context->output);
+	}
+	client_context->output = client_context->input = -1;
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
