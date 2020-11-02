@@ -38,6 +38,7 @@
 #include "indigo_ptp_canon.h"
 #include "indigo_ptp_nikon.h"
 #include "indigo_ptp_sony.h"
+#include "indigo_ptp_fuji.h"
 #include "indigo_ccd_ptp.h"
 
 #define MAX_DEVICES    	4
@@ -45,6 +46,7 @@
 #define CANON_VID	0x04a9
 #define NIKON_VID	0x04B0
 #define SONY_VID	0x054c
+#define FUJI_VID  0x04cb
 
 static indigo_device *devices[MAX_DEVICES];
 
@@ -585,6 +587,25 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->focus = NULL;
 						private_data->set_host_time = NULL;
 						private_data->check_dual_compression = ptp_sony_check_dual_compression;
+					} else if (descriptor.idVendor == FUJI_VID) {
+						private_data->operation_code_label = ptp_operation_fuji_code_label;
+						private_data->response_code_label = ptp_response_code_label;
+						private_data->event_code_label = ptp_event_fuji_code_label;
+						private_data->property_code_name = ptp_property_fuji_code_name;
+						private_data->property_code_label = ptp_property_fuji_code_label;
+						private_data->property_value_code_label = ptp_property_fuji_value_code_label;
+						private_data->initialise = ptp_fuji_initialise;
+						private_data->handle_event = NULL;
+						private_data->fix_property = ptp_fuji_fix_property;
+						private_data->set_property = ptp_fuji_set_property;
+						private_data->exposure = ptp_fuji_exposure;
+						private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_fuji_liveview : NULL;
+						private_data->lock = NULL;
+						private_data->af = NULL;
+						private_data->zoom = NULL;
+						private_data->focus = NULL;
+						private_data->set_host_time = ptp_set_host_time;
+						private_data->check_dual_compression = ptp_fuji_check_dual_compression;
 					} else {
 						private_data->operation_code_label = ptp_operation_code_label;
 						private_data->response_code_label = ptp_response_code_label;
