@@ -43,23 +43,25 @@
 
 static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void ws_write(int handle, const char *buffer, long length) {
+static bool ws_write(int handle, const char *buffer, long length) {
 	uint8_t header[10] = { 0x81 };
+	bool result;
 	if (length <= 0x7D) {
 		header[1] = length;
-		indigo_write(handle, (char *)header, 2);
+		result = indigo_write(handle, (char *)header, 2);
 	} else if (length <= 0xFFFF) {
 		header[1] = 0x7E;
 		uint16_t payloadLength = htons(length);
 		memcpy(header+2, &payloadLength, 2);
-		indigo_write(handle, (char *)header, 4);
+		result = indigo_write(handle, (char *)header, 4);
 	} else {
 		header[1] = 0x7F;
 		uint64_t payloadLength = htonll(length);
 		memcpy(header+2, &payloadLength, 8);
-		indigo_write(handle, (char *)header, 10);
+		result = indigo_write(handle, (char *)header, 10);
 	}
-	indigo_write(handle, buffer, length);
+	result = result && indigo_write(handle, buffer, length);
+	return result;
 }
 
 static const char *escape(const char *s) {
@@ -216,11 +218,18 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			size += pnt - output_buffer;
 			break;
 	}
-	if (client_context->web_socket)
-		ws_write(handle, output_buffer, size);
-	else
-		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	} else {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		if (client_context->output == client_context->input) {
+			close(client_context->input);
+		} else {
+			close(client_context->input);
+			close(client_context->output);
+		}
+		client_context->output = client_context->input = -1;
+	}
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -339,11 +348,18 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 			size += pnt - output_buffer;
 			break;
 	}
-	if (client_context->web_socket)
-		ws_write(handle, output_buffer, size);
-	else
-		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	} else {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		if (client_context->output == client_context->input) {
+			close(client_context->input);
+		} else {
+			close(client_context->input);
+			close(client_context->output);
+		}
+		client_context->output = client_context->input = -1;
+	}
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -378,7 +394,18 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 		ws_write(handle, output_buffer, size);
 	else
 		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	} else {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		if (client_context->output == client_context->input) {
+			close(client_context->input);
+		} else {
+			close(client_context->input);
+			close(client_context->output);
+		}
+		client_context->output = client_context->input = -1;
+	}
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -395,11 +422,18 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	char output_buffer[JSON_BUFFER_SIZE];
 	char *pnt = output_buffer;
 	int size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
-	if (client_context->web_socket)
-		ws_write(handle, output_buffer, size);
-	else
-		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+	} else {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		if (client_context->output == client_context->input) {
+			close(client_context->input);
+		} else {
+			close(client_context->input);
+			close(client_context->output);
+		}
+		client_context->output = client_context->input = -1;
+	}
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
