@@ -817,53 +817,53 @@ uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_p
 			uint8_t value;
 			source = ptp_decode_uint8(source, &value);
 			target->value.number.value = value;
-			break;
+			return source;
 		}
 		case ptp_int8_type: {
 			int8_t value;
 			source = ptp_decode_uint8(source, (uint8_t *)&value);
 			target->value.number.value = value;
-			break;
+			return source;
 		}
 		case ptp_uint16_type: {
 			uint16_t value;
 			source = ptp_decode_uint16(source, &value);
 			target->value.number.value = value;
-			break;
+			return source;
 		}
 		case ptp_int16_type: {
 			int16_t value;
 			source = ptp_decode_uint16(source, (uint16_t *)&value);
 			target->value.number.value = value;
-			break;
+			return source;
 		}
 		case ptp_uint32_type: {
 			uint32_t value;
 			source = ptp_decode_uint32(source, &value);
 			target->value.number.value = value;
-			break;
+			return source;
 		}
 		case ptp_int32_type: {
 			int32_t value;
 			source = ptp_decode_uint32(source, (uint32_t *)&value);
 			target->value.number.value = value;
-			break;
+			return source;
 		}
 		case ptp_uint64_type:
 		case ptp_int64_type: {
 			int64_t value;
 			source = ptp_decode_uint64(source, (uint64_t *)&value);
 			target->value.number.value = value;
-			break;
+			return source;
 		}
 		case ptp_uint128_type:
 		case ptp_int128_type: {
 			source = ptp_decode_uint128(source, target->value.text.value);
-			break;
+			return source;
 		}
 		case ptp_str_type: {
 			source = ptp_decode_string(source, target->value.text.value);
-			break;
+			return source;
 		}
 		default:
 			assert(false);
