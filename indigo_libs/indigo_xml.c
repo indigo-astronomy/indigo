@@ -1278,7 +1278,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 #endif
 			if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
 				indigo_debug("XML Parser: read timeout (errno = %d), reseting ...", errno);
-				*pointer--;
+				pointer--;
 				continue;
 			} else if (count <= 0) {
 				goto exit_loop;
