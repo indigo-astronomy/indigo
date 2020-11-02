@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <errno.h>
 #include <pthread.h>
 #include <assert.h>
 #include <stdint.h>
@@ -47,26 +48,36 @@
 
 static long ws_read(int handle, char *buffer, long length) {
 	uint8_t header[14];
-	if (indigo_read(handle, (char *)header, 6) <= 0)
-		return -1;
+	int bytes_read = indigo_read(handle, (char *)header, 6);
+	if (bytes_read <= 0) {
+		return bytes_read;
+	}
 	INDIGO_TRACE_PARSER(indigo_trace("ws_read -> %2x", header[0]));
 	uint8_t *masking_key = header+2;
 	uint64_t payload_length = header[1] & 0x7F;
 	if (payload_length == 0x7E) {
-		if (indigo_read(handle, (char *)header + 6, 2) <= 0)
-			return -1;
+		bytes_read = indigo_read(handle, (char *)header + 6, 2);
+		if (bytes_read <= 0) {
+			return bytes_read;
+		}
 		masking_key = header + 4;
 		payload_length = ntohs(*((uint16_t *)(header+2)));
 	} else if (payload_length == 0x7F) {
-		if (indigo_read(handle, (char *)header + 6, 8) <= 0)
-			return -1;
+		bytes_read = indigo_read(handle, (char *)header + 6, 8);
+		if (bytes_read <= 0) {
+			return bytes_read;
+		}
 		masking_key = header+10;
 		payload_length = ntohll(*((uint64_t *)(header+2)));
 	}
-	if (length < payload_length)
+	if (length < payload_length) {
+		errno = ENODATA;
 		return -1;
-	if (indigo_read(handle, buffer, payload_length) <= 0)
-		return -1;
+	}
+	bytes_read = indigo_read(handle, buffer, payload_length);
+	if (bytes_read <= 0) {
+		return bytes_read;
+	}
 	for (uint64_t i = 0; i < payload_length; i++) {
 		buffer[i] ^= masking_key[i%4];
 	}
@@ -291,7 +302,11 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 		}
 		while ((c = *pointer++) == 0) {
 			ssize_t count = (int)context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : indigo_read_line(handle, buffer, JSON_BUFFER_SIZE);
-			if (count <= 0) {
+			if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
+				indigo_debug("JSON Parser: read timeout (errno = %d), reseting ...", errno);
+				*pointer--;
+				continue;
+			} else if (count <= 0) {
 				goto exit_loop;
 			}
 			pointer = buffer;
