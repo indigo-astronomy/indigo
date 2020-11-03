@@ -256,7 +256,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 		*hfd = 2 * prod / total;
 	}
 
-	/* FWFM is erratic with peak < 6*stddev */
+	/* FWHM is erratic with peak < 6*stddev */
 	if (max < background + 6 * stddev) {
 		*fwhm = 2 * radius + 1;
 	} else {
