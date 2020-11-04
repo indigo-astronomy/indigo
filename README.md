@@ -114,8 +114,9 @@ This is the list of requirements taken into the consideration:
 1. ASCOM driver for INDIGO mount
 2. ASCOM driver for INDIGO focuser
 3. RainbowAstro Mount driver
-6. Lunatico Astronomy AAG CloudWatcher driver
-7. a-Box Adaptive optics driver
+4. NexStar AUX protocol mount driver
+5. Lunatico Astronomy AAG CloudWatcher driver
+6. a-Box Adaptive optics driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO

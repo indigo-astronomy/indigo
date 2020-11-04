@@ -51,8 +51,6 @@
 
 #### Mounts
 
-2. NexStar EVO protocol mount driver
-
 #### GPS
 1. GPSD GPS driver __DONE__
 2. Celestron GPS driver __DONE__
