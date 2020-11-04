@@ -46,7 +46,7 @@
 # static ip_address=192.168.235.1/24
 # nohook wpa_supplicant
 
-VERSION=0.21
+VERSION=0.22
 
 # Setup RPi as access point server.
 WIFI_AP_SSID=""
@@ -65,6 +65,15 @@ OPT_LIST_AVAIL_VERSIONS=0
 
 # Install certain indigo version.
 OPT_INSTALL_VERSION=""
+
+# Get forwarding
+OPT_GET_FORWARDING=0
+
+# Enable forwarding
+OPT_ENABLE_FORWARDING=0
+
+# Disable forwarding
+OPT_DISABLE_FORWARDING=0
 
 # Get date.
 OPT_GET_DATE=0
@@ -91,6 +100,8 @@ OPT_VERBOSE=0
 CONF_HOSTAPD="/etc/hostapd/hostapd.conf"
 CONF_WPA_SUPPLICANT="/etc/wpa_supplicant/wpa_supplicant.conf"
 CONF_DHCPCD="/etc/dhcpcd.conf"
+CONF_SYSCTL="/etc/sysctl.conf"
+PROC_FORWARD="/proc/sys/net/ipv4/ip_forward"
 
 # Required executable files.
 SUDO_EXE=$(which sudo)
@@ -122,6 +133,9 @@ __usage() {
 	 "\t--get-date\n" \
 	 "\t--set-date <+%Y-%m-%dT%H:%M:%S%z>\n" \
 	 "\t--get-wifi-mode\n" \
+	 "\t--enable-forwarding\n" \
+	 "\t--disable-forwarding\n" \
+	 "\t--get-forwarding\n" \
 	 "\t--poweroff\n" \
 	 "\t--reboot\n" \
 	 "\t--verbose"
@@ -150,8 +164,8 @@ __ALERT() {
 # Verify that file exists and exit
 # with 1 when not.
 ###############################################
-__check_file_exits() {
-    [[ ! -f ${1} ]] && __ALERT "file ${1} does not exists"
+__check_file_exists() {
+    [[ ! -f ${1} ]] && __ALERT "file ${1} does not exist"
 }
 
 ###############################################
@@ -192,6 +206,38 @@ __set() {
 
     return 1
 }
+
+###############################################
+# Get ipv4 forwarding => 0 disabled 1 enabled
+###############################################
+__get-forwarding() {
+
+    local enabled=`${CAT_EXE} ${PROC_FORWARD}`
+    echo $enabled
+}
+
+###############################################
+# Enable ipv4 forwarding
+###############################################
+__enable-forwarding() {
+    __set "net.ipv4.ip_forward" 1 ${CONF_SYSCTL} >/dev/null 2>&1
+    echo 1 2>/dev/null >${PROC_FORWARD}
+    [[ $? -ne 0 ]] && { __ALERT "cannot enable forwarding"; }
+
+    __OK
+}
+
+###############################################
+# Disable ipv4 forwarding
+###############################################
+__disable-forwarding() {
+    __set "net.ipv4.ip_forward" 0 ${CONF_SYSCTL} >/dev/null 2>&1
+    echo 0 2>/dev/null >${PROC_FORWARD}
+    [[ $? -ne 0 ]] && { __ALERT "cannot disable forwarding"; }
+
+    __OK
+}
+
 
 ###############################################
 # Get active wifi-mode, returns "wifi-server"
@@ -467,6 +513,15 @@ do
 	--get-wifi-mode)
 	    OPT_GET_WIFI_MODE=1
 	    ;;
+	--get-forwarding)
+	    OPT_GET_FORWARDING=1
+	    ;;
+	--enable-forwarding)
+	    OPT_ENABLE_FORWARDING=1
+	    ;;
+	--disable-forwarding)
+	    OPT_DISABLE_FORWARDING=1
+	    ;;
 	--poweroff)
 	    OPT_POWEROFF=1
 	    ;;
@@ -485,26 +540,32 @@ do
 done
 
 # Executable files.
-__check_file_exits ${SUDO_EXE}
-__check_file_exits ${CP_EXE}
-__check_file_exits ${CAT_EXE}
-__check_file_exits ${GREP_EXE}
-__check_file_exits ${SED_EXE}
-__check_file_exits ${POWEROFF_EXE}
-__check_file_exits ${REBOOT_EXE}
-__check_file_exits ${SYSTEMCTL_EXE}
-__check_file_exits ${HOSTAPD_EXE}
-__check_file_exits ${APT_CACHE_EXE}
-__check_file_exits ${APT_GET_EXE}
-__check_file_exits ${DATE_EXE}
-__check_file_exits ${IW_EXE}
+__check_file_exists ${SUDO_EXE}
+__check_file_exists ${CP_EXE}
+__check_file_exists ${CAT_EXE}
+__check_file_exists ${GREP_EXE}
+__check_file_exists ${SED_EXE}
+__check_file_exists ${POWEROFF_EXE}
+__check_file_exists ${REBOOT_EXE}
+__check_file_exists ${SYSTEMCTL_EXE}
+__check_file_exists ${HOSTAPD_EXE}
+__check_file_exists ${APT_CACHE_EXE}
+__check_file_exists ${APT_GET_EXE}
+__check_file_exists ${DATE_EXE}
+__check_file_exists ${IW_EXE}
 # Config files.
-__check_file_exits ${CONF_HOSTAPD}
-__check_file_exits ${CONF_WPA_SUPPLICANT}
-__check_file_exits ${CONF_DHCPCD}
+__check_file_exists ${CONF_HOSTAPD}
+__check_file_exists ${CONF_WPA_SUPPLICANT}
+__check_file_exists ${CONF_DHCPCD}
+__check_file_exists ${CONF_SYSCTL}
+__check_file_exists ${PROC_FORWARD}
 
 __create_reset_files
 
+
+[[ ${OPT_GET_FORWARDING} -eq 1 ]] && { __get-forwarding; }
+[[ ${OPT_ENABLE_FORWARDING} -eq 1 ]] && { __enable-forwarding; }
+[[ ${OPT_DISABLE_FORWARDING} -eq 1 ]] && { __disable-forwarding; }
 [[ ${OPT_WIFI_AP_GET} -eq 1 ]] && { __get-wifi-server; }
 [[ ${OPT_WIFI_AP_SET} -eq 1 ]] && { __set-wifi-server ${WIFI_AP_SSID} ${WIFI_AP_PW}; }
 [[ ${OPT_WIFI_CN_GET} -eq 1 ]] && { __get-wifi-client; }
