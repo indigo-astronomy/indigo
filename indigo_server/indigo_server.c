@@ -70,6 +70,7 @@
 #include "mount_lx200/indigo_mount_lx200.h"
 #include "mount_synscan/indigo_mount_synscan.h"
 #include "mount_nexstar/indigo_mount_nexstar.h"
+#include "mount_nexstaraux/indigo_mount_nexstaraux.h"
 #include "mount_temma/indigo_mount_temma.h"
 #include "ccd_fli/indigo_ccd_fli.h"
 #include "wheel_fli/indigo_wheel_fli.h"
@@ -249,6 +250,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_ioptron,
 	indigo_mount_lx200,
 	indigo_mount_nexstar,
+	indigo_mount_nexstaraux,
 	indigo_mount_pmc8,
 	indigo_mount_rainbow,
 	indigo_mount_simulator,
