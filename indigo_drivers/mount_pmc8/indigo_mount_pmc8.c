@@ -23,7 +23,7 @@
  \file indigo_mount_pmc8.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_mount_pmc8"
 
 #include <stdlib.h>
@@ -95,7 +95,7 @@ typedef struct {
 
 static bool pmc8_command(indigo_device *device, char *command, char *response, int max, int sleep);
 static void pmc8_close(indigo_device *device);
-static void mount_equatorial_coordinates_callback(indigo_device *device);
+static void mount_equatorial_coordinates_handler(indigo_device *device);
 
 static bool pmc8_open(indigo_device *device) {
 	char response[32];
@@ -109,7 +109,7 @@ static bool pmc8_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_open_network_device(name, 54372, &PRIVATE_DATA->proto);
 		}
 	}
-	if (PRIVATE_DATA->handle >= 0) {
+	if (PRIVATE_DATA->handle > 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		indigo_device *d = device, *device = d->master_device;
 		if (pmc8_command(device, "ESGv!", response, sizeof(response), 0) && !strncmp(response, "ESGv", 4)) {
@@ -442,7 +442,7 @@ static void position_timer_callback(indigo_device *device) {
 	}
 }
 
-static void mount_connect_callback(indigo_device *device) {
+static void mount_connect_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = pmc8_open(device);
 		if (result) {
@@ -469,7 +469,7 @@ static void mount_connect_callback(indigo_device *device) {
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void mount_equatorial_coordinates_callback(indigo_device *device) {
+static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	for (int i = 0; i < 3 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
@@ -532,7 +532,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 }
 
-static void mount_tracking_callback(indigo_device *device) {
+static void mount_tracking_handler(indigo_device *device) {
 	if (pmc8_set_tracking_rate(device, 0)) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -541,7 +541,7 @@ static void mount_tracking_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
 
-static void mount_track_rate_callback(indigo_device *device) {
+static void mount_track_rate_handler(indigo_device *device) {
 	if (pmc8_set_tracking_rate(device, 0)) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -550,10 +550,10 @@ static void mount_track_rate_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 }
 
-static void mount_park_callback(indigo_device *device) {
+static void mount_park_handler(indigo_device *device) {
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-	mount_tracking_callback(device);
+	mount_tracking_handler(device);
 	PRIVATE_DATA->park = true;
 	if (!pmc8_point(device, 0, 0)) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -561,7 +561,7 @@ static void mount_park_callback(indigo_device *device) {
 	}
 }
 
-static void mount_abort_motion_callback(indigo_device *device) {
+static void mount_abort_motion_handler(indigo_device *device) {
 	if (pmc8_move(device, 0, 0, 0) && pmc8_move(device, 1, 0, 0)) {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -578,7 +578,7 @@ static void mount_abort_motion_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 }
 
-static void mount_motion_callback(indigo_device *device) {
+static void mount_motion_handler(indigo_device *device) {
 	int rate = 0, direction = 0;
 	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
 		rate = PRIVATE_DATA->rate[0];
@@ -610,7 +610,7 @@ static void mount_motion_callback(indigo_device *device) {
 	}
 }
 
-static void mount_switch_connection(indigo_device *device) {
+static void mount_switch_connection_handler(indigo_device *device) {
 	CONNECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
     char response[32];
     if (PRIVATE_DATA->is_udp && CONNECTION_TCP_ITEM->sw.value) {
@@ -618,7 +618,7 @@ static void mount_switch_connection(indigo_device *device) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
+			mount_connect_handler(device);
     } else if (PRIVATE_DATA->is_udp && CONNECTION_SERIAL_ITEM->sw.value) {
 			indigo_send_message(device, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
@@ -628,13 +628,13 @@ static void mount_switch_connection(indigo_device *device) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
+			mount_connect_handler(device);
     } else if (PRIVATE_DATA->is_tcp && CONNECTION_SERIAL_ITEM->sw.value) {
 			if (!pmc8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
+			mount_connect_handler(device);
     } else if (PRIVATE_DATA->is_serial && CONNECTION_UDP_ITEM->sw.value) {
 			indigo_send_message(device, "Can't switch from SERIAL to UDP directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_SERIAL_ITEM, true);
@@ -644,7 +644,7 @@ static void mount_switch_connection(indigo_device *device) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			mount_connect_callback(device);
+			mount_connect_handler(device);
     }
 	if (CONNECTION_MODE_PROPERTY->state == INDIGO_OK_STATE) {
 		if (CONNECTION_UDP_ITEM->sw.value) {
@@ -674,7 +674,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, mount_connect_callback, NULL);
+		indigo_set_timer(device, 0, mount_connect_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
@@ -684,7 +684,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (!parked && MOUNT_PARK_PARKED_ITEM->sw.value) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-				indigo_set_timer(device, 0, mount_park_callback, NULL);
+				indigo_set_timer(device, 0, mount_park_handler, NULL);
 			}
 			if (parked && MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
@@ -702,7 +702,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-			indigo_set_timer(device, 0, mount_equatorial_coordinates_callback, NULL);
+			indigo_set_timer(device, 0, mount_equatorial_coordinates_handler, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
@@ -713,7 +713,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_abort_motion_callback, NULL);
+			indigo_set_timer(device, 0, mount_abort_motion_handler, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
@@ -726,7 +726,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_motion_callback, NULL);
+			indigo_set_timer(device, 0, mount_motion_handler, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
@@ -739,7 +739,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_motion_callback, NULL);
+			indigo_set_timer(device, 0, mount_motion_handler, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
@@ -748,7 +748,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_tracking_callback, NULL);
+			indigo_set_timer(device, 0, mount_tracking_handler, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
@@ -757,7 +757,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
 			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_track_rate_callback, NULL);
+			indigo_set_timer(device, 0, mount_track_rate_handler, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONNECTION_MODE_PROPERTY, property)) {
@@ -769,7 +769,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			CONNECTION_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_switch_connection, NULL);
+			indigo_set_timer(device, 0, mount_switch_connection_handler, NULL);
 		} else {
 			if (CONNECTION_UDP_ITEM->sw.value) {
 				strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
@@ -801,7 +801,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		mount_connect_callback(device);
+		mount_connect_handler(device);
 	}
 	indigo_release_property(CONNECTION_MODE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -823,7 +823,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static void guider_connect_callback(indigo_device *device) {
+static void guider_connect_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = pmc8_open(device);
 		if (result) {
@@ -839,7 +839,7 @@ static void guider_connect_callback(indigo_device *device) {
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void guider_timer_callback_ra(indigo_device *device) {
+static void guider_timer_ra_handler(indigo_device *device) {
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 100.0);
@@ -858,7 +858,7 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
-static void guider_timer_callback_dec(indigo_device *device) {
+static void guider_timer_dec_handler(indigo_device *device) {
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 2500.0);
@@ -888,21 +888,21 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, guider_connect_callback, NULL);
+		indigo_set_timer(device, 0, guider_connect_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		if (PRIVATE_DATA->guider_timer_dec == NULL) {
-			indigo_set_timer(device, 0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
+			indigo_set_timer(device, 0, guider_timer_dec_handler, &PRIVATE_DATA->guider_timer_dec);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		if (PRIVATE_DATA->guider_timer_ra == NULL) {
-			indigo_set_timer(device, 0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
+			indigo_set_timer(device, 0, guider_timer_ra_handler, &PRIVATE_DATA->guider_timer_ra);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
@@ -919,7 +919,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		guider_connect_callback(device);
+		guider_connect_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
