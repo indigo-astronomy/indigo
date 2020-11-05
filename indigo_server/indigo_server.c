@@ -401,7 +401,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 			} else {
 				property->state = INDIGO_OK_STATE;
 			}
-			indigo_update_property(device, property, line);
+			indigo_update_property(device, property, NULL);
 		} else {
 			property->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, property, "No reply from rpi_ctrl.sh");
