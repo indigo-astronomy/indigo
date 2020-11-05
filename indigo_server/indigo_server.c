@@ -823,8 +823,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- INTERNET_SHARING
 		indigo_property_copy_values(internet_sharing_property, property, false);
 		if (internet_sharing_property->items[1].sw.value) { /* item[1] is enable forwarding, aka network sharing */
-			return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh --enable-forwarding");
 			indigo_send_message(device, "Internet sharing is potentially dangerous, everyone connected to your INDIGO Sky can access your network!");
+			return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh --enable-forwarding");
 		} else {
 			return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh --disable-forwarding");
 		}
