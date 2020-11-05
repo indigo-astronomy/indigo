@@ -117,22 +117,19 @@ typedef struct {
 static void nexstaraux_dump(indigo_device *device, char *dir, unsigned char *buffer) {
 	switch (buffer[1]) {
 		case 3:
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s %02x %02x %02x %02x %02x %02x", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s [%02x %02x] %02x > %02x %02x [%02x]", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
 			return;
 		case 4:
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s %02x %02x %02x %02x %02x %02x %02x", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s [%02x %02x] %02x > %02x %02x %02x [%02x]", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6]);
 			return;
 		case 5:
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s %02x %02x %02x %02x %02x %02x %02x %02x", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s [%02x %02x] %02x > %02x %02x %02x %02x [%02x] = %d", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[5] << 8 | buffer[6]);
 			return;
 		case 6:
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s %02x %02x %02x %02x %02x %02x %02x %02x %02x", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[8]);
-			return;
-		case 7:
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[8], buffer[9]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s [%02x %02x] %02x > %02x %02x %02x %02x %02x [%02x] = %d", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[8], buffer[5] << 16 | buffer[6] << 8 | buffer[7]);
 			return;
 		default:
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x...", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[8], buffer[9]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %s [%02x %02x] %02x > %02x %02x %02x %02x %02x %02x...", PRIVATE_DATA->handle, dir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[8]);
 			return;
 	}
 }
@@ -166,7 +163,7 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 			}
 			if (read(PRIVATE_DATA->handle, reply + 1, 1) == 1) {
 				if (indigo_read(PRIVATE_DATA->handle, (char *)(reply + 2), reply[1] + 1)) {
-					if (memcpy(buffer, reply, length + 3) == 0) {
+					if (buffer[4] != reply[4] || buffer[2] != reply[3] || buffer[3] != reply[2]) {
 						nexstaraux_dump(device, ">>", reply);
 						continue;
 					}
@@ -782,6 +779,8 @@ static void guider_connect_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_ra);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
 		nexstaraux_close(device);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -789,9 +788,32 @@ static void guider_connect_handler(indigo_device *device) {
 }
 
 static void guider_timer_ra_handler(indigo_device *device) {
+	unsigned char reply[16] = { 0 };
+	unsigned char rate = 1;
+	unsigned duration = 0;
+	commands direction = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-	// TBD
+	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+		direction = MC_MOVE_POS;
+		duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+	} else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+		direction = MC_MOVE_NEG;
+		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+	}
+	if (nexstaraux_command(device, APP, AZM, direction, &rate, 1, reply)) {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		indigo_usleep(duration * 1000);
+		rate = 0;
+		if (nexstaraux_command(device, APP, AZM, direction, &rate, 1, reply)) {
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -799,12 +821,34 @@ static void guider_timer_ra_handler(indigo_device *device) {
 }
 
 static void guider_timer_dec_handler(indigo_device *device) {
+	unsigned char reply[16] = { 0 };
+	unsigned char rate = 1;
+	unsigned duration = 0;
+	commands direction = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-	// TBD
+	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+		direction = MC_MOVE_POS;
+		duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+		direction = MC_MOVE_NEG;
+		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+	}
+	if (nexstaraux_command(device, APP, ALT, direction, &rate, 1, reply)) {
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		indigo_usleep(duration * 1000);
+		rate = 0;
+		if (nexstaraux_command(device, APP, ALT, direction, &rate, 1, reply)) {
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else {
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
@@ -835,11 +879,6 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (PRIVATE_DATA->guider_timer_ra == NULL) {
 			indigo_set_timer(device, 0, guider_timer_ra_handler, &PRIVATE_DATA->guider_timer_ra);
 		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
-		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
-
 		return INDIGO_OK;
 	}
 	// --------------------------------------------------------------------------------
