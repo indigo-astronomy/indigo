@@ -297,6 +297,7 @@ static indigo_property *server_features_property;
 #ifdef RPI_MANAGEMENT
 static indigo_property *wifi_ap_property;
 static indigo_property *wifi_infrastructure_property;
+static indigo_property *internet_sharing_property;
 static indigo_property *host_time_property;
 static indigo_property *shutdown_property;
 static indigo_property *reboot_property;
@@ -551,6 +552,8 @@ static indigo_result attach(indigo_device *device) {
 			if (token)
 				strncpy(wifi_ap_property->items[1].text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
+		} else {
+			wifi_ap_property->hidden = true;
 		}
 		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
@@ -561,6 +564,20 @@ static indigo_result attach(indigo_device *device) {
 			if (token)
 				strncpy(wifi_infrastructure_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
+		} else {
+			wifi_infrastructure_property->hidden = true;
+		}
+		internet_sharing_property = indigo_init_switch_property(NULL, server_device.name, "INTERNET_SHARING", MAIN_GROUP, "Internet sharing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		indigo_init_switch_item(internet_sharing_property->items + 0, "DISABLED", "Disabled", true);
+		indigo_init_switch_item(internet_sharing_property->items + 1, "ENABLED", "Enabled", false);
+		line = execute_query("s_rpi_ctrl.sh --get-forwarding");
+		if (line) {
+			if (!strncmp(line, "1", 1)) {
+				indigo_set_switch(internet_sharing_property, internet_sharing_property->items + 1, true);
+			}
+			free(line);
+		} else {
+			internet_sharing_property->hidden = true;
 		}
 		host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", "");
@@ -607,6 +624,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	if (use_rpi_management) {
 		indigo_define_property(device, wifi_ap_property, NULL);
 		indigo_define_property(device, wifi_infrastructure_property, NULL);
+		indigo_define_property(device, internet_sharing_property, NULL);
 		indigo_define_property(device, host_time_property, NULL);
 		indigo_define_property(device, shutdown_property, NULL);
 		indigo_define_property(device, reboot_property, NULL);
@@ -801,6 +819,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(wifi_infrastructure_property, property, false);
 		return execute_command(device, wifi_infrastructure_property, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
+	} else if (indigo_property_match(internet_sharing_property, property)) {
+		// -------------------------------------------------------------------------------- INTERNET_SHARING
+		indigo_property_copy_values(internet_sharing_property, property, false);
+		return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh %s", internet_sharing_property->items[1].sw.value ? "--enable-forwarding" : "--disable-forwarding");
 	} else if (indigo_property_match(host_time_property, property)) {
 		// -------------------------------------------------------------------------------- HOST_TIME
 		indigo_property_copy_values(host_time_property, property, false);
@@ -840,6 +862,7 @@ static indigo_result detach(indigo_device *device) {
 	if (use_rpi_management) {
 		indigo_delete_property(device, wifi_ap_property, NULL);
 		indigo_delete_property(device, wifi_infrastructure_property, NULL);
+		indigo_delete_property(device, internet_sharing_property, NULL);
 		indigo_delete_property(device, host_time_property, NULL);
 		indigo_delete_property(device, shutdown_property, NULL);
 		indigo_delete_property(device, reboot_property, NULL);
@@ -857,6 +880,7 @@ static indigo_result detach(indigo_device *device) {
 #ifdef RPI_MANAGEMENT
 	indigo_release_property(wifi_ap_property);
 	indigo_release_property(wifi_infrastructure_property);
+	indigo_release_property(internet_sharing_property);
 	indigo_release_property(host_time_property);
 	indigo_release_property(shutdown_property);
 	indigo_release_property(reboot_property);
