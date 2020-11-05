@@ -822,7 +822,12 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(internet_sharing_property, property)) {
 		// -------------------------------------------------------------------------------- INTERNET_SHARING
 		indigo_property_copy_values(internet_sharing_property, property, false);
-		return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh %s", internet_sharing_property->items[1].sw.value ? "--enable-forwarding" : "--disable-forwarding");
+		if (internet_sharing_property->items[1].sw.value) { /* item[1] is enable forwarding, aka network sharing */
+			return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh --enable-forwarding");
+			indigo_send_message(device, "Internet sharing is potentially dangerous, everyone connected to your INDIGO Sky can access your network!");
+		} else {
+			return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh --disable-forwarding");
+		}
 	} else if (indigo_property_match(host_time_property, property)) {
 		// -------------------------------------------------------------------------------- HOST_TIME
 		indigo_property_copy_values(host_time_property, property, false);
