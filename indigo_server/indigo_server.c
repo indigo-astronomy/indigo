@@ -316,19 +316,57 @@ static void *constellation_data = NULL;
 static bool runLoop = true;
 #endif
 
-#define RESTART_ITEM                (restart_property->items + 0)
+#define SERVER_INFO_PROPERTY											info_property
+#define SERVER_INFO_VERSION_ITEM									(SERVER_INFO_PROPERTY->items + 0)
+#define SERVER_INFO_SERVICE_ITEM									(SERVER_INFO_PROPERTY->items + 1)
 
-#define LOAD_ITEM                   (load_property->items + 0)
-#define UNLOAD_ITEM                 (unload_property->items + 0)
+#define SERVER_DRIVERS_PROPERTY										drivers_property
 
-#define LOG_LEVEL_ERROR_ITEM        (log_level_property->items + 0)
-#define LOG_LEVEL_INFO_ITEM         (log_level_property->items + 1)
-#define LOG_LEVEL_DEBUG_ITEM        (log_level_property->items + 2)
-#define LOG_LEVEL_TRACE_ITEM        (log_level_property->items + 3)
+#define SERVER_SERVERS_PROPERTY										servers_property
 
-#define BONJOUR_ITEM                (server_features_property->items + 0)
-#define CTRL_PANEL_ITEM             (server_features_property->items + 1)
-#define WEB_APPS_ITEM               (server_features_property->items + 2)
+#define SERVER_LOAD_PROPERTY											load_property
+#define SERVER_LOAD_ITEM													(SERVER_LOAD_PROPERTY->items + 0)
+
+#define SERVER_UNLOAD_PROPERTY										unload_property
+#define SERVER_UNLOAD_ITEM												(SERVER_UNLOAD_PROPERTY->items + 0)
+
+#define SERVER_RESTART_PROPERTY										restart_property
+#define SERVER_RESTART_ITEM												(SERVER_RESTART_PROPERTY->items + 0)
+
+#define SERVER_LOG_LEVEL_PROPERTY									log_level_property
+#define SERVER_LOG_LEVEL_ERROR_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 0)
+#define SERVER_LOG_LEVEL_INFO_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 1)
+#define SERVER_LOG_LEVEL_DEBUG_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 2)
+#define SERVER_LOG_LEVEL_TRACE_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 3)
+
+#define SERVER_FEATURES_PROPERTY									server_features_property
+#define SERVER_BONJOUR_ITEM												(SERVER_FEATURES_PROPERTY->items + 0)
+#define SERVER_CTRL_PANEL_ITEM										(SERVER_FEATURES_PROPERTY->items + 1)
+#define SERVER_WEB_APPS_ITEM											(SERVER_FEATURES_PROPERTY->items + 2)
+
+#define SERVER_WIFI_AP_PROPERTY										wifi_ap_property
+#define SERVER_WIFI_AP_SSID_ITEM									(SERVER_WIFI_AP_PROPERTY->items + 0)
+#define SERVER_WIFI_AP_PASSWORD_ITEM							(SERVER_WIFI_AP_PROPERTY->items + 1)
+
+#define SERVER_WIFI_INFRASTRUCTURE_PROPERTY				wifi_infrastructure_property
+#define SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM			(SERVER_WIFI_INFRASTRUCTURE_PROPERTY->items + 0)
+#define SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM	(SERVER_WIFI_INFRASTRUCTURE_PROPERTY->items + 1)
+
+#define SERVER_INTERNET_SHARING_PROPERTY					internet_sharing_property
+#define SERVER_INTERNET_SHARING_DISABLED_ITEM			(SERVER_INTERNET_SHARING_PROPERTY->items + 0)
+#define SERVER_INTERNET_SHARING_ENABLED_ITEM			(SERVER_INTERNET_SHARING_PROPERTY->items + 1)
+
+#define SERVER_HOST_TIME_PROPERTY									host_time_property
+#define SERVER_HOST_TIME_ITEM											(SERVER_HOST_TIME_PROPERTY->items + 0)
+
+#define SERVER_SHUTDOWN_PROPERTY									shutdown_property
+#define SERVER_SHUTDOWN_ITEM											(SERVER_SHUTDOWN_PROPERTY->items + 0)
+
+#define SERVER_REBOOT_PROPERTY										reboot_property
+#define SERVER_REBOOT_ITEM												(SERVER_REBOOT_PROPERTY->items + 0)
+
+#define SERVER_INSTALL_PROPERTY										install_property
+
 
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
@@ -372,7 +410,7 @@ static void server_callback(int count) {
 			DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 			DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		}
-		strcpy(info_property->items[1].text.value, hostname);
+		strcpy(SERVER_INFO_SERVICE_ITEM->text.value, hostname);
 		server_startup = false;
 	} else {
 		INDIGO_LOG(indigo_log("%d clients", count));
@@ -444,14 +482,15 @@ static void check_versions(indigo_device *device) {
 		bool redefine = false;
 		char *line = execute_query("s_rpi_ctrl.sh --list-available-versions");
 		if (line && strlen(line) > 0) {
-			if (install_property) {
-				indigo_delete_property(device, install_property, NULL);
+			if (SERVER_INSTALL_PROPERTY) {
+				indigo_delete_property(device, SERVER_INSTALL_PROPERTY, NULL);
 				redefine = true;
 			}
 			pthread_mutex_lock(&install_property_mutex);
-			if (redefine) indigo_release_property(install_property);
-			install_property = indigo_init_switch_property(NULL, server_device.name, "INSTALL", MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
-			install_property->count = 0;
+			if (redefine)
+				indigo_release_property(SERVER_INSTALL_PROPERTY);
+			SERVER_INSTALL_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_INSTALL_PROPERTY_NAME, MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
+			SERVER_INSTALL_PROPERTY->count = 0;
 			char *pnt, *versions[10] = { strtok_r(line, " ", &pnt) };
 			int count = 1;
 			while ((versions[count] = strtok_r(NULL, " ", &pnt))) {
@@ -475,13 +514,14 @@ static void check_versions(indigo_device *device) {
 						ii = j;
 					}
 				}
-				indigo_init_switch_item(install_property->items + i, versions[ii], versions[ii], versions[ii] == line);
-				install_property->count++;
+				indigo_init_switch_item(SERVER_INSTALL_PROPERTY->items + i, versions[ii], versions[ii], versions[ii] == line);
+				SERVER_INSTALL_PROPERTY->count++;
 				versions[ii] = NULL;
 			}
 			pthread_mutex_unlock(&install_property_mutex);
 			free(line);
-			if (redefine) indigo_define_property(device, install_property, NULL);
+			if (redefine)
+				indigo_define_property(device, SERVER_INSTALL_PROPERTY, NULL);
 		}
 		indigo_usleep(10 * 60 * ONE_SECOND_DELAY);
 	}
@@ -491,19 +531,19 @@ static void check_versions(indigo_device *device) {
 
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
-	info_property = indigo_init_text_property(NULL, server_device.name, "INFO", MAIN_GROUP, "Server info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-	indigo_init_text_item(info_property->items + 0, "VERSION", "INDIGO version", "%d.%d-%s", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
-	indigo_init_text_item(info_property->items + 1, "SERVICE", "INDIGO service", "");
-	drivers_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", MAIN_GROUP, "Available drivers", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
-	drivers_property->count = 0;
+	SERVER_INFO_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_INFO_PROPERTY_NAME, MAIN_GROUP, "Server info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+	indigo_init_text_item(SERVER_INFO_VERSION_ITEM, SERVER_INFO_VERSION_ITEM_NAME, "INDIGO version", "%d.%d-%s", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
+	indigo_init_text_item(SERVER_INFO_SERVICE_ITEM, SERVER_INFO_SERVICE_ITEM_NAME, "INDIGO service", "");
+	SERVER_DRIVERS_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_DRIVERS_PROPERTY_NAME, MAIN_GROUP, "Available drivers", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
+	SERVER_DRIVERS_PROPERTY->count = 0;
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 		if (indigo_available_drivers[i].driver != NULL)
-			indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].name, indigo_available_drivers[i].description, indigo_available_drivers[i].initialized);
-	for (int i = 0; i < dynamic_drivers_count && drivers_property->count < INDIGO_MAX_DRIVERS; i++)
-		indigo_init_switch_item(&drivers_property->items[drivers_property->count++], dynamic_drivers[i].name, dynamic_drivers[i].description, false);
-	indigo_property_sort_items(drivers_property);
-	servers_property = indigo_init_light_property(NULL, server_device.name, "SERVERS", MAIN_GROUP, "Configured servers", INDIGO_OK_STATE, 2 * INDIGO_MAX_SERVERS);
-	servers_property->count = 0;
+			indigo_init_switch_item(&SERVER_DRIVERS_PROPERTY->items[SERVER_DRIVERS_PROPERTY->count++], indigo_available_drivers[i].name, indigo_available_drivers[i].description, indigo_available_drivers[i].initialized);
+	for (int i = 0; i < dynamic_drivers_count && SERVER_DRIVERS_PROPERTY->count < INDIGO_MAX_DRIVERS; i++)
+		indigo_init_switch_item(&SERVER_DRIVERS_PROPERTY->items[SERVER_DRIVERS_PROPERTY->count++], dynamic_drivers[i].name, dynamic_drivers[i].description, false);
+	indigo_property_sort_items(SERVER_DRIVERS_PROPERTY);
+	SERVER_SERVERS_PROPERTY = indigo_init_light_property(NULL, server_device.name, SERVER_SERVERS_PROPERTY_NAME, MAIN_GROUP, "Configured servers", INDIGO_OK_STATE, 2 * INDIGO_MAX_SERVERS);
+	SERVER_SERVERS_PROPERTY->count = 0;
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_server_entry *entry = indigo_available_servers + i;
 		if (*entry->host) {
@@ -512,95 +552,95 @@ static indigo_result attach(indigo_device *device) {
 				strncpy(buf, entry->host, sizeof(buf));
 			else
 				snprintf(buf, sizeof(buf), "%s:%d", entry->host, entry->port);
-			indigo_init_light_item(&servers_property->items[servers_property->count++], buf, buf, INDIGO_OK_STATE);
+			indigo_init_light_item(&SERVER_SERVERS_PROPERTY->items[SERVER_SERVERS_PROPERTY->count++], buf, buf, INDIGO_OK_STATE);
 		}
 	}
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_subprocess_entry *entry = indigo_available_subprocesses + i;
 		if (*entry->executable) {
-			indigo_init_light_item(&servers_property->items[servers_property->count++], entry->executable, entry->executable, INDIGO_OK_STATE);
+			indigo_init_light_item(&SERVER_SERVERS_PROPERTY->items[SERVER_SERVERS_PROPERTY->count++], entry->executable, entry->executable, INDIGO_OK_STATE);
 		}
 	}
-	indigo_property_sort_items(servers_property);
-	load_property = indigo_init_text_property(NULL, server_device.name, "LOAD", MAIN_GROUP, "Load driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-	indigo_init_text_item(LOAD_ITEM, "DRIVER", "Load driver", "");
-	unload_property = indigo_init_text_property(NULL, server_device.name, "UNLOAD", MAIN_GROUP, "Unload driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-	indigo_init_text_item(UNLOAD_ITEM, "DRIVER", "Unload driver", "");
-	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", MAIN_GROUP, "Restart", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-	indigo_init_switch_item(RESTART_ITEM, "RESTART", "Restart server", false);
-	log_level_property = indigo_init_switch_property(NULL, device->name, "LOG_LEVEL", MAIN_GROUP, "Log level", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-	indigo_init_switch_item(LOG_LEVEL_ERROR_ITEM, "ERROR", "Error", false);
-	indigo_init_switch_item(LOG_LEVEL_INFO_ITEM, "INFO", "Info", false);
-	indigo_init_switch_item(LOG_LEVEL_DEBUG_ITEM, "DEBUG", "Debug", false);
-	indigo_init_switch_item(LOG_LEVEL_TRACE_ITEM, "TRACE", "Trace", false);
-	server_features_property = indigo_init_switch_property(NULL, device->name, "FEATURES", MAIN_GROUP, "Features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-	indigo_init_switch_item(BONJOUR_ITEM, "BONJOUR", "Bonjour", use_bonjour);
-	indigo_init_switch_item(CTRL_PANEL_ITEM, "CTRL_PANEL", "Control panel / Server manager", use_ctrl_panel);
-	indigo_init_switch_item(WEB_APPS_ITEM, "WEB_APPS", "Web applications", use_web_apps);
+	indigo_property_sort_items(SERVER_SERVERS_PROPERTY);
+	SERVER_LOAD_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_LOAD_PROPERTY_NAME, MAIN_GROUP, "Load driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_text_item(SERVER_LOAD_ITEM, SERVER_LOAD_ITEM_NAME, "Load driver", "");
+	SERVER_UNLOAD_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_UNLOAD_PROPERTY_NAME, MAIN_GROUP, "Unload driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_text_item(SERVER_UNLOAD_ITEM,SERVER_UNLOAD_ITEM_NAME, "Unload driver", "");
+	SERVER_RESTART_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_RESTART_PROPERTY_NAME, MAIN_GROUP, "Restart", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+	indigo_init_switch_item(SERVER_RESTART_ITEM, SERVER_RESTART_ITEM_NAME, "Restart server", false);
+	SERVER_LOG_LEVEL_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_LOG_LEVEL_PROPERTY_NAME, MAIN_GROUP, "Log level", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+	indigo_init_switch_item(SERVER_LOG_LEVEL_ERROR_ITEM, SERVER_LOG_LEVEL_ERROR_ITEM_NAME, "Error", false);
+	indigo_init_switch_item(SERVER_LOG_LEVEL_INFO_ITEM, SERVER_LOG_LEVEL_INFO_ITEM_NAME, "Info", false);
+	indigo_init_switch_item(SERVER_LOG_LEVEL_DEBUG_ITEM, SERVER_LOG_LEVEL_DEBUG_ITEM_NAME, "Debug", false);
+	indigo_init_switch_item(SERVER_LOG_LEVEL_TRACE_ITEM, SERVER_LOG_LEVEL_TRACE_ITEM_NAME, "Trace", false);
+	SERVER_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_FEATURES_PROPERTY_NAME, MAIN_GROUP, "Features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	indigo_init_switch_item(SERVER_BONJOUR_ITEM, SERVER_BONJOUR_ITEM_NAME, "Bonjour", use_bonjour);
+	indigo_init_switch_item(SERVER_CTRL_PANEL_ITEM, SERVER_CTRL_PANEL_ITEM_NAME, "Control panel / Server manager", use_ctrl_panel);
+	indigo_init_switch_item(SERVER_WEB_APPS_ITEM, SERVER_WEB_APPS_ITEM_NAME, "Web applications", use_web_apps);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
 		char *line;
-		wifi_ap_property = indigo_init_text_property(NULL, server_device.name, "WIFI_AP", MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		indigo_init_text_item(wifi_ap_property->items + 0, "SSID", "Network name", "");
-		indigo_init_text_item(wifi_ap_property->items + 1, "PASSWORD", "Password", "");
+		SERVER_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_AP_PROPERTY_NAME, MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		indigo_init_text_item(SERVER_WIFI_AP_SSID_ITEM, SERVER_WIFI_AP_SSID_ITEM_NAME, "Network name", "");
+		indigo_init_text_item(SERVER_WIFI_AP_PASSWORD_ITEM, SERVER_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
 		if (line) {
 			char *pnt, *token = strtok_r(line, "\t", &pnt);
 			if (token)
-				strncpy(wifi_ap_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
+				strncpy(SERVER_WIFI_AP_SSID_ITEM->text.value, token, INDIGO_VALUE_SIZE);
 			token = strtok_r(NULL, "\t", &pnt);
 			if (token)
-				strncpy(wifi_ap_property->items[1].text.value, token, INDIGO_VALUE_SIZE);
+				strncpy(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
 		} else {
-			wifi_ap_property->hidden = true;
+			SERVER_WIFI_AP_PROPERTY->hidden = true;
 		}
-		wifi_infrastructure_property = indigo_init_text_property(NULL, server_device.name, "WIFI_INFRASTRUCTURE", MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		indigo_init_text_item(wifi_infrastructure_property->items + 0, "SSID", "SSID", "");
-		indigo_init_text_item(wifi_infrastructure_property->items + 1, "PASSWORD", "Password", "");
+		SERVER_WIFI_INFRASTRUCTURE_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_INFRASTRUCTURE_PROPERTY_NAME, MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		indigo_init_text_item(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM, SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM_NAME, "SSID", "");
+		indigo_init_text_item(SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM_NAME, "Password", "");
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
 		if (line) {
 			char *pnt, *token = strtok_r(line, "\t", &pnt);
 			if (token)
-				strncpy(wifi_infrastructure_property->items[0].text.value, token, INDIGO_VALUE_SIZE);
+				strncpy(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
 		} else {
-			wifi_infrastructure_property->hidden = true;
+			SERVER_WIFI_INFRASTRUCTURE_PROPERTY->hidden = true;
 		}
-		internet_sharing_property = indigo_init_switch_property(NULL, server_device.name, "INTERNET_SHARING", MAIN_GROUP, "Internet sharing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		indigo_init_switch_item(internet_sharing_property->items + 0, "DISABLED", "Disabled", true);
-		indigo_init_switch_item(internet_sharing_property->items + 1, "ENABLED", "Enabled", false);
+		SERVER_INTERNET_SHARING_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_INTERNET_SHARING_PROPERTY_NAME, MAIN_GROUP, "Internet sharing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		indigo_init_switch_item(SERVER_INTERNET_SHARING_DISABLED_ITEM, SERVER_INTERNET_SHARING_DISABLED_ITEM_NAME, "Disabled", true);
+		indigo_init_switch_item(SERVER_INTERNET_SHARING_ENABLED_ITEM, SERVER_INTERNET_SHARING_ENABLED_ITEM_NAME, "Enabled", false);
 		line = execute_query("s_rpi_ctrl.sh --get-forwarding");
 		if (line) {
 			if (!strncmp(line, "1", 1)) {
-				indigo_set_switch(internet_sharing_property, internet_sharing_property->items + 1, true);
+				indigo_set_switch(SERVER_INTERNET_SHARING_PROPERTY, SERVER_INTERNET_SHARING_ENABLED_ITEM, true);
 			}
 			free(line);
 		} else {
-			internet_sharing_property->hidden = true;
+			SERVER_INTERNET_SHARING_PROPERTY->hidden = true;
 		}
-		host_time_property = indigo_init_text_property(NULL, server_device.name, "HOST_TIME", MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		indigo_init_text_item(host_time_property->items + 0, "TIME", "Host time", "");
-		shutdown_property = indigo_init_switch_property(NULL, server_device.name, "SHUTDOWN", MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		indigo_init_switch_item(shutdown_property->items + 0, "SHUTDOWN", "Shutdown", false);
-		reboot_property = indigo_init_switch_property(NULL, server_device.name, "REBOOT", MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		indigo_init_switch_item(reboot_property->items + 0, "REBOOT", "Reboot", false);
+		SERVER_HOST_TIME_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_HOST_TIME_PROPERTY_NAME, MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		indigo_init_text_item(SERVER_HOST_TIME_ITEM, SERVER_HOST_TIME_ITEM_NAME, "Host time", "");
+		SERVER_SHUTDOWN_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_SHUTDOWN_PROPERTY_NAME, MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		indigo_init_switch_item(SERVER_SHUTDOWN_ITEM, SERVER_SHUTDOWN_ITEM_NAME, "Shutdown", false);
+		SERVER_REBOOT_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_REBOOT_PROPERTY_NAME, MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		indigo_init_switch_item(SERVER_REBOOT_ITEM, SERVER_REBOOT_ITEM_NAME, "Reboot", false);
 		indigo_async((void *(*)(void *))check_versions, device);
 	}
 #endif /* RPI_MANAGEMENT */
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
 		case INDIGO_LOG_ERROR:
-			LOG_LEVEL_ERROR_ITEM->sw.value = true;
+			SERVER_LOG_LEVEL_ERROR_ITEM->sw.value = true;
 			break;
 		case INDIGO_LOG_INFO:
-			LOG_LEVEL_INFO_ITEM->sw.value = true;
+			SERVER_LOG_LEVEL_INFO_ITEM->sw.value = true;
 			break;
 		case INDIGO_LOG_DEBUG:
-			LOG_LEVEL_DEBUG_ITEM->sw.value = true;
+			SERVER_LOG_LEVEL_DEBUG_ITEM->sw.value = true;
 			break;
 		case INDIGO_LOG_TRACE:
-			LOG_LEVEL_TRACE_ITEM->sw.value = true;
+			SERVER_LOG_LEVEL_TRACE_ITEM->sw.value = true;
 			break;
 	}
 	if (!command_line_drivers)
@@ -611,24 +651,24 @@ static indigo_result attach(indigo_device *device) {
 
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	indigo_define_property(device, info_property, NULL);
-	indigo_define_property(device, drivers_property, NULL);
-	if (servers_property->count > 0)
-		indigo_define_property(device, servers_property, NULL);
-	indigo_define_property(device, load_property, NULL);
-	indigo_define_property(device, unload_property, NULL);
-	indigo_define_property(device, restart_property, NULL);
-	indigo_define_property(device, log_level_property, NULL);
-	indigo_define_property(device, server_features_property, NULL);
+	indigo_define_property(device, SERVER_INFO_PROPERTY, NULL);
+	indigo_define_property(device, SERVER_DRIVERS_PROPERTY, NULL);
+	if (SERVER_SERVERS_PROPERTY->count > 0)
+		indigo_define_property(device, SERVER_SERVERS_PROPERTY, NULL);
+	indigo_define_property(device, SERVER_LOAD_PROPERTY, NULL);
+	indigo_define_property(device, SERVER_UNLOAD_PROPERTY, NULL);
+	indigo_define_property(device, SERVER_RESTART_PROPERTY, NULL);
+	indigo_define_property(device, SERVER_LOG_LEVEL_PROPERTY, NULL);
+	indigo_define_property(device, SERVER_FEATURES_PROPERTY, NULL);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
-		indigo_define_property(device, wifi_ap_property, NULL);
-		indigo_define_property(device, wifi_infrastructure_property, NULL);
-		indigo_define_property(device, internet_sharing_property, NULL);
-		indigo_define_property(device, host_time_property, NULL);
-		indigo_define_property(device, shutdown_property, NULL);
-		indigo_define_property(device, reboot_property, NULL);
-		indigo_define_property(device, install_property, NULL);
+		indigo_define_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
+		indigo_define_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
+		indigo_define_property(device, SERVER_INTERNET_SHARING_PROPERTY, NULL);
+		indigo_define_property(device, SERVER_HOST_TIME_PROPERTY, NULL);
+		indigo_define_property(device, SERVER_SHUTDOWN_PROPERTY, NULL);
+		indigo_define_property(device, SERVER_REBOOT_PROPERTY, NULL);
+		indigo_define_property(device, SERVER_INSTALL_PROPERTY, NULL);
 	}
 #endif /* RPI_MANAGEMENT */
 	return INDIGO_OK;
@@ -639,12 +679,12 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	assert(property != NULL);
 #ifdef RPI_MANAGEMENT
 	pthread_mutex_lock(&install_property_mutex);
-	if (indigo_property_match(install_property, property)) {
+	if (indigo_property_match(SERVER_INSTALL_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- INSTALL
-		indigo_property_copy_values(install_property, property, false);
+		indigo_property_copy_values(SERVER_INSTALL_PROPERTY, property, false);
 		for (int i = 0; i < property->count; i++) {
 			if (property->items[i].sw.value) {
-				indigo_result result = execute_command(device, install_property, "s_rpi_ctrl.sh --install-version %s", property->items[i].name);
+				indigo_result result = execute_command(device, SERVER_INSTALL_PROPERTY, "s_rpi_ctrl.sh --install-version %s", property->items[i].name);
 				pthread_mutex_unlock(&install_property_mutex);
 				return result;
 			}
@@ -652,13 +692,13 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	}
 	pthread_mutex_unlock(&install_property_mutex);
 #endif /* RPI_MANAGEMENT */
-	if (indigo_property_match(drivers_property, property)) {
+	if (indigo_property_match(SERVER_DRIVERS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- DRIVERS
 		if (command_line_drivers && !strcmp(client->name, CONFIG_READER))
 			return INDIGO_OK;
-		indigo_property_copy_values(drivers_property, property, false);
-		for (int i = 0; i < drivers_property->count; i++) {
-			char *name = drivers_property->items[i].name;
+		indigo_property_copy_values(SERVER_DRIVERS_PROPERTY, property, false);
+		for (int i = 0; i < SERVER_DRIVERS_PROPERTY->count; i++) {
+			char *name = SERVER_DRIVERS_PROPERTY->items[i].name;
 			indigo_driver_entry *driver = NULL;
 			for (int j = 0; j < INDIGO_MAX_DRIVERS; j++) {
 				if (!strcmp(indigo_available_drivers[j].name, name)) {
@@ -666,16 +706,16 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 					break;
 				}
 			}
-			if (drivers_property->items[i].sw.value) {
+			if (SERVER_DRIVERS_PROPERTY->items[i].sw.value) {
 				if (driver) {
 					if (driver->dl_handle == NULL && !driver->initialized) {
-						drivers_property->items[i].sw.value = driver->initialized = driver->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
+						SERVER_DRIVERS_PROPERTY->items[i].sw.value = driver->initialized = driver->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
 					} else if (driver->dl_handle != NULL && !driver->initialized) {
-						drivers_property->items[i].sw.value = driver->initialized = driver->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
+						SERVER_DRIVERS_PROPERTY->items[i].sw.value = driver->initialized = driver->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
 						if (driver && !driver->initialized) indigo_remove_driver(driver);
 					}
 				} else {
-					drivers_property->items[i].sw.value = indigo_load_driver(name, true, &driver) == INDIGO_OK;
+					SERVER_DRIVERS_PROPERTY->items[i].sw.value = indigo_load_driver(name, true, &driver) == INDIGO_OK;
 					if (driver && !driver->initialized) {
 						indigo_send_message(device, "Driver %s failed to load", name);
 						indigo_remove_driver(driver);
@@ -686,12 +726,12 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 				if (driver->dl_handle) {
 					result = indigo_remove_driver(driver);
 					if (result != INDIGO_OK) {
-						drivers_property->items[i].sw.value = true;
+						SERVER_DRIVERS_PROPERTY->items[i].sw.value = true;
 					}
 				} else if (driver->initialized) {
 					result = driver->driver(INDIGO_DRIVER_SHUTDOWN, NULL);
 					if (result != INDIGO_OK) {
-						drivers_property->items[i].sw.value = true;
+						SERVER_DRIVERS_PROPERTY->items[i].sw.value = true;
 					} else {
 						driver->initialized = false;
 					}
@@ -705,55 +745,55 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 				}
 			}
 		}
-		drivers_property->state = INDIGO_OK_STATE;
-		indigo_update_property(device, drivers_property, NULL);
+		SERVER_DRIVERS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, SERVER_DRIVERS_PROPERTY, NULL);
 		int handle = 0;
 		if (!command_line_drivers)
-			indigo_save_property(device, &handle, drivers_property);
+			indigo_save_property(device, &handle, SERVER_DRIVERS_PROPERTY);
 		close(handle);
 		return INDIGO_OK;
-	} else if (indigo_property_match(load_property, property)) {
+	} else if (indigo_property_match(SERVER_LOAD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LOAD
-		indigo_property_copy_values(load_property, property, false);
-		if (*LOAD_ITEM->text.value) {
-			char *name = basename(LOAD_ITEM->text.value);
+		indigo_property_copy_values(SERVER_LOAD_PROPERTY, property, false);
+		if (*SERVER_LOAD_ITEM->text.value) {
+			char *name = basename(SERVER_LOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
-					load_property->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, load_property, "Driver %s (%s) is already loaded", name, indigo_available_drivers[i].description);
+					SERVER_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, SERVER_LOAD_PROPERTY, "Driver %s (%s) is already loaded", name, indigo_available_drivers[i].description);
 					return INDIGO_OK;
 				}
 			indigo_driver_entry *driver;
-			if (indigo_load_driver(LOAD_ITEM->text.value, true, &driver) == INDIGO_OK) {
+			if (indigo_load_driver(SERVER_LOAD_ITEM->text.value, true, &driver) == INDIGO_OK) {
 				bool found = false;
-				for (int i = 0; i < drivers_property->count; i++) {
-					if (!strcmp(drivers_property->items[i].name, name)) {
-						drivers_property->items[i].sw.value = true;
-						drivers_property->state = INDIGO_OK_STATE;
-						indigo_update_property(device, drivers_property, NULL);
+				for (int i = 0; i < SERVER_DRIVERS_PROPERTY->count; i++) {
+					if (!strcmp(SERVER_DRIVERS_PROPERTY->items[i].name, name)) {
+						SERVER_DRIVERS_PROPERTY->items[i].sw.value = true;
+						SERVER_DRIVERS_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, SERVER_DRIVERS_PROPERTY, NULL);
 						found = true;
 						break;
 					}
 				}
 				if (!found) {
-					indigo_delete_property(device, drivers_property, NULL);
-					indigo_init_switch_item(&drivers_property->items[drivers_property->count++], driver->name, driver->description, driver->initialized);
-					drivers_property->state = INDIGO_OK_STATE;
-					indigo_define_property(device, drivers_property, NULL);
+					indigo_delete_property(device, SERVER_DRIVERS_PROPERTY, NULL);
+					indigo_init_switch_item(&SERVER_DRIVERS_PROPERTY->items[SERVER_DRIVERS_PROPERTY->count++], driver->name, driver->description, driver->initialized);
+					SERVER_DRIVERS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_define_property(device, SERVER_DRIVERS_PROPERTY, NULL);
 				}
-				load_property->state = INDIGO_OK_STATE;
-				indigo_update_property(device, load_property, "Driver %s (%s) loaded", name, driver->description);
+				SERVER_LOAD_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, SERVER_LOAD_PROPERTY, "Driver %s (%s) loaded", name, driver->description);
 			} else {
-				load_property->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, load_property, indigo_last_message);
+				SERVER_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, SERVER_LOAD_PROPERTY, indigo_last_message);
 			}
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(unload_property, property)) {
+	} else if (indigo_property_match(SERVER_UNLOAD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- UNLOAD
-		indigo_property_copy_values(unload_property, property, false);
-		if (*UNLOAD_ITEM->text.value) {
-			char *name = basename(UNLOAD_ITEM->text.value);
+		indigo_property_copy_values(SERVER_UNLOAD_PROPERTY, property, false);
+		if (*SERVER_UNLOAD_ITEM->text.value) {
+			char *name = basename(SERVER_UNLOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
 					indigo_result result;
@@ -763,88 +803,88 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						result = indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
 					}
 					if (result == INDIGO_OK) {
-						for (int j = 0; j < drivers_property->count; j++) {
-							if (!strcmp(drivers_property->items[j].name, name)) {
-								drivers_property->items[j].sw.value = false;
-								drivers_property->state = INDIGO_OK_STATE;
-								indigo_update_property(device, drivers_property, NULL);
+						for (int j = 0; j < SERVER_DRIVERS_PROPERTY->count; j++) {
+							if (!strcmp(SERVER_DRIVERS_PROPERTY->items[j].name, name)) {
+								SERVER_DRIVERS_PROPERTY->items[j].sw.value = false;
+								SERVER_DRIVERS_PROPERTY->state = INDIGO_OK_STATE;
+								indigo_update_property(device, SERVER_DRIVERS_PROPERTY, NULL);
 								break;
 							}
 						}
-						unload_property->state = INDIGO_OK_STATE;
-						indigo_update_property(device, unload_property, "Driver %s unloaded", name);
+						SERVER_UNLOAD_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, SERVER_UNLOAD_PROPERTY, "Driver %s unloaded", name);
 					} else if (result == INDIGO_BUSY) {
-						unload_property->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, unload_property, "Driver %s is in use, can't be unloaded", name);
+						SERVER_UNLOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, SERVER_UNLOAD_PROPERTY, "Driver %s is in use, can't be unloaded", name);
 					} else {
-						unload_property->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, unload_property, "Driver %s failed to unload", name);
+						SERVER_UNLOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, SERVER_UNLOAD_PROPERTY, "Driver %s failed to unload", name);
 					}
 					return INDIGO_OK;
 				}
-			unload_property->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, unload_property, "Driver %s is not loaded", name);
+			SERVER_UNLOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, SERVER_UNLOAD_PROPERTY, "Driver %s is not loaded", name);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(restart_property, property)) {
+	} else if (indigo_property_match(SERVER_RESTART_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- RESTART
-		indigo_property_copy_values(restart_property, property, false);
-		if (RESTART_ITEM->sw.value) {
+		indigo_property_copy_values(SERVER_RESTART_PROPERTY, property, false);
+		if (SERVER_RESTART_ITEM->sw.value) {
 			INDIGO_LOG(indigo_log("Restarting..."));
 			indigo_server_shutdown();
 			exit(0);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(log_level_property, property)) {
+	} else if (indigo_property_match(SERVER_LOG_LEVEL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LOG_LEVEL
-		indigo_property_copy_values(log_level_property, property, false);
-		if (log_level_property->items[0].sw.value) {
+		indigo_property_copy_values(SERVER_LOG_LEVEL_PROPERTY, property, false);
+		if (SERVER_LOG_LEVEL_ERROR_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_ERROR);
-		} else if (log_level_property->items[1].sw.value) {
+		} else if (SERVER_LOG_LEVEL_INFO_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_INFO);
-		} else if (log_level_property->items[2].sw.value) {
+		} else if (SERVER_LOG_LEVEL_ERROR_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_DEBUG);
-		} else if (log_level_property->items[3].sw.value) {
+		} else if (SERVER_LOG_LEVEL_TRACE_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_TRACE);
 		}
-		log_level_property->state = INDIGO_OK_STATE;
-		indigo_update_property(device, log_level_property, NULL);
+		SERVER_LOG_LEVEL_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, SERVER_LOG_LEVEL_PROPERTY, NULL);
 		return INDIGO_OK;
 #ifdef RPI_MANAGEMENT
-	} else if (indigo_property_match(wifi_ap_property, property)) {
+	} else if (indigo_property_match(SERVER_WIFI_AP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
-		indigo_property_copy_values(wifi_ap_property, property, false);
-		return execute_command(device, wifi_ap_property, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"", wifi_ap_property->items[0].text.value, wifi_ap_property->items[1].text.value);
-	} else if (indigo_property_match(wifi_infrastructure_property, property)) {
+		indigo_property_copy_values(SERVER_WIFI_AP_PROPERTY, property, false);
+		return execute_command(device, SERVER_WIFI_AP_PROPERTY, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"", SERVER_WIFI_AP_SSID_ITEM->text.value, SERVER_WIFI_AP_PASSWORD_ITEM->text.value);
+	} else if (indigo_property_match(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
-		indigo_property_copy_values(wifi_infrastructure_property, property, false);
-		return execute_command(device, wifi_infrastructure_property, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", wifi_infrastructure_property->items[0].text.value, wifi_infrastructure_property->items[1].text.value);
-	} else if (indigo_property_match(internet_sharing_property, property)) {
+		indigo_property_copy_values(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property, false);
+		return execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value);
+	} else if (indigo_property_match(SERVER_INTERNET_SHARING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- INTERNET_SHARING
-		indigo_property_copy_values(internet_sharing_property, property, false);
-		if (internet_sharing_property->items[1].sw.value) { /* item[1] is enable forwarding, aka network sharing */
+		indigo_property_copy_values(SERVER_INTERNET_SHARING_PROPERTY, property, false);
+		if (SERVER_INTERNET_SHARING_ENABLED_ITEM->sw.value) { /* item[1] is enable forwarding, aka network sharing */
 			indigo_send_message(device, "Internet sharing is potentially dangerous, everyone connected to your INDIGO Sky can access your network!");
-			return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh --enable-forwarding");
+			return execute_command(device, SERVER_INTERNET_SHARING_PROPERTY, "s_rpi_ctrl.sh --enable-forwarding");
 		} else {
-			return execute_command(device, internet_sharing_property, "s_rpi_ctrl.sh --disable-forwarding");
+			return execute_command(device, SERVER_INTERNET_SHARING_PROPERTY, "s_rpi_ctrl.sh --disable-forwarding");
 		}
-	} else if (indigo_property_match(host_time_property, property)) {
+	} else if (indigo_property_match(SERVER_HOST_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HOST_TIME
-		indigo_property_copy_values(host_time_property, property, false);
-		execute_command(device, host_time_property, "s_rpi_ctrl.sh --set-date \"%s\"", host_time_property->items[0].text.value);
-		if (host_time_property->state == INDIGO_OK_STATE) {
-			indigo_delete_property(device, host_time_property, NULL);
-			host_time_property->hidden = true;
+		indigo_property_copy_values(SERVER_HOST_TIME_PROPERTY, property, false);
+		execute_command(device, SERVER_HOST_TIME_PROPERTY, "s_rpi_ctrl.sh --set-date \"%s\"", SERVER_HOST_TIME_ITEM->text.value);
+		if (SERVER_HOST_TIME_PROPERTY->state == INDIGO_OK_STATE) {
+			indigo_delete_property(device, SERVER_HOST_TIME_PROPERTY, NULL);
+			SERVER_HOST_TIME_PROPERTY->hidden = true;
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(shutdown_property, property)) {
+	} else if (indigo_property_match(SERVER_SHUTDOWN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SHUTDOWN
-		indigo_property_copy_values(shutdown_property, property, false);
-		return execute_command(device, shutdown_property, "s_rpi_ctrl.sh --poweroff");
-	} else if (indigo_property_match(reboot_property, property)) {
+		indigo_property_copy_values(SERVER_SHUTDOWN_PROPERTY, property, false);
+		return execute_command(device, SERVER_SHUTDOWN_PROPERTY, "s_rpi_ctrl.sh --poweroff");
+	} else if (indigo_property_match(SERVER_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- REBOOT
-		indigo_property_copy_values(reboot_property, property, false);
-		return execute_command(device, reboot_property, "s_rpi_ctrl.sh --reboot");
+		indigo_property_copy_values(SERVER_REBOOT_PROPERTY, property, false);
+		return execute_command(device, SERVER_REBOOT_PROPERTY, "s_rpi_ctrl.sh --reboot");
 #endif /* RPI_MANAGEMENT */
 	// --------------------------------------------------------------------------------
 	}
@@ -854,42 +894,42 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 
 static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_delete_property(device, info_property, NULL);
-	indigo_delete_property(device, drivers_property, NULL);
-	if (servers_property->count > 0)
-		indigo_delete_property(device, servers_property, NULL);
-	indigo_delete_property(device, load_property, NULL);
-	indigo_delete_property(device, unload_property, NULL);
-	indigo_delete_property(device, restart_property, NULL);
-	indigo_delete_property(device, log_level_property, NULL);
-	indigo_delete_property(device, server_features_property, NULL);
+	indigo_delete_property(device, SERVER_INFO_PROPERTY, NULL);
+	indigo_delete_property(device, SERVER_DRIVERS_PROPERTY, NULL);
+	if (SERVER_SERVERS_PROPERTY->count > 0)
+		indigo_delete_property(device, SERVER_SERVERS_PROPERTY, NULL);
+	indigo_delete_property(device, SERVER_LOAD_PROPERTY, NULL);
+	indigo_delete_property(device, SERVER_UNLOAD_PROPERTY, NULL);
+	indigo_delete_property(device, SERVER_RESTART_PROPERTY, NULL);
+	indigo_delete_property(device, SERVER_LOG_LEVEL_PROPERTY, NULL);
+	indigo_delete_property(device, SERVER_FEATURES_PROPERTY, NULL);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
-		indigo_delete_property(device, wifi_ap_property, NULL);
-		indigo_delete_property(device, wifi_infrastructure_property, NULL);
-		indigo_delete_property(device, internet_sharing_property, NULL);
-		indigo_delete_property(device, host_time_property, NULL);
-		indigo_delete_property(device, shutdown_property, NULL);
-		indigo_delete_property(device, reboot_property, NULL);
-		indigo_delete_property(device, install_property, NULL);
+		indigo_delete_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
+		indigo_delete_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
+		indigo_delete_property(device, SERVER_INTERNET_SHARING_PROPERTY, NULL);
+		indigo_delete_property(device, SERVER_HOST_TIME_PROPERTY, NULL);
+		indigo_delete_property(device, SERVER_SHUTDOWN_PROPERTY, NULL);
+		indigo_delete_property(device, SERVER_REBOOT_PROPERTY, NULL);
+		indigo_delete_property(device, SERVER_INSTALL_PROPERTY, NULL);
 	}
 #endif /* RPI_MANAGEMENT */
-	indigo_release_property(info_property);
-	indigo_release_property(drivers_property);
-	indigo_release_property(servers_property);
-	indigo_release_property(load_property);
-	indigo_release_property(unload_property);
-	indigo_release_property(restart_property);
-	indigo_release_property(log_level_property);
-	indigo_release_property(server_features_property);
+	indigo_release_property(SERVER_INFO_PROPERTY);
+	indigo_release_property(SERVER_DRIVERS_PROPERTY);
+	indigo_release_property(SERVER_SERVERS_PROPERTY);
+	indigo_release_property(SERVER_LOAD_PROPERTY);
+	indigo_release_property(SERVER_UNLOAD_PROPERTY);
+	indigo_release_property(SERVER_RESTART_PROPERTY);
+	indigo_release_property(SERVER_LOG_LEVEL_PROPERTY);
+	indigo_release_property(SERVER_FEATURES_PROPERTY);
 #ifdef RPI_MANAGEMENT
-	indigo_release_property(wifi_ap_property);
-	indigo_release_property(wifi_infrastructure_property);
-	indigo_release_property(internet_sharing_property);
-	indigo_release_property(host_time_property);
-	indigo_release_property(shutdown_property);
-	indigo_release_property(reboot_property);
-	indigo_release_property(install_property);
+	indigo_release_property(SERVER_WIFI_AP_PROPERTY);
+	indigo_release_property(SERVER_WIFI_INFRASTRUCTURE_PROPERTY);
+	indigo_release_property(SERVER_INTERNET_SHARING_PROPERTY);
+	indigo_release_property(SERVER_HOST_TIME_PROPERTY);
+	indigo_release_property(SERVER_SHUTDOWN_PROPERTY);
+	indigo_release_property(SERVER_REBOOT_PROPERTY);
+	indigo_release_property(SERVER_INSTALL_PROPERTY);
 #endif /* RPI_MANAGEMENT */
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
