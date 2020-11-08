@@ -242,10 +242,12 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
-	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	assert(client_context != NULL);
 	int handle = client_context->output;
+	if (handle <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&json_mutex);
+	assert(client_context != NULL);
 	char output_buffer[JSON_BUFFER_SIZE];
 	char *pnt = output_buffer;
 	int size;

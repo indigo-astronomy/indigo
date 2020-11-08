@@ -57,8 +57,10 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	assert(device != NULL);
 	if (!indigo_reshare_remote_devices && client && client->is_remote)
 		return INDIGO_OK;
-	pthread_mutex_lock(&xml_mutex);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	if (device_context->output <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
@@ -105,8 +107,10 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	assert(property != NULL);
 	if (!indigo_reshare_remote_devices && client && client->is_remote)
 		return INDIGO_OK;
-	pthread_mutex_lock(&xml_mutex);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	if (device_context->output <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
@@ -171,8 +175,10 @@ static indigo_result xml_client_parser_enable_blob(indigo_device *device, indigo
 	assert(property != NULL);
 	if (!indigo_reshare_remote_devices && client && client->is_remote)
 		return INDIGO_OK;
-	pthread_mutex_lock(&xml_mutex);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	if (device_context->output <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
@@ -212,6 +218,8 @@ failure:
 static indigo_result xml_client_parser_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	if (device_context->output <= 0)
+		return INDIGO_OK;
 	close(device_context->input);
 	close(device_context->output);
 	return INDIGO_OK;
