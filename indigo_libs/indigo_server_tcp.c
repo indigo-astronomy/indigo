@@ -385,8 +385,11 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 			indigo_error("Can't accept connection (%s)", strerror(errno));
 		} else {
 			struct timeval timeout;
-			timeout.tv_sec = 5;
+			timeout.tv_sec = 0;
 			timeout.tv_usec = 0;
+			if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
+				indigo_error("Can't set recv() timeout (%s)", strerror(errno));
+			timeout.tv_sec = 5;
 			if (setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
 				indigo_error("Can't set send() timeout (%s)", strerror(errno));
 			int *pointer = malloc(sizeof(int));

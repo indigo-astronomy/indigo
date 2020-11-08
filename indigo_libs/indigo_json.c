@@ -302,11 +302,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 		}
 		while ((c = *pointer++) == 0) {
 			ssize_t count = (int)context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : indigo_read_line(handle, buffer, JSON_BUFFER_SIZE);
-			if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
-				indigo_debug("JSON Parser: read timeout (errno = %d), reseting ...", errno);
-				pointer--;
-				continue;
-			} else if (count <= 0) {
+			if (count <= 0) {
 				goto exit_loop;
 			}
 			pointer = buffer;

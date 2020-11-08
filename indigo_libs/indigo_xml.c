@@ -1276,11 +1276,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 #else
 			ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
 #endif
-			if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
-				indigo_debug("XML Parser: read timeout (errno = %d), reseting ...", errno);
-				pointer--;
-				continue;
-			} else if (count <= 0) {
+			if (count <= 0) {
 				goto exit_loop;
 			}
 			pointer = buffer;
@@ -1462,7 +1458,8 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					unsigned long len = (long)(buffer_end - pointer);
 					len = (len < blob_len) ? len : blob_len;
 					ssize_t bytes_needed = len % 4;
-					if(bytes_needed) bytes_needed = 4 - bytes_needed;
+					if (bytes_needed)
+						bytes_needed = 4 - bytes_needed;
 					while (bytes_needed) {
 #if defined(INDIGO_WINDOWS)
 						count = indigo_recv(handle, (void *)buffer_end, bytes_needed);
@@ -1478,7 +1475,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)pointer, len);
 					pointer += len;
 					blob_len -= len;
-					while(blob_len) {
+					while (blob_len) {
 						len = ((BUFFER_SIZE) < blob_len) ? (BUFFER_SIZE) : blob_len;
 						ssize_t to_read = len;
 						char *ptr = buffer;
