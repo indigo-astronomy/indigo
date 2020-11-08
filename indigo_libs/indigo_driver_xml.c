@@ -83,8 +83,10 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
-	pthread_mutex_lock(&write_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	if (client_context->output <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	int handle = client_context->output;
 	char b1[32], b2[32], b3[32], b4[32], b5[32];
@@ -158,8 +160,10 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
-	pthread_mutex_lock(&write_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	if (client_context->output <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	int handle = client_context->output;
 	char b1[32], b2[32];
@@ -281,8 +285,10 @@ static indigo_result xml_device_adapter_delete_property(indigo_client *client, i
 		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
-	pthread_mutex_lock(&write_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	if (client_context->output <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	int handle = client_context->output;
 	if (*property->name) {
@@ -311,8 +317,10 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
-	pthread_mutex_lock(&write_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	if (client_context->output <= 0)
+		return INDIGO_OK;
+	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	int handle = client_context->output;
 	if (message)
