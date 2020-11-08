@@ -60,6 +60,8 @@
 # define _sha1_restrict __restrict__
 #endif
 
+#define INDIGO_PRINTF(...) if (!indigo_printf(__VA_ARGS__)) goto failure
+
 void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n);
 
 static int server_socket;
@@ -130,13 +132,13 @@ static void start_worker_thread(int *client_socket) {
 							memset(shaHash, 0, sizeof(shaHash));
 							strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 							sha1(shaHash, websocket_key, strlen(websocket_key));
-							indigo_printf(socket, "HTTP/1.1 101 Switching Protocols\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							indigo_printf(socket, "Upgrade: websocket\r\n");
-							indigo_printf(socket, "Connection: upgrade\r\n");
+							INDIGO_PRINTF(socket, "HTTP/1.1 101 Switching Protocols\r\n");
+							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							INDIGO_PRINTF(socket, "Upgrade: websocket\r\n");
+							INDIGO_PRINTF(socket, "Connection: upgrade\r\n");
 							base64_encode((unsigned char *)websocket_key, shaHash, 20);
-							indigo_printf(socket, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
-							indigo_printf(socket, "\r\n");
+							INDIGO_PRINTF(socket, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
+							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_LOG(indigo_log("Protocol switched to JSON-over-WebSockets"));
 							indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
 							assert(protocol_adapter != NULL);
@@ -144,31 +146,31 @@ static void start_worker_thread(int *client_socket) {
 							indigo_json_parse(NULL, protocol_adapter);
 							indigo_detach_client(protocol_adapter);
 						} else {
-							indigo_printf(socket, "HTTP/1.1 301 OK\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							indigo_printf(socket, "Location: /mng.html\r\n");
-							indigo_printf(socket, "Content-type: text/html\r\n");
-							indigo_printf(socket, "\r\n");
-							indigo_printf(socket, "<a href='/mng.html'>INDIGO Server Manager</a>");
+							INDIGO_PRINTF(socket, "HTTP/1.1 301 OK\r\n");
+							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							INDIGO_PRINTF(socket, "Location: /mng.html\r\n");
+							INDIGO_PRINTF(socket, "Content-type: text/html\r\n");
+							INDIGO_PRINTF(socket, "\r\n");
+							INDIGO_PRINTF(socket, "<a href='/mng.html'>INDIGO Server Manager</a>");
 						}
 						keep_alive = false;
 					} else if (!strncmp(path, "/blob/", 6)) {
 						indigo_item *item;
 						indigo_blob_entry *entry;
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
-							indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							pthread_mutex_lock(&entry->mutext);
+							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
+							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 							if (!strcmp(entry->format, ".jpeg")) {
-								indigo_printf(socket, "Content-Type: image/jpeg\r\n");
+								INDIGO_PRINTF(socket, "Content-Type: image/jpeg\r\n");
 							} else {
-								indigo_printf(socket, "Content-Type: application/octet-stream\r\n");
-								indigo_printf(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, entry->format);
+								INDIGO_PRINTF(socket, "Content-Type: application/octet-stream\r\n");
+								INDIGO_PRINTF(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, entry->format);
 							}
 							if (keep_alive)
-								indigo_printf(socket, "Connection: keep-alive\r\n");
-							indigo_printf(socket, "Content-Length: %ld\r\n", entry->size);
-							indigo_printf(socket, "\r\n");
-							pthread_mutex_lock(&entry->mutext);
+								INDIGO_PRINTF(socket, "Connection: keep-alive\r\n");
+							INDIGO_PRINTF(socket, "Content-Length: %ld\r\n", entry->size);
+							INDIGO_PRINTF(socket, "\r\n");
 							if (indigo_write(socket, entry->content, entry->size)) {
 								INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, entry->size));
 							} else {
@@ -177,10 +179,10 @@ static void start_worker_thread(int *client_socket) {
 							}
 							pthread_mutex_unlock(&entry->mutext);
 						} else {
-							indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
-							indigo_printf(socket, "Content-Type: text/plain\r\n");
-							indigo_printf(socket, "\r\n");
-							indigo_printf(socket, "BLOB not found!\r\n");
+							INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(socket, "\r\n");
+							INDIGO_PRINTF(socket, "BLOB not found!\r\n");
 							shutdown(socket,SHUT_RDWR);
 							indigo_usleep(ONE_SECOND_DELAY);
 							close(socket);
@@ -195,19 +197,19 @@ static void start_worker_thread(int *client_socket) {
 							resource = resource->next;
 						}
 						if (resource == NULL) {
-							indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
-							indigo_printf(socket, "Content-Type: text/plain\r\n");
-							indigo_printf(socket, "\r\n");
-							indigo_printf(socket, "%s not found!\r\n", path);
+							INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(socket, "\r\n");
+							INDIGO_PRINTF(socket, "%s not found!\r\n", path);
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
 							keep_alive = false;
 						} else if (resource->data) {
-							indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
-							indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							indigo_printf(socket, "Content-Type: %s\r\n", resource->content_type);
-							indigo_printf(socket, "Content-Length: %d\r\n", resource->length);
-							indigo_printf(socket, "Content-Encoding: gzip\r\n");
-							indigo_printf(socket, "\r\n");
+							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
+							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							INDIGO_PRINTF(socket, "Content-Type: %s\r\n", resource->content_type);
+							INDIGO_PRINTF(socket, "Content-Length: %d\r\n", resource->length);
+							INDIGO_PRINTF(socket, "Content-Encoding: gzip\r\n");
+							INDIGO_PRINTF(socket, "\r\n");
 							indigo_write(socket, (const char *)resource->data, resource->length);
 							INDIGO_LOG(indigo_log("%s -> OK (%d bytes)", request, resource->length));
 						} else if (resource->file_name) {
@@ -216,18 +218,18 @@ static void start_worker_thread(int *client_socket) {
 							int handle;
 							sprintf(file_name, "%s/%s", getenv("HOME"), resource->file_name);
 							if (stat(file_name, &file_stat) < 0 || (handle = open(file_name, O_RDONLY)) < 0) {
-								indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
-								indigo_printf(socket, "Content-Type: text/plain\r\n");
-								indigo_printf(socket, "\r\n");
-								indigo_printf(socket, "%s not found (%s)\r\n", file_name, strerror(errno));
+								INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+								INDIGO_PRINTF(socket, "\r\n");
+								INDIGO_PRINTF(socket, "%s not found (%s)\r\n", file_name, strerror(errno));
 								INDIGO_LOG(indigo_log("%s -> Failed to stat/open file (%s, %s)", request, file_name, strerror(errno)));
 								keep_alive = false;
 							} else {
-								indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
-								indigo_printf(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-								indigo_printf(socket, "Content-Type: %s\r\n", resource->content_type);
-								indigo_printf(socket, "Content-Length: %d\r\n", file_stat.st_size);
-								indigo_printf(socket, "\r\n");
+								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
+								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								INDIGO_PRINTF(socket, "Content-Type: %s\r\n", resource->content_type);
+								INDIGO_PRINTF(socket, "Content-Length: %d\r\n", file_stat.st_size);
+								INDIGO_PRINTF(socket, "\r\n");
 								long remaining = file_stat.st_size;
 								char buffer[128 * 1024];
 								while (remaining > 0) {
@@ -258,6 +260,7 @@ static void start_worker_thread(int *client_socket) {
 			INDIGO_LOG(indigo_log("Unrecognised protocol"));
 		}
 	}
+failure:
 	shutdown(socket, SHUT_RDWR);
 	//indigo_usleep(ONE_SECOND_DELAY); // ???
 	close(socket);
