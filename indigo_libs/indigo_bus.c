@@ -570,9 +570,11 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					pthread_mutex_init(&entry->mutext, NULL);
 				}
 				if (entry) {
+					pthread_mutex_lock(&entry->mutext);
 					entry->content = realloc(entry->content, entry->size = item->blob.size);
 					memcpy(entry->content, item->blob.value, entry->size);
 					strcpy(entry->format, item->blob.format);
+					pthread_mutex_unlock(&entry->mutext);
 				} else {
 					pthread_mutex_unlock(&blob_mutex);
 					if (indigo_use_strict_locking)
@@ -790,13 +792,13 @@ void indigo_release_property(indigo_property *property) {
 				indigo_blob_entry *entry = blobs[j];
 				if (entry && entry->item == item) {
 					pthread_mutex_lock(&entry->mutext);
+					blobs[j] = NULL;
 					if (entry->content) {
 						free(entry->content);
 					}
 					pthread_mutex_unlock(&entry->mutext);
 					pthread_mutex_destroy(&entry->mutext);
 					free(entry);
-					blobs[j] = NULL;
 					break;
 				}
 			}
