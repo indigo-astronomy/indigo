@@ -254,6 +254,8 @@ static bool nexstaraux_open(indigo_device *d) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
 		} else {
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed", name);
 			PRIVATE_DATA->count_open--;
 			return false;
@@ -288,7 +290,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		INFO_PROPERTY->count = 5;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
-		strcpy(DEVICE_PORT_ITEM->text.value, "udp://");
+		strcpy(DEVICE_PORT_ITEM->text.value, "nexstar://");
 		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
@@ -300,8 +302,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 		MOUNT_GUIDE_RATE_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
-		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -311,63 +312,25 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-
-	// TBD
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
 static void position_timer_callback(indigo_device *device) {
 	unsigned char reply[16] = { 0 };
-	int raw_dec = -1, raw_ha = -1;
+	int raw_alt = -1, raw_azm = -1;
 	if (nexstaraux_command(device, APP, ALT, MC_GET_POSITION, NULL, 0, reply)) {
-		raw_dec = reply[5] << 16 | reply[6] << 8 | reply[7];
+		raw_alt = reply[5] << 16 | reply[6] << 8 | reply[7];
 	}
 	if (nexstaraux_command(device, APP, AZM, MC_GET_POSITION, NULL, 0, reply)) {
-		raw_ha = reply[5] << 16 | reply[6] << 8 | reply[7];
+		raw_azm = reply[5] << 16 | reply[6] << 8 | reply[7];
 	}
-	if (raw_dec != -1 && raw_ha != -1) {
-		indigo_item *side_of_pier;
-		double ha_angle = ((double)raw_ha / 0x1000000) * 24;
-		double dec_angle = ((double)raw_dec / 0x1000000) * 360;
-		double ha;
-		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-			if (raw_dec >= 0) {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 - dec_angle;
-				ha = ha_angle - 6;
-				side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
-			} else {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 + dec_angle;
-				ha = ha_angle + 6;
-				side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
-			}
-		} else {
-			if (raw_dec >= 0) {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 + dec_angle;
-				ha = -(ha_angle - 6);
-				side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
-			} else {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 - dec_angle;
-				ha = -(ha_angle + 6);
-				side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
-			}
-		}
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha;
-		if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value < 0)
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value += 24;
-		else if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value > 24)
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value -= 24;
-		if (!side_of_pier->sw.value) {
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
-			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		}
+	if (raw_alt != -1 && raw_azm != -1) {
+		double ha_angle = fmod(((double)raw_azm / 0x1000000) * 24 + 12, 24);
+		double dec_angle = fmod(((double)raw_alt / 0x1000000) * 360, 360);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha_angle + 24, 24);
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec_angle;
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-	} else {
-		MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	}
 	indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, &PRIVATE_DATA->position_timer);
 }
@@ -438,33 +401,11 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-	double ha_angle = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+	double ha_angle = fmod(lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target + 24, 24);
 	double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-	if (ha_angle < -12) {
-		ha_angle += 24;
-	} else if (ha_angle >= 12) {
-		ha_angle -= 24;
-	}
-	if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-		if (ha_angle < 0) {
-			ha_angle = ha_angle + 6;
-			dec_angle = -(dec_angle - 90);
-		} else {
-			ha_angle = ha_angle - 6;
-			dec_angle = dec_angle - 90;
-		}
-	} else {
-		if (ha_angle < 0) {
-			ha_angle = -(ha_angle + 6);
-			dec_angle = -(dec_angle + 90);
-		} else {
-			ha_angle = -(ha_angle - 6);
-			dec_angle = dec_angle + 90;
-		}
-	}
-	int32_t raw_dec = (dec_angle / 360.0) * 0x1000000;
-	int32_t raw_ha = (ha_angle / 24.0) * 0x1000000;
-	if (!nexstaraux_command_24(device, APP, AZM, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_ha, reply) || !nexstaraux_command_24(device, APP, ALT, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_dec, reply)) {
+	int32_t raw_azm = (int32_t)((fmod(ha_angle + 12, 24) / 24.0) * 0x1000000) % 0x1000000;
+	int32_t raw_alt = (int32_t)((dec_angle / 360.0) * 0x1000000) % 0x1000000;
+	if (!nexstaraux_command_24(device, APP, AZM, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_azm, reply) || !nexstaraux_command_24(device, APP, ALT, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_alt, reply)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -487,7 +428,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			}
 			break;
 		}
-		if (!nexstaraux_command_24(device, APP, AZM, MC_GOTO_SLOW, raw_ha, reply) || !nexstaraux_command_24(device, APP, ALT, MC_GOTO_SLOW, raw_dec, reply)) {
+		if (!nexstaraux_command_24(device, APP, AZM, MC_GOTO_SLOW, raw_azm, reply) || !nexstaraux_command_24(device, APP, ALT, MC_GOTO_SLOW, raw_alt, reply)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -544,7 +485,7 @@ static void mount_park_handler(indigo_device *device) {
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	mount_tracking_handler(device);
 	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-	if (!nexstaraux_command_24(device, APP, AZM, MC_GOTO_FAST, 0, reply) || !nexstaraux_command_24(device, APP, ALT, MC_GOTO_FAST, 0, reply)) {
+	if (!nexstaraux_command_24(device, APP, AZM, MC_GOTO_FAST, 0x800000, reply) || !nexstaraux_command_24(device, APP, ALT, MC_GOTO_FAST, 0x000000, reply)) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	while (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {

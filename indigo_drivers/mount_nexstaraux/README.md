@@ -20,8 +20,10 @@ indigo_server indigo_mount_nexstaraux
 
 ## Comments
 
+Driver works only with the mounts in EQ mode!!!
+
 Use URL in form nexstar://[host[:port]] to connect to the mount over network (if no host/port is used, driver will try to autodetect it, default port is 2000).
 
-## Status: Under development
+## Status: Stablee
 
-Driver is developed and tested with SkyPortal WiFi module and NextStar 4SE mount
+Driver is developed and tested with SkyPortal WiFi module and NextStar 4SE mount in EQ mode
