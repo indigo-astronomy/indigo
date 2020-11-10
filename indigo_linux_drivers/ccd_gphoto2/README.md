@@ -1,4 +1,4 @@
-# Gphoto2 CCD driver
+# Gphoto2 CCD driver (obsoleted by indigo_ccd_ptp)
 
 https://github.com/gphoto/libgphoto2
 

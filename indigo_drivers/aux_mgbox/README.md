@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_mgbox
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * MGPBox

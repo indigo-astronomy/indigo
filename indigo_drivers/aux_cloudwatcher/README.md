@@ -21,7 +21,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_cloudwatcher
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * AAG CloudWatcher

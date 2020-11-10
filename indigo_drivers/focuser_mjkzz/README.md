@@ -19,6 +19,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_mjkzz
 
-## Status: Under development
+## Status: Untested
 
 Driver is developed and tested with the simulator.

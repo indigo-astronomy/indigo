@@ -23,6 +23,6 @@ indigo_server indigo_focuser_mjkzz_bt
 ## Comments
 
 
-## Status: Under development
+## Status: Untested
 
 Driver is developed and tested with the simulator.

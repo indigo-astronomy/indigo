@@ -24,7 +24,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_lunatico
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * Armadillo controller
