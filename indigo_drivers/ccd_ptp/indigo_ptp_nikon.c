@@ -1097,34 +1097,62 @@ bool ptp_nikon_liveview(indigo_device *device) {
 	if (ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
 		uint8_t *buffer = NULL;
 		uint32_t size;
-		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value-- != 0) {
-			if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
-				CCD_STREAMING_COUNT_ITEM->number.value = -1;
+		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetLiveViewImg, (void **)&buffer, &size)) {
 				if ((buffer[64] & 0xFF) == 0xFF && (buffer[65] & 0xFF) == 0xD8) {
-					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-					indigo_process_dslr_image(device, (void *)buffer + 64, size - 64, ".jpeg");
+					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+					}
+					if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+						CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+					}
+					indigo_process_dslr_image(device, (void *)buffer + 64, size - 64, ".jpeg", true);
 					if (PRIVATE_DATA->image_buffer)
 						free(PRIVATE_DATA->image_buffer);
 					PRIVATE_DATA->image_buffer = buffer;
 					buffer = NULL;
+					CCD_STREAMING_COUNT_ITEM->number.value--;
+					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+						CCD_STREAMING_COUNT_ITEM->number.value = -1;
+					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				} else if ((buffer[128] & 0xFF) == 0xFF && (buffer[129] & 0xFF) == 0xD8) {
-					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-					indigo_process_dslr_image(device, (void *)buffer + 128, size - 128, ".jpeg");
+					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+					}
+					if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+						CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+					}
+					indigo_process_dslr_image(device, (void *)buffer + 128, size - 128, ".jpeg", true);
 					if (PRIVATE_DATA->image_buffer)
 						free(PRIVATE_DATA->image_buffer);
 					PRIVATE_DATA->image_buffer = buffer;
 					buffer = NULL;
+					CCD_STREAMING_COUNT_ITEM->number.value--;
+					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+						CCD_STREAMING_COUNT_ITEM->number.value = -1;
+					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				} else if ((buffer[384] & 0xFF) == 0xFF && (buffer[385] & 0xFF) == 0xD8) {
-					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-					indigo_process_dslr_image(device, (void *)buffer + 384, size - 384, ".jpeg");
+					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+					}
+					if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+						CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+					}
+					indigo_process_dslr_image(device, (void *)buffer + 384, size - 384, ".jpeg", true);
 					if (PRIVATE_DATA->image_buffer)
 						free(PRIVATE_DATA->image_buffer);
 					PRIVATE_DATA->image_buffer = buffer;
 					buffer = NULL;
+					CCD_STREAMING_COUNT_ITEM->number.value--;
+					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+						CCD_STREAMING_COUNT_ITEM->number.value = -1;
+					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				}
 			}
 			if (buffer)
@@ -1132,6 +1160,7 @@ bool ptp_nikon_liveview(indigo_device *device) {
 			buffer = NULL;
 			indigo_usleep(100000);
 		}
+		indigo_finalize_video_stream(device);
 		ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
 		return !PRIVATE_DATA->abort_capture;
 	}

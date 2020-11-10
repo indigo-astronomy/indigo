@@ -488,6 +488,15 @@
  */
 #define CCD_IMAGE_FORMAT_RAW_SER_ITEM_NAME   "RAW_SER"
 
+/** CCD_IMAGE_FORMAT.NATIVE property item name.
+ */
+#define CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME 		"NATIVE"
+
+/** CCD_IMAGE_FORMAT.NATIVE_AVI property item name.
+ */
+#define CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM_NAME  "NATIVE_AVI"
+
+
 //----------------------------------------------------------------------
 /** CCD_IMAGE_FILE property name.
  */

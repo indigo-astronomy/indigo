@@ -62,12 +62,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		CCD_MODE_PROPERTY->hidden = true;
 		CCD_STREAMING_PROPERTY->hidden = PRIVATE_DATA->liveview == NULL;
-		CCD_IMAGE_FORMAT_PROPERTY->hidden = true;
 		CCD_FRAME_PROPERTY->hidden = true;
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->model.width;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->model.height;
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value =  CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->model.pixel_size;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+		// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
+		CCD_IMAGE_FORMAT_PROPERTY = indigo_resize_property(CCD_IMAGE_FORMAT_PROPERTY, 2);
+		indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_ITEM, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, "Native", true);
+		indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM, CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM_NAME, "Native + AVI", false);
 		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (DSLR_DELETE_IMAGE_PROPERTY == NULL)
@@ -287,14 +290,6 @@ static void handle_set_property(indigo_device *device) {
 static void handle_streaming(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 	PRIVATE_DATA->abort_capture = false;
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-	}
-	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-	}
 	CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	if (PRIVATE_DATA->liveview(device))
