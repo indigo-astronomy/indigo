@@ -21,6 +21,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_wheel_qhy
 
-## Status: Untested
+## Status: Stable
 
-Looking for device owners!!! :)
+Tested with CFW3

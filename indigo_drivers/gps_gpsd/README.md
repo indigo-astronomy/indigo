@@ -22,5 +22,5 @@ indigo_server indigo_gps_gpsd
 
 ## Status: Stable
 
-## MOTE!
+## NOTE!
 This driver does not configure or control GPS Service Daemon (GPSD). It just handles the data received from a running GPSD.

@@ -47,10 +47,12 @@ INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
 INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 
-STABLE_DRIVERS = agent_lx200_server agent_snoop ao_sx aux_dsusb guider_gpusb aux_joystick aux_upb aux_ppb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_ica ccd_iidc ccd_mi ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_asi focuser_dmfc focuser_dsd focuser_fcusb focuser_fli focuser_mjkzz focuser_mjkzz_bt focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro focuser_wemacro_bt gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_eqmac mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx focuser_steeldrive2 aux_sqm aux_usbdp aux_flatmaster focuser_focusdreampro aux_arteskyflat aux_fbc ccd_uvc aux_flipflat ccd_ptp indigo_wheel_manual focuser_lunatico rotator_lunatico aux_dragonfly dome_dragonfly aux_cloudwatcher mount_pmc8 focuser_efa gps_gpsd ccd_qhy ccd_qhy2
-UNTESTED_DRIVERS = agent_imager agent_alignment agent_mount agent_guider aux_rts focuser_lakeside focuser_optec wheel_optec wheel_quantum wheel_trutek wheel_xagyl agent_auxiliary dome_nexdome dome_nexdome3 dome_baader aux_rpio wheel_qhy focuser_robofocus mount_nexstaraux
+STABLE_DRIVERS = agent_alignment agent_auxiliary agent_guider agent_imager agent_lx200_server agent_mount agent_snoop ao_sx aux_cloudwatcher aux_dragonfly aux_dsusb aux_fbc aux_flatmaster aux_flipflat aux_joystick aux_mgbox aux_ppb aux_sqm aux_upb aux_usbdp ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_iidc ccd_mi ccd_ptp ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek ccd_uvc dome_dragonfly dome_nexdome3 dome_simulator focuser_asi focuser_dmfc focuser_dsd focuser_efa focuser_fcusb focuser_fli focuser_focusdreampro focuser_lunatico focuser_moonlite focuser_steeldrive2 focuser_usbv3 focuser_wemacro gps_gpsd gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_gpusb mount_ioptron mount_lx200 mount_nexstar mount_nexstaraux mount_pmc8 mount_simulator mount_synscan mount_temma rotator_lunatico rotator_simulator system_ascol wheel_asi wheel_atik wheel_fli wheel_manual wheel_qhy wheel_sx aux_rpio ccd_ica focuser_wemacro_bt guider_eqmac
+UNSTABLE_DRIVERS = ccd_qhy ccd_qhy2
+UNTESTED_DRIVERS = aux_arteskyflat aux_rts dome_baader dome_nexdome focuser_lakeside focuser_mjkzz focuser_nfocus focuser_nstep focuser_optec focuser_robofocus wheel_optec wheel_quantum focuser_mjkzz_bt wheel_trutek wheel_xagyl
 DEVELOPED_DRIVERS = mount_rainbow
 OPTIONAL_DRIVERS = ccd_andor
+EXCLUDED_DRIVERS = ccd_gphoto2
 
 #---------------------------------------------------------------------
 #
@@ -89,7 +91,7 @@ else
 		ifeq ($(ARCH_DETECTED),aarch64)
 			ARCH_DETECTED = arm64
 			DEBIAN_ARCH = arm64
-			EXCLUDED_DRIVERS = ccd_sbig
+			EXCLUDED_DRIVERS = $(EXCLUDED_DRIVERS) ccd_sbig
 		endif
 		ifeq ($(ARCH_DETECTED),i686)
 			ARCH_DETECTED = x86
@@ -342,6 +344,7 @@ Makefile.inc: Makefile
 	@printf "INSTALL_RULES = $(INSTALL_RULES)\n" >> Makefile.inc
 	@printf "INSTALL_FIRMWARE = $(INSTALL_FIRMWARE)\n\n" >> Makefile.inc
 	@printf "STABLE_DRIVERS = $(STABLE_DRIVERS)\n" >> Makefile.inc
+	@printf "UNSTABLE_DRIVERS = $(UNSTABLE_DRIVERS)\n" >> Makefile.inc
 	@printf "UNTESTED_DRIVERS = $(UNTESTED_DRIVERS)\n" >> Makefile.inc
 	@printf "DEVELOPED_DRIVERS = $(DEVELOPED_DRIVERS)\n" >> Makefile.inc
 	@printf "OPTIONAL_DRIVERS = $(OPTIONAL_DRIVERS)\n" >> Makefile.inc

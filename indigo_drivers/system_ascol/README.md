@@ -19,7 +19,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_system_ascol
 
-## Status: Release Candidate
+## Status: Stable
 
 Driver is developed and tested with:
 * ascol_simulator.pl

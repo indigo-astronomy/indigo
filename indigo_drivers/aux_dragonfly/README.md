@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_dragonfly
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * Dragonfly controller
