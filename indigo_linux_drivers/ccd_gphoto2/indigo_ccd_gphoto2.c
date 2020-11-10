@@ -1213,7 +1213,7 @@ static void exposure_timer_callback(indigo_device *device)
 			indigo_process_dslr_image(device,
 						  PRIVATE_DATA->buffer,
 						  PRIVATE_DATA->buffer_size,
-						  PRIVATE_DATA->filename_suffix);
+						  PRIVATE_DATA->filename_suffix, false);
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			rc = process_dslr_image_debayer(device,
 							PRIVATE_DATA->buffer,
