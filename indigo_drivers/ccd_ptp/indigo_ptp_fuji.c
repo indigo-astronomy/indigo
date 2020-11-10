@@ -364,7 +364,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 									indigo_process_dslr_preview_image(device, image_buffer, image_size);
 								}
 							} else {
-								indigo_process_dslr_image(device, image_buffer, image_size, ext);
+								indigo_process_dslr_image(device, image_buffer, image_size, ext, false);
 								if (PRIVATE_DATA->image_buffer)
 									free(PRIVATE_DATA->image_buffer);
 								PRIVATE_DATA->image_buffer = image_buffer;
@@ -556,7 +556,7 @@ bool ptp_fuji_exposure(indigo_device *device) {
 
 bool ptp_fuji_liveview(indigo_device *device) {
 	void *buffer = NULL;
-	uint32_t size;
+	uint32_t size = 0;
 	int retry_count = 0;
 
 	bool result = true;
@@ -570,9 +570,7 @@ bool ptp_fuji_liveview(indigo_device *device) {
 		}
 	}
 
-	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value-- != 0) {
-		if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
-			CCD_STREAMING_COUNT_ITEM->number.value = -1;
+	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 		result = result && ptp_transaction_3_0(device, ptp_operation_GetNumObjects, 0xffffffff, 0, 0);
 		result = result && ptp_transaction_3_0_i(device, ptp_operation_GetObjectHandles, 0xffffffff, 0, 0, &buffer, &size);
 		if (result) {
@@ -599,20 +597,30 @@ bool ptp_fuji_liveview(indigo_device *device) {
 				free(buffer);
 			result = result && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &buffer, &size);
 			if (result) {
-				CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-				indigo_process_dslr_image(device, buffer, size, ".jpeg");
+				if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+				}
+				if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+				}
+				indigo_process_dslr_image(device, buffer, size, ".jpeg", true);
 				if (PRIVATE_DATA->image_buffer)
 					free(PRIVATE_DATA->image_buffer);
 				PRIVATE_DATA->image_buffer = buffer;
 				buffer = NULL;
 				ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle);
+				CCD_STREAMING_COUNT_ITEM->number.value--;
+				if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+					CCD_STREAMING_COUNT_ITEM->number.value = -1;
+				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				retry_count = 0;
 			}
 		}
 		indigo_usleep(100000);  // 100ms
 	}
-
+	indigo_finalize_video_stream(device);
 	ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
 	return !PRIVATE_DATA->abort_capture;
 }

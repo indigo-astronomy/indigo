@@ -1349,7 +1349,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 							indigo_process_dslr_preview_image(device, buffer, size);
 						}
 					} else {
-						indigo_process_dslr_image(device, buffer, size, ext);
+						indigo_process_dslr_image(device, buffer, size, ext, false);
 						if (PRIVATE_DATA->image_buffer)
 							free(PRIVATE_DATA->image_buffer);
 						PRIVATE_DATA->image_buffer = buffer;

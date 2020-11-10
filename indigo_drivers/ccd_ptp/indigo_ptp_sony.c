@@ -778,7 +778,7 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 						}
 						ptp_sony_handle_event(device, code, params);
 					} else {
-						indigo_process_dslr_image(device, buffer, size, ext);
+						indigo_process_dslr_image(device, buffer, size, ext, false);
 						if (PRIVATE_DATA->image_buffer)
 							free(PRIVATE_DATA->image_buffer);
 						PRIVATE_DATA->image_buffer = buffer;
@@ -931,9 +931,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size;
 	int retry_count = 0;
-	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value-- != 0) {
-		if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
-			CCD_STREAMING_COUNT_ITEM->number.value = -1;
+	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 		if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, 0xffffc002, &buffer, &size)) {
 			uint8_t *start = (uint8_t *)buffer;
 			while (size > 0) {
@@ -942,13 +940,23 @@ bool ptp_sony_liveview(indigo_device *device) {
 					size -= 2;
 					while (size > 0) {
 						if (end[0] == 0xFF && end[1] == 0xD9) {
-							CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-							indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-							indigo_process_dslr_image(device, start, (int)(end - start), ".jpeg");
+							if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+								CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+								indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+							}
+							if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+								CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+								indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+							}
+							indigo_process_dslr_image(device, start, (int)(end - start), ".jpeg", true);
 							if (PRIVATE_DATA->image_buffer)
 								free(PRIVATE_DATA->image_buffer);
 							PRIVATE_DATA->image_buffer = buffer;
 							buffer = NULL;
+							CCD_STREAMING_COUNT_ITEM->number.value--;
+							if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+								CCD_STREAMING_COUNT_ITEM->number.value = -1;
+							indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 							retry_count = 0;
 							break;
 						}
@@ -962,6 +970,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 			}
 		} else if (PRIVATE_DATA->last_error == ptp_response_AccessDenied) {
 			if (retry_count++ > 100) {
+				indigo_finalize_video_stream(device);
 				return false;
 			}
 		}
@@ -970,6 +979,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 		buffer = NULL;
 		indigo_usleep(100000);
 	}
+	indigo_finalize_video_stream(device);
 	return !PRIVATE_DATA->abort_capture;
 }
 

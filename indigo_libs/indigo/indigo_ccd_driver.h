@@ -299,6 +299,16 @@ extern "C" {
  */
 #define CCD_IMAGE_FORMAT_RAW_SER_ITEM    (CCD_IMAGE_FORMAT_PROPERTY->items+6)
 
+/** CCD_IMAGE_FORMAT.NATIVE property item pointer (DSLR only)
+ */
+#define CCD_IMAGE_FORMAT_NATIVE_ITEM      (CCD_IMAGE_FORMAT_PROPERTY->items+0)
+
+/** CCD_IMAGE_FORMAT.NATIVE_AVI property item pointer. (DSLR only)
+ */
+#define CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM  (CCD_IMAGE_FORMAT_PROPERTY->items+1)
+
+
+
 /** CCD_IMAGE_FILE property pointer, property is mandatory, read-only property.
  */
 #define CCD_IMAGE_FILE_PROPERTY           (CCD_CONTEXT->ccd_image_file_property)
@@ -484,13 +494,17 @@ typedef struct {
 	const char *comment;
 } indigo_fits_keyword;
 
+/** Convert RAW data to JPEG
+ */
+extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out);
+
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
 extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming);
 
 /** Process DSLR image in image buffer (starting on data).
  */
-extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix);
+extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix, bool streaming);
 
 /** Process DSLR preview image in image buffer (starting on data).
  */
