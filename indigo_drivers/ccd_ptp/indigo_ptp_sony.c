@@ -663,11 +663,9 @@ static void ptp_check_event(indigo_device *device) {
 	ptp_container event;
 	int length = 0;
 	memset(&event, 0, sizeof(event));
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, PTP_TIMEOUT);
+	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, 10 * PTP_TIMEOUT);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 	PTP_DUMP_CONTAINER(&event);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (rc >= 0) {
 		PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
 	}
