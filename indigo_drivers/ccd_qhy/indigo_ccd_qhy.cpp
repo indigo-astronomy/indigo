@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 
 #include <stdlib.h>
 #include <string.h>
@@ -299,6 +299,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 	if (PRIVATE_DATA->handle && PRIVATE_DATA->last_bpp != requested_bpp) {
 		CloseQHYCCD(PRIVATE_DATA->handle);
 		indigo_usleep(500000);
+		ScanQHYCCD();
 		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->dev_sid);
 		if (PRIVATE_DATA->handle == NULL) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
