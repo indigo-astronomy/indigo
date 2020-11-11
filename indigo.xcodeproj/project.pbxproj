@@ -817,14 +817,13 @@
 		597E4FBF23EEE637007E0BF8 /* QHY11.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY11.HEX; sourceTree = "<group>"; };
 		597E4FC023EEE637007E0BF8 /* QHY128.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY128.img; sourceTree = "<group>"; };
 		597E4FC123EEE637007E0BF8 /* QHY10.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY10.HEX; sourceTree = "<group>"; };
-		597E4FC223EEE637007E0BF8 /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		597E4FC423EEE637007E0BF8 /* qhyccderr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccderr.h; sourceTree = "<group>"; };
 		597E4FC523EEE637007E0BF8 /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
 		597E4FC623EEE637007E0BF8 /* qhyccdstruct.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccdstruct.h; sourceTree = "<group>"; };
 		597E4FC723EEE637007E0BF8 /* qhyccdcamdef.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccdcamdef.h; sourceTree = "<group>"; };
 		597E4FC823EEE637007E0BF8 /* qhyccd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccd.h; sourceTree = "<group>"; };
 		597E4FC923EEE637007E0BF8 /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
-		597E4FCA23EEE637007E0BF8 /* 85-qhyccd.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "85-qhyccd.rules"; sourceTree = "<group>"; };
+		597E4FCA23EEE637007E0BF8 /* 85-qhyccd.rules */ = {isa = PBXFileReference; lastKnownFileType = text; name = "85-qhyccd.rules"; path = "../../../ccd_qhy/bin_externals/qhyccd/85-qhyccd.rules"; sourceTree = "<group>"; };
 		597E4FCD23EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
 		597E4FD023EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
 		597E4FD223EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
@@ -4858,7 +4857,6 @@
 			isa = PBXGroup;
 			children = (
 				597E4F7923EEE637007E0BF8 /* firmware */,
-				597E4FC223EEE637007E0BF8 /* CMakeLists.txt */,
 				597E4FC323EEE637007E0BF8 /* include */,
 				597E4FC923EEE637007E0BF8 /* RELEASE */,
 				597E4FCA23EEE637007E0BF8 /* 85-qhyccd.rules */,
@@ -4943,7 +4941,8 @@
 				597E4FC023EEE637007E0BF8 /* QHY128.img */,
 				597E4FC123EEE637007E0BF8 /* QHY10.HEX */,
 			);
-			path = firmware;
+			name = firmware;
+			path = ../../../ccd_qhy/bin_externals/qhyccd/firmware;
 			sourceTree = "<group>";
 		};
 		597E4FC323EEE637007E0BF8 /* include */ = {
