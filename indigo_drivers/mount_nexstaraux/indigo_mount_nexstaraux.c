@@ -225,7 +225,7 @@ static bool nexstaraux_open(indigo_device *d) {
 						struct sockaddr_in remote_addr;
 						socklen_t addrlen = sizeof(remote_addr);
 						unsigned char message[2048];
-						for (int n = 0; n < 20; n++) {
+						for (int n = 0; n < 5; n++) {
 							long recvlen = recvfrom(udp_socket, message, sizeof(message), 0, (struct sockaddr *)&remote_addr, &addrlen);
 							if (recvlen > 0) {
 								sprintf(name, "nexstar://%s:%d", inet_ntoa(remote_addr.sin_addr), 2000 /*ntohs(remote_addr.sin_port)*/);
@@ -290,12 +290,12 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		INFO_PROPERTY->count = 5;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
+		DEVICE_PORT_PROPERTY->hidden = false;
 		strcpy(DEVICE_PORT_ITEM->text.value, "nexstar://");
 		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+		DEVICE_PORTS_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
-		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_EPOCH
 		MOUNT_EPOCH_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
