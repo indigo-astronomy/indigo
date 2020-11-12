@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION         0x0005
+#define DRIVER_VERSION         0x0006
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #include <stdlib.h>
@@ -419,8 +419,8 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			tv.tv_sec = timeout;
-			tv.tv_usec = 10000;
-			timeout = 0;
+			tv.tv_usec = 0;
+			timeout = 1;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result <= 0)
 				break;
