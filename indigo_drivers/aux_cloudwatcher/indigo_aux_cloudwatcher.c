@@ -465,13 +465,27 @@ static bool aag_is_cloudwatcher(indigo_device *device, char *name) {
 	if (!r) return false;
 
 	if (name) sscanf(buffer, "%*s %15s", name);
-	const char *internal_name_block = "!N CloudWatcher";
+
+	const char *internal_name_block_aag = "!N CloudWatcher";
+	const char *internal_name_block_pcw = "!N PocketCW";
+
+	bool is_cw = true;
 	for (int i = 0; i < 15; i++) {
-		if (buffer[i] != internal_name_block[i]) {
-			return false;
+		if (buffer[i] != internal_name_block_aag[i]) {
+			is_cw = false;
+			break;
 		}
 	}
-	return true;
+	if (is_cw) return true;
+
+	for (int i = 0; i < 11; i++) {
+		if (buffer[i] != internal_name_block_pcw[i]) {
+			is_cw = false;
+			break;
+		}
+	}
+
+	return is_cw;
 }
 
 
