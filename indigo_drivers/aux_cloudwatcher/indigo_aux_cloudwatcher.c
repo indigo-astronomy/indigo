@@ -478,13 +478,13 @@ static bool aag_is_cloudwatcher(indigo_device *device, char *name) {
 	}
 	if (is_cw) return true;
 
+	is_cw = true;
 	for (int i = 0; i < 11; i++) {
 		if (buffer[i] != internal_name_block_pcw[i]) {
 			is_cw = false;
 			break;
 		}
 	}
-
 	return is_cw;
 }
 
