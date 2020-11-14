@@ -91,7 +91,7 @@ else
 		ifeq ($(ARCH_DETECTED),aarch64)
 			ARCH_DETECTED = arm64
 			DEBIAN_ARCH = arm64
-			EXCLUDED_DRIVERS = $(EXCLUDED_DRIVERS) ccd_sbig
+			EXCLUDED_DRIVERS += ccd_sbig
 		endif
 		ifeq ($(ARCH_DETECTED),i686)
 			ARCH_DETECTED = x86
