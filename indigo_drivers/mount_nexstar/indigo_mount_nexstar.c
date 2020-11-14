@@ -476,8 +476,9 @@ static void mount_handle_geo_coordinates(indigo_device *device) {
 	res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res == RC_FORBIDDEN) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = RC_FORBIDDEN (Can not set location while aligned)", PRIVATE_DATA->dev_id);
-		indigo_send_message(device, "StarSense controller can not set location while aligned.");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
+		if (nexstar_hc_type == HC_STARSENSE)
+			indigo_send_message(device, "Can't set location to StarSense controller.");
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
@@ -510,8 +511,10 @@ static void mount_handle_set_utc_from_host(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "tc_set_time: '%02d/%02d/%04d %02d:%02d:%02d %+d'", tm_timenow.tm_mday, tm_timenow.tm_mon+1, tm_timenow.tm_year+1900, tm_timenow.tm_hour, tm_timenow.tm_min, tm_timenow.tm_sec, offset, res);
 			if (res == RC_FORBIDDEN) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN (Can not set time when aligned)", PRIVATE_DATA->dev_id);
-				indigo_send_message(device, "StarSense controller can not set time while aligned.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (nexstar_hc_type == HC_STARSENSE)
+					indigo_send_message(device, "Can't set time to StarSense controller.");
 			} else if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -732,13 +735,14 @@ static void mount_handle_utc(indigo_device *device) {
 	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, offset, dst);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res == RC_FORBIDDEN) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN (Can not set time when aligned)", PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_send_message(device, "StarSense controller can not set time while aligned.");
-	} if (res != RC_OK) {
+		if (nexstar_hc_type == HC_STARSENSE)
+			indigo_send_message(device, "Can't set time to StarSense controller.");
+	} else if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_send_message(device, "Can not set mount date/time.");
+		indigo_send_message(device, "Can't set mount date/time.");
 	} else {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -865,7 +869,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, WARN_PARKED_MSG);
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_eq_coordinates, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
