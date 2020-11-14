@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 
 #include <stdlib.h>
 #include <string.h>
@@ -134,7 +134,7 @@ typedef struct {
 	bool has_cooler;
 	bool cooler_on;
 	int last_bpp;
-
+	int last_live;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
@@ -230,6 +230,7 @@ static bool qhy_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
+		PRIVATE_DATA->last_live = false;
 		InitQHYCCD(PRIVATE_DATA->handle);
 
 		double chipw, chiph;
@@ -291,12 +292,12 @@ static bool qhy_open(indigo_device *device) {
 	return true;
 }
 
-static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
+static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin, bool live) {
 	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	int requested_bpp = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
-	if (PRIVATE_DATA->handle && PRIVATE_DATA->last_bpp != requested_bpp) {
+	if (PRIVATE_DATA->handle && (PRIVATE_DATA->last_bpp != requested_bpp || PRIVATE_DATA->last_live != live)) {
 		CloseQHYCCD(PRIVATE_DATA->handle);
 		indigo_usleep(500000);
 		ScanQHYCCD();
@@ -307,7 +308,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
-		res = SetQHYCCDStreamMode(PRIVATE_DATA->handle, 0);
+		res = SetQHYCCDStreamMode(PRIVATE_DATA->handle, live ? 1 : 0);
 		if (res != QHYCCD_SUCCESS) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDStreamMode('%s') = %d", PRIVATE_DATA->dev_sid, res);
@@ -351,7 +352,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 
 static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin, bool live) {
 	int res;
-	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
+	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin, live)) {
 		return false;
 	}
 
@@ -957,6 +958,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		qhy_start_exposure(
 			device, CCD_EXPOSURE_ITEM->number.target, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value),
 			CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
@@ -964,8 +967,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value,
 			false
 		);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
