@@ -305,14 +305,12 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 		if (PRIVATE_DATA->handle == NULL) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "OpenQHYCCD('%s') = NULL", PRIVATE_DATA->dev_sid);
-			PRIVATE_DATA->count_open--;
 			return false;
 		}
 		res = SetQHYCCDStreamMode(PRIVATE_DATA->handle, live ? 1 : 0);
 		if (res != QHYCCD_SUCCESS) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDStreamMode('%s') = %d", PRIVATE_DATA->dev_sid, res);
-			PRIVATE_DATA->count_open--;
 			return false;
 		}
 		InitQHYCCD(PRIVATE_DATA->handle);
@@ -323,6 +321,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 			return false;
 		}
 		PRIVATE_DATA->last_bpp = requested_bpp;
+		PRIVATE_DATA->last_live = live;
 	}
 
 	res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_EXPOSURE, (long)s2us(exposure));
