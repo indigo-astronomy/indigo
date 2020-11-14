@@ -30,6 +30,9 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_wheel_qhy: QHY standalone filter wheels driver
 - indigo_mount_nexstaraux: Celestron Wifi mount drivers
 
+### Obsoleted drivers
+- indigo_ccd_gphoto2: removed from the build - indigo_ccd_ptp replaces it
+
 ## [2.0-130] - Sun Nov 01 2020
 ### Overall:
 - TIFF image format added to CCD drivers
