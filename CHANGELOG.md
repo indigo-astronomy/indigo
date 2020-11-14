@@ -24,7 +24,7 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_mount_pmc8: connection issues fixed
 - indigo_mount_nexstar: StarSense related fixes
-- indigo_ccd_qhy / indigo_ccd_qhy2: many sriver and SDK fixes
+- indigo_ccd_qhy / indigo_ccd_qhy2: many driver and SDK fixes
 
 ### New Drivers:
 - indigo_wheel_qhy: QHY standalone filter wheels driver
