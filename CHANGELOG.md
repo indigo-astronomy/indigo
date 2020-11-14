@@ -2,6 +2,34 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-132] - Sat Nov 14 2020
+### Overall:
+- More robust socket handling
+- More robust FWHM calculation
+- Internet sharing option added to IndigoSky build
+- BLOB caching synchronization fixes
+- AVI support added to DSLR drivers
+
+### Driver Fixes:
+- indigo_aux_cloudwatcher:
+	- support for Pocket CW
+	- support for older AAG units
+	- bug fixes
+
+- indigo_agent_guider: add steps to AGENT_GUIDER_SETTINGS
+
+- indigo_ccd_ptp:
+ 	- Support for Fujifilm cameras
+	- Sony camera fixes
+
+- indigo_mount_pmc8: connection issues fixed
+- indigo_mount_nexstar: StarSense related fixes
+- indigo_ccd_qhy / indigo_ccd_qhy2: many sriver and SDK fixes
+
+### New Drivers:
+- indigo_wheel_qhy: QHY standalone filter wheels driver
+- indigo_mount_nexstaraux: Celestron Wifi mount drivers
+
 ## [2.0-130] - Sun Nov 01 2020
 ### Overall:
 - TIFF image format added to CCD drivers
