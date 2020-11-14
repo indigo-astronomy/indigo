@@ -519,7 +519,18 @@ static bool aag_get_serial_number(indigo_device *device, char *serial_number) {
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!K %4s", serial_number);
-	if (res != 1) return false;
+	if (res != 1) {
+		serial_number[0]='\0';
+		return false;
+	}
+
+	char *s = serial_number;
+	while (*s) {
+		if (isdigit(*s++) == 0) {
+			serial_number[0]='\0';
+			return false;
+		}
+	}
 
 	return true;
 }
