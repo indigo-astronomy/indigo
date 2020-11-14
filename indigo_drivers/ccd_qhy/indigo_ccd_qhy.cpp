@@ -1787,6 +1787,13 @@ static libusb_hotplug_callback_handle callback_handle;
 #else
 
 static void add_all_devices() {
+#ifdef __APPLE__
+	char firmware_base_dir[1024] = "/usr/local/lib/qhy";
+	if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
+		strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 1024);
+	}
+	OSXInitQHYCCDFirmware(firmware_base_dir);
+#endif /* __APPLE__ */
 	int count = ScanQHYCCD();
 	int slot = 0;
 	for (int i = 0; i < count; i++) {
