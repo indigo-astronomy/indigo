@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
