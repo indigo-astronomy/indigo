@@ -2,6 +2,11 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-134] - Mon Nov 16 2020
+### Overall:
+- Fix IndigoSky regression
+
+
 ## [2.0-132] - Sat Nov 14 2020
 ### Overall:
 - More robust socket handling
