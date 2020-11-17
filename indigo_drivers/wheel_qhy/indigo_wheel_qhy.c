@@ -164,7 +164,7 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_MODEL
 		X_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, X_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_MODEL_PROPERTY == NULL)
@@ -175,7 +175,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
-		INFO_PROPERTY->count = 5;
+		INFO_PROPERTY->count = 6;
 		WHEEL_SLOT_ITEM->number.value = 1;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);

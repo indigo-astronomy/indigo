@@ -39,7 +39,7 @@ extern "C" {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_aux_attach(indigo_device *device, unsigned version, int interface);
+extern indigo_result indigo_aux_attach(indigo_device *device, const char* driver_name, unsigned version, int interface);
 /** Enumerate properties callback function.
  */
 extern indigo_result indigo_aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);

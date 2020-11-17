@@ -48,7 +48,7 @@
 
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
-	if (indigo_filter_device_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
+	if (indigo_filter_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_AUX_1_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_2_LIST_PROPERTY->hidden = false;

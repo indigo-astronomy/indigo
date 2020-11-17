@@ -536,7 +536,7 @@ static indigo_result baader_enumerate_properties(indigo_device *device, indigo_c
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
@@ -547,7 +547,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		INFO_PROPERTY->count = 7;
+		INFO_PROPERTY->count = 8;
 		// -------------------------------------------------------------------------------- DOME_FLAP
 		DOME_FLAP_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_ON_HORIZONTAL_COORDINATES_SET

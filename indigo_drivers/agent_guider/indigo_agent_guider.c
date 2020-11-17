@@ -985,7 +985,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(DEVICE_PRIVATE_DATA != NULL);
-	if (indigo_filter_device_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
+	if (indigo_filter_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_GUIDER_LIST_PROPERTY->hidden = false;

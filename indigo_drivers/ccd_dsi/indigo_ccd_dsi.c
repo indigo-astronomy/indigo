@@ -271,11 +271,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 
 		/* Use all info property fields */
-		INFO_PROPERTY->count = 7;
+		INFO_PROPERTY->count = 8;
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}

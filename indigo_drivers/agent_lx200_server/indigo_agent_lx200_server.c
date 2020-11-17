@@ -428,7 +428,7 @@ static void start_server_callback(indigo_device *device) {
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(DEVICE_PRIVATE_DATA != NULL);
-	if (indigo_agent_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_agent_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		CONFIG_PROPERTY->hidden = false;
 		PROFILE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- local device properties

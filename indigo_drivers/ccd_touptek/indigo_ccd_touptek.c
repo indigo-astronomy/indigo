@@ -234,12 +234,12 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		unsigned long long flags = PRIVATE_DATA->cam.model->flag;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "flags = %0LX", flags);
 		char name[128], label[128];
-		INFO_PROPERTY->count = 7;
+		INFO_PROPERTY->count = 8;
 		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name, INDIGO_VALUE_SIZE);
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->cam.model->xpixsz;
 		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->cam.model->ypixsz;
@@ -844,8 +844,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INFO_PROPERTY->count = 7;
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 8;
 		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name, INDIGO_VALUE_SIZE);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);

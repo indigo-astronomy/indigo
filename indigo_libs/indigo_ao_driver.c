@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_ao_driver.h>
 
-indigo_result indigo_ao_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_ao_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (AO_CONTEXT == NULL) {
@@ -45,7 +45,7 @@ indigo_result indigo_ao_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_ao_context));
 	}
 	if (AO_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_AO) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_AO) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- AO_GUIDE_DEC
 			AO_GUIDE_DEC_PROPERTY = indigo_init_number_property(NULL, device->name, AO_GUIDE_DEC_PROPERTY_NAME, AO_MAIN_GROUP, "DEC guiding", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (AO_GUIDE_DEC_PROPERTY == NULL)

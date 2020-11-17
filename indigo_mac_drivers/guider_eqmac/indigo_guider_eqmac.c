@@ -112,7 +112,7 @@ OSErr eqmacGuide(double ra, double dec) {
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;

@@ -147,7 +147,7 @@ static void move_timer_callback(indigo_device *device) {
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = false;
 		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
@@ -396,7 +396,7 @@ static void guider_timer_callback(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_RATE_PROPERTY->hidden = false;
 		GUIDER_RATE_PROPERTY->count = 2;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

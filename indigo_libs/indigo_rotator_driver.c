@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_rotator_driver.h>
 
-indigo_result indigo_rotator_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (ROTATOR_CONTEXT == NULL) {
@@ -45,7 +45,7 @@ indigo_result indigo_rotator_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_rotator_context));
 	}
 	if (ROTATOR_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_ROTATOR) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_ROTATOR) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- ROTATOR_STEPS_PER_REVOLUTION
 			ROTATOR_STEPS_PER_REVOLUTION_PROPERTY = indigo_init_number_property(NULL, device->name, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Steps Per Revolution", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (ROTATOR_STEPS_PER_REVOLUTION_PROPERTY == NULL)

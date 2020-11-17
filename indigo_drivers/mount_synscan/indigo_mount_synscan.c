@@ -61,7 +61,7 @@
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
@@ -402,7 +402,7 @@ static indigo_result mount_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- GUIDER_RATE
 		GUIDER_RATE_PROPERTY->hidden = false;
 		GUIDER_RATE_PROPERTY->count = 2;

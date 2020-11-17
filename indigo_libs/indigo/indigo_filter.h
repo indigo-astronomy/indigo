@@ -176,7 +176,7 @@ typedef struct {
 
 /** Device attach callback function.
  */
-extern indigo_result indigo_filter_device_attach(indigo_device *device, unsigned version, indigo_device_interface device_interface);
+extern indigo_result indigo_filter_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface);
 /** Enumerate properties callback function.
  */
 extern indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);

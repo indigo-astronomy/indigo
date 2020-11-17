@@ -164,7 +164,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
   PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 			CCD_INFO_PROPERTY->hidden = false;
     if (camera.width != 0 && camera.height != 0 && camera.pixelSize != 0) {
@@ -434,7 +434,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 static indigo_result focuser_attach(indigo_device *device) {
   assert(device != NULL);
   assert(PRIVATE_DATA != NULL);
-  if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+  if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
     // --------------------------------------------------------------------------------
     FOCUSER_POSITION_PROPERTY->hidden = true;
     FOCUSER_SPEED_PROPERTY->hidden = true;
