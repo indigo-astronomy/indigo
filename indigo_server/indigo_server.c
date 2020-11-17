@@ -592,8 +592,6 @@ static indigo_result attach(indigo_device *device) {
 			if (token)
 				strncpy(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
-		} else {
-			SERVER_WIFI_AP_PROPERTY->hidden = true;
 		}
 		SERVER_WIFI_INFRASTRUCTURE_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_INFRASTRUCTURE_PROPERTY_NAME, MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM, SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM_NAME, "SSID", "");
@@ -604,8 +602,6 @@ static indigo_result attach(indigo_device *device) {
 			if (token)
 				strncpy(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token, INDIGO_VALUE_SIZE);
 			free(line);
-		} else {
-			SERVER_WIFI_INFRASTRUCTURE_PROPERTY->hidden = true;
 		}
 		SERVER_INTERNET_SHARING_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_INTERNET_SHARING_PROPERTY_NAME, MAIN_GROUP, "Internet sharing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		indigo_init_switch_item(SERVER_INTERNET_SHARING_DISABLED_ITEM, SERVER_INTERNET_SHARING_DISABLED_ITEM_NAME, "Disabled", true);
@@ -616,8 +612,6 @@ static indigo_result attach(indigo_device *device) {
 				indigo_set_switch(SERVER_INTERNET_SHARING_PROPERTY, SERVER_INTERNET_SHARING_ENABLED_ITEM, true);
 			}
 			free(line);
-		} else {
-			SERVER_INTERNET_SHARING_PROPERTY->hidden = true;
 		}
 		SERVER_HOST_TIME_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_HOST_TIME_PROPERTY_NAME, MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(SERVER_HOST_TIME_ITEM, SERVER_HOST_TIME_ITEM_NAME, "Host time", "");
