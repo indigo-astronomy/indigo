@@ -23,7 +23,7 @@
  \file indigo_ccd_qhy.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_wheel_qhy"
 
 #include <stdlib.h>
@@ -219,6 +219,12 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_MODEL_PROPERTY);
+		}
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_wheel_change_property(device, client, property);
