@@ -181,13 +181,14 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			CCD_GAMMA_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_GAMMA_ITEM, CCD_GAMMA_ITEM_NAME, "Gamma", 0.5, 2.0, 0.1, 1);
 			// -------------------------------------------------------------------------------- CCD_FRAME_TYPE
-			CCD_FRAME_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_FRAME_TYPE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Frame type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+			CCD_FRAME_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_FRAME_TYPE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Frame type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 			if (CCD_FRAME_TYPE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_FRAME_TYPE_LIGHT_ITEM, CCD_FRAME_TYPE_LIGHT_ITEM_NAME, "Light", true);
 			indigo_init_switch_item(CCD_FRAME_TYPE_BIAS_ITEM, CCD_FRAME_TYPE_BIAS_ITEM_NAME, "Bias", false);
 			indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, CCD_FRAME_TYPE_DARK_ITEM_NAME, "Dark", false);
 			indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, CCD_FRAME_TYPE_FLAT_ITEM_NAME, "Flat", false);
+			indigo_init_switch_item(CCD_FRAME_TYPE_DARKFLAT_ITEM, CCD_FRAME_TYPE_FLAT_ITEM_NAME, "Dark Flat", false);
 			// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
 			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 7);
 			if (CCD_IMAGE_FORMAT_PROPERTY == NULL)
@@ -1084,6 +1085,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			t = sprintf(header += 80, "IMAGETYP= 'Bias'                / frame type");
 		else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
 			t = sprintf(header += 80, "IMAGETYP= 'Dark'                / frame type");
+		else if (CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value)
+			t = sprintf(header += 80, "IMAGETYP= 'DarkFlat'            / frame type");
 		header[t] = ' ';
 		if (!CCD_GAIN_PROPERTY->hidden) {
 			t = sprintf(header += 80, "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
@@ -1247,6 +1250,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			frame_type ="Bias";
 		else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
 			frame_type ="Dark";
+		else if (CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value)
+			frame_type ="DarkFlat";
 		if (naxis == 2 && byte_per_pixel == 1) {
 			sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		} else if (naxis == 2 && byte_per_pixel == 2) {

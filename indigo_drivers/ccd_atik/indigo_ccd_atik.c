@@ -426,7 +426,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			do_log = true;
 			if (state == CAMERA_IDLE) {
 				ArtemisSetPreview(PRIVATE_DATA->handle, CCD_READ_MODE_HIGH_SPEED_ITEM->sw.value);
-				ArtemisSetDarkMode(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
+				ArtemisSetDarkMode(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value);
 				ArtemisBin(PRIVATE_DATA->handle, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
 				ArtemisSubframe(PRIVATE_DATA->handle, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value);
 				if (ArtemisStartExposure(PRIVATE_DATA->handle, CCD_EXPOSURE_ITEM->number.target) == ARTEMIS_OK) {
