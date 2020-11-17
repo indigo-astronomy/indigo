@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_ccd_touptek"
 
 #include <stdlib.h>
@@ -387,7 +387,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(X_CCD_FAN_SPEED_ITEM, "FAN_SPEED", "Fan speed", 0, 0, 1, 0);
 		}
-		PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(3 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -421,6 +420,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		device->gp_bits = 1;
 		if (PRIVATE_DATA->handle) {
+			PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(3 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 			if (PRIVATE_DATA->cam.model->flag & TOUPCAM_FLAG_GETTEMPERATURE) {
 				if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM) {
 					int value;
@@ -509,6 +509,8 @@ static void ccd_connect_callback(indigo_device *device) {
 			device->gp_bits = 0;
 		}
 	} else {
+		result = Toupcam_Stop(PRIVATE_DATA->handle);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Stop() -> %08x", result);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
@@ -881,10 +883,6 @@ static void guider_connect_callback(indigo_device *device) {
 			device->gp_bits = 0;
 		}
 	} else {
-		if (PRIVATE_DATA->buffer != NULL) {
-			free(PRIVATE_DATA->buffer);
-			PRIVATE_DATA->buffer = NULL;
-		}
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (((touptek_private_data *)PRIVATE_DATA->camera->private_data)->handle == NULL) {
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
