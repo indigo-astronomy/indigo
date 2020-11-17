@@ -290,7 +290,7 @@ static void ccd_exposure_callback(indigo_device *device) {
 			cam.put_NumY(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
 			cam.put_BinX(CCD_BIN_HORIZONTAL_ITEM->number.value);
 			cam.put_BinY(CCD_BIN_VERTICAL_ITEM->number.value);
-			cam.StartExposure(CCD_EXPOSURE_ITEM->number.value, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value));
+			cam.StartExposure(CCD_EXPOSURE_ITEM->number.value, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value));
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();

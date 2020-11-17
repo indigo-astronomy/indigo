@@ -324,7 +324,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (state != -1 && !CCD_READ_MODE_PROPERTY->hidden) // do not set read mode to cameras without it
 			state = gxccd_set_read_mode(PRIVATE_DATA->camera, PRIVATE_DATA->read_mode);
 		if (state != -1)
-			state = gxccd_start_exposure(PRIVATE_DATA->camera, CCD_EXPOSURE_ITEM->number.target, !CCD_FRAME_TYPE_DARK_ITEM->sw.value, left, top, width, height);
+			state = gxccd_start_exposure(PRIVATE_DATA->camera, CCD_EXPOSURE_ITEM->number.target, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value), left, top, width, height);
 		if (state != -1)
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		else {

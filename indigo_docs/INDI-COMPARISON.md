@@ -186,6 +186,7 @@
 | | FRAME_BIAS | | **BIAS** | remove `FRAME_` |
 | | FRAME_DARK | | **DARK** | remove `FRAME_` |
 | | FRAME_FLAT | | **FLAT** | remove `FRAME_` |
+| | | | **DARKFLAT** | **new!** |
 | CCD_BINNING | | **CCD_BIN** | | **rename!** |
 | | HOR_BIN | | **HORIZONTAL** | **rename!** |
 | | VER_BIN | | **VERTICAL** | **rename!** |

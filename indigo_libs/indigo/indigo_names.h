@@ -459,6 +459,10 @@
  */
 #define CCD_FRAME_TYPE_FLAT_ITEM_NAME         "FLAT"
 
+/** CCD_FRAME_TYPE.DARKFLAT property item name.
+ */
+#define CCD_FRAME_TYPE_DARKFLAT_ITEM_NAME     "DARKFLAT"
+
 //----------------------------------------------------------------------
 /** CCD_IMAGE_FORMAT property name.
  */

@@ -267,6 +267,10 @@ extern "C" {
  */
 #define CCD_FRAME_TYPE_FLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+3)
 
+/** CCD_FRAME_TYPE.DARKFLAT property item pointer.
+ */
+#define CCD_FRAME_TYPE_DARKFLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+4)
+
 /** CCD_IMAGE_FORMAT property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_IMAGE_FORMAT_PROPERTY         (CCD_CONTEXT->ccd_image_format_property)

@@ -78,6 +78,7 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 |  |  |  |  | BIAS | yes |  |
 |  |  |  |  | DARK | yes |  |
 |  |  |  |  | FLAT | yes |  |
+|  |  |  |  | DARKFLAT | yes |  |
 | CCD_IMAGE_FORMAT | switch | no | yes | RAW | yes |  |
 |  |  |  |  | FITS | yes |  |
 |  |  |  |  | XISF | yes |  |

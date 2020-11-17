@@ -289,7 +289,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	ok = camera_start_exposure(
 		device,
 		CCD_EXPOSURE_ITEM->number.target,
-		CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+		CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
 		CCD_BIN_VERTICAL_ITEM->number.value
 	);
 
