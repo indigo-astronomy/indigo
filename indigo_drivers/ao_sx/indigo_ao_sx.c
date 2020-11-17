@@ -146,7 +146,7 @@ static void sx_close(indigo_device *device) {
 static indigo_result ao_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ao_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ao_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
@@ -286,7 +286,7 @@ static indigo_result ao_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		GUIDER_RATE_PROPERTY->hidden = true;

@@ -132,7 +132,7 @@ static void sync_rules(indigo_device *device) {
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(DEVICE_PRIVATE_DATA != NULL);
-	if (indigo_agent_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_agent_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		SNOOP_ADD_RULE_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_ADD_RULE_PROPERTY_NAME, MAIN_GROUP, "Add rule", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 		if (SNOOP_ADD_RULE_PROPERTY == NULL)
 			return INDIGO_FAILED;

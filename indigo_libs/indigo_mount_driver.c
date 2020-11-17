@@ -45,7 +45,7 @@ static double indigo_range24(double ha) {
 	return fmod(ha + (24000), 24);
 }
 
-indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (MOUNT_CONTEXT == NULL) {
@@ -54,7 +54,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_mount_context));
 	}
 	if (MOUNT_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_MOUNT) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_MOUNT) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- MOUNT_INFO
 			MOUNT_INFO_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_INFO_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 			if (MOUNT_INFO_PROPERTY == NULL)

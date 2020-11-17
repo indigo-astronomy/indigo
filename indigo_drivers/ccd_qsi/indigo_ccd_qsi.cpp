@@ -118,7 +118,7 @@ typedef struct {
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->wheel_attached = true;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
@@ -318,9 +318,9 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->can_check_temperature = true;
-		INFO_PROPERTY->count = 7;
+		INFO_PROPERTY->count = 8;
 		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->serial);
 		// -------------------------------------------------------------------------------- QSI_READOUT_SPEED
 		QSI_READOUT_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_READOUT_SPEED_PROPERTY_NAME, "Advanced", "CCD readout speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);

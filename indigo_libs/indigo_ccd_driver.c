@@ -67,7 +67,7 @@ void indigo_use_shortest_exposure_if_bias(indigo_device *device) {
 	}
 }
 
-indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	if (CCD_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_ccd_context));
@@ -75,7 +75,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_ccd_context));
 	}
 	if (CCD_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- CCD_INFO
 			CCD_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_INFO_PROPERTY_NAME, CCD_MAIN_GROUP, "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
 			if (CCD_INFO_PROPERTY == NULL)

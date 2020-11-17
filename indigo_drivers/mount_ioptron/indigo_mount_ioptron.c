@@ -671,7 +671,7 @@ static void position_timer_callback(indigo_device *device) {
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		SIMULATION_PROPERTY->hidden = true;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
@@ -1223,7 +1223,7 @@ static void start_tracking(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_RATE_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);

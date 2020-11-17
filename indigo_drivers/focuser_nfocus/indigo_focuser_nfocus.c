@@ -72,7 +72,7 @@ static bool nfocus_command(indigo_device *device, char *command, char *response,
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;

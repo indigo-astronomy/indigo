@@ -41,7 +41,7 @@ static char *property_name_prefix[INDIGO_FILTER_LIST_COUNT] = { "CCD_", "WHEEL_"
 static int property_name_prefix_len[INDIGO_FILTER_LIST_COUNT] = { 4, 6, 8, 6, 7, 5, 4, 9, 6, 6, 6, 6 };
 static char *property_name_label[INDIGO_FILTER_LIST_COUNT] = { "CCD ", "Wheel ", "Focuser ", "Mount ", "Guider ", "Dome ", "GPS ", "Joystick", "AUX #1 ", "AUX #2 ", "AUX #3 ", "AUX #4 " };
 
-indigo_result indigo_filter_device_attach(indigo_device *device, unsigned version, indigo_device_interface device_interface) {
+indigo_result indigo_filter_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface) {
 	assert(device != NULL);
 	if (FILTER_DEVICE_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_filter_context));
@@ -50,7 +50,7 @@ indigo_result indigo_filter_device_attach(indigo_device *device, unsigned versio
 	}
 	FILTER_DEVICE_CONTEXT->device = device;
 	if (FILTER_DEVICE_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
 			CONNECTION_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD property
 			FILTER_CCD_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_CCD_LIST_PROPERTY_NAME, "Main", "Camera list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);

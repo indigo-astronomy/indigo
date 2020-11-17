@@ -65,29 +65,33 @@ extern "C" {
  */
 #define INFO_DEVICE_NAME_ITEM         (INFO_PROPERTY->items+0)
 
+/** INFO.DEVICE_DRIVER  property item pointer.
+ */
+#define INFO_DEVICE_DRIVER_ITEM      (INFO_PROPERTY->items+1)
+
 /** INFO.DEVICE_VERSION property item pointer.
  */
-#define INFO_DEVICE_VERSION_ITEM      (INFO_PROPERTY->items+1)
+#define INFO_DEVICE_VERSION_ITEM      (INFO_PROPERTY->items+2)
 
 /** INFO.DEVICE_INTERFACE property item pointer.
  */
-#define INFO_DEVICE_INTERFACE_ITEM    (INFO_PROPERTY->items+2)
+#define INFO_DEVICE_INTERFACE_ITEM    (INFO_PROPERTY->items+3)
 
 /** INFO.DEVICE_MODEL property item pointer.
  */
-#define INFO_DEVICE_MODEL_ITEM         (INFO_PROPERTY->items+3)
+#define INFO_DEVICE_MODEL_ITEM         (INFO_PROPERTY->items+4)
 
 /** INFO.DEVICE_FIRMWARE_REVISION property item pointer.
  */
-#define INFO_DEVICE_FW_REVISION_ITEM   (INFO_PROPERTY->items+4)
+#define INFO_DEVICE_FW_REVISION_ITEM   (INFO_PROPERTY->items+5)
 
 /** INFO.DEVICE_HARDWARE_REVISION property item pointer.
  */
-#define INFO_DEVICE_HW_REVISION_ITEM   (INFO_PROPERTY->items+5)
+#define INFO_DEVICE_HW_REVISION_ITEM   (INFO_PROPERTY->items+6)
 
 /** INFO.DEVICE_SERIAL_NUMBER property item pointer.
  */
-#define INFO_DEVICE_SERIAL_NUM_ITEM    (INFO_PROPERTY->items+6)
+#define INFO_DEVICE_SERIAL_NUM_ITEM    (INFO_PROPERTY->items+7)
 
 /** INFO.FRAMEWORK_NAME property item pointer.
  */
@@ -275,7 +279,7 @@ extern indigo_result indigo_global_unlock(indigo_device *device);
 
 /** Attach callback function.
  */
-extern indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface);
+extern indigo_result indigo_device_attach(indigo_device *device, const char* driver_name, indigo_version version, int interface);
 
 /** Enumerate properties callback function.
  */

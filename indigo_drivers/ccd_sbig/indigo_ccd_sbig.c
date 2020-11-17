@@ -967,8 +967,8 @@ static void guider_ccd_temperature_callback(indigo_device *device) {
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (PRIMARY_CCD && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
-		INFO_PROPERTY->count = 7; 	/* Use all info property fields */
+	if (PRIMARY_CCD && (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK)) {
+		INFO_PROPERTY->count = 8; 	/* Use all info property fields */
 
 		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", SBIG_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SBIG_FREEZE_TEC_PROPERTY == NULL) {
@@ -993,7 +993,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(SBIG_ABG_CLK_HI_ITEM, "SBIG_ABG_CLK_LOW_HI", "Clock High, ABG", false);
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
-	} else if ((!PRIMARY_CCD) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
+	} else if ((!PRIMARY_CCD) && (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK)) {
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1459,7 +1459,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1686,7 +1686,7 @@ bool get_host_ip(char *hostname , unsigned long *ip) {
 
 static indigo_result eth_attach(indigo_device *device) {
 	assert(device != NULL);
-	if (indigo_device_attach(device, DRIVER_VERSION, 0) == INDIGO_OK) {
+	if (indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, 0) == INDIGO_OK) {
 		INFO_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
@@ -1829,7 +1829,7 @@ static void wheel_timer_callback(indigo_device *device) {
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -2009,7 +2009,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 static indigo_result ao_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ao_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ao_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 100;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ao_enumerate_properties(device, NULL, NULL);

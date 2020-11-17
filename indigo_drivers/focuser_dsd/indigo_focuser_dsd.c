@@ -597,7 +597,7 @@ static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
@@ -609,7 +609,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE, INDIGO_VALUE_SIZE);
 		// --------------------------------------------------------------------------------
-		INFO_PROPERTY->count = 5;
+		INFO_PROPERTY->count = 6;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 10000;

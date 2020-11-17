@@ -1227,7 +1227,7 @@ static int aag_init_properties(indigo_device *device) {
 	DEVICE_BAUDRATE_PROPERTY->hidden = true;
 	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
-	INFO_PROPERTY->count = 7;
+	INFO_PROPERTY->count = 8;
 	// -------------------------------------------------------------------------------- GPIO OUTLETS
 	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, SWITCH_GROUP, "Switch outlet", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
@@ -1694,7 +1694,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		if (aag_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

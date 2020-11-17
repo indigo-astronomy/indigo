@@ -1482,7 +1482,7 @@ static indigo_result mount_attach(indigo_device *device) {
 	int index = 0;
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->net_mutex, NULL);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
@@ -2070,7 +2070,7 @@ static void guider_update_state() {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------- GUIDER_RATE
@@ -2543,7 +2543,7 @@ static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indi
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- AUTHENTICATION_PROPERTY
@@ -2880,7 +2880,7 @@ static void focus_handle_abort(indigo_device *device) {
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		AUTHENTICATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -3143,7 +3143,7 @@ static void panel_timer_callback(indigo_device *device) {
 static indigo_result panel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		AUTHENTICATION_PROPERTY->hidden = false;

@@ -194,8 +194,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
-		INFO_PROPERTY->count = 5;
+	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
+		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- OUTLET_NAMES
@@ -1287,8 +1287,8 @@ static indigo_result aux_detach(indigo_device *device) {
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INFO_PROPERTY->count = 5;
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH

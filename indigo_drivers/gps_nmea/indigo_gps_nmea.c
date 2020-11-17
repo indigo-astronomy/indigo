@@ -240,7 +240,7 @@ static void gps_refresh_callback(indigo_device *device) {
 static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;

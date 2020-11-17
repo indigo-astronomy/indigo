@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_focuser_driver.h>
 
-indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_focuser_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (FOCUSER_CONTEXT == NULL) {
@@ -45,7 +45,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_focuser_context));
 	}
 	if (FOCUSER_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_FOCUSER) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_FOCUSER) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- FOCUSER_SPEED
 			FOCUSER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_SPEED_PROPERTY == NULL)

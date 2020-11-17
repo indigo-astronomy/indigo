@@ -628,7 +628,7 @@ static void guider_timer_callback_dec(indigo_device *device) {
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
@@ -654,7 +654,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		PIXEL_FORMAT_PROPERTY->count = format_count;
 
-		INFO_PROPERTY->count = 4;
+		INFO_PROPERTY->count = 5;
 		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->info.Name, INDIGO_VALUE_SIZE);
 
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
@@ -1339,8 +1339,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INFO_PROPERTY->count = 4;
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 5;
 		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->info.Name, INDIGO_VALUE_SIZE);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}

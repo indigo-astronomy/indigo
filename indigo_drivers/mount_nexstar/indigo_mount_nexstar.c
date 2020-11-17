@@ -779,7 +779,7 @@ static void mount_cancel_slew(indigo_device *device) {
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
@@ -1089,7 +1089,7 @@ static indigo_result nexstar_guider_enumerate_properties(indigo_device *device, 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
 		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (COMMAND_GUIDE_RATE_PROPERTY == NULL)
@@ -1193,8 +1193,8 @@ static void gps_handle_connect(indigo_device *device) {
 static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INFO_PROPERTY->count = 5;
+	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron GPS");
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2;
 		GPS_UTC_TIME_PROPERTY->hidden = false;

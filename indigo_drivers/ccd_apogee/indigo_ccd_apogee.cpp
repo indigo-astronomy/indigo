@@ -663,9 +663,9 @@ static void ccd_temperature_callback(indigo_device *device) {
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->can_check_temperature = true;
-		INFO_PROPERTY->count = 7;
+		INFO_PROPERTY->count = 8;
 		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str(), INDIGO_VALUE_SIZE);
 
 		// ---------------------------------------------------------------------------------
@@ -1102,7 +1102,7 @@ static void ethernet_lookup_callback(indigo_device *device) {
 
 static indigo_result ethernet_attach(indigo_device *device) {
 	assert(device != NULL);
-	if (indigo_device_attach(device, (indigo_version)DRIVER_VERSION, 0) == INDIGO_OK) {
+	if (indigo_device_attach(device, DRIVER_NAME, (indigo_version)DRIVER_VERSION, 0) == INDIGO_OK) {
 		INFO_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;

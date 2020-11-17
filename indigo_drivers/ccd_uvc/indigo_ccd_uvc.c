@@ -120,7 +120,7 @@ static void streaming_callback(uvc_frame_t *frame, indigo_device *device) {
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		CCD_BIN_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- CCD_FRAME

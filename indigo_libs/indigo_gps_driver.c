@@ -37,7 +37,7 @@
 #include <indigo/indigo_gps_driver.h>
 #include <indigo/indigo_io.h>
 
-indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_gps_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (GPS_CONTEXT == NULL) {
@@ -46,7 +46,7 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_gps_context));
 	}
 	if (GPS_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_GPS) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_GPS) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- GPS_STATUS
 			GPS_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, GPS_STATUS_PROPERTY_NAME, GPS_SITE_GROUP, "Status", INDIGO_OK_STATE, 3);
 			if (GPS_STATUS_PROPERTY == NULL)

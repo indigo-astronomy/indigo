@@ -228,7 +228,7 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 #endif
 }
 
-indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface) {
+indigo_result indigo_device_attach(indigo_device *device, const char* driver_name, indigo_version version, int interface) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (DEVICE_CONTEXT == NULL) {
@@ -244,18 +244,19 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		indigo_init_switch_item(CONNECTION_CONNECTED_ITEM, CONNECTION_CONNECTED_ITEM_NAME, "Connected", false);
 		indigo_init_switch_item(CONNECTION_DISCONNECTED_ITEM, CONNECTION_DISCONNECTED_ITEM_NAME, "Disconnected", true);
 		// -------------------------------------------------------------------------------- DEVICE_INFO
-		INFO_PROPERTY = indigo_init_text_property(NULL, device->name, INFO_PROPERTY_NAME, MAIN_GROUP, "Device info", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
+		INFO_PROPERTY = indigo_init_text_property(NULL, device->name, INFO_PROPERTY_NAME, MAIN_GROUP, "Device info", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
 		if (INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(INFO_DEVICE_NAME_ITEM, INFO_DEVICE_NAME_ITEM_NAME, "Device name", device->name);
+		indigo_init_text_item(INFO_DEVICE_DRIVER_ITEM, INFO_DEVICE_DRVIER_ITEM_NAME, "Driver name", "%s", driver_name);
 		indigo_init_text_item(INFO_DEVICE_VERSION_ITEM, INFO_DEVICE_VERSION_ITEM_NAME, "Driver version", "%d.%d.%d.%d", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(version), INDIGO_VERSION_MINOR(version));
 		indigo_init_text_item(INFO_DEVICE_INTERFACE_ITEM, INFO_DEVICE_INTERFACE_ITEM_NAME, "Interface", "%u", interface);
 		indigo_init_text_item(INFO_DEVICE_MODEL_ITEM, INFO_DEVICE_MODEL_ITEM_NAME, "Model", device->name);
 		indigo_init_text_item(INFO_DEVICE_FW_REVISION_ITEM, INFO_DEVICE_FW_REVISION_ITEM_NAME, "Firmware Rev.", "N/A");
 		indigo_init_text_item(INFO_DEVICE_HW_REVISION_ITEM, INFO_DEVICE_HW_REVISION_ITEM_NAME, "Hardware Rev.", "N/A");
 		indigo_init_text_item(INFO_DEVICE_SERIAL_NUM_ITEM, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "Serial No.", "N/A");
-		/* Decrease count as other items are rare if you need them just set count to 7 in the dirver */
-		INFO_PROPERTY->count = 3;
+		/* Decrease count as other items are rare if you need them just set count to 8 in the driver */
+		INFO_PROPERTY->count = 4;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SIMULATION_PROPERTY == NULL)

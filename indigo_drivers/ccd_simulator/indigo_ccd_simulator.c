@@ -448,7 +448,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = false;
 		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
@@ -849,7 +849,7 @@ static void guider_timer_callback(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_RATE_PROPERTY->hidden = false;
 		PRIVATE_DATA->guide_rate = GUIDER_RATE_ITEM->number.value / 100.0;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -941,7 +941,7 @@ static indigo_result guider_detach(indigo_device *device) {
 static indigo_result ao_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_ao_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_ao_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		AO_RESET_PROPERTY->count = 1;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ao_enumerate_properties(device, NULL, NULL);
@@ -1050,7 +1050,7 @@ static void wheel_timer_callback(indigo_device *device) {
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT, WHEEL_SLOT_NAME
 		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = FILTER_COUNT;
 		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
@@ -1140,7 +1140,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION

@@ -208,7 +208,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	strncpy(DEVICE_PORT_ITEM->text.value, "udp://dragonfly", INDIGO_VALUE_SIZE);
 	strncpy(DEVICE_PORT_ITEM->label, "Devce URL", INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
-	INFO_PROPERTY->count = 5;
+	INFO_PROPERTY->count = 6;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
 	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_RELAYS_GROUP, "Relay names", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
 	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
@@ -467,7 +467,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
 		pthread_mutex_init(&DEVICE_DATA.relay_mutex, NULL);
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
@@ -937,7 +937,7 @@ static indigo_result dome_enumerate_properties(indigo_device *device, indigo_cli
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&DEVICE_DATA.relay_mutex, NULL);
 
 		DEVICE_PORT_PROPERTY->hidden = false;

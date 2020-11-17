@@ -221,7 +221,7 @@ static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;

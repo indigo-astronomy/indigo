@@ -348,7 +348,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -813,7 +813,7 @@ static indigo_result mount_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- GUIDER_RATE
 		GUIDER_RATE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------

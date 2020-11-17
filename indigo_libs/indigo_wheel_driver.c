@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_wheel_driver.h>
 
-indigo_result indigo_wheel_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_wheel_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	if (WHEEL_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_wheel_context));
@@ -44,7 +44,7 @@ indigo_result indigo_wheel_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_wheel_context));
 	}
 	if (WHEEL_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_WHEEL) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_WHEEL) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- WHEEL_SLOT
 			WHEEL_SLOT_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Current slot", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (WHEEL_SLOT_PROPERTY == NULL)

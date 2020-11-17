@@ -72,7 +72,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_FOCUSER_FREQUENCY
 		X_FOCUSER_FREQUENCY_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_FREQUENCY", FOCUSER_MAIN_GROUP, "Frequency", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_FOCUSER_FREQUENCY_PROPERTY == NULL)

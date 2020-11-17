@@ -660,7 +660,7 @@ static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_
 static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_dome_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_r_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->port_w_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->property_mutex, NULL);
@@ -673,7 +673,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		INFO_PROPERTY->count = 5;
+		INFO_PROPERTY->count = 6;
 		// -------------------------------------------------------------------------------- DOME_ON_HORIZONTAL_COORDINATES_SET
 		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES

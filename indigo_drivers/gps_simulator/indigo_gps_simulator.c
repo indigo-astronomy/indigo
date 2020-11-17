@@ -159,7 +159,7 @@ static void gps_timer_callback(indigo_device *device) {
 static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = true;
 		DEVICE_PORTS_PROPERTY->hidden = true;

@@ -76,7 +76,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_FOCUSER_FREQUENCY
 		X_FOCUSER_DUTY_CYCLE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_DUTY_CYCLE", FOCUSER_MAIN_GROUP, "Duty cycle", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_FOCUSER_DUTY_CYCLE_PROPERTY == NULL)
@@ -97,7 +97,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 #endif
 		// -------------------------------------------------------------------------------- INFO
-		INFO_PROPERTY->count = 4;
+		INFO_PROPERTY->count = 5;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;

@@ -31,6 +31,10 @@
  */
 #define INFO_DEVICE_NAME_ITEM_NAME						"DEVICE_NAME"
 
+/** INFO.DEVICE_DRIVER property item name.
+ */
+#define INFO_DEVICE_DRVIER_ITEM_NAME					"DEVICE_DRIVER"
+
 /** INFO.DEVICE_VERSION property item name.
  */
 #define INFO_DEVICE_VERSION_ITEM_NAME					"DEVICE_VERSION"

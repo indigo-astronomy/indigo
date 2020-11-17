@@ -49,7 +49,7 @@ static void sync_timer_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, SYNC_INTERAL, &DOME_CONTEXT->sync_timer);
 }
 
-indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
+indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (DOME_CONTEXT == NULL) {
@@ -58,7 +58,7 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 		memset(device->device_context, 0, sizeof(indigo_dome_context));
 	}
 	if (DOME_CONTEXT != NULL) {
-		if (indigo_device_attach(device, version, INDIGO_INTERFACE_DOME) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_DOME) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- DOME_SPEED
 			DOME_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SPEED_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (DOME_SPEED_PROPERTY == NULL)

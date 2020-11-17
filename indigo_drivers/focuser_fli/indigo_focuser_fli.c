@@ -137,10 +137,10 @@ static void focuser_timer_callback(indigo_device *device) {
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		/* Use all info property fields */
-		INFO_PROPERTY->count = 7;
+		INFO_PROPERTY->count = 8;
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;

@@ -765,7 +765,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	DEVICE_BAUDRATE_PROPERTY->hidden = false;
 	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
-	INFO_PROPERTY->count = 5;
+	INFO_PROPERTY->count = 6;
 	// --------------------------------------------------------------------------------
 	LA_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MODEL_PROPERTY_NAME, "Configuration", "Device model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (LA_MODEL_PROPERTY == NULL)
@@ -1199,7 +1199,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO | INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_GPIO | INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1395,7 +1395,7 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 static indigo_result rotator_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_rotator_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.min = 100;
 		ROTATOR_STEPS_PER_REVOLUTION_ITEM->number.max = 100000;
@@ -1856,7 +1856,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;

@@ -44,7 +44,7 @@
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
-	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT, WHEEL_SLOT_NAME
 		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = FILTER_COUNT;
 		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;

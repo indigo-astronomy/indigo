@@ -511,7 +511,7 @@ static indigo_result gps_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -522,7 +522,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
-		INFO_PROPERTY->count = 5;
+		INFO_PROPERTY->count = 6;
 		//#ifdef INDIGO_LINUX
 		//for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 		//	if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "ttyGPS")) {
@@ -714,7 +714,7 @@ static int aux_init_properties(indigo_device *device) {
 	DEVICE_BAUDRATE_PROPERTY->hidden = false;
 	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
 	// --------------------------------------------------------------------------------
-	INFO_PROPERTY->count = 5;
+	INFO_PROPERTY->count = 6;
 	// -------------------------------------------------------------------------------- GPIO OUTLETS
 	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, SWITCH_GROUP, "Switch outlet", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
@@ -803,7 +803,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_aux_attach(device, DRIVER_VERSION, INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
 		if (aux_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
