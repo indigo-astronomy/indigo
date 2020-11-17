@@ -2068,6 +2068,10 @@
 		59BBD18B2182472E008199D6 /* indigo_aux_rts_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_rts_main.c; sourceTree = "<group>"; };
 		59BBD18C2182472E008199D6 /* indigo_aux_rts.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_rts.h; sourceTree = "<group>"; };
 		59BBD18D2182472E008199D6 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59C0C74F2564652D00916E8D /* indigo_aux_rpio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_rpio.h; sourceTree = "<group>"; };
+		59C0C7502564652D00916E8D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59C0C7512564652D00916E8D /* indigo_aux_rpio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_rpio.c; sourceTree = "<group>"; };
+		59C0C7522564652D00916E8D /* indigo_aux_rpio_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_rpio_main.c; sourceTree = "<group>"; };
 		59C3BAFA254DE8AD000720B4 /* indigo_ser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ser.h; sourceTree = "<group>"; };
 		59C3BAFB254DE8AD000720B4 /* indigo_ser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ser.c; sourceTree = "<group>"; };
 		59C3BB0E255077E8000720B4 /* indigo_ccd_ptp_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ptp_main.c; sourceTree = "<group>"; };
@@ -7603,6 +7607,17 @@
 			path = aux_rts;
 			sourceTree = "<group>";
 		};
+		59C0C74E2564652D00916E8D /* aux_rpio */ = {
+			isa = PBXGroup;
+			children = (
+				59C0C7502564652D00916E8D /* README.md */,
+				59C0C74F2564652D00916E8D /* indigo_aux_rpio.h */,
+				59C0C7512564652D00916E8D /* indigo_aux_rpio.c */,
+				59C0C7522564652D00916E8D /* indigo_aux_rpio_main.c */,
+			);
+			path = aux_rpio;
+			sourceTree = "<group>";
+		};
 		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
 			isa = PBXGroup;
 			children = (
@@ -10574,6 +10589,7 @@
 		9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59C0C74E2564652D00916E8D /* aux_rpio */,
 				9D45254020E0F9A1004D1137 /* ccd_gphoto2 */,
 			);
 			path = indigo_linux_drivers;
