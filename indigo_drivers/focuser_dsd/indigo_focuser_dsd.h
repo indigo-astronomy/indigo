@@ -20,7 +20,7 @@
 // 2.0 by Rumen G. Bogdanovski
 
 /** INDIGO DSD focuser driver
- \file indigo_focuser_asi.h
+ \file indigo_focuser_dsd.h
  */
 
 #ifndef focuser_dsd_h
@@ -41,4 +41,4 @@ extern indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driv
 }
 #endif
 
-#endif /* focuser_asi_h */
+#endif /* focuser_dsd_h */
