@@ -340,7 +340,7 @@ static bool mfp_get_temperature(indigo_device *device, double *temperature) {
 	if (mfp_command(device, ":06#", response, sizeof(response), 100)) {
 		int parsed = sscanf(response, "Z%lf#", temperature);
 		if (parsed != 1) return false;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":06# -> %s = %lf", response, *temperature);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ":06# -> %s = %lf", response, *temperature);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
