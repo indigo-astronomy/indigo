@@ -314,19 +314,21 @@ static bool mfp_set_step_mode(indigo_device *device, stepmode_t mode) {
 //	return dsd_command_get_value(device, "[GMXM]", move);
 //}
 //
-
+/*
 static bool dsd_set_max_move(indigo_device *device, uint32_t move) {
 	return dsd_command_set_value(device, "[SMXM%d]", move);
 }
+*/
 
-
-static bool dsd_get_max_position(indigo_device *device, uint32_t *position) {
-	return dsd_command_get_value(device, "[GMXP]", position);
+static bool mfp_get_max_position(indigo_device *device, uint32_t *position) {
+	return mfp_command_get_int_value(device, ":08#", 'M', position);
 }
 
 
-static bool dsd_set_max_position(indigo_device *device, uint32_t position) {
-	return dsd_command_set_value(device, "[SMXP%d]", position);
+static bool mfp_set_max_position(indigo_device *device, uint32_t position) {
+	char command[DSD_CMD_LEN];
+	snprintf(command, DSD_CMD_LEN, ":07%d#", position);
+	return mfp_command(device, command, NULL, 0, 100);
 }
 
 
@@ -539,8 +541,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 6;
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 10000;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 1000000;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 1000;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 2000000;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min;
 
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
@@ -710,19 +712,18 @@ static void focuser_connect_callback(indigo_device *device) {
 
 					mfp_get_position(device, &position);
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
-					/*
-					if (!dsd_get_max_position(device, &PRIVATE_DATA->max_position)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle);
+
+					if (!mfp_get_max_position(device, &PRIVATE_DATA->max_position)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_max_position(%d) failed", PRIVATE_DATA->handle);
 					}
 					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-
+					/*
 					if (!dsd_get_speed(device, &value)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
 					}
 					FOCUSER_SPEED_ITEM->number.value = (double)value;
 					*/
-					/* While we do not have max move property hardoce it to max position */
-					//dsd_set_max_move(device, (uint32_t)FOCUSER_POSITION_ITEM->number.max);
+
 
 					mfp_get_reverse(device, &FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 					FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
@@ -849,12 +850,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-		if (!dsd_set_max_position(device, PRIVATE_DATA->max_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_max_position(%d) failed", PRIVATE_DATA->handle);
+		if (!mfp_set_max_position(device, PRIVATE_DATA->max_position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_max_position(%d) failed", PRIVATE_DATA->handle);
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (!dsd_get_max_position(device, &PRIVATE_DATA->max_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle);
+		if (!mfp_get_max_position(device, &PRIVATE_DATA->max_position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_max_position(%d) failed", PRIVATE_DATA->handle);
 		}
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
