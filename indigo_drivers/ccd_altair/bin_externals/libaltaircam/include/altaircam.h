@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 48.17729.2020.0922 */
+/* Version: 48.17962.2020.1110 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -271,7 +271,7 @@ typedef struct {
 }AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 48.17729.2020.0922
+    get the version of this dll/so/dylib, which is: 48.17962.2020.1110
 */
 #ifdef _WIN32
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -309,7 +309,7 @@ ALTAIRCAM_API(HAltaircam) Altaircam_Open(const char* id);
 */
 ALTAIRCAM_API(HAltaircam) Altaircam_OpenByIndex(unsigned index);
 
-ALTAIRCAM_API(void)     Altaircam_Close(HAltaircam h); /* close the handle */
+ALTAIRCAM_API(void)     Altaircam_Close(HAltaircam h);  /* close the handle */
 
 #define ALTAIRCAM_EVENT_EXPOSURE          0x0001    /* exposure time or gain changed */
 #define ALTAIRCAM_EVENT_TEMPTINT          0x0002    /* white balance changed, Temp/Tint mode */
@@ -407,7 +407,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_SnapN(HAltaircam h, unsigned nResolutionIndex,
 ALTAIRCAM_API(HRESULT)  Altaircam_Trigger(HAltaircam h, unsigned short nNumber);
 
 /*
-    put_Size, put_eSize, can be used to set the video output resolution BEFORE Altaircam_Start.
+    put_Size, put_eSize, can be used to set the video output resolution BEFORE Altaircam_StartXXXX.
     put_Size use width and height parameters, put_eSize use the index parameter.
     for example, UCMOS03100KPA support the following resolutions:
             index 0:    2048,   1536
@@ -804,6 +804,8 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeNum);
 #define ALTAIRCAM_OPTION_HEAT_MAX              0x36       /* maximum level: heat to prevent fogging up */
 #define ALTAIRCAM_OPTION_HEAT                  0x37       /* heat to prevent fogging up */
 #define ALTAIRCAM_OPTION_LOW_NOISE             0x38       /* low noise mode: 1 => enable */
+#define ALTAIRCAM_OPTION_POWER                 0x39       /* get power consumption, unit: milliwatt */
+#define ALTAIRCAM_OPTION_GLOBAL_RESET_MODE     0x3a       /* global reset mode */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8             0x00

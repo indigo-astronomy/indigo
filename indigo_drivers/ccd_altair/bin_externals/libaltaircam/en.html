@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 48.17729.2020.0922</li></ul>
+<ul><li>Version: 48.17962.2020.1110</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -1131,6 +1131,18 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>NA</td>
       </tr>
 	  <tr>
+      	<td>ALTAIRCAM_OPTION_POWER</td>
+      	<td>get power consumption, unit: milliwatt<br/>Only get</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+	  <tr>
+      	<td>ALTAIRCAM_OPTION_GLOBAL_RESET_MODE</td>
+      	<td>global reset mode</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+	  <tr>
       	<td>ALTAIRCAM_OPTION_DEVICE_RESET</td>
       	<td>reset usb device, simulate a replug<br/>Only put</td>
       	<td>NA</td>
@@ -1265,13 +1277,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
           0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms686277(v=vs.85).aspx">SetThreadPriority</a><br/>This option is not available at Linux and macOS.</td>
         <td>1</td>
-        <td>Yes</td>
-      </tr>
-      <tr>
-        <td>ALTAIRCAM_OPTION_PROCESSMODE</td>
-        <td>0 = better image quality, more cpu usage.<br/>
-          1 = lower image quality, less cpu usage.</td>
-        <td>0</td>
         <td>Yes</td>
       </tr>
 	  <tr>
@@ -2095,11 +2100,5 @@ public bool Snap(uint nResolutionIndex)
 <p>v3: more bit depth supported: 10bits, 12bits, 14bits, 16bits</p>
 <p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
 <p>v1: initial release</p>
-<hr/>
-<h1><font color="#0000FF">9. Contact</font></h1>
-<hr/>
-<p>If you have any problems in using this SDK, please use the following information to contact us.<br/>
- www: <a href="http://www.altair.com">www.altair.com</a><br/>
- email: support@altair.com</p>
 </body>
 </html>
