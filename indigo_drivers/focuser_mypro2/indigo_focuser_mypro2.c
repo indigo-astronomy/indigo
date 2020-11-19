@@ -43,66 +43,45 @@
 #include "indigo_focuser_mypro2.h"
 
 #define DSD_AF1_AF2_BAUDRATE            "9600"
-#define DSD_AF3_BAUDRATE                "115200"
 
 #define PRIVATE_DATA                    ((dsd_private_data *)device->private_data)
 
-#define DSD_MODEL_HINT_PROPERTY         (PRIVATE_DATA->model_hint_property)
-#define DSD_MODEL_AF1_2_ITEM            (DSD_MODEL_HINT_PROPERTY->items+0)
-#define DSD_MODEL_AF3_ITEM              (DSD_MODEL_HINT_PROPERTY->items+1)
 
-#define DSD_MODEL_HINT_PROPERTY_NAME    "DSD_MODEL_HINT"
-#define DSD_MODEL_AF1_2_ITEM_NAME       "AF1_2"
-#define DSD_MODEL_AF3_ITEM_NAME         "AF3"
+#define X_STEP_MODE_PROPERTY          (PRIVATE_DATA->step_mode_property)
+#define X_STEP_MODE_FULL_ITEM         (X_STEP_MODE_PROPERTY->items+0)
+#define X_STEP_MODE_HALF_ITEM         (X_STEP_MODE_PROPERTY->items+1)
+#define X_STEP_MODE_FOURTH_ITEM       (X_STEP_MODE_PROPERTY->items+2)
+#define X_STEP_MODE_EIGTH_ITEM        (X_STEP_MODE_PROPERTY->items+3)
+#define X_STEP_MODE_16TH_ITEM         (X_STEP_MODE_PROPERTY->items+4)
+#define X_STEP_MODE_32TH_ITEM         (X_STEP_MODE_PROPERTY->items+5)
+#define X_STEP_MODE_64TH_ITEM         (X_STEP_MODE_PROPERTY->items+6)
+#define X_STEP_MODE_128TH_ITEM        (X_STEP_MODE_PROPERTY->items+7)
 
+#define X_STEP_MODE_PROPERTY_NAME     "X_STEP_MODE"
+#define X_STEP_MODE_FULL_ITEM_NAME    "FULL"
+#define X_STEP_MODE_HALF_ITEM_NAME    "HALF"
+#define X_STEP_MODE_FOURTH_ITEM_NAME  "FOURTH"
+#define X_STEP_MODE_EIGTH_ITEM_NAME   "EIGTH"
+#define X_STEP_MODE_16TH_ITEM_NAME    "16TH"
+#define X_STEP_MODE_32TH_ITEM_NAME    "32TH"
+#define X_STEP_MODE_64TH_ITEM_NAME    "64TH"
+#define X_STEP_MODE_128TH_ITEM_NAME   "128TH"
 
-#define DSD_STEP_MODE_PROPERTY          (PRIVATE_DATA->step_mode_property)
-#define DSD_STEP_MODE_FULL_ITEM         (DSD_STEP_MODE_PROPERTY->items+0)
-#define DSD_STEP_MODE_HALF_ITEM         (DSD_STEP_MODE_PROPERTY->items+1)
-#define DSD_STEP_MODE_FOURTH_ITEM       (DSD_STEP_MODE_PROPERTY->items+2)
-#define DSD_STEP_MODE_EIGTH_ITEM        (DSD_STEP_MODE_PROPERTY->items+3)
-#define DSD_STEP_MODE_16TH_ITEM         (DSD_STEP_MODE_PROPERTY->items+4)
-#define DSD_STEP_MODE_32TH_ITEM         (DSD_STEP_MODE_PROPERTY->items+5)
-#define DSD_STEP_MODE_64TH_ITEM         (DSD_STEP_MODE_PROPERTY->items+6)
-#define DSD_STEP_MODE_128TH_ITEM        (DSD_STEP_MODE_PROPERTY->items+7)
-#define DSD_STEP_MODE_256TH_ITEM        (DSD_STEP_MODE_PROPERTY->items+8)
+#define X_COILS_MODE_PROPERTY              (PRIVATE_DATA->coils_mode_property)
+#define X_COILS_MODE_IDLE_OFF_ITEM         (X_COILS_MODE_PROPERTY->items+0)
+#define X_COILS_MODE_ALWAYS_ON_ITEM        (X_COILS_MODE_PROPERTY->items+1)
 
-#define DSD_STEP_MODE_PROPERTY_NAME     "DSD_STEP_MODE"
-#define DSD_STEP_MODE_FULL_ITEM_NAME    "FULL"
-#define DSD_STEP_MODE_HALF_ITEM_NAME    "HALF"
-#define DSD_STEP_MODE_FOURTH_ITEM_NAME  "FOURTH"
-#define DSD_STEP_MODE_EIGTH_ITEM_NAME   "EIGTH"
-#define DSD_STEP_MODE_16TH_ITEM_NAME    "16TH"
-#define DSD_STEP_MODE_32TH_ITEM_NAME    "32TH"
-#define DSD_STEP_MODE_64TH_ITEM_NAME    "64TH"
-#define DSD_STEP_MODE_128TH_ITEM_NAME   "128TH"
-#define DSD_STEP_MODE_256TH_ITEM_NAME   "256TH"
+#define X_COILS_MODE_PROPERTY_NAME         "X_COILS_MODE"
+#define X_COILS_MODE_IDLE_OFF_ITEM_NAME    "OFF_WHEN_IDLE"
+#define X_COILS_MODE_ALWAYS_ON_ITEM_NAME   "ALWAYS_ON"
 
-#define DSD_COILS_MODE_PROPERTY              (PRIVATE_DATA->coils_mode_property)
-#define DSD_COILS_MODE_IDLE_OFF_ITEM         (DSD_COILS_MODE_PROPERTY->items+0)
-#define DSD_COILS_MODE_ALWAYS_ON_ITEM        (DSD_COILS_MODE_PROPERTY->items+1)
-#define DSD_COILS_MODE_TIMEOUT_ITEM          (DSD_COILS_MODE_PROPERTY->items+2)
+#define X_TIMINGS_PROPERTY                 (PRIVATE_DATA->timings_property)
+#define X_TIMINGS_SETTLE_ITEM              (X_TIMINGS_PROPERTY->items+0)
+#define X_TIMINGS_COILS_TOUT_ITEM            (X_TIMINGS_PROPERTY->items+1)
 
-#define DSD_COILS_MODE_PROPERTY_NAME         "DSD_COILS_MODE"
-#define DSD_COILS_MODE_IDLE_OFF_ITEM_NAME    "OFF_WHEN_IDLE"
-#define DSD_COILS_MODE_ALWAYS_ON_ITEM_NAME   "ALWAYS_ON"
-#define DSD_COILS_MODE_TIMEOUT_ITEM_NAME     "TIMEOUT_OFF"
+#define X_TIMINGS_PROPERTY_NAME            "X_TIMINGS"
+#define X_TIMINGS_SETTLE_ITEM_NAME         "SETTLE_TIME"
 
-#define DSD_CURRENT_CONTROL_PROPERTY         (PRIVATE_DATA->current_control_property)
-#define DSD_CURRENT_CONTROL_MOVE_ITEM        (DSD_CURRENT_CONTROL_PROPERTY->items+0)
-#define DSD_CURRENT_CONTROL_HOLD_ITEM        (DSD_CURRENT_CONTROL_PROPERTY->items+1)
-
-#define DSD_CURRENT_CONTROL_PROPERTY_NAME    "DSD_CURRENT_CONTROL"
-#define DSD_CURRENT_CONTROL_MOVE_ITEM_NAME   "MOVE_CURRENT"
-#define DSD_CURRENT_CONTROL_HOLD_ITEM_NAME   "HOLD_CURRENT"
-
-#define DSD_TIMINGS_PROPERTY                 (PRIVATE_DATA->timings_property)
-#define DSD_TIMINGS_SETTLE_ITEM              (DSD_TIMINGS_PROPERTY->items+0)
-#define DSD_TIMINGS_COILS_TOUT_ITEM            (DSD_TIMINGS_PROPERTY->items+1)
-
-#define DSD_TIMINGS_PROPERTY_NAME            "DSD_TIMINGS"
-#define DSD_TIMINGS_SETTLE_ITEM_NAME         "SETTLE_TIME"
-#define DSD_TIMINGS_COILS_TOUT_ITEM_NAME     "COILS_POWER_TIMEOUT"
 
 
 // gp_bits is used as boolean
@@ -110,7 +89,6 @@
 
 typedef struct {
 	int handle;
-	int focuser_version;
 	uint32_t current_position, target_position, max_position;
 	int backlash;
 	double prev_temp;
@@ -127,8 +105,7 @@ static void compensate_focus(indigo_device *device, double new_temp);
 
 typedef enum {
 	COILS_MODE_IDLE_OFF = 0,
-	COILS_MODE_ALWAYS_ON = 1,
-	COILS_MODE_IDLE_TIMEOUT = 2
+	COILS_MODE_ALWAYS_ON = 1
 } coilsmode_t;
 
 typedef enum {
@@ -139,8 +116,7 @@ typedef enum {
 	STEP_MODE_16TH = 16,
 	STEP_MODE_32TH = 32,
 	STEP_MODE_64TH = 64,
-	STEP_MODE_128TH = 128,
-	STEP_MODE_256TH = 256
+	STEP_MODE_128TH = 128
 } stepmode_t;
 
 #define NO_TEMP_READING                (-127)
@@ -288,48 +264,49 @@ static bool mfp_stop(indigo_device *device) {
 }
 
 
-static bool dsd_sync_position(indigo_device *device, uint32_t pos) {
-	return dsd_command_set_value(device, "[SPOS%06d]", pos);
-}
-
-
-static bool dsd_set_reverse(indigo_device *device, bool enabled) {
+static bool mfp_sync_position(indigo_device *device, uint32_t pos) {
 	char command[DSD_CMD_LEN];
-	char response[DSD_CMD_LEN];
-
-	snprintf(command, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
-	if(!mfp_command(device, command, response, sizeof(response), 100)) return false;
-
-	if(strcmp(response, "(OK)") == 0) {
-		return true;
-	}
-	return false;
+	snprintf(command, DSD_CMD_LEN, ":31%06d#", pos);
+	return mfp_command(device, command, NULL, 0, 100);
 }
 
+
+static bool mfp_set_reverse(indigo_device *device, bool enabled) {
+	char command[DSD_CMD_LEN];
+	snprintf(command, DSD_CMD_LEN, ":14%d#", enabled ? 1 : 0);
+	return mfp_command(device, command, NULL, 0, 100);
+}
+
+
+static bool mfp_get_reverse(indigo_device *device, bool *reversed) {
+	int _reversed;
+	if(!mfp_command_get_int_value(device, ":13#", 'R', &_reversed)) return false;
+	*reversed = _reversed;
+}
 
 static bool mfp_get_position(indigo_device *device, uint32_t *pos) {
 	return mfp_command_get_int_value(device, ":00#", 'P', pos);
 }
 
-
 static bool mfp_goto_position(indigo_device *device, uint32_t position) {
 	char command[DSD_CMD_LEN];
-
 	snprintf(command, DSD_CMD_LEN, ":05%06d#", position);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
 
-static bool dsd_get_step_mode(indigo_device *device, stepmode_t *mode) {
+static bool mfp_get_step_mode(indigo_device *device, stepmode_t *mode) {
 	uint32_t _mode;
-	bool res = dsd_command_get_value(device, "[GSTP]", &_mode);
+	bool res = mfp_command_get_int_value(device, ":29#", 'S', &_mode);
 	*mode = _mode;
 	return res;
 }
 
 
-static bool dsd_set_step_mode(indigo_device *device, stepmode_t mode) {
-	return dsd_command_set_value(device, "[SSTP%d]", mode);
+static bool mfp_set_step_mode(indigo_device *device, stepmode_t mode) {
+	char command[DSD_CMD_LEN];
+	snprintf(command, DSD_CMD_LEN, ":30%d#", mode);
+	return mfp_command(device, command, NULL, 0, 100);
 }
 
 
@@ -363,79 +340,19 @@ static bool dsd_set_settle_buffer(indigo_device *device, uint32_t buffer) {
 }
 
 
-static bool dsd_get_coils_timeout(indigo_device *device, uint32_t *to) {
-	return dsd_command_get_value(device, "[GIDC]", to);
-}
-
-
-static bool dsd_set_coils_timeout(indigo_device *device, uint32_t to) {
-	return dsd_command_set_value(device, "[SIDC%06d]", to);
-}
-
-
-static bool dsd_get_coils_mode(indigo_device *device, coilsmode_t *mode) {
+static bool mfp_get_coils_mode(indigo_device *device, coilsmode_t *mode) {
 	uint32_t _mode;
-	bool res = dsd_command_get_value(device, "[GCLM]", &_mode);
+	bool res = mfp_command_get_int_value(device, ":11#", 'O', &_mode);
 	*mode = _mode;
 	return res;
 }
 
 
-static bool dsd_set_coils_mode(indigo_device *device, coilsmode_t mode) {
-	if (mode > 2) return false;
-	return dsd_command_set_value(device, "[SCLM%d]", mode);
-}
-
-
-/* Available on AF version < 3 */
-static bool dsd_get_move_current(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GCMV%]", current);
-}
-
-
-/* Available on AF version < 3 */
-static bool dsd_set_move_current(indigo_device *device, uint32_t current) {
-	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SCMV%d%%]", current);
-}
-
-
-/* Available on AF version < 3 */
-static bool dsd_get_hold_current(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GCHD%]", current);
-}
-
-
-/* Available on AF version < 3 */
-static bool dsd_set_hold_current(indigo_device *device, uint32_t current) {
-	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SCHD%d%%]", current);
-}
-
-
-/* Available on AF version 3 */
-static bool dsd_get_move_current_multiplier(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GMMM]", current);
-}
-
-
-/* Available on AF version 3 */
-static bool dsd_set_move_current_multiplier(indigo_device *device, uint32_t current) {
-	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SMMM%d]", current);
-}
-
-
-/* Available on AF version 3 */
-static bool dsd_get_hold_current_multiplier(indigo_device *device, uint32_t *current) {
-	return dsd_command_get_value(device, "[GMHM]", current);
-}
-
-
-/* Available on AF version 3 */
-static bool dsd_set_hold_current_multiplier(indigo_device *device, uint32_t current) {
-	if (current > 100) return false;
-	return dsd_command_set_value(device, "[SMHM%d]", current);
+static bool mfp_set_coils_mode(indigo_device *device, coilsmode_t mode) {
+	if (mode > 1) return false;
+	char command[DSD_CMD_LEN];
+	snprintf(command, DSD_CMD_LEN, ":12%d#", mode);
+	return mfp_command(device, command, NULL, 0, 100);
 }
 
 
@@ -450,19 +367,17 @@ static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
 }
 
 
-static bool dsd_is_moving(indigo_device *device, bool *is_moving) {
+static bool mfp_is_moving(indigo_device *device, bool *is_moving) {
 	return mfp_command_get_int_value(device, ":01#", 'I', (uint32_t *)is_moving);
 }
 
 
-static bool dsd_get_temperature(indigo_device *device, double *temperature) {
-	if ((PRIVATE_DATA->focuser_version < 2) || (!temperature)) return false;
-
+static bool mfp_get_temperature(indigo_device *device, double *temperature) {
 	char response[DSD_CMD_LEN]={0};
-	if (mfp_command(device, "[GTMC]", response, sizeof(response), 100)) {
-		int parsed = sscanf(response, "(%lf)", temperature);
+	if (mfp_command(device, ":06#", response, sizeof(response), 100)) {
+		int parsed = sscanf(response, "Z%lf#", temperature);
 		if (parsed != 1) return false;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[GTMC] -> %s = %lf", response, *temperature);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":06# -> %s = %lf", response, *temperature);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
@@ -475,8 +390,8 @@ static void focuser_timer_callback(indigo_device *device) {
 	bool moving;
 	uint32_t position;
 
-	if (!dsd_is_moving(device, &moving)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_is_moving(%d) failed", PRIVATE_DATA->handle);
+	if (!mfp_is_moving(device, &moving)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_is_moving(%d) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -507,12 +422,12 @@ static void temperature_timer_callback(indigo_device *device) {
 	//bool moving = false;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	if (!dsd_get_temperature(device, &temp)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle, temp);
+	if (!mfp_get_temperature(device, &temp)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle, temp);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "mfp_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
 	}
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
@@ -595,16 +510,13 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(DSD_STEP_MODE_PROPERTY, property))
-			indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
-		if (indigo_property_match(DSD_COILS_MODE_PROPERTY, property))
-			indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
-		if (indigo_property_match(DSD_CURRENT_CONTROL_PROPERTY, property))
-			indigo_define_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
-		if (indigo_property_match(DSD_TIMINGS_PROPERTY, property))
-			indigo_define_property(device, DSD_TIMINGS_PROPERTY, NULL);
+		if (indigo_property_match(X_STEP_MODE_PROPERTY, property))
+			indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
+		if (indigo_property_match(X_COILS_MODE_PROPERTY, property))
+			indigo_define_property(device, X_COILS_MODE_PROPERTY, NULL);
+		if (indigo_property_match(X_TIMINGS_PROPERTY, property))
+			indigo_define_property(device, X_TIMINGS_PROPERTY, NULL);
 	}
-	indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
@@ -651,50 +563,34 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
-		// -------------------------------------------------------------------------- DSD_MODEL_HINT_PROPERTY
-		DSD_MODEL_HINT_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_MODEL_HINT_PROPERTY_NAME, MAIN_GROUP, "Focuser model hint", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DSD_MODEL_HINT_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_switch_item(DSD_MODEL_AF1_2_ITEM, DSD_MODEL_AF1_2_ITEM_NAME, "AF1/AF2", true);
-		indigo_init_switch_item(DSD_MODEL_AF3_ITEM, DSD_MODEL_AF3_ITEM_NAME, "AF3", false);
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
-		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
-		if (DSD_STEP_MODE_PROPERTY == NULL)
+		X_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		if (X_STEP_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		DSD_STEP_MODE_PROPERTY->hidden = false;
-		indigo_init_switch_item(DSD_STEP_MODE_FULL_ITEM, DSD_STEP_MODE_FULL_ITEM_NAME, "Full step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_HALF_ITEM, DSD_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_FOURTH_ITEM, DSD_STEP_MODE_FOURTH_ITEM_NAME, "1/4 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_EIGTH_ITEM, DSD_STEP_MODE_EIGTH_ITEM_NAME, "1/8 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_16TH_ITEM, DSD_STEP_MODE_16TH_ITEM_NAME, "1/16 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_32TH_ITEM, DSD_STEP_MODE_32TH_ITEM_NAME, "1/32 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_64TH_ITEM, DSD_STEP_MODE_64TH_ITEM_NAME, "1/64 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_128TH_ITEM, DSD_STEP_MODE_128TH_ITEM_NAME, "1/128 step", false);
-		indigo_init_switch_item(DSD_STEP_MODE_256TH_ITEM, DSD_STEP_MODE_256TH_ITEM_NAME, "1/256 step", false);
+		X_STEP_MODE_PROPERTY->hidden = false;
+		indigo_init_switch_item(X_STEP_MODE_FULL_ITEM, X_STEP_MODE_FULL_ITEM_NAME, "Full step", false);
+		indigo_init_switch_item(X_STEP_MODE_HALF_ITEM, X_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
+		indigo_init_switch_item(X_STEP_MODE_FOURTH_ITEM, X_STEP_MODE_FOURTH_ITEM_NAME, "1/4 step", false);
+		indigo_init_switch_item(X_STEP_MODE_EIGTH_ITEM, X_STEP_MODE_EIGTH_ITEM_NAME, "1/8 step", false);
+		indigo_init_switch_item(X_STEP_MODE_16TH_ITEM, X_STEP_MODE_16TH_ITEM_NAME, "1/16 step", false);
+		indigo_init_switch_item(X_STEP_MODE_32TH_ITEM, X_STEP_MODE_32TH_ITEM_NAME, "1/32 step", false);
+		indigo_init_switch_item(X_STEP_MODE_64TH_ITEM, X_STEP_MODE_64TH_ITEM_NAME, "1/64 step", false);
+		indigo_init_switch_item(X_STEP_MODE_128TH_ITEM, X_STEP_MODE_128TH_ITEM_NAME, "1/128 step", false);
 
 		// -------------------------------------------------------------------------- COILS_MODE_PROPERTY
-		DSD_COILS_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_COILS_MODE_PROPERTY_NAME, "Advanced", "Coils Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (DSD_COILS_MODE_PROPERTY == NULL)
+		X_COILS_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_COILS_MODE_PROPERTY_NAME, "Advanced", "Coils Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_COILS_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		DSD_COILS_MODE_PROPERTY->hidden = false;
-		indigo_init_switch_item(DSD_COILS_MODE_IDLE_OFF_ITEM, DSD_COILS_MODE_IDLE_OFF_ITEM_NAME, "OFF when idle", false);
-		indigo_init_switch_item(DSD_COILS_MODE_ALWAYS_ON_ITEM, DSD_COILS_MODE_ALWAYS_ON_ITEM_NAME, "Always ON", false);
-		indigo_init_switch_item(DSD_COILS_MODE_TIMEOUT_ITEM, DSD_COILS_MODE_TIMEOUT_ITEM_NAME, "OFF after timeout", false);
-		//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
-		DSD_CURRENT_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, DSD_CURRENT_CONTROL_PROPERTY_NAME, "Advanced", "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (DSD_CURRENT_CONTROL_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(DSD_CURRENT_CONTROL_MOVE_ITEM, DSD_CURRENT_CONTROL_MOVE_ITEM_NAME, "Move current (%)", 10, 100, 1, 50);
-		indigo_init_number_item(DSD_CURRENT_CONTROL_HOLD_ITEM, DSD_CURRENT_CONTROL_HOLD_ITEM_NAME, "Hold current (%)", 10, 100, 1, 50);
+		X_COILS_MODE_PROPERTY->hidden = false;
+		indigo_init_switch_item(X_COILS_MODE_IDLE_OFF_ITEM, X_COILS_MODE_IDLE_OFF_ITEM_NAME, "OFF when idle", false);
+		indigo_init_switch_item(X_COILS_MODE_ALWAYS_ON_ITEM, X_COILS_MODE_ALWAYS_ON_ITEM_NAME, "Always ON", false);
 		//--------------------------------------------------------------------------- TIMINGS_PROPERTY
-		DSD_TIMINGS_PROPERTY = indigo_init_number_property(NULL, device->name, DSD_TIMINGS_PROPERTY_NAME, "Advanced", "Timing settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (DSD_TIMINGS_PROPERTY == NULL)
+		X_TIMINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_TIMINGS_PROPERTY_NAME, "Advanced", "Timing settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_TIMINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(DSD_TIMINGS_SETTLE_ITEM, DSD_TIMINGS_SETTLE_ITEM_NAME, "Settle time (ms)", 0, 99999, 100, 0);
-		indigo_init_number_item(DSD_TIMINGS_COILS_TOUT_ITEM, DSD_TIMINGS_COILS_TOUT_ITEM_NAME, "Coils power timeout (ms)", 9, 999999, 1000, 60000);
+		indigo_init_number_item(X_TIMINGS_SETTLE_ITEM, X_TIMINGS_SETTLE_ITEM_NAME, "Settle time (ms)", 0, 99999, 100, 0);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -703,41 +599,38 @@ static indigo_result focuser_attach(indigo_device *device) {
 static void update_step_mode_switches(indigo_device * device) {
 	stepmode_t value;
 
-	if (!dsd_get_step_mode(device, &value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) failed", PRIVATE_DATA->handle);
+	if (!mfp_get_step_mode(device, &value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_step_mode(%d) failed", PRIVATE_DATA->handle);
 		return;
 	}
 
 	switch (value) {
 	case STEP_MODE_FULL:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_FULL_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_FULL_ITEM, true);
 		break;
 	case STEP_MODE_HALF:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_HALF_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_HALF_ITEM, true);
 		break;
 	case STEP_MODE_FOURTH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_FOURTH_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_FOURTH_ITEM, true);
 		break;
 	case STEP_MODE_EIGTH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_EIGTH_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_EIGTH_ITEM, true);
 		break;
 	case STEP_MODE_16TH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_16TH_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_16TH_ITEM, true);
 		break;
 	case STEP_MODE_32TH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_32TH_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_32TH_ITEM, true);
 		break;
 	case STEP_MODE_64TH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_64TH_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_64TH_ITEM, true);
 		break;
 	case STEP_MODE_128TH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_128TH_ITEM, true);
-		break;
-	case STEP_MODE_256TH:
-		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_256TH_ITEM, true);
+		indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_128TH_ITEM, true);
 		break;
 	default:
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
 	}
 }
 
@@ -745,23 +638,20 @@ static void update_step_mode_switches(indigo_device * device) {
 static void update_coils_mode_switches(indigo_device * device) {
 	coilsmode_t value;
 
-	if (!dsd_get_coils_mode(device, &value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) failed", PRIVATE_DATA->handle);
+	if (!mfp_get_coils_mode(device, &value)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_coils_mode(%d) failed", PRIVATE_DATA->handle);
 		return;
 	}
 
 	switch (value) {
 	case COILS_MODE_IDLE_OFF:
-		indigo_set_switch(DSD_COILS_MODE_PROPERTY, DSD_COILS_MODE_IDLE_OFF_ITEM, true);
+		indigo_set_switch(X_COILS_MODE_PROPERTY, X_COILS_MODE_IDLE_OFF_ITEM, true);
 		break;
 	case COILS_MODE_ALWAYS_ON:
-		indigo_set_switch(DSD_COILS_MODE_PROPERTY, DSD_COILS_MODE_ALWAYS_ON_ITEM, true);
-		break;
-	case COILS_MODE_IDLE_TIMEOUT:
-		indigo_set_switch(DSD_COILS_MODE_PROPERTY, DSD_COILS_MODE_TIMEOUT_ITEM, true);
+		indigo_set_switch(X_COILS_MODE_PROPERTY, X_COILS_MODE_ALWAYS_ON_ITEM, true);
 		break;
 	default:
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_coils_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
 	}
 }
 
@@ -779,10 +669,10 @@ static void focuser_connect_callback(indigo_device *device) {
 			} else {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				char *name = DEVICE_PORT_ITEM->text.value;
-				if (!indigo_is_device_url(name, "dsd")) {
+				if (!indigo_is_device_url(name, "mfp")) {
 					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 					/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
-					sleep(2);
+					sleep(1);
 				} else {
 					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
 					PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
@@ -817,29 +707,10 @@ static void focuser_connect_callback(indigo_device *device) {
 						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
-					//PRIVATE_DATA->focuser_version = 3;
-					if (PRIVATE_DATA->focuser_version < 3) {
-						/* DSD version < 3 suports speeds from 1 to 3 */
-						FOCUSER_SPEED_ITEM->number.max = 3;
-
-						/* DSD version < 3 suports steps from full to 1/8 */
-						DSD_STEP_MODE_PROPERTY->count = 4;
-					} else {
-						/* DSD version 3 does not have coils mode */
-						DSD_COILS_MODE_PROPERTY->hidden = true;
-						/* DSD version 3 does not have coils timeout */
-						DSD_TIMINGS_PROPERTY->count = 1;
-
-						/* Current mulipliers in AF 3 are in range 1-100 */
-						DSD_CURRENT_CONTROL_MOVE_ITEM->number.min = 1.0;
-						DSD_CURRENT_CONTROL_HOLD_ITEM->number.min = 1.0;
-						strncpy(DSD_CURRENT_CONTROL_MOVE_ITEM->label, "Move current multiplier (%)", INDIGO_VALUE_SIZE);
-						strncpy(DSD_CURRENT_CONTROL_HOLD_ITEM->label, "Hold current multiplier (%)", INDIGO_VALUE_SIZE);
-					}
 
 					mfp_get_position(device, &position);
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
-
+					/*
 					if (!dsd_get_max_position(device, &PRIVATE_DATA->max_position)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle);
 					}
@@ -849,90 +720,52 @@ static void focuser_connect_callback(indigo_device *device) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
 					}
 					FOCUSER_SPEED_ITEM->number.value = (double)value;
-
+					*/
 					/* While we do not have max move property hardoce it to max position */
-					dsd_set_max_move(device, (uint32_t)FOCUSER_POSITION_ITEM->number.max);
+					//dsd_set_max_move(device, (uint32_t)FOCUSER_POSITION_ITEM->number.max);
 
-					/* DSD does not have reverse motion, so we set it to be sure we know its state */
-					dsd_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+					mfp_get_reverse(device, &FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+					FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+
+					update_coils_mode_switches(device);
+					indigo_define_property(device, X_COILS_MODE_PROPERTY, NULL);
 
 					update_step_mode_switches(device);
-					indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
-
-					if (PRIVATE_DATA->focuser_version < 3) {
-						update_coils_mode_switches(device);
-						indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
-
-						if (!dsd_get_move_current(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
-						}
-						DSD_CURRENT_CONTROL_MOVE_ITEM->number.value = (double)value;
-						DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
-						if (!dsd_get_hold_current(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle);
-						}
-						DSD_CURRENT_CONTROL_HOLD_ITEM->number.value = (double)value;
-						DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
-					} else {
-						if (!dsd_get_move_current_multiplier(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current_multiplier(%d) failed", PRIVATE_DATA->handle);
-						}
-						DSD_CURRENT_CONTROL_MOVE_ITEM->number.value = (double)value;
-						DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
-						if (!dsd_get_hold_current_multiplier(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current_multiplier(%d) failed", PRIVATE_DATA->handle);
-						}
-						DSD_CURRENT_CONTROL_HOLD_ITEM->number.value = (double)value;
-						DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
-					}
-					indigo_define_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
+					indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
 
 					if (!dsd_get_settle_buffer(device, &value)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
 					}
-					DSD_TIMINGS_SETTLE_ITEM->number.value = (double)value;
-					DSD_TIMINGS_SETTLE_ITEM->number.target = (double)value;
-					/* DSD AF3 does not have coils timeout */
-					if (PRIVATE_DATA->focuser_version < 3) {
-						if (!dsd_get_coils_timeout(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_timeout(%d) failed", PRIVATE_DATA->handle);
-						}
-						DSD_TIMINGS_COILS_TOUT_ITEM->number.value = (double)value;
-						DSD_TIMINGS_COILS_TOUT_ITEM->number.target = (double)value;
-					}
-					indigo_define_property(device, DSD_TIMINGS_PROPERTY, NULL);
+					X_TIMINGS_SETTLE_ITEM->number.value = (double)value;
+					X_TIMINGS_SETTLE_ITEM->number.target = (double)value;
+					indigo_define_property(device, X_TIMINGS_PROPERTY, NULL);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 
 					indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 
-					if (PRIVATE_DATA->focuser_version > 1) {
-						FOCUSER_MODE_PROPERTY->hidden = false;
-						FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-						dsd_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
-						PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-						FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-						FOCUSER_COMPENSATION_ITEM->number.min = -10000;
-						FOCUSER_COMPENSATION_ITEM->number.max = 10000;
-						indigo_set_timer(device, 1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
-					} else {
-						FOCUSER_MODE_PROPERTY->hidden = true;
-					}
+
+					FOCUSER_MODE_PROPERTY->hidden = false;
+					FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+					mfp_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
+					PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
+					FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+					FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+					FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+					indigo_set_timer(device, 1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 				}
 			}
 		}
 	} else {
 		if (device->is_connected) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
-			if (PRIVATE_DATA->focuser_version > 1) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-			}
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+
 			mfp_stop(device);
-			indigo_delete_property(device, DSD_STEP_MODE_PROPERTY, NULL);
-			indigo_delete_property(device, DSD_COILS_MODE_PROPERTY, NULL);
-			indigo_delete_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
-			indigo_delete_property(device, DSD_TIMINGS_PROPERTY, NULL);
+			indigo_delete_property(device, X_STEP_MODE_PROPERTY, NULL);
+			indigo_delete_property(device, X_COILS_MODE_PROPERTY, NULL);
+			indigo_delete_property(device, X_TIMINGS_PROPERTY, NULL);
 
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			int res = close(PRIVATE_DATA->handle);
@@ -964,25 +797,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSD_MODEL_HINT_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSD_MODEL_HINT
-		indigo_property_copy_values(DSD_MODEL_HINT_PROPERTY, property, false);
-		DSD_MODEL_HINT_PROPERTY->state = INDIGO_OK_STATE;
-		if (DSD_MODEL_AF3_ITEM->sw.value) {
-			strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF3_BAUDRATE, INDIGO_VALUE_SIZE);
-		} else {
-			strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE, INDIGO_VALUE_SIZE);
-		}
-		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
-		indigo_update_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
-		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (!dsd_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_reverse(%d, %d) failed", PRIVATE_DATA->handle, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+		if (!mfp_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_reverse(%d, %d) failed", PRIVATE_DATA->handle, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
@@ -1007,8 +828,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				if(!dsd_sync_position(device, PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				if(!mfp_sync_position(device, PRIVATE_DATA->target_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				uint32_t position;
@@ -1123,148 +944,73 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSD_STEP_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSD_STEP_MODE_PROPERTY
+	} else if (indigo_property_match(X_STEP_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_STEP_MODE_PROPERTY
 		if (!IS_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(DSD_STEP_MODE_PROPERTY, property, false);
-		DSD_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(X_STEP_MODE_PROPERTY, property, false);
+		X_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		stepmode_t mode = STEP_MODE_FULL;
-		if(DSD_STEP_MODE_FULL_ITEM->sw.value) {
+		if(X_STEP_MODE_FULL_ITEM->sw.value) {
 			mode = STEP_MODE_FULL;
-		} else if(DSD_STEP_MODE_HALF_ITEM->sw.value) {
+		} else if(X_STEP_MODE_HALF_ITEM->sw.value) {
 			mode = STEP_MODE_HALF;
-		} else if(DSD_STEP_MODE_FOURTH_ITEM->sw.value) {
+		} else if(X_STEP_MODE_FOURTH_ITEM->sw.value) {
 			mode = STEP_MODE_FOURTH;
-		} else if(DSD_STEP_MODE_EIGTH_ITEM->sw.value) {
+		} else if(X_STEP_MODE_EIGTH_ITEM->sw.value) {
 			mode = STEP_MODE_EIGTH;
-		} else if(DSD_STEP_MODE_16TH_ITEM->sw.value) {
+		} else if(X_STEP_MODE_16TH_ITEM->sw.value) {
 			mode = STEP_MODE_16TH;
-		} else if(DSD_STEP_MODE_32TH_ITEM->sw.value) {
+		} else if(X_STEP_MODE_32TH_ITEM->sw.value) {
 			mode = STEP_MODE_32TH;
-		} else if(DSD_STEP_MODE_64TH_ITEM->sw.value) {
+		} else if(X_STEP_MODE_64TH_ITEM->sw.value) {
 			mode = STEP_MODE_64TH;
-		} else if(DSD_STEP_MODE_128TH_ITEM->sw.value) {
+		} else if(X_STEP_MODE_128TH_ITEM->sw.value) {
 			mode = STEP_MODE_128TH;
-		} else if(DSD_STEP_MODE_256TH_ITEM->sw.value) {
-			mode = STEP_MODE_256TH;
 		}
-		if (!dsd_set_step_mode(device, mode)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
-			DSD_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (!mfp_set_step_mode(device, mode)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
+			X_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		update_step_mode_switches(device);
-		indigo_update_property(device, DSD_STEP_MODE_PROPERTY, NULL);
+		indigo_update_property(device, X_STEP_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSD_CURRENT_CONTROL_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSD_CURRENT_CONTROL_PROPERTY
+	} else if (indigo_property_match(X_TIMINGS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_TIMINGS_PROPERTY
 		if (!IS_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(DSD_CURRENT_CONTROL_PROPERTY, property, false);
-		DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(X_TIMINGS_PROPERTY, property, false);
+		X_TIMINGS_PROPERTY->state = INDIGO_OK_STATE;
 
-		uint32_t value;
-		if (PRIVATE_DATA->focuser_version < 3) {
-			if (!dsd_set_move_current(device, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_move_current(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target);
-				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-
-			if (!dsd_set_hold_current(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
-				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-
-			if (!dsd_get_move_current(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
-			} else {
-				DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
-			}
-
-			if (!dsd_get_hold_current(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle);
-				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
-			}
-		} else {
-			if (!dsd_set_move_current_multiplier(device, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_move_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target);
-				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-
-			if (!dsd_set_hold_current_multiplier(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
-				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-
-			if (!dsd_get_move_current_multiplier(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current_multiplier(%d) failed", PRIVATE_DATA->handle);
-			} else {
-				DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
-			}
-
-			if (!dsd_get_hold_current_multiplier(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current_multiplier(%d) failed", PRIVATE_DATA->handle);
-				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
-			}
-		}
-
-		indigo_update_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(DSD_TIMINGS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSD_TIMINGS_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(DSD_TIMINGS_PROPERTY, property, false);
-		DSD_TIMINGS_PROPERTY->state = INDIGO_OK_STATE;
-
-		if (!dsd_set_settle_buffer(device, (uint32_t)DSD_TIMINGS_SETTLE_ITEM->number.target)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_settle_buffer(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_TIMINGS_SETTLE_ITEM->number.target);
-			DSD_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (!dsd_set_settle_buffer(device, (uint32_t)X_TIMINGS_SETTLE_ITEM->number.target)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_settle_buffer(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)X_TIMINGS_SETTLE_ITEM->number.target);
+			X_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 
 		uint32_t value;
 		if (!dsd_get_settle_buffer(device, &value)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
 		} else {
-			DSD_TIMINGS_SETTLE_ITEM->number.target = (double)value;
+			X_TIMINGS_SETTLE_ITEM->number.target = (double)value;
 		}
 
-		if (PRIVATE_DATA->focuser_version < 3) {
-			if (!dsd_set_coils_timeout(device, (uint32_t)DSD_TIMINGS_COILS_TOUT_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_coils_timeout(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_TIMINGS_COILS_TOUT_ITEM->number.target);
-				DSD_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-
-			if (!dsd_get_coils_timeout(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_timeout(%d) failed", PRIVATE_DATA->handle);
-				DSD_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				DSD_TIMINGS_COILS_TOUT_ITEM->number.target = (double)value;
-			}
-		}
-
-		indigo_update_property(device, DSD_TIMINGS_PROPERTY, NULL);
+		indigo_update_property(device, X_TIMINGS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSD_COILS_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSD_COILS_MODE_PROPERTY
+	} else if (indigo_property_match(X_COILS_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_COILS_MODE_PROPERTY
 		if (!IS_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(DSD_COILS_MODE_PROPERTY, property, false);
-		DSD_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(X_COILS_MODE_PROPERTY, property, false);
+		X_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		coilsmode_t mode = COILS_MODE_IDLE_OFF;
-		if(DSD_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
+		if(X_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
 			mode = COILS_MODE_IDLE_OFF;
-		} else if(DSD_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {
+		} else if(X_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {
 			mode = COILS_MODE_ALWAYS_ON;
-		} else if(DSD_COILS_MODE_TIMEOUT_ITEM->sw.value) {
-			mode = COILS_MODE_IDLE_TIMEOUT;
 		}
-		if (!dsd_set_coils_mode(device, mode)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_coils_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
-			DSD_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (!mfp_set_coils_mode(device, mode)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_coils_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
+			X_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		update_coils_mode_switches(device);
-		indigo_update_property(device, DSD_COILS_MODE_PROPERTY, NULL);
+		indigo_update_property(device, X_COILS_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
@@ -1298,11 +1044,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, DSD_MODEL_HINT_PROPERTY);
-			indigo_save_property(device, NULL, DSD_STEP_MODE_PROPERTY);
-			indigo_save_property(device, NULL, DSD_COILS_MODE_PROPERTY);
-			indigo_save_property(device, NULL, DSD_CURRENT_CONTROL_PROPERTY);
-			indigo_save_property(device, NULL, DSD_TIMINGS_PROPERTY);
+			indigo_save_property(device, NULL, X_STEP_MODE_PROPERTY);
+			indigo_save_property(device, NULL, X_COILS_MODE_PROPERTY);
+			indigo_save_property(device, NULL, X_TIMINGS_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -1316,15 +1060,12 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connect_callback(device);
 	}
-	indigo_release_property(DSD_STEP_MODE_PROPERTY);
-	indigo_release_property(DSD_COILS_MODE_PROPERTY);
-	indigo_release_property(DSD_CURRENT_CONTROL_PROPERTY);
-	indigo_release_property(DSD_TIMINGS_PROPERTY);
+	indigo_release_property(X_STEP_MODE_PROPERTY);
+	indigo_release_property(X_COILS_MODE_PROPERTY);
+	indigo_release_property(X_TIMINGS_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
-	indigo_delete_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
-	indigo_release_property(DSD_MODEL_HINT_PROPERTY);
 	return indigo_focuser_detach(device);
 }
 
