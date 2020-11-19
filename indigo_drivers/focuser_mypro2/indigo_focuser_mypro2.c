@@ -187,16 +187,16 @@ static bool mfp_get_info(indigo_device *device, char *board, char *firmware) {
 	char response[MFP_CMD_LEN]={0};
 	if (mfp_command(device, ":04#", response, sizeof(response), 100)) {
 		char *delim = NULL;
-		if (delim = strchr(response, '\n')) {
+		if ((delim = strchr(response, '\n'))) {
 			*delim = ' ';
 		}
 		if (!delim) return false;
-		if(delim = strchr(response, '\r')) {
+		if ((delim = strchr(response, '\r'))) {
 			*delim = ' ';
 		}
 		if (!delim) return false;
 
-		if(delim = strrchr(response, '#')) {
+		if ((delim = strrchr(response, '#'))) {
 			*delim = '\0';
 		}
 		if (!delim) return false;
