@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** My Focuser pro2 focuser driver
+/** myFocuserPro2 focuser driver
  \file indigo_focuser_mypro2.h
  */
 
@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define FOCUSER_MFP2_NAME              "My Focuser pro2"
+#define FOCUSER_MFP2_NAME              "myFocuserPro2"
 
 extern indigo_result indigo_focuser_mypro2(indigo_driver_action action, indigo_driver_info *info);
 

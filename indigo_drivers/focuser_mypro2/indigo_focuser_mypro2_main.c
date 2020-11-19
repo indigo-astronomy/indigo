@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** My Focuser pro2 focuser driver main
+/** myFocuserPro2 focuser driver main
  \file indigo_focuser_mypro2_main.c
  */
 
