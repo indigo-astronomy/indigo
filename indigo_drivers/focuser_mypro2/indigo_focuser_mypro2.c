@@ -75,13 +75,11 @@
 #define X_COILS_MODE_IDLE_OFF_ITEM_NAME    "OFF_WHEN_IDLE"
 #define X_COILS_MODE_ALWAYS_ON_ITEM_NAME   "ALWAYS_ON"
 
-#define X_TIMINGS_PROPERTY                 (PRIVATE_DATA->timings_property)
-#define X_TIMINGS_SETTLE_ITEM              (X_TIMINGS_PROPERTY->items+0)
-#define X_TIMINGS_COILS_TOUT_ITEM            (X_TIMINGS_PROPERTY->items+1)
+#define X_SETTLE_TIME_PROPERTY             (PRIVATE_DATA->timings_property)
+#define X_SETTLE_TIME_ITEM                 (X_SETTLE_TIME_PROPERTY->items+0)
 
-#define X_TIMINGS_PROPERTY_NAME            "X_TIMINGS"
-#define X_TIMINGS_SETTLE_ITEM_NAME         "SETTLE_TIME"
-
+#define X_SETTLE_TIME_PROPERTY_NAME        "X_SETTLE_TIME"
+#define X_SETTLE_TIME_ITEM_NAME            "SETTLE_TIME"
 
 
 // gp_bits is used as boolean
@@ -332,13 +330,15 @@ static bool mfp_set_max_position(indigo_device *device, uint32_t position) {
 }
 
 
-static bool dsd_get_settle_buffer(indigo_device *device, uint32_t *buffer) {
-	return dsd_command_get_value(device, "[GBUF]", buffer);
+static bool mfp_get_settle_buffer(indigo_device *device, uint32_t *delay) {
+	return mfp_command_get_int_value(device, ":72#", '3', delay);
 }
 
 
-static bool dsd_set_settle_buffer(indigo_device *device, uint32_t buffer) {
-	return dsd_command_set_value(device, "[SBUF%06d]", buffer);
+static bool mfp_set_settle_buffer(indigo_device *device, uint32_t delay) {
+	char command[DSD_CMD_LEN];
+	snprintf(command, DSD_CMD_LEN, ":71%d#", delay);
+	return mfp_command(device, command, NULL, 0, 100);
 }
 
 
@@ -516,8 +516,8 @@ static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
 		if (indigo_property_match(X_COILS_MODE_PROPERTY, property))
 			indigo_define_property(device, X_COILS_MODE_PROPERTY, NULL);
-		if (indigo_property_match(X_TIMINGS_PROPERTY, property))
-			indigo_define_property(device, X_TIMINGS_PROPERTY, NULL);
+		if (indigo_property_match(X_SETTLE_TIME_PROPERTY, property))
+			indigo_define_property(device, X_SETTLE_TIME_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -587,10 +587,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(X_COILS_MODE_IDLE_OFF_ITEM, X_COILS_MODE_IDLE_OFF_ITEM_NAME, "OFF when idle", false);
 		indigo_init_switch_item(X_COILS_MODE_ALWAYS_ON_ITEM, X_COILS_MODE_ALWAYS_ON_ITEM_NAME, "Always ON", false);
 		//--------------------------------------------------------------------------- TIMINGS_PROPERTY
-		X_TIMINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_TIMINGS_PROPERTY_NAME, "Advanced", "Timing settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_TIMINGS_PROPERTY == NULL)
+		X_SETTLE_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, X_SETTLE_TIME_PROPERTY_NAME, "Advanced", "Settle time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_SETTLE_TIME_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_TIMINGS_SETTLE_ITEM, X_TIMINGS_SETTLE_ITEM_NAME, "Settle time (ms)", 0, 99999, 100, 0);
+		indigo_init_number_item(X_SETTLE_TIME_ITEM, X_SETTLE_TIME_ITEM_NAME, "Settle time (ms)", 0, 999, 10, 0);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -734,12 +734,12 @@ static void focuser_connect_callback(indigo_device *device) {
 					update_step_mode_switches(device);
 					indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
 
-					if (!dsd_get_settle_buffer(device, &value)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
+					if (!mfp_get_settle_buffer(device, &value)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
 					}
-					X_TIMINGS_SETTLE_ITEM->number.value = (double)value;
-					X_TIMINGS_SETTLE_ITEM->number.target = (double)value;
-					indigo_define_property(device, X_TIMINGS_PROPERTY, NULL);
+					X_SETTLE_TIME_ITEM->number.value = (double)value;
+					X_SETTLE_TIME_ITEM->number.target = (double)value;
+					indigo_define_property(device, X_SETTLE_TIME_PROPERTY, NULL);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
@@ -766,7 +766,7 @@ static void focuser_connect_callback(indigo_device *device) {
 			mfp_stop(device);
 			indigo_delete_property(device, X_STEP_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, X_COILS_MODE_PROPERTY, NULL);
-			indigo_delete_property(device, X_TIMINGS_PROPERTY, NULL);
+			indigo_delete_property(device, X_SETTLE_TIME_PROPERTY, NULL);
 
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			int res = close(PRIVATE_DATA->handle);
@@ -975,25 +975,25 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		update_step_mode_switches(device);
 		indigo_update_property(device, X_STEP_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_TIMINGS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_TIMINGS_PROPERTY
+	} else if (indigo_property_match(X_SETTLE_TIME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_SETTLE_TIME_PROPERTY
 		if (!IS_CONNECTED) return INDIGO_OK;
-		indigo_property_copy_values(X_TIMINGS_PROPERTY, property, false);
-		X_TIMINGS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(X_SETTLE_TIME_PROPERTY, property, false);
+		X_SETTLE_TIME_PROPERTY->state = INDIGO_OK_STATE;
 
-		if (!dsd_set_settle_buffer(device, (uint32_t)X_TIMINGS_SETTLE_ITEM->number.target)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_settle_buffer(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)X_TIMINGS_SETTLE_ITEM->number.target);
-			X_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (!mfp_set_settle_buffer(device, (uint32_t)X_SETTLE_TIME_ITEM->number.target)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_settle_buffer(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)X_SETTLE_TIME_ITEM->number.target);
+			X_SETTLE_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 
 		uint32_t value;
-		if (!dsd_get_settle_buffer(device, &value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
+		if (!mfp_get_settle_buffer(device, &value)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
 		} else {
-			X_TIMINGS_SETTLE_ITEM->number.target = (double)value;
+			X_SETTLE_TIME_ITEM->number.target = (double)value;
 		}
 
-		indigo_update_property(device, X_TIMINGS_PROPERTY, NULL);
+		indigo_update_property(device, X_SETTLE_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_COILS_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_COILS_MODE_PROPERTY
@@ -1047,7 +1047,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_STEP_MODE_PROPERTY);
 			indigo_save_property(device, NULL, X_COILS_MODE_PROPERTY);
-			indigo_save_property(device, NULL, X_TIMINGS_PROPERTY);
+			indigo_save_property(device, NULL, X_SETTLE_TIME_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -1063,7 +1063,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 	indigo_release_property(X_STEP_MODE_PROPERTY);
 	indigo_release_property(X_COILS_MODE_PROPERTY);
-	indigo_release_property(X_TIMINGS_PROPERTY);
+	indigo_release_property(X_SETTLE_TIME_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
