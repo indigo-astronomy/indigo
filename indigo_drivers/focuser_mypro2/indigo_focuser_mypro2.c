@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** My Focuser pro2 focuser driver
+/** myFocuserPro2 focuser driver
  \file indigo_focuser_mypro2.c
  */
 
@@ -42,9 +42,9 @@
 
 #include "indigo_focuser_mypro2.h"
 
-#define DSD_AF1_AF2_BAUDRATE            "9600"
+#define SERIAL_BAUDRATE            "9600"
 
-#define PRIVATE_DATA                    ((dsd_private_data *)device->private_data)
+#define PRIVATE_DATA                    ((mfp_private_data *)device->private_data)
 
 
 #define X_STEP_MODE_PROPERTY          (PRIVATE_DATA->step_mode_property)
@@ -93,13 +93,13 @@ typedef struct {
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
 	indigo_property *step_mode_property, *coils_mode_property, *current_control_property, *timings_property, *model_hint_property;
-} dsd_private_data;
+} mfp_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
 
-/* Deepsky Dad Commands ======================================================================== */
+/* My FP2 Commands ======================================================================== */
 
-#define DSD_CMD_LEN 100
+#define MFP_CMD_LEN 100
 
 typedef enum {
 	COILS_MODE_IDLE_OFF = 0,
@@ -184,7 +184,7 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 static bool mfp_get_info(indigo_device *device, char *board, char *firmware) {
 	if(!board || !firmware) return false;
 
-	char response[DSD_CMD_LEN]={0};
+	char response[MFP_CMD_LEN]={0};
 	if (mfp_command(device, ":04#", response, sizeof(response), 100)) {
 		char *delim = NULL;
 		if (delim = strchr(response, '\n')) {
@@ -213,24 +213,10 @@ static bool mfp_get_info(indigo_device *device, char *board, char *firmware) {
 }
 
 
-static bool dsd_command_get_value(indigo_device *device, const char *command, uint32_t *value) {
-	if (!value) return false;
-
-	char response[DSD_CMD_LEN]={0};
-	if (mfp_command(device, command, response, sizeof(response), 100)) {
-		int parsed = sscanf(response, "(%d)", value);
-		if (parsed != 1) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *value);
-		return true;
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
-	return false;
-}
-
 static bool mfp_command_get_int_value(indigo_device *device, const char *command, char expect, uint32_t *value) {
 	if (!value) return false;
 
-	char response[DSD_CMD_LEN]={0};
+	char response[MFP_CMD_LEN]={0};
 	if (mfp_command(device, command, response, sizeof(response), 100)) {
 		char format[100];
 		sprintf(format, "%c%%d#", expect);
@@ -243,19 +229,6 @@ static bool mfp_command_get_int_value(indigo_device *device, const char *command
 	return false;
 }
 
-static bool dsd_command_set_value(indigo_device *device, const char *command, uint32_t value) {
-	char command_string[DSD_CMD_LEN];
-	char response[DSD_CMD_LEN];
-
-	snprintf(command_string, DSD_CMD_LEN, command, value);
-	if(!mfp_command(device, command_string, response, sizeof(response), 100)) return false;
-
-	if(strcmp(response, "(OK)") == 0) {
-		return true;
-	}
-	return false;
-}
-
 
 static bool mfp_stop(indigo_device *device) {
 	return mfp_command(device, ":27#", NULL, 0, 100);
@@ -263,15 +236,15 @@ static bool mfp_stop(indigo_device *device) {
 
 
 static bool mfp_sync_position(indigo_device *device, uint32_t pos) {
-	char command[DSD_CMD_LEN];
-	snprintf(command, DSD_CMD_LEN, ":31%06d#", pos);
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":31%06d#", pos);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
 
 static bool mfp_set_reverse(indigo_device *device, bool enabled) {
-	char command[DSD_CMD_LEN];
-	snprintf(command, DSD_CMD_LEN, ":14%d#", enabled ? 1 : 0);
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":14%d#", enabled ? 1 : 0);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
@@ -287,8 +260,8 @@ static bool mfp_get_position(indigo_device *device, uint32_t *pos) {
 }
 
 static bool mfp_goto_position(indigo_device *device, uint32_t position) {
-	char command[DSD_CMD_LEN];
-	snprintf(command, DSD_CMD_LEN, ":05%06d#", position);
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":05%06d#", position);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
@@ -302,21 +275,11 @@ static bool mfp_get_step_mode(indigo_device *device, stepmode_t *mode) {
 
 
 static bool mfp_set_step_mode(indigo_device *device, stepmode_t mode) {
-	char command[DSD_CMD_LEN];
-	snprintf(command, DSD_CMD_LEN, ":30%d#", mode);
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":30%d#", mode);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
-
-//static bool dsd_get_max_move(indigo_device *device, uint32_t *move) {
-//	return dsd_command_get_value(device, "[GMXM]", move);
-//}
-//
-/*
-static bool dsd_set_max_move(indigo_device *device, uint32_t move) {
-	return dsd_command_set_value(device, "[SMXM%d]", move);
-}
-*/
 
 static bool mfp_get_max_position(indigo_device *device, uint32_t *position) {
 	return mfp_command_get_int_value(device, ":08#", 'M', position);
@@ -324,8 +287,8 @@ static bool mfp_get_max_position(indigo_device *device, uint32_t *position) {
 
 
 static bool mfp_set_max_position(indigo_device *device, uint32_t position) {
-	char command[DSD_CMD_LEN];
-	snprintf(command, DSD_CMD_LEN, ":07%d#", position);
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":07%d#", position);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
@@ -336,8 +299,8 @@ static bool mfp_get_settle_buffer(indigo_device *device, uint32_t *delay) {
 
 
 static bool mfp_set_settle_buffer(indigo_device *device, uint32_t delay) {
-	char command[DSD_CMD_LEN];
-	snprintf(command, DSD_CMD_LEN, ":71%d#", delay);
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":71%d#", delay);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
@@ -352,20 +315,16 @@ static bool mfp_get_coils_mode(indigo_device *device, coilsmode_t *mode) {
 
 static bool mfp_set_coils_mode(indigo_device *device, coilsmode_t mode) {
 	if (mode > 1) return false;
-	char command[DSD_CMD_LEN];
-	snprintf(command, DSD_CMD_LEN, ":12%d#", mode);
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":12%d#", mode);
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
-
-static bool dsd_get_speed(indigo_device *device, uint32_t *speed) {
-	return dsd_command_get_value(device, "[GSPD]", speed);
-}
-
-
-static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
-	if (speed > 5) return false;
-	return dsd_command_set_value(device, "[SSPD%d]", speed);
+static bool mfp_set_speed(indigo_device *device, uint32_t speed) {
+	if (speed > 2) return false;
+	char command[MFP_CMD_LEN];
+	snprintf(command, MFP_CMD_LEN, ":15%d#", speed);
+	return mfp_command(device, command, NULL, 0, 100);
 }
 
 
@@ -375,7 +334,7 @@ static bool mfp_is_moving(indigo_device *device, bool *is_moving) {
 
 
 static bool mfp_get_temperature(indigo_device *device, double *temperature) {
-	char response[DSD_CMD_LEN]={0};
+	char response[MFP_CMD_LEN]={0};
 	if (mfp_command(device, ":06#", response, sizeof(response), 100)) {
 		int parsed = sscanf(response, "Z%lf#", temperature);
 		if (parsed != 1) return false;
@@ -510,7 +469,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 }
 
 
-static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+static indigo_result mfp_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (indigo_property_match(X_STEP_MODE_PROPERTY, property))
 			indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
@@ -536,7 +495,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		strncpy(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE, INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE, INDIGO_VALUE_SIZE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
 
@@ -550,9 +509,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
 
 		FOCUSER_SPEED_PROPERTY->hidden = false;
-		FOCUSER_SPEED_ITEM->number.min = 1;
-		FOCUSER_SPEED_ITEM->number.max = 5;
-		FOCUSER_SPEED_ITEM->number.step = 1;
+		FOCUSER_SPEED_ITEM->number.min = 0;
+		FOCUSER_SPEED_ITEM->number.max = 2;
+		FOCUSER_SPEED_ITEM->number.step = 0;
 
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 100;
@@ -673,7 +632,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				char *name = DEVICE_PORT_ITEM->text.value;
 				if (!indigo_is_device_url(name, "mfp")) {
 					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-					/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
+					/* MFP resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
 					sleep(1);
 				} else {
 					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
@@ -686,7 +645,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 					indigo_global_unlock(device);
 					return;
-				} else if (!mfp_get_position(device, &position)) {  // check if it is DSD Focuser first
+				} else if (!mfp_get_position(device, &position)) {  // check if it is MFP Focuser first
 					int res = close(PRIVATE_DATA->handle);
 					if (res < 0) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
@@ -695,14 +654,14 @@ static void focuser_connect_callback(indigo_device *device) {
 					}
 					indigo_global_unlock(device);
 					device->is_connected = false;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Deep Sky Dad AF did not respond");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: MyFP2 AF did not respond");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, "Deep Sky Dad AF did not respond");
+					indigo_update_property(device, CONNECTION_PROPERTY, "MyFP2 AF did not respond");
 					return;
 				} else { // Successfully connected
-					char board[DSD_CMD_LEN] = "N/A";
-					char firmware[DSD_CMD_LEN] = "N/A";
+					char board[MFP_CMD_LEN] = "N/A";
+					char firmware[MFP_CMD_LEN] = "N/A";
 					uint32_t value;
 					if (mfp_get_info(device, board, firmware)) {
 						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
@@ -717,13 +676,11 @@ static void focuser_connect_callback(indigo_device *device) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_max_position(%d) failed", PRIVATE_DATA->handle);
 					}
 					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-					/*
-					if (!dsd_get_speed(device, &value)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
-					}
-					FOCUSER_SPEED_ITEM->number.value = (double)value;
-					*/
 
+					if (!mfp_set_speed(device, FOCUSER_SPEED_ITEM->number.value)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_speed(%d) failed", PRIVATE_DATA->handle);
+					}
+					FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
 
 					mfp_get_reverse(device, &FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 					FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
@@ -865,15 +822,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		if (!dsd_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.target)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_speed(%d) failed", PRIVATE_DATA->handle);
+		if (!mfp_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.target)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_speed(%d) failed", PRIVATE_DATA->handle);
 			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		uint32_t speed;
-		if (!dsd_get_speed(device, &speed)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
-		}
-		FOCUSER_SPEED_ITEM->number.value = (double)speed;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
@@ -1074,14 +1026,14 @@ static indigo_result focuser_detach(indigo_device *device) {
 // --------------------------------------------------------------------------------
 #define MAX_DEVICES 8
 static int device_number = 1;
-static dsd_private_data *private_data[MAX_DEVICES] = {NULL};
+static mfp_private_data *private_data[MAX_DEVICES] = {NULL};
 static indigo_device *focuser[MAX_DEVICES] = {NULL};
 
 indigo_result indigo_focuser_mypro2(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_MFP2_NAME,
 		focuser_attach,
-		dsd_enumerate_properties,
+		mfp_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach
@@ -1089,7 +1041,7 @@ indigo_result indigo_focuser_mypro2(indigo_driver_action action, indigo_driver_i
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Deep Sky Dad Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "myFocuserPro2 Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -1099,16 +1051,16 @@ indigo_result indigo_focuser_mypro2(indigo_driver_action action, indigo_driver_i
 		last_action = action;
 
 		/* figure out the number of devices to expose */
-		if (getenv("FOCUSER_DSD_DEVICE_NUMBER") != NULL) {
-			device_number = atoi(getenv("FOCUSER_DSD_DEVICE_NUMBER"));
+		if (getenv("FOCUSER_MFP_DEVICE_NUMBER") != NULL) {
+			device_number = atoi(getenv("FOCUSER_MFP_DEVICE_NUMBER"));
 			if (device_number < 1) device_number = 1;
 			if (device_number > MAX_DEVICES) device_number = MAX_DEVICES;
 		}
 
 		for (int index = 0; index < device_number; index++) {
-			private_data[index] = malloc(sizeof(dsd_private_data));
+			private_data[index] = malloc(sizeof(mfp_private_data));
 			assert(private_data[index] != NULL);
-			memset(private_data[index], 0, sizeof(dsd_private_data));
+			memset(private_data[index], 0, sizeof(mfp_private_data));
 			private_data[index]->handle = -1;
 			focuser[index] = malloc(sizeof(indigo_device));
 			assert(focuser[index] != NULL);

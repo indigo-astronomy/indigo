@@ -1,15 +1,15 @@
-# Deep Sky Dad AF1, AF2 and AF3 focuser driver
+# myFocuserPro2 focuser driver
 
-https://deepskydad.com
+https://sourceforge.net/projects/arduinoascomfocuserpro2diy/
 
 ## Supported devices
 
-AF1, AF2, AF3 focusers.
+* myFocuserPro2
 
 This driver supports up to 8 devices, no hot plug support. By default the driver exposes one device.
-In order to change that one should export environment variable FOCUSER_DSD_DEVICE_NUMBER and set it to the desired number. For example:
+In order to change that one should export environment variable FOCUSER_MFP_DEVICE_NUMBER and set it to the desired number. For example:
 
-export FOCUSER_DSD_DEVICE_NUMBER=3
+export FOCUSER_MFP_DEVICE_NUMBER=3
 
 ## Supported platforms
 
@@ -21,14 +21,9 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-indigo_server indigo_focuser_dsd
+indigo_server indigo_focuser_mypro2
 
-## Status: Stable
+## Status: Under Development
 
 Driver is developed and tested with:
-* DSD AF1
-
-## NOTES:
-* AF1 and AF2 use baud rate 9600 bps (default)
-* AF3 uses 115200 bps (should be specified)
-* DSD_MODEL_HINT property can be used instead, it sets the baud rate according to the selected model.
+* myFocuserPro2 on Arduino Micro
