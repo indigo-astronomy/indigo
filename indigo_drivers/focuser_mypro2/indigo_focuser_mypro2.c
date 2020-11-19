@@ -250,9 +250,11 @@ static bool mfp_set_reverse(indigo_device *device, bool enabled) {
 
 
 static bool mfp_get_reverse(indigo_device *device, bool *reversed) {
-	int _reversed;
-	if(!mfp_command_get_int_value(device, ":13#", 'R', &_reversed)) return false;
+	uint32_t _reversed;
+	if (!mfp_command_get_int_value(device, ":13#", 'R', &_reversed))
+		return false;
 	*reversed = _reversed;
+	return true;
 }
 
 static bool mfp_get_position(indigo_device *device, uint32_t *pos) {

@@ -137,6 +137,7 @@
 #include "mount_pmc8/indigo_mount_pmc8.h"
 #include "focuser_robofocus/indigo_focuser_robofocus.h"
 #include "wheel_qhy/indigo_wheel_qhy.h"
+#include "focuser_mypro2/indigo_focuser_mypro2.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -228,6 +229,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_mjkzz_bt,
 #endif
 	indigo_focuser_moonlite,
+	indigo_focuser_mypro2,
 	indigo_focuser_nfocus,
 	indigo_focuser_nstep,
 	indigo_focuser_optec,
