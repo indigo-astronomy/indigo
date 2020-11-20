@@ -60,6 +60,8 @@ static ptp_camera_model CAMERA[] = {
   { CANON_VID, 0x32e1, "Canon EOS 2000D", ptp_flag_lv, 6000, 4000, 3.71 },
   { CANON_VID, 0x32e2, "Canon EOS RP", ptp_flag_lv, 6240, 4160, 5.75 },
   { CANON_VID, 0x32ea, "Canon EOS 90D", ptp_flag_lv, 6960, 4640, 3.2 },
+  { CANON_VID, 0x32f4, "Canon EOS R5", ptp_flag_lv, 8192, 5464, 4.4 },
+  { CANON_VID, 0x32f5, "Canon EOS R6", ptp_flag_lv, 5472, 3648, 6.56 },
   { CANON_VID, 0xFFFF, "Canon Camera", ptp_flag_lv, 0, 0, 0 },
   { FUJI_VID, 0x02cd, "Fujifilm GFX 50S", ptp_flag_lv, 8256, 6192, 5.3 },
   { FUJI_VID, 0x02dd, "Fujifilm X-T3", ptp_flag_lv, 6240, 4160, 3.77 },
