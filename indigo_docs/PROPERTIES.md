@@ -55,8 +55,8 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 | CCD_UPLOAD_MODE | switch | no | yes | CLIENT | yes |  |
 |  |  |  |  | LOCAL | yes |  |
 |  |  |  |  | BOTH | yes |  |
-| CCD_LOCAL_MODE | text | no | yes | DIR | yes | XXX is replaced by sequence. |
-|  |  |  |  | PREFIX | yes |  |
+| CCD_LOCAL_MODE | text | no | yes | DIR | yes |  |
+|  |  |  |  | PREFIX | yes | XXX is replaced by sequence. |
 | CCD_EXPOSURE | number | no | yes | EXPOSURE | yes |  |
 | CCD_STREAMING | number | no | no | EXPOSURE | yes | The same as CCD_EXPOSURE, but will upload COUNT images. Use COUNT -1 for endless loop. |
 |  |  |  |  | COUNT | yes |  |
