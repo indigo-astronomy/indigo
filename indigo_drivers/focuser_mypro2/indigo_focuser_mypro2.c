@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -332,6 +332,11 @@ static bool mfp_set_speed(indigo_device *device, uint32_t speed) {
 
 static bool mfp_is_moving(indigo_device *device, bool *is_moving) {
 	return mfp_command_get_int_value(device, ":01#", 'I', (uint32_t *)is_moving);
+}
+
+
+static bool mfp_save_settings(indigo_device *device) {
+	return mfp_command(device, ":48#", NULL, 0, 100);
 }
 
 
@@ -723,6 +728,8 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 
 			mfp_stop(device);
+			mfp_save_settings(device);
+
 			indigo_delete_property(device, X_STEP_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, X_COILS_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, X_SETTLE_TIME_PROPERTY, NULL);
