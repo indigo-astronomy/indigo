@@ -1817,7 +1817,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 		return;
 	}
 
-	PORT_DATA.f_target_position = PORT_DATA.f_current_position + compensation;
+	PORT_DATA.f_target_position = PORT_DATA.f_current_position - compensation;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PORT_DATA.f_current_position = %d, PORT_DATA.f_target_position = %d", PORT_DATA.f_current_position, PORT_DATA.f_target_position);
 
 	int32_t current_position = 0;
