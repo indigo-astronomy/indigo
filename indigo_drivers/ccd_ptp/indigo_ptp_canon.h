@@ -152,8 +152,7 @@ typedef enum {
 	ptp_event_canon_CTGInfoCheckComplete = 0xC1A4,
 	ptp_event_canon_OLCInfoChanged = 0xC1A5,
 	ptp_event_canon_ObjectAddedEx2 = 0xC1A7,
-	ptp_event_canon_RequestObjectTransferFTP = 0xC1F1,
-	ptp_event_canon_ObjectAddedEx3 = 0xC1F6,
+	ptp_event_canon_RequestObjectTransferFTP = 0xC1F1
 } ptp_event_canon_code;
 
 typedef enum {
