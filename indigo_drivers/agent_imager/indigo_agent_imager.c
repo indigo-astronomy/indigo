@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1662,7 +1662,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]) && (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) || !strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME))) {
+	if (!strcmp(property->device, IMAGER_AGENT_NAME) && (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) || !strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME))) {
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_imager_download_file_property, NULL);
 		CLIENT_PRIVATE_DATA->agent_imager_download_file_property->hidden = true;
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_imager_download_files_property, NULL);
@@ -1671,8 +1671,9 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 		CLIENT_PRIVATE_DATA->agent_imager_download_image_property->hidden = true;
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_imager_delete_file_property, NULL);
 		CLIENT_PRIVATE_DATA->agent_imager_delete_file_property->hidden = true;
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+	} else if (!strcmp(property->device, IMAGER_AGENT_NAME) && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_wheel_filter_property, NULL);
+		CLIENT_PRIVATE_DATA->agent_wheel_filter_property->hidden = true;
 	}
 	return indigo_filter_delete_property(client, device, property, message);
 }
