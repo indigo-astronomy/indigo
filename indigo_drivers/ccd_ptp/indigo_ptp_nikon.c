@@ -1068,19 +1068,17 @@ bool ptp_nikon_exposure(indigo_device *device) {
 		result = result && ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
 	}
 	if (result) {
-		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		if (CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_nikon_check_dual_compression(device)) {
+		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_nikon_check_dual_compression(device)) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 		while (true) {
-			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE))
+			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE))
 				break;
 			indigo_usleep(100000);
 		}
 	}
-	if (PRIVATE_DATA->abort_capture) {
+	if (!result || PRIVATE_DATA->abort_capture) {
 		if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
 			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
@@ -1088,6 +1086,10 @@ bool ptp_nikon_exposure(indigo_device *device) {
 		if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		}
+		if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_OK_STATE) {
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 		}
 	}
 	return result && !PRIVATE_DATA->abort_capture;

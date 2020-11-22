@@ -370,9 +370,9 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 		}
 		case ptp_property_sony_ZoomState: {
 			switch (code) {
-				case 0: "Normal";
-				case 1: "x1.0";
-				case 2: "Zooming";
+				case 0: return "Normal";
+				case 1: return "x1.0";
+				case 2: return "Zooming";
 			}
 			break;
 		}
@@ -890,23 +890,21 @@ bool ptp_sony_exposure(indigo_device *device) {
 			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));
 			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
 		}
-		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		if (CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_sony_check_dual_compression(device)) {
+		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_sony_check_dual_compression(device)) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 		bool complete_detected = false;
 		while (true) {
-			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE))
+			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE))
 				break;
 			// SONY a9 does not notify ObjectAdded
 			ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
-			if ( ! complete_detected && property && property->value.number.value > 0x8000) {
+			if (!complete_detected && property && property->value.number.value > 0x8000) {
 				// CaptureCompleted
 				complete_detected = property->value.number.value == 0x8001;
-				uint32_t dummy[1] = {0xffffc001};
-				ptp_sony_handle_event(device, ptp_event_sony_ObjectAdded, dummy);
+				uint32_t dummy[1] = { 0xffffc001 };
+				ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_ObjectAdded, dummy);
 			}
 			indigo_usleep(100000);
 		}
@@ -918,6 +916,10 @@ bool ptp_sony_exposure(indigo_device *device) {
 			if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
 				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			}
+			if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_OK_STATE) {
+				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 			}
 		}
 		return !PRIVATE_DATA->abort_capture;

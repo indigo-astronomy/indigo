@@ -43,7 +43,7 @@ typedef enum {
 	ptp_event_sony_ObjectAdded = 0xC201,
 	ptp_event_sony_ObjectRemoved = 0xC202,
 	ptp_event_sony_PropertyChanged = 0xC203,
-} ptp_event_sony__code;
+} ptp_event_sony_code;
 
 typedef enum {
 	ptp_property_sony_DPCCompensation = 0xD200,
