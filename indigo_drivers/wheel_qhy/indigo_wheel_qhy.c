@@ -23,7 +23,7 @@
  \file indigo_ccd_qhy.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_wheel_qhy"
 
 #include <stdlib.h>
@@ -71,11 +71,11 @@ static bool qhy_open(indigo_device *device) {
 	}
 }
 
-static bool qhy_command(indigo_device *device, char *command, char *reply, int reply_length) {
+static bool qhy_command(indigo_device *device, char *command, char *reply, int reply_length, int read_timeout) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	size_t result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (result > 0 && reply) {
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < read_timeout; i++) {
 			result = indigo_read(PRIVATE_DATA->handle, reply, reply_length);
 			if (result > 0)
 				break;
@@ -102,14 +102,20 @@ static void wheel_connect_callback(indigo_device *device) {
 				char reply[8];
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW3");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
-				if (qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8)) {
-					if (qhy_command(device, "MXP", reply, 1)) {
+				bool result = qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8, 1);
+				if (!result) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, retrying...");
+					result = qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8, 1);
+				}
+				if (result) {
+					if (qhy_command(device, "MXP", reply, 1, 1)) {
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = isdigit(reply[0]) ? reply[0] - '0' : reply[0] - 'A' + 10;
 					}
-					if (qhy_command(device, "NOW", reply, 1)) {
+					if (qhy_command(device, "NOW", reply, 1, 1)) {
 						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
 					}
 				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, fallback to CFW1");
 					indigo_set_switch(X_MODEL_PROPERTY, X_MODEL_1_ITEM, true);
 					indigo_update_property(device, X_MODEL_PROPERTY, "Failed to connect to CFW3, trying to fallback to CFW1");
 				}
@@ -117,7 +123,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			if (X_MODEL_2_ITEM->sw.value) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW2");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
-				if (!qhy_command(device, "0", NULL, 0)) {
+				if (!qhy_command(device, "0", NULL, 0, 0)) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 16;
@@ -126,7 +132,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			if (X_MODEL_1_ITEM->sw.value) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW1");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
-				if (!qhy_command(device, "0", NULL, 0)) {
+				if (!qhy_command(device, "0", NULL, 0, 0)) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 16;
@@ -147,14 +153,17 @@ static void wheel_connect_callback(indigo_device *device) {
 static void wheel_goto_handler(indigo_device *device) {
 	char command[2] = { '0' + WHEEL_SLOT_ITEM->number.target - 1, 0 };
 	char reply[2];
-	if (qhy_command(device, command, reply, 1)) {
+	if (qhy_command(device, command, reply, 1, 10)) {
 		if (X_MODEL_1_ITEM) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == '-';
 		} else if (X_MODEL_2_ITEM || X_MODEL_3_ITEM) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == command[0];
 		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
