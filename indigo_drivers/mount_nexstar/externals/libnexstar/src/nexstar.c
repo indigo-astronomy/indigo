@@ -1012,7 +1012,7 @@ int tc_set_backlash(int dev, char axis, char direction, char backlash) {
 
 
 int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char duration) {
-	char axis_id = -1, res, s_rate, duration_csec;
+	char axis_id = -1, res, s_rate = 0, duration_csec;
 
 	REQUIRE_VER(VER_AUX);
 	REQUIRE_VENDOR(VNDR_CELESTRON);
