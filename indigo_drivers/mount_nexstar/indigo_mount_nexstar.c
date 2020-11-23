@@ -111,6 +111,12 @@ static bool mount_open(indigo_device *device) {
 			return false;
 		} else {
 			PRIVATE_DATA->dev_id = dev_id;
+			PRIVATE_DATA->vendor_id = guess_mount_vendor(dev_id);
+			int res = get_mount_capabilities(dev_id, &PRIVATE_DATA->capabilities, &PRIVATE_DATA->vendor_id);
+			if (res != RC_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_mount_capabilities(%d) = %d", dev_id, res);
+			}
+				PRIVATE_DATA->capabilities &= ~(CAN_PULSE_GUIDE); // do not pulse guide natively
 		}
 	}
 	return true;
@@ -285,20 +291,13 @@ static void mount_handle_connect(indigo_device *device) {
 				int dev_id = PRIVATE_DATA->dev_id;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				/* initialize info prop */
-				int vendor_id = guess_mount_vendor(dev_id);
-				if (vendor_id < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "guess_mount_vendor(%d) = %d (%s)", dev_id, vendor_id, strerror(errno));
-				} else if (vendor_id == VNDR_SKYWATCHER) {
+				if (PRIVATE_DATA->vendor_id < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "guess_mount_vendor(%d) = %d (%s)", dev_id, PRIVATE_DATA->vendor_id, strerror(errno));
+				} else if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) {
 					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher", INDIGO_VALUE_SIZE);
-				} else if (vendor_id == VNDR_CELESTRON) {
+				} else if (PRIVATE_DATA->vendor_id == VNDR_CELESTRON) {
 					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron", INDIGO_VALUE_SIZE);
 				}
-				PRIVATE_DATA->vendor_id = vendor_id;
-				int res = get_mount_capabilities(dev_id, &PRIVATE_DATA->capabilities, &vendor_id);
-				if (res != RC_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_mount_capabilities(%d) = %d", dev_id, res);
-				}
-				PRIVATE_DATA->capabilities &= ~(CAN_PULSE_GUIDE); // do not pulse guide natively
 				int model_id = tc_get_model(dev_id);
 				if (model_id < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_model(%d) = %d (%s)", dev_id, model_id, strerror(errno));
@@ -308,7 +307,7 @@ static void mount_handle_connect(indigo_device *device) {
 				if (enforce_protocol_version(dev_id, VER_AUTO) < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_version(%d) = %d (%s)", dev_id, nexstar_proto_version, strerror(errno));
 				} else {
-					if (vendor_id == VNDR_SKYWATCHER) {
+					if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) {
 						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "SynScan %2d.%02d.%02d", GET_RELEASE(nexstar_proto_version), GET_REVISION(nexstar_proto_version), GET_PATCH(nexstar_proto_version));
 					} else {
 						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s %2d.%02d", nexstar_hc_type == HC_STARSENSE ? "StarSense" : "NexStar", GET_RELEASE(nexstar_proto_version), GET_REVISION(nexstar_proto_version));
@@ -388,7 +387,7 @@ static void mount_handle_connect(indigo_device *device) {
 						}
 					}
 				}
-				if (vendor_id == VNDR_CELESTRON) {
+				if (PRIVATE_DATA->vendor_id == VNDR_CELESTRON) {
 //					char response[3];
 //					if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0xFE, 0, 0, 0, 2, response) == RC_OK) {
 //						sprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value + strlen(MOUNT_INFO_FIRMWARE_ITEM->text.value), " (GPS %d.%d)", response[0], response[1]);

@@ -203,7 +203,7 @@ int tc_get_autoguide_rate(int dev, char axis);
 int tc_set_autoguide_rate(int dev, char axis, char rate);
 int tc_get_backlash(int dev, char axis, char direction);
 int tc_set_backlash(int dev, char axis, char direction, char backlash);
-int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char duration);
+int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned int duration);
 int tc_get_guide_status(int dev, char direction);
 int tc_pass_through_cmd(int dev, char msg_len, char dest_id, char cmd_id,
                         char data1, char data2, char data3, char res_len, char *response);

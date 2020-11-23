@@ -202,7 +202,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 		*caps |= CAN_ALIGN;
 	}
 
-	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_4_10)) {
+	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_4_10 || nexstar_hc_type == HC_STARSENSE)) {
 		/* Not sure about this but recent mounts will work so 4.10 is fair */
 		*caps |= CAN_GET_SET_PEC;
 		*caps |= CAN_PULSE_GUIDE;
@@ -1011,13 +1011,13 @@ int tc_set_backlash(int dev, char axis, char direction, char backlash) {
 }
 
 
-int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char duration) {
+int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned int duration) {
 	char axis_id = -1, res, s_rate = 0, duration_csec;
 
 	REQUIRE_VER(VER_AUX);
 	REQUIRE_VENDOR(VNDR_CELESTRON);
 
-	if (rate > 100 || duration > 127) {
+	if (rate > 100 || duration > 1270) {
 		return RC_PARAMS;
 	}
 
@@ -1046,7 +1046,7 @@ int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char du
 
 	duration_csec = duration/10;
 
-	return tc_pass_through_cmd(dev, 3, axis_id, TC_AUX_GUIDE, s_rate, duration_csec, 0, 1, &res);
+	return tc_pass_through_cmd(dev, 3, axis_id, TC_AUX_GUIDE, s_rate, duration_csec, 0, 0, &res);
 }
 
 
@@ -1072,7 +1072,7 @@ int tc_get_guide_status(int dev, char direction) {
 		return RC_PARAMS;
 	}
 
-	if (tc_pass_through_cmd(dev, 2, axis_id, TC_AUX_GUIDE_STATUS, 0, 0, 0, 2, res) < 0) {
+	if (tc_pass_through_cmd(dev, 2, axis_id, TC_AUX_GUIDE_STATUS, 0, 0, 0, 1, res) < 0) {
 		return RC_FAILED;
 	}
 
