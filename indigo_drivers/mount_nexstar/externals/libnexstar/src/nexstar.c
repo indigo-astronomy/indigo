@@ -189,7 +189,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 
 	if (firmware_version >= VER_3_1 && (*caps & TRUE_EQ_MOUNT)) {
 		/* Not sure about this but recent mounts will work so 3.1 is fair */
-			*caps |= CAN_GET_SET_GUIDE_RATE;
+		*caps |= CAN_GET_SET_GUIDE_RATE;
 	}
 
 	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 3)) {
@@ -205,6 +205,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_4_10)) {
 		/* Not sure about this but recent mounts will work so 4.10 is fair */
 		*caps |= CAN_GET_SET_PEC;
+		*caps |= CAN_PULSE_GUIDE;
 	}
 
 	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3) && (*caps & TRUE_EQ_MOUNT)) {
@@ -1013,6 +1014,9 @@ int tc_set_backlash(int dev, char axis, char direction, char backlash) {
 int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char duration) {
 	char axis_id = -1, res, s_rate, duration_csec;
 
+	REQUIRE_VER(VER_AUX);
+	REQUIRE_VENDOR(VNDR_CELESTRON);
+
 	if (rate > 100 || duration > 127) {
 		return RC_PARAMS;
 	}
@@ -1049,6 +1053,9 @@ int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char du
 int tc_get_guide_status(int dev, char direction) {
 	char axis_id = -1;
 	char res[2];
+
+	REQUIRE_VER(VER_AUX);
+	REQUIRE_VENDOR(VNDR_CELESTRON);
 
 	switch (direction) {
 	case TC_AUX_GUIDE_NORTH:
