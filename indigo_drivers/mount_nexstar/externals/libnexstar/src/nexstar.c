@@ -1042,7 +1042,7 @@ int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char du
 
 	duration_csec = duration/10;
 
-	return tc_pass_through_cmd(dev, 3, axis_id, TC_AUX_GUIDE, s_rate, duration_csec, 0, 0, &res);
+	return tc_pass_through_cmd(dev, 3, axis_id, TC_AUX_GUIDE, s_rate, duration_csec, 0, 1, &res);
 }
 
 
@@ -1065,7 +1065,7 @@ int tc_get_guide_status(int dev, char direction) {
 		return RC_PARAMS;
 	}
 
-	if (tc_pass_through_cmd(dev, 1, axis_id, TC_AUX_GUIDE_STATUS, 0, 0, 0, 1, res) < 0) {
+	if (tc_pass_through_cmd(dev, 2, axis_id, TC_AUX_GUIDE_STATUS, 0, 0, 0, 2, res) < 0) {
 		return RC_FAILED;
 	}
 
