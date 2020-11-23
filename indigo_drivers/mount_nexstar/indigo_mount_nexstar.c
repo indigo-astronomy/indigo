@@ -298,6 +298,7 @@ static void mount_handle_connect(indigo_device *device) {
 				if (res != RC_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_mount_capabilities(%d) = %d", dev_id, res);
 				}
+				PRIVATE_DATA->capabilities &= ~(CAN_PULSE_GUIDE); // do not pulse guide natively
 				int model_id = tc_get_model(dev_id);
 				if (model_id < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_model(%d) = %d (%s)", dev_id, model_id, strerror(errno));
@@ -977,40 +978,59 @@ static indigo_result mount_detach(indigo_device *device) {
 
 static void guider_handle_ra(indigo_device *device) {
 	int res = RC_OK;
-	unsigned char duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	if (duration > 0) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_EAST, PRIVATE_DATA->guide_rate, duration);
+		if (PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE) {
+			res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_EAST, PRIVATE_DATA->guide_rate * 50, duration);
+		} else {
+			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+		}
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	} else {
-		unsigned char duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_WEST, PRIVATE_DATA->guide_rate, duration);
+			if (PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE) {
+				res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_WEST, PRIVATE_DATA->guide_rate * 50, duration);
+			} else {
+				res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+			}
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		}
 	}
 
 	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed/tc_guide_pulse(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		if (duration > 0) {
-			int status;
 			indigo_usleep(duration * 1000);
-			do {
+			if (PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE) {
+				int status;
+				do {
+					pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+					status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_EAST);
+					pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+					if (status > 0) {
+						indigo_usleep(10000); /* celestron can do 1/100s */
+					} else if (status < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+						GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
+				} while (status > 0);
+			} else {
 				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-				status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_EAST);
+				res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // stop
+				//res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, 0);
 				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-				if (status > 0) {
-					indigo_usleep(10000);
-				} else if (status < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+				if (res != RC_OK) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-					break;
 				}
-			} while (status > 0);
+			}
 		}
 	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
@@ -1020,17 +1040,25 @@ static void guider_handle_ra(indigo_device *device) {
 
 static void guider_handle_dec(indigo_device *device) {
 	int res = RC_OK;
-	unsigned char duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	if (duration > 0) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_NORTH, PRIVATE_DATA->guide_rate, duration);
+		if (PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE) {
+			res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_NORTH, PRIVATE_DATA->guide_rate, duration);
+		} else {
+			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+		}
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	} else {
-		char duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_SOUTH, PRIVATE_DATA->guide_rate, duration);
+			if (PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE) {
+				res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_SOUTH, PRIVATE_DATA->guide_rate, duration);
+			} else {
+				res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+			}
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		}
 	}
@@ -1042,18 +1070,29 @@ static void guider_handle_dec(indigo_device *device) {
 		if (duration > 0) {
 			int status;
 			indigo_usleep(duration * 1000);
-			do {
+			if (PRIVATE_DATA->capabilities & CAN_PULSE_GUIDE) {
+				do {
+					pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+					status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_NORTH);
+					pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+					if (status > 0) {
+						indigo_usleep(10000);
+					} else if (status < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+						GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
+				} while (status > 0);
+			} else {
 				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-				status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_NORTH);
+				res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
+				//res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, 0);
 				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-				if (status > 0) {
-					indigo_usleep(10000);
-				} else if (status < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+				if (res != RC_OK) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-					break;
 				}
-			} while (status > 0);
+			}
 		}
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
@@ -1109,7 +1148,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		PRIVATE_DATA->guide_rate = 50; /* 50 -> 0.5 siderial rate , 100 -> siderial rate */
+		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
 		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (COMMAND_GUIDE_RATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -1156,14 +1195,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
 		indigo_property_copy_values(COMMAND_GUIDE_RATE_PROPERTY, property, false);
 		if (GUIDE_50_ITEM->sw.value) {
-			PRIVATE_DATA->guide_rate = 50;
+			PRIVATE_DATA->guide_rate = 1;
 		} else if (GUIDE_100_ITEM->sw.value) {
-			PRIVATE_DATA->guide_rate = 100;
+			PRIVATE_DATA->guide_rate = 2;
 		}
 		COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		if (PRIVATE_DATA->guide_rate == 50)
+		if (PRIVATE_DATA->guide_rate == 1)
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
-		else if (PRIVATE_DATA->guide_rate == 100)
+		else if (PRIVATE_DATA->guide_rate == 2)
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
 		else
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
