@@ -1009,6 +1009,70 @@ int tc_set_backlash(int dev, char axis, char direction, char backlash) {
 	return tc_pass_through_cmd(dev, 2, axis_id, cmd_id, backlash, 0, 0, 0, &res);
 }
 
+
+int tc_guide_pulse(int dev, char direction, unsigned char rate, unsigned char duration) {
+	char axis_id = -1, res, s_rate, duration_csec;
+
+	if (rate > 100 || duration > 127) {
+		return RC_PARAMS;
+	}
+
+	switch (direction) {
+	case TC_AUX_GUIDE_NORTH:
+		axis_id = _TC_AXIS_DE_ALT;
+		s_rate = rate;
+		break;
+	case TC_AUX_GUIDE_SOUTH:
+		axis_id = _TC_AXIS_DE_ALT;
+		s_rate = -rate;
+		break;
+	case TC_AUX_GUIDE_WEST:
+		axis_id = _TC_AXIS_RA_AZM;
+		s_rate = rate;
+		break;
+	case TC_AUX_GUIDE_EAST:
+		axis_id = _TC_AXIS_RA_AZM;
+		s_rate = -rate;
+		break;
+	}
+
+	if (axis_id == -1) {
+		return RC_PARAMS;
+	}
+
+	duration_csec = duration/10;
+
+	return tc_pass_through_cmd(dev, 3, axis_id, TC_AUX_GUIDE, s_rate, duration_csec, 0, 0, &res);
+}
+
+
+int tc_get_guide_status(int dev, char direction) {
+	char axis_id = -1;
+	char res[2];
+
+	switch (direction) {
+	case TC_AUX_GUIDE_NORTH:
+	case TC_AUX_GUIDE_SOUTH:
+		axis_id = _TC_AXIS_DE_ALT;
+		break;
+	case TC_AUX_GUIDE_WEST:
+	case TC_AUX_GUIDE_EAST:
+		axis_id = _TC_AXIS_RA_AZM;
+		break;
+	}
+
+	if (axis_id == -1) {
+		return RC_PARAMS;
+	}
+
+	if (tc_pass_through_cmd(dev, 1, axis_id, TC_AUX_GUIDE_STATUS, 0, 0, 0, 1, res) < 0) {
+		return RC_FAILED;
+	}
+
+	return (res[0] == 0) ? 0 : 1;
+}
+
+
 int tc_pass_through_cmd(int dev, char msg_len, char dest_id, char cmd_id,
                         char data1, char data2, char data3, char res_len, char *response) {
 	char cmd[8];
