@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -767,11 +767,11 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.value = now;
 				indigo_update_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_limits_property, NULL);
 				if (property->state == INDIGO_OK_STATE) {
-					indigo_property *cached_park_property = indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_PARK_PROPERTY_NAME);
-					if (cached_park_property && cached_park_property->state == INDIGO_OK_STATE) {
-						for (int j = 0; j < cached_park_property->count; j++) {
-							if (!strcmp(cached_park_property->items[j].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
-								if (cached_park_property->items[j].sw.value) {
+					indigo_property *agent_park_property;
+					if (indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_PARK_PROPERTY_NAME, NULL, &agent_park_property) && agent_park_property->state == INDIGO_OK_STATE) {
+						for (int j = 0; j < agent_park_property->count; j++) {
+							if (!strcmp(agent_park_property->items[j].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
+								if (agent_park_property->items[j].sw.value) {
 									bool park = false;
 									if (ha > CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target) {
 										park = true;
@@ -884,10 +884,10 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				AGENT_LX200_CONFIGURATION_PROPERTY->hidden = false;
 				indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 			}
-			indigo_property *selection = indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
-			if (selection) {
-				for (int i = 0; i < selection->count; i++) {
-					if (selection->items[i].sw.value) {
+			indigo_property *device_selection_property;
+			if (indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME, &device_selection_property, NULL)) {
+				for (int i = 0; i < device_selection_property->count; i++) {
+					if (device_selection_property->items[i].sw.value) {
 						indigo_send_message(FILTER_CLIENT_CONTEXT->device, "There are active saved alignment points. Make sure you you want to use them.");
 						break;
 					}
