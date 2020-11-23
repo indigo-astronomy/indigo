@@ -977,17 +977,17 @@ static indigo_result mount_detach(indigo_device *device) {
 
 static void guider_handle_ra(indigo_device *device) {
 	int res = RC_OK;
-	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+	unsigned char duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	if (duration > 0) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+		res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_EAST, PRIVATE_DATA->guide_rate, duration);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	} else {
-		int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		unsigned char duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+			res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_WEST, PRIVATE_DATA->guide_rate, duration);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		}
 	}
@@ -996,15 +996,18 @@ static void guider_handle_ra(indigo_device *device) {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		if (duration > 0) {
-			indigo_usleep(duration * 1000);
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
-			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, 0); // STOP move
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			int status;
+			do {
+				indigo_usleep(100000);
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_EAST);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				if (res < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+					break;
+				}
+			} while (status > 0);
 		}
 	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
@@ -1014,34 +1017,37 @@ static void guider_handle_ra(indigo_device *device) {
 
 static void guider_handle_dec(indigo_device *device) {
 	int res = RC_OK;
-	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+	unsigned char duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	if (duration > 0) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+		res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_NORTH, PRIVATE_DATA->guide_rate, duration);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	} else {
-		int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		char duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+			res = tc_guide_pulse(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_SOUTH, PRIVATE_DATA->guide_rate, duration);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		}
 	}
 	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_guide_pulse(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		if (duration > 0) {
-			indigo_usleep(duration * 1000);
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
-			res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, 0); // STOP move
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			int status;
+			do {
+				indigo_usleep(100000);
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_NORTH);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				if (res < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+					break;
+				}
+			} while (status > 0);
 		}
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
