@@ -652,7 +652,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 
 static void mount_handle_slew_rate(indigo_device *device) {
 	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
-		PRIVATE_DATA->slew_rate = PRIVATE_DATA->guide_rate;
+		PRIVATE_DATA->slew_rate = 2;
 	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 4;
 	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
@@ -661,7 +661,7 @@ static void mount_handle_slew_rate(indigo_device *device) {
 		PRIVATE_DATA->slew_rate = 9;
 	} else {
 		MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value = true;
-		PRIVATE_DATA->slew_rate = PRIVATE_DATA->guide_rate;
+		PRIVATE_DATA->slew_rate = 2;
 	}
 	MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
@@ -991,18 +991,21 @@ static void guider_handle_ra(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		}
 	}
+
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		if (duration > 0) {
 			int status;
+			indigo_usleep(duration * 1000);
 			do {
-				indigo_usleep(100000);
 				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 				status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_EAST);
 				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-				if (res < 0) {
+				if (status > 0) {
+					indigo_usleep(10000);
+				} else if (status < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
@@ -1031,18 +1034,21 @@ static void guider_handle_dec(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		}
 	}
+
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_guide_pulse(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		if (duration > 0) {
 			int status;
+			indigo_usleep(duration * 1000);
 			do {
-				indigo_usleep(100000);
 				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 				status = tc_get_guide_status(PRIVATE_DATA->dev_id, TC_AUX_GUIDE_NORTH);
 				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-				if (res < 0) {
+				if (status > 0) {
+					indigo_usleep(10000);
+				} else if (status < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_guide_status(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
@@ -1103,7 +1109,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
+		PRIVATE_DATA->guide_rate = 50; /* 50 -> 0.5 siderial rate , 100 -> siderial rate */
 		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (COMMAND_GUIDE_RATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -1150,14 +1156,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
 		indigo_property_copy_values(COMMAND_GUIDE_RATE_PROPERTY, property, false);
 		if (GUIDE_50_ITEM->sw.value) {
-			PRIVATE_DATA->guide_rate = 1;
+			PRIVATE_DATA->guide_rate = 50;
 		} else if (GUIDE_100_ITEM->sw.value) {
-			PRIVATE_DATA->guide_rate = 2;
+			PRIVATE_DATA->guide_rate = 100;
 		}
 		COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		if (PRIVATE_DATA->guide_rate == 1)
+		if (PRIVATE_DATA->guide_rate == 50)
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
-		else if (PRIVATE_DATA->guide_rate == 2)
+		else if (PRIVATE_DATA->guide_rate == 100)
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
 		else
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
