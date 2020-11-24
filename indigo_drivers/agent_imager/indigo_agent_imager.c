@@ -766,7 +766,7 @@ static bool autofocus(indigo_device *device) {
 		indigo_usleep(200000);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		return false;
-	if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value >= 2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
+	if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
 		return false;
 	} else {
 		return true;
