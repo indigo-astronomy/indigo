@@ -116,7 +116,7 @@ static bool mount_open(indigo_device *device) {
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_mount_capabilities(%d) = %d", dev_id, res);
 			}
-			//PRIVATE_DATA->capabilities &= ~(CAN_PULSE_GUIDE); // do not pulse guide natively
+			PRIVATE_DATA->capabilities &= ~(CAN_PULSE_GUIDE); // do not pulse guide natively
 		}
 	}
 	return true;
