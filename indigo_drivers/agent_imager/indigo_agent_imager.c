@@ -727,7 +727,7 @@ static bool autofocus(indigo_device *device) {
 		return false;
 	indigo_usleep(ONE_SECOND_DELAY);
 	capture_raw_frame(device);
-	if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value >= AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
+	if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value >= AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value * 2) {
 		return false;
 	} else {
 		return true;
