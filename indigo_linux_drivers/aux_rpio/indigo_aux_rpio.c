@@ -25,7 +25,7 @@
 
 #include "indigo_aux_rpio.h"
 
-#define DRIVER_VERSION         0x0001
+#define DRIVER_VERSION         0x0002
 #define AUX_DRAGONFLY_NAME     "Raspberry Pi GPIO"
 
 #include <stdlib.h>
@@ -578,7 +578,6 @@ static void handle_aux_connect_property(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 		}
-	
 	} else {
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		for (int i = 0; i < 8; i++) {
@@ -683,6 +682,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
 			indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
+			indigo_save_property(device, NULL, AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 		}
 	}
 	// --------------------------------------------------------------------------------
