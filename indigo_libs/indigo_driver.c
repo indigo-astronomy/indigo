@@ -618,7 +618,7 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				for (int j = 0; j < count; j++) {
-					if (!strncmp(items[i], item->name, INDIGO_NAME_SIZE)) {
+					if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
 						indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(item->text.value));
 						break;
 					}
@@ -631,7 +631,7 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				for (int j = 0; j < count; j++) {
-					if (!strncmp(items[i], item->name, INDIGO_NAME_SIZE)) {
+					if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
 						indigo_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
 						break;
 					}
@@ -644,7 +644,7 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				for (int j = 0; j < count; j++) {
-					if (!strncmp(items[i], item->name, INDIGO_NAME_SIZE)) {
+					if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
 						indigo_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
 						break;
 					}

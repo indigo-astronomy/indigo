@@ -151,6 +151,8 @@ static void save_config(indigo_device *device) {
 	indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 	indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
+	char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME };
+	indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 2, (const char **)selection_property_items);
 	if (DEVICE_CONTEXT->property_save_file_handle) {
 		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		close(DEVICE_CONTEXT->property_save_file_handle);
@@ -1244,6 +1246,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SELECTION
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
 		AGENT_GUIDER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
