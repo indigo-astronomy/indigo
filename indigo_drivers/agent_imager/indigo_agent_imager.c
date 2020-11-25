@@ -234,8 +234,8 @@ static void select_subframe(indigo_device *device) {
 			int window_size = AGENT_IMAGER_WINDOW_SIZE_ITEM->number.value * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value;
 			int frame_left = ((selection_x - window_size) / GRID) * GRID;
 			int frame_top = ((selection_y - window_size) / GRID) * GRID;
-			int frame_width = (window_size / GRID + 1) * GRID;
-			int frame_height = (window_size / GRID + 1) * GRID;
+			int frame_width = (2 * window_size / GRID + 1) * GRID;
+			int frame_height = (2 * window_size / GRID + 1) * GRID;
 			AGENT_IMAGER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
 			AGENT_IMAGER_SELECTION_Y_ITEM->number.value = selection_y -= frame_top;
 			indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
