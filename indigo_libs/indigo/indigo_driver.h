@@ -306,6 +306,10 @@ extern indigo_result indigo_load_properties(indigo_device *device, bool default_
  */
 extern indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property);
 
+/** Save items of a property.
+ */
+extern indigo_result indigo_save_property_items(indigo_device*device, int *file_handle, indigo_property *property, const int count, const char **items);
+
 /** Remove properties.
  */
 extern indigo_result indigo_remove_properties(indigo_device *device);

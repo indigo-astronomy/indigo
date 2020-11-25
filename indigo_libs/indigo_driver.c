@@ -591,6 +591,74 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 	return INDIGO_OK;
 }
 
+indigo_result indigo_save_property_items(indigo_device*device, int *file_handle, indigo_property *property, const int count, const char **items) {
+	if (property == NULL)
+		return INDIGO_FAILED;
+	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
+		char b1[32];
+		if (file_handle == NULL)
+			file_handle = &DEVICE_CONTEXT->property_save_file_handle;
+		int handle = *file_handle;
+		if (handle == 0) {
+			int profile = 0;
+			if (DEVICE_CONTEXT) {
+				for (int i = 0; i < PROFILE_COUNT; i++)
+					if (PROFILE_PROPERTY->items[i].sw.value) {
+						profile = i;
+						break;
+					}
+			}
+			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
+			if (handle == 0)
+				return INDIGO_FAILED;
+		}
+		switch (property->type) {
+		case INDIGO_TEXT_VECTOR:
+			indigo_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				for (int j = 0; j < count; j++) {
+					if (!strncmp(items[i], item->name, INDIGO_NAME_SIZE)) {
+						indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(item->text.value));
+						break;
+					}
+				}
+			}
+			indigo_printf(handle, "</newTextVector>\n");
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			indigo_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				for (int j = 0; j < count; j++) {
+					if (!strncmp(items[i], item->name, INDIGO_NAME_SIZE)) {
+						indigo_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
+						break;
+					}
+				}
+			}
+			indigo_printf(handle, "</newNumberVector>\n");
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			indigo_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				for (int j = 0; j < count; j++) {
+					if (!strncmp(items[i], item->name, INDIGO_NAME_SIZE)) {
+						indigo_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
+						break;
+					}
+				}
+			}
+			indigo_printf(handle, "</newSwitchVector>\n");
+			break;
+		default:
+			break;
+		}
+	}
+	return INDIGO_OK;
+}
+
 indigo_result indigo_remove_properties(indigo_device *device) {
 	assert(device != NULL);
 	int profile = 0;
