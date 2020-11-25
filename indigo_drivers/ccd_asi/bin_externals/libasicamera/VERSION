@@ -1,1 +1,78 @@
-libASICamera2 v.1.15.0915
+V 1.16
+ASI294MM camera support 44M reslution.
+Fixed some bugs.
+
+
+V 1.15.0915
+Fix some bugs
+
+V 1.15.0819
+Add new cameras
+Fix some bugs
+
+V 1.15.0617 2020.6.17
+Fix some bugs
+Add new camera ASI462MC
+
+V 1.15.0610 2020.6.10
+Fix some bugs
+
+V 1.15.0430 2020.4.30
+Fix some bugs
+Add new camera ASI2400MC Pro
+
+V 1.14.1227 2019.12.27
+Fix some bugs
+
+V 1.14.1119 2019.11.19
+Add new cameras
+Fix some bugs
+
+V 1.14.0715 2019.7.15
+Fix some bugs
+
+V 1.14.0227 2019.2.27
+Add ASIGetCameraPropertyByID
+Add ASIGetSerialNumber
+Fix bug that ASIGetVideoData return immediately and timeout doesn't take effect
+Fix other bugs
+
+V 1.13.0930 2018.9.30
+Fix a issue of image from ASI1600
+Fix bug that crash with armv8 platform
+Fix other bug
+
+V 1.13.0821 2018.8.21
+Add external trigger API
+
+V 1.13.0523 2018.5.23
+Add support for ASI120MM-Mini
+Fix issue with ASI1600: pattern in image,  no image under high USB traffic and 16bit
+Fix bug with 294:  HPC take no effect under ROI
+Fix bug happens when being called from multiple thread
+Add API ASIGetSDKVersion
+Add BitDepth to ASI_CAMERA_INFO corresponding to sensor ADC bit depth
+
+V0.7.0118 2018.1.19
+Remove support of gamma
+AWB takes effect under low brightness scene
+Fix blocking bug of ASIStopVideoCapture
+
+V0.6.0921 2017.9.21
+Fix hot line bug occurs with very few cameras
+Add new cameras
+Fix crash bug with TheSkyX when two cameras capture at the same time
+Fix other bug
+remove API version1(ASICamera.xxx) from SDK package
+
+
+V0.6.0504 2017.5.4
+fix bug: problem happen when use libusb to implement hot-plug interacts with SDK
+
+V0.6.0414 2017.4.14
+fix bug happen when continuous snap shot
+
+V0.6.0328 2017.3.28
+fix bug of fail to get frame under some resolution on Linux and OSX
+fix bug on OSX
+change unit of auto exposure max duration to micro second
