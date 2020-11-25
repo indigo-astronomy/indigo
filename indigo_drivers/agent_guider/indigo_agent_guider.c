@@ -137,7 +137,6 @@ typedef struct {
 	double avg_drift_x, avg_drift_y;
 	double rmse_ra_sum, rmse_dec_sum;
 	double rmse_ra_threshold, rmse_dec_threshold;
-	double subframe_off_x, subframe_off_y;
 	unsigned long rmse_count;
 	enum { PREVIEW = -1, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
@@ -415,9 +414,9 @@ static void select_subframe(indigo_device *device) {
 			for (int i = 0; i < agent_ccd_frame_property->count; i++) {
 				indigo_item *item = agent_ccd_frame_property->items + i;
 				if (!strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME))
-					selection_x += DEVICE_PRIVATE_DATA->subframe_off_x = item->number.value / bin_x;
+					selection_x += item->number.value / bin_x;
 				else if (!strcmp(item->name, CCD_FRAME_TOP_ITEM_NAME))
-					selection_y += DEVICE_PRIVATE_DATA->subframe_off_y = item->number.value / bin_y;
+					selection_y += item->number.value / bin_y;
 			}
 			int window_size = AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.value * AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value;
 			int frame_left = ((selection_x - window_size) / GRID) * GRID;
@@ -426,8 +425,6 @@ static void select_subframe(indigo_device *device) {
 			int frame_height = (2 * window_size / GRID + 1) * GRID;
 			AGENT_GUIDER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
 			AGENT_GUIDER_SELECTION_Y_ITEM->number.value = selection_y -= frame_top;
-			DEVICE_PRIVATE_DATA->subframe_off_x -= frame_left;
-			DEVICE_PRIVATE_DATA->subframe_off_y -= frame_top;
 			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			if (frame_width - selection_x < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
 				frame_width += GRID;
@@ -990,8 +987,6 @@ static void guide_process(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->saved_frame) {
 		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
 		indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
-		AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value -= DEVICE_PRIVATE_DATA->subframe_off_x;
-		AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value -= DEVICE_PRIVATE_DATA->subframe_off_y;
 		DEVICE_PRIVATE_DATA->saved_frame = NULL;
 		AGENT_GUIDER_SELECTION_X_ITEM->number.value = AGENT_GUIDER_SELECTION_X_ITEM->number.target;
 		AGENT_GUIDER_SELECTION_Y_ITEM->number.value = AGENT_GUIDER_SELECTION_Y_ITEM->number.target;
@@ -1001,6 +996,8 @@ static void guide_process(indigo_device *device) {
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
+	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
 	AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
