@@ -28,14 +28,13 @@
 
 #### CCDs
 
-1. QHY CCD driver __DONE__ (unstable SDK)
-2. Fishcamp CCD driver (based on Fishcamp SDK)
+1. Fishcamp CCD driver (based on Fishcamp SDK)
 
 #### DSLRs
 
 1. Sony driver (based on WS API)
 2. Pentax driver
-3. FujiFilm driver
+3. FujiFilm driver __DONE__ (supported by PTP driver)
 
 #### Filter Wheels
 
