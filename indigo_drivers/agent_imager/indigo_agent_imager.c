@@ -764,6 +764,8 @@ static bool autofocus(indigo_device *device) {
 	}
 	while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		indigo_usleep(200000);
+
+	capture_raw_frame(device);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		return false;
 	if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
@@ -797,8 +799,8 @@ static void autofocus_process(indigo_device *device) {
 		AGENT_IMAGER_SELECTION_X_ITEM->number.value = AGENT_IMAGER_SELECTION_X_ITEM->number.target;
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.value = AGENT_IMAGER_SELECTION_Y_ITEM->number.target;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+		capture_raw_frame(device);
 	}
-	capture_raw_frame(device);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
