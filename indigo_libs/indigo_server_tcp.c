@@ -159,25 +159,44 @@ static void start_worker_thread(int *client_socket) {
 						indigo_blob_entry *entry;
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
 							pthread_mutex_lock(&entry->mutext);
-							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
-							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							if (!strcmp(entry->format, ".jpeg")) {
-								INDIGO_PRINTF(socket, "Content-Type: image/jpeg\r\n");
+							long working_size = entry->size;
+							void *working_copy = malloc(working_size);
+							if (working_copy) {
+								memcpy(working_copy, entry->content, working_size);
+								char working_format[INDIGO_NAME_SIZE];
+								strcpy(working_format, entry->format);
+								pthread_mutex_unlock(&entry->mutext);
+								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
+								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								if (!strcmp(entry->format, ".jpeg")) {
+									INDIGO_PRINTF(socket, "Content-Type: image/jpeg\r\n");
+								} else {
+									INDIGO_PRINTF(socket, "Content-Type: application/octet-stream\r\n");
+									INDIGO_PRINTF(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, working_format);
+								}
+								if (keep_alive)
+									INDIGO_PRINTF(socket, "Connection: keep-alive\r\n");
+								INDIGO_PRINTF(socket, "Content-Length: %ld\r\n", working_size);
+								INDIGO_PRINTF(socket, "\r\n");
+								if (indigo_write(socket, working_copy, working_size)) {
+									INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, working_size));
+								} else {
+									INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
+									keep_alive = false;
+								}
+								free(working_copy);
 							} else {
-								INDIGO_PRINTF(socket, "Content-Type: application/octet-stream\r\n");
-								INDIGO_PRINTF(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, entry->format);
-							}
-							if (keep_alive)
-								INDIGO_PRINTF(socket, "Connection: keep-alive\r\n");
-							INDIGO_PRINTF(socket, "Content-Length: %ld\r\n", entry->size);
-							INDIGO_PRINTF(socket, "\r\n");
-							if (indigo_write(socket, entry->content, entry->size)) {
-								INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, entry->size));
-							} else {
-								INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
+								pthread_mutex_unlock(&entry->mutext);
+								INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+								INDIGO_PRINTF(socket, "\r\n");
+								INDIGO_PRINTF(socket, "Out of buffer memory!\r\n");
+								shutdown(socket,SHUT_RDWR);
+								indigo_usleep(ONE_SECOND_DELAY);
+								close(socket);
+								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								keep_alive = false;
 							}
-							pthread_mutex_unlock(&entry->mutext);
 						} else {
 							INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
 							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
