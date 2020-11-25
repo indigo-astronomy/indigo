@@ -61,7 +61,6 @@
 #define AGENT_IMAGER_FOCUS_BACKLASH_IN_ITEM   (AGENT_IMAGER_FOCUS_PROPERTY->items+3)
 #define AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM  (AGENT_IMAGER_FOCUS_PROPERTY->items+4)
 #define AGENT_IMAGER_FOCUS_STACK_ITEM					(AGENT_IMAGER_FOCUS_PROPERTY->items+5)
-#define AGENT_IMAGER_WINDOW_SIZE_ITEM					(AGENT_IMAGER_FOCUS_PROPERTY->items+6)
 
 #define AGENT_IMAGER_DITHERING_PROPERTY				(DEVICE_PRIVATE_DATA->agent_imager_dithering_property)
 #define AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM (AGENT_IMAGER_DITHERING_PROPERTY->items+0)
@@ -117,7 +116,8 @@
 #define AGENT_IMAGER_SELECTION_PROPERTY				(DEVICE_PRIVATE_DATA->agent_selection_property)
 #define AGENT_IMAGER_SELECTION_X_ITEM  				(AGENT_IMAGER_SELECTION_PROPERTY->items+0)
 #define AGENT_IMAGER_SELECTION_Y_ITEM  				(AGENT_IMAGER_SELECTION_PROPERTY->items+1)
-#define AGENT_IMAGER_SELECTION_RADIUS_ITEM  		(AGENT_IMAGER_SELECTION_PROPERTY->items+2)
+#define AGENT_IMAGER_SELECTION_RADIUS_ITEM  	(AGENT_IMAGER_SELECTION_PROPERTY->items+2)
+#define AGENT_IMAGER_SELECTION_SUBFRAME_ITEM	(AGENT_IMAGER_SELECTION_PROPERTY->items+3)
 
 #define AGENT_IMAGER_SEQUENCE_PROPERTY				(DEVICE_PRIVATE_DATA->agent_sequence)
 #define AGENT_IMAGER_SEQUENCE_ITEM						(AGENT_IMAGER_SEQUENCE_PROPERTY->items+0)
@@ -221,7 +221,7 @@ static void set_headers(indigo_device *device) {
 static void select_subframe(indigo_device *device) {
 	int selection_x = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
 	int selection_y = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
-	if (selection_x && selection_y && AGENT_IMAGER_WINDOW_SIZE_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame == NULL) {
+	if (selection_x && selection_y && AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame == NULL) {
 		indigo_property *device_ccd_frame_property, *agent_ccd_frame_property;
 		if (indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_FRAME_PROPERTY_NAME, &device_ccd_frame_property, &agent_ccd_frame_property)) {
 			for (int i = 0; i < agent_ccd_frame_property->count; i++) {
@@ -229,9 +229,9 @@ static void select_subframe(indigo_device *device) {
 				if (!strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME))
 					selection_x += item->number.value / DEVICE_PRIVATE_DATA->bin_x;
 				else if (!strcmp(item->name, CCD_FRAME_TOP_ITEM_NAME))
-					selection_y += item->number.value / DEVICE_PRIVATE_DATA->bin_x;
+					selection_y += item->number.value / DEVICE_PRIVATE_DATA->bin_y;
 			}
-			int window_size = AGENT_IMAGER_WINDOW_SIZE_ITEM->number.value * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value;
+			int window_size = AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value;
 			int frame_left = ((selection_x - window_size) / GRID) * GRID;
 			int frame_top = ((selection_y - window_size) / GRID) * GRID;
 			int frame_width = (2 * window_size / GRID + 1) * GRID;
@@ -248,7 +248,7 @@ static void select_subframe(indigo_device *device) {
 			memcpy(DEVICE_PRIVATE_DATA->saved_frame, agent_ccd_frame_property, size);
 			strcpy(DEVICE_PRIVATE_DATA->saved_frame->device, device_ccd_frame_property->device);
 			char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
-			double values[] = { frame_left * DEVICE_PRIVATE_DATA->bin_x, frame_top * DEVICE_PRIVATE_DATA->bin_y,  frame_width * DEVICE_PRIVATE_DATA->bin_x, frame_height * DEVICE_PRIVATE_DATA->bin_x };
+			double values[] = { frame_left * DEVICE_PRIVATE_DATA->bin_x, frame_top * DEVICE_PRIVATE_DATA->bin_y,  frame_width * DEVICE_PRIVATE_DATA->bin_x, frame_height * DEVICE_PRIVATE_DATA->bin_y };
 			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_ccd_frame_property->device, CCD_FRAME_PROPERTY_NAME, 4, (const char **)names, values);
 		}
 	}
@@ -1104,7 +1104,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_BATCH_EXPOSURE_ITEM, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, "Exposure time", 0, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_DELAY_ITEM, AGENT_IMAGER_BATCH_DELAY_ITEM_NAME, "Delay after each exposure", 0, 0xFFFF, 1, 0);
 		// -------------------------------------------------------------------------------- Focus properties
-		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 7);
+		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
 		if (AGENT_IMAGER_FOCUS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_INITIAL_ITEM, AGENT_IMAGER_FOCUS_INITIAL_ITEM_NAME, "Initial step", 0, 0xFFFF, 1, 20);
@@ -1113,7 +1113,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_IN_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_IN_ITEM_NAME, "Backlash (in)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM_NAME, "Backlash (out)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_STACK_ITEM, AGENT_IMAGER_FOCUS_STACK_ITEM_NAME, "Stacking", 1, 5, 1, 3);
-		indigo_init_number_item(AGENT_IMAGER_WINDOW_SIZE_ITEM, AGENT_IMAGER_WINDOW_SIZE_ITEM_NAME, "Window size", 0, 10, 1, 0);
 		// -------------------------------------------------------------------------------- Dithering properties
 		AGENT_IMAGER_DITHERING_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_DITHERING_PROPERTY_NAME, "Agent", "Dithering settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_IMAGER_DITHERING_PROPERTY == NULL)
@@ -1180,12 +1179,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_IMAGER_STARS_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_IMAGER_STARS_REFRESH_ITEM, AGENT_IMAGER_STARS_REFRESH_ITEM_NAME, "Refresh", false);
 		// -------------------------------------------------------------------------------- Selected star
-		AGENT_IMAGER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		AGENT_IMAGER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 		if (AGENT_IMAGER_SELECTION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_X_ITEM, AGENT_IMAGER_SELECTION_X_ITEM_NAME, "Selection X (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_Y_ITEM, AGENT_IMAGER_SELECTION_Y_ITEM_NAME, "Selection Y (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_RADIUS_ITEM, AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_SUBFRAME_ITEM, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 10, 1, 0);
 		// -------------------------------------------------------------------------------- Focusing stats
 		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
 		if (AGENT_IMAGER_STATS_PROPERTY == NULL)
