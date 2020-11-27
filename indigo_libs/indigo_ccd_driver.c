@@ -817,16 +817,16 @@ static void set_black_white(indigo_device *device, long *histo, long count) {
 	} else {
 		CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = CCD_JPEG_SETTINGS_WHITE_ITEM->number.target;
 	}
-	if (fabs(CCD_JPEG_SETTINGS_BLACK_ITEM->number.value - CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) < 4) {
+	if (fabs(CCD_JPEG_SETTINGS_BLACK_ITEM->number.value - CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) < 5) {
 		if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value > 1)
 			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value -= 2;
 		else
 			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value += 2;
-		if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value <254)
-			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 2;
+		if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value < 253)
+			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 3;
 		else
 			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value -= 2;
-	}	
+	}
 	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value != CCD_JPEG_SETTINGS_BLACK_ITEM->number.target || CCD_JPEG_SETTINGS_WHITE_ITEM->number.value != CCD_JPEG_SETTINGS_WHITE_ITEM->number.target) {
 		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
