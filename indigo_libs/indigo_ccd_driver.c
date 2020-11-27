@@ -254,8 +254,8 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 5, 90);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_ITEM, CCD_JPEG_SETTINGS_BLACK_ITEM_NAME, "Black point", -1, 255, 0, -1);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_ITEM, CCD_JPEG_SETTINGS_WHITE_ITEM_NAME, "White point", -1, 255, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM_NAME, "Black point treshold", 0, 1, 0, 0.005);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME, "White point treshold", 0, 1, 0, 0.002);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM_NAME, "Black point treshold (%iles)", 0, 1, 0, 0.01);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME, "White point treshold (%iles)", 0, 1, 0, 0.2);
 			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
 			CCD_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_RBI_FLUSH_ENABLE_PROPERTY_NAME, CCD_MAIN_GROUP, "RBI flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_RBI_FLUSH_ENABLE_PROPERTY == NULL)
@@ -797,12 +797,12 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 }
 
 static void set_black_white(indigo_device *device, long *histo, long count) {
-	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count;
+	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
 	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
 		long total = 0;
 		for (int i = 0; i < 256; i++) {
 			total += histo[i];
-			if (total > black) {
+			if (total >= black) {
 				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i;
 				break;
 			}
@@ -810,12 +810,12 @@ static void set_black_white(indigo_device *device, long *histo, long count) {
 	} else {
 		CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = CCD_JPEG_SETTINGS_BLACK_ITEM->number.target;
 	}
-	long white = CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM->number.value * count;
+	long white = CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
 	if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.target == -1) {
 		long total = 0;
 		for (int i = 255; i >= 0; i--) {
 			total += histo[i];
-			if (total > white) {
+			if (total >= white) {
 				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i;
 				break;
 			}
@@ -890,7 +890,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		unsigned char *b8 = copy;
 		b16 = copy;
 		for (int i = 0; i < count; i++) {
-			int value = (*b16++ - offset) / scale;
+			int value = rint((*b16++ - offset) / scale);
 			if (value < 0)
 				value = 0;
 			else if (value > 255)
