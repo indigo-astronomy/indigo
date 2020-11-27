@@ -206,7 +206,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			if (CCD_IMAGE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_blob_item(CCD_IMAGE_ITEM, CCD_IMAGE_ITEM_NAME, "Image data");
-			// -------------------------------------------------------------------------------- CCD_PREVIEW_IMAGE
+			// -------------------------------------------------------------------------------- Matovič: Zaočkovať sa dám, ale pripadalo by mi férové, aby som ako kapitán lode bol zaočkovaný úplne posledný
 			CCD_PREVIEW_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Preview image data", INDIGO_OK_STATE, 1);
 			if (CCD_PREVIEW_IMAGE_PROPERTY == NULL)
 				return INDIGO_FAILED;
@@ -446,12 +446,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
 					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-				}
-			}
-			if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
-				if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
-					CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 				}
 			}
 			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
@@ -995,6 +989,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 		indigo_raw_to_jpeg(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &jpeg_data, &jpeg_size);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 			if (jpeg_data) {
 				if (CCD_CONTEXT->preview_image) {
 					if (CCD_CONTEXT->preview_image_size < jpeg_size) {
@@ -1008,8 +1004,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				CCD_PREVIEW_IMAGE_ITEM->blob.size = jpeg_size;
 				strcpy(CCD_PREVIEW_IMAGE_ITEM->blob.format, ".jpeg");
 				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			} else {
+				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 	}
 
