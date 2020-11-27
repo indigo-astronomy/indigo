@@ -111,12 +111,13 @@ This is the list of requirements taken into the consideration:
 82. QHY CFW filter wheel driver
 83. RainbowAstro Mount driver
 84. NexStar AUX protocol mount driver
+85. Lunatico Astronomy AAG CloudWatcher driver
+86. MyFocuserPro 2 focuser driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
 2. ASCOM driver for INDIGO focuser
-3. Lunatico Astronomy AAG CloudWatcher driver
-4. a-Box Adaptive optics driver
+3. a-Box Adaptive optics driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO
