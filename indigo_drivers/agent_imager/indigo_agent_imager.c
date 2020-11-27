@@ -225,7 +225,7 @@ static void select_subframe(indigo_device *device) {
 	int selection_y = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
 	if (selection_x && selection_y && AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame == NULL) {
 		indigo_property *device_ccd_frame_property, *agent_ccd_frame_property;
-		if (indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_FRAME_PROPERTY_NAME, &device_ccd_frame_property, &agent_ccd_frame_property)) {
+		if (indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_FRAME_PROPERTY_NAME, &device_ccd_frame_property, &agent_ccd_frame_property) && agent_ccd_frame_property->perm == INDIGO_RW_PERM) {
 			for (int i = 0; i < agent_ccd_frame_property->count; i++) {
 				indigo_item *item = agent_ccd_frame_property->items + i;
 				if (!strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME))
