@@ -23,7 +23,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_mypro2
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * myFocuserPro2 on Arduino Micro
