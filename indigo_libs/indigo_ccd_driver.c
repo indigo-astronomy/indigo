@@ -102,11 +102,12 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_switch_item(CCD_UPLOAD_MODE_LOCAL_ITEM, CCD_UPLOAD_MODE_LOCAL_ITEM_NAME, "Save locally", false);
 			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, "Upload and save locally", false);
 			// -------------------------------------------------------------------------------- CCD_PREVIEW
-			CCD_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_PREVIEW_PROPERTY_NAME, CCD_MAIN_GROUP, "Enable preview", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			CCD_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_PREVIEW_PROPERTY_NAME, CCD_MAIN_GROUP, "Enable preview", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (CCD_PREVIEW_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(CCD_PREVIEW_ENABLED_ITEM, CCD_PREVIEW_ENABLED_ITEM_NAME, "Enabled", false);
 			indigo_init_switch_item(CCD_PREVIEW_DISABLED_ITEM, CCD_PREVIEW_DISABLED_ITEM_NAME, "Disabled", true);
+			indigo_init_switch_item(CCD_PREVIEW_ENABLED_ITEM, CCD_PREVIEW_ENABLED_ITEM_NAME, "Enabled", false);
+			indigo_init_switch_item(CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM_NAME, "Enabled with histogram", false);
 			// -------------------------------------------------------------------------------- CCD_LOCAL_MODE
 			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Local mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_LOCAL_MODE_PROPERTY == NULL)
@@ -206,12 +207,18 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			if (CCD_IMAGE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_blob_item(CCD_IMAGE_ITEM, CCD_IMAGE_ITEM_NAME, "Image data");
-			// -------------------------------------------------------------------------------- Matovič: Zaočkovať sa dám, ale pripadalo by mi férové, aby som ako kapitán lode bol zaočkovaný úplne posledný
+			// -------------------------------------------------------------------------------- CCD_PREVIEW_IMAGE
 			CCD_PREVIEW_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Preview image data", INDIGO_OK_STATE, 1);
 			if (CCD_PREVIEW_IMAGE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
 			indigo_init_blob_item(CCD_PREVIEW_IMAGE_ITEM, CCD_PREVIEW_IMAGE_ITEM_NAME, "Image data");
+			// -------------------------------------------------------------------------------- CCD_PREVIEW_HISTOGRAM
+			CCD_PREVIEW_HISTOGRAM_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_HISTOGRAM_PROPERTY_NAME, CCD_IMAGE_GROUP, "Preview image histogram", INDIGO_OK_STATE, 1);
+			if (CCD_PREVIEW_HISTOGRAM_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = true;
+			indigo_init_blob_item(CCD_PREVIEW_HISTOGRAM_ITEM, CCD_PREVIEW_HISTOGRAM_ITEM_NAME, "Image data");
 			// -------------------------------------------------------------------------------- CCD_LOCAL_FILE
 			CCD_IMAGE_FILE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_IMAGE_FILE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image file info", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (CCD_IMAGE_FILE_PROPERTY == NULL)
@@ -321,6 +328,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
 		if (indigo_property_match(CCD_PREVIEW_IMAGE_PROPERTY, property))
 			indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_PREVIEW_HISTOGRAM_PROPERTY, property))
+			indigo_define_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
 		if (indigo_property_match(CCD_COOLER_PROPERTY, property))
 			indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
 		if (indigo_property_match(CCD_COOLER_POWER_PROPERTY, property))
@@ -366,6 +375,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			indigo_define_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
 			indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
 			indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
@@ -401,6 +411,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_IMAGE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_COOLER_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
@@ -462,6 +473,10 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_PREVIEW_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		}
+		if (CCD_PREVIEW_HISTOGRAM_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
 		}
 		if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -586,7 +601,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
 		indigo_property_copy_values(CCD_IMAGE_FORMAT_PROPERTY, property, false);
 		if (CCD_IMAGE_FORMAT_PROPERTY->count > 2) { // Not DSLR
-			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 				if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
 					CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
 					if (IS_CONNECTED)
@@ -608,7 +623,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_IMAGE_UPLOAD_MODE
 		indigo_property_copy_values(CCD_UPLOAD_MODE_PROPERTY, property, false);
 		if (CCD_IMAGE_FORMAT_PROPERTY->count > 2) { // Not DSLR
-			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 				if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
 					CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
 					if (IS_CONNECTED)
@@ -630,7 +645,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_PREVIEW
 		indigo_property_copy_values(CCD_PREVIEW_PROPERTY, property, false);
 		if (CCD_IMAGE_FORMAT_PROPERTY->count > 2) { // Not DSLR
-			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 				if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
 					CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
 					if (IS_CONNECTED)
@@ -644,17 +659,38 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 		}
-		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+		if (CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			if (CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
 				CCD_PREVIEW_IMAGE_PROPERTY->hidden = false;
 				if (IS_CONNECTED)
 					indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			}
+			if (CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden) {
+				CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = false;
+				if (IS_CONNECTED)
+					indigo_define_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+			}
+		} else if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			if (CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
+				CCD_PREVIEW_IMAGE_PROPERTY->hidden = false;
+				if (IS_CONNECTED)
+					indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			}
+			if (!CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden) {
+				if (IS_CONNECTED)
+					indigo_delete_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+				CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = true;
 			}
 		} else {
 			if (!CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
 				if (IS_CONNECTED)
 					indigo_delete_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 				CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
+			}
+			if (!CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden) {
+				if (IS_CONNECTED)
+					indigo_delete_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+				CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = true;
 			}
 		}
 		CCD_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
@@ -778,6 +814,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_IMAGE_FILE_PROPERTY);
 	indigo_release_property(CCD_IMAGE_PROPERTY);
 	indigo_release_property(CCD_PREVIEW_IMAGE_PROPERTY);
+	indigo_release_property(CCD_PREVIEW_HISTOGRAM_PROPERTY);
 	indigo_release_property(CCD_TEMPERATURE_PROPERTY);
 	indigo_release_property(CCD_COOLER_PROPERTY);
 	indigo_release_property(CCD_COOLER_POWER_PROPERTY);
@@ -790,7 +827,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-static void set_black_white(indigo_device *device, long *histo, long count) {
+static void set_black_white(indigo_device *device, unsigned long *histo, long count) {
 	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
 	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
 		long total = 0;
@@ -833,7 +870,7 @@ static void set_black_white(indigo_device *device, long *histo, long count) {
 	}
 }
 
-void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out) {
+void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size) {
 	INDIGO_DEBUG(clock_t start = clock());
 	int size_in = frame_width * frame_height;
 	void *copy = malloc(size_in * bpp / 8);
@@ -847,7 +884,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_mem_dest(&cinfo, &mem, &mem_size);
 	cinfo.image_width = frame_width;
 	cinfo.image_height = frame_height;
-	long histo[256] = { 0 };
+	unsigned long histo[256] = { 0 };
 	if (bpp == 8 || bpp == 24) {
 		unsigned char *b8 = copy;
 		int count = size_in * (bpp == 8 ? 1 : 3);
@@ -927,6 +964,41 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	*data_out = mem;
 	*size_out = mem_size;
 	free(copy);
+	if (histogram_data != NULL) {
+		uint8_t raw[32][256];
+		memset(raw, 0, sizeof(raw));
+		for (int i = 0; i < 256; i++) {
+			unsigned long val = histo[i];
+			unsigned long mask = 0x80000000;
+			uint8_t pixel = 0;
+			for (unsigned long j = 0; j < 32; j++) {
+				if (val & mask) {
+					pixel = 0xF0;
+				}
+				raw[j][i] = pixel;
+				mask = mask >> 1;
+			}
+		}
+		mem = NULL;
+		mem_size = 0;
+		jpeg_create_compress(&cinfo);
+		jpeg_mem_dest(&cinfo, &mem, &mem_size);
+		cinfo.image_width = 256;
+		cinfo.image_height = 32;
+		cinfo.input_components = 1;
+		cinfo.in_color_space = JCS_GRAYSCALE;
+		jpeg_set_defaults(&cinfo);
+		JSAMPROW row_pointer[1];
+		jpeg_start_compress(&cinfo, TRUE);
+		while (cinfo.next_scanline < cinfo.image_height) {
+			row_pointer[0] = ((JSAMPROW)((uint8_t *)raw + cinfo.next_scanline * 256));
+			jpeg_write_scanlines(&cinfo, row_pointer, 1);
+		}
+		jpeg_finish_compress(&cinfo);
+		jpeg_destroy_compress(&cinfo);
+		*histogram_data = mem;
+		*histogram_size = mem_size;
+	}
 	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 }
 
@@ -990,9 +1062,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 
 	void *jpeg_data = NULL;
 	unsigned long jpeg_size = 0;
-	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value) {
-		indigo_raw_to_jpeg(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &jpeg_data, &jpeg_size);
-		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+	void *histogram_data = NULL;
+	unsigned long histogram_size = 0;
+	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
+		indigo_raw_to_jpeg(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL);
+		if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 			if (jpeg_data) {
@@ -1012,6 +1086,27 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			if (CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
+				CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+				if (histogram_data) {
+					if (CCD_CONTEXT->preview_histogram) {
+						if (CCD_CONTEXT->preview_histogram_size < histogram_size) {
+							CCD_CONTEXT->preview_histogram = realloc(CCD_CONTEXT->preview_histogram, CCD_CONTEXT->preview_histogram_size = histogram_size);
+						}
+					} else {
+						CCD_CONTEXT->preview_histogram = malloc(CCD_CONTEXT->preview_histogram_size = histogram_size);
+					}
+					memcpy(CCD_CONTEXT->preview_histogram, histogram_data, histogram_size);
+					CCD_PREVIEW_HISTOGRAM_ITEM->blob.value = CCD_CONTEXT->preview_histogram;
+					CCD_PREVIEW_HISTOGRAM_ITEM->blob.size = histogram_size;
+					strcpy(CCD_PREVIEW_HISTOGRAM_ITEM->blob.format, ".jpeg");
+					CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+			}
 		}
 	}
 

@@ -119,13 +119,17 @@ extern "C" {
  */
 #define CCD_PREVIEW_PROPERTY         		(CCD_CONTEXT->ccd_preview_property)
 
-/** CCD_PREVIEW.ENABLED property item pointer.
- */
-#define CCD_PREVIEW_ENABLED_ITEM        (CCD_PREVIEW_PROPERTY->items+0)
-
 /** CCD_PREVIEW.DISABLED property item pointer.
  */
-#define CCD_PREVIEW_DISABLED_ITEM        (CCD_PREVIEW_PROPERTY->items+1)
+#define CCD_PREVIEW_DISABLED_ITEM        (CCD_PREVIEW_PROPERTY->items+0)
+
+/** CCD_PREVIEW.ENABLED property item pointer.
+ */
+#define CCD_PREVIEW_ENABLED_ITEM        (CCD_PREVIEW_PROPERTY->items+1)
+
+/** CCD_PREVIEW.ENABLED_WITH_HISTOGRAM  property item pointer.
+ */
+#define CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM        (CCD_PREVIEW_PROPERTY->items+2)
 
 /** CCD_LOCAL_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
@@ -337,6 +341,14 @@ extern "C" {
  */
 #define CCD_PREVIEW_IMAGE_ITEM            (CCD_PREVIEW_IMAGE_PROPERTY->items+0)
 
+/** CCD_PREVIEW_IMAGE property pointer, property is mandatory, read-only property.
+ */
+#define CCD_PREVIEW_HISTOGRAM_PROPERTY        (CCD_CONTEXT->ccd_preview_histogram_property)
+
+/** CCD_PREVIEW_HISTOGRAM.IMAGE property item pointer.
+ */
+#define CCD_PREVIEW_HISTOGRAM_ITEM            (CCD_PREVIEW_HISTOGRAM_PROPERTY->items+0)
+
 /** CCD_TEMPERATURE property pointer, property change request should be fully handled by device driver.
  */
 #define CCD_TEMPERATURE_PROPERTY          (CCD_CONTEXT->ccd_temperature_property)
@@ -429,6 +441,8 @@ typedef struct {
 	indigo_timer *countdown_timer;								///< countdown timer
 	void *preview_image;													///< preview image buffer
 	unsigned long preview_image_size;							///< preview image buffer size
+	void *preview_histogram;											///< preview histogram buffer
+	unsigned long preview_histogram_size;					///< preview histogram buffer size
 	void *video_stream;														///< video stream control structure
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
@@ -449,6 +463,7 @@ typedef struct {
 	indigo_property *ccd_image_format_property;   ///< CCD_IMAGE_FORMAT property pointer
 	indigo_property *ccd_image_property;          ///< CCD_IMAGE property pointer
 	indigo_property *ccd_preview_image_property;  ///< CCD_PREVIEW_IMAGE property pointer
+	indigo_property *ccd_preview_histogram_property;  ///< CCD_PREVIEW_HISTOGRAM property pointer
 	indigo_property *ccd_image_file_property;     ///< CCD_IMAGE_FILE property pointer
 	indigo_property *ccd_temperature_property;    ///< CCD_TEMPERATURE property pointer
 	indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
@@ -500,7 +515,7 @@ typedef struct {
 
 /** Convert RAW data to JPEG
  */
-extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out);
+extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size);
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */

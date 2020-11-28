@@ -297,6 +297,10 @@
  */
 #define CCD_PREVIEW_ENABLED_ITEM_NAME       	"ENABLED"
 
+/** CCD_PREVIEW.ENABLED_WITH_HISTOGRAM property item name.
+ */
+#define CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM_NAME		"ENABLED_WITH_HISTOGRAM"
+
 /** CCD_PREVIEW.DISABLED property item name.
  */
 #define CCD_PREVIEW_DISABLED_ITEM_NAME       	"DISABLED"
@@ -309,6 +313,13 @@
  */
 #define CCD_PREVIEW_IMAGE_ITEM_NAME           "IMAGE"
 
+/** CCD_PREVIEW_HISTOGRAM property name.
+ */
+#define CCD_PREVIEW_HISTOGRAM_PROPERTY_NAME				"CCD_PREVIEW_HISTOGRAM"
+
+/** CCD_PREVIEW_HISTOGRAM.IMAGE property item name.
+ */
+#define CCD_PREVIEW_HISTOGRAM_ITEM_NAME           "IMAGE"
 
 //----------------------------------------------------------------------
 /** CCD_LOCAL_MODE property name.

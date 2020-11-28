@@ -168,7 +168,8 @@
 							<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
 								<div class="card-block">
 									<div class="card p-0 border-0" style="display: none">
-										<img id="image" class="img-fluid"/>
+										<img id="image" class="img-fluid rounded"/>
+										<img id="histogram" width="128" height="64" style="position: absolute; top:10px;left:10px;display:none"/>
 									</div>
 								</div>
 							</div>
@@ -239,7 +240,7 @@
 			onUpdateProperty(property);
 			if (property.device == "Imager Agent") {
 				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
-					changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
+					changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 				} else if (property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
 					changeProperty("Imager Agent", "FILTER_RELATED_AGENT_LIST", { "Guider Agent" : true });
 				}
@@ -256,6 +257,13 @@
 						var value = property.item("IMAGE").value;
 						if (value != null) {
 							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
+						}
+					}
+				} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
+					if (property.state == "Ok") {
+						var value = property.item("IMAGE").value;
+						if (value != null) {
+							$("#histogram").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).show();
 						}
 					}
 				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
@@ -351,6 +359,14 @@
 		}
 	
 		function onDeleteProperty(property) {
+			if (property.name == "CCD_PREVIEW_HISTOGRAM") {
+				if (property.state == "Ok") {
+					var value = property.item("IMAGE").value;
+					if (value != null) {
+						$("#histogram").hide();
+					}
+				}
+			}
 			guiSetup();
 		}
 	
@@ -360,7 +376,7 @@
 			$("#preview1_button").addClass("busy-state");
 			INDIGO.useAgent = false;
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
-			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
+			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
 		}
 	
@@ -370,7 +386,7 @@
 			$("#preview_button").addClass("busy-state");
 			INDIGO.useAgent = false;
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
-			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
+			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
 		}
 	
@@ -380,7 +396,7 @@
 			$("#capture_button").addClass("busy-state");
 			INDIGO.useAgent = true;
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "LOCAL" : true });
-			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
+			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
 		}
 	
