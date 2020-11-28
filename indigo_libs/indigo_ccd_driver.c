@@ -829,6 +829,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 
 static void set_black_white(indigo_device *device, unsigned long *histo, long count) {
 	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
+	if (black == 0) black = 1;
 	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
 		long total = 0;
 		for (int i = 0; i < 256; i++) {
@@ -842,6 +843,7 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 		CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = CCD_JPEG_SETTINGS_BLACK_ITEM->number.target;
 	}
 	long white = CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
+	if (white == 0) white = 1;
 	if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.target == -1) {
 		long total = 0;
 		for (int i = 255; i >= 0; i--) {
