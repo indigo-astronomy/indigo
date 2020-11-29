@@ -44,6 +44,10 @@ extern int indigo_server_tcp_port;
  */
 extern bool indigo_is_ephemeral_port;
 
+/** Use BLOB double-buffering.
+ */
+extern bool indigo_use_blob_buffering;
+
 /** Add static document.
  */
 extern void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type);

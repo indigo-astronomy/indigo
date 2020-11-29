@@ -71,6 +71,7 @@ static indigo_server_tcp_callback server_callback;
 
 int indigo_server_tcp_port = 7624;
 bool indigo_is_ephemeral_port = false;
+bool indigo_use_blob_buffering = false;
 
 static struct resource {
 	const char *path;
@@ -160,12 +161,14 @@ static void start_worker_thread(int *client_socket) {
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
 							pthread_mutex_lock(&entry->mutext);
 							long working_size = entry->size;
-							void *working_copy = malloc(working_size);
+							void *working_copy = indigo_use_blob_buffering ? malloc(working_size) : entry->content;
 							if (working_copy) {
-								memcpy(working_copy, entry->content, working_size);
 								char working_format[INDIGO_NAME_SIZE];
 								strcpy(working_format, entry->format);
-								pthread_mutex_unlock(&entry->mutext);
+								if (indigo_use_blob_buffering) {
+									memcpy(working_copy, entry->content, working_size);
+									pthread_mutex_unlock(&entry->mutext);
+								}
 								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								if (!strcmp(entry->format, ".jpeg")) {
@@ -184,7 +187,11 @@ static void start_worker_thread(int *client_socket) {
 									INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
 									keep_alive = false;
 								}
-								free(working_copy);
+								if (indigo_use_blob_buffering) {
+									free(working_copy);
+								} else {
+									pthread_mutex_unlock(&entry->mutext);
+								}
 							} else {
 								pthread_mutex_unlock(&entry->mutext);
 								INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
