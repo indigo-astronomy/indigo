@@ -1516,6 +1516,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PAUSE_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_SEQUENCE_PROPERTY);
+	indigo_release_property(AGENT_WHEEL_FILTER_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	if (DEVICE_PRIVATE_DATA->image_buffer)
 		free(DEVICE_PRIVATE_DATA->image_buffer);
