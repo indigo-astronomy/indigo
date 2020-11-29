@@ -130,6 +130,7 @@ typedef struct {
 	indigo_property *agent_selection_property;
 	indigo_property *agent_stats_property;
 	indigo_property *saved_frame;
+	double saved_frame_left, saved_frame_top;
 	bool properties_defined;
 	indigo_star_detection stars[MAX_STAR_COUNT];
 	indigo_frame_digest reference;
@@ -423,6 +424,8 @@ static void select_subframe(indigo_device *device) {
 			int frame_top = ((selection_y - window_size) / GRID) * GRID;
 			int frame_width = (2 * window_size / GRID + 1) * GRID;
 			int frame_height = (2 * window_size / GRID + 1) * GRID;
+			DEVICE_PRIVATE_DATA->saved_frame_left = frame_left;
+			DEVICE_PRIVATE_DATA->saved_frame_top = frame_top;
 			AGENT_GUIDER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
 			AGENT_GUIDER_SELECTION_Y_ITEM->number.value = selection_y -= frame_top;
 			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
@@ -992,8 +995,12 @@ static void guide_process(indigo_device *device) {
 		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
 		indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
 		DEVICE_PRIVATE_DATA->saved_frame = NULL;
-		AGENT_GUIDER_SELECTION_X_ITEM->number.value = AGENT_GUIDER_SELECTION_X_ITEM->number.target;
-		AGENT_GUIDER_SELECTION_Y_ITEM->number.value = AGENT_GUIDER_SELECTION_Y_ITEM->number.target;
+		AGENT_GUIDER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
+		AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
+		AGENT_GUIDER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
+		AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
+		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		capture_raw_frame(device);
 	}
