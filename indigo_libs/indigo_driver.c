@@ -538,9 +538,12 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }
 
+static pthread_mutex_t save_config_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property) {
 	if (property == NULL)
 		return INDIGO_FAILED;
+	pthread_mutex_lock(&save_config_mutex);
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL)
@@ -556,8 +559,10 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 					}
 			}
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
-			if (handle == 0)
+			if (handle == 0) {
+				pthread_mutex_unlock(&save_config_mutex);
 				return INDIGO_FAILED;
+			}
 		}
 		switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
@@ -588,12 +593,14 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 			break;
 		}
 	}
+	pthread_mutex_unlock(&save_config_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_save_property_items(indigo_device*device, int *file_handle, indigo_property *property, const int count, const char **items) {
 	if (property == NULL)
 		return INDIGO_FAILED;
+	pthread_mutex_lock(&save_config_mutex);
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL)
@@ -609,8 +616,10 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 					}
 			}
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
-			if (handle == 0)
+			if (handle == 0) {
+				pthread_mutex_unlock(&save_config_mutex);
 				return INDIGO_FAILED;
+			}
 		}
 		switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
@@ -656,6 +665,7 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			break;
 		}
 	}
+	pthread_mutex_unlock(&save_config_mutex);
 	return INDIGO_OK;
 }
 
