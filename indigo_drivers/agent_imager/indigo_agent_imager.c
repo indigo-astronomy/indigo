@@ -144,6 +144,7 @@ typedef struct {
 	indigo_property *agent_sequence;
 	indigo_property *agent_sequence_state;
 	indigo_property *saved_frame;
+	double saved_frame_left, saved_frame_top;
 	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
 	int focuser_position;
@@ -238,6 +239,8 @@ static void select_subframe(indigo_device *device) {
 			int frame_top = ((selection_y - window_size) / GRID) * GRID;
 			int frame_width = (2 * window_size / GRID + 1) * GRID;
 			int frame_height = (2 * window_size / GRID + 1) * GRID;
+			DEVICE_PRIVATE_DATA->saved_frame_left = frame_left;
+			DEVICE_PRIVATE_DATA->saved_frame_top = frame_top;
 			AGENT_IMAGER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
 			AGENT_IMAGER_SELECTION_Y_ITEM->number.value = selection_y -= frame_top;
 			indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
@@ -798,8 +801,12 @@ static void autofocus_process(indigo_device *device) {
 		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
 		indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
 		DEVICE_PRIVATE_DATA->saved_frame = NULL;
-		AGENT_IMAGER_SELECTION_X_ITEM->number.value = AGENT_IMAGER_SELECTION_X_ITEM->number.target;
-		AGENT_IMAGER_SELECTION_Y_ITEM->number.value = AGENT_IMAGER_SELECTION_Y_ITEM->number.target;
+		AGENT_IMAGER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
+		AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
+		AGENT_IMAGER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
+		AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
+		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 		capture_raw_frame(device);
 	}
