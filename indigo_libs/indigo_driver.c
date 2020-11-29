@@ -523,6 +523,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	}
 	int handle = indigo_open_config_file(device->name, profile, O_RDONLY, default_properties ? ".default" : ".config");
 	if (handle > 0) {
+		INDIGO_DEBUG(indigo_debug("Config file open for '%s' with descriptor %d", device->name, handle));
 		indigo_client *client = malloc(sizeof(indigo_client));
 		memset(client, 0, sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);

@@ -330,11 +330,13 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 				device_list->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, device_list, "'%s' is already connected and maybe in use, please disconnect it first.", name);
 			}
+			indigo_release_property(connection_property);
 			return INDIGO_OK;
 		}
 	}
 	device_list->state = INDIGO_OK_STATE;
 	indigo_update_property(device, device_list, NULL);
+	indigo_release_property(connection_property);
 	return INDIGO_OK;
 }
 
@@ -591,6 +593,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 							indigo_init_switch_item(configuration_property->items, CONFIG_LOAD_ITEM_NAME, NULL, true);
 							configuration_property->access_token = indigo_get_device_or_master_token(configuration_property->device);
 							indigo_change_property(client, configuration_property);
+							indigo_release_property(configuration_property);
 							strcpy(FILTER_CLIENT_CONTEXT->device_name[i], property->device);
 							device_list->state = INDIGO_OK_STATE;
 							indigo_property all_properties;
