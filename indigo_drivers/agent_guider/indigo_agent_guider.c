@@ -148,22 +148,25 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
 static void save_config(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
-	indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
-	indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
-	indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
-	char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME };
-	indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 2, (const char **)selection_property_items);
-	if (DEVICE_CONTEXT->property_save_file_handle) {
-		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		close(DEVICE_CONTEXT->property_save_file_handle);
-		DEVICE_CONTEXT->property_save_file_handle = 0;
-	} else {
-		CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
+		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
+		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME };
+		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 2, (const char **)selection_property_items);
+		if (DEVICE_CONTEXT->property_save_file_handle) {
+			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+			close(DEVICE_CONTEXT->property_save_file_handle);
+			DEVICE_CONTEXT->property_save_file_handle = 0;
+		} else {
+			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		CONFIG_SAVE_ITEM->sw.value = false;
+		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
-	CONFIG_SAVE_ITEM->sw.value = false;
-	indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 }
 
 static indigo_property_state capture_raw_frame(indigo_device *device) {

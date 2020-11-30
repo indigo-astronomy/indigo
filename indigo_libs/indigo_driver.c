@@ -310,6 +310,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		AUTHENTICATION_PROPERTY->hidden = true;
 		indigo_init_text_item(AUTHENTICATION_PASSWORD_ITEM, AUTHENTICATION_PASSWORD_ITEM_NAME, "Password", "");
 		indigo_init_text_item(AUTHENTICATION_USER_ITEM, AUTHENTICATION_USER_ITEM_NAME, "User name", "");
+		pthread_mutex_init(&DEVICE_CONTEXT->config_mutex, NULL);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -465,6 +466,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
 	indigo_delete_property(device, all_properties, NULL);
 	indigo_release_property(all_properties);
+	pthread_mutex_destroy(&DEVICE_CONTEXT->config_mutex);
 	free(DEVICE_CONTEXT);
 	device->device_context = NULL;
 	return INDIGO_OK;
@@ -515,6 +517,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	assert(device != NULL);
 	int profile = 0;
 	if (DEVICE_CONTEXT) {
+		pthread_mutex_lock(&DEVICE_CONTEXT->config_mutex);
 		for (int i = 0; i < PROFILE_COUNT; i++)
 			if (PROFILE_PROPERTY->items[i].sw.value) {
 				profile = i;
@@ -523,7 +526,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	}
 	int handle = indigo_open_config_file(device->name, profile, O_RDONLY, default_properties ? ".default" : ".config");
 	if (handle > 0) {
-		INDIGO_DEBUG(indigo_debug("Config file open for '%s' with descriptor %d", device->name, handle));
+		INDIGO_TRACE(indigo_trace("Config file open for '%s' with descriptor %d", device->name, handle));
 		indigo_client *client = malloc(sizeof(indigo_client));
 		memset(client, 0, sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
@@ -536,15 +539,18 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		free(context);
 		free(client);
 	}
+	if (DEVICE_CONTEXT)
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }
 
-static pthread_mutex_t save_config_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property) {
+indigo_result indigo_save_property(indigo_device *device, int *file_handle, indigo_property *property) {
 	if (property == NULL)
 		return INDIGO_FAILED;
-	pthread_mutex_lock(&save_config_mutex);
+	if (DEVICE_CONTEXT && pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex)) {
+		INDIGO_ERROR(indigo_error("Failed to save property %s for %s (locked)", property->name, device->name));
+		return INDIGO_FAILED;
+	}
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL)
@@ -561,7 +567,8 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 			}
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
 			if (handle == 0) {
-				pthread_mutex_unlock(&save_config_mutex);
+				if (DEVICE_CONTEXT)
+					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 				return INDIGO_FAILED;
 			}
 		}
@@ -594,14 +601,18 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 			break;
 		}
 	}
-	pthread_mutex_unlock(&save_config_mutex);
+	if (DEVICE_CONTEXT)
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_save_property_items(indigo_device*device, int *file_handle, indigo_property *property, const int count, const char **items) {
 	if (property == NULL)
 		return INDIGO_FAILED;
-	pthread_mutex_lock(&save_config_mutex);
+	if (DEVICE_CONTEXT && pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex)) {
+		INDIGO_ERROR(indigo_error("Failed to save property %s items for %s (locked)", property->name, device->name));
+		return INDIGO_FAILED;
+	}
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL)
@@ -618,7 +629,8 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			}
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
 			if (handle == 0) {
-				pthread_mutex_unlock(&save_config_mutex);
+				if (DEVICE_CONTEXT)
+					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 				return INDIGO_FAILED;
 			}
 		}
@@ -666,7 +678,8 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			break;
 		}
 	}
-	pthread_mutex_unlock(&save_config_mutex);
+	if (DEVICE_CONTEXT)
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	return INDIGO_OK;
 }
 
@@ -674,6 +687,8 @@ indigo_result indigo_remove_properties(indigo_device *device) {
 	assert(device != NULL);
 	int profile = 0;
 	if (DEVICE_CONTEXT) {
+		if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex))
+			return INDIGO_FAILED;
 		for (int i = 0; i < PROFILE_COUNT; i++)
 			if (PROFILE_PROPERTY->items[i].sw.value) {
 				profile = i;
@@ -682,9 +697,14 @@ indigo_result indigo_remove_properties(indigo_device *device) {
 	}
 	static char path[512];
 	if (make_config_file_name(device->name, profile, ".config", path, sizeof(path))) {
-		if (unlink(path) == 0)
+		if (unlink(path) == 0) {
+			if (DEVICE_CONTEXT)
+				pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 			return INDIGO_OK;
+		}
 	}
+	if (DEVICE_CONTEXT)
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	return INDIGO_FAILED;
 }
 

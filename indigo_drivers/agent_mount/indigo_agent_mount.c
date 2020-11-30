@@ -87,27 +87,30 @@ typedef struct {
 } agent_private_data;
 
 static void save_config(indigo_device *device) {
-	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
-	indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
-	indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
-	indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
-	double tmp_ha_tracking_limit = AGENT_HA_TRACKING_LIMIT_ITEM->number.value;
-	AGENT_HA_TRACKING_LIMIT_ITEM->number.value = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
-	double tmp_local_time_limit = AGENT_LOCAL_TIME_LIMIT_ITEM->number.value;
-	AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = AGENT_LOCAL_TIME_LIMIT_ITEM->number.target;
-	indigo_save_property(device, NULL, AGENT_LIMITS_PROPERTY);
-	AGENT_HA_TRACKING_LIMIT_ITEM->number.value = tmp_ha_tracking_limit;
-	 AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = tmp_local_time_limit;
-	if (DEVICE_CONTEXT->property_save_file_handle) {
-		CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		close(DEVICE_CONTEXT->property_save_file_handle);
-		DEVICE_CONTEXT->property_save_file_handle = 0;
-	} else {
-		CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
+		indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
+		double tmp_ha_tracking_limit = AGENT_HA_TRACKING_LIMIT_ITEM->number.value;
+		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
+		double tmp_local_time_limit = AGENT_LOCAL_TIME_LIMIT_ITEM->number.value;
+		AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = AGENT_LOCAL_TIME_LIMIT_ITEM->number.target;
+		indigo_save_property(device, NULL, AGENT_LIMITS_PROPERTY);
+		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = tmp_ha_tracking_limit;
+		 AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = tmp_local_time_limit;
+		if (DEVICE_CONTEXT->property_save_file_handle) {
+			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+			close(DEVICE_CONTEXT->property_save_file_handle);
+			DEVICE_CONTEXT->property_save_file_handle = 0;
+		} else {
+			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		CONFIG_SAVE_ITEM->sw.value = false;
+		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
-	CONFIG_SAVE_ITEM->sw.value = false;
-	indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 }
 
 static void set_site_coordinates2(indigo_device *device, int index, double latitude, double longitude, double elevation) {
