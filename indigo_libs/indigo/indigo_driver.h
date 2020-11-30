@@ -212,6 +212,7 @@ typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_
  */
 typedef struct {
 	int property_save_file_handle;            ///< handle for property save
+	pthread_mutex_t config_mutex;							///< mutex for configuration load/save synchronisation
 	indigo_timer *timers;											///< active timer list
 	indigo_property *connection_property;     ///< CONNECTION property pointer
 	indigo_property *info_property;           ///< INFO property pointer
@@ -219,7 +220,7 @@ typedef struct {
 	indigo_property *configuration_property;  ///< CONFIGURATION property pointer
 	indigo_property *profile_property; 				///< PROFILE property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
-	indigo_property *device_baudrate_property;          ///< DEVICE_BAUDRATE property pointer
+	indigo_property *device_baudrate_property;///< DEVICE_BAUDRATE property pointer
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
 	indigo_property *device_auth_property;		///< SECURITY property pointer
 } indigo_device_context;
