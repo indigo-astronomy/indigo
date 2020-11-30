@@ -997,12 +997,14 @@ static void guide_process(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->saved_frame) {
 		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
 		indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
-		capture_raw_frame(device);
 		DEVICE_PRIVATE_DATA->saved_frame = NULL;
 		AGENT_GUIDER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
 		AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
 		AGENT_GUIDER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
 		AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
+		// TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
+		// so that HFD, FWHM etc are evaluated correctly, but selection property should not be updated.
+		capture_raw_frame(device);
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
 		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
