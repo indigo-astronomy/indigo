@@ -803,12 +803,14 @@ static void autofocus_process(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->saved_frame) {
 		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
 		indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
-		capture_raw_frame(device);
 		DEVICE_PRIVATE_DATA->saved_frame = NULL;
 		AGENT_IMAGER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
 		AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
+		// TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
+		// but selection property should not be updated.
+		capture_raw_frame(device);
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
 		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
