@@ -32,8 +32,10 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <fcntl.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_io.h>
 
 #include "indigo_ccd_simulator.h"
 
@@ -75,11 +77,14 @@
 #define GUIDER_IMAGE_RA_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 10)
 #define GUIDER_IMAGE_DEC_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 11)
 
+#define FILE_NAME_PROPERTY					PRIVATE_DATA->file_name_property
+#define FILE_NAME_ITEM							(FILE_NAME_PROPERTY->items + 0)
+
 extern unsigned short indigo_ccd_simulator_raw_image[];
 extern unsigned char indigo_ccd_simulator_rgb_image[];
 
 typedef struct {
-	indigo_device *imager, *guider, *dslr;
+	indigo_device *imager, *guider, *dslr, *file;
 	indigo_property *dslr_program_property;
 	indigo_property *dslr_capture_mode_property;
 	indigo_property *dslr_aperture_property;
@@ -88,16 +93,18 @@ typedef struct {
 	indigo_property *dslr_iso_property;
 	indigo_property *guider_mode_property;
 	indigo_property *guider_settings_property;
-
+	indigo_property *file_name_property;
 	int star_x[STARS], star_y[STARS], star_a[STARS], hotpixel_x[HOTPIXELS + 1], hotpixel_y[HOTPIXELS + 1];
 	char imager_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char guider_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char dslr_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
+	char *file_image;
+	indigo_raw_header file_image_header;
 	pthread_mutex_t image_mutex;
 	double target_temperature, current_temperature;
 	int current_slot;
 	int target_position, current_position;
-	indigo_timer *imager_exposure_timer, *guider_exposure_timer, *dslr_exposure_timer, *temperature_timer, *guider_timer;
+	indigo_timer *imager_exposure_timer, *guider_exposure_timer, *dslr_exposure_timer, *file_exposure_timer, *temperature_timer, *guider_timer;
 	double ao_ra_offset, ao_dec_offset;
 	int eclipse;
 	double guide_rate;
@@ -201,6 +208,23 @@ static void create_frame(indigo_device *device) {
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value)
 			indigo_process_dslr_preview_image(device, data_out, (int)size_out);
 		indigo_process_dslr_image(device, data_out, (int)size_out, ".jpeg", CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
+	} else if (device == PRIVATE_DATA->file) {
+		int bpp = 8;
+		switch (PRIVATE_DATA->file_image_header.signature) {
+			case INDIGO_RAW_MONO8:
+				bpp = 8;
+				break;
+			case INDIGO_RAW_MONO16:
+				bpp = 16;
+				break;
+			case INDIGO_RAW_RGB24:
+				bpp = 24;
+				break;
+			case INDIGO_RAW_RGB48:
+				bpp = 48;
+				break;
+		}
+		indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, false, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 	} else {
 		unsigned short *raw = (unsigned short *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -498,6 +522,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_COOLER_PROPERTY->hidden = true;
 			CCD_COOLER_POWER_PROPERTY->hidden = true;
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
+		} else if (device == PRIVATE_DATA->file) {
+			FILE_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, "FILE_NAME", MAIN_GROUP, "File name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			indigo_init_text_item(FILE_NAME_ITEM, "PATH", "Path", "");
+			CCD_BIN_PROPERTY->hidden = true;
+			CCD_INFO_PROPERTY->hidden = true;
+			CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 		} else {
 			CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 			if (device == PRIVATE_DATA->guider) {
@@ -602,6 +632,10 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			}
 		}
+		if (device == PRIVATE_DATA->file) {
+			if (indigo_property_match(FILE_NAME_PROPERTY, property))
+				indigo_define_property(device, FILE_NAME_PROPERTY, NULL);
+		}
 		if (device == PRIVATE_DATA->guider) {
 			if (indigo_property_match(GUIDER_MODE_PROPERTY, property))
 				indigo_define_property(device, GUIDER_MODE_PROPERTY, NULL);
@@ -621,6 +655,8 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
 				return;
 			}
+			device->is_connected = true;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			if (device == PRIVATE_DATA->dslr) {
 				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
@@ -628,18 +664,46 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
-			}
-			if (device == PRIVATE_DATA->imager) {
+			} else if (device == PRIVATE_DATA->file) {
+				int fd = open(FILE_NAME_ITEM->text.value, O_RDONLY, 0);
+				if (fd == -1)
+					goto failure;
+				if (!indigo_read(fd, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
+					goto failure;
+				unsigned long size = 0;
+				switch (PRIVATE_DATA->file_image_header.signature) {
+					case INDIGO_RAW_MONO8:
+						size = PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						break;
+					case INDIGO_RAW_MONO16:
+						size = 2 * PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						break;
+					case INDIGO_RAW_RGB24:
+						size = 3 *PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						break;
+					case INDIGO_RAW_RGB48:
+						size = 6 * PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						break;
+				}
+				PRIVATE_DATA->file_image = malloc(size + FITS_HEADER_SIZE);
+				if (!indigo_read(fd, (char *)PRIVATE_DATA->file_image + FITS_HEADER_SIZE, size)) {
+					goto failure;
+				}
+				close(fd);
+			} else if (device == PRIVATE_DATA->imager) {
 				indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			}
-			device->is_connected = true;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
 		if (device->is_connected) {  /* Do not double close device */
 			if (device == PRIVATE_DATA->imager) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->imager_exposure_timer);
+			} else if (device == PRIVATE_DATA->file) {
+				if (PRIVATE_DATA->file_image) {
+					free(PRIVATE_DATA->file_image);
+					PRIVATE_DATA->file_image = NULL;
+				}
 			} else if (device == PRIVATE_DATA->guider) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_exposure_timer);
 			} else if (device == PRIVATE_DATA->dslr) {
@@ -650,6 +714,8 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
+			} else if (device == PRIVATE_DATA->file) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->file_exposure_timer);
 			}
 			device->is_connected = false;
 			indigo_global_unlock(device);
@@ -657,13 +723,26 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	return;
+failure:
+	indigo_global_unlock(device);
+	device->is_connected = false;
+	CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match(FILE_NAME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FILE_NAME
+		indigo_property_copy_values(FILE_NAME_PROPERTY, property, false);
+		FILE_NAME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FILE_NAME_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -694,6 +773,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->guider_exposure_timer);
 		else if (device == PRIVATE_DATA->dslr)
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->dslr_exposure_timer);
+		else if (device == PRIVATE_DATA->file)
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->file_exposure_timer);
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -714,6 +795,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_cancel_timer(device, &PRIVATE_DATA->guider_exposure_timer);
 		else if (device == PRIVATE_DATA->dslr)
 			indigo_cancel_timer(device, &PRIVATE_DATA->dslr_exposure_timer);
+		else if (device == PRIVATE_DATA->file)
+			indigo_cancel_timer(device, &PRIVATE_DATA->file_exposure_timer);
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -796,7 +879,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
+		// -------------------------------------------------------------------------------- CONFIG
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			if (device == PRIVATE_DATA->guider) {
+				indigo_save_property(device, NULL, GUIDER_SETTINGS_PROPERTY);
+			} else if (device == PRIVATE_DATA->file) {
+				indigo_save_property(device, NULL, FILE_NAME_PROPERTY);
+			}
+		}
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
@@ -814,6 +905,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(DSLR_SHUTTER_PROPERTY);
 		indigo_release_property(DSLR_COMPRESSION_PROPERTY);
 		indigo_release_property(DSLR_ISO_PROPERTY);
+	} else if (device == PRIVATE_DATA->file) {
+		indigo_release_property(FILE_NAME_PROPERTY);
 	} else if (device == PRIVATE_DATA->guider) {
 		indigo_release_property(GUIDER_MODE_PROPERTY);
 		indigo_release_property(GUIDER_SETTINGS_PROPERTY);
@@ -1240,6 +1333,8 @@ static indigo_device *guider_ao = NULL;
 
 static indigo_device *dslr = NULL;
 
+static indigo_device *file = NULL;
+
 indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = INDIGO_DEVICE_INITIALIZER(
 		CCD_SIMULATOR_IMAGER_CAMERA_NAME,
@@ -1291,6 +1386,14 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 	);
 	static indigo_device dslr_template = INDIGO_DEVICE_INITIALIZER(
 		CCD_SIMULATOR_DSLR_NAME,
+		ccd_attach,
+		ccd_enumerate_properties,
+		ccd_change_property,
+		NULL,
+		ccd_detach
+	);
+	static indigo_device file_template = INDIGO_DEVICE_INITIALIZER(
+		CCD_SIMULATOR_FILE_NAME,
 		ccd_attach,
 		ccd_enumerate_properties,
 		ccd_change_property,
@@ -1351,6 +1454,13 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			dslr->private_data = private_data;
 			private_data->dslr = dslr;
 			indigo_attach_device(dslr);
+
+			file = malloc(sizeof(indigo_device));
+			assert(file != NULL);
+			memcpy(file, &file_template, sizeof(indigo_device));
+			file->private_data = private_data;
+			private_data->file = file;
+			indigo_attach_device(file);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
@@ -1396,6 +1506,11 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 				indigo_detach_device(dslr);
 				free(dslr);
 				dslr = NULL;
+			}
+			if (file != NULL) {
+				indigo_detach_device(file);
+				free(file);
+				file = NULL;
 			}
 			if (private_data != NULL) {
 				pthread_mutex_destroy(&private_data->image_mutex);

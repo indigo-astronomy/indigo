@@ -47,6 +47,8 @@ extern "C" {
 
 #define CCD_SIMULATOR_DSLR_NAME						"DSLR Simulator"
 
+#define CCD_SIMULATOR_FILE_NAME						"File Simulator"
+
 
 /** Create CCD Simulator device instance
  */
