@@ -894,7 +894,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			histo[*b8++]++;
 		}
 		set_black_white(device, histo, count);
-		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value);
+		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value) / 255;
 		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value;
 		b8 = copy;
 		for (int i = 0; i < count; i++) {
