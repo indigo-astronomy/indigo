@@ -303,7 +303,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 			for (int j = 0; j < INDIGO_FILTER_MAX_DEVICES; j++) {
 				indigo_property *cached_connection_property = FILTER_DEVICE_CONTEXT->connection_property_cache[j];
 				if (cached_connection_property != NULL && !strcmp(cached_connection_property->device, name)) {
-					disconnected = cached_connection_property->state == INDIGO_OK_STATE;
+					disconnected = cached_connection_property->state == INDIGO_OK_STATE || cached_connection_property->state == INDIGO_ALERT_STATE;
 					if (disconnected) {
 						disconnected = false;
 						for (int k = 0; k < cached_connection_property->count; k++) {
