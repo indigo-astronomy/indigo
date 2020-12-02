@@ -226,7 +226,7 @@ static void create_frame(indigo_device *device) {
 		}
 		indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, false, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 	} else {
-		unsigned short *raw = (unsigned short *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
+		uint16_t *raw = (unsigned short *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
@@ -383,8 +383,19 @@ static void create_frame(indigo_device *device) {
 				}
 			}
 		}
+		int bpp = 16;
+		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value == 8) {
+			uint8_t *raw8 = (uint8_t *)raw;
+			bpp = 8;
+			for (int i = 0; i < size; i++) {
+				raw8[i] = (uint8_t)(raw[i] >> 8);
+			}
+		} else if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value != 16) {
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		}
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_process_image(device, device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image, frame_width, frame_height, 16, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
+			indigo_process_image(device, device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image, frame_width, frame_height, bpp, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->image_mutex);
@@ -555,6 +566,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
 			CCD_FRAME_WIDTH_ITEM->number.min = CCD_FRAME_HEIGHT_ITEM->number.min = 32;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
 			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 4;
 			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 4;
