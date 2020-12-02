@@ -670,19 +670,26 @@ static void ccd_connect_callback(indigo_device *device) {
 					goto failure;
 				if (!indigo_read(fd, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
 					goto failure;
+				CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_LEFT_ITEM->number.value = 0;
+				CCD_FRAME_WIDTH_ITEM->number.value = PRIVATE_DATA->file_image_header.width;
+				CCD_FRAME_HEIGHT_ITEM->number.value = PRIVATE_DATA->file_image_header.height;
 				unsigned long size = 0;
 				switch (PRIVATE_DATA->file_image_header.signature) {
 					case INDIGO_RAW_MONO8:
 						size = PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
 						break;
 					case INDIGO_RAW_MONO16:
 						size = 2 * PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
 						break;
 					case INDIGO_RAW_RGB24:
 						size = 3 *PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 24;
 						break;
 					case INDIGO_RAW_RGB48:
 						size = 6 * PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 48;
 						break;
 				}
 				PRIVATE_DATA->file_image = indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE);
