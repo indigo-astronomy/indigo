@@ -685,7 +685,7 @@ static void ccd_connect_callback(indigo_device *device) {
 						size = 6 * PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height;
 						break;
 				}
-				PRIVATE_DATA->file_image = malloc(size + FITS_HEADER_SIZE);
+				PRIVATE_DATA->file_image = indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE);
 				if (!indigo_read(fd, (char *)PRIVATE_DATA->file_image + FITS_HEADER_SIZE, size)) {
 					goto failure;
 				}
