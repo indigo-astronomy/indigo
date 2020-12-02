@@ -27,7 +27,9 @@ The sequencer is controlled by "AGENT_IMAGER_SEQUENCE" property. It has "SEQUENC
 "SEQUENCE" item can contain the following commands:
 | Command | Meaning |
 | ----- | ----- |
-| focus=XXX | execute autofocus routine with XXX seconds exposure time || park | park mount || YY | execute batch YY |
+| focus=XXX | execute autofocus routine with XXX seconds exposure time |
+| park | park mount |
+| YY | execute batch YY |
 
 Example: "focus=5;1;2;3;1;2;3;park"
 
