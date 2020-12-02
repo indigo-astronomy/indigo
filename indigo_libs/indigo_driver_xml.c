@@ -364,6 +364,12 @@ indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 void indigo_release_xml_device_adapter(indigo_client *client) {
 	assert(client != NULL);
 	assert(client->client_context != NULL);
+	indigo_enable_blob_mode_record *blob_record = client->enable_blob_mode_records;
+	while (blob_record) {
+		client->enable_blob_mode_records = blob_record->next;
+		free(blob_record);
+		blob_record = client->enable_blob_mode_records;
+	}
 	free(client->client_context);
 	free(client);
 }
