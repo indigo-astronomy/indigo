@@ -498,7 +498,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_FRAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = ((int)CCD_FRAME_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -516,7 +516,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		char name[32];
@@ -532,7 +532,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_MODE
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
@@ -558,7 +558,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_OFFSET
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 		if (IS_CONNECTED) {
@@ -566,7 +566,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_READ_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_READ_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_READ_MODE
 		indigo_property_copy_values(CCD_READ_MODE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
@@ -574,7 +574,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_READ_MODE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		if (IS_CONNECTED) {
@@ -582,7 +582,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_GAMMA_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_GAMMA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAMMA
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
 		if (IS_CONNECTED) {

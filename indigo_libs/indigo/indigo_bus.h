@@ -516,6 +516,10 @@ extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
  */
 extern bool indigo_property_match(indigo_property *property, indigo_property *other);
 
+/** Test, if property matches other property and is RW.
+ */
+extern bool indigo_property_match_rw(indigo_property *property, indigo_property *other);
+
 /** Test, if switch item matches other switch item.
  */
 extern bool indigo_switch_match(indigo_item *item, indigo_property *other);

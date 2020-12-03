@@ -488,7 +488,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 		}
-	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
@@ -787,7 +787,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER_PROPERTY
 		indigo_property_copy_values(MOUNT_SIDE_OF_PIER_PROPERTY, property, false);
 		MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
