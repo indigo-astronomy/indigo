@@ -551,7 +551,7 @@ indigo_result indigo_save_property(indigo_device *device, int *file_handle, indi
 		INDIGO_ERROR(indigo_error("Failed to save property %s for %s (locked)", property->name, device->name));
 		return INDIGO_FAILED;
 	}
-	if (!property->hidden) {
+	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL)
 			file_handle = &DEVICE_CONTEXT->property_save_file_handle;
@@ -613,7 +613,7 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 		INDIGO_ERROR(indigo_error("Failed to save property %s items for %s (locked)", property->name, device->name));
 		return INDIGO_FAILED;
 	}
-	if (!property->hidden) {
+	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL)
 			file_handle = &DEVICE_CONTEXT->property_save_file_handle;

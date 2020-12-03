@@ -152,7 +152,10 @@ static void save_config(indigo_device *device) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
+		indigo_property_perm saved_perm = AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm;
+		AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
+		AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = saved_perm;
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
 		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 2, (const char **)selection_property_items);
@@ -578,9 +581,6 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RO_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
-	indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-	AGENT_GUIDER_SELECTION_PROPERTY->perm = INDIGO_RO_PERM;
-	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INIT;
@@ -836,9 +836,6 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
-	indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-	AGENT_GUIDER_SELECTION_PROPERTY->perm = INDIGO_RW_PERM;
-	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
 	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
