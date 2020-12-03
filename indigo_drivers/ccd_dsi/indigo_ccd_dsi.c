@@ -463,7 +463,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_BIN
-	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_rw(CCD_BIN_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
 		int prev_bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int prev_bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;

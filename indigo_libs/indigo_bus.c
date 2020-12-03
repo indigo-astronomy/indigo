@@ -457,7 +457,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
-	if ((!is_started) || (property == NULL) || (property->perm == INDIGO_RO_PERM))
+	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&device_mutex);
@@ -963,7 +963,16 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 
 bool indigo_property_match(indigo_property *property, indigo_property *other) {
-	if (property == NULL) return false;
+	if (property == NULL)
+		return false;
+	return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));
+}
+
+bool indigo_property_match_rw(indigo_property *property, indigo_property *other) {
+	if (property == NULL)
+		return false;
+	if (property->perm == INDIGO_RO_PERM)
+		return false;
 	return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));
 }
 
