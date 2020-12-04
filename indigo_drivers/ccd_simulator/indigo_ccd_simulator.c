@@ -685,8 +685,8 @@ static void ccd_connect_callback(indigo_device *device) {
 				if (!indigo_read(fd, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
 					goto failure;
 				CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_LEFT_ITEM->number.value = 0;
-				CCD_FRAME_WIDTH_ITEM->number.value = PRIVATE_DATA->file_image_header.width;
-				CCD_FRAME_HEIGHT_ITEM->number.value = PRIVATE_DATA->file_image_header.height;
+				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.min = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->file_image_header.width;
+				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.min = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->file_image_header.height;
 				unsigned long size = 0;
 				switch (PRIVATE_DATA->file_image_header.signature) {
 					case INDIGO_RAW_MONO8:
