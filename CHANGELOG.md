@@ -14,10 +14,12 @@ All notable changes to INDIGO framework will be documented in this file.
 - DEVICE_DRIVER added to INFO property (issue #132)
 - DARKFLAT added to CCD_IMAGE_FORMAT property (issue #387)
 - indigo_property_match_rw() added
+- fixed read only property handling in core library
 
 ### Driver Fixes:
 - indigo_mount_nexstar:
 	- experimental guide pulse support added
+	- several bugfixes
 
 - indigo_ccd_qhy2:
 	- SDK updated
