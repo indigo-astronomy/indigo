@@ -347,7 +347,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_rw(FOCUSER_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_w(FOCUSER_POSITION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		res = 0;

@@ -484,7 +484,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_rw(CCD_TEMPERATURE_PROPERTY, property)) {
+	} else if (indigo_property_match_w(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		double temperature = CCD_TEMPERATURE_ITEM->number.value;
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
