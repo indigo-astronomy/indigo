@@ -2,6 +2,43 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-136] - Sat Dec 5 2020
+### Overall:
+- Optional automatic subframing added to autofocus and guiding processes in imager and guider agent
+- More robust automatic stretching for JPEG preview
+- CCD File Simulator device added to CCD Simulator driver (provides an image from specified RAW file)
+- RGBA and ABGR raw format support added to guider utility functions
+- Large files support added to RPi builds
+- Histogram added to webGUI of imager agent
+- Optional double buffering support added in INDIGO server for BLOB requests
+- DEVICE_DRIVER added to INFO property (issue #132)
+- DARKFLAT added to CCD_IMAGE_FORMAT property (issue #387)
+
+### Driver Fixes:
+- indigo_mount_nexstar:
+	- experimental guide pulse support added
+
+- indigo_ccd_qhy2:
+	- SDK updated
+    
+- indigo_ccd_altair:
+	- SDK updated
+
+- indigo_ccd_ptp:
+	- Support for Canon EOS R5 and R6 cameras
+
+- indigo_focuser_lunatico:
+	- temperature compensation fixed
+
+- indigo_focuser_dsd:
+	- temperature compensation fixed
+	
+- indigo_focuser_asi:
+	- temperature compensation fixed
+		
+### New Drivers:
+- indigo_focuser_mypro2
+
 ## [2.0-134] - Mon Nov 16 2020
 ### Overall:
 - Fix IndigoSky regression
