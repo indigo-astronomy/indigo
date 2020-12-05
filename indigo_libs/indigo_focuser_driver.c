@@ -237,7 +237,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
-	} else if (indigo_property_match_rw(FOCUSER_LIMITS_PROPERTY, property)) {
+	} else if (indigo_property_match_w(FOCUSER_LIMITS_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		if (FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target) {
 			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
@@ -249,7 +249,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match_rw(FOCUSER_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_w(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
 		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
 			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);

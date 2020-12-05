@@ -359,7 +359,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			device->access_token = token;
 		}
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-	} else if (indigo_property_match_rw(SIMULATION_PROPERTY, property)) {
+	} else if (indigo_property_match_w(SIMULATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
 		SIMULATION_PROPERTY->state = INDIGO_OK_STATE;
@@ -397,7 +397,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(PROFILE_PROPERTY, property, false);
 		PROFILE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, PROFILE_PROPERTY, NULL);
-	} else if (indigo_property_match_rw(DEVICE_PORT_PROPERTY, property)) {
+	} else if (indigo_property_match_w(DEVICE_PORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		indigo_property_copy_values(DEVICE_PORT_PROPERTY, property, false);
 		if (*DEVICE_PORT_ITEM->text.value == '/') {
@@ -412,7 +412,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
-	} else if (indigo_property_match_rw(DEVICE_BAUDRATE_PROPERTY, property)) {
+	} else if (indigo_property_match_w(DEVICE_BAUDRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;

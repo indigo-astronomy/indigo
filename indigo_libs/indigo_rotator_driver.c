@@ -174,7 +174,7 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_LIMITS_PROPERTY
-	} else if (indigo_property_match_rw(ROTATOR_LIMITS_PROPERTY, property)) {
+	} else if (indigo_property_match_w(ROTATOR_LIMITS_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_LIMITS_PROPERTY, property, false);
 		ROTATOR_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {

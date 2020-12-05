@@ -968,7 +968,7 @@ bool indigo_property_match(indigo_property *property, indigo_property *other) {
 	return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));
 }
 
-bool indigo_property_match_rw(indigo_property *property, indigo_property *other) {
+bool indigo_property_match_w(indigo_property *property, indigo_property *other) {
 	if (property == NULL)
 		return false;
 	if (property->perm == INDIGO_RO_PERM)

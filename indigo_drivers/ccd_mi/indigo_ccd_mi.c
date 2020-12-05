@@ -387,7 +387,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_rw(CCD_TEMPERATURE_PROPERTY, property)) {
+	} else if (indigo_property_match_w(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (IS_CONNECTED && !CCD_COOLER_PROPERTY->hidden) {
@@ -403,7 +403,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_rw(CCD_GAIN_PROPERTY, property)) {
+	} else if (indigo_property_match_w(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		if (IS_CONNECTED && !CCD_GAIN_PROPERTY->hidden) {

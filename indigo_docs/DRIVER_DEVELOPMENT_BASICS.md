@@ -312,7 +312,8 @@ static indigo_result atik_wheel_detach(indigo_device *device) {
 }
 ```
 
-In the example above we handle only  **device attach**, **change property** and **device detach** handled, we do not have any custom properties so we will relay on the base class handler for the property enumeration and we do not have any BLOBSs so we will ignore them. We need to provide our callbacks in the *indigo_device* structure. There is an initializer macro, where we also provide the device name:
+In the example above we handle only  **device attach**, **change property** and **device detach** handled, we do not have any custom properties so we will relay on the base class handler for the property enumeration and we do not have any BLOBSs so we will ignore them.
+We need to provide our callbacks in the *indigo_device* structure. There is an initializer macro, where we also provide the device name:
 
 ```C
 static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
@@ -349,6 +350,8 @@ device = NULL;
 
 Attaching and detaching of the devices can be done either in the driver entry point for not hot-plug devices or in the hot-plug callback for hot-plug devices.
 There are many examples for that in the available INDIGO drivers.
+
+Please note, function *indigo_property_match()* is used to match properties against the requests. This function will match read only (RO), read/write (RW) and write only (WO) properties. However if the property changes its permissions, like in the case when two cameras are handled by the same driver and one has temperature control and second has only temperature sensor for the second camera CCD_TEMPERATURE property should be RO and for the first RW. It is driver's responsibility to enforce property permissions and for that case INDIGO 2.0-136 provides a second function that matches properties if they are not RO - *indigo_property_match_w()*.
 
 There is one important note, in order to use the property macros like *CONNECTION_PROPERTY*, *WHEEL_SLOT_PROPERTY* or items like *CONNECTION_CONNECTED_ITEM* the parameter names of the callbacks must be *device*, *client* and *property*. These macros are defined in the header files of the base classes for convenience.
 
