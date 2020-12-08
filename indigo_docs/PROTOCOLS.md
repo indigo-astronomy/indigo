@@ -164,7 +164,7 @@ show or hide target value on client side, value is show or hide; makes a sense o
 widget: list;
 ```
 
-GUI widget(s) to use for the items on client side, the list can consist of values edit-box, combo-box, push, radio-button, check-box, slider or stepper
+GUI widget(s) to use for the items on client side, the list can consist of values edit-box, multiline-edit-box, combo-box, push, radio-button, check-box, slider or stepper
 
 ## References
 
