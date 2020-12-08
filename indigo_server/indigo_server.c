@@ -155,6 +155,7 @@
 #endif
 #include "agent_snoop/indigo_agent_snoop.h"
 #include "agent_lx200_server/indigo_agent_lx200_server.h"
+#include "agent_scripting/indigo_agent_scripting.h"
 #endif
 
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
@@ -168,6 +169,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_guider,
 	indigo_agent_imager,
 	indigo_agent_lx200_server,
+	indigo_agent_scripting,
 	indigo_agent_mount,
 	indigo_agent_snoop,
 	indigo_ao_sx,
