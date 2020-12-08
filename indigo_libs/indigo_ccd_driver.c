@@ -99,8 +99,8 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			if (CCD_UPLOAD_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_UPLOAD_MODE_CLIENT_ITEM, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, "Upload to client", true);
-			indigo_init_switch_item(CCD_UPLOAD_MODE_LOCAL_ITEM, CCD_UPLOAD_MODE_LOCAL_ITEM_NAME, "Save locally", false);
-			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, "Upload and save locally", false);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_LOCAL_ITEM, CCD_UPLOAD_MODE_LOCAL_ITEM_NAME, "Save on server", false);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, "Upload and save", false);
 			// -------------------------------------------------------------------------------- CCD_PREVIEW
 			CCD_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_PREVIEW_PROPERTY_NAME, CCD_MAIN_GROUP, "Enable preview", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (CCD_PREVIEW_PROPERTY == NULL)
@@ -109,7 +109,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_switch_item(CCD_PREVIEW_ENABLED_ITEM, CCD_PREVIEW_ENABLED_ITEM_NAME, "Enabled", false);
 			indigo_init_switch_item(CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM_NAME, "Enabled with histogram", false);
 			// -------------------------------------------------------------------------------- CCD_LOCAL_MODE
-			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Local mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Save on server", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_LOCAL_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_text_item(CCD_LOCAL_MODE_DIR_ITEM, CCD_LOCAL_MODE_DIR_ITEM_NAME, "Directory", "%s/", getenv("HOME"));
