@@ -667,7 +667,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DOME_STEPS_PROPERTY
-		strncpy(DOME_STEPS_ITEM->label, "Relative move (°)", INDIGO_VALUE_SIZE);
+		indigo_copy_value(DOME_STEPS_ITEM->label, "Relative move (°)");
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -816,8 +816,8 @@ static void dome_connect_callback(indigo_device *device) {
 					return;
 				} else { // Successfully connected
 					//uint32_t value;
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome", INDIGO_VALUE_SIZE);
-					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome");
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					int version, revision;
 					char leftover[255];
 					sscanf(firmware, "%d.%d.%s", &version, &revision, leftover);

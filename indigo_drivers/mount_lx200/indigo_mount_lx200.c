@@ -542,13 +542,13 @@ static void mount_connect_callback(indigo_device *device) {
 					char *sep = strchr(response, '|');
 					if (sep != NULL)
 						*sep = 0;
-					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+					indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, response);
 				} else {
-					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+					indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 				}
 				if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-					strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+					indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 				}
 				if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
@@ -593,7 +593,7 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_TRACKING_PROPERTY->hidden = false;
 				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "10Micron");
-				strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+				indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 				MOUNT_PARK_PROPERTY->count = 2;
 				PRIVATE_DATA->parked = false;
@@ -616,7 +616,7 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_TRACKING_PROPERTY->hidden = false;
 				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
-				strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+				indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 				MOUNT_PARK_PROPERTY->count = 2;
 				PRIVATE_DATA->parked = false;
@@ -698,7 +698,7 @@ static void mount_connect_callback(indigo_device *device) {
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
 				if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-					strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+					indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 				}
 				if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);

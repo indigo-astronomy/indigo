@@ -1225,7 +1225,7 @@ static int aag_init_properties(indigo_device *device) {
 	DEVICE_PORTS_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 	DEVICE_BAUDRATE_PROPERTY->hidden = true;
-	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
+	indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 8;
 	// -------------------------------------------------------------------------------- GPIO OUTLETS
@@ -1273,21 +1273,21 @@ static int aag_init_properties(indigo_device *device) {
 	if (X_SENSOR_READINGS_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(X_SENSOR_RAW_SKY_TEMPERATURE_ITEM, X_SENSOR_RAW_SKY_TEMPERATURE_ITEM_NAME, "Raw infrared sky temperature (°C)", -200, 80, 0, 0);
-	strncpy(X_SENSOR_RAW_SKY_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_RAW_SKY_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(X_SENSOR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM_NAME, "Infrared sky temperature (°C)", -200, 80, 0, 0);
-	strncpy(X_SENSOR_SKY_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_SKY_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM, X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM_NAME, "Infrared sensor temperature (°C)", -200, 80, 0, 0);
-	strncpy(X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_IR_SENSOR_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(X_SENSOR_RAIN_CYCLES_ITEM, X_SENSOR_RAIN_CYCLES_ITEM_NAME, "Rain (cycles)", 0, 100000, 0, 0);
-	strncpy(X_SENSOR_RAIN_CYCLES_ITEM->number.format, "%.0f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_RAIN_CYCLES_ITEM->number.format, "%.0f");
 	indigo_init_number_item(X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM, X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM_NAME, "Rain sensor temperature (°C)", -200, 80, 0, 0);
-	strncpy(X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(X_SENSOR_RAIN_HEATER_POWER_ITEM, X_SENSOR_RAIN_HEATER_POWER_ITEM_NAME, "Rain sensor heater power (%)", 0, 100, 1, 0);
-	strncpy(X_SENSOR_RAIN_HEATER_POWER_ITEM->number.format, "%.0f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_RAIN_HEATER_POWER_ITEM->number.format, "%.0f");
 	indigo_init_number_item(X_SENSOR_SKY_BRIGHTNESS_ITEM, X_SENSOR_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness (kΩ)", 0, 100000, 1, 0);
-	strncpy(X_SENSOR_SKY_BRIGHTNESS_ITEM->number.format, "%.0f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_SKY_BRIGHTNESS_ITEM->number.format, "%.0f");
 	indigo_init_number_item(X_SENSOR_AMBIENT_TEMPERATURE_ITEM, X_SENSOR_AMBIENT_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
-	strncpy(X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.format, "%.1f");
 	// -------------------------------------------------------------------------------- DEW_THRESHOLD
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
@@ -1395,15 +1395,15 @@ static int aag_init_properties(indigo_device *device) {
 	if (AUX_WEATHER_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
-	strncpy(AUX_WEATHER_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(AUX_WEATHER_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM, X_SENSOR_SKY_TEMPERATURE_ITEM_NAME, "Infrared sky temperature (°C)", -200, 80, 1, 0);
-	strncpy(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(AUX_WEATHER_IR_SKY_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -200, 80, 1, 0);
-	strncpy(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative humidity (%)", 0, 100, 0, 0);
-	strncpy(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.0f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.0f");
 	indigo_init_number_item(AUX_WEATHER_WIND_SPEED_ITEM, AUX_WEATHER_WIND_SPEED_ITEM_NAME, "Wind speed (m/s)", 0, 200, 0, 0);
-	strncpy(AUX_WEATHER_WIND_SPEED_ITEM->number.format, "%.1f", INDIGO_VALUE_SIZE);
+	indigo_copy_value(AUX_WEATHER_WIND_SPEED_ITEM->number.format, "%.1f");
 	// -------------------------------------------------------------------------------- X_RAIN_SENSOR_HEATER_SETUP
 	X_RAIN_SENSOR_HEATER_SETUP_PROPERTY = indigo_init_number_property(NULL, device->name, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY_NAME, SETTINGS_GROUP, "Rain sensor heater setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 	if (X_RAIN_SENSOR_HEATER_SETUP_PROPERTY == NULL)
@@ -1714,11 +1714,11 @@ static void handle_aux_connect_property(indigo_device *device) {
 				/* Pocket CW needs ~2sec after connect, maybe arduino based which resets at connect?!? */
 				indigo_usleep(ONE_SECOND_DELAY*2);
 				if (aag_is_cloudwatcher(device, board)) {
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
 					aag_get_firmware_version(device, firmware);
-					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					aag_get_serial_number(device, serial_number);
-					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number);
 					aag_get_swith(device, &AUX_GPIO_OUTLET_1_ITEM->sw.value);
 					aag_reset_properties(device);
 					if (X_ANEMOMETER_TYPE_BLACK_ITEM->sw.value) {

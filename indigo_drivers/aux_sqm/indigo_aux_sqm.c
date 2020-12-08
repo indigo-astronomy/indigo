@@ -83,7 +83,7 @@ static indigo_result aux_attach(indigo_device *device) {
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
-				strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
+				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 				break;
 			}
 		}
@@ -91,7 +91,7 @@ static indigo_result aux_attach(indigo_device *device) {
 #ifdef INDIGO_LINUX
 	if (DEVICE_PORTS_PROPERTY->count > 1) {
 		/* 0 is refresh button */
-		strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name, INDIGO_VALUE_SIZE);
+		indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
 	} else {
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 	}

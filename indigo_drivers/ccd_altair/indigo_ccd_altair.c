@@ -240,7 +240,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "flags = %0LX", flags);
 		char name[128], label[128];
 		INFO_PROPERTY->count = 8;
-		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name, INDIGO_VALUE_SIZE);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name);
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->cam.model->xpixsz;
 		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->cam.model->ypixsz;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = (CCD_INFO_PIXEL_WIDTH_ITEM->number.value + CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) / 2.0;
@@ -846,7 +846,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 8;
-		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name, INDIGO_VALUE_SIZE);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}

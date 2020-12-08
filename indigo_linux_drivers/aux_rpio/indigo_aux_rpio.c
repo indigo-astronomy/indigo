@@ -556,8 +556,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 		if (rpio_export_all()) {
 			char board[INDIGO_VALUE_SIZE] = "N/A";
 			char firmware[INDIGO_VALUE_SIZE] = "N/A";
-			strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-			strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			int relay_value[8];
 			if (!rpio_read_output_lines(relay_value)) {

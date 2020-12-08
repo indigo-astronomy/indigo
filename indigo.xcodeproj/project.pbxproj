@@ -17,6 +17,7 @@
 		590D21D621FE6A520057DC31 /* indigo_cat_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A0772A21FE1C2F00244521 /* indigo_cat_data.c */; };
 		590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 590DD8772127590600F2B978 /* indigo_wheel_optec.c */; };
 		590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */ = {isa = PBXBuildFile; fileRef = 590DD87A2127590600F2B978 /* indigo_wheel_optec.h */; };
+		5910D9A5257ED3E80015D915 /* remote_server_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 5931B7242535F726008F74A1 /* remote_server_client.c */; };
 		5911B6CA22630FE900D6B9EC /* indigo_guider_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 5911B6C822630FE900D6B9EC /* indigo_guider_utils.h */; };
 		5911B6CB22630FE900D6B9EC /* indigo_guider_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911B6C922630FE900D6B9EC /* indigo_guider_utils.c */; };
 		5911B6D922633DBE00D6B9EC /* indigo_agent_guider.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911B6D622633DBE00D6B9EC /* indigo_agent_guider.c */; };
@@ -27,7 +28,6 @@
 		591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
 		592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */; };
-		5931B7262535F8CC008F74A1 /* dynamic_driver_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 5931B7212535F726008F74A1 /* dynamic_driver_client.c */; };
 		5931B7282535FA8A008F74A1 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5931B7272535FA8A008F74A1 /* libindigo.dylib */; };
 		593287A62409AD1000ED61C0 /* indigo_rotator_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */; };
 		59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 59399D892177D316002886CA /* indigo_focuser_optec.c */; };
@@ -11877,7 +11877,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5931B7262535F8CC008F74A1 /* dynamic_driver_client.c in Sources */,
+				5910D9A5257ED3E80015D915 /* remote_server_client.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -47,6 +47,10 @@ extern "C" {
  */
 extern void indigo_json_parse(indigo_device *device, indigo_client *client);
 
+/** Escape JSON string.
+ */
+extern const char *indigo_json_escape(const char *string);
+
 #ifdef __cplusplus
 }
 #endif

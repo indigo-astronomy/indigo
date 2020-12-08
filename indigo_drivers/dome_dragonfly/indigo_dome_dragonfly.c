@@ -205,8 +205,8 @@ static int lunatico_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------------- DEVICE_PORT
 	DEVICE_PORT_PROPERTY->hidden = false;
 	DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-	strncpy(DEVICE_PORT_ITEM->text.value, "udp://dragonfly", INDIGO_VALUE_SIZE);
-	strncpy(DEVICE_PORT_ITEM->label, "Devce URL", INDIGO_VALUE_SIZE);
+	indigo_copy_value(DEVICE_PORT_ITEM->text.value, "udp://dragonfly");
+	indigo_copy_value(DEVICE_PORT_ITEM->label, "Devce URL");
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 6;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
@@ -484,8 +484,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 				char board[LUNATICO_CMD_LEN] = "N/A";
 				char firmware[LUNATICO_CMD_LEN] = "N/A";
 				if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					bool relay_value[8];
 					if (!lunatico_read_relays(device, relay_value)) {
@@ -953,9 +953,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SLAVING_PROPERTY->hidden = true;
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 		// Relabel Open / Close
-		strncpy(DOME_SHUTTER_PROPERTY->label, "Shutter / Roof", INDIGO_VALUE_SIZE);
-		strncpy(DOME_SHUTTER_OPENED_ITEM->label, "Shutter / Roof opened", INDIGO_VALUE_SIZE);
-		strncpy(DOME_SHUTTER_CLOSED_ITEM->label, "Shutter / Roof closed", INDIGO_VALUE_SIZE);
+		indigo_copy_value(DOME_SHUTTER_PROPERTY->label, "Shutter / Roof");
+		indigo_copy_value(DOME_SHUTTER_OPENED_ITEM->label, "Shutter / Roof opened");
+		indigo_copy_value(DOME_SHUTTER_CLOSED_ITEM->label, "Shutter / Roof closed");
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -972,8 +972,8 @@ static void handle_dome_connect_property(indigo_device *device) {
 				char board[LUNATICO_CMD_LEN] = "N/A";
 				char firmware[LUNATICO_CMD_LEN] = "N/A";
 				if (lunatico_get_info(device, board, firmware) && !strncmp(board, "Dragonfly", INDIGO_VALUE_SIZE)) {
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
 					int sensors[8];

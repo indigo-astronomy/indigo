@@ -852,8 +852,8 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 	for (int i = 0; i < count; i++) {
-		strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
-		strncpy(desc, camDesc[i].c_str(), INDIGO_NAME_SIZE);
+		indigo_copy_name(serial, camSerial[i].c_str());
+		indigo_copy_name(desc, camDesc[i].c_str());
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: desc = %s serial = %s", i, desc, serial);
 		bool found = false;
 		for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
@@ -871,7 +871,7 @@ static void process_plug_event(indigo_device *unused) {
 		qsi_private_data *private_data = (qsi_private_data *)malloc(sizeof(qsi_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(qsi_private_data));
-		strncpy(private_data->serial, serial, INDIGO_NAME_SIZE);
+		indigo_copy_name(private_data->serial, serial);
 		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -909,7 +909,7 @@ static void process_unplug_event(indigo_device *unused) {
 		}
 	}
 	for (int i = 0; i < count; i++) {
-		strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
+		indigo_copy_name(serial, camSerial[i].c_str());
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: serial = %s", i, serial);
 		for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];

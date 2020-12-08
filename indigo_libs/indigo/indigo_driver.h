@@ -242,8 +242,8 @@ typedef struct {
 #define SET_DRIVER_INFO(dinfo, ddescr, dname, dversion, dmulti, dstatus)\
 {\
 	if(dinfo) {\
-		strncpy(dinfo->description, ddescr, INDIGO_NAME_SIZE);\
-		strncpy(dinfo->name, dname, INDIGO_NAME_SIZE);\
+		indigo_copy_name(dinfo->description, ddescr);\
+		indigo_copy_name(dinfo->name, dname);\
 		dinfo->version = dversion;\
 		dinfo->multi_device_support = dmulti;\
 		dinfo->status = dstatus;\

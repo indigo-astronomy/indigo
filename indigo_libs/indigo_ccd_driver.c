@@ -729,19 +729,19 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				while (eq - item->text.value < 80 && *eq == ' ')
 					eq++;
 				snprintf(line, 80, "%-8s= %s", item->text.value, eq);
-				strncpy(item->text.value, line, INDIGO_VALUE_SIZE);
+				indigo_copy_value(item->text.value, line);
 			} else if (!strncasecmp(item->text.value, "COMMENT ", 7)) {
 				char *tmp = item->text.value + 7;
 				while (tmp - item->text.value < 80 && *tmp == ' ')
 					tmp++;
 				snprintf(line, 80, "COMMENT  %s", tmp);
-				strncpy(item->text.value, line, INDIGO_VALUE_SIZE);
+				indigo_copy_value(item->text.value, line);
 			} else if (!strncasecmp(item->text.value, "HISTORY ", 7)) {
 				char *tmp = item->text.value + 7;
 				while (tmp - item->text.value < 80 && *tmp == ' ')
 					tmp++;
 				snprintf(line, 80, "HISTORY  %s", tmp);
-				strncpy(item->text.value, line, INDIGO_VALUE_SIZE);
+				indigo_copy_value(item->text.value, line);
 			} else if (IS_CONNECTED) {
 				CCD_FITS_HEADERS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_FITS_HEADERS_PROPERTY, "Invalid header line format");
@@ -1604,7 +1604,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				char file_name[INDIGO_VALUE_SIZE];
 				char *placeholder = strstr(prefix, "XXX");
 				if (placeholder == NULL) {
-					strncpy(file_name, dir, INDIGO_VALUE_SIZE);
+					indigo_copy_value(file_name, dir);
 					strcat(file_name, prefix);
 					strcat(file_name, suffix);
 				} else {
@@ -1629,7 +1629,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 							break;
 					}
 				}
-				strncpy(CCD_IMAGE_FILE_ITEM->text.value, file_name, INDIGO_VALUE_SIZE);
+				indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 				if (use_avi) {
 					CCD_CONTEXT->video_stream = gwavi_open(file_name, frame_width, frame_height, "MJPG", 5);
@@ -1751,7 +1751,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 					strcat(file_name, standard_suffix);
 				} else {
 					char format[INDIGO_VALUE_SIZE];
-					strncpy(format, dir, INDIGO_VALUE_SIZE);
+					indigo_copy_value(format, dir);
 					strncat(format, prefix, placeholder - prefix);
 					strcat(format, "%03d");
 					strcat(format, placeholder+3);
@@ -1766,7 +1766,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 							break;
 					}
 				}
-				strncpy(CCD_IMAGE_FILE_ITEM->text.value, file_name, INDIGO_VALUE_SIZE);
+				indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 				if (use_avi) {
 					struct jpeg_decompress_struct cinfo;
@@ -1809,7 +1809,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 		*CCD_IMAGE_ITEM->blob.url = 0;
 		CCD_IMAGE_ITEM->blob.value = data;
 		CCD_IMAGE_ITEM->blob.size = blobsize;
-		strncpy(CCD_IMAGE_ITEM->blob.format, standard_suffix, INDIGO_NAME_SIZE);
+		indigo_copy_name(CCD_IMAGE_ITEM->blob.format, standard_suffix);
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));

@@ -65,7 +65,7 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
 	if (property != NULL && *property->device) {
-		strncpy(device_name, property->device, INDIGO_NAME_SIZE);
+		indigo_copy_name(device_name, property->device);
 		if (indigo_use_host_suffix) {
 			char *at = strrchr(device_name, '@');
 			if (at != NULL) {
@@ -116,7 +116,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	char device_name[INDIGO_NAME_SIZE];
 	char token[64] = "";
 	char b1[32];
-	strncpy(device_name, property->device, INDIGO_NAME_SIZE);
+	indigo_copy_name(device_name, property->device);
 	if (indigo_use_host_suffix) {
 		char *at = strrchr(device_name, '@');
 		if (at != NULL) {
@@ -133,7 +133,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 		INDIGO_PRINTF(handle, "<newTextVector device='%s' name='%s'%s>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), token);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(device->version, property, item), indigo_xml_escape(item->text.value));
+			INDIGO_PRINTF(handle, "<oneText name='%s'>%s%s</oneText>\n", indigo_item_name(device->version, property, item), indigo_xml_escape(item->text.value), item->text.extra_value ? indigo_xml_escape(item->text.extra_value) : "");
 		}
 		INDIGO_PRINTF(handle, "</newTextVector>\n");
 		break;
@@ -182,7 +182,7 @@ static indigo_result xml_client_parser_enable_blob(indigo_device *device, indigo
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
-	strncpy(device_name, property->device, INDIGO_NAME_SIZE);
+	indigo_copy_name(device_name, property->device);
 	if (indigo_use_host_suffix) {
 		char *at = strrchr(device_name, '@');
 		if (at != NULL) {
@@ -242,7 +242,7 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input
 	assert(device_context != NULL);
 	device_context->input = input;
 	device_context->output = output;
-	strncpy(device_context->url_prefix, url_prefix, INDIGO_NAME_SIZE);
+	indigo_copy_name(device_context->url_prefix, url_prefix);
 	device->device_context = device_context;
 	return device;
 }

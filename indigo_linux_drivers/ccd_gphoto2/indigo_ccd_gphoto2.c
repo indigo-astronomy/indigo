@@ -1324,7 +1324,7 @@ static void streaming_timer_callback(indigo_device *device)
 		*CCD_IMAGE_ITEM->blob.url = 0;
 		CCD_IMAGE_ITEM->blob.value = PRIVATE_DATA->buffer;
 		CCD_IMAGE_ITEM->blob.size = PRIVATE_DATA->buffer_size;
-		strncpy(CCD_IMAGE_ITEM->blob.format, ".jpeg", INDIGO_NAME_SIZE);
+		indigo_copy_name(CCD_IMAGE_ITEM->blob.format, ".jpeg");
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 

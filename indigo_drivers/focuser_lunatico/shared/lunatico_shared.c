@@ -763,7 +763,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	DEVICE_PORTS_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 	DEVICE_BAUDRATE_PROPERTY->hidden = false;
-	strncpy(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE, INDIGO_VALUE_SIZE);
+	indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 6;
 	// --------------------------------------------------------------------------------
@@ -909,8 +909,8 @@ static void lunatico_init_device(indigo_device *device) {
 	char board[LUNATICO_CMD_LEN] = "N/A";
 	char firmware[LUNATICO_CMD_LEN] = "N/A";
 	if (lunatico_get_info(device, board, firmware)) {
-		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-		strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 	}
 
@@ -1215,8 +1215,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 				char board[LUNATICO_CMD_LEN] = "N/A";
 				char firmware[LUNATICO_CMD_LEN] = "N/A";
 				if (lunatico_get_info(device, board, firmware)) {
-					strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-					strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 				}
 				indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);

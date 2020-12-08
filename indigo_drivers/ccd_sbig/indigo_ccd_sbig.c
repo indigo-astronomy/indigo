@@ -1085,7 +1085,7 @@ static void ccd_connect_callback(indigo_device *device) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
-					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
+					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber);
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
@@ -1692,9 +1692,9 @@ static indigo_result eth_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "192.168.0.100", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_PROPERTY->label, "Remote camera", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_ITEM->label, "IP address / hostname", INDIGO_VALUE_SIZE);
+		indigo_copy_value(DEVICE_PORT_ITEM->text.value, "192.168.0.100");
+		indigo_copy_value(DEVICE_PORT_PROPERTY->label, "Remote camera");
+		indigo_copy_value(DEVICE_PORT_ITEM->label, "IP address / hostname");
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------

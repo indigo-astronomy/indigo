@@ -145,7 +145,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 
-		strncpy(FOCUSER_STEPS_ITEM->label, "Relative move (steps)", INDIGO_VALUE_SIZE);
+		indigo_copy_value(FOCUSER_STEPS_ITEM->label, "Relative move (steps)");
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;

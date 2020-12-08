@@ -219,7 +219,7 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 			int i = DEVICE_PORTS_PROPERTY->count++;
 			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
 			if (i == 0)
-				strncpy(DEVICE_PORT_ITEM->text.value, name, INDIGO_VALUE_SIZE);
+				indigo_copy_value(DEVICE_PORT_ITEM->text.value, name);
 		}
 	}
 	closedir(dir);
@@ -428,7 +428,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		} else {
 			for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 				if (DEVICE_PORTS_PROPERTY->items[i].sw.value) {
-					strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
+					indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 					DEVICE_PORTS_PROPERTY->items[i].sw.value = false;
 				}
 			}
