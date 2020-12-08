@@ -294,9 +294,9 @@ static void mount_handle_connect(indigo_device *device) {
 				if (PRIVATE_DATA->vendor_id < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "guess_mount_vendor(%d) = %d (%s)", dev_id, PRIVATE_DATA->vendor_id, strerror(errno));
 				} else if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) {
-					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher", INDIGO_VALUE_SIZE);
+					indigo_copy_value(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher");
 				} else if (PRIVATE_DATA->vendor_id == VNDR_CELESTRON) {
-					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron", INDIGO_VALUE_SIZE);
+					indigo_copy_value(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron");
 				}
 				int model_id = tc_get_model(dev_id);
 				if (model_id < 0) {

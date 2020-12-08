@@ -53,19 +53,19 @@ static bool xagyl_open(indigo_device *device) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		char buffer[128];
 		if (indigo_printf(PRIVATE_DATA->handle, "I0") && indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
-			strncpy(INFO_DEVICE_MODEL_ITEM->text.value, buffer, INDIGO_VALUE_SIZE);
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, buffer);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read model name");
 			return false;
 		}
 		if (indigo_printf(PRIVATE_DATA->handle, "I1") && indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
-			strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer, INDIGO_VALUE_SIZE);
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read firmware version");
 			return false;
 		}
 		if (indigo_printf(PRIVATE_DATA->handle, "I3") && indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
-			strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer, INDIGO_VALUE_SIZE);
+			indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read S/N");
 			return false;

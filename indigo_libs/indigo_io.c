@@ -335,7 +335,7 @@ int indigo_open_network_device(const char *url, int default_port, indigo_network
 		host_name[colon - host] = 0;
 		port = atoi(colon + 1);
 	} else {
-		strncpy(host_name, host, INDIGO_NAME_SIZE);
+		indigo_copy_name(host_name, host);
 	}
 
 	INDIGO_DEBUG(indigo_debug("Trying to open: '%s', port = %d, protocol = %d", host_name, port, *protocol_hint));
@@ -443,7 +443,7 @@ bool indigo_write(int handle, const char *buffer, long length) {
 }
 
 bool indigo_printf(int handle, const char *format, ...) {
-	char buffer[1024];
+	char buffer[102400];
 	va_list args;
 	va_start(args, format);
 	int length = vsnprintf(buffer, sizeof(buffer), format, args);

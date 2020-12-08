@@ -1516,7 +1516,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
-		//strncpy(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP, INDIGO_NAME_SIZE);
+		//indigo_copy_name(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP);
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
 		MOUNT_SNOOP_DEVICES_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------- OIL STATE
@@ -2561,7 +2561,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_PARK_PROPERTY->hidden = true;
 
 		// ------------------------------------------------------------------------- DOME_STEPS
-		strncpy(DOME_STEPS_ITEM->label, "Relaive move (0 to 180°)", INDIGO_VALUE_SIZE);
+		indigo_copy_value(DOME_STEPS_ITEM->label, "Relaive move (0 to 180°)");
 		DOME_STEPS_ITEM->number.min = 0;
 		DOME_STEPS_ITEM->number.max = 179.99;
 
@@ -3150,7 +3150,7 @@ static indigo_result panel_attach(indigo_device *device) {
 		AUTHENTICATION_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://192.168.2.230:2002", INDIGO_VALUE_SIZE);
+		indigo_copy_value(DEVICE_PORT_ITEM->text.value, "ascol://192.168.2.230:2002");
 		// -------------------------------------------------------------------------------- ALARM
 		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
 		if (ALARM_PROPERTY == NULL)

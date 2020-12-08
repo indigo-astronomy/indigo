@@ -1299,7 +1299,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
 					AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-					strncpy(message, "No guider selected", INDIGO_VALUE_SIZE);
+					indigo_copy_value(message, "No guider selected");
 				}
 			}
 			if (message[0] != 0) {

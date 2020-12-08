@@ -948,7 +948,7 @@ static void sequence_process(indigo_device *device) {
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->focus_exposure = 0;
-	strncpy(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value, INDIGO_VALUE_SIZE);
+	indigo_copy_value(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value);
 	bool autofocus_requested = strstr(sequence_text, "focus") != NULL;
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		if (strchr(token, '='))
@@ -976,7 +976,7 @@ static void sequence_process(indigo_device *device) {
 		}
 	}
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	strncpy(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value, INDIGO_VALUE_SIZE);
+	indigo_copy_value(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value);
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		value = strchr(token, '=');
 		if (value) {
@@ -992,7 +992,7 @@ static void sequence_process(indigo_device *device) {
 		if (batch_index < 1 || batch_index > SEQUENCE_SIZE)
 			continue;
 		char batch_text[INDIGO_VALUE_SIZE], *batch_text_pnt;
-		strncpy(batch_text, AGENT_IMAGER_SEQUENCE_PROPERTY->items[batch_index].text.value, INDIGO_VALUE_SIZE);
+		indigo_copy_value(batch_text, AGENT_IMAGER_SEQUENCE_PROPERTY->items[batch_index].text.value);
 		for (char *token = strtok_r(batch_text, ";", &batch_text_pnt); token; token = strtok_r(NULL, ";", &batch_text_pnt)) {
 			value = strchr(token, '=');
 			if (value == NULL) {
@@ -1564,7 +1564,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (strcmp(item->name, CCD_LOCAL_MODE_DIR_ITEM_NAME) == 0) {
-					strncpy(CLIENT_PRIVATE_DATA->current_folder, item->text.value, INDIGO_VALUE_SIZE);
+					indigo_copy_value(CLIENT_PRIVATE_DATA->current_folder, item->text.value);
 					break;
 				}
 			}
@@ -1668,7 +1668,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (strcmp(item->name, CCD_LOCAL_MODE_DIR_ITEM_NAME) == 0) {
-					strncpy(CLIENT_PRIVATE_DATA->current_folder, item->text.value, INDIGO_VALUE_SIZE);
+					indigo_copy_value(CLIENT_PRIVATE_DATA->current_folder, item->text.value);
 					break;
 				}
 			}

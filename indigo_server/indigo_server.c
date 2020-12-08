@@ -597,10 +597,10 @@ static indigo_result attach(indigo_device *device) {
 		if (line) {
 			char *pnt, *token = strtok_r(line, "\t", &pnt);
 			if (token)
-				strncpy(SERVER_WIFI_AP_SSID_ITEM->text.value, token, INDIGO_VALUE_SIZE);
+				indigo_copy_value(SERVER_WIFI_AP_SSID_ITEM->text.value, token);
 			token = strtok_r(NULL, "\t", &pnt);
 			if (token)
-				strncpy(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token, INDIGO_VALUE_SIZE);
+				indigo_copy_value(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token);
 			free(line);
 		}
 		SERVER_WIFI_INFRASTRUCTURE_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_INFRASTRUCTURE_PROPERTY_NAME, MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
@@ -610,7 +610,7 @@ static indigo_result attach(indigo_device *device) {
 		if (line) {
 			char *pnt, *token = strtok_r(line, "\t", &pnt);
 			if (token)
-				strncpy(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token, INDIGO_VALUE_SIZE);
+				indigo_copy_value(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token);
 			free(line);
 		}
 		SERVER_INTERNET_SHARING_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_INTERNET_SHARING_PROPERTY_NAME, MAIN_GROUP, "Internet sharing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -1035,7 +1035,7 @@ static void server_main() {
 			i++;
 		} else if ((!strcmp(server_argv[i], "-r") || !strcmp(server_argv[i], "--remote-server")) && i < server_argc - 1) {
 			char host[INDIGO_NAME_SIZE];
-			strncpy(host, server_argv[i + 1], INDIGO_NAME_SIZE);
+			indigo_copy_name(host, server_argv[i + 1]);
 			char *colon = strchr(host, ':');
 			int port = 7624;
 			if (colon != NULL) {
@@ -1047,7 +1047,7 @@ static void server_main() {
 			i++;
 		} else if ((!strcmp(server_argv[i], "-i") || !strcmp(server_argv[i], "--indi-driver")) && i < server_argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
-			strncpy(executable, server_argv[i + 1], INDIGO_NAME_SIZE);
+			indigo_copy_name(executable, server_argv[i + 1]);
 			indigo_reshare_remote_devices = true;
 			indigo_start_subprocess(executable, NULL);
 			i++;
@@ -1060,7 +1060,7 @@ static void server_main() {
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
 		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
-			strncpy(indigo_local_service_name, server_argv[i + 1], INDIGO_NAME_SIZE);
+			indigo_copy_name(indigo_local_service_name, server_argv[i + 1]);
 			i++;
 		} else if (!strcmp(server_argv[i], "-c-") || !strcmp(server_argv[i], "--disable-control-panel")) {
 			use_ctrl_panel = false;

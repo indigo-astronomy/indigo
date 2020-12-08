@@ -502,7 +502,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		strncpy(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE, INDIGO_VALUE_SIZE);
+		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
 
@@ -671,8 +671,8 @@ static void focuser_connect_callback(indigo_device *device) {
 					char firmware[MFP_CMD_LEN] = "N/A";
 					uint32_t value;
 					if (mfp_get_info(device, board, firmware)) {
-						strncpy(INFO_DEVICE_MODEL_ITEM->text.value, board, INDIGO_VALUE_SIZE);
-						strncpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware, INDIGO_VALUE_SIZE);
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
+						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
 

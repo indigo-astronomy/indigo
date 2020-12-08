@@ -1151,8 +1151,8 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 		if (property->count >= 0) {
 			define = true;
 			char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE], group[16];
-			strncpy(name, PRIVATE_DATA->property_code_name(property->code), INDIGO_NAME_SIZE);
-			strncpy(label, PRIVATE_DATA->property_code_label(property->code), INDIGO_NAME_SIZE);
+			indigo_copy_name(name, PRIVATE_DATA->property_code_name(property->code));
+			indigo_copy_name(label, PRIVATE_DATA->property_code_label(property->code));
 			if (!strncmp(name, "DSLR_", 5)) {
 				strcpy(group, "DSLR");
 			} else if (!strncmp(name, "CCD_", 4)) {
@@ -1202,7 +1202,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 		if (property->count == 0) {
 			if (property->type == ptp_str_type) {
 				if (strncmp(property->property->items->text.value, property->value.text.value, INDIGO_NAME_SIZE)) {
-					strncpy(property->property->items->text.value, property->value.text.value, INDIGO_NAME_SIZE);
+					indigo_copy_name(property->property->items->text.value, property->value.text.value);
 					update = true;
 				}
 			} else if (property->value.number.min == property->property->items->number.min && property->value.number.max == property->property->items->number.max && property->value.number.step == property->property->items->number.step) {
@@ -1228,13 +1228,13 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				for (int i = 0; i < property->count; i++) {
 					if (property->type == ptp_str_type) {
 						strcpy(str, property->value.sw_str.values[i]);
-						strncpy(property->property->items[i].label, str, INDIGO_VALUE_SIZE);
+						indigo_copy_value(property->property->items[i].label, str);
 					} else {
 						sprintf(str, "%llx", property->value.sw.values[i]);
-						strncpy(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), INDIGO_VALUE_SIZE);
+						indigo_copy_value(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]));
 					}
 					if (strncmp(property->property->items[i].name, str, INDIGO_NAME_SIZE)) {
-						strncpy(property->property->items[i].name, str, INDIGO_NAME_SIZE);
+						indigo_copy_name(property->property->items[i].name, str);
 						define = true;
 					}
 					if (property->type == ptp_str_type) {

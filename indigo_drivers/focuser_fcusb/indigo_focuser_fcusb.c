@@ -84,8 +84,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
-		strncpy(FOCUSER_SPEED_ITEM->label, "Power (0-255)", INDIGO_VALUE_SIZE);
-		strncpy(FOCUSER_SPEED_PROPERTY->label, "Power", INDIGO_VALUE_SIZE);
+		indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
+		indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -233,7 +233,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
         indigo_device *device = malloc(sizeof(indigo_device));
         assert(device != NULL);
         memcpy(device, &focuser_template, sizeof(indigo_device));
-        strncpy(device->name, name, INDIGO_NAME_SIZE);
+        indigo_copy_name(device->name, name);
         device->private_data = private_data;
         for (int j = 0; j < MAX_DEVICES; j++) {
           if (devices[j] == NULL) {

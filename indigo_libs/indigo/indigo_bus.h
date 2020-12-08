@@ -213,6 +213,8 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 		 */
 		struct {
 			char value[INDIGO_VALUE_SIZE];  ///< item value (for text properties)
+			char *extra_value;							///< item value exceeding INDIGO_VALUE_SIZE - 1 length
+			long extra_size;								///< extra_value size (including terminating 0)
 		} text;
 		/** Number property item specific fields.
 		 */
@@ -647,6 +649,9 @@ extern double indigo_atod(const char *str);
 extern char *indigo_dtoa(double value, char *str);
 
 #define indigo_fix_locale(s) { char *fc = strchr(s, ','); if (fc) *fc = '.'; }
+
+#define indigo_copy_name(target, source) { memset(target, 0, INDIGO_NAME_SIZE); strncpy(target, source, INDIGO_NAME_SIZE - 1); }
+#define indigo_copy_value(target, source) { memset(target, 0, INDIGO_VALUE_SIZE); strncpy(target, source, INDIGO_VALUE_SIZE - 1); }
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */

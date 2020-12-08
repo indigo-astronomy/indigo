@@ -343,7 +343,7 @@ static bool lunatico_open(indigo_device *device) {
 
 		char url[INDIGO_VALUE_SIZE];
 		if (strstr(DEVICE_PORT_ITEM->text.value, "://")) {
-			strncpy(url, DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE);
+			indigo_copy_value(url, DEVICE_PORT_ITEM->text.value);
 		} else {
 			snprintf(url, INDIGO_VALUE_SIZE, "udp://%s", DEVICE_PORT_ITEM->text.value);
 		}

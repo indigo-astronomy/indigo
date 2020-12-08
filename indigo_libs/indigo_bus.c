@@ -291,10 +291,17 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 				indigo_item *item = &property->items[i];
 				switch (property->type) {
 				case INDIGO_TEXT_VECTOR:
-					if (defs)
-						indigo_trace("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
-					else
-						indigo_trace("  '%s' = '%s' ",item->name, item->text.value);
+					if (defs) {
+						if (item->text.extra_value)
+							indigo_trace("  '%s' = '%s' + %d extra characters // %s", item->name, item->text.value, item->text.extra_size - 1, item->label);
+						else
+							indigo_trace("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
+					} else {
+						if (item->text.extra_value)
+							indigo_trace("  '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.extra_size - 1);
+						else
+							indigo_trace("  '%s' = '%s'",item->name, item->text.value);
+					}
 					break;
 				case INDIGO_NUMBER_VECTOR:
 					if (defs)
@@ -674,10 +681,10 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 		if (property == NULL) return NULL;
 	}
 	memset(property, 0, size);
-	strncpy(property->device, device, INDIGO_NAME_SIZE);
-	strncpy(property->name, name, INDIGO_NAME_SIZE);
-	strncpy(property->group, group ? group : "", INDIGO_NAME_SIZE);
-	strncpy(property->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(property->device, device);
+	indigo_copy_name(property->name, name);
+	indigo_copy_name(property->group, group ? group : "");
+	indigo_copy_value(property->label, label ? label : "");
 	property->type = INDIGO_TEXT_VECTOR;
 	property->state = state;
 	property->perm = perm;
@@ -695,10 +702,10 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 		if (property == NULL) return NULL;
 	}
 	memset(property, 0, size);
-	strncpy(property->device, device, INDIGO_NAME_SIZE);
-	strncpy(property->name, name, INDIGO_NAME_SIZE);
-	strncpy(property->group, group ? group : "", INDIGO_NAME_SIZE);
-	strncpy(property->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(property->device, device);
+	indigo_copy_name(property->name, name);
+	indigo_copy_name(property->group, group ? group : "");
+	indigo_copy_value(property->label, label ? label : "");
 	property->type = INDIGO_NUMBER_VECTOR;
 	property->state = state;
 	property->perm = perm;
@@ -716,10 +723,10 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 		if (property == NULL) return NULL;
 	}
 	memset(property, 0, size);
-	strncpy(property->device, device, INDIGO_NAME_SIZE);
-	strncpy(property->name, name, INDIGO_NAME_SIZE);
-	strncpy(property->group, group ? group : "", INDIGO_NAME_SIZE);
-	strncpy(property->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(property->device, device);
+	indigo_copy_name(property->name, name);
+	indigo_copy_name(property->group, group ? group : "");
+	indigo_copy_value(property->label, label ? label : "");
 	property->type = INDIGO_SWITCH_VECTOR;
 	property->state = state;
 	property->perm = perm;
@@ -738,10 +745,10 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 		if (property == NULL) return NULL;
 	}
 	memset(property, 0, size);
-	strncpy(property->device, device, INDIGO_NAME_SIZE);
-	strncpy(property->name, name, INDIGO_NAME_SIZE);
-	strncpy(property->group, group ? group : "", INDIGO_NAME_SIZE);
-	strncpy(property->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(property->device, device);
+	indigo_copy_name(property->name, name);
+	indigo_copy_name(property->group, group ? group : "");
+	indigo_copy_value(property->label, label ? label : "");
 	property->type = INDIGO_LIGHT_VECTOR;
 	property->perm = INDIGO_RO_PERM;
 	property->state = state;
@@ -759,10 +766,10 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 		if (property == NULL) return NULL;
 	}
 	memset(property, 0, size);
-	strncpy(property->device, device, INDIGO_NAME_SIZE);
-	strncpy(property->name, name, INDIGO_NAME_SIZE);
-	strncpy(property->group, group ? group : "", INDIGO_NAME_SIZE);
-	strncpy(property->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(property->device, device);
+	indigo_copy_name(property->name, name);
+	indigo_copy_name(property->group, group ? group : "");
+	indigo_copy_value(property->label, label ? label : "");
 	property->type = INDIGO_BLOB_VECTOR;
 	property->perm = INDIGO_RO_PERM;
 	property->state = state;
@@ -821,8 +828,8 @@ void indigo_init_text_item(indigo_item *item, const char *name, const char *labe
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	strncpy(item->name, name, INDIGO_NAME_SIZE);
-	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(item->name, name);
+	indigo_copy_value(item->label, label ? label : "");
 	va_list args;
 	va_start(args, format);
 	vsnprintf(item->text.value, INDIGO_VALUE_SIZE, format, args);
@@ -833,9 +840,9 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	strncpy(item->name, name, INDIGO_NAME_SIZE);
-	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
-	strncpy(item->number.format, "%g", INDIGO_VALUE_SIZE);
+	indigo_copy_name(item->name, name);
+	indigo_copy_value(item->label, label ? label : "");
+	indigo_copy_value(item->number.format, "%g");
 	item->number.min = min;
 	item->number.max = max;
 	item->number.step = step;
@@ -846,8 +853,8 @@ void indigo_init_switch_item(indigo_item *item, const char *name, const char *la
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	strncpy(item->name, name, INDIGO_NAME_SIZE);
-	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(item->name, name);
+	indigo_copy_value(item->label, label ? label : "");
 	item->sw.value = value;
 }
 
@@ -855,8 +862,8 @@ void indigo_init_light_item(indigo_item *item, const char *name, const char *lab
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	strncpy(item->name, name, INDIGO_NAME_SIZE);
-	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(item->name, name);
+	indigo_copy_value(item->label, label ? label : "");
 	item->light.value = value;
 }
 
@@ -864,8 +871,8 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	strncpy(item->name, name, INDIGO_NAME_SIZE);
-	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
+	indigo_copy_name(item->name, name);
+	indigo_copy_value(item->label, label ? label : "");
 }
 
 void *indigo_alloc_blob_buffer(long size) {
@@ -940,7 +947,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	if (content_len) {
 		image_type = strrchr(file, '.');
-		if (image_type) strncpy(blob_item->blob.format, image_type, INDIGO_NAME_SIZE);
+		if (image_type) indigo_copy_name(blob_item->blob.format, image_type);
 		blob_item->blob.size = content_len;
 		blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
 		res = (indigo_read(socket, blob_item->blob.value, blob_item->blob.size) >= 0) ? true : false;
@@ -1039,7 +1046,17 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 					if (!strcmp(property_item->name, other_item->name)) {
 						switch (property->type) {
 						case INDIGO_TEXT_VECTOR:
-							strncpy(property_item->text.value, other_item->text.value, INDIGO_VALUE_SIZE);
+							if (property_item->text.extra_value) {
+								free(property_item->text.extra_value);
+								property_item->text.extra_value = NULL;
+							}
+							indigo_copy_value(property_item->text.value, other_item->text.value);
+							if (other_item->text.extra_value) {
+								if ((property_item->text.extra_value = malloc(property_item->text.extra_size = other_item->text.extra_size))) {
+									memcpy(property_item->text.extra_value, other_item->text.extra_value, other_item->text.extra_size);
+									printf("\n\n%s\n\n", property_item->text.extra_value);
+								}
+							}
 							break;
 						case INDIGO_NUMBER_VECTOR:
 							property_item->number.target = property_item->number.value = other_item->number.value;
@@ -1055,8 +1072,8 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							property_item->light.value = other_item->light.value;
 							break;
 						case INDIGO_BLOB_VECTOR:
-							strncpy(property_item->blob.format, other_item->blob.format, INDIGO_NAME_SIZE);
-							strncpy(property_item->blob.url, other_item->blob.url, INDIGO_NAME_SIZE);
+							indigo_copy_name(property_item->blob.format, other_item->blob.format);
+							indigo_copy_name(property_item->blob.url, other_item->blob.url);
 							property_item->blob.size = other_item->blob.size;
 							property_item->blob.value = other_item->blob.value;
 							break;
@@ -1107,8 +1124,21 @@ void indigo_property_sort_items(indigo_property *property) {
 indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values) {
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, count);
 	property->access_token = token;
-	for (int i = 0; i < count; i++)
-		indigo_init_text_item(property->items + i, items[i], NULL, values[i]);
+	for (int i = 0; i < count; i++) {
+		indigo_item *item = property->items + i;
+		const char *value = values[i];
+		memset(item, 0, sizeof(indigo_item));
+		indigo_copy_name(item->name, items[i]);
+		long length = strlen(value);
+		indigo_copy_value(item->text.value, value);
+		if (length >= INDIGO_VALUE_SIZE) {
+			long extra_size = length - INDIGO_VALUE_SIZE + 2;
+			if ((item->text.extra_value = malloc(item->text.extra_size = extra_size))) {
+				strncpy(item->text.extra_value, value + INDIGO_VALUE_SIZE - 1, extra_size);
+				item->text.extra_value[extra_size - 1] = 0;
+			}
+		}
+	}
 	indigo_result result = indigo_change_property(client, property);
 	free(property);
 	return result;

@@ -666,7 +666,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->can_check_temperature = true;
 		INFO_PROPERTY->count = 8;
-		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str(), INDIGO_VALUE_SIZE);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str());
 
 		// ---------------------------------------------------------------------------------
 		APG_ADC_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_ADC_SPEED", APG_ADVANCED_GROUP, "ADC speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -749,7 +749,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixel_height * 100) / 100;
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 
-				strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str(), INDIGO_VALUE_SIZE);
+				indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str());
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "0x%x", GetFrmwrRev(PRIVATE_DATA->discovery_string));
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
@@ -1110,9 +1110,9 @@ static indigo_result ethernet_attach(indigo_device *device) {
 		INFO_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		strncpy(DEVICE_PORT_ITEM->text.value, "192.168.0.255", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_PROPERTY->label, "Network", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_ITEM->label, "Broadcast address", INDIGO_VALUE_SIZE);
+		indigo_copy_value(DEVICE_PORT_ITEM->text.value, "192.168.0.255");
+		indigo_copy_value(DEVICE_PORT_PROPERTY->label, "Network");
+		indigo_copy_value(DEVICE_PORT_ITEM->label, "Broadcast address");
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
