@@ -528,8 +528,8 @@ static bool exposure_batch(indigo_device *device) {
 								}
 								if (!DEVICE_PRIVATE_DATA->dithering_finished) {
 									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed");
-									indigo_send_message(device, "Dithering failed to settle down");
-									return false;
+									indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
+									indigo_usleep(200000);
 								}
 							}
 							break;
