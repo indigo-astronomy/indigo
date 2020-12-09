@@ -44,8 +44,14 @@
 #define AGENT_SCRIPTING_SCRIPT_PROPERTY				(PRIVATE_DATA->agent_script_property)
 #define AGENT_SCRIPTING_SCRIPT_ITEM				  	(AGENT_SCRIPTING_SCRIPT_PROPERTY->items+0)
 
+static char boot_js[] = {
+#include "boot.js.dat"
+	0
+};
+
 typedef struct {
 	indigo_property *agent_script_property;
+	duk_context *ctx;
 } agent_private_data;
 
 static void save_config(indigo_device *device) {
@@ -69,35 +75,7 @@ static agent_private_data *private_data = NULL;
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
 
-// -------------------------------------------------------------------------------- INDIGO agent device implementation
-
-static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-static indigo_result agent_device_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
-	if (indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- Device properties
-		AGENT_SCRIPTING_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME, MAIN_GROUP, "Script", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (AGENT_SCRIPTING_SCRIPT_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_text_item(AGENT_SCRIPTING_SCRIPT_ITEM, AGENT_SCRIPTING_SCRIPT_ITEM_NAME, "Script", "");
-		strcpy(AGENT_SCRIPTING_SCRIPT_ITEM->hints, "widget: multiline-edit-box");
-		// --------------------------------------------------------------------------------
-		CONNECTION_PROPERTY->hidden = true;
-		CONFIG_PROPERTY->hidden = true;
-		PROFILE_PROPERTY->hidden = true;
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return agent_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(AGENT_SCRIPTING_SCRIPT_PROPERTY, property))
-		indigo_define_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
-	return indigo_device_enumerate_properties(device, client, property);
-}
+// -------------------------------------------------------------------------------- Duktape bindings
 
 static duk_ret_t send_message(duk_context *ctx) {
 	const char *message = duk_to_string(ctx, 0);
@@ -176,6 +154,50 @@ static duk_ret_t change_switch_property(duk_context *ctx) {
 	return 0;
 }
 
+// -------------------------------------------------------------------------------- INDIGO agent device implementation
+
+static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result agent_device_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- Device properties
+		AGENT_SCRIPTING_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME, MAIN_GROUP, "Script", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (AGENT_SCRIPTING_SCRIPT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(AGENT_SCRIPTING_SCRIPT_ITEM, AGENT_SCRIPTING_SCRIPT_ITEM_NAME, "Script", "");
+		strcpy(AGENT_SCRIPTING_SCRIPT_ITEM->hints, "widget: multiline-edit-box");
+		// --------------------------------------------------------------------------------
+		CONNECTION_PROPERTY->hidden = true;
+		CONFIG_PROPERTY->hidden = true;
+		PROFILE_PROPERTY->hidden = true;
+		PRIVATE_DATA->ctx = duk_create_heap_default();
+		if (PRIVATE_DATA->ctx) {
+			duk_push_c_function(PRIVATE_DATA->ctx, send_message, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_send_message");
+			duk_push_c_function(PRIVATE_DATA->ctx, change_text_property, 3);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_text_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, change_number_property, 3);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_number_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, change_switch_property, 3);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_switch_property");
+			if (duk_peval_string(PRIVATE_DATA->ctx, boot_js)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			}
+		}
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return agent_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(AGENT_SCRIPTING_SCRIPT_PROPERTY, property))
+		indigo_define_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
+	return indigo_device_enumerate_properties(device, client, property);
+}
+
 static indigo_result agent_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -192,23 +214,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			if (AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value) {
 				strcat(script, AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value);
 			}
-			duk_context *ctx = duk_create_heap_default();
-			if (ctx) {
-				duk_push_c_function(ctx, send_message, 1);
-				duk_put_global_string(ctx, "indigo_send_message");
-				duk_push_c_function(ctx, change_text_property, 3);
-				duk_put_global_string(ctx, "indigo_change_text_property");
-				duk_push_c_function(ctx, change_number_property, 3);
-				duk_put_global_string(ctx, "indigo_change_number_property");
-				duk_push_c_function(ctx, change_switch_property, 3);
-				duk_put_global_string(ctx, "indigo_change_switch_property");
-				if (duk_peval_string(ctx, script)) {
-					indigo_send_message(device, "%s", duk_safe_to_string(ctx, -1));
-				}
-				duk_destroy_heap(ctx);
-				AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
+			if (duk_peval_string(PRIVATE_DATA->ctx, script)) {
+				indigo_send_message(device, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 				AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			free(script);
 		} else {
@@ -227,6 +237,9 @@ static indigo_result agent_enable_blob(indigo_device *device, indigo_client *cli
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	if (PRIVATE_DATA->ctx) {
+		duk_destroy_heap(PRIVATE_DATA->ctx);
+	}
 	indigo_release_property(AGENT_SCRIPTING_SCRIPT_PROPERTY);
 	return indigo_device_detach(device);
 }

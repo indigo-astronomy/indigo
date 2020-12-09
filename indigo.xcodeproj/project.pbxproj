@@ -536,6 +536,9 @@
 		5910D9C22580284E0015D915 /* duktape.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = duktape.h; sourceTree = "<group>"; };
 		5910D9C32580284E0015D915 /* duk_config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = duk_config.h; sourceTree = "<group>"; };
 		5910D9C42580284E0015D915 /* duktape.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = duktape.c; sourceTree = "<group>"; };
+		5910D9DF25814C4E0015D915 /* boot.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = boot.js; sourceTree = "<group>"; };
+		5910D9E42581503C0015D915 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		5910D9E5258150AA0015D915 /* boot.js.dat */ = {isa = PBXFileReference; lastKnownFileType = text; path = boot.js.dat; sourceTree = "<group>"; };
 		5911B6C822630FE900D6B9EC /* indigo_guider_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_guider_utils.h; sourceTree = "<group>"; };
 		5911B6C922630FE900D6B9EC /* indigo_guider_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_utils.c; sourceTree = "<group>"; };
 		5911B6D622633DBE00D6B9EC /* indigo_agent_guider.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_guider.c; sourceTree = "<group>"; };
@@ -4268,11 +4271,14 @@
 			isa = PBXGroup;
 			children = (
 				5910D9AC257FFA630015D915 /* README.md */,
+				5910D9E42581503C0015D915 /* Makefile.inc */,
 				5910D9AB257FFA630015D915 /* indigo_agent_scripting.h */,
 				5910D9AD257FFA630015D915 /* indigo_agent_scripting.c */,
 				5910D9C32580284E0015D915 /* duk_config.h */,
 				5910D9C22580284E0015D915 /* duktape.h */,
 				5910D9C42580284E0015D915 /* duktape.c */,
+				5910D9DF25814C4E0015D915 /* boot.js */,
+				5910D9E5258150AA0015D915 /* boot.js.dat */,
 			);
 			path = agent_scripting;
 			sourceTree = "<group>";
