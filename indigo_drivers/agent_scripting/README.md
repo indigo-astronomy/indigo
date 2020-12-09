@@ -37,7 +37,7 @@ function indigo_change_number_property(device, property, items)
 function indigo_change_switch_property(device, property, items)
 ```
 
-where ```message``` is any string, ```device``` is device name, ```property``` is property name,  ```items``` is dictionary with item name/value pairs.
+where ``message`` is any string, ``device`` is device name, ``property`` is property name,  ``items`` is dictionary with item name/value pairs.
 
 The following low level callback functions are called (if present) from the INDIGO: 
 
@@ -48,8 +48,6 @@ function indigo_delete_property(device, property, message)
 function indigo_send_message(device, message)
 ```
 
-where ````device``` is device name, ```property``` is property name,  ```items``` is dictionary with item name/value pairs, ```state``` is "Idle"/"Ok"/"Busy"/"Alert" string, ```perm``` is "RW"/"RO"/"WO" string and ``message``` is any string.
+where ``device`` is device name, ``property`` is property name,  ``items`` is dictionary with item name/value pairs, ``state`` is "Idle"/"Ok"/"Busy"/"Alert" string, ``perm`` is "RW"/"RO"/"WO" string and ``message`` is any string.
 
-The following script is executed on agent load and later will contain high level API definition:
-
-[boot.js](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/boot.js)
+The following script is executed on agent load and later will contain high level API definition: [boot.js](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/boot.js)
