@@ -77,9 +77,56 @@ static indigo_client *agent_client = NULL;
 
 // -------------------------------------------------------------------------------- Duktape bindings
 
+static duk_ret_t error_message(duk_context *ctx) {
+	const char *message = duk_to_string(ctx, 0);
+	indigo_error(message);
+	return 0;
+}
+
+static duk_ret_t log_message(duk_context *ctx) {
+	const char *message = duk_to_string(ctx, 0);
+	indigo_log(message);
+	return 0;
+}
+
+static duk_ret_t debug_message(duk_context *ctx) {
+	const char *message = duk_to_string(ctx, 0);
+	indigo_debug(message);
+	return 0;
+}
+
+static duk_ret_t trace_message(duk_context *ctx) {
+	const char *message = duk_to_string(ctx, 0);
+	indigo_trace(message);
+	return 0;
+}
+
+
+
 static duk_ret_t send_message(duk_context *ctx) {
 	const char *message = duk_to_string(ctx, 0);
-	indigo_send_message(agent_device, "%s", message);
+	indigo_send_message(agent_device, message);
+	return 0;
+}
+
+static duk_ret_t emumerate_properties(duk_context *ctx) {
+	const char *device = duk_to_string(ctx, 0);
+	const char *property = duk_to_string(ctx, 1);
+	indigo_property property_template = { 0 };
+	indigo_copy_name(property_template.device, device);
+	indigo_copy_name(property_template.name, property);
+	indigo_enumerate_properties(agent_client, &property_template);
+	return 0;
+}
+
+static duk_ret_t enable_blob(duk_context *ctx) {
+	const char *device = duk_to_string(ctx, 0);
+	const char *property = duk_to_string(ctx, 1);
+	const bool state = duk_to_boolean(ctx, 2);
+	indigo_property property_template = { 0 };
+	indigo_copy_name(property_template.device, device);
+	indigo_copy_name(property_template.name, property);
+	indigo_enable_blob(agent_client, &property_template, state);
 	return 0;
 }
 
@@ -174,8 +221,20 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PROFILE_PROPERTY->hidden = true;
 		PRIVATE_DATA->ctx = duk_create_heap_default();
 		if (PRIVATE_DATA->ctx) {
+			duk_push_c_function(PRIVATE_DATA->ctx, error_message, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_error");
+			duk_push_c_function(PRIVATE_DATA->ctx, log_message, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_log");
+			duk_push_c_function(PRIVATE_DATA->ctx, debug_message, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_debug");
+			duk_push_c_function(PRIVATE_DATA->ctx, trace_message, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_trace");
 			duk_push_c_function(PRIVATE_DATA->ctx, send_message, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_send_message");
+			duk_push_c_function(PRIVATE_DATA->ctx, emumerate_properties, 2);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_enumerate_properties");
+			duk_push_c_function(PRIVATE_DATA->ctx, enable_blob, 3);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_enable_blob");
 			duk_push_c_function(PRIVATE_DATA->ctx, change_text_property, 3);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_text_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, change_number_property, 3);
