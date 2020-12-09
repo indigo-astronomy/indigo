@@ -953,14 +953,22 @@ static void guide_process(indigo_device *device) {
 				if (DEVICE_PRIVATE_DATA->rmse_count < MAX_DITHERING_RMSE_STACK)
 					DEVICE_PRIVATE_DATA->rmse_count++;
 				for (int i = 0; i < DEVICE_PRIVATE_DATA->rmse_count; i++) {
-					DEVICE_PRIVATE_DATA->rmse_ra_sum += DEVICE_PRIVATE_DATA->stack_x[i] * DEVICE_PRIVATE_DATA->stack_x[i];
-					DEVICE_PRIVATE_DATA->rmse_dec_sum += DEVICE_PRIVATE_DATA->stack_y[i] * DEVICE_PRIVATE_DATA->stack_y[i];
+					double drift_ra_i =  DEVICE_PRIVATE_DATA->stack_x[i] * cos_angle + DEVICE_PRIVATE_DATA->stack_y[i] * sin_angle;
+					double drift_dec_i = DEVICE_PRIVATE_DATA->stack_x[i] * sin_angle - DEVICE_PRIVATE_DATA->stack_y[i] * cos_angle;
+					DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra_i * drift_ra_i;
+					DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec_i * drift_dec_i;
 				}
 			}
 			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0) {
-				if (DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold) {
+				bool dithering_finished = false;
+				if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
+					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
+				} else {
+					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
+				}
+				if (dithering_finished) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 				} else {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value);
