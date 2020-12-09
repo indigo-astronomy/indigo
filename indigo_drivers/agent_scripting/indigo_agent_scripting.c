@@ -99,8 +99,80 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
-static duk_ret_t global_print(duk_context *ctx) {
-	indigo_send_message(agent_device, "%s", duk_to_string(ctx, 0));
+static duk_ret_t send_message(duk_context *ctx) {
+	const char *message = duk_to_string(ctx, 0);
+	indigo_send_message(agent_device, "%s", message);
+	return 0;
+}
+
+static duk_ret_t change_text_property(duk_context *ctx) {
+	const char *device = duk_to_string(ctx, 0);
+	const char *property = duk_to_string(ctx, 1);
+	char *names[INDIGO_MAX_ITEMS];
+	char *values[INDIGO_MAX_ITEMS];
+	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
+	int i = 0;
+	while (duk_next(ctx, -1, true)) {
+		const char *key = duk_to_string(ctx, -2);
+		const char *value = duk_to_string(ctx, -1);
+		names[i] = strdup(key);
+		values[i] = strdup(value);
+		duk_pop_2(ctx);
+		i++;
+	}
+	indigo_change_text_property(agent_client, device, property, i, (const char **)names, (const char **)values);
+	for (int j = 0; j < i; j++) {
+		if (names[j])
+			free(names[j]);
+		if (values[j])
+			free(values[j]);
+	}
+	return 0;
+}
+
+static duk_ret_t change_number_property(duk_context *ctx) {
+	const char *device = duk_to_string(ctx, 0);
+	const char *property = duk_to_string(ctx, 1);
+	char *names[INDIGO_MAX_ITEMS];
+	double values[INDIGO_MAX_ITEMS];
+	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
+	int i = 0;
+	while (duk_next(ctx, -1, true)) {
+		const char *key = duk_to_string(ctx, -2);
+		double value = duk_to_number(ctx, -1);
+		names[i] = strdup(key);
+		values[i] = value;
+		duk_pop_2(ctx);
+		i++;
+	}
+	indigo_change_number_property(agent_client, device, property, i, (const char **)names, (const double *)values);
+	for (int j = 0; j < i; j++) {
+		if (names[j])
+			free(names[j]);
+	}
+	return 0;
+}
+
+static duk_ret_t change_switch_property(duk_context *ctx) {
+	const char *device = duk_to_string(ctx, 0);
+	const char *property = duk_to_string(ctx, 1);
+	char *names[INDIGO_MAX_ITEMS];
+	bool values[INDIGO_MAX_ITEMS];
+	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
+	int i = 0;
+	while (duk_next(ctx, -1, true)) {
+		const char *key = duk_to_string(ctx, -2);
+		double value = duk_to_boolean(ctx, -1);
+		names[i] = strdup(key);
+		values[i] = value;
+		duk_pop_2(ctx);
+		i++;
+	}
+	indigo_change_switch_property(agent_client, device, property, i, (const char **)names, (const bool *)values);
+	for (int j = 0; j < i; j++) {
+		if (names[j])
+			free(names[j]);
+	}
 	return 0;
 }
 
@@ -122,8 +194,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 			duk_context *ctx = duk_create_heap_default();
 			if (ctx) {
-				duk_push_c_function(ctx, global_print, 1);
-				duk_put_global_string(ctx, "print");
+				duk_push_c_function(ctx, send_message, 1);
+				duk_put_global_string(ctx, "indigo_send_message");
+				duk_push_c_function(ctx, change_text_property, 3);
+				duk_put_global_string(ctx, "indigo_change_text_property");
+				duk_push_c_function(ctx, change_number_property, 3);
+				duk_put_global_string(ctx, "indigo_change_number_property");
+				duk_push_c_function(ctx, change_switch_property, 3);
+				duk_put_global_string(ctx, "indigo_change_switch_property");
 				if (duk_peval_string(ctx, script)) {
 					indigo_send_message(device, "%s", duk_safe_to_string(ctx, -1));
 				}
