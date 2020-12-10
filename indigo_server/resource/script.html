@@ -4,15 +4,16 @@
 		<meta charset="utf-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
 		<link rel="stylesheet" href="bootstrap.min.css"/>
+		<link rel="stylesheet" href="glyphicons.css"/>
 		<link rel="stylesheet" href="indigo.css"/>
 	</head>
-	<title>INDIGO Control Panel</title>
+	<title>INDIGO Script</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-sm navbar-light">
-				<a class="navbar-brand text-white" href="#">
-					<img src="ctrl.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">Control Panel</h4>
+			<nav class="navbar navbar-expand-md navbar-light">
+				<a class="navbar-brand text-white " href="#">
+					<img src="guider.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
+					<h4 class="title">INDIGO Script</h4>
 				</a>
 				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
 					<span class="navbar-toggler-icon"></span>
@@ -32,7 +33,7 @@
 							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
 								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
+							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Scripting">
 								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
 							</a>
 							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
@@ -43,14 +44,28 @@
 				</div>
 			</nav>
 			<div class="container-fluid">
-				<div v-if="devices['Server'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
-					Waiting for server...
+				<div v-if="devices['Scripting Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
+					Waiting for Scripting agent...
 				</div>
 				<template v-else>
-					<div class="row">
-						<div class="col-sm-12">
+					<div class="row no-gutters">
+						<div v-for="item in findProperty('Scripting Agent', 'AGENT_SCRIPTING_SCRIPT').items" class="col-md-6">
 							<div class="card p-1 m-1 bg-light">
-								<indigo-ctrl :devices="devices"></indigo-ctrl>
+										<form class="m-0">
+											<div v-if="item.name=='ON_ATTACH' || item.name=='ON_DETACH'" class="form-group row m-1 p-1">
+												<input type="text" class="form-control" :value="item.label" readonly>
+											</div>
+											<div v-else class="form-group row m-1 p-1">
+												<input :id="'N_'+item.name" type="text" class="form-control" :class="item.newLabel != null ? 'dirty' : ''" :value="item.newLabel != null ? item.newLabel : item.label" @input="Vue.set(item, 'newLabel', $event.target.value)">
+											</div>
+											<div class="form-group row m-1 p-1">
+												<textarea :id="'S_'+item.name" class="form-control" :class="item.newValue != null ? 'dirty' : ''" rows="3" placeholder="No script" required @input="Vue.set(item, 'newValue', $event.target.value)">{{ item.newValue != null ? item.newValue : item.value }}</textarea>
+											</div>
+											<div class="float-right m-1 m-1 p-1">
+												<button v-if="item.name!='ON_ATTACH' && item.name!='ON_DETACH'" type="button" class="btn btn-sm btn-danger ml-1" @click="execute(item.name, item.newLabel != null, item.newValue != null); item.newLabel = item.newValue = null" data-toggle="tooltip" title="Execute script">Execute</button>
+												<button type="button" class="btn btn-sm btn-primary ml-1" @click="submit(item.name, item.newLabel != null, item.newValue != null); item.newLabel = item.newValue = null" data-toggle="tooltip" title="Save script name and text">Submit</button>
+											</div>
+										</form>
 							</div>
 						</div>
 					</div>
@@ -62,6 +77,9 @@
 					</span>
 				</div>
 				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
+					{{ state }}
+				</div>
+				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
 					{{ state }}
 				</div>
 				<div class="alert alert-info show m-1" role="alert">
@@ -83,29 +101,58 @@
 		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
 		guiSetup();
 		window.addEventListener("load", init, false);
-
+		
 		function checkState() {
-			if (INDIGO.devices["Server"] == null) {
+			var server = INDIGO.devices["Server"];
+			if (server == null) {
 				console.log("No 'Server' device.");
 			} else {
 				var hostTime = INDIGO.devices["Server"]["HOST_TIME"];
 				if (hostTime != null && hostTime.items[0].value == "") {
 					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() })
 				}
+				if (INDIGO.devices["Scripting Agent"] == null) {
+					console.log("No 'Scripting Agent' device.");
+					if (server["DRIVERS"].item("indigo_agent_scripting") == null) {
+						console.log("Trying to load 'indigo_agent_scripting' driver.");
+						changeProperty("Server", "LOAD", { "DRIVER": "indigo_agent_scripting" });
+					} else if (!server["DRIVERS"].item("indigo_agent_scripting").value) {
+						console.log("Trying to enable 'indigo_agent_scripting' driver.");
+						changeProperty("Server", "DRIVERS", { "indigo_agent_scripting": true });
+					}
+				}
 			}
 		}
 	
 		function onDefineProperty(property) {
-			guiSetup();
+			onUpdateProperty(property);
 		}
-	
+
 		function onUpdateProperty(property) {
-			guiSetup();
 		}
 	
 		function onDeleteProperty(property) {
-			guiSetup();
 		}
 	
+		function submit(item, saveLabel, saveScript) {
+			var values = {};
+			if (saveLabel) {
+				var name = $("#N_" + item);
+				values[item] = name.val()
+				changeProperty('Scripting Agent', 'AGENT_SCRIPTING_SCRIPT_NAME', values);
+			}
+			if (saveScript) {
+				var script = $("#S_" + item);
+				values[item] = script.val()
+				changeProperty('Scripting Agent', 'AGENT_SCRIPTING_SCRIPT', values);
+			}
+		}
+	
+		function execute(item, saveLabel, saveScript) {
+			submit(item, saveLabel, saveScript);
+			var values = {};
+			values[item] = true
+			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
+		}
 	</script>
 </html>

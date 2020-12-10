@@ -539,6 +539,8 @@
 		5910D9DF25814C4E0015D915 /* boot.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = boot.js; sourceTree = "<group>"; };
 		5910D9E42581503C0015D915 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5910D9E5258150AA0015D915 /* boot.js.dat */ = {isa = PBXFileReference; lastKnownFileType = text; path = boot.js.dat; sourceTree = "<group>"; };
+		5910D9F7258202CE0015D915 /* script.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = script.html; sourceTree = "<group>"; };
+		5910D9F8258208D30015D915 /* script.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = script.png; sourceTree = "<group>"; };
 		5911B6C822630FE900D6B9EC /* indigo_guider_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_guider_utils.h; sourceTree = "<group>"; };
 		5911B6C922630FE900D6B9EC /* indigo_guider_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_utils.c; sourceTree = "<group>"; };
 		5911B6D622633DBE00D6B9EC /* indigo_agent_guider.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_guider.c; sourceTree = "<group>"; };
@@ -4512,6 +4514,7 @@
 				9D38D13F21F09CDF00549B67 /* imager.html */,
 				9D7244F621F1D6A50028FDF4 /* mount.html */,
 				59AF6E9E2273881C00B838BF /* guider.html */,
+				5910D9F7258202CE0015D915 /* script.html */,
 				9D38D14621F09CE000549B67 /* components.js */,
 				9D38D13D21F09CDF00549B67 /* indigo.js */,
 				9D38D14121F09CDF00549B67 /* bootstrap.min.css */,
@@ -4521,6 +4524,7 @@
 				9D38D14521F09CE000549B67 /* glyphicons-regular.ttf */,
 				9D38D14421F09CE000549B67 /* glyphicons.css */,
 				9D38D13921F09CDE00549B67 /* guider.png */,
+				5910D9F8258208D30015D915 /* script.png */,
 				9D38D13A21F09CDE00549B67 /* imager.png */,
 				9D38D13821F09CDE00549B67 /* indigo.css */,
 				9D38D14021F09CDF00549B67 /* jquery.min.js */,
@@ -12458,7 +12462,10 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
-				OTHER_LDFLAGS = "-w";
+				OTHER_LDFLAGS = (
+					"-w",
+					"-Wl,-stack_size,0x10000000",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -12487,7 +12494,10 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
-				OTHER_LDFLAGS = "-w";
+				OTHER_LDFLAGS = (
+					"-w",
+					"-Wl,-stack_size,0x10000000",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

@@ -39,10 +39,20 @@
 #include "duktape.h"
 #include "indigo_agent_scripting.h"
 
-#define PRIVATE_DATA													private_data
+#define PRIVATE_DATA														private_data
 
-#define AGENT_SCRIPTING_SCRIPT_PROPERTY				(PRIVATE_DATA->agent_script_property)
-#define AGENT_SCRIPTING_SCRIPT_ITEM				  	(AGENT_SCRIPTING_SCRIPT_PROPERTY->items+0)
+#define USER_SCRIPT_COUNT												16
+
+#define AGENT_SCRIPTING_SCRIPT_PROPERTY					(PRIVATE_DATA->agent_script_property)
+#define AGENT_SCRIPTING_ON_ATTACH_SCRIPT_ITEM		(AGENT_SCRIPTING_SCRIPT_PROPERTY->items+0)
+#define AGENT_SCRIPTING_ON_DETACH_SCRIPT_ITEM		(AGENT_SCRIPTING_SCRIPT_PROPERTY->items+1)
+#define AGENT_SCRIPTING_SCRIPT_1_ITEM						(AGENT_SCRIPTING_SCRIPT_PROPERTY->items+2)
+
+#define AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY		(PRIVATE_DATA->agent_script_name_property)
+#define AGENT_SCRIPTING_SCRIPT_1_NAME_ITEM			(AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY->items+0)
+
+#define AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY	(PRIVATE_DATA->agent_execute_script_property)
+#define AGENT_SCRIPTING_EXECUTE_SCRIPT_1_ITEM		(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items+0)
 
 static char boot_js[] = {
 #include "boot.js.dat"
@@ -51,7 +61,10 @@ static char boot_js[] = {
 
 typedef struct {
 	indigo_property *agent_script_property;
+	indigo_property *agent_script_name_property;
+	indigo_property *agent_execute_script_property;
 	duk_context *ctx;
+	pthread_mutex_t mutex;
 } agent_private_data;
 
 static agent_private_data *private_data = NULL;
@@ -62,6 +75,7 @@ static indigo_client *agent_client = NULL;
 static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+		indigo_save_property(device, NULL, AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_SCRIPTING_SCRIPT_PROPERTY);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
@@ -201,6 +215,41 @@ static duk_ret_t change_switch_property(duk_context *ctx) {
 	return 0;
 }
 
+static bool execute_script_item(indigo_device *device, indigo_item *item) {
+	bool result = true;
+	char *script = malloc(INDIGO_VALUE_SIZE + (item->text.extra_value ? item->text.extra_size : 0));
+	if (script) {
+		strcpy(script, item->text.value);
+		if (item->text.extra_value) {
+			strcat(script, item->text.extra_value);
+		}
+		if (*script) {
+			pthread_mutex_lock(&PRIVATE_DATA->mutex);
+			if (duk_peval_string(PRIVATE_DATA->ctx, script)) {
+				indigo_send_message(device, "Failed to execute script %s (%s)", item->label, duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+				result = false;
+			}
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		}
+		free(script);
+	}
+	return result;
+}
+
+static void execute_script(indigo_device *device) {
+	AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
+	for (int i = 0; i < AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count; i++) {
+		indigo_item *item = AGENT_SCRIPTING_EXECUTE_SCRIPT_1_ITEM + i;
+		if (item->sw.value) {
+			item->sw.value = false;
+			if (execute_script_item(device, AGENT_SCRIPTING_SCRIPT_1_ITEM + i))
+				AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
+			break;
+		}
+	}
+	indigo_update_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
+}
+
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -209,12 +258,28 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- Device properties
-		AGENT_SCRIPTING_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME, MAIN_GROUP, "Script", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		// -------------------------------------------------------------------------------- Script properties
+		AGENT_SCRIPTING_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME, MAIN_GROUP, "Scripts", INDIGO_OK_STATE, INDIGO_RW_PERM, 18);
 		if (AGENT_SCRIPTING_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(AGENT_SCRIPTING_SCRIPT_ITEM, AGENT_SCRIPTING_SCRIPT_ITEM_NAME, "Script", "");
-		strcpy(AGENT_SCRIPTING_SCRIPT_ITEM->hints, "widget: multiline-edit-box");
+		AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY_NAME, MAIN_GROUP, "Script names", INDIGO_OK_STATE, INDIGO_RW_PERM, 16);
+		if (AGENT_SCRIPTING_SCRIPT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY_NAME, MAIN_GROUP, "Execute script", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 16);
+		if (AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(AGENT_SCRIPTING_ON_ATTACH_SCRIPT_ITEM, AGENT_SCRIPTING_ON_ATTACH_SCRIPT_ITEM_NAME, "On-attach script", "");
+		indigo_init_text_item(AGENT_SCRIPTING_ON_DETACH_SCRIPT_ITEM, AGENT_SCRIPTING_ON_DETACH_SCRIPT_ITEM_NAME, "On-detach script", "");
+		for (int i = 0; i < USER_SCRIPT_COUNT; i++) {
+			char name[4];
+			char label[32];
+			sprintf(name, "%d", i + 1);
+			sprintf(label, "User script #%d", i + 1);
+			indigo_init_text_item(AGENT_SCRIPTING_SCRIPT_1_ITEM + i, name, label, "");
+			strcpy((AGENT_SCRIPTING_SCRIPT_1_ITEM + i)->hints, "widget: multiline-edit-box");
+			indigo_init_text_item(AGENT_SCRIPTING_SCRIPT_1_NAME_ITEM + i, name, label, label);
+			indigo_init_switch_item(AGENT_SCRIPTING_EXECUTE_SCRIPT_1_ITEM + i, name, label, false);
+		}
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		CONFIG_PROPERTY->hidden = true;
@@ -245,6 +310,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 			}
 		}
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -254,6 +320,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match(AGENT_SCRIPTING_SCRIPT_PROPERTY, property))
 		indigo_define_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY, property))
+		indigo_define_property(device, AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property))
+		indigo_define_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
@@ -262,29 +332,47 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(AGENT_SCRIPTING_SCRIPT_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AGENT_SITE_DATA_SOURCE
+		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_SCRIPT_PROPERTY, property, false);
 		save_config(device);
-		AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
-		char *script = malloc(INDIGO_VALUE_SIZE + (AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value ? AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_size : 0));
-		if (script) {
-			strcpy(script, AGENT_SCRIPTING_SCRIPT_ITEM->text.value);
-			if (AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value) {
-				strcat(script, AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value);
-			}
-			if (duk_peval_string(PRIVATE_DATA->ctx, script)) {
-				indigo_send_message(device, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
-				AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
-			}
-			free(script);
-		} else {
-			AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
+		AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_SCRIPT_NAME
+		indigo_property_copy_values(AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY, property, false);
+		save_config(device);
+		indigo_delete_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
+		indigo_delete_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
+		for (int i = 0; i < AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY->count; i++) {
+			char label[32];
+			char *text = (AGENT_SCRIPTING_SCRIPT_1_NAME_ITEM + i)->text.value;
+			if (*text == 0) {
+				sprintf(label, "User script #%d", i + 1);
+				text = label;
+			}
+			strcpy((AGENT_SCRIPTING_SCRIPT_1_ITEM + i)->label, text);
+			strcpy((AGENT_SCRIPTING_EXECUTE_SCRIPT_1_ITEM + i)->label, text);
+		}
+		indigo_define_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
+		indigo_define_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
+		AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_EXECUTE_SCRIPT
+		indigo_property_copy_values(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property, false);
+		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
+		indigo_set_timer(device, 0, execute_script, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
+			indigo_device_change_property(device, client, property);
+			execute_script_item(device, AGENT_SCRIPTING_ON_ATTACH_SCRIPT_ITEM);
+			return INDIGO_OK;
+		}
 	}
 	return indigo_device_change_property(device, client, property);
 }
@@ -297,9 +385,13 @@ static indigo_result agent_enable_blob(indigo_device *device, indigo_client *cli
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (PRIVATE_DATA->ctx) {
+		execute_script_item(device, AGENT_SCRIPTING_ON_DETACH_SCRIPT_ITEM);
 		duk_destroy_heap(PRIVATE_DATA->ctx);
 	}
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	indigo_release_property(AGENT_SCRIPTING_SCRIPT_PROPERTY);
+	indigo_release_property(AGENT_SCRIPTING_SCRIPT_NAME_PROPERTY);
+	indigo_release_property(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY);
 	return indigo_device_detach(device);
 }
 

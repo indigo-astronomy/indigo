@@ -146,6 +146,7 @@ static void start_worker_thread(int *client_socket) {
 							indigo_attach_client(protocol_adapter);
 							indigo_json_parse(NULL, protocol_adapter);
 							indigo_detach_client(protocol_adapter);
+							indigo_release_json_device_adapter(protocol_adapter);
 						} else {
 							INDIGO_PRINTF(socket, "HTTP/1.1 301 OK\r\n");
 							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
