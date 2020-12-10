@@ -42,10 +42,10 @@ where ``message`` is any string, ``device`` is device name, ``property`` is prop
 The following low level callback functions are called (if present) from the INDIGO: 
 
 ```
-function indigo_define_property(device, property, items, state, perm, message)
-function indigo_update_property(device, property, items, state, message)
-function indigo_delete_property(device, property, message)
-function indigo_send_message(device, message)
+function indigo_on_define_property(device, property, items, state, perm, message)
+function indigo_on_update_property(device, property, items, state, message)
+function indigo_on_delete_property(device, property, message)
+function indigo_on_send_message(device, message)
 ```
 
 where ``device`` is device name, ``property`` is property name,  ``items`` is dictionary with item name/value pairs, ``state`` is "Idle"/"Ok"/"Busy"/"Alert" string, ``perm`` is "RW"/"RO"/"WO" string and ``message`` is any string.

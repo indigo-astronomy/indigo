@@ -361,7 +361,7 @@ static void push_items(indigo_property *property) {
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	duk_push_global_object(PRIVATE_DATA->ctx);
-	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_define_property")) {
+	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_define_property")) {
 		duk_push_string(PRIVATE_DATA->ctx, property->device);
 		duk_push_string(PRIVATE_DATA->ctx, property->name);
 		push_items(property);
@@ -369,7 +369,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		duk_push_string(PRIVATE_DATA->ctx, property->perm == INDIGO_RW_PERM ? "RW" : property->perm == INDIGO_RO_PERM ? "RO" : "WO");
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 6)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_define_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_on_define_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
@@ -378,14 +378,14 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	duk_push_global_object(PRIVATE_DATA->ctx);
-	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_update_property")) {
+	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_update_property")) {
 		duk_push_string(PRIVATE_DATA->ctx, property->device);
 		duk_push_string(PRIVATE_DATA->ctx, property->name);
 		push_items(property);
 		push_state(property->state);
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 5)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_update_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_on_update_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
@@ -394,12 +394,12 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	duk_push_global_object(PRIVATE_DATA->ctx);
-	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_delete_property")) {
+	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_delete_property")) {
 		duk_push_string(PRIVATE_DATA->ctx, property->device);
 		duk_push_string(PRIVATE_DATA->ctx, property->name);
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 3)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_delete_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_on_delete_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
@@ -408,11 +408,11 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_send_message(indigo_client *client, indigo_device *device, const char *message) {
 	duk_push_global_object(PRIVATE_DATA->ctx);
-	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "agent_send_message")) {
+	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "agent_on_send_message")) {
 		duk_push_string(PRIVATE_DATA->ctx, device->name);
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 2)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "agent_send_message() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "agent_on_send_message() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
