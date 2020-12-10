@@ -11795,6 +11795,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 599C9A491DA022C0008BBCC1 /* Build configuration list for PBXNativeTarget "indigo" */;
 			buildPhases = (
+				5910D9EA2582010B0015D915 /* ShellScript */,
 				599C9A441DA022C0008BBCC1 /* Sources */,
 				599C9A451DA022C0008BBCC1 /* Frameworks */,
 				599C9A461DA022C0008BBCC1 /* Headers */,
@@ -11884,6 +11885,24 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		5910D9EA2582010B0015D915 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				indigo_drivers/agent_scripting/boot.js,
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "hexdump -v -e '1/1 \"0x%02x, \"' indigo_drivers/agent_scripting/boot.js >indigo_drivers/agent_scripting/boot.js.dat\n";
+		};
 		59AF31EC21F0EE7F0008CC52 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
