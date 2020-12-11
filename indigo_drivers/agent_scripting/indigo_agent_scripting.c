@@ -267,19 +267,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_SCRIPT_PROPERTY, NULL);
-		char *script = malloc(INDIGO_VALUE_SIZE + (AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value ? AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_size : 0));
+		char *script = indigo_get_text_item_value_pointer(AGENT_SCRIPTING_SCRIPT_ITEM);
 		if (script) {
-			strcpy(script, AGENT_SCRIPTING_SCRIPT_ITEM->text.value);
-			if (AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value) {
-				strcat(script, AGENT_SCRIPTING_SCRIPT_ITEM->text.extra_value);
-			}
 			if (duk_peval_string(PRIVATE_DATA->ctx, script)) {
 				indigo_send_message(device, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 				AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			free(script);
 		} else {
 			AGENT_SCRIPTING_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
 		}

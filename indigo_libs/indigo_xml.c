@@ -252,16 +252,16 @@ static void *new_one_text_vector_handler(parser_state state, parser_context *con
 	} else if (state == TEXT) {
 		long length = strlen(value);
 		indigo_item *item = property->items + property->count - 1;
-		if (item->text.extra_value) {
-			free(item->text.extra_value);
-			item->text.extra_value = NULL;
+		if (item->text.long_value) {
+			free(item->text.long_value);
+			item->text.long_value = NULL;
 		}
 		indigo_copy_value(item->text.value, value);
-		if (length >= INDIGO_VALUE_SIZE) {
-			long extra_size = length - INDIGO_VALUE_SIZE + 2;
-			if ((item->text.extra_value = malloc(item->text.extra_size = extra_size))) {
-				strncpy(item->text.extra_value, value + INDIGO_VALUE_SIZE - 1, extra_size);
-				item->text.extra_value[extra_size - 1] = 0;
+		item->text.long_size = length + 1;
+		if (length >= INDIGO_VALUE_SIZE - 1) {
+			if ((item->text.long_value = malloc(item->text.long_size))) {
+				strncpy(item->text.long_value, value, length);
+				item->text.long_value[length] = 0;
 			}
 		}
 	} else if (state == END_TAG) {
@@ -414,14 +414,14 @@ static void set_property(parser_context *context, indigo_property *other, char *
 					if (!strcmp(property_item->name, other_item->name)) {
 						switch (property->type) {
 							case INDIGO_TEXT_VECTOR:
-								if (property_item->text.extra_value) {
-									free(property_item->text.extra_value);
-									property_item->text.extra_value = NULL;
+								if (property_item->text.long_value) {
+									free(property_item->text.long_value);
+									property_item->text.long_value = NULL;
 								}
 								indigo_copy_value(property_item->text.value, other_item->text.value);
-								if (other_item->text.extra_value) {
-									if ((property_item->text.extra_value = malloc(property_item->text.extra_size = other_item->text.extra_size)))
-										memcpy(property_item->text.extra_value, other_item->text.extra_value, other_item->text.extra_size);
+								if (other_item->text.long_value) {
+									if ((property_item->text.long_value = malloc(property_item->text.long_size = other_item->text.long_size)))
+										memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.long_size);
 								}
 								break;
 							case INDIGO_NUMBER_VECTOR:
@@ -483,16 +483,16 @@ static void *set_one_text_vector_handler(parser_state state, parser_context *con
 	} else if (state == TEXT) {
 		long length = strlen(value);
 		indigo_item *item = property->items + property->count - 1;
-		if (item->text.extra_value) {
-			free(item->text.extra_value);
-			item->text.extra_value = NULL;
+		if (item->text.long_value) {
+			free(item->text.long_value);
+			item->text.long_value = NULL;
 		}
 		indigo_copy_value(item->text.value, value);
-		if (length >= INDIGO_VALUE_SIZE) {
-			long extra_size = length - INDIGO_VALUE_SIZE + 2;
-			if ((item->text.extra_value = malloc(item->text.extra_size = extra_size))) {
-				strncpy(item->text.extra_value, value + INDIGO_VALUE_SIZE - 1, extra_size);
-				item->text.extra_value[extra_size - 1] = 0;
+		item->text.long_size = length + 1;
+		if (length >= INDIGO_VALUE_SIZE - 1) {
+			if ((item->text.long_value = malloc(item->text.long_size))) {
+				strncpy(item->text.long_value, value, length);
+				item->text.long_value[length] = 0;
 			}
 		}
 	} else if (state == END_TAG) {
@@ -813,16 +813,16 @@ static void *def_text_handler(parser_state state, parser_context *context, char 
 	} else if (state == TEXT) {
 		long length = strlen(value);
 		indigo_item *item = property->items + property->count - 1;
-		if (item->text.extra_value) {
-			free(item->text.extra_value);
-			item->text.extra_value = NULL;
+		if (item->text.long_value) {
+			free(item->text.long_value);
+			item->text.long_value = NULL;
 		}
 		indigo_copy_value(item->text.value, value);
-		if (length >= INDIGO_VALUE_SIZE) {
-			long extra_size = length - INDIGO_VALUE_SIZE + 2;
-			if ((item->text.extra_value = malloc(item->text.extra_size = extra_size))) {
-				strncpy(item->text.extra_value, value + INDIGO_VALUE_SIZE - 1, extra_size);
-				item->text.extra_value[extra_size - 1] = 0;
+		item->text.long_size = length + 1;
+		if (length >= INDIGO_VALUE_SIZE - 1) {
+			if ((item->text.long_value = malloc(item->text.long_size))) {
+				strncpy(item->text.long_value, value, length);
+				item->text.long_value[length] = 0;
 			}
 		}
 	} else if (state == END_TAG) {
@@ -1141,9 +1141,9 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 					indigo_delete_property(device, tmp, *message ? message : NULL);
 					if (tmp->type == INDIGO_TEXT_VECTOR) {
 						for (int i = 0; i < tmp->count; i++) {
-							void *extra_value = tmp->items[i].text.extra_value;
-							if (extra_value)
-								free(extra_value);
+							void *long_value = tmp->items[i].text.long_value;
+							if (long_value)
+								free(long_value);
 						}
 					} else if (tmp->type == INDIGO_BLOB_VECTOR) {
 						for (int i = 0; i < tmp->count; i++) {
@@ -1675,9 +1675,9 @@ exit_loop:
 			if (property != NULL && !strncmp(remote_device.name, property->device, INDIGO_NAME_SIZE)) {
 				if (property->type == INDIGO_TEXT_VECTOR) {
 					for (int i = 0; i < property->count; i++) {
-						void *extra_value = property->items[i].text.extra_value;
-						if (extra_value)
-							free(extra_value);
+						void *long_value = property->items[i].text.long_value;
+						if (long_value)
+							free(long_value);
 					}
 				} else if (property->type == INDIGO_BLOB_VECTOR) {
 					for (int i = 0; i < property->count; i++) {

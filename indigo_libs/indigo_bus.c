@@ -292,13 +292,13 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 				switch (property->type) {
 				case INDIGO_TEXT_VECTOR:
 					if (defs) {
-						if (item->text.extra_value)
-							indigo_trace("  '%s' = '%s' + %d extra characters // %s", item->name, item->text.value, item->text.extra_size - 1, item->label);
+						if (item->text.long_value)
+							indigo_trace("  '%s' = '%s' + %d extra characters // %s", item->name, item->text.value, item->text.long_size - 1, item->label);
 						else
 							indigo_trace("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
 					} else {
-						if (item->text.extra_value)
-							indigo_trace("  '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.extra_size - 1);
+						if (item->text.long_value)
+							indigo_trace("  '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.long_size - 1);
 						else
 							indigo_trace("  '%s' = '%s'",item->name, item->text.value);
 					}
@@ -1046,15 +1046,16 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 					if (!strcmp(property_item->name, other_item->name)) {
 						switch (property->type) {
 						case INDIGO_TEXT_VECTOR:
-							if (property_item->text.extra_value) {
-								free(property_item->text.extra_value);
-								property_item->text.extra_value = NULL;
+							if (property_item->text.long_value) {
+								free(property_item->text.long_value);
+								property_item->text.long_value = NULL;
 							}
 							indigo_copy_value(property_item->text.value, other_item->text.value);
-							if (other_item->text.extra_value) {
-								if ((property_item->text.extra_value = malloc(property_item->text.extra_size = other_item->text.extra_size))) {
-									memcpy(property_item->text.extra_value, other_item->text.extra_value, other_item->text.extra_size);
-									printf("\n\n%s\n\n", property_item->text.extra_value);
+							property_item->text.long_size = other_item->text.long_size;
+							if (other_item->text.long_value) {
+								if ((property_item->text.long_value = malloc(property_item->text.long_size))) {
+									memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.long_size);
+									printf("\n\n%s\n\n", property_item->text.long_value);
 								}
 							}
 							break;
@@ -1121,6 +1122,13 @@ void indigo_property_sort_items(indigo_property *property) {
 	}
 }
 
+char* indigo_get_text_item_value_pointer(indigo_item *item) {
+	if (item) {
+		return item->text.long_value ? item->text.long_value : item->text.value;
+	}
+	return NULL;
+}
+
 indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values) {
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, count);
 	property->access_token = token;
@@ -1131,11 +1139,11 @@ indigo_result indigo_change_text_property_with_token(indigo_client *client, cons
 		indigo_copy_name(item->name, items[i]);
 		long length = strlen(value);
 		indigo_copy_value(item->text.value, value);
-		if (length >= INDIGO_VALUE_SIZE) {
-			long extra_size = length - INDIGO_VALUE_SIZE + 2;
-			if ((item->text.extra_value = malloc(item->text.extra_size = extra_size))) {
-				strncpy(item->text.extra_value, value + INDIGO_VALUE_SIZE - 1, extra_size);
-				item->text.extra_value[extra_size - 1] = 0;
+		item->text.long_size = length + 1;
+		if (length >= INDIGO_VALUE_SIZE - 1) {
+			if ((item->text.long_value = malloc(item->text.long_size))) {
+				strncpy(item->text.long_value, value, length);
+				item->text.long_value[length] = 0;
 			}
 		}
 	}
