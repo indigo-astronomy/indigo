@@ -1217,6 +1217,15 @@ static void server_main() {
 			#include "resource/guider.png.data"
 		};
 		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
+		// INDIGO Script
+		static unsigned char script_html[] = {
+			#include "resource/script.html.data"
+		};
+		indigo_server_add_resource("/script.html", script_html, sizeof(script_html), "text/html");
+		static unsigned char script_png[] = {
+			#include "resource/script.png.data"
+		};
+		indigo_server_add_resource("/script.png", script_png, sizeof(script_png), "image/png");
 	}
 
 	indigo_server_add_file_resource("/log", "indigo.log", "text/plain; charset=UTF-8");

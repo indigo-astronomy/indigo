@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#define ALIGNMENT_AGENT_NAME	"Scripting agent"
+#define ALIGNMENT_AGENT_NAME	"Scripting Agent"
 	
 /** Create Scripting agent instance
  */
