@@ -149,16 +149,16 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 	} else if (state == TEXT_VALUE && !strcmp(name, "value")) {
 		long length = strlen(value);
 		indigo_item *item = property->items + property->count;
-		if (item->text.extra_value) {
-			free(item->text.extra_value);
-			item->text.extra_value = NULL;
+		if (item->text.long_value) {
+			free(item->text.long_value);
+			item->text.long_value = NULL;
 		}
 		indigo_copy_value(item->text.value, value);
-		if (length >= INDIGO_VALUE_SIZE) {
-			long extra_size = length - INDIGO_VALUE_SIZE + 2;
-			if ((item->text.extra_value = malloc(item->text.extra_size = extra_size))) {
-				strncpy(item->text.extra_value, value + INDIGO_VALUE_SIZE - 1, extra_size);
-				item->text.extra_value[extra_size - 1] = 0;
+		item->text.long_size = length + 1;
+		if (length >= INDIGO_VALUE_SIZE - 1) {
+			if ((item->text.long_value = malloc(item->text.long_size))) {
+				strncpy(item->text.long_value, value, length);
+				item->text.long_value[length] = 0;
 			}
 		}
 	}

@@ -38,8 +38,8 @@
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <winsock2.h>
-#include <basetsd.h> 
-#define ssize_t SSIZE_T 
+#include <basetsd.h>
+#define ssize_t SSIZE_T
 #define close closesocket
 #pragma warning(disable:4996)
 #endif
@@ -133,7 +133,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 		INDIGO_PRINTF(handle, "<newTextVector device='%s' name='%s'%s>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), token);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			INDIGO_PRINTF(handle, "<oneText name='%s'>%s%s</oneText>\n", indigo_item_name(device->version, property, item), indigo_xml_escape(item->text.value), item->text.extra_value ? indigo_xml_escape(item->text.extra_value) : "");
+			INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(device->version, property, item), item->text.long_value ? indigo_xml_escape(item->text.long_value) : indigo_xml_escape(item->text.value));
 		}
 		INDIGO_PRINTF(handle, "</newTextVector>\n");
 		break;

@@ -97,7 +97,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_json_escape(item->text.value), item->text.extra_value ? indigo_json_escape(item->text.extra_value) : "");
+				size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item->text.long_value ? indigo_json_escape(item->text.long_value) : indigo_json_escape(item->text.value));
 				pnt += size;
 			}
 			size = sprintf(pnt, " ] } }");
@@ -246,7 +246,7 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": \"%s%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->text.value), item->text.extra_value ? indigo_json_escape(item->text.extra_value) : "");
+				size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, item->text.long_value ? indigo_json_escape(item->text.long_value) : indigo_json_escape(item->text.value));
 				pnt += size;
 			}
 			size = sprintf(pnt, " ] } }");

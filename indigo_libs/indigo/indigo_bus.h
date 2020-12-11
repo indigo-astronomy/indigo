@@ -213,8 +213,8 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 		 */
 		struct {
 			char value[INDIGO_VALUE_SIZE];  ///< item value (for text properties)
-			char *extra_value;							///< item value exceeding INDIGO_VALUE_SIZE - 1 length
-			long extra_size;								///< extra_value size (including terminating 0)
+			char *long_value;							///< item value, set if text is longer than NDIGO_VALUE_SIZE
+			long long_size;								///< long_value size (including terminating 0)
 		} text;
 		/** Number property item specific fields.
 		 */
@@ -550,6 +550,10 @@ extern void indigo_property_copy_targets(indigo_property *property, indigo_prope
  */
 
 extern void indigo_property_sort_items(indigo_property *property);
+
+/** Return pointer to the correct text value it is either item->text.value or item->text.long_value
+*/
+extern char* indigo_get_text_item_value_pointer(indigo_item *item);
 
 /** Request text property change.
  */
