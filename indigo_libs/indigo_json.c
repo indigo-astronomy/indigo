@@ -404,6 +404,14 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 				} else if (c == '\\') {
 					is_escaped = true;
 				} else if (value_pointer - value_buffer < JSON_BUFFER_SIZE) {
+					if (is_escaped) {
+						if (c == 'n')
+							c = '\n';
+						else if (c == 'r')
+							c = '\r';
+						else if (c == 't')
+							c = '\t';
+					}
 					*value_pointer++ = c;
 					is_escaped = false;
 				} else {
@@ -498,7 +506,7 @@ static void free_escape_buffers() {
 }
 
 const char *indigo_json_escape(const char *string) {
-	if (strpbrk(string, "\"")) {
+	if (strpbrk(string, "\"\n\t\t")) {
 		if (!free_escape_buffers_registered) {
 			atexit(free_escape_buffers);
 			free_escape_buffers_registered = true;
@@ -521,6 +529,18 @@ const char *indigo_json_escape(const char *string) {
 				case '"':
 					*out++ = '\\';
 					*out++ = '"';
+					break;
+				case '\n':
+					*out++ = '\\';
+					*out++ = 'n';
+					break;
+				case '\r':
+					*out++ = '\\';
+					*out++ = 'r';
+					break;
+				case '\t':
+					*out++ = '\\';
+					*out++ = 't';
 					break;
 				default:
 					*out++ = c;
