@@ -1397,6 +1397,18 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			sprintf(header, "<FITSKeyword name='GAIN' value='%20.2f' comment='Gain'/>", CCD_GAIN_ITEM->number.value);
 			header += strlen(header);
 		}
+		if (!CCD_OFFSET_PROPERTY->hidden) {
+			sprintf(header, "<Property id='Instrument:Camera:Offset' type='Float32' value='%s'/>", indigo_dtoa(CCD_OFFSET_ITEM->number.value, b1));
+			header += strlen(header);
+			sprintf(header, "<FITSKeyword name='OFFSET' value='%20.2f' comment='Offset'/>", CCD_OFFSET_ITEM->number.value);
+			header += strlen(header);
+		}
+		if (!CCD_GAMMA_PROPERTY->hidden) {
+			sprintf(header, "<Property id='Instrument:Camera:Gamma' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAMMA_ITEM->number.value, b1));
+			header += strlen(header);
+			sprintf(header, "<FITSKeyword name='GAMMA' value='%20.2f' comment='Gamma'/>", CCD_GAMMA_ITEM->number.value);
+			header += strlen(header);
+		}
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 			if (!strncmp(item->text.value, "FILTER  =", 9)) {
