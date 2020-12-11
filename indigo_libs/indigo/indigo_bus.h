@@ -551,10 +551,6 @@ extern void indigo_property_copy_targets(indigo_property *property, indigo_prope
 
 extern void indigo_property_sort_items(indigo_property *property);
 
-/** Return pointer to the correct text value it is either item->text.value or item->text.long_value
-*/
-extern char* indigo_get_text_item_value_pointer(indigo_item *item);
-
 /** Request text property change.
  */
 extern indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
@@ -651,6 +647,14 @@ extern double indigo_atod(const char *str);
 /** Locale independent dtoa()
  */
 extern char *indigo_dtoa(double value, char *str);
+
+/** Get size independent text item value
+ */
+extern char *indigo_get_text_item_value(indigo_item *item);
+
+/** Set size independent text item value
+ */
+extern void indigo_set_text_item_value(indigo_item *item, const char *value);
 
 #define indigo_fix_locale(s) { char *fc = strchr(s, ','); if (fc) *fc = '.'; }
 
