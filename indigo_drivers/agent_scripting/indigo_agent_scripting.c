@@ -217,7 +217,7 @@ static duk_ret_t change_switch_property(duk_context *ctx) {
 
 static bool execute_script_item(indigo_device *device, indigo_item *item) {
 	bool result = true;
-	char *script = indigo_get_text_item_value_pointer(item);
+	char *script = indigo_get_text_item_value(item);
 	if (script) {
 		if (*script) {
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);

@@ -95,7 +95,7 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		INDIGO_PRINTF(handle, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_xml_escape(property->group), indigo_xml_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			INDIGO_PRINTF(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), item->text.long_value ? indigo_xml_escape(item->text.long_value) : indigo_xml_escape(item->text.value));
+			INDIGO_PRINTF(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(item->label), hints_attribute(item->hints), indigo_xml_escape(indigo_get_text_item_value(item)));
 		}
 		INDIGO_PRINTF(handle, "</defTextVector>\n");
 		break;
@@ -172,7 +172,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 			INDIGO_PRINTF(handle, "<setTextVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(client->version, property, item), item->text.long_value ? indigo_xml_escape(item->text.long_value) : indigo_xml_escape(item->text.value));
+				INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(client->version, property, item), indigo_get_text_item_value(item));
 			}
 			INDIGO_PRINTF(handle, "</setTextVector>\n");
 			break;

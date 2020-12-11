@@ -250,20 +250,7 @@ static void *new_one_text_vector_handler(parser_state state, parser_context *con
 			indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
 		}
 	} else if (state == TEXT) {
-		long length = strlen(value);
-		indigo_item *item = property->items + property->count - 1;
-		if (item->text.long_value) {
-			free(item->text.long_value);
-			item->text.long_value = NULL;
-		}
-		indigo_copy_value(item->text.value, value);
-		item->text.long_size = length + 1;
-		if (length >= INDIGO_VALUE_SIZE - 1) {
-			if ((item->text.long_value = malloc(item->text.long_size))) {
-				strncpy(item->text.long_value, value, length);
-				item->text.long_value[length] = 0;
-			}
-		}
+		indigo_set_text_item_value(property->items + property->count - 1, value);
 	} else if (state == END_TAG) {
 		return new_text_vector_handler;
 	}
@@ -481,20 +468,7 @@ static void *set_one_text_vector_handler(parser_state state, parser_context *con
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		}
 	} else if (state == TEXT) {
-		long length = strlen(value);
-		indigo_item *item = property->items + property->count - 1;
-		if (item->text.long_value) {
-			free(item->text.long_value);
-			item->text.long_value = NULL;
-		}
-		indigo_copy_value(item->text.value, value);
-		item->text.long_size = length + 1;
-		if (length >= INDIGO_VALUE_SIZE - 1) {
-			if ((item->text.long_value = malloc(item->text.long_size))) {
-				strncpy(item->text.long_value, value, length);
-				item->text.long_value[length] = 0;
-			}
-		}
+		indigo_set_text_item_value(property->items + property->count - 1, value);
 	} else if (state == END_TAG) {
 		return set_text_vector_handler;
 	}
@@ -811,20 +785,7 @@ static void *def_text_handler(parser_state state, parser_context *context, char 
 			indigo_copy_value(property->items[property->count-1].hints, value);
 		}
 	} else if (state == TEXT) {
-		long length = strlen(value);
-		indigo_item *item = property->items + property->count - 1;
-		if (item->text.long_value) {
-			free(item->text.long_value);
-			item->text.long_value = NULL;
-		}
-		indigo_copy_value(item->text.value, value);
-		item->text.long_size = length + 1;
-		if (length >= INDIGO_VALUE_SIZE - 1) {
-			if ((item->text.long_value = malloc(item->text.long_size))) {
-				strncpy(item->text.long_value, value, length);
-				item->text.long_value[length] = 0;
-			}
-		}
+		indigo_set_text_item_value(property->items + property->count - 1, value);
 	} else if (state == END_TAG) {
 		return def_text_vector_handler;
 	}
@@ -1139,13 +1100,7 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 				indigo_property *tmp = context->properties[i];
 				if (tmp != NULL && !strncmp(tmp->device, property->device, INDIGO_NAME_SIZE) && !strncmp(tmp->name, property->name, INDIGO_NAME_SIZE)) {
 					indigo_delete_property(device, tmp, *message ? message : NULL);
-					if (tmp->type == INDIGO_TEXT_VECTOR) {
-						for (int i = 0; i < tmp->count; i++) {
-							void *long_value = tmp->items[i].text.long_value;
-							if (long_value)
-								free(long_value);
-						}
-					} else if (tmp->type == INDIGO_BLOB_VECTOR) {
+					if (tmp->type == INDIGO_BLOB_VECTOR) {
 						for (int i = 0; i < tmp->count; i++) {
 							void *blob = tmp->items[i].blob.value;
 							if (blob)
@@ -1673,13 +1628,7 @@ exit_loop:
 		for (; index < context->count; index++) {
 			indigo_property *property = context->properties[index];
 			if (property != NULL && !strncmp(remote_device.name, property->device, INDIGO_NAME_SIZE)) {
-				if (property->type == INDIGO_TEXT_VECTOR) {
-					for (int i = 0; i < property->count; i++) {
-						void *long_value = property->items[i].text.long_value;
-						if (long_value)
-							free(long_value);
-					}
-				} else if (property->type == INDIGO_BLOB_VECTOR) {
+				if (property->type == INDIGO_BLOB_VECTOR) {
 					for (int i = 0; i < property->count; i++) {
 						void *blob = property->items[i].blob.value;
 						if (blob)

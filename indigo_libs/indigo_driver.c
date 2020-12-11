@@ -577,7 +577,7 @@ indigo_result indigo_save_property(indigo_device *device, int *file_handle, indi
 			indigo_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text.long_value ? indigo_xml_escape(item->text.long_value) : indigo_xml_escape(item->text.value));
+				indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(indigo_get_text_item_value(item)));
 			}
 			indigo_printf(handle, "</newTextVector>\n");
 			break;

@@ -147,20 +147,7 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 	} else if (state == TEXT_VALUE && !strcmp(name, "name")) {
 		indigo_copy_name(property->items[property->count].name, value);
 	} else if (state == TEXT_VALUE && !strcmp(name, "value")) {
-		long length = strlen(value);
-		indigo_item *item = property->items + property->count;
-		if (item->text.long_value) {
-			free(item->text.long_value);
-			item->text.long_value = NULL;
-		}
-		indigo_copy_value(item->text.value, value);
-		item->text.long_size = length + 1;
-		if (length >= INDIGO_VALUE_SIZE - 1) {
-			if ((item->text.long_value = malloc(item->text.long_size))) {
-				strncpy(item->text.long_value, value, length);
-				item->text.long_value[length] = 0;
-			}
-		}
+		indigo_set_text_item_value(property->items + property->count, value);
 	}
 	return one_text_handler;
 }
