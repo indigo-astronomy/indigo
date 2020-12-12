@@ -49,23 +49,31 @@
 				</div>
 				<template v-else>
 					<div class="row no-gutters">
-						<div v-for="item in findProperty('Scripting Agent', 'AGENT_SCRIPTING_SCRIPT').items" class="col-md-6">
+						<div v-for="property in scriptsProperties()" class="col-md-4">
 							<div class="card p-1 m-1 bg-light">
-										<form class="m-0">
-											<div v-if="item.name=='ON_ATTACH' || item.name=='ON_DETACH'" class="form-group row m-1 p-1">
-												<input type="text" class="form-control" :value="item.label" readonly>
-											</div>
-											<div v-else class="form-group row m-1 p-1">
-												<input :id="'N_'+item.name" type="text" class="form-control" :class="item.newLabel != null ? 'dirty' : ''" :value="item.newLabel != null ? item.newLabel : item.label" @input="Vue.set(item, 'newLabel', $event.target.value)">
-											</div>
-											<div class="form-group row m-1 p-1">
-												<textarea :id="'S_'+item.name" class="form-control" :class="item.newValue != null ? 'dirty' : ''" rows="3" placeholder="No script" required @input="Vue.set(item, 'newValue', $event.target.value)">{{ item.newValue != null ? item.newValue : item.value }}</textarea>
-											</div>
-											<div class="float-right m-1 m-1 p-1">
-												<button v-if="item.name!='ON_ATTACH' && item.name!='ON_DETACH'" type="button" class="btn btn-sm btn-danger ml-1" @click="execute(item.name, item.newLabel != null, item.newValue != null); item.newLabel = item.newValue = null" data-toggle="tooltip" title="Execute script">Execute</button>
-												<button type="button" class="btn btn-sm btn-primary ml-1" @click="submit(item.name, item.newLabel != null, item.newValue != null); item.newLabel = item.newValue = null" data-toggle="tooltip" title="Save script name and text">Submit</button>
-											</div>
-										</form>
+								<form class="m-0">
+									<div v-if="property.name=='AGENT_SCRIPTING_ON_LOAD_SCRIPT' || property.name=='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT'" class="form-group row m-1 p-1">
+										<input type="text" class="form-control" :value="property.label" readonly>
+									</div>
+									<div v-else-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
+										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" @input="Vue.set(property, 'dirty', true)">
+									</div>
+									<div v-else class="form-group row m-1 p-1">
+										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" :value="property.label" @input="Vue.set(property, 'dirty', true)">
+									</div>
+									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
+										<textarea :id="'S_'+property.name" class="form-control"rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)"></textarea>
+									</div>
+									<div v-else class="form-group row m-1 p-1">
+										<textarea :id="'S_'+property.name" class="form-control"rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.items[property.items.length - 1].value }}</textarea>
+									</div>
+									<div class="float-right m-1 m-1 p-1">
+										<button v-if="property.name!='AGENT_SCRIPTING_ON_LOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success ml-1" :disabled="property.dirty" data-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
+										<button v-if="property.name!='AGENT_SCRIPTING_ON_LOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-danger ml-1" :disabled="property.dirty" data-toggle="tooltip" title="Delete script" @click="remove(property)">Delete</button>
+										<button v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-primary ml-1" data-toggle="tooltip" title="Save script name and text" @click="save(property)">Create</button>
+										<button v-else type="button" class="btn btn-sm btn-primary ml-1" data-toggle="tooltip" title="Save script name and text" @click="save(property); property.dirty = false">Save</button>
+									</div>
+								</form>
 							</div>
 						</div>
 					</div>
@@ -134,24 +142,28 @@
 		function onDeleteProperty(property) {
 		}
 	
-		function submit(item, saveLabel, saveScript) {
+		function save(property) {
 			var values = {};
-			if (saveLabel) {
-				var name = $("#N_" + item);
-				values[item] = name.val()
-				changeProperty('Scripting Agent', 'AGENT_SCRIPTING_SCRIPT_NAME', values);
-			}
-			if (saveScript) {
-				var script = $("#S_" + item);
-				values[item] = script.val()
-				changeProperty('Scripting Agent', 'AGENT_SCRIPTING_SCRIPT', values);
-			}
+			var name = $("#N_" + property.name);
+			var script = $("#S_" + property.name);
+			values['NAME'] = name.val()
+			values['SCRIPT'] = script.val()
+			changeProperty('Scripting Agent', property.name, values);
 		}
 	
-		function execute(item, saveLabel, saveScript) {
-			submit(item, saveLabel, saveScript);
+		function remove(property) {
+			save(property);
 			var values = {};
-			values[item] = true
+			var name = $("#N_" + property.name);
+			values['NAME'] = name.val()
+			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_DELETE_SCRIPT', values);
+		}
+
+		function execute(property) {
+			save(property);
+			var values = {};
+			var name = $("#N_" + property.name);
+			values['NAME'] = name.val()
 			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
 		}
 	</script>
