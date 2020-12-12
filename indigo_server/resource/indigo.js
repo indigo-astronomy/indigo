@@ -22,6 +22,19 @@ var INDIGO = new Vue({
 				return null;
 			return properties[name];
 		},
+		scriptsProperties: function() {
+			var result = [];
+			var properties = INDIGO.devices['Scripting Agent'];
+			result.push(properties['AGENT_SCRIPTING_ON_LOAD_SCRIPT']);
+			result.push(properties['AGENT_SCRIPTING_ON_UNLOAD_SCRIPT']);
+			result.push(properties['AGENT_SCRIPTING_ADD_SCRIPT']);
+			for (name in properties) {
+				var property = properties[name];
+				if (property.name.startsWith('AGENT_SCRIPTING_SCRIPT_'))
+					result.push(property);
+			}
+			return result;
+		}
   }
 });
 
