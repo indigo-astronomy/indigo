@@ -241,17 +241,15 @@ static void execute_script(indigo_property *property) {
 	property->state = INDIGO_BUSY_STATE;
 	indigo_update_property(agent_device, property, NULL);
 	char *script = indigo_get_text_item_value(property->count == 1 ? property->items : property->items + 1);
-	if (script) {
-		if (*script) {
-			pthread_mutex_lock(&PRIVATE_DATA->mutex);
-			if (duk_peval_string(PRIVATE_DATA->ctx, script)) {
-				indigo_send_message(agent_device, "Failed to execute script '%s' (%s)", property->label, duk_safe_to_string(PRIVATE_DATA->ctx, -1));
-				property->state = INDIGO_ALERT_STATE;
-			} else {
-				property->state = INDIGO_OK_STATE;
-			}
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	if (script && *script) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		if (duk_peval_string(PRIVATE_DATA->ctx, script)) {
+			indigo_send_message(agent_device, "Failed to execute script '%s' (%s)", property->label, duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			property->state = INDIGO_ALERT_STATE;
+		} else {
+			property->state = INDIGO_OK_STATE;
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		property->state = INDIGO_OK_STATE;
 	}
@@ -397,6 +395,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_init_text_item(script_property->items + 1, AGENT_SCRIPTING_SCRIPT_ITEM_NAME, "Script", indigo_get_text_item_value(AGENT_SCRIPTING_ADD_SCRIPT_ITEM));
 			indigo_define_property(device, script_property, NULL);
 		}
+		indigo_set_text_item_value(AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM, "");
+		indigo_set_text_item_value(AGENT_SCRIPTING_ADD_SCRIPT_ITEM, "");
 		AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, NULL);
 		save_config(device);
@@ -411,6 +411,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					indigo_delete_property(device, script_property, NULL);
 					indigo_release_property(script_property);
 					AGENT_SCRIPTING_SCRIPT_PROPERTY(i) = NULL;
+					indigo_set_text_item_value(AGENT_SCRIPTING_DELETE_SCRIPT_NAME_ITEM, "");
 					AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
 					save_config(device);
