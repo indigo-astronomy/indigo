@@ -275,15 +275,19 @@ static void *top_level_handler(parser_state state, char *name, char *value, indi
 void indigo_json_parse(indigo_device *device, indigo_client *client) {
 	indigo_adapter_context *context = (indigo_adapter_context*)client->client_context;
 	int handle = context->input;
-	char buffer[JSON_BUFFER_SIZE];
+	char *buffer = malloc(JSON_BUFFER_SIZE);
+	char *value_buffer = malloc(JSON_BUFFER_SIZE);
+	if (buffer == NULL || value_buffer == NULL) {
+		indigo_error("JSON Parser: can't allocate buffers");
+		goto exit_loop;
+	}
 	char *pointer = buffer;
 	char *buffer_end = NULL;
+	char *value_pointer = value_buffer;
 	char property_buffer[PROPERTY_SIZE];
 	char message[INDIGO_VALUE_SIZE];
 	char name_buffer[INDIGO_NAME_SIZE];
 	char *name_pointer = name_buffer;
-	char value_buffer[JSON_BUFFER_SIZE];
-	char *value_pointer = value_buffer;
 	*pointer = 0;
 	char c = 0;
 	char q = '"';
@@ -490,6 +494,10 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 		}
 	}
 exit_loop:
+	if (buffer)
+		free(buffer);
+	if (value_buffer)
+		free(value_buffer);
 	close(handle);
 	indigo_log("JSON Parser: parser finished");
 }
