@@ -531,7 +531,7 @@
 		590EE1A322AAFE3500828030 /* rpi_ctrl.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl.sh; sourceTree = "<group>"; };
 		590EE1AF22ABD56600828030 /* rpi_ctrl_fix.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = rpi_ctrl_fix.sh; sourceTree = "<group>"; };
 		5910D9AB257FFA630015D915 /* indigo_agent_scripting.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scripting.h; sourceTree = "<group>"; };
-		5910D9AC257FFA630015D915 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5910D9AC257FFA630015D915 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; usesTabs = 0; };
 		5910D9AD257FFA630015D915 /* indigo_agent_scripting.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scripting.c; sourceTree = "<group>"; };
 		5910D9C22580284E0015D915 /* duktape.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = duktape.h; sourceTree = "<group>"; };
 		5910D9C32580284E0015D915 /* duk_config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = duk_config.h; sourceTree = "<group>"; };

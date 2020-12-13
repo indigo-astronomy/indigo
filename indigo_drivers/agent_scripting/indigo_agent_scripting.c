@@ -314,6 +314,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_switch_property");
 			if (duk_peval_string(PRIVATE_DATA->ctx, boot_js)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "boot.js executed");
 			}
 		}
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
@@ -554,7 +556,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		duk_push_string(PRIVATE_DATA->ctx, property->perm == INDIGO_RW_PERM ? "RW" : property->perm == INDIGO_RO_PERM ? "RO" : "WO");
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 6)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_on_define_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_define_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
@@ -570,7 +572,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 		push_state(property->state);
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 5)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_on_update_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_update_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
@@ -584,7 +586,7 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 		duk_push_string(PRIVATE_DATA->ctx, property->name);
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 3)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_on_delete_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_delete_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
@@ -597,7 +599,7 @@ static indigo_result agent_send_message(indigo_client *client, indigo_device *de
 		duk_push_string(PRIVATE_DATA->ctx, device->name);
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 2)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "agent_on_send_message() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "agent_on_send_message() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
