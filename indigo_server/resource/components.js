@@ -887,6 +887,8 @@ function guiSetup() {
 		$('body').removeClass("bg-secondary").addClass("bg-dark");
 		$('input').removeClass("bg-light").addClass("bg-dark");
 		$('input').removeClass("text-dark").addClass("text-light");
+		$('textarea').removeClass("bg-light").addClass("bg-dark");
+		$('textarea').removeClass("text-dark").addClass("text-light");
 		$('div.bg-light').removeClass("bg-light").addClass("bg-secondary");
 		$('canvas.bg-light').removeClass("bg-light").addClass("bg-secondary");
 		if (typeof config !== 'undefined') {
@@ -897,6 +899,8 @@ function guiSetup() {
 		$('body').removeClass("bg-dark").addClass("bg-secondary");
 		$('input').removeClass("bg-dark").addClass("bg-light");
 		$('input').removeClass("text-light").addClass("text-dark");
+		$('textarea').removeClass("bg-dark").addClass("bg-light");
+		$('textarea').removeClass("text-light").addClass("text-dark");
 		$('div.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
 		$('canvas.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
 	}
