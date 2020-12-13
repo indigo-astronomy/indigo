@@ -442,23 +442,42 @@ bool indigo_write(int handle, const char *buffer, long length) {
 	}
 }
 
+#define BUFFER_SIZE (128 * 1024)
+
 bool indigo_printf(int handle, const char *format, ...) {
-	char buffer[102400];
-	va_list args;
-	va_start(args, format);
-	int length = vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
-	return indigo_write(handle, buffer, length);
+	if (strchr(format, '%')) {
+		char *buffer = malloc(BUFFER_SIZE);
+		if (buffer == NULL) {
+			indigo_error("Can't allocate buffer");
+			return false;
+		}
+		va_list args;
+		va_start(args, format);
+		int length = vsnprintf(buffer, BUFFER_SIZE, format, args);
+		va_end(args);
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
+		bool result = indigo_write(handle, buffer, length);
+		free(buffer);
+		return result;
+	} else {
+		return indigo_write(handle, format, strlen(format));
+	}
 }
 
 int indigo_scanf(int handle, const char *format, ...) {
-	char buffer[1024];
-	if (indigo_read_line(handle, buffer, sizeof(buffer)) <= 0)
+	char *buffer = malloc(BUFFER_SIZE);
+	if (buffer == NULL) {
+		indigo_error("Can't allocate buffer");
 		return 0;
+	}
+	if (indigo_read_line(handle, buffer, BUFFER_SIZE) <= 0) {
+		free(buffer);
+		return 0;
+	}
 	va_list args;
 	va_start(args, format);
 	int count = vsscanf(buffer, format, args);
 	va_end(args);
+	free(buffer);
 	return count;
 }

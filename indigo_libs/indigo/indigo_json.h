@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define JSON_BUFFER_SIZE	(64 * 1024)
+#define JSON_BUFFER_SIZE	(256 * 1024)
 
 #ifndef htonll
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))

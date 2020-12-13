@@ -1222,9 +1222,9 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 }
 
 void indigo_xml_parse(indigo_device *device, indigo_client *client) {
-	char *buffer = malloc(BUFFER_SIZE+3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
+	char *buffer = malloc(BUFFER_SIZE + 3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
 	assert(buffer != NULL);
-	char *value_buffer = malloc(BUFFER_SIZE+1); /* +1 to accomodate \0" */
+	char *value_buffer = malloc(BUFFER_SIZE + 1); /* +1 to accomodate \0" */
 	assert(value_buffer != NULL);
 	char name_buffer[INDIGO_NAME_SIZE];
 	unsigned char *blob_buffer = NULL;

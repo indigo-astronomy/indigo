@@ -76,7 +76,11 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char output_buffer[JSON_BUFFER_SIZE];
+	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	if (output_buffer == NULL) {
+		indigo_error("JSON Adapter: can't allocate buffers");
+		return INDIGO_FAILED;
+	}
 	char *pnt = output_buffer;
 	int size;
 	char b1[32], b2[32], b3[32], b4[32], b5[32];
@@ -211,6 +215,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 		}
 		client_context->output = client_context->input = -1;
 	}
+	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -229,7 +234,11 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
 	assert(client_context != NULL);
-	char output_buffer[JSON_BUFFER_SIZE];
+	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	if (output_buffer == NULL) {
+		indigo_error("JSON Adapter: can't allocate buffers");
+		return INDIGO_FAILED;
+	}
 	char *pnt = output_buffer;
 	int size;
 	char b1[32], b2[32];
@@ -343,6 +352,7 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 		}
 		client_context->output = client_context->input = -1;
 	}
+	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -359,7 +369,11 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char output_buffer[JSON_BUFFER_SIZE];
+	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	if (output_buffer == NULL) {
+		indigo_error("JSON Parser: can't allocate buffers");
+		return INDIGO_FAILED;
+	}
 	char *pnt = output_buffer;
 	int size;
 	if (*property->name == 0)
@@ -389,6 +403,7 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 		}
 		client_context->output = client_context->input = -1;
 	}
+	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -402,7 +417,11 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char output_buffer[JSON_BUFFER_SIZE];
+	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	if (output_buffer == NULL) {
+		indigo_error("JSON Parser: can't allocate buffers");
+		return INDIGO_FAILED;
+	}
 	char *pnt = output_buffer;
 	int size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
@@ -417,6 +436,7 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 		}
 		client_context->output = client_context->input = -1;
 	}
+	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
