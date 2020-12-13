@@ -11,6 +11,7 @@ var INDIGO = new Vue({
 		devices: { },
 		db: [],
 	  dark: false,
+		columns: 3,
 	  useAgent: false,
 	},
 	methods: {
@@ -23,17 +24,28 @@ var INDIGO = new Vue({
 			return properties[name];
 		},
 		scriptsProperties: function() {
+			function compare(a, b) {
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			}
 			var result = [];
 			var properties = INDIGO.devices['Scripting Agent'];
-			result.push(properties['AGENT_SCRIPTING_ON_LOAD_SCRIPT']);
-			result.push(properties['AGENT_SCRIPTING_ON_UNLOAD_SCRIPT']);
-			result.push(properties['AGENT_SCRIPTING_ADD_SCRIPT']);
+			var property;
+			if ((property = properties['AGENT_SCRIPTING_ON_LOAD_SCRIPT']) != undefined)
+				result.push(property);
+			if ((property = properties['AGENT_SCRIPTING_ON_UNLOAD_SCRIPT']) != undefined)
+				result.push(property);
+			if ((property = properties['AGENT_SCRIPTING_ADD_SCRIPT']) != undefined)
+				result.push(property);
 			for (name in properties) {
 				var property = properties[name];
 				if (property.name.startsWith('AGENT_SCRIPTING_SCRIPT_'))
 					result.push(property);
 			}
-			return result;
+			return result.sort(compare);
 		}
   }
 });

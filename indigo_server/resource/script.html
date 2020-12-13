@@ -49,7 +49,7 @@
 				</div>
 				<template v-else>
 					<div class="row no-gutters">
-						<div v-for="property in scriptsProperties()" class="col-md-4">
+						<div id="property" v-for="property in scriptsProperties()" :class="'col-md-' + 12 / columns">
 							<div class="card p-1 m-1 bg-light">
 								<form class="m-0">
 									<div v-if="property.name=='AGENT_SCRIPTING_ON_LOAD_SCRIPT' || property.name=='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT'" class="form-group row m-1 p-1">
@@ -62,10 +62,10 @@
 										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" :value="property.label" @input="Vue.set(property, 'dirty', true)">
 									</div>
 									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control"rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)"></textarea>
+										<textarea :id="'S_'+property.name" class="form-control" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)"></textarea>
 									</div>
 									<div v-else class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control"rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.items[property.items.length - 1].value }}</textarea>
+										<textarea :id="'S_'+property.name" class="form-control" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.items[property.items.length - 1].value }}</textarea>
 									</div>
 									<div class="float-right m-1 m-1 p-1">
 										<button v-if="property.name!='AGENT_SCRIPTING_ON_LOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success ml-1" :disabled="property.dirty" data-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
@@ -94,6 +94,8 @@
 					Copyright &copy; 2019-2020, The INDIGO Initiative. All rights reserved.
 					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
 					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
+					<a v-if="columns == 3" href="#" class="float-right mr-3" onclick="$('div.col-md-4').removeClass('col-md-4').addClass('col-md-12');INDIGO.columns=1">Switch to 1 column</a>
+					<a v-else href="#" class="float-right mr-3" onclick="$('div.col-md-12').removeClass('col-md-12').addClass('col-md-4');INDIGO.columns=3">Switch to 3 columns</a>
 				</div>
 			</div>
 		</div>
@@ -137,9 +139,11 @@
 		}
 
 		function onUpdateProperty(property) {
+			guiSetup();
 		}
 	
 		function onDeleteProperty(property) {
+			guiSetup();
 		}
 	
 		function save(property) {
