@@ -370,6 +370,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_ADD_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property, false);
+		if (AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value[0] == 0) {
+			AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, "Empty script name");
+			return INDIGO_OK;
+		}
 		int empty_slot = -1;
 		for (int i = 0; i < MAX_USER_SCRIPT_COUNT; i++) {
 			indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(i);
