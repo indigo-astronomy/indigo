@@ -44,6 +44,9 @@ function indigo_on_define_property(device_name, property_name, items, state, per
 	} else {
 		properties[property_name] = property;
 	}
+	property.change = function(items) {
+		indigo_change_property(this.device, this.name, items);
+	}
 	indigo_call_handlers("on_define", device_name, property);
 }
 

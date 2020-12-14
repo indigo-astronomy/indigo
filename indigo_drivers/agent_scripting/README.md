@@ -54,29 +54,80 @@ The following script is executed on agent load and later will contain high level
 
 ## High level API examples
 
-The following script is an example how to register even handlers for define, update, delete and message events with property objects cached within high level API implementation:
+The following script is an example how to register even handlers for define, update, delete and message events with property objects cached within high level API implementation and manipulate the properties.
 
 ```
+// The example script:
+// - load indigo_gps_simulator driver if not loaded,
+// - connect "GPS Simulator" device,
+// - wait GEOGRAPHIC_COORDINATES property to become OK and sends,
+//   LATITUDE and LONGITUDE as a message to the client,
+// - disconnect the device.
+
+// Register the event handler and get notifications for "GPS Simulator" properties only.
+
 indigo_event_handlers.my_handler = {
   devices: [ "GPS Simulator" ],
 
-  on_define: function(property) {
-    indigo_log_with_property("Defined ", property);  
+// Define process_coordinates method which in case if property is in OK state
+// sends its LATITUDE and LONGITUDE item values to the client as the message
+// and then disconnect the device.
+
+  process_coordinates: function(property) {
+    if (property.state == "Ok") { // if the property is in OK state...
+      indigo_send_message("Coordinates " + property.items.LATITUDE + " " + property.items.LONGITUDE);
+      indigo_devices["GPS Simulator"].CONNECTION.change({ DISCONNECTED: true });
+    }
+  },
+
+// Define handler called when the property is defined.
+// Dump the property, if the property is named CONNECTION, set it CONNECTED item
+// to true (connect the device), if the property is named GEOGRAPHIC_COORDINATES
+// call process_coordinates method to process it.
+
+  on_define: function(property) { 
+    indigo_log_with_property("Defined ", property);
+    if (property.name=='CONNECTION') { // if the property is named CONNECTION...
+      property.change({ CONNECTED: true }); // set CONNECTED to true (connect the device)
+    } else if (property.name=='GEOGRAPHIC_COORDINATES') { // else if the property is named GEOGRAPHIC_COORDINATES
+      this.process_coordinates(property); // call process_coordinates method
+    }
   },
   
-  on_update: function(property) {
-    indigo_log_with_property("Updated ", property);  
+// Define handler called when the property is updated.
+// Dump the property, if the property is named GEOGRAPHIC_COORDINATES
+// call process_coordinates method to process it.
+
+  on_update: function(property) { 
+    indigo_log_with_property("Updated ", property); 
+    if (property.name=='GEOGRAPHIC_COORDINATES') {
+      this.process_coordinates(property);
+    }
   },
   
+// Define handler called when the property is deleted.
+// Dump the property.
+
   on_delete: function(property) {
-    indigo_log_with_property("Deleted ", property);  
+    indigo_log_with_property("Deleted ", property); 
   },
   
+// Define handler called when the message is received.
+// Write the message to server log.
+
   on_message: function(message) {
-    indigo_log_with_property("Message ", message);  
+    indigo_log_with_property("Message ", message);
   }
 };
 
+// if indigo_gps_simulator driver is not loaded, load it.
+// Otherwise force server to reenumerate (define) all properties.
+
+if (!indigo_devices["Server"].DRIVERS.items.indigo_gps_simulator) {
+  indigo_devices["Server"].DRIVERS.change({ indigo_gps_simulator: true });
+} else {
+  indigo_enumerate_properties();
+}
 ```
 
 The following script is an example how to unregister even handlers for define, update, delete and message events:
