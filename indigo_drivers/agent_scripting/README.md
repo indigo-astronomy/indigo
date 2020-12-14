@@ -74,7 +74,7 @@ indigo_event_handlers.my_handler = {
 // and then disconnect the device.
 
   process_coordinates: function(property) {
-    if (property.state == "Ok") { // if the property is in OK state...
+    if (property.state == "Ok") {
       indigo_send_message("Coordinates " + property.items.LATITUDE + " " + property.items.LONGITUDE);
       indigo_devices["GPS Simulator"].CONNECTION.change({ DISCONNECTED: true });
     }
@@ -87,10 +87,10 @@ indigo_event_handlers.my_handler = {
 
   on_define: function(property) { 
     indigo_log_with_property("Defined ", property);
-    if (property.name=='CONNECTION') { // if the property is named CONNECTION...
-      property.change({ CONNECTED: true }); // set CONNECTED to true (connect the device)
-    } else if (property.name=='GEOGRAPHIC_COORDINATES') { // else if the property is named GEOGRAPHIC_COORDINATES
-      this.process_coordinates(property); // call process_coordinates method
+    if (property.name=='CONNECTION') {
+      property.change({ CONNECTED: true });
+    } else if (property.name=='GEOGRAPHIC_COORDINATES') {
+      this.process_coordinates(property);
     }
   },
   
