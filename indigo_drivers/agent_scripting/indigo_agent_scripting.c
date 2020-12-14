@@ -146,8 +146,8 @@ static duk_ret_t send_message(duk_context *ctx) {
 }
 
 static duk_ret_t emumerate_properties(duk_context *ctx) {
-	const char *device = duk_to_string(ctx, 0);
-	const char *property = duk_to_string(ctx, 1);
+	const char *device = duk_is_null_or_undefined(ctx, 0) ? "" : duk_to_string(ctx, 0);
+	const char *property = duk_is_null_or_undefined(ctx, 1) ? "" : duk_to_string(ctx, 1);
 	indigo_property property_template = { 0 };
 	indigo_copy_name(property_template.device, device);
 	indigo_copy_name(property_template.name, property);
