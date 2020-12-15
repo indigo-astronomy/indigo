@@ -927,7 +927,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		unsigned char *b8 = copy;
 		b16 = copy;
 		for (int i = 0; i < count; i++) {
-			int value = rint((*b16++ - offset) / scale);
+			int value = rint((*b16++ - 256 * offset) / scale);
 			if (value < 0)
 				value = 0;
 			else if (value > 255)
