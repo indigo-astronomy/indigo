@@ -525,7 +525,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_IMAGE_FORMAT_PROPERTY = indigo_resize_property(CCD_IMAGE_FORMAT_PROPERTY, 2);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_ITEM, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, "Native", true);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM, CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM_NAME, "Native + AVI", false);
-			CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
+			CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
 			CCD_OFFSET_PROPERTY->hidden = true;
 			CCD_GAMMA_PROPERTY->hidden = true;
 			CCD_GAIN_PROPERTY->hidden = true;

@@ -257,7 +257,6 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
 			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 5, 90);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_ITEM, CCD_JPEG_SETTINGS_BLACK_ITEM_NAME, "Black point", -1, 255, 0, -1);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_ITEM, CCD_JPEG_SETTINGS_WHITE_ITEM_NAME, "White point", -1, 255, 0, -1);
@@ -600,21 +599,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
 		indigo_property_copy_values(CCD_IMAGE_FORMAT_PROPERTY, property, false);
-		if (CCD_IMAGE_FORMAT_PROPERTY->count > 2) { // Not DSLR
-			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
-				if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
-					CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
-					if (IS_CONNECTED)
-						indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-				}
-			} else {
-				if (!CCD_JPEG_SETTINGS_PROPERTY->hidden) {
-					if (IS_CONNECTED)
-						indigo_delete_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-					CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
-				}
-			}
-		}
 		CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
@@ -622,21 +606,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_UPLOAD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_UPLOAD_MODE
 		indigo_property_copy_values(CCD_UPLOAD_MODE_PROPERTY, property, false);
-		if (CCD_IMAGE_FORMAT_PROPERTY->count > 2) { // Not DSLR
-			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
-				if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
-					CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
-					if (IS_CONNECTED)
-						indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-				}
-			} else {
-				if (!CCD_JPEG_SETTINGS_PROPERTY->hidden) {
-					if (IS_CONNECTED)
-						indigo_delete_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-					CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
-				}
-			}
-		}
 		CCD_UPLOAD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
@@ -644,21 +613,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_PREVIEW_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_PREVIEW
 		indigo_property_copy_values(CCD_PREVIEW_PROPERTY, property, false);
-		if (CCD_IMAGE_FORMAT_PROPERTY->count > 2) { // Not DSLR
-			if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
-				if (CCD_JPEG_SETTINGS_PROPERTY->hidden) {
-					CCD_JPEG_SETTINGS_PROPERTY->hidden = false;
-					if (IS_CONNECTED)
-						indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-				}
-			} else {
-				if (!CCD_JPEG_SETTINGS_PROPERTY->hidden) {
-					if (IS_CONNECTED)
-						indigo_delete_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-					CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
-				}
-			}
-		}
 		if (CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			if (CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
 				CCD_PREVIEW_IMAGE_PROPERTY->hidden = false;
