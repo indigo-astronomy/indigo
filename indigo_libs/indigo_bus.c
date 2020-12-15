@@ -836,14 +836,19 @@ void indigo_init_text_item(indigo_item *item, const char *name, const char *labe
 	memset(item, 0, sizeof(indigo_item));
 	indigo_copy_name(item->name, name);
 	indigo_copy_value(item->label, label ? label : "");
-	if (strchr(format, '%')) {
-		va_list args;
-		va_start(args, format);
-		vsnprintf(item->text.value, INDIGO_VALUE_SIZE, format, args);
-		va_end(args);
-	} else {
-		indigo_set_text_item_value(item, format);
-	}
+	va_list args;
+	va_start(args, format);
+	vsnprintf(item->text.value, INDIGO_VALUE_SIZE, format, args);
+	va_end(args);
+}
+
+void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *label, const char *value) {
+	assert(item != NULL);
+	assert(name != NULL);
+	memset(item, 0, sizeof(indigo_item));
+	indigo_copy_name(item->name, name);
+	indigo_copy_value(item->label, label ? label : "");
+	indigo_set_text_item_value(item, value);
 }
 
 void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value) {
@@ -1172,32 +1177,37 @@ indigo_result indigo_change_text_property(indigo_client *client, const char *dev
 indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...) {
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, 1);
 	property->access_token = token;
-	if (strchr(format, '%')) {
-		char tmp[INDIGO_VALUE_SIZE];
-		va_list args;
-		va_start(args, format);
-		vsnprintf(tmp, INDIGO_VALUE_SIZE, format, args);
-		va_end(args);
-		indigo_init_text_item(property->items, item, NULL, tmp);
-	} else {
-		indigo_init_text_item(property->items, item, NULL, format);
-	}
+	char tmp[INDIGO_VALUE_SIZE];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(tmp, INDIGO_VALUE_SIZE, format, args);
+	va_end(args);
+	indigo_init_text_item(property->items, item, NULL, tmp);
+	indigo_result result = indigo_change_property(client, property);
+	free(property);
+	return result;
+}
+
+indigo_result indigo_change_text_property_1_with_token_raw(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *value) {
+	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, 1);
+	property->access_token = token;
+	indigo_init_text_item(property->items, item, NULL, value);
 	indigo_result result = indigo_change_property(client, property);
 	free(property);
 	return result;
 }
 
 indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...) {
-	if (strchr(format, '%')) {
-		char tmp[INDIGO_VALUE_SIZE];
-		va_list args;
-		va_start(args, format);
-		vsnprintf(tmp, INDIGO_VALUE_SIZE, format, args);
-		va_end(args);
-		return indigo_change_text_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, tmp);
-	} else {
-		return indigo_change_text_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, format);
-	}
+	char tmp[INDIGO_VALUE_SIZE];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(tmp, INDIGO_VALUE_SIZE, format, args);
+	va_end(args);
+	return indigo_change_text_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, tmp);
+}
+
+indigo_result indigo_change_text_property_1_raw(indigo_client *client, const char *device, const char *name, const char *item, const char *value) {
+	return indigo_change_text_property_1_with_token_raw(client, device, indigo_get_device_or_master_token(device), name, item, value);
 }
 
 indigo_result indigo_change_number_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const double *values) {

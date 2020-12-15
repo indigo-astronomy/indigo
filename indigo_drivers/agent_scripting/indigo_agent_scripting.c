@@ -268,16 +268,16 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY_NAME, SCRIPT_GROUP, "On load", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(AGENT_SCRIPTING_ON_LOAD_SCRIPT_ITEM, AGENT_SCRIPTING_ON_LOAD_SCRIPT_ITEM_NAME, "Script", "");
+		indigo_init_text_item_raw(AGENT_SCRIPTING_ON_LOAD_SCRIPT_ITEM, AGENT_SCRIPTING_ON_LOAD_SCRIPT_ITEM_NAME, "Script", "");
 		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY_NAME, SCRIPT_GROUP, "On unload", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_ITEM, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_ITEM_NAME, "Script", "");
+		indigo_init_text_item_raw(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_ITEM, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_ITEM_NAME, "Script", "");
 		AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY_NAME, MAIN_GROUP, "Add script", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM, AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM_NAME, "Name", "");
-		indigo_init_text_item(AGENT_SCRIPTING_ADD_SCRIPT_ITEM, AGENT_SCRIPTING_ADD_SCRIPT_ITEM_NAME, "Script", "");
+		indigo_init_text_item_raw(AGENT_SCRIPTING_ADD_SCRIPT_ITEM, AGENT_SCRIPTING_ADD_SCRIPT_ITEM_NAME, "Script", "");
 		AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY_NAME, MAIN_GROUP, "Delete script", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -399,7 +399,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			sprintf(name, AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME, empty_slot);
 			indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(empty_slot) = indigo_init_text_property(NULL, device->name, name, SCRIPT_GROUP, AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			indigo_init_text_item(script_property->items + 0, AGENT_SCRIPTING_SCRIPT_NAME_ITEM_NAME, "Name", AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value);
-			indigo_init_text_item(script_property->items + 1, AGENT_SCRIPTING_SCRIPT_ITEM_NAME, "Script", indigo_get_text_item_value(AGENT_SCRIPTING_ADD_SCRIPT_ITEM));
+			indigo_init_text_item_raw(script_property->items + 1, AGENT_SCRIPTING_SCRIPT_ITEM_NAME, "Script", indigo_get_text_item_value(AGENT_SCRIPTING_ADD_SCRIPT_ITEM));
 			indigo_define_property(device, script_property, NULL);
 		}
 		indigo_set_text_item_value(AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM, "");
