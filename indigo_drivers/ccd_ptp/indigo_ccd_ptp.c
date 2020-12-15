@@ -67,6 +67,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->model.height;
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value =  CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->model.pixel_size;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+		CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
 		CCD_IMAGE_FORMAT_PROPERTY = indigo_resize_property(CCD_IMAGE_FORMAT_PROPERTY, 2);
 		indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_ITEM, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, "Native", true);
