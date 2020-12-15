@@ -168,6 +168,13 @@ static void *new_text_vector_handler(parser_state state, char *name, char *value
 		}
 	} else if (state == END_STRUCT) {
 		indigo_change_property(client, property);
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->text.long_value) {
+				free(item->text.long_value);
+				item->text.long_value = NULL;
+			}
+		}
 		return top_level_handler;
 	}
 	return new_text_vector_handler;

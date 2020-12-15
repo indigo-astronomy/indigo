@@ -277,6 +277,11 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == END_TAG) {
 		indigo_change_property(client, property);
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->text.long_value)
+				free(item->text.long_value);
+		}
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
 	}
@@ -454,6 +459,13 @@ static void set_property(parser_context *context, indigo_property *other, char *
 			}
 			INDIGO_TRACE_PARSER(indigo_trace("XML Parser: set_property '%s' '%s' %d", property->device, property->name, index));
 			indigo_update_property(context->device, property, *message ? message : NULL);
+			if (other->type == INDIGO_TEXT_VECTOR) {
+				for (int i = 0; i < other->count; i++) {
+					indigo_item *item = other->items + i;
+					if (item->text.long_value)
+						free(item->text.long_value);
+				}
+			}
 			break;
 		}
 	}
