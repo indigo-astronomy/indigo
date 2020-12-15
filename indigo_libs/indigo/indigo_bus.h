@@ -494,6 +494,9 @@ extern indigo_blob_entry *indigo_validate_blob(indigo_item *item);
 /** Initialize text item.
  */
 extern void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...);
+/** Initialize raw text item.
+ */
+extern void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *label, const char *value);
 /** Initialize number item.
  */
 extern void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value);
@@ -563,9 +566,17 @@ extern indigo_result indigo_change_text_property_with_token(indigo_client *clien
  */
 extern indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...);
 
+/** Request raw text property change.
+ */
+extern indigo_result indigo_change_text_property_1_raw(indigo_client *client, const char *device, const char *name, const char *item, const char *value);
+
 /** Request text property change with access token.
  */
 extern indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...);
+
+/** Request raw text property change with access token.
+ */
+extern indigo_result indigo_change_text_property_1_with_token_raw(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *value);
 
 /** Request number property change.
  */
