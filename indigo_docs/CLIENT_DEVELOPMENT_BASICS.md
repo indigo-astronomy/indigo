@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 12.10.2020 (draft)
+Revision: 16.12.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -38,9 +38,20 @@ A basic common API shared by both **driver** and **client** roles is defined in 
 
 The **bus** instance should be initialized and started by *indigo_start()* call and stopped by *indigo_stop()* call.
 A **client** should be attached to the **bus** by calling *indigo_attach_client()* and detached with *indigo_detach_client()* call.
-There are two functions that can be used by the **client** to send messages to the **device**:
+There are several functions that can be used by the **client** to send messages to the **device**:
 - *indigo_enumerate_properties()* - send request for definition of available properties
 - *indigo_change_property()* - request for change of property item values
+- *indigo_enable_blob()* - enable and disable BLOB transfer.
+
+There are also higher level functions to request a property change, which do not require properly initialized *indigo_property* structure:
+- *indigo_change_text_property()* - change multiple items of a text property
+- *indigo_change_switch_property()* - change multiple items of a switch property
+- *indigo_change_number_property()* - change multiple items of a number property
+- *indigo_change_text_property_1()* - change one item of a text property
+- *indigo_change_switch_property_1()* - change one item of a switch property
+- *indigo_change_number_property_1()* - change one item of a number property
+
+**NOTE:** *indigo_change_XXX_property()* functions internally construct *indigo_property* structure and call *indigo_change_property()*
 
 In order to communicate over TCP the client must use the following calls:
 - *indigo_connect_server()* - connect to remote indigo service
