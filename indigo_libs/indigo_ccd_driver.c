@@ -786,10 +786,10 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 	if (black == 0) black = 1;
 	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
 		long total = 0;
-		for (int i = 0; i < 256; i++) {
+		for (int i = 0; i < 1024; i++) {
 			total += histo[i];
 			if (total >= black) {
-				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i;
+				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i / 4;
 				break;
 			}
 		}
@@ -800,10 +800,10 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 	if (white == 0) white = 1;
 	if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.target == -1) {
 		long total = 0;
-		for (int i = 255; i >= 0; i--) {
+		for (int i = 1023; i >= 0; i--) {
 			total += histo[i];
 			if (total >= white) {
-				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i;
+				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i / 4;
 				break;
 			}
 		}
@@ -840,7 +840,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_mem_dest(&cinfo, &mem, &mem_size);
 	cinfo.image_width = frame_width;
 	cinfo.image_height = frame_height;
-	unsigned long histo[256] = { 0 };
+	unsigned long histo[1024] = { 0 };
 	if (bpp == 8 || bpp == 24) {
 		unsigned char *b8 = copy;
 		int count = size_in * (bpp == 8 ? 1 : 3);
@@ -865,14 +865,14 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		int count = size_in * (bpp == 16 ? 1 : 3);
 		if (little_endian) {
 			for (int i = 0; i < count; i++) {
-				histo[*b16++ >> 8]++;
+				histo[*b16++ >> 6]++;
 			}
 		} else {
 			for (int i = 0; i < count; i++) {
 				int value = *b16;
 				value = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				*b16++ = value;
-				histo[value >> 8]++;
+				histo[value >> 6]++;
 			}
 		}
 		set_black_white(device, histo, count);
@@ -881,7 +881,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		unsigned char *b8 = copy;
 		b16 = copy;
 		for (int i = 0; i < count; i++) {
-			int value = rint((*b16++ - 256 * offset) / scale);
+			int value = rint((*b16++ - 64 * offset) / scale);
 			if (value < 0)
 				value = 0;
 			else if (value > 255)
@@ -924,7 +924,8 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		uint8_t raw[32][256];
 		memset(raw, 0, sizeof(raw));
 		for (int i = 0; i < 256; i++) {
-			unsigned long val = histo[i];
+			int base = i * 4;
+			unsigned long val = histo[base] + histo[base + 1] + histo[base + 2] + histo[base + 3];
 			unsigned long mask = 0x80000000;
 			uint8_t pixel = 0;
 			for (unsigned long j = 0; j < 32; j++) {
