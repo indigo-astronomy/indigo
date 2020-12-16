@@ -1685,6 +1685,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	}
 	if (jpeg_data)
 		free(jpeg_data);
+	if (histogram_data)
+		free(histogram_data);
 }
 
 void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix, bool streaming) {
