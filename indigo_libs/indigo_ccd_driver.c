@@ -789,7 +789,7 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 		for (int i = 0; i < 1024; i++) {
 			total += histo[i];
 			if (total >= black) {
-				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = rint(i / 4.0);
+				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i / 4.0;
 				break;
 			}
 		}
@@ -803,23 +803,22 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 		for (int i = 1023; i >= 0; i--) {
 			total += histo[i];
 			if (total >= white) {
-				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = rint(i / 4.0);
+				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i / 4.0;
 				break;
 			}
 		}
 	} else {
 		CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = CCD_JPEG_SETTINGS_WHITE_ITEM->number.target;
 	}
-	if (fabs(CCD_JPEG_SETTINGS_BLACK_ITEM->number.value - CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) < 5) {
-		if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value > 1)
-			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value -= 2;
-		else
-			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value += 2;
-		if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value < 253)
-			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 3;
-		else
-			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value -= 2;
+
+	if (fabs(CCD_JPEG_SETTINGS_BLACK_ITEM->number.value - CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) < 2) {
+		if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value >= 1) {
+			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value -= 1;
+		} else if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value <= 254) {
+			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 1;
+		}
 	}
+
 	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value != CCD_JPEG_SETTINGS_BLACK_ITEM->number.target || CCD_JPEG_SETTINGS_WHITE_ITEM->number.value != CCD_JPEG_SETTINGS_WHITE_ITEM->number.target) {
 		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
@@ -848,7 +847,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			histo[*b8++ << 2]++;
 		}
 		set_black_white(device, histo, count);
-		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value) / 255;
+		double scale = rint(CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value) / 255.0;
 		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value;
 		b8 = copy;
 		for (int i = 0; i < count; i++) {
@@ -876,12 +875,12 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			}
 		}
 		set_black_white(device, histo, count);
-		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value);
-		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value;
+		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value * 256;
+		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value) * 4;
 		unsigned char *b8 = copy;
 		b16 = copy;
 		for (int i = 0; i < count; i++) {
-			int value = rint((*b16++ - 64 * offset) / scale);
+			int value = rint((*b16++ - offset) / scale);
 			if (value < 0)
 				value = 0;
 			else if (value > 255)
