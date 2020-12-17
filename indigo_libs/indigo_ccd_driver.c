@@ -789,7 +789,7 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 		for (int i = 0; i < 1024; i++) {
 			total += histo[i];
 			if (total >= black) {
-				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i / 4;
+				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = rint(i / 4.0);
 				break;
 			}
 		}
@@ -803,7 +803,7 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 		for (int i = 1023; i >= 0; i--) {
 			total += histo[i];
 			if (total >= white) {
-				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i / 4;
+				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = rint(i / 4.0);
 				break;
 			}
 		}
