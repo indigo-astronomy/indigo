@@ -1,6 +1,6 @@
 var indigo_devices = { };
 var indigo_event_handlers = { };
-
+var indigo_timers = [ ];
 
 function indigo_call_handlers(event, device_name, value) {
 	for (handler_name in indigo_event_handlers) {
