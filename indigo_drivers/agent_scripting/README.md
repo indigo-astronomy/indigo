@@ -35,6 +35,8 @@ function indigo_enable_blob(device_name, property_name, state)
 function indigo_change_text_property(device_name, property_name, items)
 function indigo_change_number_property(device_name, property_name, items)
 function indigo_change_switch_property(device_name, property_name, items)
+function indigo_set_timer(function, delay);
+function indigo_cancel_timer(timer);
 ```
 
 where ``message`` is any string, ``device`` is device name, ``property`` is property name,  ``items`` is dictionary with item name/value pairs.

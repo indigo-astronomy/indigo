@@ -43,6 +43,7 @@
 #define PRIVATE_DATA															private_data
 
 #define MAX_USER_SCRIPT_COUNT											128
+#define MAX_TIMER_COUNT														32
 
 #define AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY		(PRIVATE_DATA->agent_on_load_script_property)
 #define AGENT_SCRIPTING_ON_LOAD_SCRIPT_ITEM				(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items+0)
@@ -76,6 +77,7 @@ typedef struct {
 	indigo_property *agent_delete_script_property;
 	indigo_property *agent_execute_script_property;
 	indigo_property *agent_scripts_property[MAX_USER_SCRIPT_COUNT];
+	indigo_timer *timers[MAX_TIMER_COUNT];
 	duk_context *ctx;
 	pthread_mutex_t mutex;
 } agent_private_data;
@@ -114,25 +116,25 @@ static void save_config(indigo_device *device) {
 // -------------------------------------------------------------------------------- Duktape bindings
 
 static duk_ret_t error_message(duk_context *ctx) {
-	const char *message = duk_to_string(ctx, 0);
+	const char *message = duk_require_string(ctx, 0);
 	indigo_error(message);
 	return 0;
 }
 
 static duk_ret_t log_message(duk_context *ctx) {
-	const char *message = duk_to_string(ctx, 0);
+	const char *message = duk_require_string(ctx, 0);
 	indigo_log(message);
 	return 0;
 }
 
 static duk_ret_t debug_message(duk_context *ctx) {
-	const char *message = duk_to_string(ctx, 0);
+	const char *message = duk_require_string(ctx, 0);
 	indigo_debug(message);
 	return 0;
 }
 
 static duk_ret_t trace_message(duk_context *ctx) {
-	const char *message = duk_to_string(ctx, 0);
+	const char *message = duk_require_string(ctx, 0);
 	indigo_trace(message);
 	return 0;
 }
@@ -140,14 +142,14 @@ static duk_ret_t trace_message(duk_context *ctx) {
 
 
 static duk_ret_t send_message(duk_context *ctx) {
-	const char *message = duk_to_string(ctx, 0);
+	const char *message = duk_require_string(ctx, 0);
 	indigo_send_message(agent_device, message);
 	return 0;
 }
 
 static duk_ret_t emumerate_properties(duk_context *ctx) {
-	const char *device = duk_is_null_or_undefined(ctx, 0) ? "" : duk_to_string(ctx, 0);
-	const char *property = duk_is_null_or_undefined(ctx, 1) ? "" : duk_to_string(ctx, 1);
+	const char *device = duk_is_null_or_undefined(ctx, 0) ? "" : duk_require_string(ctx, 0);
+	const char *property = duk_is_null_or_undefined(ctx, 1) ? "" : duk_require_string(ctx, 1);
 	indigo_property property_template = { 0 };
 	indigo_copy_name(property_template.device, device);
 	indigo_copy_name(property_template.name, property);
@@ -156,9 +158,9 @@ static duk_ret_t emumerate_properties(duk_context *ctx) {
 }
 
 static duk_ret_t enable_blob(duk_context *ctx) {
-	const char *device = duk_to_string(ctx, 0);
-	const char *property = duk_to_string(ctx, 1);
-	const bool state = duk_to_boolean(ctx, 2);
+	const char *device = duk_require_string(ctx, 0);
+	const char *property = duk_require_string(ctx, 1);
+	const bool state = duk_require_boolean(ctx, 2);
 	indigo_property property_template = { 0 };
 	indigo_copy_name(property_template.device, device);
 	indigo_copy_name(property_template.name, property);
@@ -167,15 +169,15 @@ static duk_ret_t enable_blob(duk_context *ctx) {
 }
 
 static duk_ret_t change_text_property(duk_context *ctx) {
-	const char *device = duk_to_string(ctx, 0);
-	const char *property = duk_to_string(ctx, 1);
+	const char *device = duk_require_string(ctx, 0);
+	const char *property = duk_require_string(ctx, 1);
 	char *names[INDIGO_MAX_ITEMS];
 	char *values[INDIGO_MAX_ITEMS];
 	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
 	int i = 0;
 	while (duk_next(ctx, -1, true)) {
-		const char *key = duk_to_string(ctx, -2);
-		const char *value = duk_to_string(ctx, -1);
+		const char *key = duk_require_string(ctx, -2);
+		const char *value = duk_require_string(ctx, -1);
 		names[i] = strdup(key);
 		values[i] = strdup(value);
 		duk_pop_2(ctx);
@@ -192,15 +194,15 @@ static duk_ret_t change_text_property(duk_context *ctx) {
 }
 
 static duk_ret_t change_number_property(duk_context *ctx) {
-	const char *device = duk_to_string(ctx, 0);
-	const char *property = duk_to_string(ctx, 1);
+	const char *device = duk_require_string(ctx, 0);
+	const char *property = duk_require_string(ctx, 1);
 	char *names[INDIGO_MAX_ITEMS];
 	double values[INDIGO_MAX_ITEMS];
 	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
 	int i = 0;
 	while (duk_next(ctx, -1, true)) {
-		const char *key = duk_to_string(ctx, -2);
-		double value = duk_to_number(ctx, -1);
+		const char *key = duk_require_string(ctx, -2);
+		double value = duk_require_number(ctx, -1);
 		names[i] = strdup(key);
 		values[i] = value;
 		duk_pop_2(ctx);
@@ -215,15 +217,15 @@ static duk_ret_t change_number_property(duk_context *ctx) {
 }
 
 static duk_ret_t change_switch_property(duk_context *ctx) {
-	const char *device = duk_to_string(ctx, 0);
-	const char *property = duk_to_string(ctx, 1);
+	const char *device = duk_require_string(ctx, 0);
+	const char *property = duk_require_string(ctx, 1);
 	char *names[INDIGO_MAX_ITEMS];
 	bool values[INDIGO_MAX_ITEMS];
 	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
 	int i = 0;
 	while (duk_next(ctx, -1, true)) {
-		const char *key = duk_to_string(ctx, -2);
-		double value = duk_to_boolean(ctx, -1);
+		const char *key = duk_require_string(ctx, -2);
+		double value = duk_require_boolean(ctx, -1);
 		names[i] = strdup(key);
 		values[i] = value;
 		duk_pop_2(ctx);
@@ -235,6 +237,47 @@ static duk_ret_t change_switch_property(duk_context *ctx) {
 			free(names[j]);
 	}
 	return 0;
+}
+
+static void timer_handler(indigo_device *device, void *data) {
+	int index = (int)data;
+	duk_push_global_object(PRIVATE_DATA->ctx);
+	duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_timers");
+	duk_push_number(PRIVATE_DATA->ctx, (double)(index - 1));
+	duk_get_prop(PRIVATE_DATA->ctx, -2);
+	if (duk_pcall(PRIVATE_DATA->ctx, 0)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "timer call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+	}
+	duk_pop_3(PRIVATE_DATA->ctx);
+}
+
+static duk_ret_t set_timer(duk_context *ctx) {
+	for (int index = 0; index < MAX_TIMER_COUNT; index++) {
+		if (PRIVATE_DATA->timers[index] == NULL) {
+			duk_push_global_object(PRIVATE_DATA->ctx);
+			duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_timers");
+			duk_push_number(PRIVATE_DATA->ctx, (double)index);
+			duk_dup(PRIVATE_DATA->ctx, 0);
+			duk_put_prop(PRIVATE_DATA->ctx, -3);
+			double delay = duk_require_number(ctx, 1);
+			if (indigo_set_timer_with_data(agent_device, delay, timer_handler, PRIVATE_DATA->timers + index, (void *)(index + 1))) {
+				duk_push_int(ctx, index);
+				return 1;
+			}
+			break;
+		}
+	}
+	return DUK_RET_ERROR;
+}
+
+static duk_ret_t cancel_timer(duk_context *ctx) {
+	int i = duk_require_int(ctx, 0);
+	if (PRIVATE_DATA->timers[i]) {
+		if (indigo_cancel_timer(agent_device, PRIVATE_DATA->timers + i)) {
+			return 0;
+		}
+	}
+	return DUK_RET_ERROR;
 }
 
 static void execute_script(indigo_property *property) {
@@ -312,6 +355,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_number_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, change_switch_property, 3);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_switch_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, set_timer, 2);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer");
+			duk_push_c_function(PRIVATE_DATA->ctx, cancel_timer, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_cancel_timer");
 			if (duk_peval_string(PRIVATE_DATA->ctx, boot_js)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 			} else {
@@ -476,6 +523,10 @@ static indigo_result agent_device_detach(indigo_device *device) {
 		execute_script(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY);
 		duk_destroy_heap(PRIVATE_DATA->ctx);
 	}
+	for (int i = 0; i < MAX_TIMER_COUNT; i++) {
+		if (PRIVATE_DATA->timers[i])
+			indigo_cancel_timer_sync(agent_device, PRIVATE_DATA->timers + i);
+	}
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	indigo_release_property(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY);
 	indigo_release_property(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY);
@@ -518,31 +569,27 @@ static void push_state(indigo_property_state state) {
 }
 
 static void push_items(indigo_property *property) {
-	duk_get_prop_string(PRIVATE_DATA->ctx, -4, "Object");
-	if (duk_pnew(PRIVATE_DATA->ctx, 0)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Object() failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
-	} else {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			switch (property->type) {
-				case INDIGO_TEXT_VECTOR:
-					duk_push_string(PRIVATE_DATA->ctx, item->text.value);
-					break;
-				case INDIGO_NUMBER_VECTOR:
-					duk_push_number(PRIVATE_DATA->ctx, item->number.value);
-					break;
-				case INDIGO_SWITCH_VECTOR:
-					duk_push_boolean(PRIVATE_DATA->ctx, item->sw.value);
-					break;
-				case INDIGO_LIGHT_VECTOR:
-					push_state(item->light.value);
-					break;
-				case INDIGO_BLOB_VECTOR:
-					duk_push_string(PRIVATE_DATA->ctx, item->blob.url);
-					break;
-			}
-			duk_put_prop_string(PRIVATE_DATA->ctx, -2, item->name);
+	duk_push_object(PRIVATE_DATA->ctx);
+	for (int i = 0; i < property->count; i++) {
+		indigo_item *item = property->items + i;
+		switch (property->type) {
+			case INDIGO_TEXT_VECTOR:
+				duk_push_string(PRIVATE_DATA->ctx, item->text.value);
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				duk_push_number(PRIVATE_DATA->ctx, item->number.value);
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				duk_push_boolean(PRIVATE_DATA->ctx, item->sw.value);
+				break;
+			case INDIGO_LIGHT_VECTOR:
+				push_state(item->light.value);
+				break;
+			case INDIGO_BLOB_VECTOR:
+				duk_push_string(PRIVATE_DATA->ctx, item->blob.url);
+				break;
 		}
+		duk_put_prop_string(PRIVATE_DATA->ctx, -2, item->name);
 	}
 }
 
