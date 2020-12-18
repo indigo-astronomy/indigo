@@ -151,6 +151,7 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 			t->next = NULL;
 		}
 		t->callback = callback;
+		t->data = data;
 		pthread_mutex_lock(&t->mutex);
 		pthread_cond_signal(&t->cond);
 		pthread_mutex_unlock(&t->mutex);
@@ -173,6 +174,7 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 		}
 		t->delay = delay;
 		t->callback = callback;
+		t->data = data;
 		pthread_create(&t->thread, NULL, (void * (*)(void*))timer_func, t);
 	}
 	pthread_mutex_unlock(&free_timer_mutex);
