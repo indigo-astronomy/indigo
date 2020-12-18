@@ -83,7 +83,10 @@ static void *timer_func(indigo_timer *timer) {
 				pthread_mutex_lock(&timer->callback_mutex);
 				timer->callback_running = true;
 				INDIGO_TRACE(indigo_trace("timer callback: %p started", timer->callback));
-				timer->callback(timer->device);
+				if (timer->data)
+					((indigo_timer_with_data_callback)timer->callback)(timer->device, timer->data);
+				else
+					((indigo_timer_callback)timer->callback)(timer->device);
 				timer->callback_running = false;
 				if (!timer->scheduled && timer->reference)
 					*timer->reference = NULL;
@@ -127,6 +130,10 @@ static void *timer_func(indigo_timer *timer) {
 }
 
 bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
+	return indigo_set_timer_with_data(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL);
+}
+
+bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
 	indigo_timer *t = NULL;
 	pthread_mutex_lock(&free_timer_mutex);
 	if (free_timer != NULL) {

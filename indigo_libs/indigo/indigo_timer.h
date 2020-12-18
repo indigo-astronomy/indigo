@@ -38,12 +38,13 @@ extern "C" {
 /** Timer callback function prototype.
  */
 typedef void (*indigo_timer_callback)(indigo_device *device);
+typedef void (*indigo_timer_with_data_callback)(indigo_device *device, void *data);
 
 /** Timer structure.
  */
 typedef struct indigo_timer {
 	indigo_device *device;                    ///< device associated with timer
-	indigo_timer_callback callback;           ///< callback function pointer
+	void *callback;           								///< callback function pointer
 	bool canceled;                            ///< timer is canceled (darwin only)
 	bool scheduled;
 	bool callback_running;
@@ -56,6 +57,7 @@ typedef struct indigo_timer {
 	pthread_t thread;
 	struct indigo_timer **reference;
 	struct indigo_timer *next;
+	void *data;
 } indigo_timer;
 
 /* fix timespec so that abs(tv_nsec) < 1s */
@@ -85,6 +87,10 @@ static inline void normalize_timespec(struct timespec *ts) {
 /** Set timer.
  */
 extern bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
+
+/** Set timer with arbitrary data.
+ */
+extern bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
 
 /** Rescheduled timer (if not null).
  */
