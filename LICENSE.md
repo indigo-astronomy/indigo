@@ -1,8 +1,8 @@
-## INDIGO Astronomy open-source license (version 1.0, October 2016)
+## INDIGO Astronomy open-source license (version 2.0, December 2020)
 
-Copyright (c) 2016 CloudMakers, s. r. o.
+Copyright (c) 2020 CloudMakers, s. r. o.
 
-Copyright (C) 2016 Rumen G.Bogdanovski
+Copyright (c) 2020 Rumen G.Bogdanovski
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -16,18 +16,9 @@ copyright notice, this list of conditions and the following
 disclaimer in the documentation and/or other materials provided
 with the distribution.
 
-3. All advertising materials mentioning features or use of this
-software must display the following acknowledgement: 'This product
-includes INDIGO framework, see http://www.indigo-astronomy.org
-for more information.'
-
-4. The names of the authors may not be used to endorse or promote
-products derived from this software without specific prior
-written permission.
-
-5. Redistribution in source or binary form for profit is permitted
-only as a part of a product derived from this software with added
-value.
+3. Redistribution in source or binary form for fee is permitted only
+as part of another different product or as product derived from this
+software.
 
 THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
