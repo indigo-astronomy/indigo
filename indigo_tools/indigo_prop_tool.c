@@ -38,6 +38,7 @@
 
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
+#define TEXT_LEN_TO_PRINT 80
 
 //#define DEBUG
 
@@ -344,7 +345,11 @@ void print_property_list(indigo_property *property, const char *message) {
 		item = &(property->items[i]);
 		switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
-			printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
+			if (item->text.length > TEXT_LEN_TO_PRINT) {
+				printf("%s.%s.%s = \"%.*s\" + %ld characters\n", property->device, property->name, item->name, TEXT_LEN_TO_PRINT, item->text.value, item->text.length - TEXT_LEN_TO_PRINT - 1);
+			} else {
+				printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
+			}
 			break;
 		case INDIGO_NUMBER_VECTOR:
 			printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
@@ -425,7 +430,11 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 
 			switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
-				sprintf(value_string[items_found], "%s", item->text.value);
+				if (item->text.length > TEXT_LEN_TO_PRINT) {
+					sprintf(value_string[items_found], "%.*s + %ld characters\n", TEXT_LEN_TO_PRINT, item->text.value, item->text.length - TEXT_LEN_TO_PRINT - 1);
+				} else {
+					sprintf(value_string[items_found], "%s", item->text.value);
+				}
 				break;
 			case INDIGO_NUMBER_VECTOR:
 				sprintf(value_string[items_found], "%f", item->number.value);
@@ -610,9 +619,9 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 	if (set_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
-			static char *items[INDIGO_MAX_ITEMS];
-			static char *txt_values[INDIGO_MAX_ITEMS];
-			static bool bool_values[INDIGO_MAX_ITEMS];
+			static char *items[INDIGO_MAX_ITEMS] = {NULL};
+			static char *txt_values[INDIGO_MAX_ITEMS] = {NULL};
+			static bool bool_values[INDIGO_MAX_ITEMS] = {false};
 			double dbl_values[INDIGO_MAX_ITEMS];
 
 			for (i = 0; i< change_request.item_count; i++) {
@@ -623,15 +632,38 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 			switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
 				if (set_script_requested) {
-					printf("Not supported yet!\n");
+					bool name_provided = false;
+					bool file_provided = false;
+					for (i = 0; i < change_request.item_count; i++) {
+						if (!strcmp(AGENT_SCRIPTING_SCRIPT_ITEM_NAME, change_request.item_name[i])) {
+							int res = read_file(change_request.value_string[i], &txt_values[i]);
+							if (res < 0) {
+								fprintf(stderr, "Can't read '%s' file: %s\n", change_request.value_string[i], strerror(errno));
+								exit(1);
+							}
+							file_provided = true;
+						} else {
+							if (!strcmp(AGENT_SCRIPTING_SCRIPT_NAME_ITEM_NAME, change_request.item_name[i])) {
+								name_provided = true;
+							}
+							txt_values[i] = (char *)malloc(INDIGO_VALUE_SIZE);
+							indigo_copy_value(txt_values[i], change_request.value_string[i]);
+							txt_values[i][INDIGO_VALUE_SIZE-1] = 0;
+						}
+					}
+					if ((!name_provided || !file_provided) && !strcmp(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY_NAME, property->name)) {
+						fprintf(stderr, "Property %s requires both %s and %s items to be set\n", AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY_NAME, AGENT_SCRIPTING_SCRIPT_ITEM_NAME, AGENT_SCRIPTING_SCRIPT_NAME_ITEM_NAME);
+						exit(1);
+					}
 				} else {
-					for (i = 0; i< change_request.item_count; i++) {
+					for (i = 0; i < change_request.item_count; i++) {
 						txt_values[i] = (char *)malloc(INDIGO_VALUE_SIZE);
 						indigo_copy_value(txt_values[i], change_request.value_string[i]);
 						txt_values[i][INDIGO_VALUE_SIZE-1] = 0;
 					}
-					indigo_change_text_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const char **)txt_values);
 				}
+
+				indigo_change_text_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const char **)txt_values);
 
 				for (i = 0; i< change_request.item_count; i++) {
 					free(txt_values[i]);
@@ -665,10 +697,12 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 #ifdef DEBUG
 			printf("MATCHED:\n");
 			for (i = 0; i< change_request.item_count; i++) {
-				free(items[i]);
 				printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
 			}
 #endif
+			for (i = 0; i< change_request.item_count; i++) {
+				free(items[i]);
+			}
 		}
 		return INDIGO_OK;
 	} else if (list_state_requested) {
@@ -721,7 +755,7 @@ static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
-	printf("       %s set_script [options] agent.property.item=file.is\n", name);
+	printf("       %s set_script [options] agent.property.SCRIPT=filename[;NAME=name]\n", name);
 	printf("       %s get [options] device.property.item[;item;..]\n", name);
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
