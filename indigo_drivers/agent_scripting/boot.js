@@ -2,10 +2,10 @@ var indigo_devices = { };
 var indigo_event_handlers = { };
 var indigo_timers = [ ];
 
-function indigo_call_handlers(event, device_name, value) {
+function indigo_call_handlers(event, device_name, value, check_devices) {
 	for (handler_name in indigo_event_handlers) {
 		var handler = indigo_event_handlers[handler_name];
-		if (handler.devices && handler.devices.indexOf(device_name) == -1)
+		if (check_devices && handler.devices && handler.devices.indexOf(device_name) == -1)
 			continue;
 		if (handler[event]) {
 			handler[event](value);
@@ -49,7 +49,7 @@ function indigo_on_define_property(device_name, property_name, items, state, per
 	property.change = function(items) {
 		indigo_change_property(this.device, this.name, items);
 	}
-	indigo_call_handlers("on_define", device_name, property);
+	indigo_call_handlers("on_define", device_name, property, true);
 }
 
 function indigo_on_update_property(device_name, property_name, items, state, message) {
@@ -73,7 +73,7 @@ function indigo_on_update_property(device_name, property_name, items, state, mes
 		}
 	}
 	saved_property.message = message;
-	indigo_call_handlers("on_update", device_name, saved_property);
+	indigo_call_handlers("on_update", device_name, saved_property, true);
 }
 
 function indigo_on_delete_property(device_name, property_name, message) {
@@ -84,21 +84,34 @@ function indigo_on_delete_property(device_name, property_name, message) {
 		for (property_name in properties) {
 			var property = properties[property_name];
 			property.message = message;
-			indigo_call_handlers("on_delete", device_name, property);
+			indigo_call_handlers("on_delete", device_name, property, true);
 		}
 		delete indigo_devices[device_name];
 	} else {
 		var property = properties[property_name];
 		if (property) {
 			property.message = message;
-			indigo_call_handlers("on_delete", device_name, property);
+			indigo_call_handlers("on_delete", device_name, property, true);
 			delete properties[property_name];
 		}
 	}
 }
 
 function indigo_on_send_message(device_name, message) {
-	indigo_call_handlers("on_message", device_name, device_name+": "+message);
+	indigo_call_handlers("on_message", device_name, device_name+": "+message, true);
+}
+
+function indigo_on_enumerate_properties(device_name, property_name) {
+	var property = { device: device_name };
+	if (property_name)
+		property.name = property_name;
+	indigo_log("on_enumerate_properties");
+	indigo_call_handlers("on_enumerate_properties", device_name, property, false);
+}
+
+function indigo_on_change_property(device_name, property_name, items, state) {
+	var property = { device: device_name, name: property_name, items: items, state: state };
+	indigo_call_handlers("on_change_property", device_name, property, false);
 }
 
 indigo_log("Hight level scripting API installed");
