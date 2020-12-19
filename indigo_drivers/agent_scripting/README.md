@@ -89,7 +89,7 @@ indigo_event_handlers.my_handler = {
   longitude: 0,
 
 // Define process_coordinates method which in case if property is in OK state
-// sends its LATITUDE and LONGITUDE item values to the client as the message
+// sends its LATITUDE and LONGITUDE item values to the client as MY_COORDS property update
 // and then disconnect the device.
 
   process_coordinates: function(property) {
@@ -133,7 +133,7 @@ indigo_event_handlers.my_handler = {
     indigo_log_with_property("Deleted ", property); 
   },
   
-  // When queried, define property for reporting GPS coordinates.
+  // When queried, define MY_COORDS property.
 
   on_enumerate_properties: function(property) {
     if (property.device == "Scripting Agent") {
