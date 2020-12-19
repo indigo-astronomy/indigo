@@ -137,3 +137,21 @@ The following script is an example how to unregister even handlers for define, u
 ```
 delete indigo_event_handlers.my_handler;
 ```
+
+The following script is an example how to schedule function execution with INDIGO timers
+
+```
+var timer;
+
+function timer_event_handler() {
+  indigo_log('timer_event_handler() excuted');
+}
+
+timer = indigo_set_timer(timer_event_handler, 1);
+```
+
+and the following script is an example how to cancel  function scheduled by the previous example
+
+```
+indigo_cancel_timer(timer);
+```
