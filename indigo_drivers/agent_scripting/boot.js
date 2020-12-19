@@ -7,7 +7,9 @@ function indigo_call_handlers(event, device_name, value) {
 		var handler = indigo_event_handlers[handler_name];
 		if (handler.devices && handler.devices.indexOf(device_name) == -1)
 			continue;
-		handler[event](value);
+		if (handler[event]) {
+			handler[event](value);
+		}
 	}
 }
 
