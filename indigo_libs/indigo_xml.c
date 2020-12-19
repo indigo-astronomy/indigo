@@ -412,8 +412,8 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								}
 								indigo_copy_value(property_item->text.value, other_item->text.value);
 								if (other_item->text.long_value) {
-									if ((property_item->text.long_value = malloc(property_item->text.long_size = other_item->text.long_size)))
-										memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.long_size);
+									if ((property_item->text.long_value = malloc(property_item->text.length = other_item->text.length)))
+										memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.length);
 								}
 								break;
 							case INDIGO_NUMBER_VECTOR:
