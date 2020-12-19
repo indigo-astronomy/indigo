@@ -214,7 +214,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 		struct {
 			char value[INDIGO_VALUE_SIZE];  ///< item value (for text properties)
 			char *long_value;							///< item value, set if text is longer than NDIGO_VALUE_SIZE
-			long long_size;								///< long_value size (including terminating 0)
+			long length;								///< text length (including terminating 0)
 		} text;
 		/** Number property item specific fields.
 		 */

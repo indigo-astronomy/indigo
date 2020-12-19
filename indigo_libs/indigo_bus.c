@@ -293,12 +293,12 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 				case INDIGO_TEXT_VECTOR:
 					if (defs) {
 						if (item->text.long_value)
-							indigo_trace("  '%s' = '%s' + %d extra characters // %s", item->name, item->text.value, item->text.long_size - 1, item->label);
+							indigo_trace("  '%s' = '%s' + %d extra characters // %s", item->name, item->text.value, item->text.length - 1, item->label);
 						else
 							indigo_trace("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
 					} else {
 						if (item->text.long_value)
-							indigo_trace("  '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.long_size - 1);
+							indigo_trace("  '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.length - 1);
 						else
 							indigo_trace("  '%s' = '%s'",item->name, item->text.value);
 					}
@@ -1066,10 +1066,10 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 								property_item->text.long_value = NULL;
 							}
 							indigo_copy_value(property_item->text.value, other_item->text.value);
-							property_item->text.long_size = other_item->text.long_size;
+							property_item->text.length = other_item->text.length;
 							if (other_item->text.long_value) {
-								if ((property_item->text.long_value = malloc(property_item->text.long_size))) {
-									memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.long_size);
+								if ((property_item->text.long_value = malloc(property_item->text.length))) {
+									memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.length);
 								}
 							}
 							break;
@@ -1150,9 +1150,9 @@ void indigo_set_text_item_value(indigo_item *item, const char *value) {
 	}
 	long length = strlen(value);
 	indigo_copy_value(item->text.value, value);
-	item->text.long_size = length + 1;
+	item->text.length = length + 1;
 	if (length >= INDIGO_VALUE_SIZE) {
-		if ((item->text.long_value = malloc(item->text.long_size))) {
+		if ((item->text.long_value = malloc(item->text.length))) {
 			strncpy(item->text.long_value, value, length);
 			item->text.long_value[length] = 0;
 		}
