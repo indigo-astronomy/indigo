@@ -42,6 +42,7 @@
 //#define DEBUG
 
 static bool set_requested = false;
+static bool set_script_requested = false;
 static bool get_requested = false;
 static bool list_state_requested = false;
 static bool get_state_requested = false;
@@ -72,6 +73,28 @@ typedef struct {
 static property_change_request change_request;
 static property_list_request list_request;
 static property_get_request get_request;
+
+
+int read_file(const char *file_name, char **file_data) {
+	int size = 0;
+	FILE *f = fopen(file_name, "rb");
+	if (f == NULL)  {
+		*file_data = NULL;
+		return -1;
+	}
+	fseek(f, 0, SEEK_END);
+	size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	*file_data = (char *)malloc(size+1);
+	if (size != fread(*file_data, sizeof(char), size, f)) {
+		free(*file_data);
+		file_data = NULL;
+		return -2;
+	}
+	fclose(f);
+	(*file_data)[size] = 0;
+	return size;
+}
 
 
 void trim_ending_spaces(char * str) {
@@ -599,13 +622,16 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 			switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
-				for (i = 0; i< change_request.item_count; i++) {
-					txt_values[i] = (char *)malloc(INDIGO_VALUE_SIZE);
-					indigo_copy_value(txt_values[i], change_request.value_string[i]);
-					txt_values[i][INDIGO_VALUE_SIZE-1] = 0;
+				if (set_script_requested) {
+					printf("Not supported yet!\n");
+				} else {
+					for (i = 0; i< change_request.item_count; i++) {
+						txt_values[i] = (char *)malloc(INDIGO_VALUE_SIZE);
+						indigo_copy_value(txt_values[i], change_request.value_string[i]);
+						txt_values[i][INDIGO_VALUE_SIZE-1] = 0;
+					}
+					indigo_change_text_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const char **)txt_values);
 				}
-
-				indigo_change_text_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const char **)txt_values);
 
 				for (i = 0; i< change_request.item_count; i++) {
 					free(txt_values[i]);
@@ -695,6 +721,7 @@ static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
+	printf("       %s set_script [options] agent.property.item=file.is\n", name);
 	printf("       %s get [options] device.property.item[;item;..]\n", name);
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
@@ -750,6 +777,10 @@ int main(int argc, const char * argv[]) {
 	} else if (!strcmp(argv[1], "get_state")) {
 		set_requested = false;
 		get_state_requested = true;
+		arg_base = 2;
+	} else if (!strcmp(argv[1], "set_script")) {
+		set_requested = true;
+		set_script_requested = true;
 		arg_base = 2;
 	}
 
