@@ -1326,7 +1326,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_IMAGER_SELECTION_PROPERTY, property, false);
 		DEVICE_PRIVATE_DATA->stack_size = 0;
 		AGENT_IMAGER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
-		//AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && AGENT_IMAGER_START_FOCUSING_ITEM->sw.value)
+			AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
@@ -1334,19 +1335,19 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_BUSY_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, preview_process, NULL);
 			} else if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_BUSY_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, exposure_batch_process, NULL);
 			} else if (AGENT_IMAGER_START_STREAMING_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_BUSY_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, streaming_batch_process, NULL);
 			} else if (AGENT_IMAGER_START_FOCUSING_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_BUSY_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, autofocus_process, NULL);
 			} else if (AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_BUSY_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, sequence_process, NULL);
 			}
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
