@@ -12210,7 +12210,7 @@
 				LIBRARY_SEARCH_PATHS = build/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				MTL_ENABLE_DEBUG_INFO = YES;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = "-w";
 				SDKROOT = macosx;
 				SYSTEM_HEADER_SEARCH_PATHS = indigo_libs;
@@ -12351,6 +12351,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy2/bin_externals/qhyccd/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
 				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
