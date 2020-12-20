@@ -139,3 +139,7 @@ input {
 	width: 100%;
 	height: 5rem;
 }
+
+.fixed {
+	font-family: monospace;
+}

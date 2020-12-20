@@ -62,10 +62,10 @@
 										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" :value="property.label" @input="Vue.set(property, 'dirty', true)">
 									</div>
 									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)"></textarea>
+										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)"></textarea>
 									</div>
 									<div v-else class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.items[property.items.length - 1].value }}</textarea>
+										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.items[property.items.length - 1].value }}</textarea>
 									</div>
 									<div class="float-right m-1 m-1 p-1">
 										<button v-if="property.name!='AGENT_SCRIPTING_ON_LOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success ml-1" :disabled="property.dirty" data-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
