@@ -1326,7 +1326,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_IMAGER_SELECTION_PROPERTY, property, false);
 		DEVICE_PRIVATE_DATA->stack_size = 0;
 		AGENT_IMAGER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
-		AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+		//AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
