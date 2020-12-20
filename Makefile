@@ -68,7 +68,9 @@ else
 	OS_DETECTED = $(shell uname -s)
 	ARCH_DETECTED = $(shell uname -m)
 	ifeq ($(OS_DETECTED),Darwin)
-		ARCH_DETECTED = x64
+		ifneq ($(ARCH_DETECTED), x86_64)
+			EXCLUDED_DRIVERS += ccd_altair ccd_apogee ccd_asi ccd_atik ccd_mi ccd_qhy ccd_qhy2 ccd_qsi ccd_sbig ccd_touptek focuser_asi guider_asi wheel_asi
+		endif
 		CC = clang
 		AR = ar
 		CFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
