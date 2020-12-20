@@ -1,7 +1,7 @@
 # Celestron / PlaneWave EFA focuser driver
 
-https://www.celestron.com/products/focus-motor-for-sct-and-edgehd
-https://planewave.com/products-page/general-accessories/efa-kit-electronic-focuser/#.XXPOEi2B3OQ
+* https://www.celestron.com/products/focus-motor-for-sct-and-edgehd
+* https://planewave.com/products-page/general-accessories/efa-kit-electronic-focuser/
 
 ## Supported devices
 
@@ -24,4 +24,4 @@ indigo_server indigo_focuser_efa
 
 ## Status: Stable
 
-Open issues: wrong temperature report, can't set min value
+Open issues: wrong temperature report, can't set min value, connection via AUX port not currently supported
