@@ -581,11 +581,11 @@ static void exposure_batch_process(indigo_device *device) {
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_send_message(device, "Batch finished");
 			} else {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_send_message(device, "Batch aborted");
 			}
 		} else {
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_send_message(device, "Batch failed");
 		}
 	}
@@ -653,11 +653,11 @@ static void streaming_batch_process(indigo_device *device) {
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_send_message(device, "Streaming finished");
 			} else {
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_send_message(device, "Streaming aborted");
 			}
 		} else {
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_send_message(device, "Streaming failed");
 		}
 	}
@@ -798,7 +798,7 @@ static void autofocus_process(indigo_device *device) {
 		} else {
 			indigo_send_message(device, "Focusing failed");
 		}
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (DEVICE_PRIVATE_DATA->saved_frame) {
 		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
@@ -965,7 +965,7 @@ static void sequence_process(indigo_device *device) {
 	}
 	if (autofocus_requested) {
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] == 0) {
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_send_message(device, "Autofocus requested, but no focuser is selected!");
 		}
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_ALERT_STATE) {
@@ -1014,7 +1014,7 @@ static void sequence_process(indigo_device *device) {
 				indigo_send_message(device, "Autofocus finished");
 			} else {
 				indigo_send_message(device, "Autofocus failed");
-				AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				break;
 			}
 			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
@@ -1027,7 +1027,7 @@ static void sequence_process(indigo_device *device) {
 			indigo_send_message(device, "Batch %d finished", batch_index);
 		} else {
 			indigo_send_message(device, "Batch %d failed", batch_index);
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 			break;
 		}
 	}
@@ -1201,7 +1201,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_RADIUS_ITEM, AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_SUBFRAME_ITEM, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 10, 1, 0);
 		// -------------------------------------------------------------------------------- Focusing stats
-		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Stats", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
+		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
 		if (AGENT_IMAGER_STATS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_STATS_EXPOSURE_ITEM, AGENT_IMAGER_STATS_EXPOSURE_ITEM_NAME, "Elapsed exposure", 0, 3600, 0, 0);
