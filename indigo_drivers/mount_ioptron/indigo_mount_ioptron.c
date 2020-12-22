@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -64,6 +64,7 @@ typedef struct {
 	char product[64];
 	unsigned protocol;
 	bool gotonova;
+	bool no_park;
 } ioptron_private_data;
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
@@ -243,6 +244,7 @@ static bool ieq_open(indigo_device *device) {
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "iOptron");
 		PRIVATE_DATA->protocol = 0x0000;
 		PRIVATE_DATA->gotonova = false;
+		PRIVATE_DATA->no_park = true;
 		if (ieq_command(device, ":MountInfo#", response, sizeof(response))) {
 			PRIVATE_DATA->protocol = 0x0100;
 			strncpy(PRIVATE_DATA->product, response, 64);
@@ -314,9 +316,11 @@ static bool ieq_open(indigo_device *device) {
 				}
 				if (strncmp("161101", response, 6) <= 0 && (product == 30 || product == 45  || product == 60 || product == 61)) {
 					PRIVATE_DATA->protocol = 0x0205;
+					PRIVATE_DATA->no_park = false;
 				}
 				if (strncmp("181018", response, 6) <= 0 && (product == 40 || product == 41)) {
 					PRIVATE_DATA->protocol = 0x0205;
+					PRIVATE_DATA->no_park = false;
 				}
 				if (strncmp("170518", response, 6) <= 0 && (product == 26)) {
 					PRIVATE_DATA->protocol = 0x0205;
@@ -332,6 +336,7 @@ static bool ieq_open(indigo_device *device) {
 				}
 				if (strncmp("171001", response, 6) <= 0 && (product == 70 || product == 120 || product == 121 || product == 122)) {
 					PRIVATE_DATA->protocol = 0x0300;
+					PRIVATE_DATA->no_park = false;
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware #1:  %s", response);
 				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
@@ -490,7 +495,8 @@ static void position_timer_callback(indigo_device *device) {
 		} else if (PRIVATE_DATA->protocol == 0x0100) {
 			if (ieq_command(device, ":AH#", response, 1) && *response == '1') {
 				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE && MOUNT_PARK_PARKED_ITEM->sw.value) {
-					ieq_command(device, ":MP1#", response, 1);
+					//ieq_command(device, ":MP1#", response, 1); // probably doesn't work
+					ieq_command(device, ":ST0#", response, 1); // stop tracking at home position instead
 					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked - please switch mount off");
 				}
@@ -544,6 +550,12 @@ static void position_timer_callback(indigo_device *device) {
 						if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 							MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_update_property(device, MOUNT_HOME_PROPERTY, "At home");
+						}
+						if (PRIVATE_DATA->no_park && MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+							ieq_command(device, ":ST0#", response, 1); // stop tracking at home position instead
+							indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+							MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked - please switch mount off");
 						}
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
@@ -626,6 +638,12 @@ static void position_timer_callback(indigo_device *device) {
 						if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 							MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_update_property(device, MOUNT_HOME_PROPERTY, "At home");
+						}
+						if (PRIVATE_DATA->no_park && MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+							ieq_command(device, ":ST0#", response, 1); // stop tracking at home position instead
+							indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+							MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked - please switch mount off");
 						}
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
@@ -802,11 +820,17 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
-			ieq_command(device, ":MP1#", response, 1);
+			if (PRIVATE_DATA->no_park) {
+				ieq_command(device, ":MH#", response, 1);
+			} else {
+				ieq_command(device, ":MP1#", response, 1);
+			}
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking");
 		} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
-			ieq_command(device, ":MP0#", response, 1);
+			if (!PRIVATE_DATA->no_park) {
+				ieq_command(device, ":MP0#", response, 1);
+			}
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
 		}
@@ -815,10 +839,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_HOME
 		indigo_property_copy_values(MOUNT_HOME_PROPERTY, property, false);
 		if (MOUNT_HOME_ITEM->sw.value) {
-			if (strncmp(PRIVATE_DATA->product, "CEM60", 5)) {
-				ieq_command(device, ":MH#", response, 1);
-			} else {
+			if (!strncmp(PRIVATE_DATA->product, "CEM60", 5) || !strncmp(PRIVATE_DATA->product, "CEM40", 5)) {
 				ieq_command(device, ":MSH#", response, 1);
+			} else {
+				ieq_command(device, ":MH#", response, 1);
 			}
 			MOUNT_HOME_ITEM->sw.value = false;
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
