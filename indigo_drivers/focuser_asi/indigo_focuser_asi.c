@@ -787,7 +787,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device plugged has PID:VID = %d:%d", descriptor.idVendor, descriptor.idProduct);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device plugged has PID:VID = %x:%x", descriptor.idVendor, descriptor.idProduct);
 			for (int i = 0; i < eaf_id_count; i++) {
 				if (descriptor.idVendor != ASI_VENDOR_ID || eaf_products[i] != descriptor.idProduct) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI EAF device plugged (maybe ASI Camera)!");
@@ -842,7 +842,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			return INDIGO_FAILED;
 		} else {
 			for(int index = 0; index < eaf_id_count; index++)
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "eaf_products[%d] = %d", index, eaf_products[index]);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "eaf_products[%d] = %x", index, eaf_products[index]);
 		}
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
