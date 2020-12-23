@@ -837,18 +837,12 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 		last_action = action;
 		for(int index = 0; index < EAF_ID_MAX; index++)
 			connected_ids[index] = false;
-		eaf_id_count = EAFGetProductIDs(eaf_products);
-		if (eaf_id_count <= 0) {
-			eaf_products[0] = EAF_PRODUCT_ID;
-			eaf_id_count = 1;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs.");
-		} else {
-			eaf_products[eaf_id_count++] = EAF_PRODUCT_ID;
-		}
-		for(int index = 0; index < eaf_id_count; index++)
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "eaf_products[%d] = %x", index, eaf_products[index]);
+//		eaf_id_count = EAFGetProductIDs(eaf_products);
+//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetProductIDs(-> [ %d, %d, ... ]) = %d", eaf_products[0], eaf_products[1], eaf_id_count);
+		eaf_products[0] = EAF_PRODUCT_ID;
+		eaf_id_count = 1;
 		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
