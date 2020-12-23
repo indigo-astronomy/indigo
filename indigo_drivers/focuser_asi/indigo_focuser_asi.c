@@ -47,6 +47,7 @@
 #include <EAF_focuser.h>
 
 #define ASI_VENDOR_ID                   0x03c3
+#define EAF_PRODUCT_ID                  0x1f10
 
 #define PRIVATE_DATA                    ((asi_private_data *)device->private_data)
 
@@ -838,12 +839,13 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			connected_ids[index] = false;
 		eaf_id_count = EAFGetProductIDs(eaf_products);
 		if (eaf_id_count <= 0) {
+			eaf_products[0] = EAF_PRODUCT_ID;
+			eaf_id_count = 1;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs.");
-			return INDIGO_FAILED;
-		} else {
-			for(int index = 0; index < eaf_id_count; index++)
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "eaf_products[%d] = %x", index, eaf_products[index]);
 		}
+		eaf_products[eaf_id_count++] = EAF_PRODUCT_ID;
+		for(int index = 0; index < eaf_id_count; index++)
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "eaf_products[%d] = %x", index, eaf_products[index]);
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
