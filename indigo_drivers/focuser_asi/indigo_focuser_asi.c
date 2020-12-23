@@ -842,8 +842,9 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			eaf_products[0] = EAF_PRODUCT_ID;
 			eaf_id_count = 1;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs.");
+		} else {
+			eaf_products[eaf_id_count++] = EAF_PRODUCT_ID;
 		}
-		eaf_products[eaf_id_count++] = EAF_PRODUCT_ID;
 		for(int index = 0; index < eaf_id_count; index++)
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "eaf_products[%d] = %x", index, eaf_products[index]);
 		indigo_start_usb_event_handler();
