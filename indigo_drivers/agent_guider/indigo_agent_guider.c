@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -519,7 +519,8 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
-	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_SNR_ITEM->number.value =
+	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 
 	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value =
 	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target =
@@ -532,8 +533,9 @@ static void preview_process(indigo_device *device) {
 		capture_raw_frame(device);
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	}
-	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
-	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
+	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
+	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
 	AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
@@ -596,7 +598,8 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
-	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_SNR_ITEM->number.value =
+	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 
 	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value =
 	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target =
@@ -876,7 +879,8 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
-	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_SNR_ITEM->number.value =
+	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value) {
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value = -1;
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -1042,7 +1046,8 @@ static void find_stars_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value =
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
-	AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
+	AGENT_GUIDER_STATS_SNR_ITEM->number.value =
+	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 		AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
