@@ -23,7 +23,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_agent_scripting"
 
 #include <stdlib.h>
@@ -43,6 +43,7 @@
 #define PRIVATE_DATA															private_data
 
 #define MAX_USER_SCRIPT_COUNT											128
+#define MAX_CACHED_SCRIPT_COUNT										128
 #define MAX_TIMER_COUNT														32
 
 #define AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY		(PRIVATE_DATA->agent_on_load_script_property)
@@ -77,6 +78,7 @@ typedef struct {
 	indigo_property *agent_delete_script_property;
 	indigo_property *agent_execute_script_property;
 	indigo_property *agent_scripts_property[MAX_USER_SCRIPT_COUNT];
+	indigo_property *agent_cached_property[MAX_CACHED_SCRIPT_COUNT];
 	indigo_timer *timers[MAX_TIMER_COUNT];
 	duk_context *ctx;
 	pthread_mutex_t mutex;
@@ -346,25 +348,30 @@ static duk_ret_t define_text_property(duk_context *ctx) {
 	indigo_property_state state = require_state(ctx, 6);
 	indigo_property_perm perm = require_perm(ctx, 7);
 	const char *message = duk_get_string(ctx, 8);
-	indigo_property *tmp = indigo_init_text_property(NULL, device, property, property_group, property_label, state, perm, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_item *item = tmp->items + i;
-		const char *key = duk_require_string(ctx, -2);
-		indigo_copy_name(item->name, key);
-		indigo_copy_value(item->text.value, duk_to_string(ctx, -1));
-		duk_get_prop_string(ctx, 5, key);
-		duk_get_prop_string(ctx, -1, "label");
-		indigo_copy_value(item->label, duk_to_string(ctx, -1));
-		duk_pop(ctx); // label
-		duk_pop(ctx); // item defs
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_text_property(tmp, device, property, property_group, property_label, state, perm, INDIGO_MAX_ITEMS);
+			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
+			tmp->count = 0;
+			while (duk_next(ctx, -1, true)) {
+				indigo_item *item = tmp->items + tmp->count;
+				const char *key = duk_require_string(ctx, -2);
+				indigo_copy_name(item->name, key);
+				indigo_copy_value(item->text.value, duk_to_string(ctx, -1));
+				duk_get_prop_string(ctx, 5, key);
+				duk_get_prop_string(ctx, -1, "label");
+				indigo_copy_value(item->label, duk_to_string(ctx, -1));
+				duk_pop(ctx); // label
+				duk_pop(ctx); // item defs
+				duk_pop_2(ctx); // item
+				tmp->count++;
+			}
+			indigo_define_property(agent_device, tmp, message);
+			return 0;
+		}
 	}
-	indigo_define_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
-	return 0;
+	return DUK_RET_ERROR;
 }
 
 //function indigo_define_number_property(device_name, property_name, property_group, property_label, items, item_labels, state, perm, message)
@@ -377,37 +384,42 @@ static duk_ret_t define_number_property(duk_context *ctx) {
 	indigo_property_state state = require_state(ctx, 6);
 	indigo_property_perm perm = require_perm(ctx, 7);
 	const char *message = duk_get_string(ctx, 8);
-	indigo_property *tmp = indigo_init_number_property(NULL, device, property, property_group, property_label, state, perm, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_item *item = tmp->items + i;
-		const char *key = duk_require_string(ctx, -2);
-		indigo_copy_name(item->name, key);
-		item->number.value = duk_to_number(ctx, -1);;
-		duk_get_prop_string(ctx, 5, key);
-		duk_get_prop_string(ctx, -1, "label");
-		indigo_copy_value(item->label, duk_to_string(ctx, -1));
-		duk_pop(ctx); // label
-		duk_get_prop_string(ctx, -1, "format");
-		indigo_copy_value(item->number.format, duk_to_string(ctx, -1));
-		duk_pop(ctx); // format
-		duk_get_prop_string(ctx, -1, "min");
-		item->number.min = duk_to_number(ctx, -1);
-		duk_pop(ctx); // min
-		duk_get_prop_string(ctx, -1, "max");
-		item->number.max = duk_to_number(ctx, -1);
-		duk_pop(ctx); // max
-		duk_get_prop_string(ctx, -1, "step");
-		item->number.step = duk_to_number(ctx, -1);
-		duk_pop(ctx); // step
-		duk_pop(ctx); // item defs
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_number_property(tmp, device, property, property_group, property_label, state, perm, INDIGO_MAX_ITEMS);
+			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
+			tmp->count = 0;
+			while (duk_next(ctx, -1, true)) {
+				indigo_item *item = tmp->items + tmp->count;
+				const char *key = duk_require_string(ctx, -2);
+				indigo_copy_name(item->name, key);
+				item->number.value = duk_to_number(ctx, -1);;
+				duk_get_prop_string(ctx, 5, key);
+				duk_get_prop_string(ctx, -1, "label");
+				indigo_copy_value(item->label, duk_to_string(ctx, -1));
+				duk_pop(ctx); // label
+				duk_get_prop_string(ctx, -1, "format");
+				indigo_copy_value(item->number.format, duk_to_string(ctx, -1));
+				duk_pop(ctx); // format
+				duk_get_prop_string(ctx, -1, "min");
+				item->number.min = duk_to_number(ctx, -1);
+				duk_pop(ctx); // min
+				duk_get_prop_string(ctx, -1, "max");
+				item->number.max = duk_to_number(ctx, -1);
+				duk_pop(ctx); // max
+				duk_get_prop_string(ctx, -1, "step");
+				item->number.step = duk_to_number(ctx, -1);
+				duk_pop(ctx); // step
+				duk_pop(ctx); // item defs
+				duk_pop_2(ctx); // item
+				tmp->count++;
+			}
+			indigo_define_property(agent_device, tmp, message);
+			return 0;
+		}
 	}
-	indigo_define_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
-	return 0;
+	return DUK_RET_ERROR;
 }
 
 //function indigo_define_switch_property(device_name, property_name, property_group, property_label, items, item_labels, state, perm, rule, message)
@@ -421,25 +433,30 @@ static duk_ret_t define_switch_property(duk_context *ctx) {
 	indigo_property_perm perm = require_perm(ctx, 7);
 	indigo_rule rule = require_rule(ctx, 8);
 	const char *message = duk_get_string(ctx, 9);
-	indigo_property *tmp = indigo_init_switch_property(NULL, device, property, property_group, property_label, state, perm, rule, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_item *item = tmp->items + i;
-		const char *key = duk_require_string(ctx, -2);
-		indigo_copy_name(item->name, key);
-		item->number.value = duk_to_boolean(ctx, -1);;
-		duk_get_prop_string(ctx, 5, key);
-		duk_get_prop_string(ctx, -1, "label");
-		indigo_copy_value(item->label, duk_to_string(ctx, -1));
-		duk_pop(ctx); // label
-		duk_pop(ctx); // item defs
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_switch_property(tmp, device, property, property_group, property_label, state, perm, rule, INDIGO_MAX_ITEMS);
+			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
+			tmp->count = 0;
+			while (duk_next(ctx, -1, true)) {
+				indigo_item *item = tmp->items + tmp->count;
+				const char *key = duk_require_string(ctx, -2);
+				indigo_copy_name(item->name, key);
+				item->number.value = duk_to_boolean(ctx, -1);;
+				duk_get_prop_string(ctx, 5, key);
+				duk_get_prop_string(ctx, -1, "label");
+				indigo_copy_value(item->label, duk_to_string(ctx, -1));
+				duk_pop(ctx); // label
+				duk_pop(ctx); // item defs
+				duk_pop_2(ctx); // item
+				tmp->count++;
+			}
+			indigo_define_property(agent_device, tmp, message);
+			return 0;
+		}
 	}
-	indigo_define_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
-	return 0;
+	return DUK_RET_ERROR;
 }
 
 //function indigo_define_light_property(device_name, property_name, property_group, property_label, items, item_labels, state, message)
@@ -451,25 +468,30 @@ static duk_ret_t define_light_property(duk_context *ctx) {
 	const char *property_label = duk_require_string(ctx, 3);
 	indigo_property_state state = require_state(ctx, 6);
 	const char *message = duk_get_string(ctx, 7);
-	indigo_property *tmp = indigo_init_light_property(NULL, device, property, property_group, property_label, state, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_item *item = tmp->items + i;
-		const char *key = duk_require_string(ctx, -2);
-		indigo_copy_name(item->name, key);
-		item->light.value = require_state(ctx, -1);;
-		duk_get_prop_string(ctx, 5, key);
-		duk_get_prop_string(ctx, -1, "label");
-		indigo_copy_value(item->label, duk_to_string(ctx, -1));
-		duk_pop(ctx); // label
-		duk_pop(ctx); // item defs
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_light_property(tmp, device, property, property_group, property_label, state, INDIGO_MAX_ITEMS);
+			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
+			tmp->count = 0;
+			while (duk_next(ctx, -1, true)) {
+				indigo_item *item = tmp->items + tmp->count;
+				const char *key = duk_require_string(ctx, -2);
+				indigo_copy_name(item->name, key);
+				item->light.value = require_state(ctx, -1);;
+				duk_get_prop_string(ctx, 5, key);
+				duk_get_prop_string(ctx, -1, "label");
+				indigo_copy_value(item->label, duk_to_string(ctx, -1));
+				duk_pop(ctx); // label
+				duk_pop(ctx); // item defs
+				duk_pop_2(ctx); // item
+				tmp->count++;
+			}
+			indigo_define_property(agent_device, tmp, message);
+			return 0;
+		}
 	}
-	indigo_define_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
-	return 0;
+	return DUK_RET_ERROR;
 }
 
 //function indigo_update_text_property(device_name, property_name, items, state, message)
@@ -479,17 +501,26 @@ static duk_ret_t update_text_property(duk_context *ctx) {
 	const char *property = duk_require_string(ctx, 1);
 	indigo_property_state state = require_state(ctx, 3);
 	const char *message = duk_get_string(ctx, 4);
-	indigo_property *tmp = indigo_init_text_property(NULL, device, property, "", "", state, INDIGO_RW_PERM, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_copy_name(tmp->items[i].name, duk_require_string(ctx, -2));
-		indigo_copy_value(tmp->items[i].text.value, duk_to_string(ctx, -1));
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
+			duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
+			while (duk_next(ctx, -1, true)) {
+				const char *name = duk_require_string(ctx, -2);
+				for (int j = 0; j < tmp->count; j++) {
+					indigo_item *item = tmp->items + j;
+					if (!strcmp(item->name, name)) {
+						indigo_copy_name(tmp->items[j].name, name);
+						indigo_copy_value(tmp->items[j].text.value, duk_to_string(ctx, -1));
+						break;
+					}
+				}
+				duk_pop_2(ctx); // item
+			}
+			tmp->state = state;
+			indigo_update_property(agent_device, tmp, message);
+		}
 	}
-	indigo_update_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
 	return 0;
 }
 
@@ -500,17 +531,26 @@ static duk_ret_t update_number_property(duk_context *ctx) {
 	const char *property = duk_require_string(ctx, 1);
 	indigo_property_state state = require_state(ctx, 3);
 	const char *message = duk_get_string(ctx, 4);
-	indigo_property *tmp = indigo_init_number_property(NULL, device, property, "", "", state, INDIGO_RW_PERM, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_copy_name(tmp->items[i].name, duk_require_string(ctx, -2));
-		tmp->items[i].number.value = duk_to_number(ctx, -1);
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
+			duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY);
+			while (duk_next(ctx, -1, true)) {
+				const char *name = duk_require_string(ctx, -2);
+				for (int j = 0; j < tmp->count; j++) {
+					indigo_item *item = tmp->items + j;
+					if (!strcmp(item->name, name)) {
+						indigo_copy_name(tmp->items[j].name, name);
+						tmp->items[j].number.value = duk_to_number(ctx, -1);
+						break;
+					}
+				}
+				duk_pop_2(ctx); // item
+			}
+			tmp->state = state;
+			indigo_update_property(agent_device, tmp, message);
+		}
 	}
-	indigo_update_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
 	return 0;
 }
 
@@ -521,17 +561,26 @@ static duk_ret_t update_switch_property(duk_context *ctx) {
 	const char *property = duk_require_string(ctx, 1);
 	indigo_property_state state = require_state(ctx, 3);
 	const char *message = duk_get_string(ctx, 4);
-	indigo_property *tmp = indigo_init_switch_property(NULL, device, property, "", "", state, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_copy_name(tmp->items[i].name, duk_require_string(ctx, -2));
-		tmp->items[i].sw.value = duk_to_boolean(ctx, -1);
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
+			duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
+			while (duk_next(ctx, -1, true)) {
+				const char *name = duk_require_string(ctx, -2);
+				for (int j = 0; j < tmp->count; j++) {
+					indigo_item *item = tmp->items + j;
+					if (!strcmp(item->name, name)) {
+						indigo_copy_name(tmp->items[j].name, name);
+						tmp->items[j].sw.value = duk_to_boolean(ctx, -1);
+						break;
+					}
+				}
+				duk_pop_2(ctx); // item
+			}
+			tmp->state = state;
+			indigo_update_property(agent_device, tmp, message);
+		}
 	}
-	indigo_update_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
 	return 0;
 }
 
@@ -542,17 +591,26 @@ static duk_ret_t update_light_property(duk_context *ctx) {
 	const char *property = duk_require_string(ctx, 1);
 	indigo_property_state state = require_state(ctx, 3);
 	const char *message = duk_get_string(ctx, 4);
-	indigo_property *tmp = indigo_init_light_property(NULL, device, property, "", "", state, INDIGO_MAX_ITEMS);
-	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
-	int i = 0;
-	while (duk_next(ctx, -1, true)) {
-		indigo_copy_name(tmp->items[i].name, duk_require_string(ctx, -2));
-		tmp->items[i].sw.value = require_state(ctx, -1);
-		duk_pop_2(ctx); // item
-		tmp->count = ++i;
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
+			duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
+			while (duk_next(ctx, -1, true)) {
+				const char *name = duk_require_string(ctx, -2);
+				for (int j = 0; j < tmp->count; j++) {
+					indigo_item *item = tmp->items + j;
+					if (!strcmp(item->name, name)) {
+						indigo_copy_name(tmp->items[j].name, name);
+						tmp->items[j].sw.value = require_state(ctx, -1);
+						break;
+					}
+				}
+				duk_pop_2(ctx); // item
+			}
+			tmp->state = state;
+			indigo_update_property(agent_device, tmp, message);
+		}
 	}
-	indigo_update_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
 	return 0;
 }
 
@@ -562,9 +620,14 @@ static duk_ret_t delete_property(duk_context *ctx) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_get_string(ctx, 1);
 	const char *message = duk_get_string(ctx, 2);
-	indigo_property *tmp = indigo_init_light_property(NULL, device, property, "", "", INDIGO_OK_STATE, INDIGO_MAX_ITEMS);
-	indigo_delete_property(agent_device, tmp, message);
-	indigo_release_property(tmp);
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+		if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
+			indigo_delete_property(agent_device, tmp, message);
+			indigo_release_property(tmp);
+			PRIVATE_DATA->agent_cached_property[i] = NULL;
+		}
+	}
 	return 0;
 }
 
@@ -744,6 +807,11 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		if (script_property)
 			indigo_define_property(device, script_property, NULL);
 	}
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *cached_property = PRIVATE_DATA->agent_cached_property[i];
+		if (cached_property)
+			indigo_define_property(device, cached_property, NULL);
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	duk_push_global_object(PRIVATE_DATA->ctx);
 	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_enumerate_properties")) {
@@ -918,6 +986,12 @@ static indigo_result agent_device_detach(indigo_device *device) {
 		if (script_property)
 			indigo_release_property(script_property);
 	}
+	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
+		indigo_property *cached_property = PRIVATE_DATA->agent_cached_property[i];
+		if (cached_property)
+			indigo_release_property(cached_property);
+	}
+
 	return indigo_device_detach(device);
 }
 
