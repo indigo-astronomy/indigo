@@ -880,6 +880,8 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value =
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value =
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
+	DEVICE_PRIVATE_DATA->rmse_ra_threshold =
+	DEVICE_PRIVATE_DATA->rmse_dec_threshold = 0;
 	if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value) {
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value = -1;
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -967,9 +969,15 @@ static void guide_process(indigo_device *device) {
 			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0) {
 				bool dithering_finished = false;
 				if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
-					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
+					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0)
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
+					else
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK;
 				} else {
-					dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
+					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0)
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
+					else
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK;
 				}
 				if (dithering_finished) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
