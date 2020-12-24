@@ -699,7 +699,10 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		if (property == NULL) return NULL;
+		if (property == NULL)
+			return NULL;
+	} else {
+		indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -720,7 +723,10 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		if (property == NULL) return NULL;
+		if (property == NULL)
+			return NULL;
+	} else {
+		indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -742,7 +748,10 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		if (property == NULL) return NULL;
+		if (property == NULL)
+			return NULL;
+	} else {
+		indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -763,7 +772,10 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		if (property == NULL) return NULL;
+		if (property == NULL)
+			return NULL;
+	} else {
+		indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
