@@ -36,7 +36,7 @@ Driver is developed and tested with:
 * Input 5 -> GPIO 23
 * Input 6 -> GPIO 24
 * Input 7 -> GPIO 25
-* Input 8 -> GPIO 03
+* Input 8 -> GPIO 20
 
 ### Outputs
 * Output 1 -> GPIO 18
@@ -46,4 +46,7 @@ Driver is developed and tested with:
 * Output 5 -> GPIO 16
 * Output 6 -> GPIO 05
 * Output 7 -> GPIO 06
-* Output 8 -> GPIO 02
+* Output 8 -> GPIO 19
+
+NOTE: As of version 2.0.0.3 pins GPIO 02 and GPIO 03 are not used by the driver, as they are the default I2C pins.
+GPIO 19 and GPIO 20 are used instead.

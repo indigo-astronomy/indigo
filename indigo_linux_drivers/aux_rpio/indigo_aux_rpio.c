@@ -25,7 +25,7 @@
 
 #include "indigo_aux_rpio.h"
 
-#define DRIVER_VERSION         0x0002
+#define DRIVER_VERSION         0x0003
 #define AUX_DRAGONFLY_NAME     "Raspberry Pi GPIO"
 
 #include <stdlib.h>
@@ -136,8 +136,8 @@ static void create_device();
 static void delete_device();
 
 
-static int input_pins[]  = { 4,17,27,22,23,24,25, 3};
-static int output_pins[] = {18,12,13,26,16, 5, 6, 2};
+static int input_pins[]  = { 4, 17, 27, 22, 23, 24, 25, 20};
+static int output_pins[] = {18, 12, 13, 26, 16,  5,  6, 19};
 
 
 static bool rpio_export(int pin) {
