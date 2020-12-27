@@ -49,8 +49,8 @@ INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 
 STABLE_DRIVERS = agent_alignment agent_auxiliary agent_guider agent_imager agent_lx200_server agent_mount agent_snoop ao_sx aux_cloudwatcher aux_dragonfly aux_dsusb aux_fbc aux_flatmaster aux_flipflat aux_joystick aux_mgbox aux_ppb aux_sqm aux_upb aux_usbdp ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_iidc ccd_mi ccd_ptp ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek ccd_uvc dome_dragonfly dome_nexdome3 dome_simulator focuser_asi focuser_dmfc focuser_dsd focuser_efa focuser_fcusb focuser_fli focuser_focusdreampro focuser_lunatico focuser_moonlite focuser_steeldrive2 focuser_usbv3 focuser_wemacro gps_gpsd gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_gpusb mount_ioptron mount_lx200 mount_nexstar mount_nexstaraux mount_pmc8 mount_simulator mount_synscan mount_temma rotator_lunatico rotator_simulator system_ascol wheel_asi wheel_atik wheel_fli wheel_manual wheel_qhy wheel_sx aux_rpio ccd_ica focuser_wemacro_bt guider_eqmac focuser_mypro2
 UNSTABLE_DRIVERS = ccd_qhy ccd_qhy2
-UNTESTED_DRIVERS = agent_scripting aux_arteskyflat aux_rts dome_baader dome_nexdome focuser_lakeside focuser_mjkzz focuser_nfocus focuser_nstep focuser_optec focuser_robofocus wheel_optec wheel_quantum focuser_mjkzz_bt wheel_trutek wheel_xagyl
-DEVELOPED_DRIVERS = mount_rainbow
+UNTESTED_DRIVERS = agent_scripting aux_arteskyflat aux_rts dome_baader dome_nexdome focuser_lakeside focuser_mjkzz focuser_nfocus focuser_nstep focuser_optec focuser_robofocus wheel_optec wheel_quantum focuser_mjkzz_bt wheel_trutek wheel_xagyl mount_rainbow
+DEVELOPED_DRIVERS =
 OPTIONAL_DRIVERS = ccd_andor
 EXCLUDED_DRIVERS = ccd_gphoto2
 

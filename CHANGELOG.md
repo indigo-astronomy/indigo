@@ -3,8 +3,11 @@
 All notable changes to INDIGO framework will be documented in this file.
 
 ## [2.0-140] - Sun Dec 27 2020
-### Overall:
-- add missing indigo_agent_scripting
+
+### New Drivers:
+- indigo_mount_rainbow: RainbowAstro mount driver
+- indigo_agent_scripting: ECMAscript support for INDIGO
+
 
 ## [2.0-138] - Sun Dec 27 2020
 ### License Change
@@ -39,10 +42,6 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_focuser_fcusb: dual arch macOS libraries added
 - indigo_guider_gpusb: dual arch macOS libraries added
 - indigo_wheel_atik: dual arch macOS libraries added
-
-### New Drivers:
-- indigo_agent_scripting: add ECMAscript support for INDIGO
-
 
 ## [2.0-136] - Sat Dec 5 2020
 ### Overall:
@@ -223,10 +222,6 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_ccd_ptp: Nikon Z5 support added
 - indigo_ccd_simulator: streaming and BULB support added
 - indigo_agent_mount: stops capture on related ccd agent on park etc.
-
-### New Drivers:
-- indigo_mount_rainbow: RainbowAstro mount driver
-
 
 ## [2.0-124] - Sat Aug 01 2020
 ### Overal:
