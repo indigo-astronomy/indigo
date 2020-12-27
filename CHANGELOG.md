@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-138] - Sat Dec 27 2020
+## [2.0-138] - Sun Dec 27 2020
 ### License Change
 - INDIGO Astronomy open-source license version 2.0: Changed the license to more permissive and more compatible one.
 
