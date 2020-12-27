@@ -2,6 +2,44 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-138] - Sat Dec 27 2020
+### License Change
+- INDIGO Astronomy open-source license version 2.0: Changed the license to more permissive and more compatible one.
+
+### Overall:
+- Added ECMAscript support for INDIGO through indigo_agent_scripting.
+- Text property can have unlimited length
+- Web GUI has support for scripting
+- indigo_prop_tool has support for scripting
+- Offset and Gamma added to XISF metadata
+- Some JSON escaping fixed
+- Memory leaks fixed in XML and JSON parsers and  indigo_ccd_driver
+- JPEG preview stretching fixed for 16 bit images
+- CCD_JPEG_SETTINGS_PROPERTY doesn't show and hide
+- Data can be passed to timers using indigo_set_timer_with_data()
+- indigo_resize_property() call fixed
+
+### Driver Fixes:
+- indigo_agent_guider:
+	- fix guiding issue when with Declination guiding off
+	- calculate correctly RMSE RA and Dec
+	- dithering RMSE is cleared
+	- preview and guiding state transition fixed
+	- fix dithering issue
+
+- indigo_agent_alignment: interface code fixed
+- indigo_agent_imager: do not fail batch if the dithering failed to settle
+- indigo_focuser_asi: workaround for SDK issue related to device hotplug applied
+- indigo_mount_ioptron: park bug fixed
+- indigo_aux_dsusb: dual arch macOS libraries added
+- indigo_focuser_fcusb: dual arch macOS libraries added
+- indigo_guider_gpusb: dual arch macOS libraries added
+- indigo_wheel_atik: dual arch macOS libraries added
+
+### New Drivers:
+- indigo_agent_scripting: add ECMAscript support for INDIGO
+
+
 ## [2.0-136] - Sat Dec 5 2020
 ### Overall:
 - Optional automatic subframing added to autofocus and guiding processes in imager and guider agent
@@ -23,7 +61,7 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_ccd_qhy2:
 	- SDK updated
-    
+
 - indigo_ccd_altair:
 	- SDK updated
 
@@ -35,10 +73,10 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_focuser_dsd:
 	- temperature compensation fixed
-	
+
 - indigo_focuser_asi:
 	- temperature compensation fixed
-		
+
 ### New Drivers:
 - indigo_focuser_mypro2
 
