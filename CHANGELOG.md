@@ -2,6 +2,10 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-140] - Sun Dec 27 2020
+### Overall:
+- add missing indigo_agent_scripting
+
 ## [2.0-138] - Sun Dec 27 2020
 ### License Change
 - INDIGO Astronomy open-source license version 2.0: Changed the license to more permissive and more compatible one.
