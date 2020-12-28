@@ -647,7 +647,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcat(label, "CR2");
 					break;
 				default:
-					sprintf(label, "%sUnknown (0x%lx)", label, code & 0xFFFFFFFF);
+					sprintf(label, "%sUnknown (0x%llx)", label, code & 0xFFFFFFFF);
 					break;
 			}
 			return label;
@@ -1113,7 +1113,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 							}
 						}
 					} else {
-						//property->count = -1;
+						property->count = -1;
 					}
 					*next_updated++ = property;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "count = %d", property->count);
