@@ -69,7 +69,7 @@ else
 	ARCH_DETECTED = $(shell uname -m)
 	ifeq ($(OS_DETECTED),Darwin)
 		ifneq ($(ARCH_DETECTED), x86_64)
-			EXCLUDED_DRIVERS += ccd_altair ccd_apogee ccd_asi ccd_atik ccd_mi ccd_qhy ccd_qhy2 ccd_qsi ccd_sbig ccd_touptek focuser_asi guider_asi wheel_asi
+			EXCLUDED_DRIVERS += ccd_altair ccd_asi ccd_atik ccd_mi ccd_qhy ccd_qhy2 ccd_qsi ccd_sbig ccd_touptek focuser_asi guider_asi wheel_asi
 		endif
 		CC = clang
 		AR = ar
