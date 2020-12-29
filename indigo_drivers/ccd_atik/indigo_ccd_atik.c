@@ -34,16 +34,19 @@
 #include <pthread.h>
 #include <sys/time.h>
 
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_driver_xml.h>
+
+#include "indigo_ccd_atik.h"
+
+#if !(defined(__APPLE__) && defined(__arm64__))
+
 #if defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <indigo/indigo_usb_utils.h>
-#include <indigo/indigo_driver_xml.h>
-
-#include "indigo_ccd_atik.h"
 #include "AtikCameras.h"
 
 #define PRIVATE_DATA        ((atik_private_data *)device->private_data)
@@ -1005,3 +1008,22 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 
 	return INDIGO_OK;
 }
+
+#else
+
+indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "Atik Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	
+	switch(action) {
+		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_SHUTDOWN:
+			return INDIGO_UNSUPPORTED_ARCH;
+		case INDIGO_DRIVER_INFO:
+			break;
+	}
+	return INDIGO_OK;
+}
+
+#endif

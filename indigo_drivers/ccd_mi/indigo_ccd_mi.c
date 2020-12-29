@@ -35,16 +35,19 @@
 #include <pthread.h>
 #include <sys/time.h>
 
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_driver_xml.h>
+
+#include "indigo_ccd_mi.h"
+
+#if !(defined(__APPLE__) && defined(__arm64__))
+
 #if defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <indigo/indigo_usb_utils.h>
-#include <indigo/indigo_driver_xml.h>
-
-#include "indigo_ccd_mi.h"
 #include <gxccd.h>
 
 #define MI_VID				0x1347
@@ -822,3 +825,22 @@ indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *inf
 
 	return INDIGO_OK;
 }
+
+#else
+
+indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "Moravian Instruments Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	
+	switch(action) {
+		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_SHUTDOWN:
+			return INDIGO_UNSUPPORTED_ARCH;
+		case INDIGO_DRIVER_INFO:
+			break;
+	}
+	return INDIGO_OK;
+}
+
+#endif

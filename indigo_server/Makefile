@@ -36,11 +36,11 @@ uninstall:
 status:
 	@printf "\nindigo_server -------------------------\n\n"
 
-clean:
+clean: status
 	rm -f *.o $(BUILD_BIN)/indigo_server *.data resource/*.data
 
-clean-all: clean
-
+clean-all: status
+	git clean -dfx
 
 $(BUILD_BIN)/indigo_server: ctrlpanel indigo_server.o indigo_cat_data.o $(SIMULATOR_LIBS)
 ifeq ($(OS_DETECTED),Darwin)

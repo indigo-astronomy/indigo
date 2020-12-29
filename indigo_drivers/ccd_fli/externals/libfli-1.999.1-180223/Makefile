@@ -35,7 +35,7 @@ endif
 DIR	= $(shell pwd)
 CC	= gcc
 INC	= $(DIR) $(DIR)/unix
-CFLAGS	= -D__LIBUSB__ -Wall -O3 -fPIC -g $(patsubst %, -I%, $(INC))
+CFLAGS	+= -D__LIBUSB__ -g $(patsubst %, -I%, $(INC))
 ####
 ##	To build with LibUSB keep "-D__LIBUSB__" flag above
 ##	To build without LibUSB remove this flag

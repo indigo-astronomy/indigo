@@ -36,10 +36,11 @@ uninstall:
 status:
 	@printf "\nindigo_tools -------------------------\n\n"
 
-clean:
+clean: status
 	rm -f *.o $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_drivers
 
-clean-all: clean
+clean-all: status
+	git clean -dfx
 
 $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
 	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) -lindigo

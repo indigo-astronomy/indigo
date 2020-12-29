@@ -99,9 +99,10 @@ typedef enum {
 	INDIGO_LOCK_ERROR,          ///< mutex lock error
 	INDIGO_NOT_FOUND,           ///< unknown client/device/property/item etc.
 	INDIGO_CANT_START_SERVER,   ///< network server start failure
-	INDIGO_DUPLICATED,			///< duplicated items etc.
+	INDIGO_DUPLICATED,					///< duplicated items etc.
 	INDIGO_BUSY,                ///< operation failed because the resourse is busy.
-	INDIGO_GUIDE_ERROR          ///< Guide process error (srar lost, SNR too low etc..).
+	INDIGO_GUIDE_ERROR,         ///< Guide process error (srar lost, SNR too low etc..).
+	INDIGO_UNSUPPORTED_ARCH          	///< Unsupported architecture.
 } indigo_result;
 
 /** Property data type.
