@@ -24,10 +24,10 @@ LIBGPS=libgps.a
 
 ifeq ($(OS_DETECTED),Darwin)
 	CC=gcc
-	CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -mmacosx-version-min=10.10
-	LDFLAGS=-framework CoreFoundation -framework IOKit -Llib/macOS
+	CPPFLAGS=-arch arm64 -arch x86_64 -fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -mmacosx-version-min=10.10
+	LDFLAGS=-arch arm64 -arch x86_64 -framework CoreFoundation -framework IOKit -Llib/macOS
 	AR=ar
-	ARFLAGS=-rv
+	ARFLAGS=-rus
 endif
 
 ifeq ($(OS_DETECTED),Linux)

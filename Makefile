@@ -68,16 +68,13 @@ else
 	OS_DETECTED = $(shell uname -s)
 	ARCH_DETECTED = $(shell uname -m)
 	ifeq ($(OS_DETECTED),Darwin)
-		ifneq ($(ARCH_DETECTED), x86_64)
-			EXCLUDED_DRIVERS += ccd_altair ccd_asi ccd_atik ccd_mi ccd_qhy ccd_qhy2 ccd_qsi ccd_sbig ccd_touptek focuser_asi guider_asi wheel_asi
-		endif
 		CC = clang
-		AR = ar
-		CFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
-		CXXFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
-		MFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
-		LDFLAGS = -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L$(BUILD_LIB)
-		ARFLAGS = -rv
+		AR = /usr/bin/libtool
+		CFLAGS = $(DEBUG_BUILD) -arch arm64 -arch x86_64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
+		CXXFLAGS = $(DEBUG_BUILD) -arch arm64 -arch x86_64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
+		MFLAGS = $(DEBUG_BUILD) -arch arm64 -arch x86_64 -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
+		LDFLAGS = -arch arm64 -arch x86_64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L$(BUILD_LIB)
+		ARFLAGS = -static -o
 		SOEXT = dylib
 		INSTALL_ROOT = $(INDIGO_ROOT)/install
 	endif
@@ -290,7 +287,7 @@ endif
 	@$(MAKE)	-C indigo_server clean
 	@$(MAKE)	-C indigo_tools clean
 
-clean-all:
+clean-all: Makefile.inc
 	@$(MAKE)	-C indigo_libs clean-all
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean-all
 ifeq ($(OS_DETECTED),Darwin)
@@ -304,6 +301,7 @@ endif
 	@$(MAKE)	-C indigo_server clean-all
 	@$(MAKE)	-C indigo_tools clean-all
 	rm -rf $(BUILD_ROOT)
+	rm -rf Makefile.inc
 
 init: Makefile.inc
 	install -d -m 0755 $(BUILD_ROOT)

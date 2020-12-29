@@ -35,15 +35,17 @@
 #include <stdbool.h>
 #include <sys/time.h>
 
+#include <indigo/indigo_driver_xml.h>
+#include "indigo_wheel_asi.h"
+
+#if !(defined(__APPLE__) && defined(__arm64__))
+
 #if defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <indigo/indigo_driver_xml.h>
-
-#include "indigo_wheel_asi.h"
 #include <EFW_filter.h>
 
 #define ASI_VENDOR_ID                   0x03c3
@@ -445,3 +447,22 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 
 	return INDIGO_OK;
 }
+
+#else
+
+indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "ZWO ASI Filter Wheel", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	
+	switch(action) {
+		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_SHUTDOWN:
+			return INDIGO_UNSUPPORTED_ARCH;
+		case INDIGO_DRIVER_INFO:
+			break;
+	}
+	return INDIGO_OK;
+}
+
+#endif

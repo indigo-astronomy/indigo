@@ -85,7 +85,6 @@ all: status $(MAKE_SDK) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 endif
 
 status:
-	@printf "\n$(DRIVER) ---------------------------------------\n\n"
 	@printf "Sources:    $(notdir $(SOURCES))\n"
 	@printf "Archive:    $(notdir $(DRIVER_A))\n"
 	@printf "SO library: $(notdir $(DRIVER_SO))\n"
@@ -163,17 +162,8 @@ ifneq ($(SDK_LIB_SO),)
 	rm -f $(addprefix $(BUILD_LIB)/, $(notdir $(addsuffix *.$(SOEXT), $(basename $(SDK_LIB_SO)))))
 endif
 
-clean-all: clean
-ifneq ($(wildcard $(SDK_CONFIGURE)),)
-ifneq ($(wildcard $(SDK_DIR)/Makefile),)
-	make -C $(SDK_DIR) maintainer-clean
-	rm -rf $(SDK_DIR)/build
-	rm -rf $(SDK_DIR)/Makefile
-endif
-ifneq ($(wildcard $(SDK_CONFIGURE)),)
-	rm -rf $(SDK_CONFIGURE)
-endif
-endif
+clean-all: status
+	git clean -dfx
 
 $(SDK_LIB_A): $(SDK_DIR)/Makefile
 ifneq ($(wildcard $(SDK_CONFIGURE_IN)),)

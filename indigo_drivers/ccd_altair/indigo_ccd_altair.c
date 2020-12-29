@@ -34,12 +34,14 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include <altaircam.h>
-
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
 
 #include "indigo_ccd_altair.h"
+
+#if !(defined(__APPLE__) && defined(__arm64__))
+
+#include <altaircam.h>
 
 #define PRIVATE_DATA        							((altair_private_data *)device->private_data)
 
@@ -1073,3 +1075,22 @@ indigo_result indigo_ccd_altair(indigo_driver_action action, indigo_driver_info 
 
 	return INDIGO_OK;
 }
+
+#else
+
+indigo_result indigo_ccd_altair(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "AltairAstro Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	
+	switch(action) {
+		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_SHUTDOWN:
+			return INDIGO_UNSUPPORTED_ARCH;
+		case INDIGO_DRIVER_INFO:
+			break;
+	}
+	return INDIGO_OK;
+}
+
+#endif
