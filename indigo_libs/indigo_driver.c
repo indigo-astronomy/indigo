@@ -33,7 +33,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <poll.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
