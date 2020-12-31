@@ -23,11 +23,17 @@ endif
 LIBGPS=libgps.a
 
 ifeq ($(OS_DETECTED),Darwin)
-	CC=gcc
-	CPPFLAGS=-arch arm64 -arch x86_64 -fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -mmacosx-version-min=10.10
-	LDFLAGS=-arch arm64 -arch x86_64 -framework CoreFoundation -framework IOKit -Llib/macOS
-	AR=ar
-	ARFLAGS=-rus
+	MAC_ARCH = -arch x86_64
+	CLANG_VERSION_MAJOR = $(shell clang -v 2>&1 | grep "Apple LLVM version" | awk -F' ' '{print $$4;}' | awk -F'.' '{print $$1;}')
+	CLANG_GE_12 := $(shell [ $(CLANG_VERSION_MAJOR) -ge 12 ] && echo true)
+	ifeq ($(CLANG_GT_12),true)
+		MAC_ARCH += -arch arm64
+	endif
+	CC = gcc
+	CPPFLAGS = $(MAC_ARCH) -fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -mmacosx-version-min=10.10
+	LDFLAGS = $(MAC_ARCH) -framework CoreFoundation -framework IOKit -Llib/macOS
+	AR = ar
+	ARFLAGS = -rus
 endif
 
 ifeq ($(OS_DETECTED),Linux)
