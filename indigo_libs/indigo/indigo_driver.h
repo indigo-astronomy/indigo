@@ -276,7 +276,7 @@ extern indigo_result indigo_global_unlock(indigo_device *device);
 /** Device is disconnected.
  */
 
-#define IS_DISCONNECTED	(DEVICE_CONTEXT != NULL && CONNECTION_DISCONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state != INDIGO_BUSY_STATE)
+#define IS_DISCONNECTED	((DEVICE_CONTEXT == NULL) || (DEVICE_CONTEXT != NULL && CONNECTION_DISCONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state != INDIGO_BUSY_STATE))
 
 /** Attach callback function.
  */
