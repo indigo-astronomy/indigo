@@ -282,7 +282,7 @@ static void restore_subframe(indigo_device *device) {
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
 		/* TRICKY: No idea why but this prevents ensures frame to be restored correctly */
-		indigo_usleep(0.1 * ONE_SECOND_DELAY);
+		indigo_usleep(0.5 * ONE_SECOND_DELAY);
 		/* TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
 		   but selection property should not be updated. */
 		capture_raw_frame(device);
