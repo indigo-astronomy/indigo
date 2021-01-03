@@ -230,160 +230,159 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			if (strchr(device_image_property->device, '@'))
 				indigo_populate_http_blob_item(device_image_property->items);
 			indigo_raw_header *header = (indigo_raw_header *)(device_image_property->items->blob.value);
-			if (header && (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48)) {
-				if (AGENT_GUIDER_STARS_PROPERTY->state == INDIGO_BUSY_STATE || (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value && AGENT_GUIDER_SELECTION_X_ITEM->number.value == 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value == 0)) {
-					int star_count;
-					indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-					indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, MAX_STAR_COUNT, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
-					AGENT_GUIDER_STARS_PROPERTY->count = star_count + 1;
-					for (int i = 0; i < star_count; i++) {
-						char name[8];
-						char label[INDIGO_NAME_SIZE];
-						snprintf(name, sizeof(name), "%d", i);
-						snprintf(label, sizeof(label), "[%d, %d]", (int)DEVICE_PRIVATE_DATA->stars[i].x, (int)DEVICE_PRIVATE_DATA->stars[i].y);
-						indigo_init_switch_item(AGENT_GUIDER_STARS_PROPERTY->items + i + 1, name, label, false);
-					}
-					AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-				}
-				if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value && AGENT_GUIDER_SELECTION_X_ITEM->number.value == 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value == 0 && AGENT_GUIDER_STARS_PROPERTY->count > 1) {
-					AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].x;
-					AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].y;
-					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-				}
-				if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
-					indigo_result result;
-					AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
-					AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
-					indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
-					DEVICE_PRIVATE_DATA->stack_size = 0;
-					DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
-					if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-						result = indigo_donuts_frame_digest(
-							header->signature,
-							(void*)header + sizeof(indigo_raw_header),
-							header->width, header->height,
-							&DEVICE_PRIVATE_DATA->reference
-						);
-						AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
-						AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
-						AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
-						if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && DEVICE_PRIVATE_DATA->reference.snr < 9) {
-							result = INDIGO_FAILED;
-							indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
-						}
-					} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
-						result = indigo_centroid_frame_digest(
-							header->signature,
-							(void*)header + sizeof(indigo_raw_header),
-							header->width,
-							header->height,
-							&DEVICE_PRIVATE_DATA->reference
-						);
-					} else {
-						result = indigo_selection_frame_digest(
-							header->signature,
-							(void*)header + sizeof(indigo_raw_header),
-							&AGENT_GUIDER_SELECTION_X_ITEM->number.value,
-							&AGENT_GUIDER_SELECTION_Y_ITEM->number.value,
-							AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
-							header->width,
-							header->height,
-							&DEVICE_PRIVATE_DATA->reference
-						);
-						if (result == INDIGO_OK) {
-							indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-						} else if (result == INDIGO_GUIDE_ERROR) {
-							indigo_send_message(device, "Can not detect star in the selection");
-						}
-					}
-					if (result == INDIGO_OK) {
-						if (DEVICE_PRIVATE_DATA->reference.algorithm == centroid) {
-							AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_x + AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-							AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_y + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
-						}
-						AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
-						indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-					} else {
-						indigo_release_property(local_exposure_property);
-						return INDIGO_ALERT_STATE;
-					}
-				} else if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value > 0) {
-					indigo_frame_digest digest = { 0 };
-					indigo_result result;
-					if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-						result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
-						AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
-						if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && digest.snr < 9) {
-							result = INDIGO_FAILED;
-							indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
-						}
-					} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
-						result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
-					} else {
-						result = indigo_selection_frame_digest(
-							header->signature,
-							(void*)header + sizeof(indigo_raw_header),
-							&AGENT_GUIDER_SELECTION_X_ITEM->number.value,
-							&AGENT_GUIDER_SELECTION_Y_ITEM->number.value,
-							AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
-							header->width,
-							header->height,
-							&digest
-						);
-						if (result == INDIGO_OK) {
-							indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-						} else if (result == INDIGO_GUIDE_ERROR) {
-							if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
-								indigo_send_message(device, "Can not detect star in the selection");
-								DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
-							}
-							return INDIGO_OK_STATE;
-						}
-					}
-					if (result == INDIGO_OK) {
-						double drift_x, drift_y;
-						result = indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
-						DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-						DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
-						memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
-						memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
-						DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-						DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
-						if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK)
-							DEVICE_PRIVATE_DATA->stack_size++;
-						if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING || AGENT_GUIDER_STATS_DITHERING_ITEM->number.value) {
-							DEVICE_PRIVATE_DATA->avg_drift_x = DEVICE_PRIVATE_DATA->drift_x;
-							DEVICE_PRIVATE_DATA->avg_drift_y = DEVICE_PRIVATE_DATA->drift_y;
-						} else {
-							double avg_x, avg_y;
-							avg_x = DEVICE_PRIVATE_DATA->stack_x[0];
-							avg_y = DEVICE_PRIVATE_DATA->stack_y[0];
-							int count = (int)fmin(AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value, DEVICE_PRIVATE_DATA->stack_size);
-							for (int i = 1; i < count; i++) {
-								avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
-								avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
-							}
-							DEVICE_PRIVATE_DATA->avg_drift_x = avg_x / count;
-							DEVICE_PRIVATE_DATA->avg_drift_y = avg_y / count;
-						}
-						if (result == INDIGO_OK) {
-							AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
-							AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_x) / 1000;
-							AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
-							DEVICE_PRIVATE_DATA->drift = sqrt(DEVICE_PRIVATE_DATA->drift_x * DEVICE_PRIVATE_DATA->drift_x + DEVICE_PRIVATE_DATA->drift_y * DEVICE_PRIVATE_DATA->drift_y);
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx (%.4g, %.4g)", DEVICE_PRIVATE_DATA->drift, DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
-						}
-					} else {
-						indigo_release_property(local_exposure_property);
-						return INDIGO_ALERT_STATE;
-					}
-					indigo_delete_frame_digest(&digest);
-				}
-			} else {
+			if (header == NULL && (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 				indigo_send_message(device, "Invalid image format, only RAW is supported");
 				indigo_release_property(local_exposure_property);
 				return INDIGO_ALERT_STATE;
+			}
+			if (AGENT_GUIDER_STARS_PROPERTY->state == INDIGO_BUSY_STATE || (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value && AGENT_GUIDER_SELECTION_X_ITEM->number.value == 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value == 0)) {
+				int star_count;
+				indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+				indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, MAX_STAR_COUNT, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
+				AGENT_GUIDER_STARS_PROPERTY->count = star_count + 1;
+				for (int i = 0; i < star_count; i++) {
+					char name[8];
+					char label[INDIGO_NAME_SIZE];
+					snprintf(name, sizeof(name), "%d", i);
+					snprintf(label, sizeof(label), "[%d, %d]", (int)DEVICE_PRIVATE_DATA->stars[i].x, (int)DEVICE_PRIVATE_DATA->stars[i].y);
+					indigo_init_switch_item(AGENT_GUIDER_STARS_PROPERTY->items + i + 1, name, label, false);
+				}
+				AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+			}
+			if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value && AGENT_GUIDER_SELECTION_X_ITEM->number.value == 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value == 0 && AGENT_GUIDER_STARS_PROPERTY->count > 1) {
+				AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].x;
+				AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].y;
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+			}
+			if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
+				indigo_result result;
+				AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
+				AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
+				indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
+				DEVICE_PRIVATE_DATA->stack_size = 0;
+				DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
+				if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+					result = indigo_donuts_frame_digest(
+						header->signature,
+						(void*)header + sizeof(indigo_raw_header),
+						header->width, header->height,
+						&DEVICE_PRIVATE_DATA->reference
+					);
+					AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
+					AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
+					AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
+					if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && DEVICE_PRIVATE_DATA->reference.snr < 9) {
+						result = INDIGO_FAILED;
+						indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+					}
+				} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
+					result = indigo_centroid_frame_digest(
+						header->signature,
+						(void*)header + sizeof(indigo_raw_header),
+						header->width,
+						header->height,
+						&DEVICE_PRIVATE_DATA->reference
+					);
+				} else {
+					result = indigo_selection_frame_digest(
+						header->signature,
+						(void*)header + sizeof(indigo_raw_header),
+						&AGENT_GUIDER_SELECTION_X_ITEM->number.value,
+						&AGENT_GUIDER_SELECTION_Y_ITEM->number.value,
+						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+						header->width,
+						header->height,
+						&DEVICE_PRIVATE_DATA->reference
+					);
+					if (result == INDIGO_OK) {
+						indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+					} else if (result == INDIGO_GUIDE_ERROR) {
+						indigo_send_message(device, "Can not detect star in the selection");
+					}
+				}
+				if (result == INDIGO_OK) {
+					if (DEVICE_PRIVATE_DATA->reference.algorithm == centroid) {
+						AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_x + AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
+						AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.centroid_y + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+					}
+					AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+				} else {
+					indigo_release_property(local_exposure_property);
+					return INDIGO_ALERT_STATE;
+				}
+			} else if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value > 0) {
+				indigo_frame_digest digest = { 0 };
+				indigo_result result;
+				if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+					result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
+					AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
+					if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && digest.snr < 9) {
+						result = INDIGO_FAILED;
+						indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+					}
+				} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
+					result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
+				} else {
+					result = indigo_selection_frame_digest(
+						header->signature,
+						(void*)header + sizeof(indigo_raw_header),
+						&AGENT_GUIDER_SELECTION_X_ITEM->number.value,
+						&AGENT_GUIDER_SELECTION_Y_ITEM->number.value,
+						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+						header->width,
+						header->height,
+						&digest
+					);
+					if (result == INDIGO_OK) {
+						indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+					} else if (result == INDIGO_GUIDE_ERROR) {
+						if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
+							indigo_send_message(device, "Can not detect star in the selection");
+							DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
+						}
+						return INDIGO_OK_STATE;
+					}
+				}
+				if (result == INDIGO_OK) {
+					double drift_x, drift_y;
+					result = indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
+					DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
+					DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+					memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
+					memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
+					DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
+					DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
+					if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK)
+						DEVICE_PRIVATE_DATA->stack_size++;
+					if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING || AGENT_GUIDER_STATS_DITHERING_ITEM->number.value) {
+						DEVICE_PRIVATE_DATA->avg_drift_x = DEVICE_PRIVATE_DATA->drift_x;
+						DEVICE_PRIVATE_DATA->avg_drift_y = DEVICE_PRIVATE_DATA->drift_y;
+					} else {
+						double avg_x, avg_y;
+						avg_x = DEVICE_PRIVATE_DATA->stack_x[0];
+						avg_y = DEVICE_PRIVATE_DATA->stack_y[0];
+						int count = (int)fmin(AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value, DEVICE_PRIVATE_DATA->stack_size);
+						for (int i = 1; i < count; i++) {
+							avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
+							avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
+						}
+						DEVICE_PRIVATE_DATA->avg_drift_x = avg_x / count;
+						DEVICE_PRIVATE_DATA->avg_drift_y = avg_y / count;
+					}
+					if (result == INDIGO_OK) {
+						AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+						AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_x) / 1000;
+						AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
+						DEVICE_PRIVATE_DATA->drift = sqrt(DEVICE_PRIVATE_DATA->drift_x * DEVICE_PRIVATE_DATA->drift_x + DEVICE_PRIVATE_DATA->drift_y * DEVICE_PRIVATE_DATA->drift_y);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx (%.4g, %.4g)", DEVICE_PRIVATE_DATA->drift, DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
+					}
+				} else {
+					indigo_release_property(local_exposure_property);
+					return INDIGO_ALERT_STATE;
+				}
+				indigo_delete_frame_digest(&digest);
 			}
 		}
 		indigo_release_property(local_exposure_property);
@@ -428,6 +427,10 @@ static void select_subframe(indigo_device *device) {
 			int window_size = AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.value * AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value;
 			int frame_left = rint((selection_x - window_size) / (double)GRID) * GRID;
 			int frame_top = rint((selection_y - window_size) / (double)GRID) * GRID;
+			if (selection_x - frame_left < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
+				frame_left -= GRID;
+			if (selection_y - frame_top < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
+				frame_top -= GRID;
 			int frame_width = (2 * window_size / GRID + 1) * GRID;
 			int frame_height = (2 * window_size / GRID + 1) * GRID;
 			DEVICE_PRIVATE_DATA->saved_frame_left = frame_left;
@@ -448,6 +451,22 @@ static void select_subframe(indigo_device *device) {
 			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_ccd_frame_property->device, CCD_FRAME_PROPERTY_NAME, 4, (const char **)names, values);
 		}
 	}
+}
+
+static void restore_subframe(indigo_device *device) {
+	indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
+	indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
+	DEVICE_PRIVATE_DATA->saved_frame = NULL;
+	AGENT_GUIDER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
+	AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
+	AGENT_GUIDER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
+	AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
+	// TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
+	// so that HFD, FWHM etc are evaluated correctly, but selection property should not be updated.
+	capture_raw_frame(device);
+	indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+	DEVICE_PRIVATE_DATA->saved_frame_left = 0;
+	DEVICE_PRIVATE_DATA->saved_frame_top = 0;
 }
 
 static indigo_property_state pulse_guide(indigo_device *device, double ra, double dec) {
@@ -1010,21 +1029,7 @@ static void guide_process(indigo_device *device) {
 		}
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	}
-	if (DEVICE_PRIVATE_DATA->saved_frame) {
-		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
-		indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
-		DEVICE_PRIVATE_DATA->saved_frame = NULL;
-		AGENT_GUIDER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
-		AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
-		AGENT_GUIDER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
-		AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
-		// TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
-		// so that HFD, FWHM etc are evaluated correctly, but selection property should not be updated.
-		capture_raw_frame(device);
-		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
-		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
-	}
+	restore_subframe(device);
 	indigo_delete_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	AGENT_GUIDER_DETECTION_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 	indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
