@@ -810,8 +810,6 @@ static bool autofocus(indigo_device *device) {
 			return false;
 		last_quality = quality;
 	}
-	while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-		indigo_usleep(200000);
 	capture_raw_frame(device);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		return false;
