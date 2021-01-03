@@ -370,7 +370,7 @@ static bool capture_raw_frame(indigo_device *device) {
 		if (strchr(device_image_property->device, '@'))
 			indigo_populate_http_blob_item(device_image_property->items);
 		indigo_raw_header *header = (indigo_raw_header *)(device_image_property->items->blob.value);
-		if (header && (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
+		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 			indigo_send_message(device, "Invalid image format, only RAW is supported");
 			return false;
 		}
