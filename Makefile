@@ -71,9 +71,8 @@ else
 		CC = clang
 		AR = /usr/bin/libtool
 		MAC_ARCH = -arch x86_64
-		CLANG_VERSION_MAJOR = $(shell clang -v 2>&1 | grep "Apple LLVM version" | awk -F' ' '{print $$4;}' | awk -F'.' '{print $$1;}')
-		CLANG_GE_12 := $(shell [ $(CLANG_VERSION_MAJOR) -ge 12 ] && echo true)
-		ifeq ($(CLANG_GT_12),true)
+		CLANG_VERSION_MAJOR = $(shell clang -v 2>&1 | grep "version" | awk -F' ' '{print $$4;}' | awk -F'.' '{print $$1;}')
+		ifeq ($(CLANG_VERSION_MAJOR),12)
 			MAC_ARCH += -arch arm64
 		endif
 		CFLAGS = $(DEBUG_BUILD) $(MAC_ARCH) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
