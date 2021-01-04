@@ -434,7 +434,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	/* Set threshold 10% above average value */
 	double threshold = 1.10 * sum / ((2 * radius + 1) * (2 * radius + 1));
 
-	INDIGO_DEBUG(indigo_log("Selection threshold = %.3f, max = %.3f", threshold, max));
+	INDIGO_DEBUG(indigo_debug("Selection threshold = %.3f, max = %.3f", threshold, max));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
@@ -613,7 +613,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	/* Set threshold 20% above average value */
 	double threshold = 1.20 * sum / size;
 
-	INDIGO_DEBUG(indigo_log("Centroid threshold = %.3f, max = %.3f", threshold, max));
+	INDIGO_DEBUG(indigo_debug("Centroid threshold = %.3f, max = %.3f", threshold, max));
 
 	ci = 1; li = 1;
 	switch (raw_type) {
@@ -1152,7 +1152,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	free(buf);
 
 	for (size_t i = 0;i < found; i++) {
-		INDIGO_DEBUG(indigo_log("indigo_find_stars: star #%u: x = %lf, y = %lf, ncdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].nc_distance, star_list[i].luminance));
+		INDIGO_DEBUG(indigo_debug("indigo_find_stars: star #%u: x = %lf, y = %lf, ncdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].nc_distance, star_list[i].luminance));
 	}
 
 	*stars_found = found;
