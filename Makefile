@@ -68,12 +68,12 @@ else
 	OS_DETECTED = $(shell uname -s)
 	ARCH_DETECTED = $(shell uname -m)
 	ifeq ($(OS_DETECTED),Darwin)
-		CC = clang
+		CC = /usr/bin/clang
 		AR = /usr/bin/libtool
-		MAC_ARCH = -arch x86_64
-		CLANG_VERSION_MAJOR = $(shell clang -v 2>&1 | grep "version" | awk -F' ' '{print $$4;}' | awk -F'.' '{print $$1;}')
-		ifeq ($(CLANG_VERSION_MAJOR),12)
-			MAC_ARCH += -arch arm64
+		ifeq ($(findstring arm64e,$(shell file $(CC) | head -1)),arm64e)
+			MAC_ARCH = -arch x86_64 -arch arm64
+		else
+			MAC_ARCH = -arch x86_64
 		endif
 		CFLAGS = $(DEBUG_BUILD) $(MAC_ARCH) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
 		CXXFLAGS = $(DEBUG_BUILD) $(MAC_ARCH) -mmacosx-version-min=10.10 -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
