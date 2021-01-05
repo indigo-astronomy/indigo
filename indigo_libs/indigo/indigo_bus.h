@@ -553,7 +553,7 @@ extern void indigo_property_copy_targets(indigo_property *property, indigo_prope
 /** Sort item values on description
  */
 
-extern void indigo_property_sort_items(indigo_property *property);
+extern void indigo_property_sort_items(indigo_property *property, int first);
 
 /** Request text property change.
  */

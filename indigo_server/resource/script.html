@@ -52,26 +52,27 @@
 						<div id="property" v-for="property in scriptsProperties()" :class="'col-md-' + 12 / columns">
 							<div class="card p-1 m-1 bg-light">
 								<form class="m-0">
-									<div v-if="property.name=='AGENT_SCRIPTING_ON_LOAD_SCRIPT' || property.name=='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT'" class="form-group row m-1 p-1">
-										<input type="text" class="form-control" :value="property.label" readonly>
-									</div>
-									<div v-else-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" @input="Vue.set(property, 'dirty', true)">
+									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
+										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="New script name" @input="Vue.set(property, 'dirty', true)">
 									</div>
 									<div v-else class="form-group row m-1 p-1">
 										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" :value="property.label" @input="Vue.set(property, 'dirty', true)">
 									</div>
 									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)"></textarea>
+										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="New script" @input="Vue.set(property, 'dirty', true)"></textarea>
 									</div>
 									<div v-else class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.items[property.items.length - 1].value }}</textarea>
+										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.item('SCRIPT').value }}</textarea>
+									</div>
+									<div class="float-left m-1 m-1 p-1">
+										<button type="button" class="btn btn-sm ml-1" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT').item(property.name).value ? 'btn-primary' : 'btn-default'" style="min-width: 6rem" data-toggle="tooltip" title="Execute script on agent load" @click="onLoad(property)">On load</button>
+										<button type="button" class="btn btn-sm ml-1" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT').item(property.name).value ? 'btn-primary' : 'btn-default'" style="min-width: 6rem" data-toggle="tooltip" title="Execute script on agent unload" @click="onUnload(property)">On unload</button>
 									</div>
 									<div class="float-right m-1 m-1 p-1">
-										<button v-if="property.name!='AGENT_SCRIPTING_ON_LOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success ml-1" :disabled="property.dirty" data-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
-										<button v-if="property.name!='AGENT_SCRIPTING_ON_LOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ON_UNLOAD_SCRIPT' && property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-danger ml-1" :disabled="property.dirty" data-toggle="tooltip" title="Delete script" @click="remove(property)">Delete</button>
-										<button v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-primary ml-1" data-toggle="tooltip" title="Save script name and text" @click="save(property)">Create</button>
-										<button v-else type="button" class="btn btn-sm btn-primary ml-1" data-toggle="tooltip" title="Save script name and text" @click="save(property); property.dirty = false">Save</button>
+										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success ml-1" style="min-width: 6rem" :disabled="property.dirty" data-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
+										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-danger ml-1" style="min-width: 6rem" :disabled="property.dirty" data-toggle="tooltip" title="Delete script" @click="remove(property)">Delete</button>
+										<button v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-primary ml-1" style="min-width: 6rem" data-toggle="tooltip" title="Create new script" @click="save(property)">Create</button>
+										<button v-else type="button" class="btn btn-sm btn-primary ml-1" style="min-width: 6rem" data-toggle="tooltip" title="Save script name and text" @click="save(property); property.dirty = false">Save</button>
 									</div>
 								</form>
 							</div>
@@ -146,6 +147,18 @@
 			guiSetup();
 		}
 	
+		function onLoad(property) {
+			var values = {};
+			values[property.name] = !INDIGO.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT').item(property.name).value;
+			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT', values);
+		}
+
+		function onUnload(property) {
+			var values = {};
+			values[property.name] = !INDIGO.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT').item(property.name).value;
+			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT', values);
+		}
+
 		function save(property) {
 			var values = {};
 			var name = $("#N_" + property.name);
@@ -158,16 +171,14 @@
 		function remove(property) {
 			save(property);
 			var values = {};
-			var name = $("#N_" + property.name);
-			values['NAME'] = name.val()
+			values[property.name] = true;
 			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_DELETE_SCRIPT', values);
 		}
 
 		function execute(property) {
 			save(property);
 			var values = {};
-			var name = $("#N_" + property.name);
-			values['NAME'] = name.val()
+			values[property.name] = true;
 			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
 		}
 	</script>

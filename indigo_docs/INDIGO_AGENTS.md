@@ -27,6 +27,8 @@ There are five basic agents - Imager Agent, Mount Agent, Guider Agent, Auxiliary
 
 - **Auxiliary Agent** controls auxiliary devices like power boxes, flat boxes, weather stations, sky quality meters, etc. The agent name is "*indigo_agent_auxiliary*".
 
+- **Scripting Agent** manages and executes INDIGO scripts. The agent name is "*indigo_agent_scripting*".
+
 - **Snoop Agent** is a special agent that enables the communication between the device drivers. Device drivers can not communicate between each other natively. To make it possible the **Snoop Agent** is used. For example The Mount can synchronize the time and the geographical coordinates from the GPS using the **Snoop Agent**. The agent name is "*indigo_agent_snoop*".
 
 **Agents** can also talk to each other. E.g. **Imager Agent** can initiate dithering in **Guider Agent** or to sync coordinates in **Mount Agent** to the center of a plate solved image. **Mount Agent** can set FITS metadata in **Imager Agent** or to stop guiding upon slew or parking request. Such agents we refer as related agents.

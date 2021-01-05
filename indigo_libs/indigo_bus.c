@@ -1142,9 +1142,9 @@ static int item_comparator(const void *item_1, const void *item_2) {
 	return strcasecmp(((indigo_item *)item_1)->label, ((indigo_item *)item_2)->label);
 }
 
-void indigo_property_sort_items(indigo_property *property) {
-	if (property->count > 1) {
-		qsort(property->items, property->count, sizeof(indigo_item), item_comparator);
+void indigo_property_sort_items(indigo_property *property, int first) {
+	if (property->count - first > 1) {
+		qsort(property->items + first, property->count - first, sizeof(indigo_item), item_comparator);
 	}
 }
 

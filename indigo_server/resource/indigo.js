@@ -12,7 +12,7 @@ var INDIGO = new Vue({
 		db: [],
 	  dark: false,
 		columns: 3,
-	  useAgent: false,
+	  useAgent: false
 	},
 	methods: {
 		findProperty: function(device, name) {
@@ -34,10 +34,6 @@ var INDIGO = new Vue({
 			var result = [];
 			var properties = INDIGO.devices['Scripting Agent'];
 			var property;
-			if ((property = properties['AGENT_SCRIPTING_ON_LOAD_SCRIPT']) != undefined)
-				result.push(property);
-			if ((property = properties['AGENT_SCRIPTING_ON_UNLOAD_SCRIPT']) != undefined)
-				result.push(property);
 			if ((property = properties['AGENT_SCRIPTING_ADD_SCRIPT']) != undefined)
 				result.push(property);
 			for (name in properties) {
