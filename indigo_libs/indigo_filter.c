@@ -379,8 +379,13 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 		indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_device_list_properties[i];
-		if (indigo_property_match(device_list, property))
+		if (indigo_property_match(device_list, property)) {
+			if (FILTER_DEVICE_CONTEXT->running_process) {
+				indigo_update_property(device, device_list, "You can't change selection now!");
+				return INDIGO_OK;
+			}
 			return update_device_list(device, client, device_list, property, FILTER_DEVICE_CONTEXT->device_name[i]);
+		}
 		device_list = FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i];
 		if (indigo_property_match(device_list, property))
 			return update_related_device_list(device, device_list, property);
