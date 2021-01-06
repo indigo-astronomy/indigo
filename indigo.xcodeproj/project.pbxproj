@@ -108,6 +108,7 @@
 		5979C87225473AE0005395BE /* indigo_avi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5979C87025473AE0005395BE /* indigo_avi.c */; };
 		5979C88A254A9EED005395BE /* indigo_wheel_qhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 5979C882254A9EED005395BE /* indigo_wheel_qhy.h */; };
 		5979C88B254A9EED005395BE /* indigo_wheel_qhy.c in Sources */ = {isa = PBXBuildFile; fileRef = 5979C886254A9EED005395BE /* indigo_wheel_qhy.c */; };
+		597E79DF25A5DB7D009B0817 /* indigo_agent_astrometry.c in Sources */ = {isa = PBXBuildFile; fileRef = 597E79DE25A5DB6E009B0817 /* indigo_agent_astrometry.c */; };
 		5980010A22E4E76700021D67 /* libapogee.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598000FC22E4E6BD00021D67 /* libapogee.a */; };
 		598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598005FD22E4FFEA00021D67 /* libqsiapi.a */; };
 		598786462540C69E00CE8B48 /* libtiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598786452540C62D00CE8B48 /* libtiff.a */; };
@@ -545,6 +546,7 @@
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
 		59F1AD1223FB15B300008F02 /* indigo_focuser_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */; };
 		59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */; };
+		59F50A3325A5DEDD00C19115 /* indigo_agent_astrometry.c in Sources */ = {isa = PBXBuildFile; fileRef = 597E79DE25A5DB6E009B0817 /* indigo_agent_astrometry.c */; };
 		59F682AB250FE9C400ABD731 /* indigo_focuser_robofocus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F682A4250FD48200ABD731 /* indigo_focuser_robofocus.c */; };
 		59F7E5EA2457669D00EF273A /* indigo_aux_cloudwatcher.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F7E5E62457616400EF273A /* indigo_aux_cloudwatcher.c */; };
 		59F7E5ED245878C700EF273A /* indigo_token.h in Headers */ = {isa = PBXBuildFile; fileRef = 59F7E5EC245878C700EF273A /* indigo_token.h */; };
@@ -1188,6 +1190,9 @@
 		597E4FD423EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
 		597E4FD623EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
 		597E4FD723EEE637007E0BF8 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		597E79DC25A5DB6E009B0817 /* indigo_agent_astrometry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_astrometry.h; sourceTree = "<group>"; };
+		597E79DD25A5DB6E009B0817 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		597E79DE25A5DB6E009B0817 /* indigo_agent_astrometry.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_astrometry.c; sourceTree = "<group>"; };
 		598000F922E44A0B00021D67 /* build_debs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_debs.sh; sourceTree = "<group>"; };
 		598000FC22E4E6BD00021D67 /* libapogee.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapogee.a; sourceTree = "<group>"; };
 		598000FF22E4E6BD00021D67 /* libapogee.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapogee.a; sourceTree = "<group>"; };
@@ -5431,6 +5436,16 @@
 			path = arm64;
 			sourceTree = "<group>";
 		};
+		597E79DB25A5DB6E009B0817 /* agent_astrometry */ = {
+			isa = PBXGroup;
+			children = (
+				597E79DD25A5DB6E009B0817 /* README.md */,
+				597E79DC25A5DB6E009B0817 /* indigo_agent_astrometry.h */,
+				597E79DE25A5DB6E009B0817 /* indigo_agent_astrometry.c */,
+			);
+			path = agent_astrometry;
+			sourceTree = "<group>";
+		};
 		598000FA22E4E6BD00021D67 /* lib */ = {
 			isa = PBXGroup;
 			children = (
@@ -8150,6 +8165,7 @@
 			isa = PBXGroup;
 			children = (
 				9D85FAE021E38E3900ECDF82 /* agent_alignment */,
+				597E79DB25A5DB6E009B0817 /* agent_astrometry */,
 				9DC4967C22BA7B810052AB3E /* agent_auxiliary */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				5911B6D522633DBE00D6B9EC /* agent_guider */,
@@ -12567,6 +12583,7 @@
 				598A1B9C259BA94A00C0B34C /* libdsi.c in Sources */,
 				598A1B9D259BA94A00C0B34C /* nexstar.c in Sources */,
 				598A1B9E259BA94A00C0B34C /* DDHidAppleMikey.m in Sources */,
+				59F50A3325A5DEDD00C19115 /* indigo_agent_astrometry.c in Sources */,
 				598A1B9F259BA94A00C0B34C /* indigo_wheel_quantum.c in Sources */,
 				598A1BA0259BA94A00C0B34C /* indigo_focuser_wemacro.c in Sources */,
 				598A1BA1259BA94A00C0B34C /* indigo_focuser_nfocus.c in Sources */,
@@ -12758,6 +12775,7 @@
 				5911F7B41F02E1400053F3CA /* libdsi.c in Sources */,
 				59C76F0D2378724A0091B966 /* nexstar.c in Sources */,
 				595F2932211E211200380EF4 /* DDHidAppleMikey.m in Sources */,
+				597E79DF25A5DB7D009B0817 /* indigo_agent_astrometry.c in Sources */,
 				9DAD52482126BD99002FCC79 /* indigo_wheel_quantum.c in Sources */,
 				59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */,
 				9DADEE5A2151135E008C6FBE /* indigo_focuser_nfocus.c in Sources */,
