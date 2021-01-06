@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x001A
+#define DRIVER_VERSION 0x001B
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -426,6 +426,7 @@ static bool capture_raw_frame(indigo_device *device) {
 }
 
 static void preview_process(indigo_device *device) {
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
@@ -444,6 +445,7 @@ static void preview_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	}
 	restore_subframe(device);
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static bool exposure_batch(indigo_device *device) {
@@ -604,6 +606,7 @@ static bool exposure_batch(indigo_device *device) {
 }
 
 static void exposure_batch_process(indigo_device *device) {
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = false;
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
@@ -630,6 +633,7 @@ static void exposure_batch_process(indigo_device *device) {
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static bool streaming_batch(indigo_device *device) {
@@ -678,6 +682,7 @@ static bool streaming_batch(indigo_device *device) {
 }
 
 static void streaming_batch_process(indigo_device *device) {
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = false;
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
@@ -704,6 +709,7 @@ static void streaming_batch_process(indigo_device *device) {
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static bool autofocus(indigo_device *device) {
@@ -821,6 +827,7 @@ static bool autofocus(indigo_device *device) {
 }
 
 static void autofocus_process(indigo_device *device) {
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
@@ -845,6 +852,7 @@ static void autofocus_process(indigo_device *device) {
 	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void park_mount(indigo_device *device) {
@@ -969,6 +977,7 @@ static void set_property(indigo_device *device, char *name, char *value) {
 }
 
 static void sequence_process(indigo_device *device) {
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	char sequence_text[INDIGO_VALUE_SIZE], *sequence_text_pnt, *value;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 0;
@@ -1071,9 +1080,11 @@ static void sequence_process(indigo_device *device) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	}
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void find_stars_process(indigo_device *device) {
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = false;
 	DEVICE_PRIVATE_DATA->find_stars = true;
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
@@ -1093,6 +1104,7 @@ static void find_stars_process(indigo_device *device) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	}
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void abort_process(indigo_device *device) {
