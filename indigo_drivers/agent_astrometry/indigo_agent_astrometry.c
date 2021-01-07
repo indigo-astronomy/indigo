@@ -312,7 +312,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PROFILE_PROPERTY->hidden = true;
 		CONNECTION_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-		int handle = indigo_open_config_file("astrometry", 0, O_WRONLY | O_CREAT | O_TRUNC, ".cfg");
+		snprintf(path, sizeof((path)), "%s/.indigo/astrometry.cfg", getenv("HOME"));
+		int handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		char config[INDIGO_VALUE_SIZE];
 		snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo\nautoindex\n", getenv("HOME"));
 		if (handle > 0) {
