@@ -35,6 +35,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -204,7 +205,7 @@ void sync_indexes(indigo_device *device, char *dir, indigo_property *property) {
 		for (int j = 0; index_files[j]; j++) {
 			char *file_name = index_files[j];
 			if (!strncmp(file_name, item->name, 10)) {
-				snprintf(path, sizeof((path)), "%s/.indigo/%s.fits", getenv("HOME"), file_name);
+				snprintf(path, sizeof((path)), "%s/.indigo/astrometry/%s.fits", getenv("HOME"), file_name);
 				if (item->sw.value) {
 					if (access(path, F_OK) == 0) {
 						continue;
@@ -266,7 +267,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
 				if (!strncmp(file_name, name, 10)) {
-					snprintf(path, sizeof((path)), "%s/.indigo/%s.fits", getenv("HOME"), file_name);
+					snprintf(path, sizeof((path)), "%s/.indigo/astrometry/%s.fits", getenv("HOME"), file_name);
 					if (access(path, F_OK)) {
 						present = false;
 						break;
@@ -288,7 +289,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
 				if (!strncmp(file_name, name, 10)) {
-					snprintf(path, sizeof((path)), "%s/.indigo/%s.fits", getenv("HOME"), file_name);
+					snprintf(path, sizeof((path)), "%s/.indigo/astrometry/%s.fits", getenv("HOME"), file_name);
 					if (access(path, F_OK)) {
 						present = false;
 						break;
@@ -312,10 +313,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PROFILE_PROPERTY->hidden = true;
 		CONNECTION_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-		snprintf(path, sizeof((path)), "%s/.indigo/astrometry.cfg", getenv("HOME"));
+		snprintf(path, sizeof((path)), "%s/.indigo/astrometry/", getenv("HOME"));
+		mkdir(path, 0777);
+		snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
 		int handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		char config[INDIGO_VALUE_SIZE];
-		snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo\nautoindex\n", getenv("HOME"));
+		snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo/astrometry\nautoindex\n", getenv("HOME"));
 		if (handle > 0) {
 			indigo_write(handle, config, strlen(config));
 			close(handle);
@@ -401,7 +404,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "image2xy failed");
 							goto cleanup;
 						}
-						if (!execute_command(FILTER_CLIENT_CONTEXT->device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0 --config %s/.indigo/astrometry.cfg --axy %s.axy %s.xy", getenv("HOME"), base, base)) {
+						if (!execute_command(FILTER_CLIENT_CONTEXT->device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0 --config %s/.indigo/astrometry/astrometry.cfg --axy %s.axy %s.xy", getenv("HOME"), base, base)) {
 							AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "solve-field failed");
 							goto cleanup;
