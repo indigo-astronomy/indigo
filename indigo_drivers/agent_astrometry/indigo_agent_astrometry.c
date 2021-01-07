@@ -42,6 +42,7 @@
 #include <netinet/in.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_io.h>
 
@@ -222,6 +223,136 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		return true;
 	}
 	return false;
+}
+
+bool solve(indigo_device *device, indigo_item *blob) {
+	void *image = blob->blob.value;
+	unsigned long image_size = blob->blob.size;
+	char *base = tempnam(NULL, "image");
+	int handle = open(base, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (handle < 0) {
+		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create temporary image file");
+		return false;
+	}
+	if (!strncmp("SIMPLE", (const char *)image, 6)) {
+		indigo_write(handle, (const char *)image, image_size);
+	} else {
+		int byte_per_pixel = 0, naxis = 0, naxis1 = 0, naxis2 = 0;
+		if (!strncmp("RAW1", (const char *)(image), 4)) {
+			byte_per_pixel = 1;
+			naxis = 2;
+			naxis1 = ((indigo_raw_header *)image)->width;
+			naxis2 = ((indigo_raw_header *)image)->height;
+			image = image + sizeof(indigo_raw_header);
+		} else if (!strncmp("RAW2", (const char *)(image), 4)) {
+			byte_per_pixel = 2;
+			naxis = 2;
+			naxis1 = ((indigo_raw_header *)image)->width;
+			naxis2 = ((indigo_raw_header *)image)->height;
+			image = image + sizeof(indigo_raw_header);
+		} else if (!strncmp("RAW3", (const char *)(image), 4)) {
+			byte_per_pixel = 1;
+			naxis = 3;
+			naxis1 = ((indigo_raw_header *)image)->width;
+			naxis2 = ((indigo_raw_header *)image)->height;
+			image = image + sizeof(indigo_raw_header);
+		} else if (!strncmp("RAW6", (const char *)(image), 4)) {
+			byte_per_pixel = 2;
+			naxis = 3;
+			naxis1 = ((indigo_raw_header *)image)->width;
+			naxis2 = ((indigo_raw_header *)image)->height;
+			image = image + sizeof(indigo_raw_header);
+		} else if (!strncmp("JFIF", (const char *)(image + 7), 4)) {
+			// JPEG - TBD
+			image = NULL;
+		} else {
+			image = NULL;
+		}
+		if (image == NULL) {
+			AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Unsupported image format");
+			close(handle);
+			goto cleanup;
+		}
+		unsigned long net_size = byte_per_pixel * naxis1 * naxis2 * (naxis == 3 ? 3 : 1);
+		image_size = net_size + FITS_HEADER_SIZE;
+		if (image_size % FITS_HEADER_SIZE) {
+			image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
+		}
+		char *buffer = malloc(image_size), *p = buffer;
+		memset(buffer, ' ', image_size);
+		int t = sprintf(p, "SIMPLE  =                    T"); p[t] = ' ';
+		t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
+		t = sprintf(p += 80, "NAXIS   =                    %d", naxis); p[t] = ' ';
+		t = sprintf(p += 80, "NAXIS1  = %20d", naxis1); p[t] = ' ';
+		t = sprintf(p += 80, "NAXIS2  = %20d", naxis2); p[t] = ' ';
+		if (naxis == 3) {
+			t = sprintf(p += 80, "NAXIS3  = %20d", 3); p[t] = ' ';
+		}
+		t = sprintf(p += 80, "EXTEND  =                    T"); p[t] = ' ';
+		if (byte_per_pixel == 2) {
+			t = sprintf(p += 80, "BZERO   =                32768"); p[t] = ' ';
+			t = sprintf(p += 80, "BSCALE  =                    1"); p[t] = ' ';
+		}
+		t = sprintf(p += 80, "END"); p[t] = ' ';
+		p = buffer + FITS_HEADER_SIZE;
+		memcpy(p, image, net_size);
+		if (byte_per_pixel == 2) {
+			short *raw = (short *)(p);
+			for (int i = 0; i < net_size; i++) {
+				int value = *raw - 32768;
+				*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+			}
+		}
+		indigo_write(handle, buffer, image_size);
+	}
+	close(handle);
+	AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Running plate solver on \"%s\" ...", base);
+	char path[INDIGO_VALUE_SIZE];
+	snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
+	handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (handle < 0) {
+		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create astrometry.cfg");
+		goto cleanup;
+	}
+	char config[INDIGO_VALUE_SIZE];
+	snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo/astrometry\n", getenv("HOME"));
+	indigo_write(handle, config, strlen(config));
+	for (int k = 0; k < AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count; k++) {
+		indigo_item *item = AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + k;
+		if (item->sw.value) {
+			for (int l = 0; index_files[l]; l++) {
+				if (!strncmp(item->name, index_files[l], 10)) {
+					snprintf(config, sizeof(config), "index %s\n", index_files[l]);
+					indigo_write(handle, config, strlen(config));
+				}
+			}
+		}
+	}
+	close(handle);
+	if (!execute_command(device, "image2xy -O -o %s.xy %s", base, base)) {
+		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "image2xy failed");
+		goto cleanup;
+	}
+	if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0 --config %s/.indigo/astrometry/astrometry.cfg --axy %s.axy %s.xy", getenv("HOME"), base, base)) {
+		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "solve-field failed");
+		goto cleanup;
+	}
+	if (!execute_command(device, "wcsinfo %s.wcs", base)) {
+		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "wcsinfo failed");
+		goto cleanup;
+	}
+	AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, NULL);
+cleanup:
+	execute_command(device, "rm -rf %s %s.xy %s.axy %s.wcs %s.corr %s.match %s.rdls %s.solved %s-indx.xyls", base, base, base, base, base, base, base, base, base);
+	return true;
 }
 
 void sync_indexes(indigo_device *device, char *dir, indigo_property *property) {
@@ -440,67 +571,15 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
+	if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 		indigo_property *related_devices = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_CCD_INDEX];
 		for (int j = 0; j < related_devices->count; j++) {
 			indigo_item *item = related_devices->items + j;
 			if (item->sw.value && !strcmp(item->name, device->name)) {
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
-					if (!strcmp(item->name, CCD_IMAGE_FILE_ITEM_NAME)) {
-						char base[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
-						strcpy(base, item->text.value);
-						long length = strlen(base);
-						if (length < 5 || strcmp(base + length - 5, ".fits")) {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "File \"%s\" is not in FITS format", base);
-							return INDIGO_OK;
-						}
-						device = FILTER_CLIENT_CONTEXT->device;
-						AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
-						base[length - 5] = 0;
-						indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Running plate solver on \"%s\".fits ...", base);
-						snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
-						int handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-						if (handle < 0) {
-							AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create astrometry.cfg");
-							goto cleanup;
-						}
-						char config[INDIGO_VALUE_SIZE];
-						snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo/astrometry\n", getenv("HOME"));
-						indigo_write(handle, config, strlen(config));
-						for (int k = 0; k < AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count; k++) {
-							indigo_item *item = AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + k;
-							if (item->sw.value) {
-								for (int l = 0; index_files[l]; l++) {
-									if (!strncmp(item->name, index_files[l], 10)) {
-										snprintf(config, sizeof(config), "index %s\n", index_files[l]);
-										indigo_write(handle, config, strlen(config));
-									}
-								}
-							}
-						}
-						close(handle);
-						if (!execute_command(FILTER_CLIENT_CONTEXT->device, "image2xy -O -o %s.xy %s.fits", base, base)) {
-							AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "image2xy failed");
-							goto cleanup;
-						}
-						if (!execute_command(FILTER_CLIENT_CONTEXT->device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0 --config %s/.indigo/astrometry/astrometry.cfg --axy %s.axy %s.xy", getenv("HOME"), base, base)) {
-							AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "solve-field failed");
-							goto cleanup;
-						}
-						if (!execute_command(FILTER_CLIENT_CONTEXT->device, "wcsinfo %s.wcs", base)) {
-							AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "wcsinfo failed");
-							goto cleanup;
-						}
-						AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, NULL);
-					cleanup:
-						execute_command(device, "rm -rf %s.xy %s.axy %s.wcs %s.corr %s.match %s.rdls %s.solved %s-indx.xyls", base, base, base, base, base, base, base, base);
-						return INDIGO_OK;
+					if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
+						solve(FILTER_CLIENT_CONTEXT->device, item);
 					}
 				}
 			}
