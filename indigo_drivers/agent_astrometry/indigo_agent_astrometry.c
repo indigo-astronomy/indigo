@@ -147,20 +147,42 @@ static double index_diameters[][2] = {
 #define AGENT_ASTROMETRY_INDEX_4201_ITEM    	(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items+18)
 #define AGENT_ASTROMETRY_INDEX_4200_ITEM    	(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items+19)
 
+#define AGENT_ASTROMETRY_USE_INDEX_PROPERTY		(DEVICE_PRIVATE_DATA->use_index_property)
+
 #define AGENT_ASTROMETRY_WCS_PROPERTY					(DEVICE_PRIVATE_DATA->wcs_property)
 #define AGENT_ASTROMETRY_WCS_SCALE_ITEM    		(AGENT_ASTROMETRY_WCS_PROPERTY->items+0)
 #define AGENT_ASTROMETRY_WCS_ANGLE_ITEM    		(AGENT_ASTROMETRY_WCS_PROPERTY->items+1)
 #define AGENT_ASTROMETRY_WCS_RA_ITEM    			(AGENT_ASTROMETRY_WCS_PROPERTY->items+2)
 #define AGENT_ASTROMETRY_WCS_DEC_ITEM    			(AGENT_ASTROMETRY_WCS_PROPERTY->items+3)
+#define AGENT_ASTROMETRY_WCS_INDEX_ITEM    		(AGENT_ASTROMETRY_WCS_PROPERTY->items+4)
 
 typedef struct {
 	indigo_property *index_41xx_property;
 	indigo_property *index_42xx_property;
+	indigo_property *use_index_property;
 	indigo_property *wcs_property;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
 // --------------------------------------------------------------------------------
+
+static void save_config(indigo_device *device) {
+	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
+		indigo_save_property(device, NULL, AGENT_ASTROMETRY_USE_INDEX_PROPERTY);
+		if (DEVICE_CONTEXT->property_save_file_handle) {
+			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+			close(DEVICE_CONTEXT->property_save_file_handle);
+			DEVICE_CONTEXT->property_save_file_handle = 0;
+		} else {
+			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		CONFIG_SAVE_ITEM->sw.value = false;
+		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
+	}
+}
 
 static bool execute_command(indigo_device *device, char *command, ...) {
 	char buffer[1024];
@@ -186,6 +208,10 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 				AGENT_ASTROMETRY_WCS_RA_ITEM->number.value = atof(line + 10) / 15;
 			} else if (!strncmp(line, "dec_center ", 11)) {
 				AGENT_ASTROMETRY_WCS_DEC_ITEM->number.value = atof(line + 11);
+			} else {
+				char *index = strstr(line, "index-");
+				if (index)
+					AGENT_ASTROMETRY_WCS_INDEX_ITEM->number.value = atoi(index + 6);
 			}
 			if (line) {
 				free(line);
@@ -202,6 +228,8 @@ void sync_indexes(indigo_device *device, char *dir, indigo_property *property) {
 	char path[INDIGO_VALUE_SIZE];
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *item = property->items + i;
+		bool add = false;
+		bool remove = false;
 		for (int j = 0; index_files[j]; j++) {
 			char *file_name = index_files[j];
 			if (!strncmp(file_name, item->name, 10)) {
@@ -217,6 +245,7 @@ void sync_indexes(indigo_device *device, char *dir, indigo_property *property) {
 						return;
 					}
 					indigo_send_message(device, "Done", file_name);
+					add = true;
 					continue;
 				} else {
 					if (access(path, F_OK) == 0) {
@@ -225,11 +254,29 @@ void sync_indexes(indigo_device *device, char *dir, indigo_property *property) {
 							indigo_update_property(device, property, strerror(errno));
 							return;
 						}
+						remove = true;
 					}
 				}
 			}
 		}
+		if (add) {
+			indigo_init_switch_item(AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count++, item->name, item->label, true);
+		}
+		if (remove) {
+			for (int j = 0; j < AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count; j++) {
+				if (!strcmp(item->name, AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items[j].name)) {
+					memcpy(AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + j, AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + (j + 1), (AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
+					AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count--;
+					break;
+				}
+			}
+		}
 	}
+	indigo_delete_property(device, AGENT_ASTROMETRY_USE_INDEX_PROPERTY, NULL);
+	indigo_property_sort_items(AGENT_ASTROMETRY_USE_INDEX_PROPERTY, 0);
+	AGENT_ASTROMETRY_USE_INDEX_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_define_property(device, AGENT_ASTROMETRY_USE_INDEX_PROPERTY, NULL);
+	save_config(device);
 	property->state = INDIGO_OK_STATE;
 	indigo_update_property(device, property, NULL);
 }
@@ -252,8 +299,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_RELATED_CCD_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Index properties
-		indigo_property *p;
-		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY = p = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY_NAME, "Index managememt", "Tycho-2 catalog", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 13);
+		AGENT_ASTROMETRY_USE_INDEX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_USE_INDEX_PROPERTY_NAME, AGENT_MAIN_GROUP, "Use indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 33);
+		if (AGENT_ASTROMETRY_USE_INDEX_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count = 0;
+		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY_NAME, "Index managememt", "Installed Tycho-2 catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 13);
 		if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
@@ -277,8 +327,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				}
 			}
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->items - (i - 19), name, label, present);
+			if (present)
+				indigo_init_switch_item(AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count++, name, label, false);
 		}
-		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY_NAME, "Index managememt", "2MASS catalog", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 20);
+		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY_NAME, "Index managememt", "Installed 2MASS catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 20);
 		if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		for (int i = 19; i >=0; i--) {
@@ -299,15 +351,19 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				}
 			}
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items - (i - 19), name, label, present);
+			if (present)
+				indigo_init_switch_item(AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count++, name, label, false);
 		}
+
 		// -------------------------------------------------------------------------------- WCS property
-		AGENT_ASTROMETRY_WCS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_ASTROMETRY_WCS_PROPERTY_NAME, AGENT_MAIN_GROUP, "WCS Data", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
+		AGENT_ASTROMETRY_WCS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_ASTROMETRY_WCS_PROPERTY_NAME, AGENT_MAIN_GROUP, "WCS Data", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 		if (AGENT_ASTROMETRY_WCS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_SCALE_ITEM, AGENT_ASTROMETRY_WCS_SCALE_ITEM_NAME, "Pixel scale (arcsec/pixel)", 0, 1000, 0, 0);
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_ANGLE_ITEM, AGENT_ASTROMETRY_WCS_ANGLE_ITEM_NAME, "Angle (degrees E of N)", 0, 360, 0, 0);
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_RA_ITEM, AGENT_ASTROMETRY_WCS_RA_ITEM_NAME, "Frame center RA (hours)", 0, 24, 0, 0);
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_DEC_ITEM, AGENT_ASTROMETRY_WCS_DEC_ITEM_NAME, "Frame center Dec (degrees)", 0, 360, 0, 0);
+		indigo_init_number_item(AGENT_ASTROMETRY_WCS_INDEX_ITEM, AGENT_ASTROMETRY_WCS_INDEX_ITEM_NAME, "Used index file", 0, 10000, 0, 0);
 		strcpy(AGENT_ASTROMETRY_WCS_RA_ITEM->number.format, "%m");
 		strcpy(AGENT_ASTROMETRY_WCS_DEC_ITEM->number.format, "%m");
 		// --------------------------------------------------------------------------------
@@ -317,14 +373,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		snprintf(path, sizeof((path)), "%s/.indigo/astrometry/", getenv("HOME"));
 		mkdir(path, 0777);
-		snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
-		int handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-		char config[INDIGO_VALUE_SIZE];
-		snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo/astrometry\nautoindex\n", getenv("HOME"));
-		if (handle > 0) {
-			indigo_write(handle, config, strlen(config));
-			close(handle);
-		}
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -340,6 +388,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property))
 		indigo_define_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_ASTROMETRY_USE_INDEX_PROPERTY, property))
+		indigo_define_property(device, AGENT_ASTROMETRY_USE_INDEX_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ASTROMETRY_WCS_PROPERTY, property))
 		indigo_define_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
@@ -365,6 +415,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 		indigo_set_timer(device, 0, index_42xx_handler, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_ASTROMETRY_USE_INDEX_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_USE_INDEX
+		indigo_property_copy_values(AGENT_ASTROMETRY_USE_INDEX_PROPERTY, property, false);
+		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_USE_INDEX_PROPERTY, NULL);
+		save_config(device);
+		return INDIGO_OK;
 	}
 	return indigo_filter_change_property(device, client, property);
 }
@@ -374,6 +431,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	//save_config(device);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
+	indigo_release_property(AGENT_ASTROMETRY_USE_INDEX_PROPERTY);
 	indigo_release_property(AGENT_ASTROMETRY_WCS_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
@@ -390,7 +448,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (!strcmp(item->name, CCD_IMAGE_FILE_ITEM_NAME)) {
-						char base[INDIGO_VALUE_SIZE];
+						char base[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
 						strcpy(base, item->text.value);
 						long length = strlen(base);
 						if (length < 5 || strcmp(base + length - 5, ".fits")) {
@@ -399,8 +457,30 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 						}
 						device = FILTER_CLIENT_CONTEXT->device;
 						AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Running plate solver on \"%s\".fits ...", base);
 						base[length - 5] = 0;
+						indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Running plate solver on \"%s\".fits ...", base);
+						snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
+						int handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+						if (handle < 0) {
+							AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create astrometry.cfg");
+							goto cleanup;
+						}
+						char config[INDIGO_VALUE_SIZE];
+						snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo/astrometry\n", getenv("HOME"));
+						indigo_write(handle, config, strlen(config));
+						for (int k = 0; k < AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count; k++) {
+							indigo_item *item = AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + k;
+							if (item->sw.value) {
+								for (int l = 0; index_files[l]; l++) {
+									if (!strncmp(item->name, index_files[l], 10)) {
+										snprintf(config, sizeof(config), "index %s\n", index_files[l]);
+										indigo_write(handle, config, strlen(config));
+									}
+								}
+							}
+						}
+						close(handle);
 						if (!execute_command(FILTER_CLIENT_CONTEXT->device, "image2xy -O -o %s.xy %s.fits", base, base)) {
 							AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "image2xy failed");
