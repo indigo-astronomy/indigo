@@ -210,12 +210,14 @@ void sync_indexes(indigo_device *device, char *dir, indigo_property *property) {
 					if (access(path, F_OK) == 0) {
 						continue;
 					}
+					indigo_send_message(device, "Downloading %s...", file_name);
 					if (!execute_command(device, "curl -L -s -o %s http://data.astrometry.net/%s/%s.fits", path, dir, file_name)) {
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
 						return;
 					}
-					break;
+					indigo_send_message(device, "Done", file_name);
+					continue;
 				} else {
 					if (access(path, F_OK) == 0) {
 						if (unlink(path)) {
