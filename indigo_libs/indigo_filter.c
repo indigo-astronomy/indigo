@@ -50,7 +50,7 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 	}
 	FILTER_DEVICE_CONTEXT->device = device;
 	if (FILTER_DEVICE_CONTEXT != NULL) {
-		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
+		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_AGENT | device_interface) == INDIGO_OK) {
 			CONNECTION_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD property
 			FILTER_CCD_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_CCD_LIST_PROPERTY_NAME, "Main", "Camera list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
@@ -469,20 +469,21 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 		if (interface) {
 			int mask = atoi(interface->text.value);
 			indigo_property *tmp;
-			for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
-				if ((mask & interface_mask[i]) == interface_mask[i]) {
-					tmp = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
-					if (!tmp->hidden && !device_in_list(tmp, property))
-						add_to_list(device, tmp, property);
-					tmp = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i];
-					if (!tmp->hidden && !device_in_list(tmp, property))
-						add_to_list(device, tmp, property);
-				}
-			}
 			if ((mask & INDIGO_INTERFACE_AGENT) == INDIGO_INTERFACE_AGENT) {
 				tmp = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 				if (!tmp->hidden && !device_in_list(tmp, property))
 					add_to_list(device, tmp, property);
+			} else {
+				for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
+					if ((mask & interface_mask[i]) == interface_mask[i]) {
+						tmp = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
+						if (!tmp->hidden && !device_in_list(tmp, property))
+							add_to_list(device, tmp, property);
+						tmp = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i];
+						if (!tmp->hidden && !device_in_list(tmp, property))
+							add_to_list(device, tmp, property);
+					}
+				}
 			}
 			return INDIGO_OK;
 		}
