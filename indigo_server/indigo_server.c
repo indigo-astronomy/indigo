@@ -764,9 +764,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		SERVER_DRIVERS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SERVER_DRIVERS_PROPERTY, NULL);
 		int handle = 0;
-		if (!command_line_drivers)
+		if (!command_line_drivers) {
 			indigo_save_property(device, &handle, SERVER_DRIVERS_PROPERTY);
-		close(handle);
+			close(handle);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_LOAD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LOAD
