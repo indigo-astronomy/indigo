@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		59019E0B1DE0AC7400CCB3ED /* indigo_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59019E091DE0AC7400CCB3ED /* indigo_client.c */; };
 		59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0A1DE0AC7400CCB3ED /* indigo_client.h */; };
+		5903560E25A8CA37001DC5DB /* libfli.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52EE621A33E78000B6F27 /* libfli.a */; };
+		5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598A1CFA259BADCE00C0B34C /* libgps.a */; };
 		590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */ = {isa = PBXBuildFile; fileRef = 590B59D11F78544000086FD2 /* indigo_mount_temma.c */; };
 		590BF1AB21EBBBEE00C24DBA /* indigo_ao_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 590BF1A121EBBBEE00C24DBA /* indigo_ao_driver.h */; };
 		590BF1AC21EBBBEE00C24DBA /* indigo_ao_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 590BF1AA21EBBBEE00C24DBA /* indigo_ao_driver.c */; };
@@ -4299,6 +4301,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
@@ -4318,6 +4321,7 @@
 				598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */,
 				5942229F22E34AA9009DAD5C /* libdc1394.dylib in Frameworks */,
 				9DDEFBFE21EE352F00657C8F /* libtoupcam.dylib in Frameworks */,
+				5903560E25A8CA37001DC5DB /* libfli.a in Frameworks */,
 				9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */,
 				9DDEFBFB21EE351C00657C8F /* libaltaircam.dylib in Frameworks */,
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
