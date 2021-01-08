@@ -173,6 +173,7 @@ typedef struct {
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *connection_property_cache[INDIGO_FILTER_MAX_DEVICES];
 	bool running_process;
+	bool (*validate_related_agent)(indigo_device *device, indigo_property *info_property, int mask);
 } indigo_filter_context;
 
 /** Device attach callback function.
