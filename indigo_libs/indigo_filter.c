@@ -471,7 +471,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 			indigo_property *tmp;
 			if ((mask & INDIGO_INTERFACE_AGENT) == INDIGO_INTERFACE_AGENT) {
 				tmp = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
-				if (!tmp->hidden && !device_in_list(tmp, property))
+				if (!tmp->hidden && !device_in_list(tmp, property) && (FILTER_CLIENT_CONTEXT->validate_related_agent == NULL || FILTER_CLIENT_CONTEXT->validate_related_agent(FILTER_CLIENT_CONTEXT->device, property, mask)))
 					add_to_list(device, tmp, property);
 			} else {
 				for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
