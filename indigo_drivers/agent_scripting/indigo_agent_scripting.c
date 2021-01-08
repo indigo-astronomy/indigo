@@ -1054,7 +1054,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 				}
 			}
 		}
-		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->state = INDIGO_BUSY_STATE;
+		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 		duk_destroy_heap(PRIVATE_DATA->ctx);
 	}
