@@ -10986,8 +10986,8 @@
 			isa = PBXGroup;
 			children = (
 				9D3BBBA521147EB500800FB0 /* README.md */,
-				9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */,
 				9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */,
+				9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */,
 			);
 			path = agent_lx200_server;
 			sourceTree = "<group>";
