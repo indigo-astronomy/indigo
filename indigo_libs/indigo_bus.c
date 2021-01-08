@@ -347,6 +347,7 @@ indigo_result indigo_start() {
 	}
 	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&client_mutex);
+	INDIGO_TRACE(indigo_trace("INDIGO Bus: start request"));
 	if (!is_started) {
 		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
 		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
@@ -368,6 +369,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
+	INDIGO_TRACE(indigo_trace("INDIGO Bus: device attach request (%s)", device->name));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {
 			devices[i] = device;
@@ -401,6 +403,7 @@ indigo_result indigo_attach_client(indigo_client *client) {
 			pthread_mutex_unlock(&client_mutex);
 			if (client->attach != NULL)
 				client->last_result = client->attach(client);
+			INDIGO_TRACE(indigo_trace("INDIGO Bus: client attach request (%s)", client->name));
 			return INDIGO_OK;
 		}
 	}
@@ -412,6 +415,7 @@ indigo_result indigo_detach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
+	INDIGO_TRACE(indigo_trace("INDIGO Bus: device detach request (%s)", device->name));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == device) {
 			devices[i] = NULL;
@@ -429,6 +433,7 @@ indigo_result indigo_detach_client(indigo_client *client) {
 	if ((!is_started) || (client == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&client_mutex);
+	INDIGO_TRACE(indigo_trace("INDIGO Bus: client detach request (%s)", client->name));
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		if (clients[i] == client) {
 			clients[i] = NULL;
@@ -447,6 +452,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&device_mutex);
+	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property enumeration request", property, false, false));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->enumerate_properties != NULL) {
@@ -654,6 +660,7 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 indigo_result indigo_stop() {
 	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&client_mutex);
+	INDIGO_TRACE(indigo_trace("INDIGO Bus: stop request"));
 	if (is_started) {
 		is_started = false;
 		for (int i = 0; i < MAX_CLIENTS; i++) {
