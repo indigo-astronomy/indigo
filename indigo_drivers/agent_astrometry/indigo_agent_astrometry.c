@@ -26,7 +26,7 @@
 #define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -40,6 +40,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#include <jpeglib.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_ccd_driver.h>
@@ -150,20 +151,38 @@ static double index_diameters[][2] = {
 
 #define AGENT_ASTROMETRY_USE_INDEX_PROPERTY		(DEVICE_PRIVATE_DATA->use_index_property)
 
+#define AGENT_ASTROMETRY_HINTS_PROPERTY				(DEVICE_PRIVATE_DATA->hints_property)
+#define AGENT_ASTROMETRY_HINTS_RADIUS_ITEM 		(AGENT_ASTROMETRY_HINTS_PROPERTY->items+0)
+#define AGENT_ASTROMETRY_HINTS_RA_ITEM    		(AGENT_ASTROMETRY_HINTS_PROPERTY->items+1)
+#define AGENT_ASTROMETRY_HINTS_DEC_ITEM    		(AGENT_ASTROMETRY_HINTS_PROPERTY->items+2)
+#define AGENT_ASTROMETRY_HINTS_PARITY_ITEM    (AGENT_ASTROMETRY_HINTS_PROPERTY->items+3)
+#define AGENT_ASTROMETRY_HINTS_DOWNSAMPLE_ITEM (AGENT_ASTROMETRY_HINTS_PROPERTY->items+4)
+#define AGENT_ASTROMETRY_HINTS_DEPTH_ITEM    	(AGENT_ASTROMETRY_HINTS_PROPERTY->items+5)
+#define AGENT_ASTROMETRY_HINTS_CPU_LIMIT_ITEM (AGENT_ASTROMETRY_HINTS_PROPERTY->items+6)
+
 #define AGENT_ASTROMETRY_WCS_PROPERTY					(DEVICE_PRIVATE_DATA->wcs_property)
 #define AGENT_ASTROMETRY_WCS_SCALE_ITEM    		(AGENT_ASTROMETRY_WCS_PROPERTY->items+0)
 #define AGENT_ASTROMETRY_WCS_ANGLE_ITEM    		(AGENT_ASTROMETRY_WCS_PROPERTY->items+1)
 #define AGENT_ASTROMETRY_WCS_RA_ITEM    			(AGENT_ASTROMETRY_WCS_PROPERTY->items+2)
 #define AGENT_ASTROMETRY_WCS_DEC_ITEM    			(AGENT_ASTROMETRY_WCS_PROPERTY->items+3)
-#define AGENT_ASTROMETRY_WCS_INDEX_ITEM    		(AGENT_ASTROMETRY_WCS_PROPERTY->items+4)
+#define AGENT_ASTROMETRY_WCS_PARITY_ITEM    	(AGENT_ASTROMETRY_WCS_PROPERTY->items+4)
+#define AGENT_ASTROMETRY_WCS_INDEX_ITEM    		(AGENT_ASTROMETRY_WCS_PROPERTY->items+5)
 
 typedef struct {
 	indigo_property *index_41xx_property;
 	indigo_property *index_42xx_property;
 	indigo_property *use_index_property;
+	indigo_property *hints_property;
 	indigo_property *wcs_property;
 	pthread_mutex_t mutex;
+	bool failed;
 } agent_private_data;
+
+typedef struct {
+	indigo_device *device;
+	void *image;
+	unsigned long size;
+} solver_task;
 
 // --------------------------------------------------------------------------------
 
@@ -172,6 +191,7 @@ static void save_config(indigo_device *device) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_save_property(device, NULL, AGENT_ASTROMETRY_USE_INDEX_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_ASTROMETRY_HINTS_PROPERTY);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			close(DEVICE_CONTEXT->property_save_file_handle);
@@ -209,6 +229,11 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 				AGENT_ASTROMETRY_WCS_RA_ITEM->number.value = atof(line + 10) / 15;
 			} else if (!strncmp(line, "dec_center ", 11)) {
 				AGENT_ASTROMETRY_WCS_DEC_ITEM->number.value = atof(line + 11);
+			} else if (!strncmp(line, "parity ", 7)) {
+				AGENT_ASTROMETRY_WCS_PARITY_ITEM->number.value = atoi(line + 7);
+			} else if (!strncmp(line, "Total CPU time limit reached!", 29)) {
+				indigo_send_message(device, line);
+				DEVICE_PRIVATE_DATA->failed = true;
 			} else {
 				char *index = strstr(line, "index-");
 				if (index)
@@ -225,134 +250,203 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	return false;
 }
 
-bool solve(indigo_device *device, indigo_item *blob) {
-	void *image = blob->blob.value;
-	unsigned long image_size = blob->blob.size;
-	char *base = tempnam(NULL, "image");
-	int handle = open(base, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (handle < 0) {
-		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create temporary image file");
-		return false;
-	}
-	if (!strncmp("SIMPLE", (const char *)image, 6)) {
-		indigo_write(handle, (const char *)image, image_size);
-	} else {
-		int byte_per_pixel = 0, naxis = 0, naxis1 = 0, naxis2 = 0;
-		if (!strncmp("RAW1", (const char *)(image), 4)) {
-			byte_per_pixel = 1;
-			naxis = 2;
-			naxis1 = ((indigo_raw_header *)image)->width;
-			naxis2 = ((indigo_raw_header *)image)->height;
-			image = image + sizeof(indigo_raw_header);
-		} else if (!strncmp("RAW2", (const char *)(image), 4)) {
-			byte_per_pixel = 2;
-			naxis = 2;
-			naxis1 = ((indigo_raw_header *)image)->width;
-			naxis2 = ((indigo_raw_header *)image)->height;
-			image = image + sizeof(indigo_raw_header);
-		} else if (!strncmp("RAW3", (const char *)(image), 4)) {
-			byte_per_pixel = 1;
-			naxis = 3;
-			naxis1 = ((indigo_raw_header *)image)->width;
-			naxis2 = ((indigo_raw_header *)image)->height;
-			image = image + sizeof(indigo_raw_header);
-		} else if (!strncmp("RAW6", (const char *)(image), 4)) {
-			byte_per_pixel = 2;
-			naxis = 3;
-			naxis1 = ((indigo_raw_header *)image)->width;
-			naxis2 = ((indigo_raw_header *)image)->height;
-			image = image + sizeof(indigo_raw_header);
-		} else if (!strncmp("JFIF", (const char *)(image + 7), 4)) {
-			// JPEG - TBD
-			image = NULL;
-		} else {
-			image = NULL;
-		}
-		if (image == NULL) {
+void *solve(solver_task *task) {
+	indigo_device *device = task->device;
+	void *image = task->image;
+	unsigned long image_size = task->size;
+	free(task);
+	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		void *intermediate_image = NULL;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+		char *base = tempnam(NULL, "image");
+#pragma clang diagnostic pop
+		int handle = open(base, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (handle < 0) {
 			AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Unsupported image format");
-			close(handle);
+			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create temporary image file");
 			goto cleanup;
 		}
-		unsigned long net_size = byte_per_pixel * naxis1 * naxis2 * (naxis == 3 ? 3 : 1);
-		image_size = net_size + FITS_HEADER_SIZE;
-		if (image_size % FITS_HEADER_SIZE) {
-			image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
-		}
-		char *buffer = malloc(image_size), *p = buffer;
-		memset(buffer, ' ', image_size);
-		int t = sprintf(p, "SIMPLE  =                    T"); p[t] = ' ';
-		t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
-		t = sprintf(p += 80, "NAXIS   =                    %d", naxis); p[t] = ' ';
-		t = sprintf(p += 80, "NAXIS1  = %20d", naxis1); p[t] = ' ';
-		t = sprintf(p += 80, "NAXIS2  = %20d", naxis2); p[t] = ' ';
-		if (naxis == 3) {
-			t = sprintf(p += 80, "NAXIS3  = %20d", 3); p[t] = ' ';
-		}
-		t = sprintf(p += 80, "EXTEND  =                    T"); p[t] = ' ';
-		if (byte_per_pixel == 2) {
-			t = sprintf(p += 80, "BZERO   =                32768"); p[t] = ' ';
-			t = sprintf(p += 80, "BSCALE  =                    1"); p[t] = ' ';
-		}
-		t = sprintf(p += 80, "END"); p[t] = ' ';
-		p = buffer + FITS_HEADER_SIZE;
-		memcpy(p, image, net_size);
-		if (byte_per_pixel == 2) {
-			short *raw = (short *)(p);
-			for (int i = 0; i < net_size; i++) {
-				int value = *raw - 32768;
-				*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+		if (!strncmp("SIMPLE", (const char *)image, 6)) {
+			indigo_write(handle, (const char *)image, image_size);
+		} else {
+			int byte_per_pixel = 0, components = 0, naxis1 = 0, naxis2 = 0;
+			if (!strncmp("RAW1", (const char *)(image), 4)) {
+				byte_per_pixel = 1;
+				components = 1;
+				naxis1 = ((indigo_raw_header *)image)->width;
+				naxis2 = ((indigo_raw_header *)image)->height;
+				image = image + sizeof(indigo_raw_header);
+			} else if (!strncmp("RAW2", (const char *)(image), 4)) {
+				byte_per_pixel = 2;
+				components = 1;
+				naxis1 = ((indigo_raw_header *)image)->width;
+				naxis2 = ((indigo_raw_header *)image)->height;
+				image = image + sizeof(indigo_raw_header);
+			} else if (!strncmp("RAW3", (const char *)(image), 4)) {
+				byte_per_pixel = 1;
+				components = 3;
+				naxis1 = ((indigo_raw_header *)image)->width;
+				naxis2 = ((indigo_raw_header *)image)->height;
+				image = image + sizeof(indigo_raw_header);
+			} else if (!strncmp("RAW6", (const char *)(image), 4)) {
+				byte_per_pixel = 2;
+				components = 3;
+				naxis1 = ((indigo_raw_header *)image)->width;
+				naxis2 = ((indigo_raw_header *)image)->height;
+				image = image + sizeof(indigo_raw_header);
+			} else if (!strncmp("JFIF", (const char *)(image + 6), 4)) {
+				struct jpeg_decompress_struct cinfo;
+				struct jpeg_error_mgr jerr;
+				cinfo.err = jpeg_std_error(&jerr);
+				jpeg_create_decompress(&cinfo);
+				jpeg_mem_src(&cinfo, image, image_size);
+				int rc = jpeg_read_header(&cinfo, TRUE);
+				if (rc < 0) {
+					AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Broken JPEG file");
+					goto cleanup;
+				}
+				jpeg_start_decompress(&cinfo);
+				byte_per_pixel = 1;
+				components = cinfo.output_components;
+				naxis1 = cinfo.output_width;
+				naxis2 = cinfo.output_height;
+				int row_stride = naxis1 * components;
+				image = intermediate_image = malloc(image_size = naxis2 * row_stride);
+				while (cinfo.output_scanline < cinfo.output_height) {
+					unsigned char *buffer_array[1];
+					buffer_array[0] = intermediate_image + (cinfo.output_scanline) * row_stride;
+					jpeg_read_scanlines(&cinfo, buffer_array, 1);
+				}
+				jpeg_finish_decompress(&cinfo);
+				jpeg_destroy_decompress(&cinfo);
+			} else {
+				image = NULL;
 			}
+			if (image == NULL) {
+				AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Unsupported image format");
+				close(handle);
+				goto cleanup;
+			}
+			unsigned long net_size = byte_per_pixel * naxis1 * naxis2;
+			image_size = net_size + FITS_HEADER_SIZE;
+			if (image_size % FITS_HEADER_SIZE) {
+				image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
+			}
+			char *buffer = malloc(image_size), *p = buffer;
+			memset(buffer, ' ', image_size);
+			int t = sprintf(p, "SIMPLE  = %20c", 'T'); p[t] = ' ';
+			t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
+			t = sprintf(p += 80, "NAXIS   = %20d", 2); p[t] = ' ';
+			t = sprintf(p += 80, "NAXIS1  = %20d", naxis1); p[t] = ' ';
+			t = sprintf(p += 80, "NAXIS2  = %20d", naxis2); p[t] = ' ';
+			t = sprintf(p += 80, "EXTEND  = %20c", 'T'); p[t] = ' ';
+			if (byte_per_pixel == 2) {
+				t = sprintf(p += 80, "BZERO   = %20d", 32768); p[t] = ' ';
+				t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
+			}
+			t = sprintf(p += 80, "END"); p[t] = ' ';
+			p = buffer + FITS_HEADER_SIZE;
+			if (components == 1) {
+				memcpy(p, image, net_size);
+				if (byte_per_pixel == 2) {
+					short *raw = (short *)(p);
+					for (int i = 0; i < net_size; i++) {
+						int value = *raw - 32768;
+						*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+					}
+				}
+			} else {
+				int size = naxis1 * naxis2;
+				char *inp = image;
+				char *out = p;
+				for (int i = 0; i < size; i++) {
+					*out++ = (inp[0] + inp[1] + inp[2]) / 3;
+					inp += 3;
+				}
+			}
+			indigo_write(handle, buffer, image_size);
+			free(buffer);
+			if (intermediate_image)
+				free(intermediate_image);
 		}
-		indigo_write(handle, buffer, image_size);
-	}
-	close(handle);
-	AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Running plate solver on \"%s\" ...", base);
-	char path[INDIGO_VALUE_SIZE];
-	snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
-	handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (handle < 0) {
-		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create astrometry.cfg");
-		goto cleanup;
-	}
-	char config[INDIGO_VALUE_SIZE];
-	snprintf(config, sizeof(config), "cpulimit 300\nadd_path %s/.indigo/astrometry\n", getenv("HOME"));
-	indigo_write(handle, config, strlen(config));
-	for (int k = 0; k < AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count; k++) {
-		indigo_item *item = AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + k;
-		if (item->sw.value) {
-			for (int l = 0; index_files[l]; l++) {
-				if (!strncmp(item->name, index_files[l], 10)) {
-					snprintf(config, sizeof(config), "index %s\n", index_files[l]);
-					indigo_write(handle, config, strlen(config));
+		close(handle);
+		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Running plate solver on \"%s\" ...", base);
+		char path[INDIGO_VALUE_SIZE];
+		snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
+		handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (handle < 0) {
+			AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "Can't create astrometry.cfg");
+			goto cleanup;
+		}
+		char config[INDIGO_VALUE_SIZE];
+		snprintf(config, sizeof(config), "add_path %s/.indigo/astrometry\n", getenv("HOME"));
+		indigo_write(handle, config, strlen(config));
+		for (int k = 0; k < AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count; k++) {
+			indigo_item *item = AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + k;
+			if (item->sw.value) {
+				for (int l = 0; index_files[l]; l++) {
+					if (!strncmp(item->name, index_files[l], 10)) {
+						snprintf(config, sizeof(config), "index %s\n", index_files[l]);
+						indigo_write(handle, config, strlen(config));
+					}
 				}
 			}
 		}
+		close(handle);
+		char hints[512] = "";
+		int hints_index = 0;
+		if (AGENT_ASTROMETRY_HINTS_DOWNSAMPLE_ITEM->number.value > 1) {
+			hints_index += sprintf(hints + hints_index, " -d %d", (int)AGENT_ASTROMETRY_HINTS_DOWNSAMPLE_ITEM->number.value);
+		}
+		if (!execute_command(device, "image2xy -O%s -o %s.xy %s", hints, base, base)) {
+			AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "image2xy failed");
+			goto cleanup;
+		}
+		*hints = 0;
+		hints_index = 0;
+		if (AGENT_ASTROMETRY_HINTS_RADIUS_ITEM->number.value > 0) {
+			hints_index += sprintf(hints + hints_index, " --ra %g --dec %g --radius %g", AGENT_ASTROMETRY_HINTS_RA_ITEM->number.value * 15, AGENT_ASTROMETRY_HINTS_DEC_ITEM->number.value, AGENT_ASTROMETRY_HINTS_RADIUS_ITEM->number.value);
+		}
+		if (AGENT_ASTROMETRY_HINTS_PARITY_ITEM->number.value != 0) {
+			hints_index += sprintf(hints + hints_index, " --parity %s", AGENT_ASTROMETRY_HINTS_PARITY_ITEM->number.value > 0 ? "pos" : "neg");
+		}
+		if (AGENT_ASTROMETRY_HINTS_DEPTH_ITEM->number.value > 0) {
+			hints_index += sprintf(hints + hints_index, " --depth %d", (int)AGENT_ASTROMETRY_HINTS_DEPTH_ITEM->number.value);
+		}
+		if (AGENT_ASTROMETRY_HINTS_CPU_LIMIT_ITEM->number.value > 0) {
+			hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_ASTROMETRY_HINTS_CPU_LIMIT_ITEM->number.value);
+		}
+		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config %s/.indigo/astrometry/astrometry.cfg --axy %s.axy %s.xy", hints, getenv("HOME"), base, base)) {
+			AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "solve-field failed");
+			goto cleanup;
+		}
+		if (DEVICE_PRIVATE_DATA->failed) {
+			AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "solve-field failed");
+			goto cleanup;
+		}
+		if (!execute_command(device, "wcsinfo %s.wcs", base)) {
+			AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "wcsinfo failed");
+			goto cleanup;
+		}
+		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, NULL);
+	cleanup:
+		execute_command(device, "rm -rf %s %s.xy %s.axy %s.wcs %s.corr %s.match %s.rdls %s.solved %s-indx.xyls", base, base, base, base, base, base, base, base, base);
+		free(base);
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
 	}
-	close(handle);
-	if (!execute_command(device, "image2xy -O -o %s.xy %s", base, base)) {
-		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "image2xy failed");
-		goto cleanup;
-	}
-	if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0 --config %s/.indigo/astrometry/astrometry.cfg --axy %s.axy %s.xy", getenv("HOME"), base, base)) {
-		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "solve-field failed");
-		goto cleanup;
-	}
-	if (!execute_command(device, "wcsinfo %s.wcs", base)) {
-		AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, "wcsinfo failed");
-		goto cleanup;
-	}
-	AGENT_ASTROMETRY_WCS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, NULL);
-cleanup:
-	execute_command(device, "rm -rf %s %s.xy %s.axy %s.wcs %s.corr %s.match %s.rdls %s.solved %s-indx.xyls", base, base, base, base, base, base, base, base, base);
-	return true;
+	return NULL;
 }
 
 void sync_indexes(indigo_device *device, char *dir, indigo_property *property) {
@@ -422,13 +516,22 @@ void index_42xx_handler(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
+bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
+	if ((mask & INDIGO_INTERFACE_CCD) == INDIGO_INTERFACE_CCD)
+		return true;
+	if (!strncmp(info_property->device, "Mount Agent", 11))
+		return true;
+	return false;
+}
+
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_filter_device_attach(device, DRIVER_NAME, DRIVER_VERSION, 0) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
-		FILTER_RELATED_CCD_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
+		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		// -------------------------------------------------------------------------------- Index properties
 		AGENT_ASTROMETRY_USE_INDEX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_USE_INDEX_PROPERTY_NAME, AGENT_MAIN_GROUP, "Use indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 33);
 		if (AGENT_ASTROMETRY_USE_INDEX_PROPERTY == NULL)
@@ -486,14 +589,26 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				indigo_init_switch_item(AGENT_ASTROMETRY_USE_INDEX_PROPERTY->items + AGENT_ASTROMETRY_USE_INDEX_PROPERTY->count++, name, label, false);
 		}
 
+		// -------------------------------------------------------------------------------- Hints property
+		AGENT_ASTROMETRY_HINTS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_ASTROMETRY_HINTS_PROPERTY_NAME, AGENT_MAIN_GROUP, "Hints", INDIGO_OK_STATE, INDIGO_RW_PERM, 7);
+		if (AGENT_ASTROMETRY_HINTS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AGENT_ASTROMETRY_HINTS_RADIUS_ITEM, AGENT_ASTROMETRY_HINTS_RADIUS_ITEM_NAME, "Radius (degrees)", 0, 360, 0, 0);
+		indigo_init_number_item(AGENT_ASTROMETRY_HINTS_RA_ITEM, AGENT_ASTROMETRY_HINTS_RA_ITEM_NAME, "RA (hours)", 0, 24, 0, 0);
+		indigo_init_number_item(AGENT_ASTROMETRY_HINTS_DEC_ITEM, AGENT_ASTROMETRY_HINTS_DEC_ITEM_NAME, "Dec (degrees)", 0, 360, 0, 0);
+		indigo_init_number_item(AGENT_ASTROMETRY_HINTS_PARITY_ITEM, AGENT_ASTROMETRY_HINTS_PARITY_ITEM_NAME, "Parity (-1,0,1)", -1, 1, 0, 0);
+		indigo_init_number_item(AGENT_ASTROMETRY_HINTS_DOWNSAMPLE_ITEM, AGENT_ASTROMETRY_HINTS_DOWNSAMPLE_ITEM_NAME, "Downsample", 1, 16, 0, 2);
+		indigo_init_number_item(AGENT_ASTROMETRY_HINTS_DEPTH_ITEM, AGENT_ASTROMETRY_HINTS_DEPTH_ITEM_NAME, "Depth", 0, 1000, 0, 30);
+		indigo_init_number_item(AGENT_ASTROMETRY_HINTS_CPU_LIMIT_ITEM, AGENT_ASTROMETRY_HINTS_CPU_LIMIT_ITEM_NAME, "CPU Limit (seconds)", 0, 600, 0, 180);
 		// -------------------------------------------------------------------------------- WCS property
-		AGENT_ASTROMETRY_WCS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_ASTROMETRY_WCS_PROPERTY_NAME, AGENT_MAIN_GROUP, "WCS Data", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		AGENT_ASTROMETRY_WCS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_ASTROMETRY_WCS_PROPERTY_NAME, AGENT_MAIN_GROUP, "WCS Data", INDIGO_OK_STATE, INDIGO_RO_PERM, 6);
 		if (AGENT_ASTROMETRY_WCS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_SCALE_ITEM, AGENT_ASTROMETRY_WCS_SCALE_ITEM_NAME, "Pixel scale (arcsec/pixel)", 0, 1000, 0, 0);
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_ANGLE_ITEM, AGENT_ASTROMETRY_WCS_ANGLE_ITEM_NAME, "Angle (degrees E of N)", 0, 360, 0, 0);
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_RA_ITEM, AGENT_ASTROMETRY_WCS_RA_ITEM_NAME, "Frame center RA (hours)", 0, 24, 0, 0);
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_DEC_ITEM, AGENT_ASTROMETRY_WCS_DEC_ITEM_NAME, "Frame center Dec (degrees)", 0, 360, 0, 0);
+		indigo_init_number_item(AGENT_ASTROMETRY_WCS_PARITY_ITEM, AGENT_ASTROMETRY_WCS_PARITY_ITEM_NAME, "Parity (-1,1)", -1, 1, 0, 0);
 		indigo_init_number_item(AGENT_ASTROMETRY_WCS_INDEX_ITEM, AGENT_ASTROMETRY_WCS_INDEX_ITEM_NAME, "Used index file", 0, 10000, 0, 0);
 		strcpy(AGENT_ASTROMETRY_WCS_RA_ITEM->number.format, "%m");
 		strcpy(AGENT_ASTROMETRY_WCS_DEC_ITEM->number.format, "%m");
@@ -521,6 +636,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ASTROMETRY_USE_INDEX_PROPERTY, property))
 		indigo_define_property(device, AGENT_ASTROMETRY_USE_INDEX_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_ASTROMETRY_HINTS_PROPERTY, property))
+		indigo_define_property(device, AGENT_ASTROMETRY_HINTS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ASTROMETRY_WCS_PROPERTY, property))
 		indigo_define_property(device, AGENT_ASTROMETRY_WCS_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
@@ -553,6 +670,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ASTROMETRY_USE_INDEX_PROPERTY, NULL);
 		save_config(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_ASTROMETRY_HINTS_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_HINTS
+		indigo_property_copy_values(AGENT_ASTROMETRY_HINTS_PROPERTY, property, false);
+		AGENT_ASTROMETRY_HINTS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_ASTROMETRY_HINTS_PROPERTY, NULL);
+		save_config(device);
+		return INDIGO_OK;
 	}
 	return indigo_filter_change_property(device, client, property);
 }
@@ -563,6 +687,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
 	indigo_release_property(AGENT_ASTROMETRY_USE_INDEX_PROPERTY);
+	indigo_release_property(AGENT_ASTROMETRY_HINTS_PROPERTY);
 	indigo_release_property(AGENT_ASTROMETRY_WCS_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
@@ -572,16 +697,21 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
-		indigo_property *related_devices = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_CCD_INDEX];
+		indigo_property *related_devices = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 		for (int j = 0; j < related_devices->count; j++) {
 			indigo_item *item = related_devices->items + j;
 			if (item->sw.value && !strcmp(item->name, device->name)) {
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
-						solve(FILTER_CLIENT_CONTEXT->device, item);
+						solver_task *task = malloc(sizeof(solver_task));
+						task->device = FILTER_CLIENT_CONTEXT->device;
+						task->image = item->blob.value;
+						task->size = item->blob.size;
+						indigo_async((void *(*)(void *))solve, task);
 					}
 				}
+				break;
 			}
 		}
 	}
