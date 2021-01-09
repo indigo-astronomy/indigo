@@ -59,6 +59,11 @@ extern "C" {
 #define AGENT_PLATESOLVER_WCS_PARITY_ITEM    	(AGENT_PLATESOLVER_WCS_PROPERTY->items+6)
 #define AGENT_PLATESOLVER_WCS_INDEX_ITEM    	(AGENT_PLATESOLVER_WCS_PROPERTY->items+7)
 
+#define AGENT_PLATESOLVER_SYNC_PROPERTY				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->sync_mode_property)
+#define AGENT_PLATESOLVER_SYNC_DISABLED_ITEM	(AGENT_PLATESOLVER_SYNC_PROPERTY->items+0)
+#define AGENT_PLATESOLVER_SYNC_SYNC_ITEM			(AGENT_PLATESOLVER_SYNC_PROPERTY->items+1)
+#define AGENT_PLATESOLVER_SYNC_CENTER_ITEM		(AGENT_PLATESOLVER_SYNC_PROPERTY->items+2)
+
 /** Plate solver  structure.
  */
 typedef struct {
@@ -73,13 +78,15 @@ typedef struct {
 	indigo_property *use_index_property;
 	indigo_property *hints_property;
 	indigo_property *wcs_property;
+	indigo_property *sync_mode_property;
 	void (*save_config)(indigo_device *);
 	void *((*solve)(indigo_platesolver_task *));
 	pthread_mutex_t mutex;
 	bool failed;
 } platesolver_private_data;
 
-void indigo_platesolver_save_config(indigo_device *device);
+extern void indigo_platesolver_save_config(indigo_device *device);
+extern void indigo_platesolver_sync(indigo_device *device);
 
 /** Device attach callback function.
  */
