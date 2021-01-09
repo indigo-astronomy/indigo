@@ -1446,7 +1446,7 @@ double indigo_atod(const char *str) {
 }
 
 char *indigo_dtoa(double value, char *str) {
-	sprintf(str, "%g", value);
+	sprintf(str, "%.10g", value);
 	indigo_fix_locale(str);
 	return str;
 }
