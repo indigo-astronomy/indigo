@@ -648,7 +648,9 @@ static void remove_from_list(indigo_device *device, indigo_property *device_list
 			}
 			int size = (device_list->count - i - 1) * sizeof(indigo_item);
 			if (size > 0) {
-				memcpy(device_list->items + i, device_list->items + i + 1, size);
+				char buffer[size];
+				memcpy(buffer, device_list->items + i + 1, size);
+				memcpy(device_list->items + i, buffer, size);
 			}
 			indigo_delete_property(device, device_list, NULL);
 			device_list->count--;
