@@ -223,6 +223,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 		char *base = tempnam(NULL, "image");
 #pragma clang diagnostic pop
+		// convert any input image to FITS file
 		int handle = open(base, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -230,35 +231,41 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			goto cleanup;
 		}
 		if (!strncmp("SIMPLE", (const char *)image, 6)) {
+			// FITS - copy only
 			indigo_write(handle, (const char *)image, image_size);
 			ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = 0;
 		} else {
 			int byte_per_pixel = 0, components = 0;
 			if (!strncmp("RAW1", (const char *)(image), 4)) {
+				// 8 bit RAW
 				byte_per_pixel = 1;
 				components = 1;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
 				image = image + sizeof(indigo_raw_header);
 			} else if (!strncmp("RAW2", (const char *)(image), 4)) {
+				// 16 bit RAW
 				byte_per_pixel = 2;
 				components = 1;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
 				image = image + sizeof(indigo_raw_header);
 			} else if (!strncmp("RAW3", (const char *)(image), 4)) {
+				// 8 bit RGB
 				byte_per_pixel = 1;
 				components = 3;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
 				image = image + sizeof(indigo_raw_header);
 			} else if (!strncmp("RAW6", (const char *)(image), 4)) {
+				// 16 bit RGB
 				byte_per_pixel = 2;
 				components = 3;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
 				image = image + sizeof(indigo_raw_header);
 			} else if (!strncmp("JFIF", (const char *)(image + 6), 4)) {
+				// JPEG
 				struct jpeg_decompress_struct cinfo;
 				struct jpeg_error_mgr jerr;
 				cinfo.err = jpeg_std_error(&jerr);
@@ -293,8 +300,8 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				close(handle);
 				goto cleanup;
 			}
-			unsigned long net_size = byte_per_pixel * ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height;
-			image_size = net_size + FITS_HEADER_SIZE;
+			int pixel_count = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height;
+			image_size = pixel_count * byte_per_pixel + FITS_HEADER_SIZE;
 			if (image_size % FITS_HEADER_SIZE) {
 				image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
 			}
@@ -313,21 +320,39 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			t = sprintf(p += 80, "END"); p[t] = ' ';
 			p = buffer + FITS_HEADER_SIZE;
 			if (components == 1) {
-				memcpy(p, image, net_size);
+				// mono
 				if (byte_per_pixel == 2) {
-					short *raw = (short *)(p);
-					for (int i = 0; i < net_size; i++) {
-						int value = *raw - 32768;
-						*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+					// 16 bit RAW - swap endian
+					short *in = image;
+					short *out = (short *)p;
+					for (int i = 0; i < pixel_count; i++) {
+						int value = *in++ - 32768;
+						*out++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 					}
+				} else {
+					// 8 bit RAW
+					memcpy(p, image, pixel_count);
 				}
 			} else {
-				int size = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height;
-				char *inp = image;
-				char *out = p;
-				for (int i = 0; i < size; i++) {
-					*out++ = (inp[0] + inp[1] + inp[2]) / 3;
-					inp += 3;
+				// RGB
+				if (byte_per_pixel == 2) {
+					// 16 bit RGB - average and swap endian
+					short *in = image;
+					short *out = (short *)p;
+					for (int i = 0; i < pixel_count; i++) {
+						int value = (in[0] + in[1] + in[2]) / 3 - 32768;
+						in += 3;
+						*out++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+					}
+				} else {
+					// 8 bit RGB - average
+					char *in = image;
+					char *out = p;
+					for (int i = 0; i < pixel_count; i++) {
+						int value = (in[0] + in[1] + in[2]) / 3;
+						in += 3;
+						*out++ = value;
+					}
 				}
 			}
 			indigo_write(handle, buffer, image_size);
@@ -336,6 +361,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				free(intermediate_image);
 		}
 		close(handle);
+		// execute astrometry.net plate solver
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
 		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = 0;
