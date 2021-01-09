@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Astrometry control agent
+/** INDIGO Astrometry.net plate solver agent
  \file indigo_agent_astrometry.h
  */
 
