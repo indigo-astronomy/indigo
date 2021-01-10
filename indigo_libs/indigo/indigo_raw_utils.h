@@ -29,6 +29,7 @@ typedef struct {
 	double y;             /* Star Y */
 	double nc_distance;   /* Normalized distance from center of the frame */
 	double luminance;     /* Star Brightness */
+	bool oversaturated;		/* Star is oversaturated */
 } indigo_star_detection;
 
 typedef enum {

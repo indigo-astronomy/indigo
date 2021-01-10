@@ -250,6 +250,12 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value && AGENT_GUIDER_SELECTION_X_ITEM->number.value == 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value == 0 && AGENT_GUIDER_STARS_PROPERTY->count > 1) {
 				AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].x;
 				AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].y;
+				for (int i = 0; i < AGENT_GUIDER_STARS_PROPERTY->count - 1; i++) {
+					if (DEVICE_PRIVATE_DATA->stars[i].oversaturated || DEVICE_PRIVATE_DATA->stars[i].nc_distance < 0.5)
+						continue;
+					AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
+					AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[i].y;
+				}
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			}
 			if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
