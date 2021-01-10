@@ -17,8 +17,6 @@ Agent code contains the most of the application logic for the typical operations
 
 ## Basic INDIGO Agents
 
-There are five basic agents - Imager Agent, Mount Agent, Guider Agent, Auxiliary Agent and Snoop Agent.
-
 - **Imager Agent** controls main imaging cameras, filter wheels and focusers. It can capture a given number of images in a single batch or in a more complicated sequence, focus automatically, generate stretched JPEG previews or upload captured images to the client. The agent name is "*indigo_agent_imager*".
 
 - **Mount Agent** controls mounts, domes, GPS units and joysticks. It provides a common source of information about observatory position and source of the local time, creates links between the joysticks and the mounts and also acts as a gateway between INDIGO protocol and LX200 protocol for 3rd party applications like SkySafari. The agent name is "*indigo_agent_mount*".
@@ -30,6 +28,8 @@ There are five basic agents - Imager Agent, Mount Agent, Guider Agent, Auxiliary
 - **Scripting Agent** manages and executes INDIGO scripts. The agent name is "*indigo_agent_scripting*".
 
 - **Snoop Agent** is a special agent that enables the communication between the device drivers. Device drivers can not communicate between each other natively. To make it possible the **Snoop Agent** is used. For example The Mount can synchronize the time and the geographical coordinates from the GPS using the **Snoop Agent**. The agent name is "*indigo_agent_snoop*".
+
+- **Astrometry Agent** manages indexes, solves camera images and sync the position to mounts. 
 
 **Agents** can also talk to each other. E.g. **Imager Agent** can initiate dithering in **Guider Agent** or to sync coordinates in **Mount Agent** to the center of a plate solved image. **Mount Agent** can set FITS metadata in **Imager Agent** or to stop guiding upon slew or parking request. Such agents we refer as related agents.
 
