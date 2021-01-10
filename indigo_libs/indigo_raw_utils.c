@@ -1037,7 +1037,11 @@ indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 static const double FIND_STAR_CLIP_EDGE = 20;
 
 static int luminance_comparator(const void *item_1, const void *item_2) {
-	return ((indigo_star_detection *)item_1)->luminance > ((indigo_star_detection *)item_2)->luminance;
+	if (((indigo_star_detection *)item_1)->luminance < ((indigo_star_detection *)item_2)->luminance)
+		return 1;
+	if (((indigo_star_detection *)item_1)->luminance > ((indigo_star_detection *)item_2)->luminance)
+		return -1;
+	return 0;
 }
 
 indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
@@ -1049,6 +1053,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	int clip_edge   = height >= FIND_STAR_CLIP_EDGE * 4 ? FIND_STAR_CLIP_EDGE : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
+	uint16_t max_luminance;
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
@@ -1056,6 +1061,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
+			max_luminance = 0xFF;
 			for (int i = 0; i < size; i++) {
 				buf[i] = data8[i];
 				threshold += buf[i];
@@ -1063,6 +1069,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 			break;
 		}
 		case INDIGO_RAW_MONO16: {
+			max_luminance = 0xFFFF;
 			for (int i = 0; i < size; i++) {
 				buf[i] = data16[i];
 				threshold += buf[i];
@@ -1070,30 +1077,34 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
+			max_luminance = 0xFF;
 			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
-				buf[j] = data8[i] + data8[i + 1] + data8[i + 2];
+				buf[j] = (data8[i] + data8[i + 1] + data8[i + 2]) / 3;
 				threshold += buf[j];
 				i += 2;
 			}
 			break;
 		}
 		case INDIGO_RAW_RGBA32: {
+			max_luminance = 0xFF;
 			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
-				buf[j] = data8[i] + data8[i + 1] + data8[i + 2];
+				buf[j] = (data8[i] + data8[i + 1] + data8[i + 2]) / 3;
 				threshold += buf[j];
 				i += 3;
 			}
 			break;
 		}
 		case INDIGO_RAW_ABGR32: {
+			max_luminance = 0xFF;
 			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
-				buf[j] = data8[i + 1] + data8[i + 2] + data8[i + 3];
+				buf[j] = (data8[i + 1] + data8[i + 2] + data8[i + 3]) / 3;
 				threshold += buf[j];
 				i += 3;
 			}
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
+			max_luminance = 0xFFFF;
 			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
 				buf[j] = (data16[i] + data16[i + 1] + data16[i + 2]) / 3;
 				threshold += buf[j];
@@ -1117,8 +1128,8 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 				int off = j * width + i;
 				if (buf[off] > lmax && median(buf[off - 1], buf[off], buf[off + 1]) > threshold && median(buf[off - width], buf[off], buf[off + width]) > threshold) {
 					lmax = buf[off];
-					star.x = (double)i;
-					star.y = (double)j;
+					star.x = i;
+					star.y = j;
 					star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
 					int divider = (width > height) ? height2 : width2;
 					star.nc_distance /= divider;
@@ -1126,7 +1137,8 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 			}
 		}
 		if (lmax > 0) {
-			double luminance = 0;
+			double luminance = lmax;
+			star.oversaturated = luminance == max_luminance;
 			int min_i = MAX(0, star.x - star_size);
 			int max_i = MIN(width - 1, star.x + star_size);
 			int min_j = MAX(0, star.y - star_size);
@@ -1149,6 +1161,8 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 
 	free(buf);
 
+	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
+	
 	INDIGO_DEBUG(
 		for (size_t i = 0;i < found; i++) {
 			indigo_debug("indigo_find_stars: star #%u: x = %lf, y = %lf, ncdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].nc_distance, star_list[i].luminance);

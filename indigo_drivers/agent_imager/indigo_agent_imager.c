@@ -395,6 +395,13 @@ static bool capture_raw_frame(indigo_device *device) {
 		if (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count > 1) {
 			AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].x;
 			AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].y;
+			for (int i = 0; i < AGENT_IMAGER_STARS_PROPERTY->count - 1; i++) {
+				if (DEVICE_PRIVATE_DATA->stars[i].oversaturated || DEVICE_PRIVATE_DATA->stars[i].nc_distance < 0.5)
+					continue;
+				AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
+				AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[i].y;
+			}
+			indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 		}
 		if (AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0 && DEVICE_PRIVATE_DATA->allow_subframing) {
 			select_subframe(device);
