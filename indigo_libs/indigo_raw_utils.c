@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <sys/param.h>
 
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_raw_utils.h>
 
 #define RE (0)
@@ -1040,16 +1040,16 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
 
 	int  size = width * height;
-	double *buf = malloc(size * sizeof(double));
+	uint16_t *buf = malloc(size * sizeof(uint32_t));
 	int star_size = 10;
 	int clip_edge   = height >= FIND_STAR_CLIP_EDGE * 4 ? FIND_STAR_CLIP_EDGE : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
-	double lmax = 1;
+	uint32_t lmax = 1;
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
-	double threshold = 0;
+	uint32_t threshold = 0;
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
@@ -1092,7 +1092,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 		}
 		case INDIGO_RAW_RGB48: {
 			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
-				buf[j] = data16[i] + data16[i + 1] + data16[i + 2];
+				buf[j] = (data16[i] + data16[i + 1] + data16[i + 2]) / 3;
 				threshold += buf[j];
 				i += 2;
 			}
@@ -1101,46 +1101,41 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	}
 
 	/* Look for stars 30% brighter than the frame average */
-	threshold = 1.30 * threshold / (double)size;
-
+	threshold = 1.30 * threshold / size;
 	int found = 0;
+	int width2 = width / 2;
+	int height2 = height / 2;
 	while (lmax > 0) {
 		lmax = 0;
-		indigo_star_detection star = {0};
+		indigo_star_detection star = { 0 };
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
-				if (buf[off] > threshold && lmax < buf[off] &&
-					/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-				    median(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
-				    median(buf[(j - 1) * width + i], buf[off], buf[(j + 1) * width + i]) > threshold)
-				{
+				if (buf[off] > threshold && buf[off] > lmax && median(buf[off - 1], buf[off], buf[off + 1]) > threshold && median(buf[off - width], buf[off], buf[off + width]) > threshold) {
 					lmax = buf[off];
 					star.x = (double)i;
 					star.y = (double)j;
-					star.nc_distance = sqrt((star.x - width/2) * (star.x - width/2) + (star.y - height/2) * (star.y - height/2));
-					int divider = (width > height) ? height / 2 : width / 2;
+					star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
+					int divider = (width > height) ? height2 : width2;
 					star.nc_distance /= divider;
 				}
 			}
 		}
 		if (lmax > 0) {
-			star_list[found] = star;
-			for (int j = -star_size; j < star_size; j++) {
-				for (int i = -star_size; i < star_size; i++) {
-					if ((int)star.x + i < 0 || star.x + i >= width || (int)star.y + j < 0 || star.y + i >= height) {
-						star_list[found] = star;
-						found++;
-						continue;
-					}
-					int off = ((int)star.y + j) * width + (int)star.x + i;
-					if (buf[off] > star.luminance) {
-						star.luminance = buf[off];
-					}
+			double luminance = 0;
+			int min_i = MAX(0, star.x - star_size);
+			int max_i = MIN(width - 1, star.x + star_size);
+			int min_j = MAX(0, star.y - star_size);
+			int max_j = MIN(height - 1, star.y + star_size);
+			for (int j = -min_j; j <= max_j; j++) {
+				for (int i = min_i; i < max_i; i++) {
+					int off = j * width + i;
+					if (buf[off] > threshold)
+						luminance += buf[off] - threshold;
 					buf[off] = 0;
 				}
 			}
-			star.luminance = log(fabs(star.luminance));
+			star.luminance = log(fabs(luminance));
 			star_list[found] = star;
 			found++;
 		}

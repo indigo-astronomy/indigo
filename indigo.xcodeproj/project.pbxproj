@@ -489,6 +489,7 @@
 		59A52FB821A34266000B6F27 /* toupcam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D48B7A3215E570600CF757E /* toupcam.h */; };
 		59A5302121A35159000B6F27 /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5301721A3514E000B6F27 /* libatik.a */; };
 		59A5302221A35167000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A5301421A3514E000B6F27 /* libatik.h */; };
+		59AA603E25AB10E80065905E /* solver_test_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 59AA603D25AB10E80065905E /* solver_test_image.c */; };
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
@@ -2395,6 +2396,7 @@
 		59A5302021A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59A5302621A35359000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
+		59AA603D25AB10E80065905E /* solver_test_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = solver_test_image.c; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
@@ -5025,6 +5027,7 @@
 				5931B7232535F726008F74A1 /* executable_driver_client.c */,
 				5931B7242535F726008F74A1 /* remote_server_client.c */,
 				5903563A25AB0BCC001DC5DB /* solver_test.c */,
+				59AA603D25AB10E80065905E /* solver_test_image.c */,
 			);
 			path = indigo_examples;
 			sourceTree = "<group>";
@@ -12553,6 +12556,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59AA603E25AB10E80065905E /* solver_test_image.c in Sources */,
 				5903565225AB0C33001DC5DB /* solver_test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
