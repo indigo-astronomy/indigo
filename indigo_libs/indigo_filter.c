@@ -500,6 +500,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 		}
 		if (free_index >= 0) {
 			FILTER_CLIENT_CONTEXT->connection_property_cache[free_index] = property;
+			FILTER_CLIENT_CONTEXT->connection_property_device_cache[free_index] = strdup(property->device);
 		}
 		if (property->state != INDIGO_BUSY_STATE) {
 			for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
@@ -666,14 +667,6 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	device = FILTER_CLIENT_CONTEXT->device;
 	indigo_property **device_cache = FILTER_CLIENT_CONTEXT->device_property_cache;
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
-	if (*property->name == 0 || !strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
-			if (FILTER_CLIENT_CONTEXT->connection_property_cache[i] == property) {
-				FILTER_CLIENT_CONTEXT->connection_property_cache[i] = NULL;
-				break;
-			}
-		}
-	}
 	if (*property->name) {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] == property) {
@@ -686,6 +679,16 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 				break;
 			}
 		}
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+			for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
+				if (FILTER_CLIENT_CONTEXT->connection_property_cache[i] == property) {
+					free(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]);
+					FILTER_CLIENT_CONTEXT->connection_property_cache[i] = NULL;
+					FILTER_CLIENT_CONTEXT->connection_property_device_cache[i] = NULL;
+					break;
+				}
+			}
+		}
 	} else {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] && !strcmp(device_cache[i]->device, property->device)) {
@@ -695,6 +698,14 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 					indigo_release_property(agent_cache[i]);
 					agent_cache[i] = NULL;
 				}
+			}
+		}
+		for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
+			if (FILTER_CLIENT_CONTEXT->connection_property_device_cache[i] && !strcmp(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i], property->device)) {
+				free(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]);
+				FILTER_CLIENT_CONTEXT->connection_property_cache[i] = NULL;
+				FILTER_CLIENT_CONTEXT->connection_property_device_cache[i] = NULL;
+				break;
 			}
 		}
 	}
