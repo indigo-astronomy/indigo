@@ -42,7 +42,7 @@
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_io.h>
-#include <indigo/indigo_guider_utils.h>
+#include <indigo/indigo_raw_utils.h>
 
 #include "indigo_agent_imager.h"
 
