@@ -1127,7 +1127,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 			int max_i = MIN(width - 1, star.x + star_size);
 			int min_j = MAX(0, star.y - star_size);
 			int max_j = MIN(height - 1, star.y + star_size);
-			for (int j = -min_j; j <= max_j; j++) {
+			for (int j = min_j; j <= max_j; j++) {
 				for (int i = min_i; i < max_i; i++) {
 					int off = j * width + i;
 					if (buf[off] > threshold)
