@@ -1126,7 +1126,12 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
-				if (buf[off] > lmax && median(buf[off - 1], buf[off], buf[off + 1]) > threshold && median(buf[off - width], buf[off], buf[off + width]) > threshold) {
+				if (
+				    buf[off] > lmax &&
+					/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+				    median(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
+				    median(buf[off - width], buf[off], buf[off + width]) > threshold
+				) {
 					lmax = buf[off];
 					star.x = i;
 					star.y = j;
@@ -1162,7 +1167,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	free(buf);
 
 	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
-	
+
 	INDIGO_DEBUG(
 		for (size_t i = 0;i < found; i++) {
 			indigo_debug("indigo_find_stars: star #%u: x = %lf, y = %lf, ncdist = %lf, lum = %lf", i+1, star_list[i].x, star_list[i].y, star_list[i].nc_distance, star_list[i].luminance);
