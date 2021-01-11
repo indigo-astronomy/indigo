@@ -446,11 +446,16 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								indigo_copy_name(property_item->blob.format, other_item->blob.format);
 								indigo_copy_value(property_item->blob.url, other_item->blob.url);
 								property_item->blob.size = other_item->blob.size;
-								if (property_item->blob.value != NULL)
-									property_item->blob.value = realloc(property_item->blob.value, property_item->blob.size);
-								else
-									property_item->blob.value = malloc(property_item->blob.size);
-								memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
+								if (other_item->blob.value) {
+									if (property_item->blob.value != NULL)
+										property_item->blob.value = realloc(property_item->blob.value, property_item->blob.size);
+									else
+										property_item->blob.value = malloc(property_item->blob.size);
+									memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
+								} else if (property_item->blob.value != NULL) {
+									free(property_item->blob.value);
+									property_item->blob.value = NULL;
+								}
 								break;
 						}
 						break;
