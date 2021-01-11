@@ -1,5 +1,5 @@
 # Guide to indigo_server and INDIGO Drivers
-Revision: 04.08.2020 (draft)
+Revision: 12.01.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -27,6 +27,7 @@ options:
        -vv | --enable-debug
        -vvv| --enable-trace
        -r  | --remote-server host[:port]     (default port: 7624)
+       -x  | --enable-blob-proxy
        -i  | --indi-driver driver_executable
 rumen@sirius:~ $
 ```
@@ -82,6 +83,9 @@ Shows a lot of messages, like low level driver-device communication and full IND
 
 ### -r  | --remote-server
 INDIGO servers can connect to other INDIGO servers and attach their buses to their own bus. This switch is used for providing host names and ports of the remote servers to be attached. This switch can be used multiple times, once per server.
+
+### -x  | --enable-blob-proxy
+In case -r or --remote-server is used this server will act as a BLOB proxy. This way all BLOBs of the remote servers will be fetched through an URL pointing to this server. Otherwise BLOB URLs will point to their servers of origin. Proxied BLOBs are a bit slower to download compared to the direct download from their server of origin. This feature is useful in case the remote server is in a network not accessible by the clients of this server.
 
 ### -i  | --indi-driver
 Run drivers in separate processes. If a driver name is preceded by this switch it will be run in a separate process. This is the way to run INDI drivers in INDIGO. The drawback of this approach is that the driver communication will be in orders of magnitude slower than running the driver in the **indigo_worker** process and those driver can not be dynamically loaded and unloaded. This switch will load the executable version of the driver.
