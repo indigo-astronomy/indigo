@@ -192,12 +192,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if ((property->state == INDIGO_OK_STATE && item->blob.value) || indigo_proxy_blob)
-					size = sprintf(pnt, "%s { \"name\": \"%s\",  \"label\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item, item->blob.format);
-				else if (property->state == INDIGO_OK_STATE && *item->blob.url)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item->blob.url);
-				else
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label));
+				size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label));
 				pnt += size;
 			}
 			size = sprintf(pnt, " ] } }");
