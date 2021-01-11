@@ -709,6 +709,10 @@ extern bool indigo_is_sandboxed;
  */
 extern bool indigo_use_blob_caching;
 
+/** Proxy BLOB content
+ */
+extern bool indigo_proxy_blob;
+
 /** Use recursive locks for dispaching all bus messages
  */
 extern bool indigo_use_strict_locking;

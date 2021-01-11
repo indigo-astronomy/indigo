@@ -299,6 +299,7 @@ static indigo_property *unload_property;
 static indigo_property *restart_property;
 static indigo_property *log_level_property;
 static indigo_property *blob_buffering_property;
+static indigo_property *blob_proxy_property;
 static indigo_property *server_features_property;
 
 #ifdef RPI_MANAGEMENT
@@ -349,6 +350,10 @@ static bool runLoop = true;
 #define SERVER_BLOB_BUFFERING_PROPERTY						blob_buffering_property
 #define SERVER_BLOB_BUFFERING_DISABLED_ITEM				(SERVER_BLOB_BUFFERING_PROPERTY->items + 0)
 #define SERVER_BLOB_BUFFERING_ENABLED_ITEM				(SERVER_BLOB_BUFFERING_PROPERTY->items + 1)
+
+#define SERVER_BLOB_PROXY_PROPERTY								blob_proxy_property
+#define SERVER_BLOB_PROXY_DISABLED_ITEM						(SERVER_BLOB_PROXY_PROPERTY->items + 0)
+#define SERVER_BLOB_PROXY_ENABLED_ITEM						(SERVER_BLOB_PROXY_PROPERTY->items + 1)
 
 #define SERVER_FEATURES_PROPERTY									server_features_property
 #define SERVER_BONJOUR_ITEM												(SERVER_FEATURES_PROPERTY->items + 0)
@@ -587,6 +592,9 @@ static indigo_result attach(indigo_device *device) {
 	SERVER_BLOB_BUFFERING_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_BLOB_BUFFERING_PROPERTY_NAME, MAIN_GROUP, "BLOB buffering", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	indigo_init_switch_item(SERVER_BLOB_BUFFERING_DISABLED_ITEM, SERVER_BLOB_BUFFERING_DISABLED_ITEM_NAME, "Disabled", !indigo_use_blob_buffering);
 	indigo_init_switch_item(SERVER_BLOB_BUFFERING_ENABLED_ITEM, SERVER_BLOB_BUFFERING_ENABLED_ITEM_NAME, "Enabled", indigo_use_blob_buffering);
+	SERVER_BLOB_PROXY_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_BLOB_PROXY_PROPERTY_NAME, MAIN_GROUP, "BLOB proxy", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	indigo_init_switch_item(SERVER_BLOB_PROXY_DISABLED_ITEM, SERVER_BLOB_PROXY_DISABLED_ITEM_NAME, "Disabled", !indigo_proxy_blob);
+	indigo_init_switch_item(SERVER_BLOB_PROXY_ENABLED_ITEM, SERVER_BLOB_PROXY_ENABLED_ITEM_NAME, "Enabled", indigo_proxy_blob);
 	SERVER_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_FEATURES_PROPERTY_NAME, MAIN_GROUP, "Features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	indigo_init_switch_item(SERVER_BONJOUR_ITEM, SERVER_BONJOUR_ITEM_NAME, "Bonjour", use_bonjour);
 	indigo_init_switch_item(SERVER_CTRL_PANEL_ITEM, SERVER_CTRL_PANEL_ITEM_NAME, "Control panel / Server manager", use_ctrl_panel);
@@ -668,6 +676,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, SERVER_RESTART_PROPERTY, NULL);
 	indigo_define_property(device, SERVER_LOG_LEVEL_PROPERTY, NULL);
 	indigo_define_property(device, SERVER_BLOB_BUFFERING_PROPERTY, NULL);
+	indigo_define_property(device, SERVER_BLOB_PROXY_PROPERTY, NULL);
 	indigo_define_property(device, SERVER_FEATURES_PROPERTY, NULL);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
@@ -874,6 +883,13 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		SERVER_BLOB_BUFFERING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SERVER_BLOB_BUFFERING_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(SERVER_BLOB_PROXY_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- SERVER_BLOB_PROXY
+		indigo_property_copy_values(SERVER_BLOB_PROXY_PROPERTY, property, false);
+		indigo_proxy_blob = SERVER_BLOB_PROXY_ENABLED_ITEM->sw.value;
+		SERVER_BLOB_PROXY_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, SERVER_BLOB_PROXY_PROPERTY, NULL);
+		return INDIGO_OK;
 #ifdef RPI_MANAGEMENT
 	} else if (indigo_property_match(SERVER_WIFI_AP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
@@ -927,6 +943,7 @@ static indigo_result detach(indigo_device *device) {
 	indigo_delete_property(device, SERVER_RESTART_PROPERTY, NULL);
 	indigo_delete_property(device, SERVER_LOG_LEVEL_PROPERTY, NULL);
 	indigo_delete_property(device, SERVER_BLOB_BUFFERING_PROPERTY, NULL);
+	indigo_delete_property(device, SERVER_BLOB_PROXY_PROPERTY, NULL);
 	indigo_delete_property(device, SERVER_FEATURES_PROPERTY, NULL);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
@@ -947,6 +964,7 @@ static indigo_result detach(indigo_device *device) {
 	indigo_release_property(SERVER_RESTART_PROPERTY);
 	indigo_release_property(SERVER_LOG_LEVEL_PROPERTY);
 	indigo_release_property(SERVER_BLOB_BUFFERING_PROPERTY);
+	indigo_release_property(SERVER_BLOB_PROXY_PROPERTY);
 	indigo_release_property(SERVER_FEATURES_PROPERTY);
 #ifdef RPI_MANAGEMENT
 	indigo_release_property(SERVER_WIFI_AP_PROPERTY);
@@ -1082,6 +1100,8 @@ static void server_main() {
 			indigo_use_blob_urls = false;
 		} else if (!strcmp(server_argv[i], "-d") || !strcmp(server_argv[i], "--enable-blob-buffering")) {
 			indigo_use_blob_buffering = true;
+		} else if (!strcmp(server_argv[i], "-x") || !strcmp(server_argv[i], "--enable-blob-proxy")) {
+			indigo_proxy_blob = true;
 #ifdef RPI_MANAGEMENT
 		} else if (!strcmp(server_argv[i], "-f") || !strcmp(server_argv[i], "--enable-rpi-management")) {
 			FILE *output = popen("which s_rpi_ctrl.sh", "r");

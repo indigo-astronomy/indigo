@@ -222,7 +222,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 						long input_length = item->blob.size;
 						unsigned char *data = item->blob.value;
 						if (mode == INDIGO_ENABLE_BLOB_URL && client->version >= INDIGO_VERSION_2_0) {
-							if (item->blob.value) {
+							if (item->blob.value || indigo_proxy_blob) {
 								INDIGO_PRINTF(handle, "<oneBLOB name='%s' path='/blob/%p%s'/>\n", indigo_item_name(client->version, property, item), item, item->blob.format);
 							} else {
 								INDIGO_PRINTF(handle, "<oneBLOB name='%s' url='%s'/>\n", indigo_item_name(client->version, property, item), item->blob.url);
