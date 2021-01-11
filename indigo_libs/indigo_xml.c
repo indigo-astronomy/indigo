@@ -757,6 +757,14 @@ static void def_property(parser_context *context, indigo_property *other, char *
 			case INDIGO_TEXT_VECTOR:
 				property = indigo_init_text_property(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->count);
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *property_item = property->items + i;
+					indigo_item *other_item = other->items + i;
+					if (other_item->text.long_value) {
+						if ((property_item->text.long_value = malloc(property_item->text.length = other_item->text.length)))
+							memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.length);
+					}
+				}
 				break;
 			case INDIGO_NUMBER_VECTOR:
 				property = indigo_init_number_property(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->count);
