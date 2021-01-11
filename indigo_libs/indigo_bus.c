@@ -115,6 +115,7 @@ bool indigo_reshare_remote_devices = false;
 bool indigo_use_host_suffix = true;
 bool indigo_is_sandboxed = false;
 bool indigo_use_blob_caching = false;
+bool indigo_proxy_blob = false;
 
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;

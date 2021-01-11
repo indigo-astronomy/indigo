@@ -162,6 +162,15 @@ static void start_worker_thread(int *client_socket) {
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
 							pthread_mutex_lock(&entry->mutext);
 							long working_size = entry->size;
+							if (working_size == 0) {
+								indigo_item item_copy = *item;
+								if (indigo_populate_http_blob_item(&item_copy)) {
+									working_size = entry->size = item_copy.blob.size;
+									entry->content = item_copy.blob.value;
+								} else {
+									INDIGO_ERROR(indigo_error("Failed to populate BLOB"));
+								}
+							}
 							void *working_copy = indigo_use_blob_buffering ? malloc(working_size) : entry->content;
 							if (working_copy) {
 								char working_format[INDIGO_NAME_SIZE];
