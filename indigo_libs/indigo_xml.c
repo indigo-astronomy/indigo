@@ -457,7 +457,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 										free(property_item->blob.value);
 										property_item->blob.value = NULL;
 									}
-									char *ext = strchr(property_item->blob.url, '.');
+									char *ext = strrchr(property_item->blob.url, '.');
 									if (ext)
 										strcpy(property_item->blob.format, ext);
 								}
