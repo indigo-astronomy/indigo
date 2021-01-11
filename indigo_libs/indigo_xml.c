@@ -452,9 +452,14 @@ static void set_property(parser_context *context, indigo_property *other, char *
 									else
 										property_item->blob.value = malloc(property_item->blob.size);
 									memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
-								} else if (property_item->blob.value != NULL) {
-									free(property_item->blob.value);
-									property_item->blob.value = NULL;
+								} else {
+								  if (property_item->blob.value != NULL) {
+										free(property_item->blob.value);
+										property_item->blob.value = NULL;
+									}
+									char *ext = strchr(property_item->blob.url, '.');
+									if (ext)
+										strcpy(property_item->blob.format, ext);
 								}
 								break;
 						}
