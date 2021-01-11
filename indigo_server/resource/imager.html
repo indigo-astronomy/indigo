@@ -259,14 +259,21 @@
 					if (property.state == "Ok") {
 						var value = property.item("IMAGE").value;
 						if (value != null) {
-							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
+							if (value.startsWith("http://"))
+								$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
+							else
+								$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
 						}
 					}
 				} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
 					if (property.state == "Ok") {
 						var value = property.item("IMAGE").value;
 						if (value != null) {
-							$("#histogram").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).show();
+							$("#histogram").show();
+							if (value.startsWith("http://"))
+								$("#histogram").attr("src", value + '?' + new Date().getTime()).parent().show();
+							else
+								$("#histogram").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).show();
 						}
 					}
 				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
@@ -362,13 +369,8 @@
 		}
 	
 		function onDeleteProperty(property) {
-			if (property.name == "CCD_PREVIEW_HISTOGRAM") {
-				if (property.state == "Ok") {
-					var value = property.item("IMAGE").value;
-					if (value != null) {
-						$("#histogram").hide();
-					}
-				}
+			if (typeof property === 'undefined' || property.name == "CCD_PREVIEW_HISTOGRAM") {
+				$("#histogram").hide();
 			}
 			guiSetup();
 		}
