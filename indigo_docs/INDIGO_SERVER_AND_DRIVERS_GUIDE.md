@@ -9,7 +9,7 @@ e-mail: *rumen@skyarchive.org*
 This is the help message of the indigo_server:
 ```
 rumen@sirius:~ $ indigo_server -h
-INDIGO server v.2.0-123 built on Jul 25 2020 01:06:15.
+INDIGO server v.2.0-141 built on Jan 11 2021 01:06:15.
 usage: indigo_server [-h | --help]
        indigo_server [options] indigo_driver_name indigo_driver_name ...
 options:
@@ -45,19 +45,19 @@ indigo_server───indigo_worker─┬─{indigo_worker}
                               └─{indigo_worker}
 ```
 
-### -l  | --use-syslog
+### -l | --use-syslog
 Debug and error messages are sent to syslog.
 
-### -p  | --port
+### -p | --port
 Set listening port for the indigo_server.
 
-### -b  | --bonjour
+### -b | --bonjour
 INDIGO uses mDNS/Bonjour for service discovery. This will set the name of the service in the network, so that the clients can discover and automatically connect to the INDIGO server without providing host and port.
 
-### -T  | --master-token
+### -T | --master-token
 Set the server master token for device access control. Please see [INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md) for details.
 
-### -a  | --acl-file file
+### -a | --acl-file file
 Use tokens for device access control from a file. Please see [INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md) for details.
 
 ### -b- | --disable-bonjour
@@ -72,22 +72,22 @@ This switch will disable INDIGO web applications like *Imager*, *Telescope contr
 ### -c- | --disable-control-panel
 This switch will disable the web based control panel.
 
-### -v  | --enable-info
+### -v | --enable-info
 Shows some information messages in the log.
 
 ### -vv | --enable-debug
 Shows more verbose messages. Useful for debugging and troubleshooting.
 
-### -vvv| --enable-trace
+### -vvv | --enable-trace
 Shows a lot of messages, like low level driver-device communication and full INDIGO protocol chatter.
 
-### -r  | --remote-server
+### -r | --remote-server
 INDIGO servers can connect to other INDIGO servers and attach their buses to their own bus. This switch is used for providing host names and ports of the remote servers to be attached. This switch can be used multiple times, once per server.
 
-### -x  | --enable-blob-proxy
-In case -r or --remote-server is used this server will act as a BLOB proxy. This way all BLOBs of the remote servers will be fetched through an URL pointing to this server. Otherwise BLOB URLs will point to their servers of origin. Proxied BLOBs are a bit slower to download compared to the direct download from their server of origin. This feature is useful in case the remote server is in a network not accessible by the clients of this server.
+### -x | --enable-blob-proxy
+In case -r or --remote-server is used and BLOB URLs are enabled, this server will act as a BLOB proxy. This way all the BLOBs of the remote servers will be accessible through an URL pointing to this server. Otherwise BLOB URLs will point to their servers of origin. This feature is useful in case the remote server is in a network not accessible by the clients of this server. Proxied BLOBs are a bit slower to download compared to the direct download from their server of origin. 
 
-### -i  | --indi-driver
+### -i | --indi-driver
 Run drivers in separate processes. If a driver name is preceded by this switch it will be run in a separate process. This is the way to run INDI drivers in INDIGO. The drawback of this approach is that the driver communication will be in orders of magnitude slower than running the driver in the **indigo_worker** process and those driver can not be dynamically loaded and unloaded. This switch will load the executable version of the driver.
 
 ### indigo_driver_name
