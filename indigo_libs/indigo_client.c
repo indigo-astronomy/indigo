@@ -247,8 +247,12 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			indigo_attach_device(subprocess->protocol_adapter);
 			indigo_xml_parse(subprocess->protocol_adapter, NULL);
 			indigo_detach_device(subprocess->protocol_adapter);
-			free(subprocess->protocol_adapter->device_context);
-			free(subprocess->protocol_adapter);
+			if (subprocess->protocol_adapter) {
+				if (subprocess->protocol_adapter->device_context) {
+					free(subprocess->protocol_adapter->device_context);
+				}
+				free(subprocess->protocol_adapter);
+			}
 		}
 		if (subprocess->pid >= 0) {
 			 indigo_usleep(sleep_interval * 1000000);
@@ -427,8 +431,12 @@ static void *server_thread(indigo_server_entry *server) {
 			indigo_attach_device(server->protocol_adapter);
 			indigo_xml_parse(server->protocol_adapter, NULL);
 			indigo_detach_device(server->protocol_adapter);
-			free(server->protocol_adapter->device_context);
-			free(server->protocol_adapter);
+			if (server->protocol_adapter) {
+				if (server->protocol_adapter->device_context) {
+					free(server->protocol_adapter->device_context);
+				}
+				free(server->protocol_adapter);
+			}
 			server->protocol_adapter = NULL;
 			pthread_mutex_lock(&mutex);
 			reset_socket(server, 0);
