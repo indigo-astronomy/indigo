@@ -192,7 +192,12 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label));
+				if ((property->state == INDIGO_OK_STATE && item->blob.value) || indigo_proxy_blob)
+					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item, item->blob.format);
+				else if (property->state == INDIGO_OK_STATE && *item->blob.url)
+					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item->blob.url);
+				else
+					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\"  }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label));
 				pnt += size;
 			}
 			size = sprintf(pnt, " ] } }");
@@ -449,7 +454,7 @@ static indigo_result json_detach(indigo_client *client) {
 
 indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket) {
 	static indigo_client client_template = {
-		"", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+		"JSON Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		NULL,
 		json_define_property,
 		json_update_property,

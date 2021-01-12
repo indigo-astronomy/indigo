@@ -247,6 +247,16 @@
 				} else if (property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
 					changeProperty("Imager Agent", "FILTER_RELATED_AGENT_LIST", { "Guider Agent" : true });
 				}
+			} else if (property.name == "CCD_PREVIEW_IMAGE") {
+				if (property.state == "Ok") {
+					var value = property.item("IMAGE").value;
+					if (value != null) {
+						if (value.startsWith("http://"))
+							$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
+						else
+							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
+					}
+				}
 			}
 			guiSetup();
 		}
