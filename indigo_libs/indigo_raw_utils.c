@@ -444,9 +444,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			for (int j = ls; j <= le; j++) {
-				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
-					value = data8[k + i];
+					value = clear_hot_pixel_8(data8, i, j, width, height);
 					sum += value;
 					if (value > max) max = value;
 				}
@@ -455,9 +454,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 		}
 		case INDIGO_RAW_MONO16: {
 			for (int j = ls; j <= le; j++) {
-				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
-					value = data16[k + i];
+					value = clear_hot_pixel_16(data16, i, j, width, height);
 					sum += value;
 					if (value > max) max = value;
 				}
@@ -525,9 +523,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			for (int j = ls; j <= le; j++) {
-				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
-					value = data8[k + i] - threshold;
+					value = clear_hot_pixel_8(data8, i, j, width, height) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 					m10 += (i + 1 - cs) * value;
@@ -539,9 +536,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 		}
 		case INDIGO_RAW_MONO16: {
 			for (int j = ls; j <= le; j++) {
-				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
-					value = data16[k + i] - threshold;
+					value = clear_hot_pixel_16(data16, i, j, width, height) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 					m10 += (i + 1 - cs) * value;
