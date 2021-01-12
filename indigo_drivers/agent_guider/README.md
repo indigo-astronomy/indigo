@@ -26,17 +26,19 @@ indigo_server indigo_agent_guider indigo_ccd_... indigo_guider_...
 There are 3 algorithms to detect the tracking drift:
 1. **Donuts** - This mode uses the entire image and all the stars on the image to detect the drift.
 Because of that it has a "built in" scintillation resilience. It can operate nicely with highly
-de-focused stars hence the name Donuts. It will also work nicely with frames with many
-hot pixels but so far it will struggle with hot columns and lines (working to fix it).
+de-focused stars hence the name Donuts. It will also work nicely with frames with hot pixels,
+hot lines and hot columns.
 
 2. **Selection** - It uses the centroid of a small area around the star with
 a specified radius to detect the drift. This is universal method that should work in most of the cases.
-It is resilient to hot lines and hot columns as ling as they are not in the selection.
+It is resilient to hot pixels, hot lines and hot columns.
 
 3. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
 large portion of the frame like Moon and planets. It will **not work** with stars.
 
 For better performance sub-frames can be used with all three drift detection modes.
+However with **Selection** algorithm, a sub-frame around the current selection can
+be automatically used by the agent.
 
 ### Drift Controller Settings
 
