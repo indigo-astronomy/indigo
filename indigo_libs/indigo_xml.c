@@ -453,7 +453,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 										property_item->blob.value = malloc(property_item->blob.size);
 									memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
 								} else {
-								  if (property_item->blob.value != NULL) {
+									if (property_item->blob.value != NULL) {
 										free(property_item->blob.value);
 										property_item->blob.value = NULL;
 									}
