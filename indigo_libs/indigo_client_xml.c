@@ -227,7 +227,7 @@ static indigo_result xml_client_parser_detach(indigo_device *device) {
 
 indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input, int output) {
 	static indigo_device device_template = INDIGO_DEVICE_INITIALIZER(
-		"", NULL,
+		"XML Client Adapter", NULL,
 		xml_client_parser_enumerate_properties,
 		xml_client_parser_change_property,
 		xml_client_parser_enable_blob,
