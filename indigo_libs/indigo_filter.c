@@ -400,6 +400,15 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			memcpy(copy, property, size);
 			strcpy(copy->device, FILTER_DEVICE_CONTEXT->device_property_cache[i]->device);
 			strcpy(copy->name, FILTER_DEVICE_CONTEXT->device_property_cache[i]->name);
+			if (copy->type == INDIGO_TEXT_VECTOR) {
+				for (int k = 0; k < copy->count; k++) {
+					indigo_item *item = copy->items + k;
+					if (item->text.long_value) {
+						item->text.long_value = NULL;
+						indigo_set_text_item_value(item, property->items[k].text.long_value);
+					}
+				}
+			}
 			copy->access_token = indigo_get_device_or_master_token(copy->device);
 			indigo_change_property(client, copy);
 			indigo_release_property(copy);
@@ -567,6 +576,15 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 							strcpy(copy->label, property_name_label[i]);
 							strcat(copy->label, property->label);
 						}
+						if (copy->type == INDIGO_TEXT_VECTOR) {
+							for (int k = 0; k < copy->count; k++) {
+								indigo_item *item = copy->items + k;
+								if (item->text.long_value) {
+									item->text.long_value = NULL;
+									indigo_set_text_item_value(item, property->items[k].text.long_value);
+								}
+							}
+						}
 						agent_cache[j] = copy;
 						indigo_define_property(device, copy, message);
 						break;
@@ -626,7 +644,14 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 			for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 				if (device_cache[i] == property) {
 					if (agent_cache[i]) {
-						memcpy(agent_cache[i]->items, device_cache[i]->items, device_cache[i]->count * sizeof(indigo_item));
+						indigo_property *copy = agent_cache[i];
+						if (copy->type == INDIGO_TEXT_VECTOR) {
+							for (int k = 0; k < copy->count; k++) {
+								indigo_set_text_item_value(copy->items + k, indigo_get_text_item_value(property->items + k));
+							}
+						} else {
+							memcpy(agent_cache[i]->items, property->items, property->count * sizeof(indigo_item));
+						}
 						agent_cache[i]->state = device_cache[i]->state;
 						indigo_update_property(device, agent_cache[i], message);
 					}
@@ -748,12 +773,21 @@ bool indigo_filter_cached_property(indigo_device *device, int index, char *name,
 
 indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name) {
 	int size = sizeof(indigo_property) + property->count * (sizeof(indigo_item));
-	indigo_property *local_property = malloc(size);
-	memcpy(local_property, property, size);
-	strcpy(local_property->device, device_name);
-	local_property->access_token = indigo_get_device_or_master_token(local_property->device);
+	indigo_property *copy = malloc(size);
+	memcpy(copy, property, size);
+	strcpy(copy->device, device_name);
+	if (copy->type == INDIGO_TEXT_VECTOR) {
+		for (int k = 0; k < copy->count; k++) {
+			indigo_item *item = copy->items + k;
+			if (item->text.long_value) {
+				item->text.long_value = NULL;
+				indigo_set_text_item_value(item, property->items[k].text.long_value);
+			}
+		}
+	}
+	copy->access_token = indigo_get_device_or_master_token(copy->device);
 	property->perm = INDIGO_RW_PERM;
-	indigo_result result = indigo_change_property(client, local_property);
-	free(local_property);
+	indigo_result result = indigo_change_property(client, copy);
+	indigo_release_property(copy);
 	return result;
 }

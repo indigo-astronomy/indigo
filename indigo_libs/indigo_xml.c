@@ -788,11 +788,9 @@ static void def_property(parser_context *context, indigo_property *other, char *
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
-					if (item->blob.size > 0 && item->blob.value != NULL) {
-						void *tmp = malloc(item->blob.size);
-						memcpy(tmp, item->blob.value, item->blob.size);
-						item->blob.value = tmp;
-					}
+					item->blob.value = NULL;
+					item->blob.size = 0;
+					*(item->blob.url) = 0;
 				}
 				break;
 		}

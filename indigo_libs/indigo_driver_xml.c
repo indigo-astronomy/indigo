@@ -219,8 +219,6 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 				if (property->state == INDIGO_OK_STATE) {
 					for (int i = 0; i < property->count; i++) {
 						indigo_item *item = &property->items[i];
-						long input_length = item->blob.size;
-						unsigned char *data = item->blob.value;
 						if (mode == INDIGO_ENABLE_BLOB_URL && client->version >= INDIGO_VERSION_2_0) {
 							if (item->blob.value || indigo_proxy_blob) {
 								INDIGO_PRINTF(handle, "<oneBLOB name='%s' path='/blob/%p%s'/>\n", indigo_item_name(client->version, property, item), item, item->blob.format);
@@ -228,6 +226,8 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 								INDIGO_PRINTF(handle, "<oneBLOB name='%s' url='%s'/>\n", indigo_item_name(client->version, property, item), item->blob.url);
 							}
 						} else {
+							long input_length = item->blob.size;
+							unsigned char *data = item->blob.value;
 							INDIGO_PRINTF(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
 							handle2 = dup(handle);
 							fh = fdopen(handle2, "w");
@@ -341,7 +341,7 @@ failure:
 
 indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 	static indigo_client client_template = {
-		"", false, NULL, INDIGO_OK, INDIGO_VERSION_NONE, NULL,
+		"XML Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_NONE, NULL,
 		NULL,
 		xml_device_adapter_define_property,
 		xml_device_adapter_update_property,
