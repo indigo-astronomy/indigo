@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -43,7 +43,7 @@
 #define HEIGHT              1200
 #define TEMP_UPDATE         5.0
 #define STARS               30
-#define HOTPIXELS						50
+#define HOTPIXELS						1500
 #define ECLIPSE							360
 
 // gp_bits is used as boolean
@@ -559,8 +559,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "ANGLE", "Angle", 0, 360, 0, 36);
 				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle", 0, 360, 0, 74);
 				indigo_init_number_item(GUIDER_IMAGE_HOTPIXELS_ITEM, "HOTPIXELS", "Hot pixel count", 0, HOTPIXELS, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_HOTCOL_ITEM, "HOTCOL", "Hot column length", 0, WIDTH, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_HOTROW_ITEM, "HOTROW", "Hot row length", 0, HEIGHT, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTCOL_ITEM, "HOTCOL", "Hot column length", 0, HEIGHT, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTROW_ITEM, "HOTROW", "Hot row length", 0, WIDTH, 0, 0);
 				indigo_init_number_item(GUIDER_IMAGE_RA_OFFSET_ITEM, "RA_OFFSET", "RA offset", 0, HEIGHT, 0, 0);
 				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "DEC_OFFSET", "DEC offset", 0, HEIGHT, 0, 0);
 			}
