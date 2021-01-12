@@ -1373,7 +1373,7 @@ int main(int argc, const char * argv[]) {
 			       "       -a  | --acl-file file\n"
 			       "       -b- | --disable-bonjour\n"
 			       "       -u- | --disable-blob-urls\n"
-						 "       -d  | --enable-blob-buffering\n"
+			       "       -d  | --enable-blob-buffering\n"
 			       "       -w- | --disable-web-apps\n"
 			       "       -c- | --disable-control-panel\n"
 #ifdef RPI_MANAGEMENT
@@ -1383,6 +1383,7 @@ int main(int argc, const char * argv[]) {
 			       "       -vv | --enable-debug\n"
 			       "       -vvv| --enable-trace\n"
 			       "       -r  | --remote-server host[:port]     (default port: 7624)\n"
+			       "       -x  | --enable-blob-proxy\n"
 			       "       -i  | --indi-driver driver_executable\n"
 			);
 			return 0;

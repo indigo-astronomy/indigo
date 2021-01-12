@@ -33,6 +33,89 @@ static int median(int a, int b, int c) {
 	}
 }
 
+
+/*
+Corrects pixel P2 [x, y] if it is a hot pixel or part of a hot
+line or column with the median of P0-P4. If P2 is Max value
+and P2 > 2 * second_max => P2 is considered a hot pixel.
+
+3x3 diagonal window is used to make algorithm work with hotlines and hot rows.
+P0 00 P1
+00 P2 00
+P3 00 P4
+*/
+static int clear_hot_pixel_16(uint16_t* image, int x, int y, int width, int height) {
+	int i, j, k, max, value;
+	k = 0;
+	int window[5];
+
+	if (x < 1) x = 1;
+	if (x >= width - 1) x = width - 2;
+	if (y < 1) y = 1;
+	if (y >= height - 1) y = height - 2;
+
+	window[0] = image[(y - 1) * width + x - 1];
+	window[1] = image[(y - 1) * width + x + 1];
+	window[2] = value = image[y * width + x];
+	window[3] = image[(y + 1) * width + x - 1];
+	window[4] = image[(y + 1) * width + x + 1];
+
+	//if ((x == 100 && y == 100) || (x == 900 && y == 500))
+	//	indigo_error("x = %d y = %d => %d %d [%d] %d %d", x, y, window[0], window[1], window[2], window[3], window[4]);
+
+	for (j = 0; j < 3; j++) {
+		max = j;
+		for (k = j + 1; k < 5; k++) if (window[k] > window[max]) max = k;
+		int temp = window[j];
+		window[j] = window[max];
+		window[max] = temp;
+	}
+	/* window[0] = max;
+	   window[1] = second_max;
+	   window[2] = median
+	*/
+	if ((value == window[0]) && (value > (window[1] * 2))) value = window[2];
+	//if ((x == 100 && y == 100) || (x == 900 && y == 500))
+	//	indigo_error("x = %d y = %d => [%d]", x, y, value);
+	return value;
+}
+
+static int clear_hot_pixel_8(uint8_t* image, int x, int y, int width, int height) {
+	int i, j, k, max, value;
+	k = 0;
+	int window[5];
+
+	if (x < 1) x = 1;
+	if (x >= width - 1) x = width - 2;
+	if (y < 1) y = 1;
+	if (y >= height - 1) y = height - 2;
+
+	window[0] = image[(y - 1) * width + x - 1];
+	window[1] = image[(y - 1) * width + x + 1];
+	window[2] = value = image[y * width + x];
+	window[3] = image[(y + 1) * width + x - 1];
+	window[4] = image[(y + 1) * width + x + 1];
+
+	//if ((x == 100 && y == 100) || (x == 900 && y == 500))
+	//	indigo_error("x = %d y = %d => %d %d [%d] %d %d", x, y, window[0], window[1], window[2], window[3], window[4]);
+
+	for (j = 0; j < 3; j++) {
+		max = j;
+		for (k = j + 1; k < 5; k++) if (window[k] > window[max]) max = k;
+		int temp = window[j];
+		window[j] = window[max];
+		window[max] = temp;
+	}
+	/* window[0] = max;
+	   window[1] = second_max;
+	   window[2] = median
+	*/
+	if ((value == window[0]) && (value > (window[1] * 2))) value = window[2];
+	//if ((x == 100 && y == 100) || (x == 900 && y == 500))
+	//	indigo_error("x = %d y = %d => [%d]", x, y, value);
+	return value;
+}
+
 static void _fft(const int n, const int offset, const int delta, const double (*x)[2], double (*X)[2], double (*_X)[2]);
 
 static void fft(const int n, const double (*x)[2], double (*X)[2]) {
@@ -840,7 +923,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	/* Set threshold 10% above average value */
 	double threshold = 1.10 * sum / size;
 
-	//INDIGO_DEBUG(indigo_log("Donuts threshold = %.3f, max = %.3f", threshold, max));
+	//INDIGO_DEBUG(indigo_debug("Donuts threshold = %.3f, max = %.3f", threshold, max));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
@@ -858,7 +941,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
-				value = data8[i] - threshold;
+				value = clear_hot_pixel_8(data8, ci, li, width, height) - threshold;
 				/* Set all values below the threshold to 0 */
 				if (value < 0) value = 0;
 
@@ -874,7 +957,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		}
 		case INDIGO_RAW_MONO16: {
 			for (int i = 0; i < size; i++) {
-				value = data16[i] - threshold;
+				value = clear_hot_pixel_16(data16, ci, li, width, height) - threshold;
 				/* Set all values below the threshold to 0 */
 				if (value < 0) value = 0;
 
