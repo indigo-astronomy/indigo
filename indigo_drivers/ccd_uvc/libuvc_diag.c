@@ -39,6 +39,10 @@
 #include "libuvc.h"
 #include "libuvc_internal.h"
 
+#include "indigo_bus.h"
+
+#define fprintf(ignore, fmt, ...) INDIGO_DEBUG(indigo_debug(fmt, ##__VA_ARGS__))
+
 /** @internal */
 typedef struct _uvc_error_msg {
   uvc_error_t err;
@@ -174,7 +178,6 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 
       DL_FOREACH(stream_if->format_descs, fmt_desc) {
         uvc_frame_desc_t *frame_desc;
-        int i;
 
         switch (fmt_desc->bDescriptorSubtype) {
           case UVC_VS_FORMAT_UNCOMPRESSED:
@@ -182,16 +185,30 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
           case UVC_VS_FORMAT_FRAME_BASED:
             fprintf(stream,
                 "\t\%s(%d)\n"
-                "\t\t  bits per pixel: %d\n"
-                "\t\t  GUID: ",
+                "\t\t  bits per pixel: %d\n",
                 _uvc_name_for_format_subtype(fmt_desc->bDescriptorSubtype),
                 fmt_desc->bFormatIndex,
                 fmt_desc->bBitsPerPixel);
 
-            for (i = 0; i < 16; ++i)
-              fprintf(stream, "%02x", fmt_desc->guidFormat[i]);
-
-            fprintf(stream, " (%4s)\n", fmt_desc->fourccFormat );
+              fprintf(stream, "\t\t  GUID: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x  (%4s)",
+                      fmt_desc->guidFormat[0],
+                      fmt_desc->guidFormat[1],
+                      fmt_desc->guidFormat[2],
+                      fmt_desc->guidFormat[3],
+                      fmt_desc->guidFormat[4],
+                      fmt_desc->guidFormat[5],
+                      fmt_desc->guidFormat[6],
+                      fmt_desc->guidFormat[7],
+                      fmt_desc->guidFormat[8],
+                      fmt_desc->guidFormat[9],
+                      fmt_desc->guidFormat[10],
+                      fmt_desc->guidFormat[11],
+                      fmt_desc->guidFormat[12],
+                      fmt_desc->guidFormat[13],
+                      fmt_desc->guidFormat[14],
+                      fmt_desc->guidFormat[15],
+                      fmt_desc->fourccFormat
+                      );
 
             fprintf(stream,
                 "\t\t  default frame: %d\n"
