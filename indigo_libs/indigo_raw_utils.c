@@ -1128,7 +1128,7 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 
 	int  size = width * height;
 	uint16_t *buf = malloc(size * sizeof(uint32_t));
-	int star_size = 10;
+	int star_size = 100;
 	int clip_edge   = height >= FIND_STAR_CLIP_EDGE * 4 ? FIND_STAR_CLIP_EDGE : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
@@ -1193,8 +1193,8 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 		}
 	}
 
-	/* Look for stars 30% brighter than the frame average */
-	threshold = 1.30 * threshold / size;
+	/* Look for stars 35% brighter than the frame average */
+	threshold = 1.35 * threshold / size;
 	int found = 0;
 	int width2 = width / 2;
 	int height2 = height / 2;
@@ -1220,21 +1220,73 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 				}
 			}
 		}
-		if (lmax > 0) {
+		if (lmax > threshold) {
 			double luminance = lmax;
 			star.oversaturated = luminance == max_luminance;
 			int min_i = MAX(0, star.x - star_size);
 			int max_i = MIN(width - 1, star.x + star_size);
 			int min_j = MAX(0, star.y - star_size);
 			int max_j = MIN(height - 1, star.y + star_size);
-			for (int j = min_j; j <= max_j; j++) {
-				for (int i = min_i; i <= max_i; i++) {
+			int star_x = (int)star.x;
+			int star_y = (int)star.y;
+			int threshold_hist = threshold * 0.95;
+
+			// clear +X, +Y quadrant
+			for (int j = star_y; j <= max_j; j++) {
+				if (buf[j * width + star_x] < threshold_hist) break;
+				for (int i = star_x; i <= max_i; i++) {
 					int off = j * width + i;
-					if (buf[off] > threshold)
+					if (buf[off] > threshold_hist) {
 						luminance += buf[off] - threshold;
-					buf[off] = 0;
+						buf[off] = 0;
+					} else {
+						break;
+					}
 				}
 			}
+
+			// clear -X, +Y quadrant
+			for (int j = star_y; j <= max_j; j++) {
+				if (buf[j * width + star_x - 1] < threshold_hist) break;
+				for (int i = star_x - 1; i >= min_i; i--) {
+					int off = j * width + i;
+					if (buf[off] > threshold_hist) {
+						luminance += buf[off] - threshold;
+						buf[off] = 0;
+					} else {
+						break;
+					}
+				}
+			}
+
+			// clear +X, -Y quadrant
+			for (int j = star_y - 1; j >= min_j; j--) {
+				if (buf[j * width + star_x] < threshold_hist) break;
+				for (int i = star_x; i <= max_i; i++) {
+					int off = j * width + i;
+					if (buf[off] > threshold_hist) {
+						luminance += buf[off] - threshold;
+						buf[off] = 0;
+					} else {
+						break;
+					}
+				}
+			}
+
+			// clear -X, -Y quadrant
+			for (int j = star_y - 1; j >= min_j; j--) {
+				if (buf[j * width + star_x - 1] < threshold_hist) break;
+				for (int i = star_x - 1; i >= min_i; i--) {
+					int off = j * width + i;
+					if (buf[off] > threshold_hist) {
+						luminance += buf[off] - threshold;
+						buf[off] = 0;
+					} else {
+						break;
+					}
+				}
+			}
+
 			star.luminance = log(fabs(luminance));
 			star_list[found++] = star;
 		}
@@ -1242,7 +1294,6 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 			break;
 		}
 	}
-
 	free(buf);
 
 	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
