@@ -39,7 +39,7 @@
 #include "libuvc.h"
 #include "libuvc_internal.h"
 
-#include "indigo_bus.h"
+#include <indigo/indigo_bus.h>
 
 #define fprintf(ignore, fmt, ...) INDIGO_DEBUG(indigo_debug(fmt, ##__VA_ARGS__))
 
