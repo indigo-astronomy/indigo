@@ -367,12 +367,12 @@ static void *server_thread(indigo_server_entry *server) {
 		int socket_buffer;
 		hints.ai_family = AF_INET;
 		if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
-			INDIGO_LOG(indigo_error("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
+			INDIGO_LOG(indigo_log("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
 			pthread_mutex_lock(&mutex);
 			strncpy(server->last_error, gai_strerror(result), sizeof(server->last_error));
 			pthread_mutex_unlock(&mutex);
 		} else if ((socket_buffer = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
-			INDIGO_LOG(indigo_error("Can't create socket (%s)", strerror(errno)));
+			INDIGO_LOG(indigo_log("Can't create socket (%s)", strerror(errno)));
 			pthread_mutex_lock(&mutex);
 			strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
 			server->socket = socket_buffer;
@@ -402,7 +402,7 @@ static void *server_thread(indigo_server_entry *server) {
 			inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
 #endif
 			if (result < 0) {
-				INDIGO_LOG(indigo_error("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
+				INDIGO_LOG(indigo_log("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
 				pthread_mutex_lock(&mutex);
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
 				reset_socket(server, 0);
