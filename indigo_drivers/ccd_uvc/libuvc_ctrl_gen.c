@@ -1442,6 +1442,11 @@ uvc_error_t uvc_get_gain(uvc_device_handle_t *devh, uint16_t* gain, enum uvc_req
     sizeof(data),
     0);
 
+  if (req_code == UVC_GET_INFO && ret == 1) {
+    *gain = data[0];
+    return UVC_SUCCESS;
+  }
+  
   if (ret == sizeof(data)) {
     *gain = SW_TO_SHORT(data + 0);
     return UVC_SUCCESS;
@@ -1765,6 +1770,12 @@ uvc_error_t uvc_get_gamma(uvc_device_handle_t *devh, uint16_t* gamma, enum uvc_r
     data,
     sizeof(data),
     0);
+
+  if (req_code == UVC_GET_INFO && ret == 1) {
+    *gamma = data[0];
+    return UVC_SUCCESS;
+  }
+  
 
   if (ret == sizeof(data)) {
     *gamma = SW_TO_SHORT(data + 0);
