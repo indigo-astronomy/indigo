@@ -750,6 +750,11 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 		if (agent_cache[i])
 			indigo_release_property(agent_cache[i]);
 	}
+	for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
+		if (FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]) {
+			free(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]);
+		}
+	}
 	return INDIGO_OK;
 }
 
