@@ -31,6 +31,7 @@
 #include <stdarg.h>
 #include <float.h>
 #include <math.h>
+#include <sys/time.h>
 #include <libusb-1.0/libusb.h>
 
 #include <indigo/indigo_ccd_driver.h>
@@ -1179,7 +1180,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 					property->property = indigo_init_number_property(NULL, device->name, name, group, label, INDIGO_OK_STATE, perm, 1);
 					indigo_init_number_item(property->property->items, "VALUE", "Value", property->value.number.min, property->value.number.max, property->value.number.step, property->value.number.value);
 				}
-			} else {
+			} else if (property->count > 0) {
 				property->property = indigo_init_switch_property(NULL, device->name, name, group, label, INDIGO_OK_STATE, perm, INDIGO_ONE_OF_MANY_RULE, property->count);
 				char str[INDIGO_VALUE_SIZE];
 				for (int i = 0; i < property->count; i++) {
@@ -1453,4 +1454,28 @@ bool ptp_set_host_time(indigo_device *device) {
 
 bool ptp_check_jpeg_ext(const char *ext) {
 	return strcmp(ext, ".JPG") == 0 || strcmp(ext, ".jpg") == 0 || strcmp(ext, ".JPEG") == 0 || strcmp(ext, ".jpeg") == 0;
+}
+
+double timestamp() {
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ts.tv_sec + ts.tv_nsec / 1000000000.0;
+}
+
+void ptp_blob_exposure_timer(indigo_device *device) {
+	double finish = timestamp() + (int)CCD_EXPOSURE_ITEM->number.value;
+	double remains = finish;
+	while (!PRIVATE_DATA->abort_capture && remains > 0) {
+		indigo_usleep(10000);
+		remains = finish - timestamp();
+		if (remains < 0)
+			remains = 0;
+		double remains_ceil = ceil(remains);
+		if (remains_ceil != CCD_EXPOSURE_ITEM->number.value) {
+			CCD_EXPOSURE_ITEM->number.value = remains_ceil;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		}
+	}
+	CCD_EXPOSURE_ITEM->number.value = 0;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }

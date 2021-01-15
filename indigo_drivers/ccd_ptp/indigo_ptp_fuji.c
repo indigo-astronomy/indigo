@@ -514,17 +514,7 @@ bool ptp_fuji_exposure(indigo_device *device) {
 					CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 				}
-				while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
-					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-					indigo_usleep(ONE_SECOND_DELAY);
-					CCD_EXPOSURE_ITEM->number.value -= 1;
-				}
-				if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
-					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-					indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
-				}
-				CCD_EXPOSURE_ITEM->number.value = 0;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				ptp_blob_exposure_timer(device);
 				value = 0x000C;
 				result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(uint16_t));
 				result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
