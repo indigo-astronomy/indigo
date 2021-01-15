@@ -509,6 +509,9 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 		}
 		if (free_index >= 0) {
 			FILTER_CLIENT_CONTEXT->connection_property_cache[free_index] = property;
+			if (FILTER_CLIENT_CONTEXT->connection_property_device_cache[free_index]) {
+				free(FILTER_CLIENT_CONTEXT->connection_property_device_cache[free_index]);
+			}
 			FILTER_CLIENT_CONTEXT->connection_property_device_cache[free_index] = strdup(property->device);
 		}
 		if (property->state != INDIGO_BUSY_STATE) {
