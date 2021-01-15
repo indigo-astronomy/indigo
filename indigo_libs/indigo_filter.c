@@ -745,6 +745,16 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 }
 
 indigo_result indigo_filter_client_detach(indigo_client *client) {
+	for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
+		indigo_property *list = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
+		for (int j = 1; j < list->count; j++) {
+			indigo_item *item = list->items + j;
+			if (item->sw.value) {
+				indigo_change_switch_property_1(client, item->name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+				break;
+			}
+		}
+	}	
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		if (agent_cache[i])
