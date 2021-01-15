@@ -1054,17 +1054,7 @@ bool ptp_nikon_exposure(indigo_device *device) {
 	property = ptp_property_supported(device, ptp_property_ExposureTime);
 	if (property->value.sw.value == 0xffffffff) {
 		CCD_EXPOSURE_ITEM->number.value += DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0;
-		while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_usleep(ONE_SECOND_DELAY);
-			CCD_EXPOSURE_ITEM->number.value -= 1;
-		}
-		if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
-		}
-		CCD_EXPOSURE_ITEM->number.value = 0;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		ptp_blob_exposure_timer(device);
 		result = result && ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
 	}
 	if (result) {

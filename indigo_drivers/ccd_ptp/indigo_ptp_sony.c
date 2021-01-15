@@ -874,17 +874,7 @@ bool ptp_sony_exposure(indigo_device *device) {
 	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t))) {
 		value = 1;
 		if (SONY_PRIVATE_DATA->shutter_speed == 0) {
-			while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-				indigo_usleep(ONE_SECOND_DELAY);
-				CCD_EXPOSURE_ITEM->number.value -= 1;
-			}
-			if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-				indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
-			}
-			CCD_EXPOSURE_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			ptp_blob_exposure_timer(device);
 			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));
 		} else {
 			ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Capture, &value, sizeof(uint16_t));

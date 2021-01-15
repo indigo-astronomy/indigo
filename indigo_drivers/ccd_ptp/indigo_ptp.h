@@ -448,6 +448,8 @@ extern bool ptp_exposure(indigo_device *device);
 extern bool ptp_set_host_time(indigo_device *device);
 extern bool ptp_check_jpeg_ext(const char *ext);
 
+extern void ptp_blob_exposure_timer(indigo_device *device);
+
 #define ptp_transaction_0_0(device, code) ptp_transaction(device, code, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_1_0(device, code, out_1) ptp_transaction(device, code, 1, out_1, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 #define ptp_transaction_2_0(device, code, out_1, out_2) ptp_transaction(device, code, 2, out_1, out_2, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)

@@ -11210,8 +11210,8 @@
 				59D6718C22FDBB7500D08A2A /* indigo_ptp_nikon.c */,
 				59D6719122FDBB8D00D08A2A /* indigo_ptp_sony.h */,
 				59D6719022FDBB8D00D08A2A /* indigo_ptp_sony.c */,
-				59C3BB0F255077E8000720B4 /* indigo_ptp_fuji.c */,
 				59C3BB10255077E8000720B4 /* indigo_ptp_fuji.h */,
+				59C3BB0F255077E8000720B4 /* indigo_ptp_fuji.c */,
 				595E9FC0233E6666006E01D3 /* ptp_camera_model.h */,
 				59C3BB0E255077E8000720B4 /* indigo_ccd_ptp_main.c */,
 			);
