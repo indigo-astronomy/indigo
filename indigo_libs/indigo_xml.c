@@ -131,6 +131,7 @@ typedef struct {
 	indigo_client *client;
 	int count;
 	indigo_property **properties;
+	pthread_mutex_t mutex;
 } parser_context;
 
 bool indigo_use_blob_urls = true;
@@ -390,6 +391,7 @@ static void *switch_protocol_handler(parser_state state, parser_context *context
 }
 
 static void set_property(parser_context *context, indigo_property *other, char *message) {
+	pthread_mutex_lock(&context->mutex);
 	for (int index = 0; index < context->count; index++) {
 		indigo_property *property = context->properties[index];
 		if (property != NULL && !strncmp(property->device, other->device, INDIGO_NAME_SIZE) && !strncmp(property->name, other->name, INDIGO_NAME_SIZE)) {
@@ -479,6 +481,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 			break;
 		}
 	}
+	pthread_mutex_unlock(&context->mutex);
 }
 
 static void *set_one_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
@@ -744,6 +747,7 @@ static void *set_blob_vector_handler(parser_state state, parser_context *context
 static void def_property(parser_context *context, indigo_property *other, char *message) {
 	indigo_property *property = NULL;
 	int index;
+	pthread_mutex_lock(&context->mutex);
 	for (index = 0; index < context->count; index++) {
 		property = context->properties[index];
 		if (property == NULL)
@@ -798,6 +802,7 @@ static void def_property(parser_context *context, indigo_property *other, char *
 	}
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: def_property '%s' '%s' %d", property->device, property->name, index));
 	indigo_define_property(context->device, property, *message ? message : NULL);
+	pthread_mutex_unlock(&context->mutex);
 }
 
 static void *def_text_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
@@ -1108,6 +1113,7 @@ static void *def_blob_vector_handler(parser_state state, parser_context *context
 }
 
 static void *del_property_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
+	pthread_mutex_lock(&context->mutex);
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: del_property_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
@@ -1151,8 +1157,10 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 			}
 		}
 		memset(property, 0, PROPERTY_SIZE);
+		pthread_mutex_unlock(&context->mutex);
 		return top_level_handler;
 	}
+	pthread_mutex_unlock(&context->mutex);
 	return del_property_handler;
 }
 
@@ -1278,6 +1286,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	parser_context *context = malloc(sizeof(parser_context));
 	context->client = client;
 	context->device = device;
+	pthread_mutex_init(&context->mutex, NULL);
 	if (device != NULL) {
 		context->count = 32;
 		context->properties = malloc(context->count * sizeof(indigo_property *));
@@ -1637,6 +1646,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 		}
 	}
 exit_loop:
+	pthread_mutex_lock(&context->mutex);
 	while (true) {
 		indigo_property *property = NULL;
 		int index;
@@ -1672,6 +1682,8 @@ exit_loop:
 		free(blob_buffer);
 	if (context->properties)
 		free(context->properties);
+	pthread_mutex_unlock(&context->mutex);
+	pthread_mutex_destroy(&context->mutex);
 	free(context);
 	free(buffer);
 	free(value_buffer);
