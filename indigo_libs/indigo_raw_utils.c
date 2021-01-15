@@ -1123,7 +1123,8 @@ static int luminance_comparator(const void *item_1, const void *item_2) {
 	return 0;
 }
 
-indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
+/* With radius < 3, no precise star positins will be determined */
+indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
 
 	int  size = width * height;
@@ -1195,13 +1196,23 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 
 	/* Look for stars 35% brighter than the frame average */
 	threshold = 1.35 * threshold / size;
+	int threshold_hist = threshold * 0.99;
+
 	int found = 0;
 	int width2 = width / 2;
 	int height2 = height / 2;
 	uint32_t lmax = threshold + 1;
+
+	indigo_star_detection star = { 0 };
+	int divider = (width > height) ? height2 : width2;
 	while (lmax > threshold) {
 		lmax = threshold;
-		indigo_star_detection star = { 0 };
+		star.x = 0;
+		star.y = 0;
+		star.nc_distance = 0;
+		star.luminance = 0;
+		star.oversaturated = 0;
+
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
@@ -1214,23 +1225,17 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 					lmax = buf[off];
 					star.x = i;
 					star.y = j;
-					star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
-					int divider = (width > height) ? height2 : width2;
-					star.nc_distance /= divider;
 				}
 			}
 		}
 		if (lmax > threshold) {
-			double luminance = lmax;
-			star.oversaturated = luminance == max_luminance;
+			double luminance = 0;
 			int min_i = MAX(0, star.x - star_size);
 			int max_i = MIN(width - 1, star.x + star_size);
 			int min_j = MAX(0, star.y - star_size);
 			int max_j = MIN(height - 1, star.y + star_size);
 			int star_x = (int)star.x;
 			int star_y = (int)star.y;
-			int threshold_hist = threshold * 0.95;
-
 			// clear +X, +Y quadrant
 			for (int j = star_y; j <= max_j; j++) {
 				if (buf[j * width + star_x] < threshold_hist) break;
@@ -1244,7 +1249,6 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 					}
 				}
 			}
-
 			// clear -X, +Y quadrant
 			for (int j = star_y; j <= max_j; j++) {
 				if (buf[j * width + star_x - 1] < threshold_hist) break;
@@ -1258,7 +1262,6 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 					}
 				}
 			}
-
 			// clear +X, -Y quadrant
 			for (int j = star_y - 1; j >= min_j; j--) {
 				if (buf[j * width + star_x] < threshold_hist) break;
@@ -1272,7 +1275,6 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 					}
 				}
 			}
-
 			// clear -X, -Y quadrant
 			for (int j = star_y - 1; j >= min_j; j--) {
 				if (buf[j * width + star_x - 1] < threshold_hist) break;
@@ -1287,8 +1289,22 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 				}
 			}
 
-			star.luminance = log(fabs(luminance));
-			star_list[found++] = star;
+			indigo_result res = INDIGO_FAILED;
+			if (radius >= 3) {
+				indigo_frame_digest center;
+				res = indigo_selection_frame_digest(raw_type, data, &star.x, &star.y, radius, width, height, &center);
+				star.x = center.centroid_x;
+				star.y = center.centroid_y;
+				indigo_delete_frame_digest(&center);
+			}
+
+			if (res == INDIGO_OK || radius < 3) {
+				star.oversaturated = lmax == max_luminance;
+				star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
+				star.nc_distance /= divider;
+				star.luminance = log(fabs(luminance));
+				star_list[found++] = star;
+			}
 		}
 		if (found >= stars_max) {
 			break;
@@ -1306,4 +1322,8 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 
 	*stars_found = found;
 	return INDIGO_OK;
+}
+
+indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
+	return indigo_find_stars_precise(raw_type, data, 0, width, height, stars_max, star_list, stars_found);
 }
