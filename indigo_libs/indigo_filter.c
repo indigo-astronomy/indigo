@@ -282,17 +282,9 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 				indigo_property *device_property = device_cache[i];
 				if (device_property && !strcmp(connection_property->device, device_property->device)) {
 					device_cache[i] = NULL;
-					indigo_property *copy = agent_cache[i];
-					if (copy) {
-						indigo_delete_property(device, copy, NULL);
-						if (copy->type == INDIGO_BLOB_VECTOR) {
-							for (int k = 0; k < copy->count; k++) {
-								indigo_item *item_copy = copy->items + k;
-								if (item_copy->blob.value)
-									free(item_copy->blob.value);
-							}
-						}
-						indigo_release_property(copy);
+					if (agent_cache[i]) {
+						indigo_delete_property(device, agent_cache[i], NULL);
+						indigo_release_property(agent_cache[i]);
 						agent_cache[i] = NULL;
 					}
 				}
@@ -592,15 +584,6 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 									indigo_set_text_item_value(item, property->items[k].text.long_value);
 								}
 							}
-						} else if (copy->type == INDIGO_BLOB_VECTOR) {
-							for (int k = 0; k < copy->count; k++) {
-								indigo_item *item_copy = copy->items + k;
-								if (item_copy->blob.value) {
-									void *tmp = malloc(item_copy->blob.size);
-									memcpy(tmp, item_copy->blob.value, item_copy->blob.size);
-									item_copy->blob.value = tmp;
-								}
-							}
 						}
 						agent_cache[j] = copy;
 						indigo_define_property(device, copy, message);
@@ -666,19 +649,6 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 							for (int k = 0; k < copy->count; k++) {
 								indigo_set_text_item_value(copy->items + k, indigo_get_text_item_value(property->items + k));
 							}
-						} else if (copy->type == INDIGO_BLOB_VECTOR) {
-							for (int k = 0; k < copy->count; k++) {
-								indigo_item *item = property->items + k;
-								indigo_item *item_copy = copy->items + k;
-								if (item_copy->blob.value)
-									free(item_copy->blob.value);
-								memcpy(item_copy, item, sizeof(indigo_item));
-								if (item_copy->blob.value) {
-									void *tmp = malloc(item_copy->blob.size);
-									memcpy(tmp, item_copy->blob.value, item_copy->blob.size);
-									item_copy->blob.value = tmp;
-								}
-							}
 						} else {
 							memcpy(agent_cache[i]->items, property->items, property->count * sizeof(indigo_item));
 						}
@@ -726,17 +696,9 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] == property) {
 				device_cache[i] = NULL;
-				indigo_property *copy = agent_cache[i];
-				if (copy) {
-					indigo_delete_property(device, copy, message);
-					if (copy->type == INDIGO_BLOB_VECTOR) {
-						for (int k = 0; k < copy->count; k++) {
-							indigo_item *item_copy = copy->items + k;
-							if (item_copy->blob.value)
-								free(item_copy->blob.value);
-						}
-					}
-					indigo_release_property(copy);
+				if (agent_cache[i]) {
+					indigo_delete_property(device, agent_cache[i], NULL);
+					indigo_release_property(agent_cache[i]);
 					agent_cache[i] = NULL;
 				}
 				break;
@@ -756,17 +718,9 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] && !strcmp(device_cache[i]->device, property->device)) {
 				device_cache[i] = NULL;
-				indigo_property *copy = agent_cache[i];
-				if (copy) {
-					indigo_delete_property(device, copy, message);
-					if (copy->type == INDIGO_BLOB_VECTOR) {
-						for (int k = 0; k < copy->count; k++) {
-							indigo_item *item_copy = copy->items + k;
-							if (item_copy->blob.value)
-								free(item_copy->blob.value);
-						}
-					}
-					indigo_release_property(copy);
+				if (agent_cache[i]) {
+					indigo_delete_property(device, agent_cache[i], message);
+					indigo_release_property(agent_cache[i]);
 					agent_cache[i] = NULL;
 				}
 			}
@@ -803,17 +757,8 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 	}	
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
-		indigo_property *copy = agent_cache[i];
-		if (copy) {
-			if (copy->type == INDIGO_BLOB_VECTOR) {
-				for (int k = 0; k < copy->count; k++) {
-					indigo_item *item_copy = copy->items + k;
-					if (item_copy->blob.value)
-						free(item_copy->blob.value);
-				}
-			}
+		if (agent_cache[i])
 			indigo_release_property(agent_cache[i]);
-		}
 	}
 	for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
 		if (FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]) {
