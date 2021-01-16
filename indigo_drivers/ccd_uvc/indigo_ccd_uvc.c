@@ -104,9 +104,10 @@ static void exposure_callback(indigo_device *device) {
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	uvc_stream_close(PRIVATE_DATA->strmhp);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_close()");
+	CCD_EXPOSURE_ITEM->number.value = 0;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
 static void streaming_callback(indigo_device *device) {
