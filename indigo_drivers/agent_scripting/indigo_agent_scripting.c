@@ -944,10 +944,15 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					indigo_delete_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 					int count = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count;
 					if (i + 1 < count) {
-						memcpy(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i + 1, sizeof(indigo_item) * (count - i - 1));
-						memcpy(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i + 1, sizeof(indigo_item) * (count - i - 1));
-						memcpy(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + (i + 1), AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 2));
-						memcpy(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + (i + 1), AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 2));
+						indigo_item tmp[count - i - 1];
+						memcpy(tmp, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i + 1, sizeof(indigo_item) * (count - i - 1));
+						memcpy(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i, tmp, sizeof(indigo_item) * (count - i - 1));
+						memcpy(tmp, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i + 1, sizeof(indigo_item) * (count - i - 1));
+						memcpy(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i, tmp, sizeof(indigo_item) * (count - i - 1));
+						memcpy(tmp, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 2));
+						memcpy(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + (i + 1), tmp, sizeof(indigo_item) * (count - i - 2));
+						memcpy(tmp, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 2));
+						memcpy(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + (i + 1), tmp, sizeof(indigo_item) * (count - i - 2));
 					}
 					AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count--;
 					AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count--;
