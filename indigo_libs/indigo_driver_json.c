@@ -474,22 +474,12 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 	client_context->web_socket = web_socket;
 	client->client_context = client_context;
 	client->is_remote = input == ouput;
-	indigo_enable_blob_mode_record *record = (indigo_enable_blob_mode_record *)malloc(sizeof(indigo_enable_blob_mode_record));
-	memset(record, 0, sizeof(indigo_enable_blob_mode_record));
-	record->mode = INDIGO_ENABLE_BLOB_URL;
-	client->enable_blob_mode_records = record;
 	return client;
 }
 
 void indigo_release_json_device_adapter(indigo_client *client) {
 	assert(client != NULL);
 	assert(client->client_context != NULL);
-	indigo_enable_blob_mode_record *record = client->enable_blob_mode_records;
-	while (record) {
-		indigo_enable_blob_mode_record *tmp = record;
-		record = record->next;
-		free(tmp);
-	}
 	free(client->client_context);
 	free(client);
 }
