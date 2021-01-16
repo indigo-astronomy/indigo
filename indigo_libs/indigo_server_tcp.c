@@ -163,10 +163,11 @@ static void start_worker_thread(int *client_socket) {
 							pthread_mutex_lock(&entry->mutext);
 							long working_size = entry->size;
 							if (working_size == 0) {
+								assert(entry->content == NULL);
 								indigo_item item_copy = *item;
 								if (indigo_populate_http_blob_item(&item_copy)) {
-									working_size = entry->size = item_copy.blob.size;
-									entry->content = item_copy.blob.value;
+									entry->content = malloc(working_size = entry->size = item_copy.blob.size);
+									memcpy(entry->content, item_copy.blob.value, working_size);
 								} else {
 									INDIGO_ERROR(indigo_error("Failed to populate BLOB"));
 								}
