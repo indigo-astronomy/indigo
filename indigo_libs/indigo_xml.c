@@ -1262,7 +1262,10 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	assert(buffer != NULL);
 	char *value_buffer = malloc(BUFFER_SIZE + 1); /* +1 to accomodate \0" */
 	assert(value_buffer != NULL);
-	char name_buffer[INDIGO_NAME_SIZE];
+	char *name_buffer = malloc(INDIGO_NAME_SIZE);
+	assert(name_buffer != NULL);
+	char *message = malloc(INDIGO_VALUE_SIZE);
+	assert(message != NULL);
 	unsigned char *blob_buffer = NULL;
 	char *pointer = buffer;
 	char *buffer_end = NULL;
@@ -1270,7 +1273,6 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *value_pointer = value_buffer;
 	unsigned char *blob_pointer = NULL;
 	long blob_size = 0;
-	char message[INDIGO_VALUE_SIZE];
 	char q = '"';
 	int depth = 0;
 	char c = 0;
@@ -1680,6 +1682,10 @@ exit_loop:
 	}
 	if (blob_buffer != NULL)
 		free(blob_buffer);
+	if (name_buffer)
+		free(name_buffer);
+	if (message)
+		free(message);
 	if (context->properties)
 		free(context->properties);
 	pthread_mutex_unlock(&context->mutex);
