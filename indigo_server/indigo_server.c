@@ -1296,6 +1296,15 @@ static void server_main() {
 	DNSServiceRefDeallocate(sd_http);
 #endif
 
+	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
+		if (indigo_available_drivers[i].driver) {
+			indigo_remove_driver(&indigo_available_drivers[i]);
+		}
+	}
+	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
+		if (indigo_available_subprocesses[i].thread_started)
+			indigo_kill_subprocess(&indigo_available_subprocesses[i]);
+	}
 	indigo_detach_device(&server_device);
 	indigo_stop();
 	indigo_server_remove_resources();
@@ -1305,18 +1314,9 @@ static void server_main() {
 		free(dso_data);
 	if (constellation_data)
 		free(constellation_data);
-	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
-		if (indigo_available_drivers[i].driver) {
-			indigo_remove_driver(&indigo_available_drivers[i]);
-		}
-	}
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		if (indigo_available_servers[i].thread_started)
 			indigo_disconnect_server(&indigo_available_servers[i]);
-	}
-	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
-		if (indigo_available_subprocesses[i].thread_started)
-			indigo_kill_subprocess(&indigo_available_subprocesses[i]);
 	}
 	exit(EXIT_SUCCESS);
 }
@@ -1433,7 +1433,7 @@ int main(int argc, const char * argv[]) {
 				use_sigkill = false;
 				if (keep_server_running) {
 					INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
-					  indigo_usleep(2 * ONE_SECOND_DELAY);
+					indigo_usleep(2 * ONE_SECOND_DELAY);
 				}
 			}
 		}
