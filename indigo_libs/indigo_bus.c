@@ -589,7 +589,8 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 						entry->content = realloc(entry->content, entry->size = item->blob.size);
 						memcpy(entry->content, item->blob.value, entry->size);
 						strcpy(entry->format, item->blob.format);
-					} else {
+					} else if (entry->content) {
+						free(entry->content);
 						entry->size = 0;
 						entry->content = NULL;
 					}
