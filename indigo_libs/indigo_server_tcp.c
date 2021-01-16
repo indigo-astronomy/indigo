@@ -165,9 +165,11 @@ static void start_worker_thread(int *client_socket) {
 							if (working_size == 0) {
 								assert(entry->content == NULL);
 								indigo_item item_copy = *item;
+								item_copy.blob.size = 0;
+								item_copy.blob.value = NULL;
 								if (indigo_populate_http_blob_item(&item_copy)) {
-									entry->content = malloc(working_size = entry->size = item_copy.blob.size);
-									memcpy(entry->content, item_copy.blob.value, working_size);
+									working_size = entry->size = item_copy.blob.size;
+									entry->content = item_copy.blob.value;
 								} else {
 									INDIGO_ERROR(indigo_error("Failed to populate BLOB"));
 								}
