@@ -355,8 +355,11 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					result = indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
 					DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 					DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
-					memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
-					memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
+					double tmp[MAX_STACK - 1];
+					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
+					memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, tmp, sizeof(double) * (MAX_STACK - 1));
+					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
+					memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, tmp, sizeof(double) * (MAX_STACK - 1));
 					DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 					DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
 					if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK)
