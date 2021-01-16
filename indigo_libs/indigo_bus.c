@@ -585,9 +585,14 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 				}
 				if (entry) {
 					pthread_mutex_lock(&entry->mutext);
-					entry->content = realloc(entry->content, entry->size = item->blob.size);
-					memcpy(entry->content, item->blob.value, entry->size);
-					strcpy(entry->format, item->blob.format);
+					if (item->blob.size) {
+						entry->content = realloc(entry->content, entry->size = item->blob.size);
+						memcpy(entry->content, item->blob.value, entry->size);
+						strcpy(entry->format, item->blob.format);
+					} else {
+						entry->size = 0;
+						entry->content = NULL;
+					}
 					pthread_mutex_unlock(&entry->mutext);
 				} else {
 					pthread_mutex_unlock(&blob_mutex);
