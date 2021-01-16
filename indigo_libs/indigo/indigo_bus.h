@@ -367,7 +367,7 @@ typedef struct {
 
 /** Last diagnostic messages.
  */
-extern char indigo_last_message[];
+extern char *indigo_last_message;
 
 /** Name to be used in log (if not changed ot will be filled with executable name).
  */

@@ -120,8 +120,10 @@ bool indigo_proxy_blob = false;
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
-char indigo_last_message[128 * 1024];
-char indigo_log_name[255] = {0};
+#define LOG_MESSAGE_SIZE	(128 * 1024)
+
+char *indigo_last_message = NULL;
+char indigo_log_name[255] = { 0 };
 
 #if defined(INDIGO_WINDOWS)
 
@@ -159,7 +161,9 @@ int clock_gettime(clockid_t clk_id, struct timespec *ts) {
 void indigo_log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
-	vsnprintf(indigo_last_message, sizeof(indigo_last_message), format, args);
+	if (indigo_last_message == NULL)
+		indigo_last_message = malloc(LOG_MESSAGE_SIZE);
+	vsnprintf(indigo_last_message, LOG_MESSAGE_SIZE, format, args);
 	char *line = indigo_last_message;
 	if (indigo_log_message_handler != NULL) {
 		indigo_log_message_handler(indigo_last_message);
@@ -680,9 +684,13 @@ indigo_result indigo_stop() {
 			if (device != NULL && device->detach != NULL)
 				device->last_result = device->detach(device);
 		}
-		pthread_mutex_unlock(&client_mutex);
-		pthread_mutex_unlock(&device_mutex);
 	}
+	if (indigo_last_message) {
+		free(indigo_last_message);
+		indigo_last_message = NULL;
+	}
+	pthread_mutex_unlock(&client_mutex);
+	pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
 }
 
