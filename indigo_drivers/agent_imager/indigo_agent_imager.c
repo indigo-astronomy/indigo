@@ -1451,7 +1451,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					break;
 				}
 				if (DEVICE_PRIVATE_DATA->image_buffer)
-					DEVICE_PRIVATE_DATA->image_buffer = realloc(DEVICE_PRIVATE_DATA->image_buffer, file_stat.st_size);
+					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_realloc(DEVICE_PRIVATE_DATA->image_buffer, file_stat.st_size);
 				else
 					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(file_stat.st_size);
 				int fd = open(file_name, O_RDONLY, 0);

@@ -731,6 +731,12 @@ static inline void *indigo_safe_malloc(size_t size) {
 	return pointer;
 }
 
+static inline void *indigo_safe_realloc(void *pointer, size_t size) {
+	pointer = realloc(pointer, size);
+	assert(pointer != NULL);
+	return pointer;
+}
+
 static inline void *indigo_safe_malloc_copy(size_t size, void *from) {
 	void *pointer = malloc(size);
 	assert(pointer != NULL);

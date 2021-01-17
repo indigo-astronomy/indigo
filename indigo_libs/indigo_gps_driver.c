@@ -42,8 +42,6 @@ indigo_result indigo_gps_attach(indigo_device *device, const char* driver_name, 
 	assert(device != NULL);
 	if (GPS_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_gps_context));
-		assert(device->device_context);
-		memset(device->device_context, 0, sizeof(indigo_gps_context));
 	}
 	if (GPS_CONTEXT != NULL) {
 		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_GPS) == INDIGO_OK) {

@@ -591,7 +591,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 				if (entry) {
 					pthread_mutex_lock(&entry->mutext);
 					if (item->blob.size) {
-						entry->content = realloc(entry->content, entry->size = item->blob.size);
+						entry->content = indigo_safe_realloc(entry->content, entry->size = item->blob.size);
 						memcpy(entry->content, item->blob.value, entry->size);
 						strcpy(entry->format, item->blob.format);
 					} else if (entry->content) {
@@ -810,7 +810,7 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	assert(property != NULL);
 	if (property->count == count)
 		return property;
-	property = realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
+	property = indigo_safe_realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
 	assert(property != NULL);
 	if (count > property->count)
 		memset(property->items+property->count, 0, (count - property->count) * sizeof(indigo_item));
@@ -988,7 +988,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		if (image_type)
 			indigo_copy_name(blob_item->blob.format, image_type);
 		blob_item->blob.size = content_len;
-		blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
+		blob_item->blob.value = indigo_safe_realloc(blob_item->blob.value, blob_item->blob.size);
 		res = (indigo_read(socket, blob_item->blob.value, blob_item->blob.size) >= 0) ? true : false;
 	} else {
 		res = false;

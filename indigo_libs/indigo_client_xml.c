@@ -237,7 +237,6 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input
 	sprintf(device->name, "@ %s", name);
 	device->is_remote = input == output; // is socket, otherwise is pipe
 	indigo_adapter_context *device_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-	assert(device_context != NULL);
 	device_context->input = input;
 	device_context->output = output;
 	indigo_copy_name(device_context->url_prefix, url_prefix);

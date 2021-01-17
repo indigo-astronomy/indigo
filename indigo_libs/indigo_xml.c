@@ -414,8 +414,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								}
 								indigo_copy_value(property_item->text.value, other_item->text.value);
 								if (other_item->text.long_value) {
-									if ((property_item->text.long_value = indigo_safe_malloc(property_item->text.length = other_item->text.length)))
-										memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.length);
+									property_item->text.long_value = indigo_safe_malloc_copy(property_item->text.length = other_item->text.length, other_item->text.long_value);
 								}
 								break;
 							case INDIGO_NUMBER_VECTOR:
@@ -450,7 +449,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								property_item->blob.size = other_item->blob.size;
 								if (other_item->blob.value) {
 									if (property_item->blob.value != NULL)
-										property_item->blob.value = realloc(property_item->blob.value, property_item->blob.size);
+										property_item->blob.value = indigo_safe_realloc(property_item->blob.value, property_item->blob.size);
 									else
 										property_item->blob.value = indigo_safe_malloc(property_item->blob.size);
 									memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
@@ -756,7 +755,7 @@ static void def_property(parser_context *context, indigo_property *other, char *
 			break;
 	}
 	if (index == context->count) {
-		context->properties = realloc(context->properties, context->count * 2 * sizeof(indigo_property *));
+		context->properties = indigo_safe_realloc(context->properties, context->count * 2 * sizeof(indigo_property *));
 		memset(context->properties + context->count, 0, context->count * sizeof(indigo_property *));
 		context->count *= 2;
 		property = NULL;
@@ -770,8 +769,7 @@ static void def_property(parser_context *context, indigo_property *other, char *
 					indigo_item *property_item = property->items + i;
 					indigo_item *other_item = other->items + i;
 					if (other_item->text.long_value) {
-						if ((property_item->text.long_value = indigo_safe_malloc(property_item->text.length = other_item->text.length)))
-							memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.length);
+						property_item->text.long_value = indigo_safe_malloc_copy(property_item->text.length = other_item->text.length, other_item->text.long_value);
 					}
 				}
 				break;
@@ -1259,13 +1257,9 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 
 void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *buffer = indigo_safe_malloc(BUFFER_SIZE + 3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
-	assert(buffer != NULL);
 	char *value_buffer = indigo_safe_malloc(BUFFER_SIZE + 1); /* +1 to accomodate \0" */
-	assert(value_buffer != NULL);
 	char *name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
-	assert(name_buffer != NULL);
 	char *message = indigo_safe_malloc(INDIGO_VALUE_SIZE);
-	assert(message != NULL);
 	unsigned char *blob_buffer = NULL;
 	char *pointer = buffer;
 	char *buffer_end = NULL;
@@ -1292,7 +1286,6 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	if (device != NULL) {
 		context->count = 32;
 		context->properties = indigo_safe_malloc(context->count * sizeof(indigo_property *));
-		memset(context->properties, 0, context->count * sizeof(indigo_property *));
 	} else {
 		context->count = 0;
 		context->properties = NULL;
@@ -1589,12 +1582,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						if (blob_size > 0) {
 							state = BLOB;
 							if (blob_buffer != NULL) {
-								unsigned char *ptmp = realloc(blob_buffer, blob_size + 3); /* +3 to handle indi - reason unknown */
+								unsigned char *ptmp = indigo_safe_realloc(blob_buffer, blob_size + 3); /* +3 to handle indi - reason unknown */
 								assert(ptmp != NULL);
 								blob_buffer = ptmp;
 							} else {
 								blob_buffer = indigo_safe_malloc(blob_size + 3); /* +3 to handle indi - reason unknown */
-								assert(blob_buffer != NULL);
 							}
 							blob_pointer = blob_buffer;
 						} else {
@@ -1722,7 +1714,7 @@ const char *indigo_xml_escape(const char *string) {
 		if (escape_buffer[index] == NULL)
 			escape_buffer[index] = buffer = indigo_safe_malloc(escape_buffer_size[index] = length);
 		else if (escape_buffer_size[index] < length)
-			escape_buffer[index] = buffer = realloc(escape_buffer[index], escape_buffer_size[index] = length);
+			escape_buffer[index] = buffer = indigo_safe_realloc(escape_buffer[index], escape_buffer_size[index] = length);
 		else
 			buffer = escape_buffer[index];
 		const char *in = string;
