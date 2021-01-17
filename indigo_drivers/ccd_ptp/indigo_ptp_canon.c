@@ -1252,8 +1252,7 @@ static void ptp_canon_check_event(indigo_device *device) {
 }
 
 bool ptp_canon_initialise(indigo_device *device) {
-	PRIVATE_DATA->vendor_private_data = malloc(sizeof(canon_private_data));
-	memset(CANON_PRIVATE_DATA, 0, sizeof(canon_private_data));
+	PRIVATE_DATA->vendor_private_data = indigo_safe_malloc(sizeof(canon_private_data));
 	if (!ptp_initialise(device))
 		return false;
 	void *buffer = NULL;

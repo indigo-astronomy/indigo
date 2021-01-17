@@ -446,7 +446,7 @@ bool indigo_write(int handle, const char *buffer, long length) {
 
 bool indigo_printf(int handle, const char *format, ...) {
 	if (strchr(format, '%')) {
-		char *buffer = malloc(BUFFER_SIZE);
+		char *buffer = indigo_safe_malloc(BUFFER_SIZE);
 		if (buffer == NULL) {
 			indigo_error("Can't allocate buffer");
 			return false;
@@ -465,7 +465,7 @@ bool indigo_printf(int handle, const char *format, ...) {
 }
 
 int indigo_scanf(int handle, const char *format, ...) {
-	char *buffer = malloc(BUFFER_SIZE);
+	char *buffer = indigo_safe_malloc(BUFFER_SIZE);
 	if (buffer == NULL) {
 		indigo_error("Can't allocate buffer");
 		return 0;

@@ -1080,8 +1080,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	if (response.type == ptp_container_data) {
 		length -= PTP_CONTAINER_HDR_SIZE;
 		int total = response.length - PTP_CONTAINER_HDR_SIZE;
-		unsigned char *buffer = malloc(total);
-		assert(buffer != NULL);
+		unsigned char *buffer = indigo_safe_malloc(total);
 		memcpy(buffer, &response.payload, length);
 		int offset = length;
 		if (data_in_size)

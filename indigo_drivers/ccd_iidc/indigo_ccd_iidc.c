@@ -667,7 +667,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
 						INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, tmp));
 						INDIGO_DEBUG_DRIVER(rewind(tmp));
-						INDIGO_DEBUG_DRIVER(char *line = malloc(1024));
+						INDIGO_DEBUG_DRIVER(char *line = indigo_safe_malloc(1024));
 						INDIGO_DEBUG_DRIVER(size_t line_max_length = 1024);
             INDIGO_DEBUG_DRIVER(size_t line_length);
 						while ((line_length = getline(&line, &line_max_length, tmp)) != -1) {

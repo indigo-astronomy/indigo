@@ -601,7 +601,7 @@ static void start_lx200_server(indigo_device *device) {
 	while (DEVICE_PRIVATE_DATA->server_socket) {
 		int client_socket = accept(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&client_name, &name_len);
 		if (client_socket != -1) {
-			handler_data *data = malloc(sizeof(handler_data));
+			handler_data *data = indigo_safe_malloc(sizeof(handler_data));
 			data->client_socket = client_socket;
 			data->device = device;
 			if (!indigo_async((void *(*)(void *))worker_thread, data))

@@ -451,8 +451,7 @@ static void select_subframe(indigo_device *device) {
 			if (frame_height - selection_y < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
 				frame_height += GRID;
 			int size = sizeof(indigo_property) + device_ccd_frame_property->count * sizeof(indigo_item);
-			DEVICE_PRIVATE_DATA->saved_frame = malloc(size);
-			memcpy(DEVICE_PRIVATE_DATA->saved_frame, agent_ccd_frame_property, size);
+			DEVICE_PRIVATE_DATA->saved_frame = indigo_safe_malloc_copy(size, agent_ccd_frame_property);
 			strcpy(DEVICE_PRIVATE_DATA->saved_frame->device, device_ccd_frame_property->device);
 			char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 			double values[] = { frame_left * bin_x, frame_top * bin_y,  frame_width * bin_x, frame_height * bin_y };

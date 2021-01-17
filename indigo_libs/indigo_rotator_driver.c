@@ -40,7 +40,7 @@ indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_na
 	assert(device != NULL);
 	assert(device != NULL);
 	if (ROTATOR_CONTEXT == NULL) {
-		device->device_context = malloc(sizeof(indigo_rotator_context));
+		device->device_context = indigo_safe_malloc(sizeof(indigo_rotator_context));
 		assert(device->device_context);
 		memset(device->device_context, 0, sizeof(indigo_rotator_context));
 	}

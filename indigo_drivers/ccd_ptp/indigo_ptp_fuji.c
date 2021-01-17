@@ -390,8 +390,7 @@ static void ptp_fuji_check_event(indigo_device *device) {
 }
 
 bool ptp_fuji_initialise(indigo_device *device) {
-	PRIVATE_DATA->vendor_private_data = malloc(sizeof(fuji_private_data));
-	memset(FUJI_PRIVATE_DATA, 0, sizeof(fuji_private_data));
+	PRIVATE_DATA->vendor_private_data = indigo_safe_malloc(sizeof(fuji_private_data));
 	if (!ptp_initialise(device))
 		return false;
 	uint16_t value = 1;
