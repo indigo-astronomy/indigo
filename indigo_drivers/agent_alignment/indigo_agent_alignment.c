@@ -153,8 +153,7 @@ static void process_connection_change(indigo_client *client, indigo_device *devi
 		}
 		if (define) {
 			int alignment_point_count = MOUNT_CONTEXT->alignment_point_count;
-			indigo_property **alignment_properties;
-			indigo_safe_malloc(alignment_properties, alignment_point_count * sizeof(indigo_property *));
+			indigo_property **alignment_properties = indigo_safe_malloc(alignment_point_count * sizeof(indigo_property *));
 			CLIENT_PRIVATE_DATA->mount = device;
 			indigo_alignment_point *points = MOUNT_CONTEXT->alignment_points;
 			for (int j = 0; j < alignment_point_count; j++) {
