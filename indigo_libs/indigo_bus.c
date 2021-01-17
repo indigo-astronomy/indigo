@@ -162,7 +162,7 @@ void indigo_log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
 	if (indigo_last_message == NULL)
-		indigo_last_message = malloc(LOG_MESSAGE_SIZE);
+		indigo_safe_malloc(indigo_last_message, LOG_MESSAGE_SIZE);
 	vsnprintf(indigo_last_message, LOG_MESSAGE_SIZE, format, args);
 	char *line = indigo_last_message;
 	if (indigo_log_message_handler != NULL) {
@@ -582,7 +582,8 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					entry = NULL;
 				}
 				if (entry == NULL && free_index >= 0) {
-					blobs[free_index] = entry = malloc(sizeof(indigo_blob_entry));
+					indigo_safe_malloc(entry, sizeof(indigo_blob_entry));
+					blobs[free_index] = entry;
 					memset(entry, 0, sizeof(indigo_blob_entry));
 					entry->item = item;
 					pthread_mutex_init(&entry->mutext, NULL);
@@ -699,8 +700,9 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 	assert(name != NULL);
 	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
 	if (property == NULL) {
-		property = malloc(size);
-		if (property == NULL) return NULL;
+		indigo_safe_malloc(property, size);
+	} else {
+		indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -720,9 +722,7 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	assert(name != NULL);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
-		property = malloc(size);
-		if (property == NULL)
-			return NULL;
+		indigo_safe_malloc(property, size);
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -744,9 +744,7 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	assert(name != NULL);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
-		property = malloc(size);
-		if (property == NULL)
-			return NULL;
+		indigo_safe_malloc(property, size);
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -769,9 +767,7 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	assert(name != NULL);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
-		property = malloc(size);
-		if (property == NULL)
-			return NULL;
+		indigo_safe_malloc(property, size);
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -793,9 +789,7 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	assert(name != NULL);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
-		property = malloc(size);
-		if (property == NULL)
-			return NULL;
+		indigo_safe_malloc(property, size);
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -814,6 +808,8 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 
 indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	assert(property != NULL);
+	if (property->count == count)
+		return property;
 	property = realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
 	assert(property != NULL);
 	if (count > property->count)
@@ -925,11 +921,14 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 }
 
 void *indigo_alloc_blob_buffer(long size) {
+	void *result;
 	int mod2880 = size % 2880;
 	if (mod2880) {
-		return malloc(size + 2880 - mod2880);
+		indigo_safe_malloc(result, size + 2880 - mod2880);
+	} else {
+		indigo_safe_malloc(result, size);
 	}
-	return malloc(size);
+	return result;
 }
 
 bool indigo_populate_http_blob_item(indigo_item *blob_item) {
@@ -951,21 +950,11 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		return false;
 	}
 	
-	host = malloc(BUFFER_SIZE);
-	assert(host != NULL);
-	memset(host, 0, BUFFER_SIZE);
-	file = malloc(BUFFER_SIZE);
-	assert(file != NULL);
-	memset(file, 0, BUFFER_SIZE);
-	request = malloc(BUFFER_SIZE);
-	assert(request != NULL);
-	memset(request, 0, BUFFER_SIZE);
-	http_line = malloc(BUFFER_SIZE);
-	assert(http_line != NULL);
-	memset(http_line, 0, BUFFER_SIZE);
-	http_response = malloc(BUFFER_SIZE);
-	assert(http_response != NULL);
-	memset(http_response, 0, BUFFER_SIZE);
+	indigo_safe_malloc(host, BUFFER_SIZE);
+	indigo_safe_malloc(file, BUFFER_SIZE);
+	indigo_safe_malloc(request, BUFFER_SIZE);
+	indigo_safe_malloc(http_line, BUFFER_SIZE);
+	indigo_safe_malloc(http_response, BUFFER_SIZE);
 
 	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
 	socket = indigo_open_tcp(host, port);
@@ -1026,16 +1015,11 @@ clean_return:
 		closesocket(socket);
 #endif
 	}
-	if (host)
-		free(host);
-	if (file)
-		free(file);
-	if (request)
-		free(request);
-	if (http_line)
-		free(http_line);
-	if (http_response)
-		free(http_response);
+	indigo_safe_free(host);
+	indigo_safe_free(file);
+	indigo_safe_free(request);
+	indigo_safe_free(http_line);
+	indigo_safe_free(http_response);
 	return res;
 }
 
@@ -1124,9 +1108,8 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							indigo_copy_value(property_item->text.value, other_item->text.value);
 							property_item->text.length = other_item->text.length;
 							if (other_item->text.long_value) {
-								if ((property_item->text.long_value = malloc(property_item->text.length))) {
-									memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.length);
-								}
+								indigo_safe_malloc(property_item->text.long_value, property_item->text.length);
+								memcpy(property_item->text.long_value, other_item->text.long_value, other_item->text.length);
 							}
 							break;
 						case INDIGO_NUMBER_VECTOR:
@@ -1208,10 +1191,9 @@ void indigo_set_text_item_value(indigo_item *item, const char *value) {
 	indigo_copy_value(item->text.value, value);
 	item->text.length = length + 1;
 	if (length >= INDIGO_VALUE_SIZE) {
-		if ((item->text.long_value = malloc(item->text.length))) {
-			strncpy(item->text.long_value, value, length);
-			item->text.long_value[length] = 0;
-		}
+		indigo_safe_malloc(item->text.long_value, item->text.length);
+		strncpy(item->text.long_value, value, length);
+		item->text.long_value[length] = 0;
 	}
 }
 
@@ -1363,8 +1345,9 @@ bool indigo_handle_property_async(
 	indigo_client *client,
 	indigo_property *property
 ) {
-	property_handler_data_t *phd = malloc(sizeof(property_handler_data_t));
-	if (phd == NULL) return false;
+	property_handler_data_t *phd;
+	
+	indigo_safe_malloc(phd, sizeof(property_handler_data_t));
 
 	phd->handler = handler;
 	phd->device = device;

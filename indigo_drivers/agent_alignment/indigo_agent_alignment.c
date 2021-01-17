@@ -153,27 +153,26 @@ static void process_connection_change(indigo_client *client, indigo_device *devi
 		}
 		if (define) {
 			int alignment_point_count = MOUNT_CONTEXT->alignment_point_count;
-			indigo_property **alignment_properties = malloc(alignment_point_count * sizeof(indigo_property *));
-			if (alignment_properties) {
-				CLIENT_PRIVATE_DATA->mount = device;
-				indigo_alignment_point *points = MOUNT_CONTEXT->alignment_points;
-				for (int j = 0; j < alignment_point_count; j++) {
-					char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
-					sprintf(name, AGENT_ALIGNMENT_POINT_PROPERY_NAME, j);
-					sprintf(label, "Alignment point #%d", j);
-					indigo_property *alignment_property = indigo_init_number_property(NULL, agent_device->name, name, "Alignment points", label, INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
-					indigo_init_number_item(AGENT_ALIGNMENT_POINT_RA_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, points[j].ra);
-					indigo_init_number_item(AGENT_ALIGNMENT_POINT_DEC_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_DEC_ITEM_NAME, "Declination (-90 to 90°))", -90, 90, 0, points[j].dec);
-					indigo_init_number_item(AGENT_ALIGNMENT_POINT_RAW_RA_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RAW_RA_ITEM_NAME, "Raw right ascension (0 to 24 hrs)", 0, 24, 0, points[j].raw_ra);
-					indigo_init_number_item(AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM_NAME, "Raw declination (-90 to 90°))", -90, 90, 0, points[j].raw_dec);
-					indigo_init_number_item(AGENT_ALIGNMENT_POINT_LST_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_LST_ITEM_NAME, "LST Time", 0, 24, 0, points[j].lst);
-					indigo_init_number_item(AGENT_ALIGNMENT_POINT_SOP_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_SOP_ITEM_NAME, "Side of pier", 0, 1, 0, points[j].side_of_pier);
-					alignment_properties[j] = alignment_property;
-					indigo_define_property(agent_device, alignment_property, NULL);
-				}
-				CLIENT_PRIVATE_DATA->alignment_point_count = alignment_point_count;
-				CLIENT_PRIVATE_DATA->alignment_point_properties = alignment_properties;
+			indigo_property **alignment_properties;
+			indigo_safe_malloc(alignment_properties, alignment_point_count * sizeof(indigo_property *));
+			CLIENT_PRIVATE_DATA->mount = device;
+			indigo_alignment_point *points = MOUNT_CONTEXT->alignment_points;
+			for (int j = 0; j < alignment_point_count; j++) {
+				char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
+				sprintf(name, AGENT_ALIGNMENT_POINT_PROPERY_NAME, j);
+				sprintf(label, "Alignment point #%d", j);
+				indigo_property *alignment_property = indigo_init_number_property(NULL, agent_device->name, name, "Alignment points", label, INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
+				indigo_init_number_item(AGENT_ALIGNMENT_POINT_RA_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, points[j].ra);
+				indigo_init_number_item(AGENT_ALIGNMENT_POINT_DEC_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_DEC_ITEM_NAME, "Declination (-90 to 90°))", -90, 90, 0, points[j].dec);
+				indigo_init_number_item(AGENT_ALIGNMENT_POINT_RAW_RA_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RAW_RA_ITEM_NAME, "Raw right ascension (0 to 24 hrs)", 0, 24, 0, points[j].raw_ra);
+				indigo_init_number_item(AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RAW_DEC_ITEM_NAME, "Raw declination (-90 to 90°))", -90, 90, 0, points[j].raw_dec);
+				indigo_init_number_item(AGENT_ALIGNMENT_POINT_LST_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_LST_ITEM_NAME, "LST Time", 0, 24, 0, points[j].lst);
+				indigo_init_number_item(AGENT_ALIGNMENT_POINT_SOP_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_SOP_ITEM_NAME, "Side of pier", 0, 1, 0, points[j].side_of_pier);
+				alignment_properties[j] = alignment_property;
+				indigo_define_property(agent_device, alignment_property, NULL);
 			}
+			CLIENT_PRIVATE_DATA->alignment_point_count = alignment_point_count;
+			CLIENT_PRIVATE_DATA->alignment_point_properties = alignment_properties;
 		}
 	}
 }
