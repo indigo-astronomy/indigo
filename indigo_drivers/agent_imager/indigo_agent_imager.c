@@ -124,6 +124,8 @@
 
 #define SEQUENCE_SIZE			16
 
+#define BUSY_TIMEOUT 5
+
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
 typedef struct {
@@ -317,7 +319,7 @@ static bool capture_raw_frame(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return false;
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device_exposure_property->device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
-		for (int i = 0; i < 1000 && agent_exposure_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+		for (int i = 0; i < BUSY_TIMEOUT * 1000 && agent_exposure_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 			indigo_usleep(1000);
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -328,7 +330,7 @@ static bool capture_raw_frame(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return false;
 		if (agent_exposure_property->state != INDIGO_BUSY_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
 			indigo_usleep(ONE_SECOND_DELAY);
 			continue;
 		}
@@ -491,7 +493,7 @@ static bool exposure_batch(indigo_device *device) {
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				return false;
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device_exposure_property->device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
-			for (int i = 0; i < 1000 && agent_exposure_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+			for (int i = 0; i < BUSY_TIMEOUT * 1000 && agent_exposure_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 				indigo_usleep(1000);
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -502,7 +504,7 @@ static bool exposure_batch(indigo_device *device) {
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				return false;
 			if (agent_exposure_property->state != INDIGO_BUSY_STATE) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
 				indigo_usleep(ONE_SECOND_DELAY);
 				continue;
 			}
@@ -668,12 +670,12 @@ static bool streaming_batch(indigo_device *device) {
 	char const *names[] = { AGENT_IMAGER_BATCH_COUNT_ITEM_NAME, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME };
 	double values[] = { AGENT_IMAGER_BATCH_COUNT_ITEM->number.target, AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target };
 	indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_streaming_property->device, CCD_STREAMING_PROPERTY_NAME, 2, names, values);
-	for (int i = 0; i < 1000 && agent_streaming_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+	for (int i = 0; i < BUSY_TIMEOUT * 1000 && agent_streaming_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 		indigo_usleep(1000);
 	if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		return false;
 	if (agent_streaming_property->state != INDIGO_BUSY_STATE) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_STREAMING_PROPERTY didn't become busy in 1 second");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_STREAMING_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
 		return false;
 	}
 	while (agent_streaming_property->state == INDIGO_BUSY_STATE) {
@@ -799,7 +801,7 @@ static bool autofocus(indigo_device *device) {
 			}
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device_steps_property->device, device_steps_property->name, FOCUSER_STEPS_ITEM_NAME, steps_with_backlash);
 		}
-		for (int i = 0; i < 1000 && agent_steps_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+		for (int i = 0; i < BUSY_TIMEOUT * 1000 && agent_steps_property->state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 			indigo_usleep(1000);
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -809,7 +811,7 @@ static bool autofocus(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return false;
 		if (agent_steps_property->state != INDIGO_BUSY_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become busy in 1 second");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
 			return false;
 		}
 		while (agent_steps_property->state == INDIGO_BUSY_STATE) {

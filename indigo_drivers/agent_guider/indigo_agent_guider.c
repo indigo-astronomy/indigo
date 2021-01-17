@@ -119,6 +119,7 @@
 #define AGENT_GUIDER_STATS_DELAY_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+13)
 #define AGENT_GUIDER_STATS_DITHERING_ITEM			(AGENT_GUIDER_STATS_PROPERTY->items+14)
 
+#define BUSY_TIMEOUT 5
 
 typedef struct {
 	indigo_property *agent_guider_detection_mode_property;
@@ -199,14 +200,14 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		local_exposure_property->items[0].number.value = time;
 		local_exposure_property->access_token = indigo_get_device_or_master_token(local_exposure_property->device);
 		indigo_change_property(FILTER_DEVICE_CONTEXT->client, local_exposure_property);
-		for (int i = 0; agent_exposure_property->state != INDIGO_BUSY_STATE && i < 1000 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+		for (int i = 0; agent_exposure_property->state != INDIGO_BUSY_STATE && i < BUSY_TIMEOUT * 1000 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 			indigo_usleep(1000);
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_release_property(local_exposure_property);
 			return INDIGO_ALERT_STATE;
 		}
 		if (agent_exposure_property->state != INDIGO_BUSY_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in 1 second");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
 			indigo_release_property(local_exposure_property);
 			return INDIGO_ALERT_STATE;
 		}

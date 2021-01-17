@@ -377,12 +377,17 @@ indigo_result indigo_start() {
 }
 
 indigo_result indigo_attach_device(indigo_device *device) {
+	static int max_index = -1;
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
 	INDIGO_TRACE(indigo_trace("INDIGO Bus: device attach request (%s)", device->name));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {
+			if (i > max_index) {
+				i = max_index;
+				indigo_debug("%d devices attached", max_index + 1);
+			}
 			devices[i] = device;
 			pthread_mutex_unlock(&device_mutex);
 			device->access_token = 0;
@@ -401,15 +406,21 @@ indigo_result indigo_attach_device(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
+	indigo_error("[%s:%d] Max device count reached", __FUNCTION__, __LINE__);
 	return INDIGO_TOO_MANY_ELEMENTS;
 }
 
 indigo_result indigo_attach_client(indigo_client *client) {
+	static int max_index = -1;
 	if ((!is_started) || (client == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&client_mutex);
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		if (clients[i] == NULL) {
+			if (i > max_index) {
+				i = max_index;
+				indigo_debug("%d clients attached", max_index + 1);
+			}
 			clients[i] = client;
 			pthread_mutex_unlock(&client_mutex);
 			if (client->attach != NULL)
@@ -419,6 +430,7 @@ indigo_result indigo_attach_client(indigo_client *client) {
 		}
 	}
 	pthread_mutex_unlock(&client_mutex);
+	indigo_error("[%s:%d] Max client count reached", __FUNCTION__, __LINE__);
 	return INDIGO_TOO_MANY_ELEMENTS;
 }
 
@@ -610,6 +622,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					pthread_mutex_unlock(&blob_mutex);
 					if (indigo_use_strict_locking)
 						pthread_mutex_unlock(&client_mutex);
+					indigo_error("[%s:%d] Max BLOB count reached", __FUNCTION__, __LINE__);
 					return INDIGO_TOO_MANY_ELEMENTS;
 				}
 			}
