@@ -594,9 +594,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				indigo_async((void *)(void *)ssag_firmware, dev);
 			} else if (descriptor.idVendor == SSAG_VENDOR_ID && descriptor.idProduct == SSAG_PRODUCT_ID) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
-				ssag_private_data *private_data = malloc(sizeof(ssag_private_data));
-				assert(private_data != NULL);
-				memset(private_data, 0, sizeof(ssag_private_data));
+				ssag_private_data *private_data = indigo_safe_malloc(sizeof(ssag_private_data));
 				libusb_ref_device(dev);
 				private_data->dev = dev;
 				indigo_device *device = malloc(sizeof(indigo_device));

@@ -317,9 +317,7 @@ indigo_result indigo_focuser_mjkzz(indigo_driver_action action, indigo_driver_in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(mjkzz_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(mjkzz_private_data));
+			private_data = indigo_safe_malloc(sizeof(mjkzz_private_data));
 			focuser = malloc(sizeof(indigo_device));
 			assert(focuser != NULL);
 			memcpy(focuser, &focuser_template, sizeof(indigo_device));

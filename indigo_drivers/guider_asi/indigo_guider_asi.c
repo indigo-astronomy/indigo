@@ -400,9 +400,7 @@ static void process_plug_event(indigo_device *unused) {
 	memcpy(device, &guider_template, sizeof(indigo_device));
 	sprintf(device->name, "ASI USB-St4 Guider #%d", id);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-	asi_private_data *private_data = malloc(sizeof(asi_private_data));
-	assert(private_data);
-	memset(private_data, 0, sizeof(asi_private_data));
+	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
 	device->private_data = private_data;
 	indigo_async((void *)(void *)indigo_attach_device, device);

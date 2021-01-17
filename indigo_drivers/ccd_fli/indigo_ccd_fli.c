@@ -1028,9 +1028,7 @@ static void process_plug_event(indigo_device *unused) {
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
-	fli_private_data *private_data = malloc(sizeof(fli_private_data));
-	assert(private_data);
-	memset(private_data, 0, sizeof(fli_private_data));
+	fli_private_data *private_data = indigo_safe_malloc(sizeof(fli_private_data));
 	private_data->dev_id = 0;
 	private_data->domain = fli_domains[idx];
 	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);

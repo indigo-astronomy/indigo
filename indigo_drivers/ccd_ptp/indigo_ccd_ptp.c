@@ -521,9 +521,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			for (int i = 0; CAMERA[i].vendor; i++) {
 				if (CAMERA[i].vendor == descriptor.idVendor && (CAMERA[i].product == descriptor.idProduct || CAMERA[i].product == 0xFFFF)) {
-					ptp_private_data *private_data = malloc(sizeof(ptp_private_data));
-					assert(private_data != NULL);
-					memset(private_data, 0, sizeof(ptp_private_data));
+					ptp_private_data *private_data = indigo_safe_malloc(sizeof(ptp_private_data));
 					private_data->dev = dev;
 					private_data->model = CAMERA[i];
 					if (descriptor.idVendor == CANON_VID) {

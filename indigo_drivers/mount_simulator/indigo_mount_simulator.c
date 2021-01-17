@@ -516,9 +516,7 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(simulator_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(simulator_private_data));
+			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
 			pthread_mutex_init(&private_data->position_mutex, NULL);
 			mount = malloc(sizeof(indigo_device));
 			assert(mount != NULL);

@@ -424,9 +424,7 @@ indigo_result indigo_aux_fbc(indigo_driver_action action, indigo_driver_info *in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(fbc_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(fbc_private_data));
+			private_data = indigo_safe_malloc(sizeof(fbc_private_data));
 			aux = malloc(sizeof(indigo_device));
 			assert(aux != NULL);
 			memcpy(aux, &aux_template, sizeof(indigo_device));

@@ -583,9 +583,7 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(synscan_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(synscan_private_data));
+			private_data = indigo_safe_malloc(sizeof(synscan_private_data));
 			mount = malloc(sizeof(indigo_device));
 			assert(mount != NULL);
 			memcpy(mount, &mount_template, sizeof(indigo_device));

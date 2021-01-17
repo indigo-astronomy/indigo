@@ -1646,9 +1646,7 @@ static void process_plug_event() {
 	device->master_device = master_device;
 	sprintf(device->name, "%s #%s", dev_name, dev_usbpath);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-	qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
-	assert(private_data);
-	memset(private_data, 0, sizeof(qhy_private_data));
+	qhy_private_data *private_data = (qhy_private_data*)indigo_safe_malloc(sizeof(qhy_private_data));
 	sprintf(private_data->dev_sid, "%s", sid);
 	device->private_data = private_data;
 	indigo_async((void *(*)(void *))indigo_attach_device, device);

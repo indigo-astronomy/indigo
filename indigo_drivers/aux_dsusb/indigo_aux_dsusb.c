@@ -225,9 +225,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			const char *name;
       if (libdsusb_shutter(dev, &name)) {
-        dsusb_private_data *private_data = malloc(sizeof(dsusb_private_data));
-        assert(private_data != NULL);
-        memset(private_data, 0, sizeof(dsusb_private_data));
+        dsusb_private_data *private_data = indigo_safe_malloc(sizeof(dsusb_private_data));
         private_data->dev = dev;
         libusb_ref_device(dev);
         indigo_device *device = malloc(sizeof(indigo_device));

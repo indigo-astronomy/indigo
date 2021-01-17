@@ -698,9 +698,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					while(end > name && isspace((unsigned char)*end))
 						end--;
 					end[1] = '\0';
-					mi_private_data *private_data = malloc(sizeof(mi_private_data));
-					assert(private_data != NULL);
-					memset(private_data, 0, sizeof(mi_private_data));
+					mi_private_data *private_data = indigo_safe_malloc(sizeof(mi_private_data));
 					private_data->eid = new_eid;
 					indigo_device *device = malloc(sizeof(indigo_device));
 					indigo_device *master_device = device;

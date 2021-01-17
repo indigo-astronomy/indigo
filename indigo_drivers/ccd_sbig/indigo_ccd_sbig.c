@@ -2284,9 +2284,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
-	sbig_private_data *private_data = malloc(sizeof(sbig_private_data));
-	assert(private_data);
-	memset(private_data, 0, sizeof(sbig_private_data));
+	sbig_private_data *private_data = indigo_safe_malloc(sizeof(sbig_private_data));
 	private_data->usb_id = device_type;
 	private_data->ip_address = ip_address;
 

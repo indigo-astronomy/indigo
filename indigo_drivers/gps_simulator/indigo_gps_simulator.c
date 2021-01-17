@@ -252,9 +252,7 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		private_data = malloc(sizeof(simulator_private_data));
-		assert(private_data != NULL);
-		memset(private_data, 0, sizeof(simulator_private_data));
+		private_data = indigo_safe_malloc(sizeof(simulator_private_data));
 		gps = malloc(sizeof(indigo_device));
 		assert(gps != NULL);
 		memcpy(gps, &gps_template, sizeof(indigo_device));
