@@ -45,8 +45,6 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 	assert(device != NULL);
 	if (FILTER_DEVICE_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_filter_context));
-		assert(device->device_context);
-		memset(device->device_context, 0, sizeof(indigo_filter_context));
 	}
 	FILTER_DEVICE_CONTEXT->device = device;
 	if (FILTER_DEVICE_CONTEXT != NULL) {
@@ -788,8 +786,7 @@ bool indigo_filter_cached_property(indigo_device *device, int index, char *name,
 
 indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name) {
 	int size = sizeof(indigo_property) + property->count * (sizeof(indigo_item));
-	indigo_property *copy = indigo_safe_malloc(size);
-	memcpy(copy, property, size);
+	indigo_property *copy = indigo_safe_malloc_copy(size, property);
 	strcpy(copy->device, device_name);
 	if (copy->type == INDIGO_TEXT_VECTOR) {
 		for (int k = 0; k < copy->count; k++) {

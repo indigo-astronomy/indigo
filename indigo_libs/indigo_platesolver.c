@@ -213,16 +213,9 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						indigo_item *item = property->items + i;
 						if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
 							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
-							if (task) {
-								task->device = FILTER_CLIENT_CONTEXT->device;
-								task->image = indigo_safe_malloc(task->size = item->blob.size);
-								if (task->image) {
-									memcpy(task->image, item->blob.value, task->size);
-									indigo_async((void *(*)(void *))INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->solve, task);
-								}
-							} else {
-								free(task);
-							}
+							task->device = FILTER_CLIENT_CONTEXT->device;
+							task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
+							indigo_async((void *(*)(void *))INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->solve, task);
 						}
 					}
 					break;

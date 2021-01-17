@@ -318,7 +318,6 @@ void indigo_server_shutdown() {
 
 void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
-	memset(resource, 0, sizeof(struct resource));
 	resource->path = path;
 	resource->data = data;
 	resource->length = length;
@@ -330,7 +329,6 @@ void indigo_server_add_resource(const char *path, unsigned char *data, unsigned 
 
 void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type) {
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
-	memset(resource, 0, sizeof(struct resource));
 	resource->path = path;
 	resource->file_name = file_name;
 	resource->content_type = (char *)content_type;

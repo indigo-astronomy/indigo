@@ -233,8 +233,6 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 	assert(device != NULL);
 	if (DEVICE_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_device_context));
-		assert(DEVICE_CONTEXT != NULL);
-		memset(device->device_context, 0, sizeof(indigo_device_context));
 	}
 	if (DEVICE_CONTEXT != NULL) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -528,7 +526,6 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	if (handle > 0) {
 		INDIGO_TRACE(indigo_trace("Config file open for '%s' with descriptor %d", device->name, handle));
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
-		memset(client, 0, sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
 		context->input = handle;

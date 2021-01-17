@@ -41,8 +41,6 @@ indigo_result indigo_agent_attach(indigo_device *device, const char* driver_name
 	assert(device != NULL);
 	if (AGENT_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_agent_context));
-		assert(device->device_context);
-		memset(device->device_context, 0, sizeof(indigo_agent_context));
 	}
 	if (AGENT_CONTEXT != NULL) {
 		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {

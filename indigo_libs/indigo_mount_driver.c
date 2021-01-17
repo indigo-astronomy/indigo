@@ -50,8 +50,6 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 	assert(device != NULL);
 	if (MOUNT_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_mount_context));
-		assert(device->device_context);
-		memset(device->device_context, 0, sizeof(indigo_mount_context));
 	}
 	if (MOUNT_CONTEXT != NULL) {
 		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_MOUNT) == INDIGO_OK) {

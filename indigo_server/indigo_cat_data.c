@@ -41310,7 +41310,7 @@ static void indigo_compress(char *name, char *buffer, unsigned size, unsigned ch
 	r = deflate(&defstream, Z_FINISH);
 	r = deflateEnd(&defstream);
 	*data_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)*data);
-	*data = realloc(*data, *data_size);
+	*data = indigo_safe_realloc(*data, *data_size);
 }
 
 void *indigo_add_star_json_resource(int max_mag) {
@@ -41339,7 +41339,7 @@ void *indigo_add_star_json_resource(int max_mag) {
     }
 		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_star_data[i].hip, name, desig, indigo_star_data[i].mag, h2deg(indigo_star_data[i].ra = ra), indigo_star_data[i].dec = dec);
 		if (buffer_size - size < 1024) {
-			buffer = realloc(buffer, buffer_size *= 2);
+			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
 		sep = ",";
 	}
@@ -41366,7 +41366,7 @@ void *indigo_add_dso_json_resource(int max_mag) {
 		indigo_app_star(0, 0, 0, 0, &ra, &dec);
 		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"oc\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_dso_data[i].id, indigo_dso_data[i].id, indigo_dso_data[i].name, indigo_dso_data[i].mag, h2deg(indigo_dso_data[i].ra = ra), indigo_dso_data[i].dec = dec);
 		if (buffer_size - size < 1024) {
-			buffer = realloc(buffer, buffer_size *= 2);
+			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
 		sep = ",";
 	}
