@@ -357,8 +357,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			}
 			indigo_write(handle, buffer, image_size);
 			free(buffer);
-			if (intermediate_image)
-				free(intermediate_image);
+			indigo_safe_free(intermediate_image);
 		}
 		close(handle);
 		// execute astrometry.net plate solver

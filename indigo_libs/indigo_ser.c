@@ -106,9 +106,7 @@ failure:
 	if (handle != -1) {
 		close(handle);
 	}
-	if (ser) {
-		free(ser);
-	}
+	indigo_safe_free(ser);
 	return NULL;
 }
 

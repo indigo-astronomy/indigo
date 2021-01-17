@@ -2420,7 +2420,6 @@
 		59B81EC7233774DC00DFA81B /* arteskyflat_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = arteskyflat_simulator.ino; sourceTree = "<group>"; };
 		59B81EC92337AA2E00DFA81B /* indigo_dome_nexdome.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome.c; sourceTree = "<group>"; };
 		59B81ECA2337AA2E00DFA81B /* indigo_dome_nexdome_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_nexdome_main.c; sourceTree = "<group>"; };
-		59B81ECB2337AA2E00DFA81B /* nexdome_protocol.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = nexdome_protocol.txt; sourceTree = "<group>"; };
 		59B81ECC2337AA2E00DFA81B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59B81ECE2337AA2E00DFA81B /* indigo_dome_nexdome.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_nexdome.h; sourceTree = "<group>"; };
 		59B81ED02337AA2E00DFA81B /* nexdome_simulator.ino */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = nexdome_simulator.ino; sourceTree = "<group>"; };
@@ -4256,7 +4255,6 @@
 		9DFA59872361D92600326A74 /* indigo_aux_flatmaster_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flatmaster_main.c; sourceTree = "<group>"; };
 		9DFA59882361D92600326A74 /* indigo_aux_flatmaster.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_flatmaster.h; sourceTree = "<group>"; };
 		9DFA598A2361D92600326A74 /* flatmaster_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = flatmaster_simulator.ino; sourceTree = "<group>"; };
-		9DFC619F238530FF003977C7 /* flipflat.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = flipflat.rules; sourceTree = "<group>"; };
 		9DFC61A0238530FF003977C7 /* indigo_aux_flipflat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_flipflat.h; sourceTree = "<group>"; };
 		9DFC61A1238530FF003977C7 /* indigo_aux_flipflat_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flipflat_main.c; sourceTree = "<group>"; };
 		9DFC61A3238530FF003977C7 /* flipflat_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = flipflat_simulator.ino; sourceTree = "<group>"; };
@@ -7916,7 +7914,6 @@
 				59B81ECE2337AA2E00DFA81B /* indigo_dome_nexdome.h */,
 				59B81EC92337AA2E00DFA81B /* indigo_dome_nexdome.c */,
 				59B81ECA2337AA2E00DFA81B /* indigo_dome_nexdome_main.c */,
-				59B81ECB2337AA2E00DFA81B /* nexdome_protocol.txt */,
 				59B81ECF2337AA2E00DFA81B /* nexdome_simulator */,
 			);
 			path = dome_nexdome;
@@ -11996,7 +11993,6 @@
 			isa = PBXGroup;
 			children = (
 				9DFC61A4238530FF003977C7 /* README.md */,
-				9DFC619F238530FF003977C7 /* flipflat.rules */,
 				9DFC61A0238530FF003977C7 /* indigo_aux_flipflat.h */,
 				9DFC61A5238530FF003977C7 /* indigo_aux_flipflat.c */,
 				9DFC61A1238530FF003977C7 /* indigo_aux_flipflat_main.c */,

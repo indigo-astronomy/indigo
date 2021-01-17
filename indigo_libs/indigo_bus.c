@@ -125,6 +125,10 @@ int indigo_main_argc = 0;
 char *indigo_last_message = NULL;
 char indigo_log_name[255] = { 0 };
 
+static void free_log_buffers() {
+	indigo_safe_free(indigo_last_message);
+}
+
 #if defined(INDIGO_WINDOWS)
 
 // https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
@@ -161,8 +165,10 @@ int clock_gettime(clockid_t clk_id, struct timespec *ts) {
 void indigo_log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
-	if (indigo_last_message == NULL)
+	if (indigo_last_message == NULL) {
 		indigo_last_message = indigo_safe_malloc(LOG_MESSAGE_SIZE);
+		atexit(free_log_buffers);
+	}
 	vsnprintf(indigo_last_message, LOG_MESSAGE_SIZE, format, args);
 	char *line = indigo_last_message;
 	if (indigo_log_message_handler != NULL) {
@@ -686,10 +692,6 @@ indigo_result indigo_stop() {
 				device->last_result = device->detach(device);
 		}
 	}
-	if (indigo_last_message) {
-		free(indigo_last_message);
-		indigo_last_message = NULL;
-	}
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
@@ -830,23 +832,18 @@ void indigo_release_property(indigo_property *property) {
 				if (entry && entry->item == item) {
 					pthread_mutex_lock(&entry->mutext);
 					blobs[j] = NULL;
-					if (entry->content) {
-						free(entry->content);
-					}
+					indigo_safe_free(entry->content);
 					pthread_mutex_unlock(&entry->mutext);
 					pthread_mutex_destroy(&entry->mutext);
-					free(entry);
+					indigo_safe_free(entry);
 					break;
 				}
 			}
 		}
 		pthread_mutex_unlock(&blob_mutex);
 	} else if (property->type == INDIGO_TEXT_VECTOR) {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			if (item->text.long_value)
-				free(item->text.long_value);
-		}
+		for (int i = 0; i < property->count; i++)
+			indigo_safe_free(property->items[i].text.long_value);
 	}
 	free(property);
 }

@@ -494,14 +494,10 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 		}
 	}
 exit_loop:
-	if (buffer)
-		free(buffer);
-	if (value_buffer)
-		free(value_buffer);
-	if (name_buffer)
-		free(name_buffer);
-	if (property)
-		free(property);
+	indigo_safe_free(buffer);
+	indigo_safe_free(value_buffer);
+	indigo_safe_free(name_buffer);
+	indigo_safe_free(property);
 	close(handle);
 	indigo_log("JSON Parser: parser finished");
 }
@@ -513,8 +509,7 @@ static bool free_escape_buffers_registered = false;
 
 static void free_escape_buffers() {
 	for (int i = 0; i < BUFFER_COUNT; i++)
-		if (escape_buffer[i])
-			free(escape_buffer[i]);
+		indigo_safe_free(escape_buffer[i]);
 }
 
 const char *indigo_json_escape(const char *string) {
