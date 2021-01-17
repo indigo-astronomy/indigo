@@ -21,4 +21,4 @@ indigo_server indigo_ccd_uvc
 
 ## Status: Stable
 
-Tested with SVBONY SV205
+Tested with SVBONY SV205 and TIS DMK21
