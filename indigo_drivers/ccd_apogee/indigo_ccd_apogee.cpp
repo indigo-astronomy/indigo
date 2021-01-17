@@ -1374,9 +1374,7 @@ static void process_plug_event(indigo_device *unused) {
 		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(apogee_private_data));
-		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
-		assert(device != NULL);
-		memcpy(device, &ccd_template, sizeof(indigo_device));
+		indigo_device *device = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		device->private_data = private_data;
 		PRIVATE_DATA->discovery_string = discovery_string;
 		std::string model = GetItemFromFindStr(discovery_string, "model=");

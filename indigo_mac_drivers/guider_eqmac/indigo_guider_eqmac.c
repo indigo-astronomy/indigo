@@ -231,9 +231,7 @@ indigo_result indigo_guider_eqmac(indigo_driver_action action, indigo_driver_inf
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;			
-			guider = malloc(sizeof(indigo_device));
-			assert(guider != NULL);
-			memcpy(guider, &guider_template, sizeof(indigo_device));
+			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = NULL;
 			indigo_attach_device(guider);
 			break;

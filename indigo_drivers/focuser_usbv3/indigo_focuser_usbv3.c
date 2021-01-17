@@ -413,9 +413,7 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(usbv3_private_data));
-			focuser = malloc(sizeof(indigo_device));
-			assert(focuser != NULL);
-			memcpy(focuser, &focuser_template, sizeof(indigo_device));
+			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			indigo_attach_device(focuser);
 			break;

@@ -852,9 +852,7 @@ static void plug_handler(indigo_device *device) {
 				}
 			}
 			if (ArtemisDeviceHasGuidePort(j)) {
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &guider_template, sizeof(indigo_device));
+				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				device->master_device = master_device;
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, usb_path);
 				device->private_data = private_data;
@@ -866,9 +864,7 @@ static void plug_handler(indigo_device *device) {
 				}
 			}
 			if (ArtemisDeviceHasFilterWheel(j)) {
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &wheel_template, sizeof(indigo_device));
+				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				device->master_device = master_device;
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%s", name, usb_path);
 				device->private_data = private_data;

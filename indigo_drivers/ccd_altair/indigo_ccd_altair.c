@@ -989,9 +989,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 			altair_private_data *private_data = indigo_safe_malloc(sizeof(altair_private_data));
 			private_data->cam = cam;
 			private_data->present = true;
-			indigo_device *camera = malloc(sizeof(indigo_device));
-			assert(camera != NULL);
-			memcpy(camera, &ccd_template, sizeof(indigo_device));
+			indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			snprintf(camera->name, INDIGO_NAME_SIZE, "AltairAstro %s #%s", cam.displayname, cam.id);
 			camera->private_data = private_data;
 			private_data->camera = camera;
@@ -1010,9 +1008,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 					NULL,
 					guider_detach
 					);
-				indigo_device *guider = malloc(sizeof(indigo_device));
-				assert(guider != NULL);
-				memcpy(guider, &guider_template, sizeof(indigo_device));
+				indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				snprintf(guider->name, INDIGO_NAME_SIZE, "AltairAstro %s (guider) #%s", cam.displayname, cam.id);
 				guider->private_data = private_data;
 				private_data->guider = guider;

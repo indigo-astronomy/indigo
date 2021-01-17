@@ -597,9 +597,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				ssag_private_data *private_data = indigo_safe_malloc(sizeof(ssag_private_data));
 				libusb_ref_device(dev);
 				private_data->dev = dev;
-				indigo_device *device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &ccd_template, sizeof(indigo_device));
+				indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 				char usb_path[INDIGO_NAME_SIZE];
 				indigo_get_usb_path(dev, usb_path);
 				snprintf(device->name, INDIGO_NAME_SIZE, "SSAG #%s", usb_path);
@@ -610,9 +608,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						break;
 					}
 				}
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &guider_template, sizeof(indigo_device));
+				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				snprintf(device->name, INDIGO_NAME_SIZE, "SSAG (guider) #%s", usb_path);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {

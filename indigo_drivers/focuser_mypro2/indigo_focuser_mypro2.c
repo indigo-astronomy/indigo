@@ -1069,9 +1069,7 @@ indigo_result indigo_focuser_mypro2(indigo_driver_action action, indigo_driver_i
 		for (int index = 0; index < device_number; index++) {
 			private_data[index] = indigo_safe_malloc(sizeof(mfp_private_data));
 			private_data[index]->handle = -1;
-			focuser[index] = malloc(sizeof(indigo_device));
-			assert(focuser[index] != NULL);
-			memcpy(focuser[index], &focuser_template, sizeof(indigo_device));
+			focuser[index] = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser[index]->private_data = private_data[index];
 			sprintf(focuser[index]->name, "%s #%d", FOCUSER_MFP2_NAME, index);
 			indigo_attach_device(focuser[index]);

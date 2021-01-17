@@ -1659,9 +1659,7 @@ static void process_plug_event() {
 			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
-		device = (indigo_device*)malloc(sizeof(indigo_device));
-		assert(device != NULL);
-		memcpy(device, &guider_template, sizeof(indigo_device));
+		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 		device->master_device = master_device;
 		sprintf(device->name, "%s Guider #%s", dev_name, dev_usbpath);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1678,9 +1676,7 @@ static void process_plug_event() {
 			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
-		device = (indigo_device*)malloc(sizeof(indigo_device));
-		assert(device != NULL);
-		memcpy(device, &wheel_template, sizeof(indigo_device));
+		device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 		device->master_device = master_device;
 		sprintf(device->name, "%s Wheel #%s", dev_name, dev_usbpath);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

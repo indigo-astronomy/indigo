@@ -2015,10 +2015,7 @@ static void create_port_device(int device_index) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
-	device_data[device_index].device = malloc(sizeof(indigo_device));
-	assert(device_data[device_index].device != NULL);
-
-	memcpy(device_data[device_index].device, &aux_template, sizeof(indigo_device));
+	device_data[device_index].device = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 	sprintf(device_data[device_index].device->name, "%s", AUX_CLOUDWATCHER_NAME);
 
 	device_data[device_index].device->private_data = device_data[device_index].private_data;

@@ -1108,14 +1108,12 @@ static void create_port_device(int p_device_index, int l_device_index, device_ty
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
-	device_data[p_device_index].device[l_device_index] = malloc(sizeof(indigo_device));
-	assert(device_data[p_device_index].device[l_device_index] != NULL);
 	if (device_type == TYPE_DOME) {
-		memcpy(device_data[p_device_index].device[l_device_index], &dome_template, sizeof(indigo_device));
+		device_data[p_device_index].device[l_device_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &dome_template);
 		sprintf(device_data[p_device_index].device[l_device_index]->name, "%s", DOME_DRAGONFLY_NAME);
 		device_data[p_device_index].private_data->device_data[l_device_index].device_type = TYPE_DOME;
 	} else {
-		memcpy(device_data[p_device_index].device[l_device_index], &aux_template, sizeof(indigo_device));
+		device_data[p_device_index].device[l_device_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 		sprintf(device_data[p_device_index].device[l_device_index]->name, "%s", AUX_DRAGONFLY_NAME);
 		device_data[p_device_index].private_data->device_data[l_device_index].device_type = TYPE_AUX;
 	}

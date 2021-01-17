@@ -571,9 +571,7 @@ static void process_plug_event(indigo_device *unused) {
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	indigo_device *device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &focuser_template, sizeof(indigo_device));
+	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 	sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
 	fli_private_data *private_data = indigo_safe_malloc(sizeof(fli_private_data));

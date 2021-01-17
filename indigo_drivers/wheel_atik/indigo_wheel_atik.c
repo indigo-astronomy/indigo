@@ -168,9 +168,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			if (wheel != NULL) {
 				return 0;
 			}
-			wheel = malloc(sizeof(indigo_device));
-			assert(wheel != NULL);
-			memcpy(wheel, &wheel_template, sizeof(indigo_device));
+			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);

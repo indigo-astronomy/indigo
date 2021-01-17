@@ -349,9 +349,7 @@ indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 		xml_device_adapter_send_message,
 		NULL
 	};
-	indigo_client *client = malloc(sizeof(indigo_client));
-	assert(client != NULL);
-	memcpy(client, &client_template, sizeof(indigo_client));
+	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = malloc(sizeof(indigo_adapter_context));
 	assert(client_context != NULL);
 	client_context->input = input;

@@ -193,9 +193,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
         gpusb_private_data *private_data = indigo_safe_malloc(sizeof(gpusb_private_data));
         private_data->dev = dev;
         libusb_ref_device(dev);
-        indigo_device *device = malloc(sizeof(indigo_device));
-        assert(device != NULL);
-        memcpy(device, &guider_template, sizeof(indigo_device));
+        indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
         indigo_copy_name(device->name, name);
         device->private_data = private_data;
         for (int j = 0; j < MAX_DEVICES; j++) {

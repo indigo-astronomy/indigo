@@ -2281,9 +2281,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "NEW camera: slot=%d device_type=0x%x name='%s' ip=0x%x", slot, device_type, cam_name, ip_address);
-	indigo_device *device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &ccd_template, sizeof(indigo_device));
+	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 	sbig_private_data *private_data = indigo_safe_malloc(sizeof(sbig_private_data));
 	private_data->usb_id = device_type;
 	private_data->ip_address = ip_address;
@@ -2312,9 +2310,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
-	device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &guider_template, sizeof(indigo_device));
+	device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 	sprintf(device->name, "SBIG %s Guider Port #%s", cam_name, device_index_str);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	device->private_data = private_data;
@@ -2334,9 +2330,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
-		device = malloc(sizeof(indigo_device));
-		assert(device != NULL);
-		memcpy(device, &ccd_template, sizeof(indigo_device));
+		device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		sprintf(device->name, "SBIG %s Guider CCD #%s", cam_name, device_index_str);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
@@ -2384,9 +2378,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 					return false;
 				}
 
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &wheel_template, sizeof(indigo_device));
+				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				sprintf(device->name, "SBIG %s #%s", cfw_type[cfwr.cfwModel], device_index_str);
 				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				private_data->fw_device = cfwr.cfwModel;
@@ -2419,9 +2411,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 					return false;
 				}
 
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &ao_template, sizeof(indigo_device));
+				device = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
 				sprintf(device->name, "SBIG AO #%s", device_index_str);
 				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				private_data->ao_x_deflection = private_data->ao_y_deflection = 0;
@@ -2682,9 +2672,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff);
 		}
 
-		sbig_eth = malloc(sizeof(indigo_device));
-		assert(sbig_eth != NULL);
-		memcpy(sbig_eth, &sbig_eth_template, sizeof(indigo_device));
+		sbig_eth = indigo_safe_malloc_copy(sizeof(indigo_device), &sbig_eth_template);
 		sbig_eth->private_data = NULL;
 		indigo_attach_device(sbig_eth);
 

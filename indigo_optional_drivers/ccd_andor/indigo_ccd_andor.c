@@ -1522,9 +1522,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 			for (int i = 0; i < device_num; i++) {
 				andor_private_data *private_data = indigo_safe_malloc(sizeof(andor_private_data));
-				indigo_device *device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &imager_camera_template, sizeof(indigo_device));
+				indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_camera_template);
 
 				at_32 handle;
 				pthread_mutex_lock(&driver_mutex);

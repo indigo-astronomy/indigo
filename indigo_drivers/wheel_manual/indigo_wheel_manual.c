@@ -117,9 +117,7 @@ indigo_result indigo_wheel_manual(indigo_driver_action action, indigo_driver_inf
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			filter_wheel = malloc(sizeof(indigo_device));
-			assert(filter_wheel != NULL);
-			memcpy(filter_wheel, &filter_wheel_template, sizeof(indigo_device));
+			filter_wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &filter_wheel_template);
 			filter_wheel->private_data = NULL;
 			indigo_attach_device(filter_wheel);
 			break;

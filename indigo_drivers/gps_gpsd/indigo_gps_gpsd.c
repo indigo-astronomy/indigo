@@ -294,9 +294,7 @@ indigo_result indigo_gps_gpsd(indigo_driver_action action, indigo_driver_info *i
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
 		private_data = indigo_safe_malloc(sizeof(gpsd_private_data));
-		gps = malloc(sizeof(indigo_device));
-		assert(gps != NULL);
-		memcpy(gps, &gps_template, sizeof(indigo_device));
+		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 		gps->private_data = private_data;
 		indigo_attach_device(gps);
 		break;

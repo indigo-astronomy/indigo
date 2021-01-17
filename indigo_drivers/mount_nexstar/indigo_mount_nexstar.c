@@ -399,9 +399,7 @@ static void mount_handle_connect(indigo_device *device) {
 							NULL,
 							gps_detach
 						);
-						PRIVATE_DATA->gps = malloc(sizeof(indigo_device));
-						assert(PRIVATE_DATA->gps != NULL);
-						memcpy(PRIVATE_DATA->gps, &gps_template, sizeof(indigo_device));
+						PRIVATE_DATA->gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 						PRIVATE_DATA->gps->private_data = PRIVATE_DATA;
 						indigo_attach_device(PRIVATE_DATA->gps);
 //					}
@@ -1323,14 +1321,10 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 		private_data = indigo_safe_malloc(sizeof(nexstar_private_data));
 		private_data->dev_id = -1;
 		private_data->count_open = 0;
-		mount = malloc(sizeof(indigo_device));
-		assert(mount != NULL);
-		memcpy(mount, &mount_template, sizeof(indigo_device));
+		mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 		mount->private_data = private_data;
 		indigo_attach_device(mount);
-		mount_guider = malloc(sizeof(indigo_device));
-		assert(mount_guider != NULL);
-		memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
+		mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
 		mount_guider->private_data = private_data;
 		indigo_attach_device(mount_guider);
 		break;
