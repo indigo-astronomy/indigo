@@ -1672,14 +1672,10 @@ exit_loop:
 			}
 		}
 	}
-	if (blob_buffer != NULL)
-		free(blob_buffer);
-	if (name_buffer)
-		free(name_buffer);
-	if (message)
-		free(message);
-	if (context->properties)
-		free(context->properties);
+	indigo_safe_free(blob_buffer);
+	indigo_safe_free(name_buffer);
+	indigo_safe_free(message);
+	indigo_safe_free(context->properties);
 	pthread_mutex_unlock(&context->mutex);
 	pthread_mutex_destroy(&context->mutex);
 	free(context);
