@@ -385,7 +385,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {
 			if (i > max_index) {
-				i = max_index;
+				max_index = i;
 				indigo_debug("%d devices attached", max_index + 1);
 			}
 			devices[i] = device;
@@ -418,7 +418,7 @@ indigo_result indigo_attach_client(indigo_client *client) {
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		if (clients[i] == NULL) {
 			if (i > max_index) {
-				i = max_index;
+				max_index = i;
 				indigo_debug("%d clients attached", max_index + 1);
 			}
 			clients[i] = client;
