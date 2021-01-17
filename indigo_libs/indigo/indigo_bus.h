@@ -26,9 +26,12 @@
 #ifndef indigo_bus_h
 #define indigo_bus_h
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <string.h>
 #include <pthread.h>
 
 #include <indigo/indigo_config.h>
@@ -717,8 +720,20 @@ extern bool indigo_proxy_blob;
  */
 extern bool indigo_use_strict_locking;
 
-#define indigo_safe_malloc(pointer, size) { pointer = malloc(size); assert(pointer != NULL); memset(pointer, 0, size); }
-#define indigo_safe_free(pointer) { if (pointer) free(pointer); }
+/** Allocate, assert and zero
+ */
+
+static inline void *indigo_safe_malloc(size_t size) {
+	void *pointer = malloc(size);
+	assert(pointer != NULL);
+	memset(pointer, 0, size);
+	return pointer;
+}
+
+static inline void indigo_safe_free(void *pointer) {
+	if (pointer)
+		free(pointer);
+}
 
 #ifdef __cplusplus
 }
