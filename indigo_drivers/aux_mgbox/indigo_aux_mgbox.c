@@ -1019,15 +1019,11 @@ indigo_result indigo_aux_mgbox(indigo_driver_action action, indigo_driver_info *
 		private_data->handle = -1;
 		pthread_mutex_init(&private_data->serial_mutex, NULL);
 		pthread_mutex_init(&private_data->reset_mutex, NULL);
-		gps = malloc(sizeof(indigo_device));
-		assert(gps != NULL);
-		memcpy(gps, &gps_template, sizeof(indigo_device));
+		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 		gps->private_data = private_data;
 		indigo_attach_device(gps);
 
-		aux_weather = malloc(sizeof(indigo_device));
-		assert(aux_weather != NULL);
-		memcpy(aux_weather, &aux_template, sizeof(indigo_device));
+		aux_weather = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 		sprintf(aux_weather->name, "%s", WEATHER_MGBOX_NAME);
 		aux_weather->private_data = private_data;
 		indigo_attach_device(aux_weather);

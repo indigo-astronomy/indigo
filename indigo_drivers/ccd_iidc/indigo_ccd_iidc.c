@@ -683,9 +683,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->camera = camera;
 						private_data->guid = guid;
 						private_data->unit = unit;
-						indigo_device *device = malloc(sizeof(indigo_device));
-						assert(device != NULL);
-						memcpy(device, &ccd_template, sizeof(indigo_device));
+						indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 						snprintf(device->name, INDIGO_NAME_SIZE, "%s #%0llx", camera->model, camera->guid);
 						device->private_data = private_data;
 						for (int j = 0; j < MAX_DEVICES; j++) {

@@ -1273,15 +1273,11 @@ indigo_result indigo_focuser_steeldrive2(indigo_driver_action action, indigo_dri
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(steeldrive2_private_data));
-			focuser = malloc(sizeof(indigo_device));
-			assert(focuser != NULL);
-			memcpy(focuser, &focuser_template, sizeof(indigo_device));
+			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			private_data->focuser = focuser;
 			indigo_attach_device(focuser);
-			aux = malloc(sizeof(indigo_device));
-			assert(aux != NULL);
-			memcpy(aux, &aux_template, sizeof(indigo_device));
+			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			private_data->aux = aux;
 			indigo_attach_device(aux);

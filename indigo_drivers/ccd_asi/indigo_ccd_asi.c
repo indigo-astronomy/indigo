@@ -1628,9 +1628,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
-		device = malloc(sizeof(indigo_device));
-		assert(device != NULL);
-		memcpy(device, &guider_template, sizeof(indigo_device));
+		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 		device->master_device = master_device;
 		sprintf(device->name, "%s Guider #%d", info.Name, id);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

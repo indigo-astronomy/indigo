@@ -253,9 +253,7 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(cgusbst4_private_data));
-			guider = malloc(sizeof(indigo_device));
-			assert(guider != NULL);
-			memcpy(guider, &mount_guider_template, sizeof(indigo_device));
+			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
 			guider->private_data = private_data;
 			indigo_attach_device(guider);
 			break;

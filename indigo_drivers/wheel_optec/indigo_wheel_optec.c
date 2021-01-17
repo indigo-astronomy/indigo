@@ -188,9 +188,7 @@ indigo_result indigo_wheel_optec(indigo_driver_action action, indigo_driver_info
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
 		if (wheel == NULL) {
-			wheel = malloc(sizeof(indigo_device));
-			assert(wheel != NULL);
-			memcpy(wheel, &wheel_template, sizeof(indigo_device));
+			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			optec_private_data *private_data = indigo_safe_malloc(sizeof(optec_private_data));
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);

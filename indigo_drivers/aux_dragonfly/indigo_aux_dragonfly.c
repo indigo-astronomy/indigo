@@ -583,10 +583,7 @@ static void create_port_device(int p_device_index, int l_device_index) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
-	device_data[p_device_index].device[l_device_index] = malloc(sizeof(indigo_device));
-	assert(device_data[p_device_index].device[l_device_index] != NULL);
-
-	memcpy(device_data[p_device_index].device[l_device_index], &aux_template, sizeof(indigo_device));
+	device_data[p_device_index].device[l_device_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 	sprintf(device_data[p_device_index].device[l_device_index]->name, "%s", AUX_DRAGONFLY_NAME);
 
 	set_logical_device_index(device_data[p_device_index].device[l_device_index], l_device_index);

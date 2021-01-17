@@ -621,18 +621,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						private_data->check_dual_compression = NULL;
 					}
 					libusb_ref_device(dev);
-					indigo_device *device = malloc(sizeof(indigo_device));
-					assert(device != NULL);
-					memcpy(device, &ccd_template, sizeof(indigo_device));
+					indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 					device->master_device = device;
 					char usb_path[INDIGO_NAME_SIZE];
 					indigo_get_usb_path(dev, usb_path);
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", CAMERA[i].name, usb_path);
 					device->private_data = private_data;
 					if (private_data->focus) {
-						indigo_device *focuser = malloc(sizeof(indigo_device));
-						assert(focuser != NULL);
-						memcpy(focuser, &focuser_template, sizeof(indigo_device));
+						indigo_device *focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 						focuser->master_device = device;
 						snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser) #%s", CAMERA[i].name, usb_path);
 						focuser->private_data = private_data;

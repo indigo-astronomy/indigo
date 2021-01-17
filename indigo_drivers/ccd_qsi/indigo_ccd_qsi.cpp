@@ -872,9 +872,7 @@ static void process_plug_event(indigo_device *unused) {
 		}
 		qsi_private_data *private_data = (qsi_private_data *)indigo_safe_malloc(sizeof(qsi_private_data));
 		indigo_copy_name(private_data->serial, serial);
-		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
-		assert(device != NULL);
-		memcpy(device, &ccd_template, sizeof(indigo_device));
+		indigo_device *device = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", desc, serial);
 		device->private_data = private_data;
 		for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {

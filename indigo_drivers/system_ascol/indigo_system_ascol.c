@@ -3024,27 +3024,19 @@ static void panel_attach_devices(indigo_device *device) {
 		focuser_detach
 	);
 
-	mount = malloc(sizeof(indigo_device));
-	assert(mount != NULL);
-	memcpy(mount, &mount_template, sizeof(indigo_device));
+	mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 	mount->private_data = device->private_data;
 	indigo_attach_device(mount);
 
-	mount_guider = malloc(sizeof(indigo_device));
-	assert(mount_guider != NULL);
-	memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
+	mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
 	mount_guider->private_data = device->private_data;
 	indigo_attach_device(mount_guider);
 
-	dome = malloc(sizeof(indigo_device));
-	assert(dome != NULL);
-	memcpy(dome, &dome_template, sizeof(indigo_device));
+	dome = indigo_safe_malloc_copy(sizeof(indigo_device), &dome_template);
 	dome->private_data = device->private_data;
 	indigo_attach_device(dome);
 
-	focuser = malloc(sizeof(indigo_device));
-	assert(focuser != NULL);
-	memcpy(focuser, &focuser_template, sizeof(indigo_device));
+	focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 	focuser->private_data = device->private_data;
 	indigo_attach_device(focuser);
 }
@@ -3284,9 +3276,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		private_data->dev_id = -1;
 		private_data->count_open = 0;
 
-		panel = malloc(sizeof(indigo_device));
-		assert(panel != NULL);
-		memcpy(panel, &panel_template, sizeof(indigo_device));
+		panel = indigo_safe_malloc_copy(sizeof(indigo_device), &panel_template);
 		panel->private_data = private_data;
 		indigo_attach_device(panel);
 		break;

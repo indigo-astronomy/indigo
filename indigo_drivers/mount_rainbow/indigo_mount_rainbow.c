@@ -670,9 +670,7 @@ indigo_result indigo_mount_rainbow(indigo_driver_action action, indigo_driver_in
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(rainbow_private_data));
-			mount = malloc(sizeof(indigo_device));
-			assert(mount != NULL);
-			memcpy(mount, &mount_template, sizeof(indigo_device));
+			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
 			mount->master_device = mount;
 			indigo_attach_device(mount);

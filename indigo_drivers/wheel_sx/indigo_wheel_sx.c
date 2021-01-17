@@ -192,9 +192,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			if (wheel != NULL) {
 				return 0;
 			}
-			wheel = malloc(sizeof(indigo_device));
-			assert(wheel != NULL);
-			memcpy(wheel, &wheel_template, sizeof(indigo_device));
+			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			char usb_path[INDIGO_NAME_SIZE];
 			indigo_get_usb_path(dev, usb_path);
 			snprintf(wheel->name, INDIGO_NAME_SIZE, "SX Filter Wheel #%s", usb_path);

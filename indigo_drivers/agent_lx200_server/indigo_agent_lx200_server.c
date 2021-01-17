@@ -629,17 +629,13 @@ indigo_result indigo_agent_lx200_server(indigo_driver_action action, indigo_driv
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(agent_private_data));
-			agent_device = malloc(sizeof(indigo_device));
-			assert(agent_device != NULL);
+			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			private_data->device = agent_device;
-			memcpy(agent_device, &agent_device_template, sizeof(indigo_device));
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
 
-			agent_client = malloc(sizeof(indigo_client));
-			assert(agent_client != NULL);
+			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
 			private_data->client = agent_client;
-			memcpy(agent_client, &agent_client_template, sizeof(indigo_client));
 			agent_client->client_context = private_data;
 			indigo_attach_client(agent_client);
 			break;

@@ -2291,18 +2291,16 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
-	device_data[device_index].port[port_index] = malloc(sizeof(indigo_device));
-	assert(device_data[device_index].port[port_index] != NULL);
 	if (device_type == TYPE_FOCUSER) {
-		memcpy(device_data[device_index].port[port_index], &focuser_template, sizeof(indigo_device));
+		device_data[device_index].port[port_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", FOCUSER_LUNATICO_NAME, port_name[port_index]);
 		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_FOCUSER;
 	} else if (device_type == TYPE_ROTATOR) {
-		memcpy(device_data[device_index].port[port_index], &rotator_template, sizeof(indigo_device));
+		device_data[device_index].port[port_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
 		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", ROTATOR_LUNATICO_NAME, port_name[port_index]);
 		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_ROTATOR;
 	} else {
-		memcpy(device_data[device_index].port[port_index], &aux_template, sizeof(indigo_device));
+		device_data[device_index].port[port_index] = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 		sprintf(device_data[device_index].port[port_index]->name, "%s (%s)", AUX_LUNATICO_NAME, port_name[port_index]);
 		device_data[device_index].private_data->port_data[port_index].device_type = TYPE_AUX;
 	}

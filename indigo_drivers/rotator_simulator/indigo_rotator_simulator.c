@@ -178,9 +178,7 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
-			imager_focuser = malloc(sizeof(indigo_device));
-			assert(imager_focuser != NULL);
-			memcpy(imager_focuser, &imager_rotator_template, sizeof(indigo_device));
+			imager_focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_rotator_template);
 			imager_focuser->private_data = private_data;
 			indigo_attach_device(imager_focuser);
 			break;

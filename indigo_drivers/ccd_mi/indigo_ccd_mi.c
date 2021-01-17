@@ -714,9 +714,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						}
 					}
 					if (is_guider) {
-						device = malloc(sizeof(indigo_device));
-						assert(device != NULL);
-						memcpy(device, &guider_template, sizeof(indigo_device));
+						device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 						device->master_device = master_device;
 						snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%d", name, new_eid);
 						device->private_data = private_data;
@@ -728,9 +726,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						}
 					}
 					if (has_wheel) {
-						device = malloc(sizeof(indigo_device));
-						assert(device != NULL);
-						memcpy(device, &wheel_template, sizeof(indigo_device));
+						device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 						device->master_device = master_device;
 						snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%d", name, new_eid);
 						device->private_data = private_data;

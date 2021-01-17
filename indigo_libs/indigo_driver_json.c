@@ -463,9 +463,7 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 		json_detach,
 
 	};
-	indigo_client *client = malloc(sizeof(indigo_client));
-	assert(client != NULL);
-	memcpy(client, &client_template, sizeof(indigo_client));
+	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = malloc(sizeof(indigo_adapter_context));
 	assert(client_context != NULL);
 	memset(client_context, 0, sizeof(indigo_adapter_context));

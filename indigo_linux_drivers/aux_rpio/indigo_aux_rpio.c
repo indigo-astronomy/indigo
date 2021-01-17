@@ -731,10 +731,7 @@ static void create_device() {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
 
-	device_data.device = malloc(sizeof(indigo_device));
-	assert(device_data.device != NULL);
-
-	memcpy(device_data.device, &aux_template, sizeof(indigo_device));
+	device_data.device = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 	sprintf(device_data.device->name, "%s", AUX_DRAGONFLY_NAME);
 
 	device_data.device->private_data = device_data.private_data;

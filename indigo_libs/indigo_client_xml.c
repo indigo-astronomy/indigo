@@ -233,9 +233,7 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input
 		xml_client_parser_enable_blob,
 		xml_client_parser_detach
 	);
-	indigo_device *device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &device_template, sizeof(indigo_device));
+	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &device_template);
 	sprintf(device->name, "@ %s", name);
 	device->is_remote = input == output; // is socket, otherwise is pipe
 	indigo_adapter_context *device_context = malloc(sizeof(indigo_adapter_context));

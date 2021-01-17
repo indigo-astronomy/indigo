@@ -351,9 +351,7 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		last_action = action;
 		private_data = indigo_safe_malloc(sizeof(nmea_private_data));
 		private_data->handle = -1;
-		gps = malloc(sizeof(indigo_device));
-		assert(gps != NULL);
-		memcpy(gps, &gps_template, sizeof(indigo_device));
+		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 		gps->private_data = private_data;
 		indigo_attach_device(gps);
 		break;

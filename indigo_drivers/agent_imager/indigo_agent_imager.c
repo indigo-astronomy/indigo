@@ -1822,15 +1822,11 @@ indigo_result indigo_agent_imager(indigo_driver_action action, indigo_driver_inf
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(agent_private_data));
 			private_data->bin_x = private_data->bin_y = 1;
-			agent_device = malloc(sizeof(indigo_device));
-			assert(agent_device != NULL);
-			memcpy(agent_device, &agent_device_template, sizeof(indigo_device));
+			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
 
-			agent_client = malloc(sizeof(indigo_client));
-			assert(agent_client != NULL);
-			memcpy(agent_client, &agent_client_template, sizeof(indigo_client));
+			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
 			agent_client->client_context = agent_device->device_context;
 			indigo_attach_client(agent_client);
 			break;

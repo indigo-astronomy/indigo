@@ -417,14 +417,10 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(sx_private_data));
-			ao = malloc(sizeof(indigo_device));
-			assert(ao != NULL);
-			memcpy(ao, &ao_template, sizeof(indigo_device));
+			ao = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
 			ao->private_data = private_data;
 			indigo_attach_device(ao);
-			guider = malloc(sizeof(indigo_device));
-			assert(guider != NULL);
-			memcpy(guider, &guider_template, sizeof(indigo_device));
+			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
 			indigo_attach_device(guider);
 			break;

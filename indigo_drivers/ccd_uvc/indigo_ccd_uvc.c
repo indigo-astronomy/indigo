@@ -519,9 +519,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%p %s %s detected", uvc_dev, descriptor->manufacturer, descriptor->product);
 					uvc_private_data *private_data = indigo_safe_malloc(sizeof(uvc_private_data));
 					private_data->dev = uvc_dev;
-					indigo_device *device = malloc(sizeof(indigo_device));
-					assert(device != NULL);
-					memcpy(device, &ccd_template, sizeof(indigo_device));
+					indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 					char usb_path[INDIGO_NAME_SIZE];
 					indigo_get_usb_path(dev, usb_path);
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s %s #%s", descriptor->manufacturer, descriptor->product, usb_path);
