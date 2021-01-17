@@ -156,7 +156,7 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 		pthread_cond_signal(&t->cond);
 		pthread_mutex_unlock(&t->mutex);
 	} else {
-		t = malloc(sizeof(indigo_timer));
+		t = indigo_safe_malloc(sizeof(indigo_timer));
 		if (t == NULL)
 			return false;
 		t->timer_id = timer_count++;

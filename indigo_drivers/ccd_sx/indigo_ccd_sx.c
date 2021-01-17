@@ -273,13 +273,10 @@ static bool sx_open(indigo_device *device) {
 				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE + 512);
 				assert(PRIVATE_DATA->buffer != NULL);
 				if (PRIVATE_DATA->is_interlaced) {
-					PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
-					assert(PRIVATE_DATA->even != NULL);
-					PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
-					assert(PRIVATE_DATA->odd != NULL);
+					PRIVATE_DATA->even = indigo_safe_malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
+					PRIVATE_DATA->odd = indigo_safe_malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
 				} else if (PRIVATE_DATA->is_icx453) {
-					PRIVATE_DATA->even = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
-					assert(PRIVATE_DATA->even != NULL);
+					PRIVATE_DATA->even = indigo_safe_malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: is_icx453 buffer %d bytes", 2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
 				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix);
@@ -1145,10 +1142,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				sx_private_data *private_data = indigo_safe_malloc(sizeof(sx_private_data));
 				private_data->dev = dev;
 				libusb_ref_device(dev);
-				indigo_device *device = malloc(sizeof(indigo_device));
+				indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 				indigo_device *master_device = device;
-				assert(device != NULL);
-				memcpy(device, &ccd_template, sizeof(indigo_device));
 				device->master_device = master_device;
 				char usb_path[INDIGO_NAME_SIZE];
 				indigo_get_usb_path(dev, usb_path);

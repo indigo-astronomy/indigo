@@ -70,7 +70,7 @@ void indigo_use_shortest_exposure_if_bias(indigo_device *device) {
 indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	if (CCD_CONTEXT == NULL) {
-		device->device_context = malloc(sizeof(indigo_ccd_context));
+		device->device_context = indigo_safe_malloc(sizeof(indigo_ccd_context));
 		assert(DEVICE_CONTEXT != NULL);
 		memset(device->device_context, 0, sizeof(indigo_ccd_context));
 	}
@@ -828,7 +828,7 @@ static void set_black_white(indigo_device *device, unsigned long *histo, long co
 void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size) {
 	INDIGO_DEBUG(clock_t start = clock());
 	int size_in = frame_width * frame_height;
-	void *copy = malloc(size_in * bpp / 8);
+	void *copy = indigo_safe_malloc(size_in * bpp / 8);
 	memcpy(copy, data_in + FITS_HEADER_SIZE, size_in * bpp / 8);
 	unsigned char *mem = NULL;
 	unsigned long mem_size = 0;
@@ -960,8 +960,8 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 }
 
 static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out) {
-	indigo_tiff_memory_handle *memory_handle = malloc(sizeof(indigo_tiff_memory_handle));
-	memory_handle->data = malloc(memory_handle->size = 10240);
+	indigo_tiff_memory_handle *memory_handle = indigo_safe_malloc(sizeof(indigo_tiff_memory_handle));
+	memory_handle->data = indigo_safe_malloc(memory_handle->size = 10240);
 	memory_handle->file_length = memory_handle->file_offset = 0;
 	TIFF *tiff = TIFFClientOpen("", little_endian ? "wl" : "wb", (thandle_t)memory_handle, indigo_tiff_read, indigo_tiff_write, indigo_tiff_seek, indigo_tiff_close, indigo_tiff_size, NULL, NULL);
 	TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, frame_width);
@@ -1032,7 +1032,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 						CCD_CONTEXT->preview_image = realloc(CCD_CONTEXT->preview_image, CCD_CONTEXT->preview_image_size = jpeg_size);
 					}
 				} else {
-					CCD_CONTEXT->preview_image = malloc(CCD_CONTEXT->preview_image_size = jpeg_size);
+					CCD_CONTEXT->preview_image = indigo_safe_malloc(CCD_CONTEXT->preview_image_size = jpeg_size);
 				}
 				memcpy(CCD_CONTEXT->preview_image, jpeg_data, jpeg_size);
 				CCD_PREVIEW_IMAGE_ITEM->blob.value = CCD_CONTEXT->preview_image;
@@ -1052,7 +1052,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 							CCD_CONTEXT->preview_histogram = realloc(CCD_CONTEXT->preview_histogram, CCD_CONTEXT->preview_histogram_size = histogram_size);
 						}
 					} else {
-						CCD_CONTEXT->preview_histogram = malloc(CCD_CONTEXT->preview_histogram_size = histogram_size);
+						CCD_CONTEXT->preview_histogram = indigo_safe_malloc(CCD_CONTEXT->preview_histogram_size = histogram_size);
 					}
 					memcpy(CCD_CONTEXT->preview_histogram, histogram_data, histogram_size);
 					CCD_PREVIEW_HISTOGRAM_ITEM->blob.value = CCD_CONTEXT->preview_histogram;
@@ -1205,7 +1205,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 			}
 		} else if (byte_per_pixel == 1 && naxis == 3) {
-			unsigned char *raw = malloc(3 * size);
+			unsigned char *raw = indigo_safe_malloc(3 * size);
 			unsigned char *red = raw;
 			unsigned char *green = raw + size;
 			unsigned char *blue = raw + 2 * size;
@@ -1226,7 +1226,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
 			free(raw);
 		} else if (byte_per_pixel == 2 && naxis == 3) {
-			unsigned short *raw = malloc(6 * size);
+			unsigned short *raw = indigo_safe_malloc(6 * size);
 			unsigned short *red = raw;
 			unsigned short *green = raw + size;
 			unsigned short *blue = raw + 2 * size;
@@ -1791,7 +1791,7 @@ void indigo_process_dslr_preview_image(indigo_device *device, void *data, int bl
 			CCD_CONTEXT->preview_image = realloc(CCD_CONTEXT->preview_image, CCD_CONTEXT->preview_image_size = blobsize);
 		}
 	} else {
-		CCD_CONTEXT->preview_image = malloc(CCD_CONTEXT->preview_image_size = blobsize);
+		CCD_CONTEXT->preview_image = indigo_safe_malloc(CCD_CONTEXT->preview_image_size = blobsize);
 	}
 	memcpy(CCD_CONTEXT->preview_image, data, blobsize);
 	CCD_PREVIEW_IMAGE_ITEM->blob.value = CCD_CONTEXT->preview_image;

@@ -2008,9 +2008,7 @@ static void create_port_device(int device_index) {
 	if (device_data[device_index].device != NULL) return;
 
 	if (device_data[device_index].private_data == NULL) {
-		device_data[device_index].private_data = malloc(sizeof(aag_private_data));
-		assert(device_data[device_index].private_data != NULL);
-		memset(device_data[device_index].private_data, 0, sizeof(aag_private_data));
+		device_data[device_index].private_data = indigo_safe_malloc(sizeof(aag_private_data));
 		pthread_mutex_init(&device_data[device_index].private_data->port_mutex, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}

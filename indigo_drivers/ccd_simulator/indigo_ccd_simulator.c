@@ -345,7 +345,7 @@ static void create_frame(indigo_device *device) {
 			raw[i] = (unsigned short)value;
 		}
 		if (private_data->current_position != 0) {
-			unsigned short *tmp = malloc(2 * size);
+			unsigned short *tmp = indigo_safe_malloc(2 * size);
 			gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
 			memcpy(raw, tmp, 2 * size);
 			free(tmp);

@@ -702,8 +702,7 @@ static void ptp_check_event(indigo_device *device) {
 }
 
 bool ptp_nikon_initialise(indigo_device *device) {
-	PRIVATE_DATA->vendor_private_data = malloc(sizeof(nikon_private_data));
-	memset(NIKON_PRIVATE_DATA, 0, sizeof(nikon_private_data));
+	PRIVATE_DATA->vendor_private_data = indigo_safe_malloc(sizeof(nikon_private_data));
 	if (!ptp_initialise(device))
 		return false;
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));

@@ -76,7 +76,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	if (output_buffer == NULL) {
 		indigo_error("JSON Adapter: can't allocate buffers");
 		return INDIGO_FAILED;
@@ -235,7 +235,7 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
 	assert(client_context != NULL);
-	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	if (output_buffer == NULL) {
 		indigo_error("JSON Adapter: can't allocate buffers");
 		return INDIGO_FAILED;
@@ -372,7 +372,7 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	if (output_buffer == NULL) {
 		indigo_error("JSON Parser: can't allocate buffers");
 		return INDIGO_FAILED;
@@ -420,7 +420,7 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char *output_buffer = malloc(JSON_BUFFER_SIZE);
+	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	if (output_buffer == NULL) {
 		indigo_error("JSON Parser: can't allocate buffers");
 		return INDIGO_FAILED;
@@ -464,7 +464,7 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
-	indigo_adapter_context *client_context = malloc(sizeof(indigo_adapter_context));
+	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
 	assert(client_context != NULL);
 	memset(client_context, 0, sizeof(indigo_adapter_context));
 	client_context->input = input;

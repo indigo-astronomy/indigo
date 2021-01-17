@@ -835,10 +835,8 @@ static void plug_handler(indigo_device *device) {
 			atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
 			private_data->index = j;
 			private_data->dev = dev;
-			indigo_device *device = malloc(sizeof(indigo_device));
+			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
-			assert(device != NULL);
-			memcpy(device, &ccd_template, sizeof(indigo_device));
 			device->master_device = master_device;
 			char name[INDIGO_NAME_SIZE], usb_path[INDIGO_NAME_SIZE];
 			ArtemisDeviceName(j, name);

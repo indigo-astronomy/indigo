@@ -99,9 +99,7 @@ static indigo_result forward_property(indigo_device *device, indigo_client *clie
 			return INDIGO_OK;
 	}
 	int size = sizeof(indigo_property) + source_property->count * sizeof(indigo_item);
-	indigo_property *property = malloc(size);
-	assert(property != NULL);
-	memcpy(property, source_property, size);
+	indigo_property *property = indigo_safe_malloc_copy(size, source_property);
 	indigo_copy_name(property->device, r->target_device_name);
 	indigo_copy_name(property->name, r->target_property_name);
 	indigo_trace_property("Property set by rule", property, false, true);
@@ -191,16 +189,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				}
 			r = r->next;
 		}
-		r = malloc(sizeof(rule));
-		assert(r != NULL);
+		r = indigo_safe_malloc(sizeof(rule));
 		indigo_copy_name(r->source_device_name, SNOOP_ADD_RULE_SOURCE_DEVICE_ITEM->text.value);
 		indigo_copy_name(r->source_property_name, SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM->text.value);
-		r->source_device = NULL;
-		r->source_property = NULL;
 		indigo_copy_name(r->target_device_name, SNOOP_ADD_RULE_TARGET_DEVICE_ITEM->text.value);
 		indigo_copy_name(r->target_property_name, SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM->text.value);
-		r->target_device = NULL;
-		r->target_property = NULL;
 		r->state = INDIGO_OK_STATE;
 		r->next = DEVICE_PRIVATE_DATA->rules;
 		DEVICE_PRIVATE_DATA->rules = r;

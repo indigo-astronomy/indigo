@@ -282,13 +282,13 @@ static void *top_level_handler(parser_state state, char *name, char *value, indi
 void indigo_json_parse(indigo_device *device, indigo_client *client) {
 	indigo_adapter_context *context = (indigo_adapter_context*)client->client_context;
 	int handle = context->input;
-	char *buffer = malloc(JSON_BUFFER_SIZE);
+	char *buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	assert(buffer != NULL);
-	char *value_buffer = malloc(JSON_BUFFER_SIZE);
+	char *value_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	assert(value_buffer != NULL);
-	char *name_buffer = malloc(INDIGO_NAME_SIZE);
+	char *name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
 	assert(name_buffer != NULL);
-	indigo_property *property = malloc(PROPERTY_SIZE);
+	indigo_property *property = indigo_safe_malloc(PROPERTY_SIZE);
 	assert(property != NULL);
 	char *pointer = buffer;
 	char *buffer_end = NULL;
@@ -532,7 +532,7 @@ const char *indigo_json_escape(const char *string) {
 		int index = buffer_index = (buffer_index + 1) % BUFFER_COUNT;
 		char *buffer;
 		if (escape_buffer[index] == NULL)
-			escape_buffer[index] = buffer = malloc(escape_buffer_size[index] = length);
+			escape_buffer[index] = buffer = indigo_safe_malloc(escape_buffer_size[index] = length);
 		else if (escape_buffer_size[index] < length)
 			escape_buffer[index] = buffer = realloc(escape_buffer[index], escape_buffer_size[index] = length);
 		else

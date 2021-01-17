@@ -262,8 +262,7 @@ static void select_subframe(indigo_device *device) {
 			if (frame_height - selection_y < AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value)
 				frame_height += GRID;
 			int size = sizeof(indigo_property) + device_ccd_frame_property->count * sizeof(indigo_item);
-			DEVICE_PRIVATE_DATA->saved_frame = malloc(size);
-			memcpy(DEVICE_PRIVATE_DATA->saved_frame, agent_ccd_frame_property, size);
+			DEVICE_PRIVATE_DATA->saved_frame = indigo_safe_malloc_copy(size, agent_ccd_frame_property);
 			strcpy(DEVICE_PRIVATE_DATA->saved_frame->device, device_ccd_frame_property->device);
 			char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 			double values[] = { frame_left * DEVICE_PRIVATE_DATA->bin_x, frame_top * DEVICE_PRIVATE_DATA->bin_y,  frame_width * DEVICE_PRIVATE_DATA->bin_x, frame_height * DEVICE_PRIVATE_DATA->bin_y };
@@ -1454,7 +1453,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				if (DEVICE_PRIVATE_DATA->image_buffer)
 					DEVICE_PRIVATE_DATA->image_buffer = realloc(DEVICE_PRIVATE_DATA->image_buffer, file_stat.st_size);
 				else
-					DEVICE_PRIVATE_DATA->image_buffer = malloc(file_stat.st_size);
+					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(file_stat.st_size);
 				int fd = open(file_name, O_RDONLY, 0);
 				if (fd == -1) {
 					break;

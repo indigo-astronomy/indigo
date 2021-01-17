@@ -1595,7 +1595,7 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 
-	indigo_device *device = malloc(sizeof(indigo_device));
+	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 	indigo_device *master_device = device;
 	int index = find_index_by_device_id(id);
 	if (index < 0) {
@@ -1610,8 +1610,6 @@ static void process_plug_event(indigo_device *unused) {
 	char *p = strstr(info.Name, "(CAM");
 	if (p != NULL) *p = '\0';
 
-	assert(device != NULL);
-	memcpy(device, &ccd_template, sizeof(indigo_device));
 	device->master_device = master_device;
 	sprintf(device->name, "%s #%d", info.Name, id);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

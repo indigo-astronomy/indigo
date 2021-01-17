@@ -700,10 +700,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					end[1] = '\0';
 					mi_private_data *private_data = indigo_safe_malloc(sizeof(mi_private_data));
 					private_data->eid = new_eid;
-					indigo_device *device = malloc(sizeof(indigo_device));
+					indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 					indigo_device *master_device = device;
-					assert(device != NULL);
-					memcpy(device, &ccd_template, sizeof(indigo_device));
 					device->master_device = master_device;
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s #%d", name, new_eid);
 					device->private_data = private_data;

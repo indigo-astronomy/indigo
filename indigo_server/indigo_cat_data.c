@@ -41344,7 +41344,7 @@ void *indigo_add_star_json_resource(int max_mag) {
 		sep = ",";
 	}
 	size += sprintf(buffer + size, "]}");
-	unsigned char *data = malloc(buffer_size);
+	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_compress("stars.json", buffer, size, &data, &data_size);
 	free(buffer);
@@ -41371,7 +41371,7 @@ void *indigo_add_dso_json_resource(int max_mag) {
 		sep = ",";
 	}
 	size += sprintf(buffer + size, "]}");
-	unsigned char *data = malloc(buffer_size);
+	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_compress("stars.json", buffer, size, &data, &data_size);
 	free(buffer);
@@ -41524,7 +41524,7 @@ void *indigo_add_constellations_lines_json_resource() {
 	size += add_multiline(buffer + size, 37447, 34769, 30867, 29651, 0);
 	size += add_multiline(buffer + size, 61585, 61199, 63613, 62322, 61585, 59929, 57363, 0);
 	size += sprintf(buffer + size, "]}}]}");
-	unsigned char *data = malloc(buffer_size);
+	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_compress("constellations.lines.json", buffer, size, &data, &data_size);
 	free(buffer);

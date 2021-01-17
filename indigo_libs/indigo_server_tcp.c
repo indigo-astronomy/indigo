@@ -317,7 +317,7 @@ void indigo_server_shutdown() {
 }
 
 void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
-	struct resource *resource = malloc(sizeof(struct resource));
+	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	memset(resource, 0, sizeof(struct resource));
 	resource->path = path;
 	resource->data = data;
@@ -329,7 +329,7 @@ void indigo_server_add_resource(const char *path, unsigned char *data, unsigned 
 }
 
 void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type) {
-	struct resource *resource = malloc(sizeof(struct resource));
+	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	memset(resource, 0, sizeof(struct resource));
 	resource->path = path;
 	resource->file_name = file_name;
@@ -431,7 +431,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 			timeout.tv_sec = 5;
 			if (setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
 				indigo_error("Can't set send() timeout (%s)", strerror(errno));
-			int *pointer = malloc(sizeof(int));
+			int *pointer = indigo_safe_malloc(sizeof(int));
 			*pointer = client_socket;
 			if (!indigo_async((void *(*)(void *))&start_worker_thread, pointer))
 				indigo_error("Can't create worker thread for connection (%s)", strerror(errno));

@@ -119,7 +119,7 @@ static int clear_hot_pixel_8(uint8_t* image, int x, int y, int width, int height
 static void _fft(const int n, const int offset, const int delta, const double (*x)[2], double (*X)[2], double (*_X)[2]);
 
 static void fft(const int n, const double (*x)[2], double (*X)[2]) {
-	double (*_X)[2] = malloc(2 * n * sizeof(double));
+	double (*_X)[2] = indigo_safe_malloc(2 * n * sizeof(double));
 	_fft(n, 0, 1, x, X, _X);
 	free(_X);
 }
@@ -178,7 +178,7 @@ static void ifft(const int n, const double (*X)[2], double (*x)[2]) {
 
 static void corellate_fft(const int n, const double (*X1)[2], const double (*X2)[2], double (*c)[2]) {
 	int i;
-	double (*C)[2] = malloc(2 * n * sizeof(double));
+	double (*C)[2] = indigo_safe_malloc(2 * n * sizeof(double));
 	/* pointwise multiply X1 conjugate with X2 here, store in X1 */
 	for (i = 0; i < n; i++) {
 		C[i][RE] = X1[i][RE] * X2[i][RE] + X1[i][IM] * X2[i][IM];
@@ -930,8 +930,8 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	double (*col_y)[2] = calloc(2 * height * sizeof(double), 1);
 	double (*fcol_x)[2] = calloc(2 * c->width * sizeof(double), 1);
 	double (*fcol_y)[2] = calloc(2 * c->height * sizeof(double), 1);
-	c->fft_x = malloc(2 * c->width * sizeof(double));
-	c->fft_y = malloc(2 * c->height * sizeof(double));
+	c->fft_x = indigo_safe_malloc(2 * c->width * sizeof(double));
+	c->fft_y = indigo_safe_malloc(2 * c->height * sizeof(double));
 
 	int ci = 0, li = 0;
 	switch (raw_type) {
@@ -1084,7 +1084,7 @@ indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indig
 	if (ref->algorithm == donuts) {
 		double (*c_buf)[2];
 		int max_dim = (ref->width > ref->height) ? ref->width : ref->height;
-		c_buf = malloc(2 * max_dim * sizeof(double));
+		c_buf = indigo_safe_malloc(2 * max_dim * sizeof(double));
 		/* find X correction */
 		corellate_fft(ref->width, new->fft_x, ref->fft_x, c_buf);
 		*drift_x = find_distance(ref->width, c_buf);
@@ -1128,7 +1128,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
 
 	int  size = width * height;
-	uint16_t *buf = malloc(size * sizeof(uint32_t));
+	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint32_t));
 	int star_size = 100;
 	int clip_edge   = height >= FIND_STAR_CLIP_EDGE * 4 ? FIND_STAR_CLIP_EDGE : (height / 4);
 	int clip_width  = width - clip_edge;

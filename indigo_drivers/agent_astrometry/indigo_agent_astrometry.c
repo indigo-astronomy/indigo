@@ -283,7 +283,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = cinfo.output_width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = cinfo.output_height;
 				int row_stride = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * components;
-				image = intermediate_image = malloc(image_size = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height * row_stride);
+				image = intermediate_image = indigo_safe_malloc(image_size = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height * row_stride);
 				while (cinfo.output_scanline < cinfo.output_height) {
 					unsigned char *buffer_array[1];
 					buffer_array[0] = intermediate_image + (cinfo.output_scanline) * row_stride;
@@ -305,7 +305,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			if (image_size % FITS_HEADER_SIZE) {
 				image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
 			}
-			char *buffer = malloc(image_size), *p = buffer;
+			char *buffer = indigo_safe_malloc(image_size), *p = buffer;
 			memset(buffer, ' ', image_size);
 			int t = sprintf(p, "SIMPLE  = %20c", 'T'); p[t] = ' ';
 			t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
