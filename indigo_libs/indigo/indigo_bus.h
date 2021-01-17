@@ -731,6 +731,13 @@ static inline void *indigo_safe_malloc(size_t size) {
 	return pointer;
 }
 
+static inline void *indigo_safe_malloc_copy(size_t size, void *from) {
+	void *pointer = malloc(size);
+	assert(pointer != NULL);
+	memcpy(pointer, from, size);
+	return pointer;
+}
+
 static inline void indigo_safe_free(void *pointer) {
 	if (pointer)
 		free(pointer);
