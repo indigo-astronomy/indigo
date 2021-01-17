@@ -198,9 +198,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			char usb_path[INDIGO_NAME_SIZE];
 			indigo_get_usb_path(dev, usb_path);
 			snprintf(wheel->name, INDIGO_NAME_SIZE, "SX Filter Wheel #%s", usb_path);
-			sx_private_data *private_data = malloc(sizeof(sx_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(sx_private_data));
+			sx_private_data *private_data = indigo_safe_malloc(sizeof(sx_private_data));
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 			break;

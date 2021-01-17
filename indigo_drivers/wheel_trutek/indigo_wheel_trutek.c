@@ -210,9 +210,7 @@ indigo_result indigo_wheel_trutek(indigo_driver_action action, indigo_driver_inf
 			wheel = malloc(sizeof(indigo_device));
 			assert(wheel != NULL);
 			memcpy(wheel, &wheel_template, sizeof(indigo_device));
-			trutek_private_data *private_data = malloc(sizeof(trutek_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(trutek_private_data));
+			trutek_private_data *private_data = indigo_safe_malloc(sizeof(trutek_private_data));
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 		}

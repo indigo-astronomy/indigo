@@ -950,9 +950,7 @@ indigo_result indigo_dome_baader(indigo_driver_action action, indigo_driver_info
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(baader_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(baader_private_data));
+			private_data = indigo_safe_malloc(sizeof(baader_private_data));
 			dome = malloc(sizeof(indigo_device));
 			assert(dome != NULL);
 			memcpy(dome, &dome_template, sizeof(indigo_device));

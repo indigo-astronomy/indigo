@@ -986,9 +986,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 				NULL,
 				ccd_detach
 				);
-			altair_private_data *private_data = malloc(sizeof(altair_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(altair_private_data));
+			altair_private_data *private_data = indigo_safe_malloc(sizeof(altair_private_data));
 			private_data->cam = cam;
 			private_data->present = true;
 			indigo_device *camera = malloc(sizeof(indigo_device));

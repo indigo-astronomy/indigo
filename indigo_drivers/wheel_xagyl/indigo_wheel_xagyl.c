@@ -226,9 +226,7 @@ indigo_result indigo_wheel_xagyl(indigo_driver_action action, indigo_driver_info
 			wheel = malloc(sizeof(indigo_device));
 			assert(wheel != NULL);
 			memcpy(wheel, &wheel_template, sizeof(indigo_device));
-			xagyl_private_data *private_data = malloc(sizeof(xagyl_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(xagyl_private_data));
+			xagyl_private_data *private_data = indigo_safe_malloc(sizeof(xagyl_private_data));
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 		}

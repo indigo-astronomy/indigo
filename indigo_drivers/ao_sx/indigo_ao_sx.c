@@ -416,9 +416,7 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(sx_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(sx_private_data));
+			private_data = indigo_safe_malloc(sizeof(sx_private_data));
 			ao = malloc(sizeof(indigo_device));
 			assert(ao != NULL);
 			memcpy(ao, &ao_template, sizeof(indigo_device));

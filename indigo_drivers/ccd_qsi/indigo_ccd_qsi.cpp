@@ -870,9 +870,7 @@ static void process_plug_event(indigo_device *unused) {
 		if (found) {
 			continue;
 		}
-		qsi_private_data *private_data = (qsi_private_data *)malloc(sizeof(qsi_private_data));
-		assert(private_data != NULL);
-		memset(private_data, 0, sizeof(qsi_private_data));
+		qsi_private_data *private_data = (qsi_private_data *)indigo_safe_malloc(sizeof(qsi_private_data));
 		indigo_copy_name(private_data->serial, serial);
 		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
 		assert(device != NULL);

@@ -1521,9 +1521,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 			}
 
 			for (int i = 0; i < device_num; i++) {
-				andor_private_data *private_data = malloc(sizeof(andor_private_data));
-				assert(private_data != NULL);
-				memset(private_data, 0, sizeof(andor_private_data));
+				andor_private_data *private_data = indigo_safe_malloc(sizeof(andor_private_data));
 				indigo_device *device = malloc(sizeof(indigo_device));
 				assert(device != NULL);
 				memcpy(device, &imager_camera_template, sizeof(indigo_device));

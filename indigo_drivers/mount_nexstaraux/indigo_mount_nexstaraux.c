@@ -872,9 +872,7 @@ indigo_result indigo_mount_nexstaraux(indigo_driver_action action, indigo_driver
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(nexstaraux_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(nexstaraux_private_data));
+			private_data = indigo_safe_malloc(sizeof(nexstaraux_private_data));
 			mount = malloc(sizeof(indigo_device));
 			assert(mount != NULL);
 			memcpy(mount, &mount_template, sizeof(indigo_device));

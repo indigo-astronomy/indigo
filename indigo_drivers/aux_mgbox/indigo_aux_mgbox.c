@@ -1015,9 +1015,7 @@ indigo_result indigo_aux_mgbox(indigo_driver_action action, indigo_driver_info *
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		private_data = malloc(sizeof(mg_private_data));
-		assert(private_data != NULL);
-		memset(private_data, 0, sizeof(mg_private_data));
+		private_data = indigo_safe_malloc(sizeof(mg_private_data));
 		private_data->handle = -1;
 		pthread_mutex_init(&private_data->serial_mutex, NULL);
 		pthread_mutex_init(&private_data->reset_mutex, NULL);

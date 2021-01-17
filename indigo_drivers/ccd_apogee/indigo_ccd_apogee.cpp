@@ -1246,9 +1246,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		}
 		if (found) continue;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ATTACH device[%d]: %s", i, discovery_string.c_str());
-		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
-		assert(private_data != NULL);
-		memset(private_data, 0, sizeof(apogee_private_data));
+		apogee_private_data *private_data = (apogee_private_data *)indigo_safe_malloc(sizeof(apogee_private_data));
 		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));

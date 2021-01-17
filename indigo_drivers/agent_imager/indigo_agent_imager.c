@@ -1820,9 +1820,7 @@ indigo_result indigo_agent_imager(indigo_driver_action action, indigo_driver_inf
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(agent_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(agent_private_data));
+			private_data = indigo_safe_malloc(sizeof(agent_private_data));
 			private_data->bin_x = private_data->bin_y = 1;
 			agent_device = malloc(sizeof(indigo_device));
 			assert(agent_device != NULL);

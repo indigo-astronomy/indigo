@@ -986,9 +986,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 				NULL,
 				ccd_detach
 				);
-			touptek_private_data *private_data = malloc(sizeof(touptek_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(touptek_private_data));
+			touptek_private_data *private_data = indigo_safe_malloc(sizeof(touptek_private_data));
 			private_data->cam = cam;
 			private_data->present = true;
 			indigo_device *camera = malloc(sizeof(indigo_device));

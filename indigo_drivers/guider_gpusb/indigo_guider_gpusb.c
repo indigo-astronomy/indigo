@@ -190,9 +190,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			const char *name;
       if (libgpusb_guider(dev, &name)) {
-        gpusb_private_data *private_data = malloc(sizeof(gpusb_private_data));
-        assert(private_data != NULL);
-        memset(private_data, 0, sizeof(gpusb_private_data));
+        gpusb_private_data *private_data = indigo_safe_malloc(sizeof(gpusb_private_data));
         private_data->dev = dev;
         libusb_ref_device(dev);
         indigo_device *device = malloc(sizeof(indigo_device));

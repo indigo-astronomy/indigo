@@ -635,7 +635,7 @@ static void process_plug_event(indigo_device *unusued) {
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	sprintf(device->name, "%s #%s", dev_name, sid);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-	dsi_private_data *private_data = (dsi_private_data*)malloc(sizeof(dsi_private_data));
+	dsi_private_data *private_data = indigo_safe_malloc(sizeof(dsi_private_data));
 	assert(private_data);
 	memset(private_data, 0, sizeof(dsi_private_data));
 	sprintf(private_data->dev_sid, "%s", sid);

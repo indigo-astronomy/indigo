@@ -1142,9 +1142,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		for (int i = 0; SX_PRODUCTS[i].name; i++) {
 			if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
-				sx_private_data *private_data = malloc(sizeof(sx_private_data));
-				assert(private_data != NULL);
-				memset(private_data, 0, sizeof(sx_private_data));
+				sx_private_data *private_data = indigo_safe_malloc(sizeof(sx_private_data));
 				private_data->dev = dev;
 				libusb_ref_device(dev);
 				indigo_device *device = malloc(sizeof(indigo_device));

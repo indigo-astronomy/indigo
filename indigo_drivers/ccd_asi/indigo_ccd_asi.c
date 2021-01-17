@@ -1615,9 +1615,7 @@ static void process_plug_event(indigo_device *unused) {
 	device->master_device = master_device;
 	sprintf(device->name, "%s #%d", info.Name, id);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-	asi_private_data *private_data = malloc(sizeof(asi_private_data));
-	assert(private_data);
-	memset(private_data, 0, sizeof(asi_private_data));
+	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
 	memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
 	device->private_data = private_data;

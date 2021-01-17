@@ -679,9 +679,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						INDIGO_DEBUG_DRIVER(free(line));
 						INDIGO_DEBUG_DRIVER(fclose(tmp));
 						
-						iidc_private_data *private_data = malloc(sizeof(iidc_private_data));
-						assert(private_data != NULL);
-						memset(private_data, 0, sizeof(iidc_private_data));
+						iidc_private_data *private_data = indigo_safe_malloc(sizeof(iidc_private_data));
 						private_data->camera = camera;
 						private_data->guid = guid;
 						private_data->unit = unit;

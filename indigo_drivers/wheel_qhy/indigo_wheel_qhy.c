@@ -276,9 +276,7 @@ indigo_result indigo_wheel_qhy(indigo_driver_action action, indigo_driver_info *
 			wheel = malloc(sizeof(indigo_device));
 			assert(wheel != NULL);
 			memcpy(wheel, &wheel_template, sizeof(indigo_device));
-			qhy_private_data *private_data = malloc(sizeof(qhy_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(qhy_private_data));
+			qhy_private_data *private_data = indigo_safe_malloc(sizeof(qhy_private_data));
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 		}

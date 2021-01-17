@@ -1437,10 +1437,8 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(simulator_private_data));
+			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
 			pthread_mutex_init(&private_data->image_mutex, NULL);
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(simulator_private_data));
 			imager_ccd = malloc(sizeof(indigo_device));
 			assert(imager_ccd != NULL);
 			memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));

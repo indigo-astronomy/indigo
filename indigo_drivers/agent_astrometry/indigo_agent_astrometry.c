@@ -657,9 +657,7 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			void *private_data = malloc(sizeof(astrometry_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(astrometry_private_data));
+			void *private_data = indigo_safe_malloc(sizeof(astrometry_private_data));
 			agent_device = malloc(sizeof(indigo_device));
 			assert(agent_device != NULL);
 			memcpy(agent_device, &agent_device_template, sizeof(indigo_device));

@@ -832,9 +832,7 @@ static void plug_handler(indigo_device *device) {
 			}
 		}
 		if (dev) {
-			atik_private_data *private_data = malloc(sizeof(atik_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(atik_private_data));
+			atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
 			private_data->index = j;
 			private_data->dev = dev;
 			indigo_device *device = malloc(sizeof(indigo_device));

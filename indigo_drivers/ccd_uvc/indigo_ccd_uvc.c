@@ -517,9 +517,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_init() -> %s", uvc_strerror(res));
 					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%p %s %s detected", uvc_dev, descriptor->manufacturer, descriptor->product);
-					uvc_private_data *private_data = malloc(sizeof(uvc_private_data));
-					assert(private_data != NULL);
-					memset(private_data, 0, sizeof(uvc_private_data));
+					uvc_private_data *private_data = indigo_safe_malloc(sizeof(uvc_private_data));
 					private_data->dev = uvc_dev;
 					indigo_device *device = malloc(sizeof(indigo_device));
 					assert(device != NULL);

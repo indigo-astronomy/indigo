@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include <indigo/indigo_config.h>
 #include <indigo/indigo_token.h>

@@ -726,9 +726,7 @@ static void create_device() {
 	if (device_data.device != NULL) return;
 
 	if (device_data.private_data == NULL) {
-		device_data.private_data = malloc(sizeof(rpio_private_data));
-		assert(device_data.private_data != NULL);
-		memset(device_data.private_data, 0, sizeof(rpio_private_data));
+		device_data.private_data = indigo_safe_malloc(sizeof(rpio_private_data));
 		pthread_mutex_init(&device_data.private_data->port_mutex, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
 	}
