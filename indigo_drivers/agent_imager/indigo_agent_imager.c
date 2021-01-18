@@ -366,7 +366,7 @@ static bool capture_raw_frame(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 		return false;
 	}
-	if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
+	if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 			indigo_send_message(device, "No RAW image received");
@@ -616,6 +616,7 @@ static void exposure_batch_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
+	indigo_send_message(device, "Batch started");
 	if (exposure_batch(device)) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Batch finished");
@@ -835,9 +836,10 @@ static bool autofocus(indigo_device *device) {
 static void autofocus_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
-	DEVICE_PRIVATE_DATA->find_stars = false;
+	DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
+	indigo_send_message(device, "Focusing started");
 	select_subframe(device);
 	if (autofocus(device)) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
@@ -992,6 +994,7 @@ static void sequence_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	indigo_copy_value(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value);
 	bool autofocus_requested = strstr(sequence_text, "focus") != NULL;
+	indigo_send_message(device, "Sequence started");
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		if (strchr(token, '='))
 			continue;
@@ -1043,6 +1046,7 @@ static void sequence_process(indigo_device *device) {
 			*value++ = 0;
 			set_property(device, token, value);
 		}
+		indigo_send_message(device, "Batch %d started", batch_index);
 		AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 		AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -1051,6 +1055,7 @@ static void sequence_process(indigo_device *device) {
 			int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 			double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = DEVICE_PRIVATE_DATA->focus_exposure;
+			DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
 			indigo_send_message(device, "Autofocus started");
 			if (autofocus(device)) {
 				indigo_send_message(device, "Autofocus finished");
