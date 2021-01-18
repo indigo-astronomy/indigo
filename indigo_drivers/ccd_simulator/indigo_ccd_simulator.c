@@ -193,7 +193,7 @@ static void create_frame(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->image_mutex);
 	simulator_private_data *private_data = PRIVATE_DATA;
 	if (device == PRIVATE_DATA->dslr) {
-		unsigned char *raw = (unsigned char *)(private_data->dslr_image + FITS_HEADER_SIZE);
+		unsigned char *raw = (unsigned char *)(PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE);
 		int size = WIDTH * HEIGHT * 3;
 		for (int i = 0; i < size; i++) {
 			int rgb = indigo_ccd_simulator_rgb_image[i];
@@ -208,6 +208,7 @@ static void create_frame(indigo_device *device) {
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value)
 			indigo_process_dslr_preview_image(device, data_out, (int)size_out);
 		indigo_process_dslr_image(device, data_out, (int)size_out, ".jpeg", CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
+		free(data_out);
 	} else if (device == PRIVATE_DATA->file) {
 		int bpp = 8;
 		switch (PRIVATE_DATA->file_image_header.signature) {
@@ -522,9 +523,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
 			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 1;
 			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 1;
-			CCD_IMAGE_FORMAT_PROPERTY = indigo_resize_property(CCD_IMAGE_FORMAT_PROPERTY, 2);
+			CCD_IMAGE_FORMAT_PROPERTY = indigo_resize_property(CCD_IMAGE_FORMAT_PROPERTY, 3);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_ITEM, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, "Native", true);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM, CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM_NAME, "Native + AVI", false);
+			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, "RAW", false);
 			CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
 			CCD_OFFSET_PROPERTY->hidden = true;
 			CCD_GAMMA_PROPERTY->hidden = true;
