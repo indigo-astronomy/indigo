@@ -702,6 +702,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	if (*property->name) {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] == property) {
+				FILTER_CLIENT_CONTEXT->property_removed = true;
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
 					indigo_delete_property(device, agent_cache[i], NULL);
@@ -724,6 +725,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	} else {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] && !strcmp(device_cache[i]->device, property->device)) {
+				FILTER_CLIENT_CONTEXT->property_removed = true;
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
 					indigo_delete_property(device, agent_cache[i], message);
