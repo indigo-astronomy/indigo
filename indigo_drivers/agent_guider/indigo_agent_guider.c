@@ -1037,7 +1037,6 @@ static void guide_process(indigo_device *device) {
 		}
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	}
-	restore_subframe(device);
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? DONE : FAILED;
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -1054,6 +1053,7 @@ static void guide_process(indigo_device *device) {
 	} else {
 		indigo_send_message(device, "Guiding failed");
 	}
+	restore_subframe(device);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
