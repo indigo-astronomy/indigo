@@ -1687,7 +1687,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		free(histogram_data);
 }
 
-void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix, bool streaming) {
+void indigo_process_dslr_image(indigo_device *device, void *data, int data_size, const char *suffix, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
@@ -1697,6 +1697,32 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 		*pnt = tolower(*pnt);
 	if (!strcmp(standard_suffix, ".jpg"))
 		strcpy(standard_suffix, ".jpeg");
+	if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && !strcmp(standard_suffix, ".jpeg")) {
+		struct jpeg_decompress_struct cinfo;
+		struct jpeg_error_mgr jerr;
+		cinfo.err = jpeg_std_error(&jerr);
+		jpeg_create_decompress(&cinfo);
+		jpeg_mem_src(&cinfo, data, data_size);
+		if (jpeg_read_header(&cinfo, TRUE) == 1) {
+			jpeg_start_decompress(&cinfo);
+			int components = cinfo.output_components;
+			int frame_width = cinfo.output_width;
+			int frame_height = cinfo.output_height;
+			int row_stride = frame_width * components;
+			int image_size = frame_height * row_stride;
+			void *intermediate_image = indigo_safe_malloc(image_size + FITS_HEADER_SIZE);
+			while (cinfo.output_scanline < cinfo.output_height) {
+				unsigned char *buffer_array[1];
+				buffer_array[0] = intermediate_image + FITS_HEADER_SIZE + (cinfo.output_scanline) * row_stride;
+				jpeg_read_scanlines(&cinfo, buffer_array, 1);
+			}
+			jpeg_finish_decompress(&cinfo);
+			jpeg_destroy_decompress(&cinfo);
+			indigo_process_image(device, intermediate_image, frame_width, frame_height, components * 8, true, true, NULL, streaming);
+			free(intermediate_image);
+			return;
+		}
+	}
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		bool use_avi = false;
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
@@ -1739,7 +1765,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 					struct jpeg_error_mgr jerr;
 					cinfo.err = jpeg_std_error(&jerr);
 					jpeg_create_decompress(&cinfo);
-					jpeg_mem_src(&cinfo, data, blobsize);
+					jpeg_mem_src(&cinfo, data, data_size);
 					jpeg_read_header(&cinfo, TRUE);
 					jpeg_destroy_decompress(&cinfo);
 					CCD_CONTEXT->video_stream = gwavi_open(file_name, cinfo.image_width, cinfo.image_height, "MJPG", 5);
@@ -1753,13 +1779,13 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 		}
 		if (CCD_CONTEXT->video_stream != NULL) {
 			if (use_avi) {
-				if (!gwavi_add_frame((struct gwavi_t *)(CCD_CONTEXT->video_stream), data, blobsize)) {
+				if (!gwavi_add_frame((struct gwavi_t *)(CCD_CONTEXT->video_stream), data, data_size)) {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = strerror(errno);
 				}
 			}
 		} else if (handle) {
-			if (!indigo_write(handle, data, blobsize)) {
+			if (!indigo_write(handle, data, data_size)) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}
@@ -1774,7 +1800,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		*CCD_IMAGE_ITEM->blob.url = 0;
 		CCD_IMAGE_ITEM->blob.value = data;
-		CCD_IMAGE_ITEM->blob.size = blobsize;
+		CCD_IMAGE_ITEM->blob.size = data_size;
 		indigo_copy_name(CCD_IMAGE_ITEM->blob.format, standard_suffix);
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
