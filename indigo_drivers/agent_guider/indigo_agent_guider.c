@@ -141,7 +141,7 @@ typedef struct {
 	double rmse_ra_threshold, rmse_dec_threshold;
 	unsigned long rmse_count;
 	void *last_image;
-	enum { PREVIEW = -1, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
+	enum { IGNORE = -2, PREVIEW, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
 	int stack_size;
 	pthread_mutex_t mutex;
@@ -224,6 +224,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 		return INDIGO_ALERT_STATE;
 	}
+	if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == IGNORE)
+		return agent_exposure_property->state;
 	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 	if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 		indigo_send_message(device, "No RAW image received");
@@ -890,7 +892,7 @@ static void calibrate_and_guide_process(indigo_device *device) {
 
 static void guide_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = GUIDING;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = IGNORE;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
@@ -910,6 +912,7 @@ static void guide_process(indigo_device *device) {
 	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	}
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = GUIDING;
 	if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value) {
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value = -1;
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
