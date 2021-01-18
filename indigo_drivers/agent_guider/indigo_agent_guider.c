@@ -455,21 +455,23 @@ static void select_subframe(indigo_device *device) {
 }
 
 static void restore_subframe(indigo_device *device) {
-	indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
-	indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
-	DEVICE_PRIVATE_DATA->saved_frame = NULL;
-	AGENT_GUIDER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
-	AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
-	AGENT_GUIDER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
-	AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
-	/* TRICKY: No idea why but this prevents ensures frame to be restored correctly */
-	indigo_usleep(0.5 * ONE_SECOND_DELAY);
-	/* TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
-	   so that HFD, FWHM etc are evaluated correctly, but selection property should not be updated. */
-	capture_raw_frame(device);
-	indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-	DEVICE_PRIVATE_DATA->saved_frame_left = 0;
-	DEVICE_PRIVATE_DATA->saved_frame_top = 0;
+	if (DEVICE_PRIVATE_DATA->saved_frame) {
+		indigo_change_property(FILTER_DEVICE_CONTEXT->client, DEVICE_PRIVATE_DATA->saved_frame);
+		indigo_release_property(DEVICE_PRIVATE_DATA->saved_frame);
+		DEVICE_PRIVATE_DATA->saved_frame = NULL;
+		AGENT_GUIDER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
+		AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
+		AGENT_GUIDER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
+		AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
+		/* TRICKY: No idea why but this prevents ensures frame to be restored correctly */
+		indigo_usleep(0.5 * ONE_SECOND_DELAY);
+		/* TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
+			 so that HFD, FWHM etc are evaluated correctly, but selection property should not be updated. */
+		capture_raw_frame(device);
+		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
+		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
+	}
 }
 
 static indigo_property_state pulse_guide(indigo_device *device, double ra, double dec) {
