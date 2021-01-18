@@ -218,6 +218,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			indigo_usleep(ONE_SECOND_DELAY);
 			continue;
 		}
+		break;
 	}
 	if (agent_exposure_property->state != INDIGO_OK_STATE) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
@@ -899,6 +900,10 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->rmse_ra_threshold =
 	DEVICE_PRIVATE_DATA->rmse_dec_threshold = 0;
+	indigo_send_message(device, "Guiding started");
+	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
+		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	}
 	if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value) {
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value = -1;
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -912,10 +917,6 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
 	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_count = 0;
-	indigo_send_message(device, "Guiding started");
-	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	}
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
