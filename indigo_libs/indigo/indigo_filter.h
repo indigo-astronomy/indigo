@@ -174,6 +174,7 @@ typedef struct {
 	indigo_property *connection_property_cache[INDIGO_FILTER_MAX_DEVICES];
 	char *connection_property_device_cache[INDIGO_FILTER_MAX_DEVICES];
 	bool running_process;
+	bool property_removed;
 	bool (*validate_related_agent)(indigo_device *device, indigo_property *info_property, int mask);
 } indigo_filter_context;
 
