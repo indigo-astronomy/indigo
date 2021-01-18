@@ -154,6 +154,7 @@ typedef struct {
 	indigo_frame_digest reference;
 	double drift_x, drift_y;
 	int bin_x, bin_y;
+	void *last_image;
 	int stack_size;
 	pthread_mutex_t mutex;
 	double focus_exposure;
@@ -294,13 +295,9 @@ static void restore_subframe(indigo_device *device) {
 }
 
 static bool capture_raw_frame(indigo_device *device) {
-	indigo_property *device_exposure_property, *agent_exposure_property, *device_image_property, *device_format_property;
+	indigo_property *device_exposure_property, *agent_exposure_property, *device_format_property;
 	if (!indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_EXPOSURE_PROPERTY_NAME, &device_exposure_property, &agent_exposure_property)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE not found");
-		return false;
-	}
-	if (!indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_PROPERTY_NAME, &device_image_property, NULL)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_IMAGE not found");
 		return false;
 	}
 	if (!indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, &device_format_property, NULL)) {
@@ -330,7 +327,7 @@ static bool capture_raw_frame(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return false;
 		if (agent_exposure_property->state != INDIGO_BUSY_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE didn't become busy in %d second(s)", BUSY_TIMEOUT);
 			indigo_usleep(ONE_SECOND_DELAY);
 			continue;
 		}
@@ -370,11 +367,9 @@ static bool capture_raw_frame(indigo_device *device) {
 		return false;
 	}
 	if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
-		if (strchr(device_image_property->device, '@'))
-			indigo_populate_http_blob_item(device_image_property->items);
-		indigo_raw_header *header = (indigo_raw_header *)(device_image_property->items->blob.value);
+		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
-			indigo_send_message(device, "Invalid image format, only RAW is supported");
+			indigo_send_message(device, "No RAW image received");
 			return false;
 		}
 		if (DEVICE_PRIVATE_DATA->find_stars || (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count == 1)) {
@@ -747,7 +742,8 @@ static bool autofocus(indigo_device *device) {
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_upload_mode_property->device, device_upload_mode_property->name, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_direction_property->device, device_direction_property->name, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
-	while (true) {
+	bool repeat = true;
+	while (repeat) {
 		double quality = 0;
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
@@ -782,7 +778,7 @@ static bool autofocus(indigo_device *device) {
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_direction_property->device, device_direction_property->name, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
 			}
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device_steps_property->device, device_steps_property->name, FOCUSER_STEPS_ITEM_NAME, steps_with_backlash);
-			break;
+			repeat = false;
 		} else {
 			moving_out = !moving_out;
 			if (!first_move) {
@@ -1577,6 +1573,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_WHEEL_FILTER_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
+	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
 	return indigo_filter_device_detach(device);
 }
 
@@ -1695,21 +1692,15 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
-			//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TBD: plate solve etc...");
-			indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-			if (!AGENT_IMAGER_START_FOCUSING_ITEM->sw.value && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0) {
-				if (strchr(property->device, '@'))
-					indigo_populate_http_blob_item(property->items);
-				indigo_raw_header *header = (indigo_raw_header *)(property->items->blob.value);
-				if (header && (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48)) {
-					indigo_frame_digest digest;
-					if (indigo_selection_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), &AGENT_IMAGER_SELECTION_X_ITEM->number.value, &AGENT_IMAGER_SELECTION_Y_ITEM->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &digest) == INDIGO_OK) {
-						indigo_selection_psf(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_IMAGER_SELECTION_X_ITEM->number.value, AGENT_IMAGER_SELECTION_Y_ITEM->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &AGENT_IMAGER_STATS_FWHM_ITEM->number.value, &AGENT_IMAGER_STATS_HFD_ITEM->number.value, &AGENT_IMAGER_STATS_PEAK_ITEM->number.value);
-						indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-					}
-				}
+			if (strchr(property->device, '@'))
+				indigo_populate_http_blob_item(property->items);
+			if (property->items->blob.value) {
+				CLIENT_PRIVATE_DATA->last_image = indigo_safe_realloc(CLIENT_PRIVATE_DATA->last_image, property->items->blob.size);
+				memcpy(CLIENT_PRIVATE_DATA->last_image, property->items->blob.value, property->items->blob.size);
+			} else if (CLIENT_PRIVATE_DATA->last_image) {
+				free(CLIENT_PRIVATE_DATA->last_image);
+				CLIENT_PRIVATE_DATA->last_image = NULL;
 			}
-
 		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
 			pthread_mutex_lock(&CLIENT_PRIVATE_DATA->mutex);
 			setup_download(FILTER_CLIENT_CONTEXT->device);
