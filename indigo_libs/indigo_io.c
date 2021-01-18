@@ -44,6 +44,7 @@
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <winsock2.h>
+#include <wspiapi.h>
 #define close closesocket
 #pragma warning(disable:4996)
 #endif
