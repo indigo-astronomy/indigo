@@ -911,9 +911,12 @@ static void guide_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->rmse_ra_threshold =
 	DEVICE_PRIVATE_DATA->rmse_dec_threshold = 0;
 	indigo_send_message(device, "Guiding started");
+	double saved_exposure_time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
+	AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = 0;
 	if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	}
+	AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = saved_exposure_time;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = GUIDING;
 	if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value) {
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value = -1;
