@@ -59,6 +59,10 @@
 #define AGENT_SITE_DATA_SOURCE_DOME_ITEM  						(AGENT_SITE_DATA_SOURCE_PROPERTY->items+2)
 #define AGENT_SITE_DATA_SOURCE_GPS_ITEM  							(AGENT_SITE_DATA_SOURCE_PROPERTY->items+3)
 
+#define AGENT_SET_HOST_TIME_PROPERTY									(DEVICE_PRIVATE_DATA->agent_set_host_time_property)
+#define AGENT_SET_HOST_TIME_MOUNT_ITEM  							(AGENT_SET_HOST_TIME_PROPERTY->items+0)
+#define AGENT_SET_HOST_TIME_DOME_ITEM  								(AGENT_SET_HOST_TIME_PROPERTY->items+1)
+
 #define AGENT_LX200_SERVER_PROPERTY										(DEVICE_PRIVATE_DATA->agent_lx200_server_property)
 #define AGENT_LX200_SERVER_STOPPED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+0)
 #define AGENT_LX200_SERVER_STARTED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+1)
@@ -73,6 +77,7 @@
 typedef struct {
 	indigo_property *agent_geographic_property;
 	indigo_property *agent_site_data_source_property;
+	indigo_property *agent_set_host_time_property;
 	indigo_property *agent_lx200_server_property;
 	indigo_property *agent_lx200_configuration_property;
 	indigo_property *agent_limits_property;
@@ -245,6 +250,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_MOUNT_ITEM, AGENT_SITE_DATA_SOURCE_MOUNT_ITEM_NAME, "Use mount coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_DOME_ITEM, AGENT_SITE_DATA_SOURCE_DOME_ITEM_NAME, "Use dome coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "Use GPS coordinates", false);
+		// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
+		AGENT_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SET_HOST_TIME_PROPERTY_NAME, "Agent", "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (AGENT_SET_HOST_TIME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_SET_HOST_TIME_MOUNT_ITEM, AGENT_SET_HOST_TIME_MOUNT_ITEM_NAME, "Set host time to mount", true);
+		indigo_init_switch_item(AGENT_SET_HOST_TIME_DOME_ITEM, AGENT_SET_HOST_TIME_DOME_ITEM_NAME, "Set host time to dome", true);
 		// -------------------------------------------------------------------------------- AGENT_LX200_SERVER
 		AGENT_LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_LX200_SERVER_PROPERTY_NAME, "Agent", "LX200 Server state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_LX200_SERVER_PROPERTY == NULL)
@@ -280,6 +291,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_SITE_DATA_SOURCE_PROPERTY, property))
 		indigo_define_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property))
+		indigo_define_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_LX200_SERVER_PROPERTY, property))
 		indigo_define_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property))
@@ -631,14 +644,25 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_SITE_DATA_SOURCE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- AGENT_SITE_DATA_SOURCE
-		indigo_property_copy_values(AGENT_SITE_DATA_SOURCE_PROPERTY, property, false);
-		set_site_coordinates(device);
-		AGENT_SITE_DATA_SOURCE_PROPERTY->state = INDIGO_OK_STATE;
+			// -------------------------------------------------------------------------------- AGENT_SITE_DATA_SOURCE
+			indigo_property_copy_values(AGENT_SITE_DATA_SOURCE_PROPERTY, property, false);
+			set_site_coordinates(device);
+			AGENT_SITE_DATA_SOURCE_PROPERTY->state = INDIGO_OK_STATE;
+			save_config(device);
+			indigo_update_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
+			return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
+		indigo_property_copy_values(AGENT_SET_HOST_TIME_PROPERTY, property, false);
+		if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value && *FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
+		if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value && *FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
+		AGENT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
-		indigo_update_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
+		indigo_update_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+	 } else if (indigo_property_match(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_GEOGRAPHIC_COORDINATES
 		indigo_property_copy_values(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		set_site_coordinates(device);
@@ -680,6 +704,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	save_config(device);
 	indigo_release_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
+	indigo_release_property(AGENT_SET_HOST_TIME_PROPERTY);
 	indigo_release_property(AGENT_LX200_SERVER_PROPERTY);
 	indigo_release_property(AGENT_LX200_CONFIGURATION_PROPERTY);
 	indigo_release_property(AGENT_LIMITS_PROPERTY);
@@ -693,6 +718,8 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])) {
 		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+			if (CLIENT_PRIVATE_DATA->agent_set_host_time_property->items[0].sw.value)
+				indigo_change_switch_property_1(client, property->device, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
 		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME))
@@ -812,6 +839,8 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
 				set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+				if (CLIENT_PRIVATE_DATA->agent_set_host_time_property->items[1].sw.value)
+					indigo_change_switch_property_1(client, property->device, DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
 			}
 		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
