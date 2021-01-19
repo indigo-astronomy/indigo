@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -406,12 +406,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		uvc_error_t res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value), uvc_strerror(res));
 		if (!CCD_GAIN_PROPERTY->hidden) {
-			res = uvc_set_gain(PRIVATE_DATA->handle, CCD_GAMMA_ITEM->number.value);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_gain(%d) -> %s", CCD_GAMMA_ITEM->number.value, uvc_strerror(res));
+			res = uvc_set_gain(PRIVATE_DATA->handle, CCD_GAIN_ITEM->number.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_gain(%d) -> %s", (int)CCD_GAIN_ITEM->number.value, uvc_strerror(res));
 		}
 		if (!CCD_GAMMA_PROPERTY->hidden) {
 			res = uvc_set_gamma(PRIVATE_DATA->handle, CCD_GAMMA_ITEM->number.value);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_gamma(%d) -> %s", CCD_GAMMA_ITEM->number.value, uvc_strerror(res));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_gamma(%d) -> %s", (int)CCD_GAMMA_ITEM->number.value, uvc_strerror(res));
 		}
 		if (res == UVC_SUCCESS) {
 			res = uvc_stream_open_ctrl(PRIVATE_DATA->handle, &PRIVATE_DATA->strmhp, &PRIVATE_DATA->ctrl);
