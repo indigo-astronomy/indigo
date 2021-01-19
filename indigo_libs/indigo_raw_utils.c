@@ -850,7 +850,246 @@ static double calibrate_re(double (*vector)[2], int size) {
 	return snr;
 }
 
-indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c) {
+indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *c) {
+	const int xx = border;
+	const int yy = border;
+
+	if (width <= 3 * xx)
+		return INDIGO_FAILED;
+	if (height <= 3 * yy)
+		return INDIGO_FAILED;
+	if ((data == NULL) || (c == NULL))
+		return INDIGO_FAILED;
+
+	uint8_t *data8 = (uint8_t *)data;
+	uint16_t *data16 = (uint16_t *)data;
+
+	double sum = 0, max = 0;
+	const int ce = width - xx, le = height - yy;
+	const int cs = xx, ls = yy;
+	double value;
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8: {
+			for (int j = ls; j <= le; j++) {
+				for (int i = cs; i <= ce; i++) {
+					value = clear_hot_pixel_8(data8, i, j, width, height);
+					sum += value;
+					if (value > max) max = value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_MONO16: {
+			for (int j = ls; j <= le; j++) {
+				for (int i = cs; i <= ce; i++) {
+					value = clear_hot_pixel_16(data16, i, j, width, height);
+					sum += value;
+					if (value > max) max = value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			for (int j = ls; j <= le; j++) {
+				int k = j * width;
+				for (int i = cs; i <= ce; i++) {
+					int kk = 3 * (k + i);
+					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
+					sum += value;
+					if (value > max) max = value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGBA32: {
+			for (int j = ls; j <= le; j++) {
+				int k = j * width;
+				for (int i = cs; i <= ce; i++) {
+					int kk = 4 * (k + i);
+					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
+					sum += value;
+					if (value > max) max = value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_ABGR32: {
+			for (int j = ls; j <= le; j++) {
+				int k = j * width;
+				for (int i = cs; i <= ce; i++) {
+					int kk = 4 * (k + i);
+					value = data8[kk + 1] + data8[kk + 2] + data8[kk + 3];
+					sum += value;
+					if (value > max) max = value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			for (int j = ls; j <= le; j++) {
+				int k = j * width;
+				for (int i = cs; i <= ce; i++) {
+					int kk = 3 * (k + i);
+					value = data16[kk] + data16[kk + 1] + data16[kk + 2];
+					sum += value;
+					if (value > max) max = value;
+				}
+			}
+			break;
+		}
+	}
+
+	int sub_width = width - 2 * xx;
+	int sub_height = height - 2 * yy;
+	/* Set threshold 20% above average value */
+	double threshold = 1.20 * sum / (sub_width * sub_height);
+
+	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f", threshold, max));
+
+	/* If max is below the thresold no guiding is possible */
+	if (max <= threshold) return INDIGO_GUIDE_ERROR;
+
+	c->width = next_power_2(sub_width);
+	c->height = next_power_2(sub_height);
+	double (*col_x)[2] = calloc(2 * sub_width * sizeof(double), 1);
+	double (*col_y)[2] = calloc(2 * sub_height * sizeof(double), 1);
+	double (*fcol_x)[2] = calloc(2 * c->width * sizeof(double), 1);
+	double (*fcol_y)[2] = calloc(2 * c->height * sizeof(double), 1);
+	c->fft_x = indigo_safe_malloc(2 * c->width * sizeof(double));
+	c->fft_y = indigo_safe_malloc(2 * c->height * sizeof(double));
+
+	const int size = sub_width * sub_height;
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8: {
+			for (int j = ls; j <= le; j++) {
+				int y = j - ls;
+				for (int i = cs; i <= ce; i++) {
+					value = clear_hot_pixel_8(data8, i, j, width, height) - threshold;
+					/* Set all values below the threshold to 0 */
+					if (value < 0) value = 0;
+
+					col_x[i-xx][RE] += value;
+					col_y[y][RE] += value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_MONO16: {
+			for (int j = ls; j <= le; j++) {
+				int y = j - ls;
+				for (int i = cs; i <= ce; i++) {
+					value = clear_hot_pixel_16(data16, i, j, width, height) - threshold;
+					/* Set all values below the threshold to 0 */
+					if (value < 0) value = 0;
+
+					col_x[i-xx][RE] += value;
+					col_y[y][RE] += value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			for (int j = ls; j <= le; j++) {
+				int y = j - ls;
+				for (int i = cs; i <= ce; i++) {
+					int offset = (i + (j * width)) * 3;
+					value = data8[offset] + data8[offset + 1] + data8[offset + 2] - threshold;
+					/* Set all values below the threshold to 0 */
+					if (value < 0) value = 0;
+
+					col_x[i-xx][RE] += value;
+					col_y[y][RE] += value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGBA32: {
+			for (int j = ls; j <= le; j++) {
+				int y = j - ls;
+				for (int i = cs; i <= ce; i++) {
+					int offset = (i + (j * width)) * 4;
+					value = data8[offset] + data8[offset + 1] + data8[offset + 2] - threshold;
+					/* Set all values below the threshold to 0 */
+					if (value < 0) value = 0;
+
+					col_x[i-xx][RE] += value;
+					col_y[y][RE] += value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_ABGR32: {
+			for (int j = ls; j <= le; j++) {
+				int y = j - ls;
+				for (int i = cs; i <= ce; i++) {
+					int offset = (i + (j * width)) * 4;
+					value = data8[offset + 1] + data8[offset + 2] + data8[offset + 3] - threshold;
+					/* Set all values below the threshold to 0 */
+					if (value < 0) value = 0;
+
+					col_x[i-xx][RE] += value;
+					col_y[y][RE] += value;
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			for (int j = ls; j <= le; j++) {
+				int y = j - ls;
+				for (int i = cs; i <= ce; i++) {
+					int offset = (i + (j * width)) * 3;
+					value = data16[offset] + data16[offset + 1] + data16[offset + 2] - threshold;
+					/* Set all values below the threshold to 0 */
+					if (value < 0) value = 0;
+
+					col_x[i-xx][RE] += value;
+					col_y[y][RE] += value;
+				}
+			}
+			break;
+		}
+	}
+
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8:
+		case INDIGO_RAW_MONO16: {
+			c->snr = (calibrate_re(col_x, sub_width) + calibrate_re(col_y, sub_height)) / 2;
+
+			fft(c->width, col_x, c->fft_x);
+			fft(c->height, col_y, c->fft_y);
+			break;
+		}
+		default: {
+			/* Remove hot from the digest */
+			fcol_x[0][RE] = median(0, col_x[0][RE], col_x[1][RE]);
+			for (int i = 1; i < sub_width-1; i++) {
+				fcol_x[i][RE] = median(col_x[i - 1][RE], col_x[i][RE], col_x[i + 1][RE]);
+			}
+			fcol_x[sub_width - 1][RE] = median(col_x[sub_width - 2][RE], col_x[sub_width - 1][RE], 0);
+
+			fcol_y[0][RE] = median(0, col_y[0][RE], col_y[1][RE]);
+			for (int i = 1; i < sub_height-1; i++) {
+				fcol_y[i][RE] = median(col_y[i - 1][RE], col_y[i][RE], col_y[i + 1][RE]);
+			}
+			fcol_y[sub_height - 1][RE] = median(col_y[sub_height - 2][RE], col_y[sub_height - 1][RE], 0);
+
+			c->snr = (calibrate_re(fcol_x, sub_width) + calibrate_re(fcol_y, sub_height)) / 2;
+
+			fft(c->width, fcol_x, c->fft_x);
+			fft(c->height, fcol_y, c->fft_y);
+		}
+	}
+
+	c->algorithm = donuts;
+	free(col_x);
+	free(col_y);
+	free(fcol_x);
+	free(fcol_y);
+	return INDIGO_OK;
+}
+
+/*
+indigo_result indigo_donuts_frame_digest2(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c) {
 	if ((width < 3) || (height < 3))
 		return INDIGO_FAILED;
 	if ((data == NULL) || (c == NULL))
@@ -916,12 +1155,12 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		}
 	}
 
-	/* Set threshold 10% above average value */
+	// Set threshold 10% above average value
 	double threshold = 1.10 * sum / size;
 
-	//INDIGO_DEBUG(indigo_debug("Donuts threshold = %.3f, max = %.3f", threshold, max));
+	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f", threshold, max));
 
-	/* If max is below the thresold no guiding is possible */
+	// If max is below the thresold no guiding is possible
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
 
 	c->width = next_power_2(width);
@@ -938,7 +1177,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		case INDIGO_RAW_MONO8: {
 			for (int i = 0; i < size; i++) {
 				value = clear_hot_pixel_8(data8, ci, li, width, height) - threshold;
-				/* Set all values below the threshold to 0 */
+				// Set all values below the threshold to 0
 				if (value < 0) value = 0;
 
 				col_x[ci][RE] += value;
@@ -954,7 +1193,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		case INDIGO_RAW_MONO16: {
 			for (int i = 0; i < size; i++) {
 				value = clear_hot_pixel_16(data16, ci, li, width, height) - threshold;
-				/* Set all values below the threshold to 0 */
+				// Set all values below the threshold to 0
 				if (value < 0) value = 0;
 
 				col_x[ci][RE] += value;
@@ -971,7 +1210,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			for (int i = 0; i < 3 * size; i++) {
 				value = data8[i] + data8[i + 1] + data8[i + 2] - threshold;
 				i += 2;
-				/* Set all values below the threshold to 0 */
+				// Set all values below the threshold to 0
 				if (value < 0) value = 0;
 
 				col_x[ci][RE] += value;
@@ -988,7 +1227,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			for (int i = 0; i < 4 * size; i++) {
 				value = data8[i] + data8[i + 1] + data8[i + 2] - threshold;
 				i += 3;
-				/* Set all values below the threshold to 0 */
+				// Set all values below the threshold to 0
 				if (value < 0) value = 0;
 
 				col_x[ci][RE] += value;
@@ -1005,7 +1244,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			for (int i = 0; i < 4 * size; i++) {
 				value = data8[i + 1] + data8[i + 2] + data8[i + 3] - threshold;
 				i += 3;
-				/* Set all values below the threshold to 0 */
+				// Set all values below the threshold to 0
 				if (value < 0) value = 0;
 
 				col_x[ci][RE] += value;
@@ -1022,7 +1261,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			for (int i = 0; i < 3 * size; i++) {
 				value = data16[i] + data16[i + 1] + data16[i + 2] - threshold;
 				i += 2;
-				/* Set all values below the threshold to 0 */
+				// Set all values below the threshold to 0
 				if (value < 0) value = 0;
 
 				col_x[ci][RE] += value;
@@ -1037,7 +1276,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		}
 	}
 
-	/* Remove hot from the digest */
+	// Remove hot from the digest
 	fcol_x[0][RE] = median(0, col_x[0][RE], col_x[1][RE]);
 	for (int i = 1; i < width-1; i++) {
 		fcol_x[i][RE] = median(col_x[i - 1][RE], col_x[i][RE], col_x[i + 1][RE]);
@@ -1051,16 +1290,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	fcol_y[height - 1][RE] = median(col_y[height - 2][RE], col_y[height - 1][RE], 0);
 
 	c->snr = (calibrate_re(fcol_x, width) + calibrate_re(fcol_y, height)) / 2;
-//	printf("col_x:");
-//	for (i=0; i < c->width; i++) {
-//		printf(" %5.2f\n",col_x[i][RE]);
-//	}
-//	printf("\n");
-//	printf("col_y:");
-//	for (i=0; i < fdigest->height; i++) {
-//		printf(" %5.2f",col_y[i][RE]);
-//	}
-//	printf("\n");
+
 	fft(c->width, fcol_x, c->fft_x);
 	fft(c->height, fcol_y, c->fft_y);
 	c->algorithm = donuts;
@@ -1070,6 +1300,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	free(fcol_y);
 	return INDIGO_OK;
 }
+*/
 
 indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y) {
 	if (ref == NULL || new == NULL || drift_x == NULL || drift_y == NULL)
