@@ -270,6 +270,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				header->signature,
 				(void*)header + sizeof(indigo_raw_header),
 				header->width, header->height,
+				15,
 				&DEVICE_PRIVATE_DATA->reference
 			);
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
@@ -318,7 +319,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		indigo_frame_digest digest = { 0 };
 		indigo_result result;
 		if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-			result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
+			result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, 15, &digest);
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
 			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && digest.snr < 9) {
 				result = INDIGO_FAILED;
