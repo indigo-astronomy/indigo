@@ -854,9 +854,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	const int xx = edge_clipping;
 	const int yy = edge_clipping;
 
-	if (width <= 3 * xx)
+	if (width <= 2 * xx)
 		return INDIGO_FAILED;
-	if (height <= 3 * yy)
+	if (height <= 2 * yy)
 		return INDIGO_FAILED;
 	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
