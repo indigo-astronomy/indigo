@@ -99,6 +99,7 @@
 #define AGENT_GUIDER_SELECTION_Y_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+1)
 #define AGENT_GUIDER_SELECTION_RADIUS_ITEM  	(AGENT_GUIDER_SELECTION_PROPERTY->items+2)
 #define AGENT_GUIDER_SELECTION_SUBFRAME_ITEM	(AGENT_GUIDER_SELECTION_PROPERTY->items+3)
+#define AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM	(AGENT_GUIDER_SELECTION_PROPERTY->items+4)
 
 #define MAX_STACK															10
 #define MAX_DITHERING_RMSE_STACK							5
@@ -156,8 +157,8 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
-		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME };
-		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 2, (const char **)selection_property_items);
+		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME };
+		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 3, (const char **)selection_property_items);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			close(DEVICE_CONTEXT->property_save_file_handle);
@@ -270,7 +271,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				header->signature,
 				(void*)header + sizeof(indigo_raw_header),
 				header->width, header->height,
-				15,
+				(int)AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value,
 				&DEVICE_PRIVATE_DATA->reference
 			);
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference.snr;
@@ -319,14 +320,27 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		indigo_frame_digest digest = { 0 };
 		indigo_result result;
 		if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-			result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, 15, &digest);
+			result = indigo_donuts_frame_digest(
+				header->signature,
+				(void*)header + sizeof(indigo_raw_header),
+				header->width,
+				header->height,
+				(int)AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value,
+				&digest
+			);
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
 			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && digest.snr < 9) {
 				result = INDIGO_FAILED;
 				indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 			}
 		} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
-			result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
+			result = indigo_centroid_frame_digest(
+				header->signature,
+				(void*)header + sizeof(indigo_raw_header),
+				header->width,
+				header->height,
+				&digest
+			);
 		} else {
 			result = indigo_selection_frame_digest(
 				header->signature,
@@ -1140,13 +1154,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_STARS_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_GUIDER_STARS_REFRESH_ITEM, AGENT_GUIDER_STARS_REFRESH_ITEM_NAME, "Refresh", false);
 		// -------------------------------------------------------------------------------- Selected star
-		AGENT_GUIDER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
+		AGENT_GUIDER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
 		if (AGENT_GUIDER_SELECTION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_X_ITEM, AGENT_GUIDER_SELECTION_X_ITEM_NAME, "Selection X (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_Y_ITEM, AGENT_GUIDER_SELECTION_Y_ITEM_NAME, "Selection Y (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
-		indigo_init_number_item(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 10, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 20, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, "Edge Clipping (px)", 0, 500, 1, 8);
 		// -------------------------------------------------------------------------------- Guiding stats
 		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 15);
 		if (AGENT_GUIDER_STATS_PROPERTY == NULL)
@@ -1207,7 +1222,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match_w(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DETECTION_MODE
 		if (FILTER_DEVICE_CONTEXT->running_process) {
-			indigo_update_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, "You can't change selection now!");
+			indigo_update_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, "Detection mode can not be changed while process is running!");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property, false);
@@ -1272,6 +1287,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SELECTION
+		if (FILTER_DEVICE_CONTEXT->running_process) {
+			indigo_item *item = indigo_get_item(property, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME);
+			if (item && AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value != item->number.value) {
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Edge clipping can not be changed while process is running!");
+				return INDIGO_OK;
+			}
+		}
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
 		AGENT_GUIDER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);

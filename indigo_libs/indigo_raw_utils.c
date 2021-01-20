@@ -421,7 +421,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	return INDIGO_OK;
 }
 
-indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *c) {
+indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest) {
 	const int xx = (int)round(*x);
 	const int yy = (int)round(*y);
 
@@ -431,7 +431,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 		return INDIGO_FAILED;
 	if (yy < radius || height - radius < yy)
 		return INDIGO_FAILED;
-	if ((data == NULL) || (c == NULL))
+	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
 
 	uint8_t *data8 = (uint8_t *)data;
@@ -515,7 +515,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	/* Set threshold 10% above average value */
 	double threshold = 1.10 * sum / ((2 * radius + 1) * (2 * radius + 1));
 
-	INDIGO_DEBUG(indigo_debug("Selection threshold = %.3f, max = %.3f", threshold, max));
+	INDIGO_DEBUG(indigo_debug("Selection: threshold = %.3f, max = %.3f", threshold, max));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
@@ -609,22 +609,22 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 		}
 	}
 
-	c->width = width;
-	c->height = height;
+	digest->width = width;
+	digest->height = height;
 	/* Calculate centroid for the selection only, add the offset and subtract 0.5
 	   as the centroid of a single pixel is 0.5,0.5 not 1,1.
 	*/
-	c->centroid_x = *x = cs + m10 / m00 - 0.5;
-	c->centroid_y = *y = ls + m01 / m00 - 0.5;
-	c->algorithm = centroid;
-	//INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
+	digest->centroid_x = *x = cs + m10 / m00 - 0.5;
+	digest->centroid_y = *y = ls + m01 / m00 - 0.5;
+	digest->algorithm = centroid;
+	//INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
 }
 
-indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c) {
+indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *digest) {
 	if ((width < 3) || (height < 3))
 		return INDIGO_FAILED;
-	if ((data == NULL) || (c == NULL))
+	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
 
 	uint8_t *data8 = (uint8_t *)data;
@@ -692,7 +692,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	/* Set threshold 20% above average value */
 	double threshold = 1.20 * sum / size;
 
-	INDIGO_DEBUG(indigo_debug("Centroid threshold = %.3f, max = %.3f", threshold, max));
+	INDIGO_DEBUG(indigo_debug("Centroid: threshold = %.3f, max = %.3f", threshold, max));
 
 	ci = 1; li = 1;
 	switch (raw_type) {
@@ -786,15 +786,15 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 		}
 	}
 
-	c->width = width;
-	c->height = height;
+	digest->width = width;
+	digest->height = height;
 	/* Calculate centroid for the frame and subtract 0.5
 	   as the centroid of a single pixel is 0.5,0.5 not 1,1.
 	*/
-	c->centroid_x = m10 / m00 - 0.5;
-	c->centroid_y = m01 / m00 - 0.5;
-	c->algorithm = centroid;
-	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", c->centroid_x, c->centroid_y));
+	digest->centroid_x = m10 / m00 - 0.5;
+	digest->centroid_y = m01 / m00 - 0.5;
+	digest->algorithm = centroid;
+	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
 }
 
@@ -850,15 +850,15 @@ static double calibrate_re(double (*vector)[2], int size) {
 	return snr;
 }
 
-indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *c) {
-	const int xx = border;
-	const int yy = border;
+indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int edge_clipping, indigo_frame_digest *digest) {
+	const int xx = edge_clipping;
+	const int yy = edge_clipping;
 
-	if (width <= 3 * xx)
+	if (width <= 2 * xx)
 		return INDIGO_FAILED;
-	if (height <= 3 * yy)
+	if (height <= 2 * yy)
 		return INDIGO_FAILED;
-	if ((data == NULL) || (c == NULL))
+	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
 
 	uint8_t *data8 = (uint8_t *)data;
@@ -944,19 +944,19 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	/* Set threshold 20% above average value */
 	double threshold = 1.20 * sum / (sub_width * sub_height);
 
-	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f", threshold, max));
+	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f, edge_clipping = %dpx", threshold, max, edge_clipping));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
 
-	c->width = next_power_2(sub_width);
-	c->height = next_power_2(sub_height);
+	digest->width = next_power_2(sub_width);
+	digest->height = next_power_2(sub_height);
 	double (*col_x)[2] = calloc(2 * sub_width * sizeof(double), 1);
 	double (*col_y)[2] = calloc(2 * sub_height * sizeof(double), 1);
-	double (*fcol_x)[2] = calloc(2 * c->width * sizeof(double), 1);
-	double (*fcol_y)[2] = calloc(2 * c->height * sizeof(double), 1);
-	c->fft_x = indigo_safe_malloc(2 * c->width * sizeof(double));
-	c->fft_y = indigo_safe_malloc(2 * c->height * sizeof(double));
+	double (*fcol_x)[2] = calloc(2 * digest->width * sizeof(double), 1);
+	double (*fcol_y)[2] = calloc(2 * digest->height * sizeof(double), 1);
+	digest->fft_x = indigo_safe_malloc(2 * digest->width * sizeof(double));
+	digest->fft_y = indigo_safe_malloc(2 * digest->height * sizeof(double));
 
 	const int size = sub_width * sub_height;
 	switch (raw_type) {
@@ -1053,10 +1053,10 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8:
 		case INDIGO_RAW_MONO16: {
-			c->snr = (calibrate_re(col_x, sub_width) + calibrate_re(col_y, sub_height)) / 2;
+			digest->snr = (calibrate_re(col_x, sub_width) + calibrate_re(col_y, sub_height)) / 2;
 
-			fft(c->width, col_x, c->fft_x);
-			fft(c->height, col_y, c->fft_y);
+			fft(digest->width, col_x, digest->fft_x);
+			fft(digest->height, col_y, digest->fft_y);
 			break;
 		}
 		default: {
@@ -1073,14 +1073,14 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			}
 			fcol_y[sub_height - 1][RE] = median(col_y[sub_height - 2][RE], col_y[sub_height - 1][RE], 0);
 
-			c->snr = (calibrate_re(fcol_x, sub_width) + calibrate_re(fcol_y, sub_height)) / 2;
+			digest->snr = (calibrate_re(fcol_x, sub_width) + calibrate_re(fcol_y, sub_height)) / 2;
 
-			fft(c->width, fcol_x, c->fft_x);
-			fft(c->height, fcol_y, c->fft_y);
+			fft(digest->width, fcol_x, digest->fft_x);
+			fft(digest->height, fcol_y, digest->fft_y);
 		}
 	}
 
-	c->algorithm = donuts;
+	digest->algorithm = donuts;
 	free(col_x);
 	free(col_y);
 	free(fcol_x);
@@ -1344,7 +1344,7 @@ indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 	return INDIGO_FAILED;
 }
 
-static const double FIND_STAR_CLIP_EDGE = 20;
+static const double FIND_STAR_EDGE_CLIPPING = 20;
 
 static int luminance_comparator(const void *item_1, const void *item_2) {
 	if (((indigo_star_detection *)item_1)->luminance < ((indigo_star_detection *)item_2)->luminance)
@@ -1361,7 +1361,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint32_t));
 	int star_size = 100;
-	int clip_edge   = height >= FIND_STAR_CLIP_EDGE * 4 ? FIND_STAR_CLIP_EDGE : (height / 4);
+	const int clip_edge   = height >= FIND_STAR_EDGE_CLIPPING * 4 ? FIND_STAR_EDGE_CLIPPING : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
 	uint16_t max_luminance;
