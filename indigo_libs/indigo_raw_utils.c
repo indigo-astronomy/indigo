@@ -944,7 +944,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	/* Set threshold 20% above average value */
 	double threshold = 1.20 * sum / (sub_width * sub_height);
 
-	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f", threshold, max));
+	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f, edge_clipping = %dpx", threshold, max, edge_clipping));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
@@ -1344,7 +1344,7 @@ indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 	return INDIGO_FAILED;
 }
 
-static const double FIND_STAR_CLIP_EDGE = 20;
+static const double FIND_STAR_EDGE_CLIPPING = 20;
 
 static int luminance_comparator(const void *item_1, const void *item_2) {
 	if (((indigo_star_detection *)item_1)->luminance < ((indigo_star_detection *)item_2)->luminance)
@@ -1361,7 +1361,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint32_t));
 	int star_size = 100;
-	int clip_edge   = height >= FIND_STAR_CLIP_EDGE * 4 ? FIND_STAR_CLIP_EDGE : (height / 4);
+	const int clip_edge   = height >= FIND_STAR_EDGE_CLIPPING * 4 ? FIND_STAR_EDGE_CLIPPING : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
 	uint16_t max_luminance;
