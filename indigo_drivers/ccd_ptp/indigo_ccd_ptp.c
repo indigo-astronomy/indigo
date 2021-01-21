@@ -490,7 +490,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		handle_connection(device);
+		indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);

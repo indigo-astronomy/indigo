@@ -419,6 +419,10 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
 		[camera requestCloseSession];
+		if (IS_CONNECTED) {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+		}
 	}
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 		indigo_release_property(PRIVATE_DATA->dslr_properties[i]);
@@ -486,8 +490,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
   assert(device != NULL);
-  if (CONNECTION_CONNECTED_ITEM->sw.value)
-    indigo_device_disconnect(NULL, device->name);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	}
   indigo_log("%s detached", device->name);
   return indigo_focuser_detach(device);
 }
