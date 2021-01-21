@@ -1063,8 +1063,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		case INDIGO_RAW_MONO16: {
 			digest->snr = (calibrate_re(col_x, sub_width) + calibrate_re(col_y, sub_height)) / 2;
 
-			hann_window(col_x, sub_width);
-			hann_window(col_y, sub_height);
+			//Does not work :(
+			//hann_window(col_x, sub_width);
+			//hann_window(col_y, sub_height);
 
 			fft(digest->width, col_x, digest->fft_x);
 			fft(digest->height, col_y, digest->fft_y);
