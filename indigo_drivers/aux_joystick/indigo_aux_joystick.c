@@ -337,7 +337,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 static indigo_result aux_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+		close_joystick(device);
 	indigo_release_property(JOYSTICK_AXES_PROPERTY);
 	indigo_release_property(JOYSTICK_BUTTONS_PROPERTY);
 	indigo_release_property(JOYSTICK_MAPPING_PROPERTY);
