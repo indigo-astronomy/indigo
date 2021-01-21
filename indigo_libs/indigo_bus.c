@@ -441,6 +441,10 @@ indigo_result indigo_detach_device(indigo_device *device) {
 	INDIGO_TRACE(indigo_trace("INDIGO Bus: device detach request (%s)", device->name));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == device) {
+			indigo_property all_properties;
+			memset(&all_properties, 0, sizeof(all_properties));
+			strcpy(all_properties.device, device->name);
+			indigo_delete_property(device, &all_properties, NULL);			
 			devices[i] = NULL;
 			pthread_mutex_unlock(&device_mutex);
 			if (device->detach != NULL)
