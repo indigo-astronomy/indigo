@@ -245,6 +245,10 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		}
 		AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+		if (star_count == 0) {
+			indigo_send_message(device, "No stars detected");
+			return INDIGO_ALERT_STATE;
+		}
 	}
 	if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value && AGENT_GUIDER_SELECTION_X_ITEM->number.value == 0 && AGENT_GUIDER_SELECTION_Y_ITEM->number.value == 0 && AGENT_GUIDER_STARS_PROPERTY->count > 1) {
 		AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].x;
