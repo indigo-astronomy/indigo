@@ -1543,32 +1543,41 @@ bool ptp_canon_focus(indigo_device *device, int steps) {
 		pthread_mutex_unlock(&mutex);
 		return true;
 	} else {
+		bool temporary_lv = true;
+		bool result = false;
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			pthread_mutex_lock(&mutex);
-			CANON_PRIVATE_DATA->steps = steps;
-			pthread_mutex_unlock(&mutex);
-			while (true) {
-				if (CANON_PRIVATE_DATA->steps == 0)
-					return true;
-				if (CANON_PRIVATE_DATA->steps < 0) {
-					pthread_mutex_lock(&mutex);
-					CANON_PRIVATE_DATA->steps++;
-					pthread_mutex_unlock(&mutex);
-					if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x0001))
-						return false;
-				}
-				if (CANON_PRIVATE_DATA->steps > 0) {
-					pthread_mutex_lock(&mutex);
-					CANON_PRIVATE_DATA->steps--;
-					pthread_mutex_unlock(&mutex);
-					if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x8001))
-						return false;
-				}
-				indigo_usleep(50000);
-			}
+			temporary_lv = false;
+		} else if (set_number_property(device, ptp_property_canon_EVFMode, 1) && set_number_property(device, ptp_property_canon_EVFOutputDevice, 2)) {
+			ptp_canon_get_event(device);
 		}
-		indigo_send_message(device, "Focusing is available only while LiveView preview is active");
-		return false;
+		pthread_mutex_lock(&mutex);
+		CANON_PRIVATE_DATA->steps = steps;
+		pthread_mutex_unlock(&mutex);
+		while (true) {
+			if (CANON_PRIVATE_DATA->steps == 0) {
+				result = true;
+				break;
+			}
+			if (CANON_PRIVATE_DATA->steps < 0) {
+				pthread_mutex_lock(&mutex);
+				CANON_PRIVATE_DATA->steps++;
+				pthread_mutex_unlock(&mutex);
+				if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x0001))
+					break;
+			}
+			if (CANON_PRIVATE_DATA->steps > 0) {
+				pthread_mutex_lock(&mutex);
+				CANON_PRIVATE_DATA->steps--;
+				pthread_mutex_unlock(&mutex);
+				if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x8001))
+					break;
+			}
+			indigo_usleep(50000);
+		}
+		if (temporary_lv) {
+			set_number_property(device, ptp_property_canon_EVFOutputDevice, 0);
+		}
+		return result;
 	}
 }
 
