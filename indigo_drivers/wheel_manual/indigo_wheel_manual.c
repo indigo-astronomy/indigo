@@ -86,6 +86,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
