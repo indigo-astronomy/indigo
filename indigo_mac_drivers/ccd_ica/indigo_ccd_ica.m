@@ -416,8 +416,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device->name);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
+		[camera requestCloseSession];
+	}
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 		indigo_release_property(PRIVATE_DATA->dslr_properties[i]);
   indigo_release_property(DSLR_LOCK_PROPERTY);
