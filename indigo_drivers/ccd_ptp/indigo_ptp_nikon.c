@@ -1185,18 +1185,28 @@ bool ptp_nikon_focus(indigo_device *device, int steps) {
 		if (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE && ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
 			temporary_lv = true;
 		}
-		if (property->value.number.value != 0) {
-			uint8_t value = 0;
-			result = ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_LiveViewImageZoomRatio, &value, sizeof(uint8_t));
-		}
+//		if (property->value.number.value != 0) {
+//			uint8_t value = 0;
+//			result = ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_LiveViewImageZoomRatio, &value, sizeof(uint8_t));
+//		}
 		if (result) {
-			if (steps > 0)
-				result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 1, steps);
-			else
-				result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 2, -steps);
+			for (int i = 0; i < 100; i++) {
+				if (steps > 0)
+					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 1, steps);
+				else
+					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 2, -steps);
+				if (result)
+					break;
+				indigo_usleep(10000);
+			}
 		}
 		if (temporary_lv) {
-			ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
+			for (int i = 0; i < 100; i++) {
+				result = ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
+				if (result)
+					break;
+				indigo_usleep(10000);
+			}
 		}
 	} else {
 		result = false;
