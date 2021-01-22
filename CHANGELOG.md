@@ -2,8 +2,74 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-140] - Sun Dec 27 2020
+## [2.0-142] - XXX Jan YY 2021
+### Overall:
+- indigo_server: BLOB proxy added for remote servers
+- webGUI: fixed to work with proxied BLOBs
+- Various documentation updates
+- Agents can not change selected device while they are in use
+- Agent INTERFACE item can now e used to identify what devices are controlled
+- Agents crashes on device unload fixed
+- Devices opened by agents are closed on agent detach
+- Better star detection algorithm
+- More precise version of find stars added
+- XML client/driver cleanup
+- JSON BLOB definition carries URL now
+- Long TEXT property support fixes
+- property cache access synchronization in XML client added
+- Large buffers moved from stack to heap
+- JPEG to RAW conversion added to indigo_process_dslr_image()
+- several races and crashes fixed in indigo client
+- fix several small memory leaks
+- fix agents crash when some properties are deleted
+- device detach code fixes: no need to explicitly call disconnect at detach
 
+# New Drivers:
+- indigo_agent_astrometry: Agent for plate solving using astrometry.net
+
+### Driver Fixes:
+- indigo_agent_imager:
+	- subframing support added to preview process
+	- subframe selection fixes
+	- blob content race fixed
+
+- indigo_agent_guider:
+	- subframe selection fixes
+	- make Donuts guider resilient to hot columns and rows
+	- make Selection guide resilient to hot columns and rows
+	- Donuts guider optimized
+	- Edge Clipping added to Donuts guider
+	- blob content race fixed
+	- some parts are refactored
+
+- indigo_agent_mount: AGENT_SET_HOST_TIME added
+
+- indigo_ccd_uvc:
+	- libuvc updated
+	- mono formats supported
+	- exposure countdown fixed
+	- bug fixes
+
+- indigo_ccd_ptp:
+	- automatic use of LiveView during focusing
+	- DSLR_EXPOSURE_METERING_PROPERTY_NAME on Canon fixed
+	- high precision bulb time measurement
+	- RAW format support added
+
+- indigo_mount_rainbow:
+	- communication with the mount while it is not connected is fixed
+	- lat/long format fixed
+
+- indigo_ccd_simulator:
+	- fix mixed width and height
+	- DSLR simulator RAW format support added
+
+- indigo_ccd_asi: update SDK v.1.16.3
+- indigo_agent_scripting: enhancements
+- indigo_aux_rpio: change pins which overlap with the default i2c
+
+
+## [2.0-140] - Sun Dec 27 2020
 ### New Drivers:
 - indigo_mount_rainbow: RainbowAstro mount driver
 - indigo_agent_scripting: ECMAscript support for INDIGO
