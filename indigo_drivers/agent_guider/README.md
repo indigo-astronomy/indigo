@@ -30,11 +30,19 @@ de-focused stars hence the name Donuts. It will also work nicely with frames wit
 hot lines and hot columns. However the limitation is that it may not work well if there are
 stars on the border of the frame. This is especially true for 8-bit cameras. They may not be able to
 calibrate with a frame full of stars coming in and out of the frame. In this case **Selection** mode
-should be used for calibration and then **Donuts** can be used for the guiding.
+should be used for calibration and then **Donuts** can be used for the guiding. **Donuts** has one
+configuration parameter *Edge Clipping* (in pixels) and should be used if the edge of the frame
+contains artifacts or dark areas.
+
+However if **Donuts** does not work for you **Selection** should work.
 
 2. **Selection** - It uses the centroid of a small area around the star with
 a specified radius to detect the drift. This is universal method that should work in most of the cases.
-It is resilient to hot pixels, hot lines and hot columns.
+It is resilient to hot pixels, hot lines and hot columns. **Selection** has several configuration parameters,
+selection center given by *Selection X*, *Selection Y* and *Radius* all in pixels. It has one additional
+parameter *Subframe* used for better performance. This is an integer number meaning how many radii
+around the selection should be downloaded from the camera. It has two main benefits - with a remote setup
+it decreases the network load and it also speeds up the image download time from the camera.
 
 3. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
 large portion of the frame like Moon and planets. It will **not work** with stars.
