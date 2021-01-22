@@ -24,7 +24,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - fix agents crash when some properties are deleted
 - device detach code fixes: no need to explicitly call disconnect at detach
 
-# New Drivers:
+### New Drivers:
 - indigo_agent_astrometry: Agent for plate solving using astrometry.net
 
 ### Driver Fixes:
