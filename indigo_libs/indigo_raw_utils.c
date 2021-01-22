@@ -117,10 +117,21 @@ static int clear_hot_pixel_8(uint8_t* image, int x, int y, int width, int height
 }
 
 static void hann_window(double (*data)[2], int len) {
-	for (int n = 0; n <= len; n++) {
-		double sin_value = sin(3.14159265358979 * n / (len-1));
+	for (int n = 0; n < len; n++) {
+		double sin_value = sin(3.14159265358979 * n / len);
 		data[n][RE] = data[n][RE] * sin_value * sin_value;
 		//indigo_error("HANN %d -> %.4f -> %.4f ", n, data[n][RE], sin_value * sin_value);
+	}
+}
+
+static void tuckey_window(double (*data)[2], int len, double alpha) {
+	const int N = (int)(alpha * len / 2.0) - 1;
+	for (int n = 0; n <= N; n++) {
+		double sin_value = sin(3.14159265358979 * n / (2 * N));
+		double sin_value_sqr = sin_value * sin_value;
+		data[n][RE] = data[n][RE] * sin_value_sqr;
+		data[len-n-1][RE] = data[len-n-1][RE] * sin_value_sqr;
+		//indigo_error("Tuckey %d %d -> %.4f -> %.4f ", N, n, data[n][RE], sin_value_sqr);
 	}
 }
 
@@ -217,7 +228,7 @@ static double find_distance(const int n, const double (*c)[2]) {
 	}
 	/* find subpixel offset of the maximum position using quadratic interpolation */
 	double max_subp = (c[next][RE] - c[prev][RE]) / (2 * (2 * c[max][RE] - c[next][RE] - c[prev][RE]));
-//	INDIGO_DEBUG(indigo_debug("max_subp = %5.2f max: %d -> %5.2f %5.2f %5.2f\n", max_subp, max, c[prev][0], c[max][0], c[next][0]));
+	//INDIGO_DEBUG(indigo_debug("max_subp = %5.2f max: %d -> %5.2f %5.2f %5.2f\n", max_subp, max, c[prev][0], c[max][0], c[next][0]));
 	if (max == n2) {
 		return max_subp;
 	} else if (max > n2) {
@@ -949,10 +960,10 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 
 	int sub_width = width - 2 * xx;
 	int sub_height = height - 2 * yy;
-	/* Set threshold 20% above average value */
-	double threshold = 1.20 * sum / (sub_width * sub_height);
+	/* Set threshold 15% above average value */
+	double threshold = 1.15 * sum / (sub_width * sub_height);
 
-	INDIGO_DEBUG(indigo_error("Donuts: threshold = %.3f, max = %.3f, edge_clipping = %dpx", threshold, max, edge_clipping));
+	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f, edge_clipping = %dpx", threshold, max, edge_clipping));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
@@ -1062,10 +1073,6 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		case INDIGO_RAW_MONO8:
 		case INDIGO_RAW_MONO16: {
 			digest->snr = (calibrate_re(col_x, sub_width) + calibrate_re(col_y, sub_height)) / 2;
-
-			//Does not work :(
-			//hann_window(col_x, sub_width);
-			//hann_window(col_y, sub_height);
 
 			fft(digest->width, col_x, digest->fft_x);
 			fft(digest->height, col_y, digest->fft_y);
