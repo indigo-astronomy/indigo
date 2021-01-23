@@ -1,0 +1,44 @@
+Command  	Response	Comment
+=========================================================================================
+:00#		Pxxxx#		Get current focuser position
+:01#		Ixx#		Get motor moving status - 01 if moving, 00 otherwise	
+:03#		F204#		Get Controller firmware version string (Fxxx#)
+:04#	  	FString#	Get firmware version string (Fprogram name, version, #)
+:05xxxxxx#    	None		Set new targetposition to xxxxxx (and focuser initiates immediate move to xxxxxx)
+:06#      	Zxxxxxx#	Get temperature as a double XXXX
+:07xxxxxx#  	None		Set MaxStep between 1000 and 2000000
+:08#      	Mxxxxxx#	Get MaxStep, returns XXXXXX
+
+:10#      	Yxxxxxx#	Get MaxIncrement, returns maxsteps value xxxxx
+:11#      	Ox#		Get coil pwr setting (0 = coils released after move, 1 = coil pwr on after move)
+:12x#    	None		Set coil pwr 0=release pwr after move, 1=keep power on after move
+:13#      	Rx#		Get reverse direction setting, 0 off, 1 on 
+:14x#    	None		Set reverse direction setting 0=normal, 1=reverse
+:15X#    	None		Set MotorSpeed, 0 = Slow, 1 = Med, 2 = Fast
+
+:22xxx# 	None		Set the temperature coeefficient value to xxx
+:23x#		None		Set the temperature compensation ON (1) or OFF (0)
+:24#		1x#		Get state of Temperature Compensation, 0=disabled, 1=enabled
+:25#		Ax#		Get if Temperature Compensation available 0=No, 1=Yes
+:26#		Bxxx#		Get Temperature Coefficient (in steps per degree)
+:27#		None		Stop a move - like a Halt
+:28# 		None		Home the motor to position 0
+:29#	  	Sxx#		Get stepmode, returns XX
+:30xx#	  	None		Set stepmode (1=Full, 2=Half, 4=1/4, 8=1/8, 16=1/16, 32=1/32, 64=1/64, 128=1/128)
+:31xxxxxx#	None		Set current motor position to xxxxxx (does not move, updates currentpos and targetpos to xxxxxx)
+
+:40#		None		ReSet Arduino myFocuserPro2 controller
+:42#    	None    	Resetfocuser defaults
+
+:48#		None		Save settings in EEPROM
+
+:71xxx#		None		Set DelayAfterMove
+:72#		3xxx#		Get DelayAfterMove
+:73x#		None		Disable/Enabled backlash IN (going to lower focuser position)
+:74#		4x#		Get backlash IN enabled status (0=off, 1=enabled)
+:75x#		None		Disable/Enable backlash OUT (going to higher focuser position)
+:76#		5x#		Get backlash OUT enabled status (0=off, 1=enabled)
+:77xx#		None		Set backlash steps IN
+:78#		6xx#		Get number of backlash steps IN
+:79xx#		None		Set backlash steps OUT
+:80#		7xx#		Get number of backlash steps OUT
