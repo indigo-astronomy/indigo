@@ -2,22 +2,22 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-142] - XXX Jan YY 2021
+## [2.0-142] - Sat Jan 23 2021
 ### Overall:
 - indigo_server: BLOB proxy added for remote servers
-- webGUI: fixed to work with proxied BLOBs
-- Various documentation updates
-- Agents can not change selected device while they are in use
-- Agent INTERFACE item can now e used to identify what devices are controlled
-- Agents crashes on device unload fixed
-- Devices opened by agents are closed on agent detach
-- Better star detection algorithm
-- More precise version of find stars added
+- WebGUI: fixed to work with proxied BLOBs
+- various documentation updates
+- agents can not change selected device while they are in use
+- agent INTERFACE item can now e used to identify what devices are controlled
+- agents crashes on device unload fixed
+- devices opened by agents are closed on agent detach
+- better star detection algorithm
+- more precise version of find stars added
 - XML client/driver cleanup
 - JSON BLOB definition carries URL now
-- Long TEXT property support fixes
+- long TEXT property support fixes
 - property cache access synchronization in XML client added
-- Large buffers moved from stack to heap
+- large buffers moved from stack to heap
 - JPEG to RAW conversion added to indigo_process_dslr_image()
 - several races and crashes fixed in indigo client
 - fix several small memory leaks
@@ -25,13 +25,13 @@ All notable changes to INDIGO framework will be documented in this file.
 - device detach code fixes: no need to explicitly call disconnect at detach
 
 ### New Drivers:
-- indigo_agent_astrometry: Agent for plate solving using astrometry.net
+- indigo_agent_astrometry: Agent for plate solving using astrometry.net (indigo-astrometry should be installed).
 
 ### Driver Fixes:
 - indigo_agent_imager:
-	- subframing support added to preview process
-	- subframe selection fixes
-	- blob content race fixed
+	- sub-framing support added to preview process
+	- sub-frame selection fixes
+	- BLOB content race fixed
 
 - indigo_agent_guider:
 	- subframe selection fixes
@@ -39,7 +39,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- make Selection guide resilient to hot columns and rows
 	- Donuts guider optimized
 	- Edge Clipping added to Donuts guider
-	- blob content race fixed
+	- BLOB content race fixed
 	- some parts are refactored
 
 - indigo_agent_mount: AGENT_SET_HOST_TIME added
@@ -55,6 +55,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- DSLR_EXPOSURE_METERING_PROPERTY_NAME on Canon fixed
 	- high precision bulb time measurement
 	- RAW format support added
+	- Nikon focusing fixed
 
 - indigo_mount_rainbow:
 	- communication with the mount while it is not connected is fixed
