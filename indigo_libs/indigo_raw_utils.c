@@ -970,8 +970,8 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 
 	digest->width = next_power_2(sub_width);
 	digest->height = next_power_2(sub_height);
-	double (*col_x)[2] = calloc(2 * sub_width * sizeof(double), 1);
-	double (*col_y)[2] = calloc(2 * sub_height * sizeof(double), 1);
+	double (*col_x)[2] = calloc(2 * digest->width * sizeof(double), 1);
+	double (*col_y)[2] = calloc(2 * digest->height * sizeof(double), 1);
 	double (*fcol_x)[2] = calloc(2 * digest->width * sizeof(double), 1);
 	double (*fcol_y)[2] = calloc(2 * digest->height * sizeof(double), 1);
 	digest->fft_x = indigo_safe_malloc(2 * digest->width * sizeof(double));
