@@ -889,8 +889,8 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	double value;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
-			for (int j = ls; j <= le; j++) {
-				for (int i = cs; i <= ce; i++) {
+			for (int j = ls; j < le; j++) {
+				for (int i = cs; i < ce; i++) {
 					value = clear_hot_pixel_8(data8, i, j, width, height);
 					sum += value;
 					if (value > max) max = value;
@@ -899,8 +899,8 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_MONO16: {
-			for (int j = ls; j <= le; j++) {
-				for (int i = cs; i <= ce; i++) {
+			for (int j = ls; j < le; j++) {
+				for (int i = cs; i < ce; i++) {
 					value = clear_hot_pixel_16(data16, i, j, width, height);
 					sum += value;
 					if (value > max) max = value;
@@ -909,9 +909,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int k = j * width;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int kk = 3 * (k + i);
 					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
 					sum += value;
@@ -921,9 +921,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGBA32: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int k = j * width;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int kk = 4 * (k + i);
 					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
 					sum += value;
@@ -933,9 +933,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_ABGR32: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int k = j * width;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int kk = 4 * (k + i);
 					value = data8[kk + 1] + data8[kk + 2] + data8[kk + 3];
 					sum += value;
@@ -945,9 +945,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int k = j * width;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int kk = 3 * (k + i);
 					value = data16[kk] + data16[kk + 1] + data16[kk + 2];
 					sum += value;
@@ -980,9 +980,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	const int size = sub_width * sub_height;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int y = j - ls;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					value = clear_hot_pixel_8(data8, i, j, width, height) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
@@ -994,9 +994,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_MONO16: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int y = j - ls;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					value = clear_hot_pixel_16(data16, i, j, width, height) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
@@ -1008,9 +1008,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int y = j - ls;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 3;
 					value = data8[offset] + data8[offset + 1] + data8[offset + 2] - threshold;
 					/* Set all values below the threshold to 0 */
@@ -1023,9 +1023,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGBA32: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int y = j - ls;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 4;
 					value = data8[offset] + data8[offset + 1] + data8[offset + 2] - threshold;
 					/* Set all values below the threshold to 0 */
@@ -1038,9 +1038,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_ABGR32: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int y = j - ls;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 4;
 					value = data8[offset + 1] + data8[offset + 2] + data8[offset + 3] - threshold;
 					/* Set all values below the threshold to 0 */
@@ -1053,9 +1053,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
-			for (int j = ls; j <= le; j++) {
+			for (int j = ls; j < le; j++) {
 				int y = j - ls;
-				for (int i = cs; i <= ce; i++) {
+				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 3;
 					value = data16[offset] + data16[offset + 1] + data16[offset + 2] - threshold;
 					/* Set all values below the threshold to 0 */
