@@ -28,13 +28,9 @@ There are 3 algorithms to detect the tracking drift:
 Because of that it has a "built in" scintillation resilience. It can operate nicely with highly
 de-focused stars hence the name Donuts. It will also work nicely with frames with hot pixels,
 hot lines and hot columns. However the limitation is that it may not work well if there are
-stars on the border of the frame. This is especially true for 8-bit cameras. They may not be able to
-calibrate with a frame full of stars coming in and out of the frame. In this case **Selection** mode
-should be used for calibration and then **Donuts** can be used for the guiding. **Donuts** has one
-configuration parameter *Edge Clipping* (in pixels) and should be used if the edge of the frame
-contains artifacts or dark areas.
-
-However if **Donuts** does not work for you **Selection** should work.
+bright stars on the border of the frame. In this case **Selection** mode
+should be used. **Donuts** has one configuration parameter *Edge Clipping* (in pixels) and should
+be used if the edge of the frame contains artifacts or dark areas.
 
 2. **Selection** - It uses the centroid of a small area around the star with
 a specified radius to detect the drift. This is universal method that should work in most of the cases.
