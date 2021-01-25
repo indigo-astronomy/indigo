@@ -270,6 +270,8 @@ static bool ieq_open(indigo_device *device) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40");
 			} else if (!strcmp(PRIVATE_DATA->product, "0041")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40-EC");
+			} else if (!strcmp(PRIVATE_DATA->product, "0044")) {
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45EC");
 			} else if (!strcmp(PRIVATE_DATA->product, "0045")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ 45 Pro EQ");
 			} else if (!strcmp(PRIVATE_DATA->product, "0046")) {
@@ -335,6 +337,10 @@ static bool ieq_open(indigo_device *device) {
 					PRIVATE_DATA->protocol = 0x0205;
 				}
 				if (strncmp("171001", response, 6) <= 0 && (product == 70 || product == 120 || product == 121 || product == 122)) {
+					PRIVATE_DATA->protocol = 0x0300;
+					PRIVATE_DATA->no_park = false;
+				}
+				if (strncmp("191018", response, 6) <= 0 && (product == 44)) {
 					PRIVATE_DATA->protocol = 0x0300;
 					PRIVATE_DATA->no_park = false;
 				}
