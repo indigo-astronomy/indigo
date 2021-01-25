@@ -34,7 +34,7 @@ int max_image_stars = 500;
 int max_image_quads = 500;
 int top_stars = 100;
 int centroid_radius = 8;
-int precision = 0x001F;
+int precision = 0x00FF;
 
 // to be moved to indigo_raw_utils
 
@@ -130,6 +130,7 @@ indigo_result indigo_find_quads(indigo_star_detection *stars, int star_count, in
 	}
 	qsort(quads, last_quad, sizeof(indigo_quad), quad_hash_comparator);
 	*quads_found = last_quad;
+	indigo_log("image star count     = %d", star_count);
 	indigo_log("image quad count     = %d", *quads_found);
 	return INDIGO_OK;
 }
@@ -163,7 +164,7 @@ static indigo_quad *match_reference_quads(indigo_quad *reference_quads, int from
 
 static void radec2xy(double ra, double dec, double *x, double *y) {
 	double ra_r = ra / 12 * M_PI;
-	double r = 90 - dec;
+	double r = 90 - 90 * cos(dec / 180 * M_PI);
 	*x = r * sin(ra_r);
 	*y = r * cos(ra_r);
 }
@@ -178,7 +179,7 @@ indigo_result indigo_match_quads(indigo_quad *image_quads, int image_quads_count
 	int item_count = 16 * 1024;
 	int last_item = 0;
 	indigo_star_entry *star_entry = indigo_star_data;
-	indigo_star *star, *reference_stars = indigo_safe_malloc(reference_star_count * sizeof(indigo_star));
+	indigo_star *star, *reference_stars = indigo_safe_malloc(item_count * sizeof(indigo_star));
 	while (star_entry->hip) {
 		ra = star_entry->ra;
 		dec = star_entry->dec;
@@ -186,8 +187,8 @@ indigo_result indigo_match_quads(indigo_quad *image_quads, int image_quads_count
 		radec2xy(ra, dec, &x, &y);
 		if (min_x < x && x < max_x && min_y < y && y < max_y) {
 			if (last_item == item_count)
-				reference_stars = indigo_safe_realloc(reference_stars, item_count *= 2);
-			star = reference_stars + last_item++;
+				reference_stars = indigo_safe_realloc(reference_stars, (item_count *= 2) * sizeof(indigo_star));
+			star = reference_stars + (last_item++);
 			star->hip = star_entry->hip;
 			star->ra = ra;
 			star->dec = dec;
@@ -199,6 +200,7 @@ indigo_result indigo_match_quads(indigo_quad *image_quads, int image_quads_count
 		star_entry++;
 	}
 	qsort(reference_stars, last_item, sizeof(indigo_star), hip_mag_comparator);
+	indigo_log("reference star found = %d", last_item);
 	reference_star_count = MIN(reference_star_count, last_item);
 	indigo_log("reference star count = %d", reference_star_count);
 
@@ -266,8 +268,8 @@ indigo_result indigo_match_quads(indigo_quad *image_quads, int image_quads_count
 		indigo_quad *reference_quad = match_reference_quads(reference_quads, 0, reference_quad_count, image_quad);
 		if (reference_quad) {
 			indigo_log("image quad(%03d) = { %03d, %03d, %03d, %03d, %04x%04x%04x%04x%04x }", i, image_quad->index[0], image_quad->index[1], image_quad->index[2], image_quad->index[3], image_quad->hash[0], image_quad->hash[1], image_quad->hash[2], image_quad->hash[3], image_quad->hash[4]);
-			indigo_log("reference quad =  { %03d, %03d, %03d, %03d, %04x%04x%04x%04x%04x }", reference_quad->index[0], reference_quad->index[1], reference_quad->index[2], reference_quad->index[3], reference_quad->hash[0], reference_quad->hash[1], reference_quad->hash[2], reference_quad->hash[3], reference_quad->hash[4]);
-			indigo_log("scale          = %g -> %.0f%%", reference_quad->scale / image_quad->scale, reference_quad->scale / image_quad->scale / pixel_scale * 100);
+			indigo_log("reference quad  =  { %03d, %03d, %03d, %03d, %04x%04x%04x%04x%04x }", reference_quad->index[0], reference_quad->index[1], reference_quad->index[2], reference_quad->index[3], reference_quad->hash[0], reference_quad->hash[1], reference_quad->hash[2], reference_quad->hash[3], reference_quad->hash[4]);
+			indigo_log("scale           = %g -> %.0f%%", reference_quad->scale / image_quad->scale, reference_quad->scale / image_quad->scale / pixel_scale * 100);
 		}
 	}
 	
@@ -285,26 +287,20 @@ int main(int argc, char **argv) {
 	int image_stars_found = 0;
 	indigo_star_detection *image_stars = indigo_safe_malloc(max_image_stars * sizeof(indigo_star_detection));
 	result = indigo_find_stars(raw_type, raw_image, raw_image_width, raw_image_height, max_image_stars, image_stars, &image_stars_found);
-	indigo_log("indigo_find_stars(-> %d) -> %d", image_stars_found, result);
+	indigo_log("image star found     = %d", image_stars_found);
 
 	// find subpixel coordinates for top stars
 	indigo_frame_digest digest;
 	for (int i = 0; i < top_stars; i++)
 		indigo_selection_frame_digest(raw_type, raw_image, &image_stars[i].x, &image_stars[i].y, centroid_radius, raw_image_width, raw_image_height, &digest);
-	indigo_log("%dx indigo_selection_frame_digest() on top stars", top_stars);
-//	for (int i = 0; i < top_stars; i++)
-//		indigo_log("stars[%d] = { %g, %g, %g, %g, %d }", i, image_stars[i].x, image_stars[i].y, image_stars[i].luminance, image_stars[i].nc_distance, image_stars[i].oversaturated);
 	
 	// find quads for top stars + min and max skymark size in pixels
 	int image_quads_found = 0;
 	indigo_quad *image_quads = indigo_safe_malloc(max_image_quads * sizeof(indigo_quad));
 	double max_size = 0;
 	result = indigo_find_quads(image_stars, top_stars, image_quads, &image_quads_found, &max_size);
-//	indigo_log("indigo_find_quads(-> %d, -> %g) -> %d", image_quads_found, max_size, result);
-//	for (int i = 0; i < image_quads_found; i++)
-//		indigo_log("quads[%d] = { %03d, %03d, %03d, %03d, %04x%04x%04x%04x%04x }", i, image_quads[i].index[0], image_quads[i].index[1], image_quads[i].index[2], image_quads[i].index[3], image_quads[i].hash[0], image_quads[i].hash[1], image_quads[i].hash[2], image_quads[i].hash[3], image_quads[i].hash[4]);
 	
-	indigo_match_quads(image_quads, image_quads_found, 6.5, 5.0, 20.0, 5000, max_size * pixel_scale * 1.1);
+	indigo_match_quads(image_quads, image_quads_found, 6.5, 5.0, 3.0, 200, max_size * pixel_scale * 1.1);
 	
 	indigo_log("solver test finished");
 }
