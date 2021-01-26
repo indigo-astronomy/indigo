@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -403,7 +403,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 		}
 		sprintf(command, ":CtA#:Sr%s#:Sd%s#:MS#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%04.1f"), indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%04.1f"));
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		sprintf(command, ":Ck%07.3f%+7.3f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+		sprintf(command, ":Ck%07.3f%+7.3f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 15, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 	}
 	rainbow_command(device, command, MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_update_coordinates(device, NULL);
