@@ -941,7 +941,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						ieq_command(device, ":STR0#", response, 1);
 						PRIVATE_DATA->lastTrackRate = '0';
 					} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '1') {
-						ieq_command(device, ":STR1", response, 1);
+						ieq_command(device, ":STR1#", response, 1);
 						PRIVATE_DATA->lastTrackRate = '1';
 					} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '2') {
 						ieq_command(device, ":STR2#", response, 1);
@@ -952,7 +952,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						ieq_command(device, ":RT0#", response, 1);
 						PRIVATE_DATA->lastTrackRate = '0';
 					} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '1') {
-						ieq_command(device, ":RT1", response, 1);
+						ieq_command(device, ":RT1#", response, 1);
 						PRIVATE_DATA->lastTrackRate = '1';
 					} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '2') {
 						ieq_command(device, ":RT2#", response, 1);
