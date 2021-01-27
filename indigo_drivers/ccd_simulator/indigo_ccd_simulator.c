@@ -439,45 +439,47 @@ static void streaming_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-	if (diff > 0) {
-		if (diff > 5) {
-			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 100) {
-				CCD_COOLER_POWER_ITEM->number.value = 100;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+	if (CCD_COOLER_ON_ITEM->sw.value) {
+		double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
+		if (diff > 0) {
+			if (diff > 5) {
+				if (CCD_COOLER_POWER_ITEM->number.value != 100) {
+					CCD_COOLER_POWER_ITEM->number.value = 100;
+					indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+				}
+			} else {
+				if (CCD_COOLER_POWER_ITEM->number.value != 50) {
+					CCD_COOLER_POWER_ITEM->number.value = 50;
+					indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+				}
 			}
-		} else {
-			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 50) {
-				CCD_COOLER_POWER_ITEM->number.value = 50;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
-		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-		CCD_TEMPERATURE_ITEM->number.value = --(PRIVATE_DATA->current_temperature);
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-	} else if (diff < 0) {
-		if (CCD_COOLER_POWER_ITEM->number.value > 0) {
-			CCD_COOLER_POWER_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-		CCD_TEMPERATURE_ITEM->number.value = ++(PRIVATE_DATA->current_temperature);
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-	} else {
-		if (CCD_COOLER_ON_ITEM->sw.value) {
-			if (CCD_COOLER_POWER_ITEM->number.value != 20) {
-				CCD_COOLER_POWER_ITEM->number.value = 20;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
-		} else {
-			if (CCD_COOLER_POWER_ITEM->number.value != 0) {
+			CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+			CCD_TEMPERATURE_ITEM->number.value = --(PRIVATE_DATA->current_temperature);
+		} else if (diff < 0) {
+			if (CCD_COOLER_POWER_ITEM->number.value > 0) {
 				CCD_COOLER_POWER_ITEM->number.value = 0;
 				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			}
+			CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+			CCD_TEMPERATURE_ITEM->number.value = ++(PRIVATE_DATA->current_temperature);
+		} else {
+			if (CCD_COOLER_ON_ITEM->sw.value) {
+				if (CCD_COOLER_POWER_ITEM->number.value != 20) {
+					CCD_COOLER_POWER_ITEM->number.value = 20;
+					indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+				}
+			} else {
+				if (CCD_COOLER_POWER_ITEM->number.value != 0) {
+					CCD_COOLER_POWER_ITEM->number.value = 0;
+					indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+				}
+			}
+			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	} else {
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
+	indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	indigo_reschedule_timer(device, TEMP_UPDATE, &PRIVATE_DATA->temperature_timer);
 }
 
@@ -610,7 +612,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_TEMPERATURE_PROPERTY->hidden = false;
 				CCD_COOLER_POWER_PROPERTY->hidden = false;
 				PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
-				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_COOLER_POWER_ITEM->number.value = 0;
 			} else {
 				CCD_COOLER_PROPERTY->hidden = true;
@@ -843,19 +845,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CCD_COOLER_ON_ITEM->sw.value) {
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_ITEM->number.value = 0;
-			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_IDLE_STATE;
 		}
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-		indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-		indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_w(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
