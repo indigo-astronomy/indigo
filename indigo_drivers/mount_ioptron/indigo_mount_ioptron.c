@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -222,7 +222,7 @@ static void ieq_get_utc(indigo_device *device) {
 }
 
 static bool ieq_open(indigo_device *device) {
-	char response[128] = "";
+	char command[128] = "", response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_is_device_url(name, "ieq")) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
@@ -341,7 +341,7 @@ static bool ieq_open(indigo_device *device) {
 					PRIVATE_DATA->no_park = false;
 				}
 				if (strncmp("191018", response, 6) <= 0 && (product == 44)) {
-					PRIVATE_DATA->protocol = 0x0300;
+					PRIVATE_DATA->protocol = 0x0205;
 					PRIVATE_DATA->no_park = false;
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware #1:  %s", response);
@@ -368,6 +368,14 @@ static bool ieq_open(indigo_device *device) {
 			MOUNT_MOTION_DEC_PROPERTY->hidden = true;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = true;
 		} else if (PRIVATE_DATA->protocol == 0x0100) {
+			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
+			MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = -0.01;
+			MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 0.01;
+			sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
+			if (ieq_command(device, command, response, 1) && *response == '1')
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			if (ieq_command(device, ":AP#", response, 1)) {
 				if (*response == '0') {
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -402,6 +410,14 @@ static bool ieq_open(indigo_device *device) {
 				}
 			}
 		} else if (PRIVATE_DATA->protocol == 0x0200) {
+			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
+			MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = -0.01;
+			MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 0.01;
+			sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
+			if (ieq_command(device, command, response, 1) && *response == '1')
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			if (ieq_command(device, ":GAS#", response, sizeof(response))) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -433,6 +449,24 @@ static bool ieq_open(indigo_device *device) {
 				}
 			}
 		} else if (PRIVATE_DATA->protocol >= 0x0205) {
+			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
+			if (PRIVATE_DATA->protocol == 0x0205) {
+				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = 0.5;
+				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 1.5;
+			} else if (PRIVATE_DATA->protocol >= 0x0300) {
+				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = 0.1;
+				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 1.9;
+				if (ieq_command(device, ":GTR#", response, sizeof(response))) {
+					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = atoi(response) / 10000.0;
+				}
+			}
+			if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
+				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
+			sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 10000));
+			if (ieq_command(device, command, response, 1) && *response == '1')
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			if (ieq_command(device, ":GLS#", response, sizeof(response))) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -655,7 +689,7 @@ static void position_timer_callback(indigo_device *device) {
 						break;
 				}
 				if (response[13] == '2') {
-					char val[7];
+					char val[8];
 					strncpy(val, response + 7, 6);
 					bool update = MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
 					double latitude = atol(val) / 60.0 / 60.0 - 90;
@@ -664,7 +698,8 @@ static void position_timer_callback(indigo_device *device) {
 						update = true;
 					}
 					strncpy(val, response, 7);
-						double longitude = atol(val) / 60.0 / 60.0;
+					val[7] = 0;
+					double longitude = atol(val) / 60.0 / 60.0;
 					if (longitude < 0)
 						longitude += 360;
 					if (longitude != MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) {
@@ -1207,6 +1242,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+	} else if (indigo_property_match(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
+		indigo_property_copy_values(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property, false);
+		if (PRIVATE_DATA->protocol == 0x0100 || PRIVATE_DATA->protocol == 0x0200) {
+			sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
+			if (ieq_command(device, command, response, 1) && *response == '1')
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (PRIVATE_DATA->protocol >= 0x0205) {
+			sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 10000));
+			if (ieq_command(device, command, response, 1) && *response == '1')
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {

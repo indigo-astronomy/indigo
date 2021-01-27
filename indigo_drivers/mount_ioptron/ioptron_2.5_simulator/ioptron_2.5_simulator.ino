@@ -54,6 +54,7 @@ long dec_rate = 0;
 long ra_rate = 0;
 
 char guiding_rate[] = "0500#";
+char tracking_rate[] = "10000#";
 
 void format(long value, bool sign, char *buffer, int length) {
   if (sign) {
@@ -264,6 +265,11 @@ void loop() {
         now /= 60;
         format(now % 24, false, timestamp + 11, 2);
         Serial.write(timestamp, 18);
+      } else if (strncmp(command, "RR", 2) == 0) {
+        strncpy(tracking_rate, command + 2, 6);
+        Serial.write("1");
+      } else if (strcmp(command, "GTR") == 0) {
+        Serial.write(tracking_rate, 6);
       } else if (strncmp(command, "RG", 2) == 0) {
         strncpy(guiding_rate, command + 2, 4);
         Serial.write("1");
