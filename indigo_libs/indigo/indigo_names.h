@@ -1564,6 +1564,15 @@
 #define MOUNT_GUIDE_RATE_DEC_ITEM_NAME					"DEC"
 
 //----------------------------------------------------------------------
+
+#define MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME	"MOUNT_CUSTOM_TRACKING_RATE"
+
+/** MOUNT_CUSTOM_TRACKING_RATE.RATE property item name.
+ */
+#define MOUNT_CUSTOM_TRACKING_RATE_ITEM_NAME			"RATE"
+
+
+//----------------------------------------------------------------------
 /** MOUNT_EQUATORIAL_COORDINATES property name.
  */
 #define MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME	"MOUNT_EQUATORIAL_COORDINATES"
