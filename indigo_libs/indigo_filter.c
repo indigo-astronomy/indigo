@@ -702,11 +702,14 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	if (*property->name) {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] == property) {
+				// this is the list of "fragile" properties used by various filter agents
+				// if any of them is removed, any background process should abort asap
 				FILTER_CLIENT_CONTEXT->property_removed =
 					!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) ||
 					!strcmp(property->name, CCD_STREAMING_PROPERTY_NAME) ||
 					!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME) ||
 					!strcmp(property->name, CCD_UPLOAD_MODE_PROPERTY_NAME) ||
+					!strcmp(property->name, CCD_TEMPERATURE_PROPERTY_NAME) ||
 					!strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ||
 					!strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ||
 					!strcmp(property->name, FOCUSER_DIRECTION_PROPERTY_NAME) ||
