@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -1245,33 +1245,38 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
 		indigo_property_copy_values(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property, false);
-		if (PRIVATE_DATA->protocol == 0x0100 || PRIVATE_DATA->protocol == 0x0200) {
-			sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
-			if (ieq_command(device, command, response, 1) && *response == '1')
-				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-			else
-				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (PRIVATE_DATA->protocol >= 0x0205) {
-			sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 10000));
-			if (ieq_command(device, command, response, 1) && *response == '1')
-				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-			else
-				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (IS_CONNECTED) {
+			if (PRIVATE_DATA->protocol == 0x0100 || PRIVATE_DATA->protocol == 0x0200) {
+				sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
+				if (ieq_command(device, command, response, 1) && *response == '1')
+					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+				else
+					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else if (PRIVATE_DATA->protocol >= 0x0205) {
+				sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 10000));
+				if (ieq_command(device, command, response, 1) && *response == '1')
+					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+				else
+					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		}
 		indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
-		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
-		} else {
-			indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
-			if (MOUNT_TRACKING_ON_ITEM->sw.value)
-				ieq_command(device, ":ST1#", response, 1);
-			else
-				ieq_command(device, ":ST0#", response, 1);
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
+			} else {
+				indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
+				if (MOUNT_TRACKING_ON_ITEM->sw.value)
+					ieq_command(device, ":ST1#", response, 1);
+				else
+					ieq_command(device, ":ST0#", response, 1);
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+			}
 		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------

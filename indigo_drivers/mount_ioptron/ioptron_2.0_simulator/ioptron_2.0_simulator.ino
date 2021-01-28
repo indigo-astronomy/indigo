@@ -266,6 +266,8 @@ void loop() {
         now /= 60;
         format(now % 24, false, timestamp + 11, 2);
         Serial.write(timestamp, 18);
+			} else if (strncmp(command, "RR", 2) == 0) {
+				Serial.write("1");
       } else if (strncmp(command, "RG", 2) == 0) {
         strncpy(guiding_rate, command + 2, 3);
         Serial.write("1");
