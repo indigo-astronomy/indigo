@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -63,7 +63,8 @@ typedef struct {
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
 	unsigned protocol;
-	bool gotonova;
+	bool hc8406;
+	bool hc8407;
 	bool no_park;
 } ioptron_private_data;
 
@@ -128,7 +129,7 @@ static bool ieq_command(indigo_device *device, char *command, char *response, in
 static void ieq_get_coords(indigo_device *device) {
 	char response[128];
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100) {
+	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000) {
 		if (ieq_command(device, ":GR#", response, sizeof(response)))
 			PRIVATE_DATA->currentRA = indigo_stod(response);
 		if (ieq_command(device, ":GD#", response, sizeof(response)))
@@ -166,29 +167,17 @@ static void ieq_get_utc(indigo_device *device) {
 	char response[128];
 	memset(&tm, 0, sizeof(tm));
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (PRIVATE_DATA->protocol == 0x0000) {
+	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000) {
 		if (ieq_command(device, ":GC#", response, sizeof(response)) && sscanf(response, "%02d:%02d:%02d", &tm.tm_mon, &tm.tm_mday, &tm.tm_year) == 3) {
 			if (ieq_command(device, ":GL#", response, sizeof(response)) && sscanf(response, "%02d:%02d:%02d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
 				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 				tm.tm_mon -= 1;
 				if (ieq_command(device, ":GG#", response, sizeof(response))) {
 					tm.tm_isdst = -1;
-					tm.tm_gmtoff = atoi(response);
-					time_t secs = mktime(&tm);
-					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", atoi(response));
-					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100) {
-		if (ieq_command(device, ":GC#", response, sizeof(response)) && sscanf(response, "%02d/%02d/%02d", &tm.tm_mon, &tm.tm_mday, &tm.tm_year) == 3) {
-			if (ieq_command(device, ":GL#", response, sizeof(response)) && sscanf(response, "%02d:%02d:%02d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
-				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-				tm.tm_mon -= 1;
-				if (ieq_command(device, ":GG#", response, sizeof(response))) {
-					tm.tm_isdst = -1;
-					tm.tm_gmtoff = atoi(response) * 60;
+					if (PRIVATE_DATA->protocol == 0x0000)
+						tm.tm_gmtoff = atoi(response);
+					else
+						tm.tm_gmtoff = atoi(response) * 60;
 					time_t secs = mktime(&tm);
 					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", atoi(response));
@@ -243,7 +232,8 @@ static bool ieq_open(indigo_device *device) {
 //		}
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "iOptron");
 		PRIVATE_DATA->protocol = 0x0000;
-		PRIVATE_DATA->gotonova = false;
+		PRIVATE_DATA->hc8406 = false;
+		PRIVATE_DATA->hc8407 = false;
 		PRIVATE_DATA->no_park = true;
 		if (ieq_command(device, ":MountInfo#", response, sizeof(response))) {
 			PRIVATE_DATA->protocol = 0x0100;
@@ -270,12 +260,14 @@ static bool ieq_open(indigo_device *device) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40");
 			} else if (!strcmp(PRIVATE_DATA->product, "0041")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40-EC");
+			} else if (!strcmp(PRIVATE_DATA->product, "0043")) {
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45");
 			} else if (!strcmp(PRIVATE_DATA->product, "0044")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45EC");
 			} else if (!strcmp(PRIVATE_DATA->product, "0045")) {
-				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ 45 Pro EQ");
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Pro EQ");
 			} else if (!strcmp(PRIVATE_DATA->product, "0046")) {
-				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ 45 Pro Alt/Az");
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Pro Alt/Az");
 			} else if (!strcmp(PRIVATE_DATA->product, "0060")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60");
 			} else if (!strcmp(PRIVATE_DATA->product, "0061")) {
@@ -304,19 +296,20 @@ static bool ieq_open(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "No MountInfo reply, GOTONOVA?", response);
 			strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GOTONOVA");
-			PRIVATE_DATA->gotonova = true;
+			PRIVATE_DATA->hc8406 = true;
 		}
-		if (!PRIVATE_DATA->gotonova && PRIVATE_DATA->protocol != 0x0000) {
+		if (!PRIVATE_DATA->hc8406 && PRIVATE_DATA->protocol >= 0x0100) {
 			if (ieq_command(device, ":FW1#", response, sizeof(response))) {
-				PRIVATE_DATA->protocol = 0x0100;
 				int product = atoi(PRIVATE_DATA->product);
-				if (strncmp("140807", response, 6) <= 0 && (product == 60 || product == 61 || product == 45 || product == 46)) {
+				if (product == 8407 || product == 8497 || product == 8408 || product == 8498) {
+					PRIVATE_DATA->hc8407 = true;
+				} else if (strncmp("140807", response, 6) <= 0 && (product == 60 || product == 61 || product == 45 || product == 46)) {
 					PRIVATE_DATA->protocol = 0x0200;
 				}
 				if (strncmp("160610", response, 6) <= 0 && (product == 10  || product == 5010)) {
 					PRIVATE_DATA->protocol = 0x0205;
 				}
-				if (strncmp("161101", response, 6) <= 0 && (product == 30 || product == 45  || product == 60 || product == 61)) {
+				if (strncmp("161101", response, 6) <= 0 && (product == 30 || product == 45 || product == 46 || product == 60 || product == 61)) {
 					PRIVATE_DATA->protocol = 0x0205;
 					PRIVATE_DATA->no_park = false;
 				}
@@ -336,12 +329,12 @@ static bool ieq_open(indigo_device *device) {
 				if (strncmp("170410", response, 6) <= 0 && (product == 5035)) {
 					PRIVATE_DATA->protocol = 0x0205;
 				}
-				if (strncmp("171001", response, 6) <= 0 && (product == 70 || product == 120 || product == 121 || product == 122)) {
-					PRIVATE_DATA->protocol = 0x0300;
+				if (strncmp("191018", response, 6) <= 0 && (product == 43  || product == 44)) {
+					PRIVATE_DATA->protocol = 0x0205;
 					PRIVATE_DATA->no_park = false;
 				}
-				if (strncmp("191018", response, 6) <= 0 && (product == 44)) {
-					PRIVATE_DATA->protocol = 0x0205;
+				if (strncmp("171001", response, 6) <= 0 && (product == 70 || product == 120 || product == 121 || product == 122 || product == 45)) {
+					PRIVATE_DATA->protocol = 0x0300;
 					PRIVATE_DATA->no_park = false;
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware #1:  %s", response);
@@ -354,7 +347,7 @@ static bool ieq_open(indigo_device *device) {
 			}
 		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s (%s) protocol %d.%d", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF);
-		if (PRIVATE_DATA->gotonova) {
+		if (PRIVATE_DATA->hc8406) {
 			MOUNT_PARK_PROPERTY->hidden = true;
 			MOUNT_TRACKING_PROPERTY->hidden = true;
 			MOUNT_SLEW_RATE_PROPERTY->hidden = true;
@@ -367,6 +360,7 @@ static bool ieq_open(indigo_device *device) {
 			MOUNT_MOTION_RA_PROPERTY->hidden = true;
 			MOUNT_MOTION_DEC_PROPERTY->hidden = true;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = true;
+			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = true;
 		} else if (PRIVATE_DATA->protocol == 0x0100) {
 			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
 			MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = -0.01;
@@ -462,7 +456,7 @@ static bool ieq_open(indigo_device *device) {
 			}
 			if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
-			sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 10000));
+			sprintf(command, ":RR%06d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e5));
 			if (ieq_command(device, command, response, 1) && *response == '1')
 				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
 			else
@@ -522,7 +516,7 @@ static void position_timer_callback(indigo_device *device) {
 	char response[128];
 	if (PRIVATE_DATA->handle > 0) {
 		ieq_get_coords(device);
-		if (PRIVATE_DATA->gotonova) {
+		if (PRIVATE_DATA->hc8406) {
 			if (ieq_command(device, ":SE?#", response, 1) && *response == '1') {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
@@ -532,7 +526,7 @@ static void position_timer_callback(indigo_device *device) {
 			} else {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
-		} else if (PRIVATE_DATA->protocol == 0x0100) {
+		} else if (PRIVATE_DATA->hc8407) {
 			if (ieq_command(device, ":AH#", response, 1) && *response == '1') {
 				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE && MOUNT_PARK_PARKED_ITEM->sw.value) {
 					//ieq_command(device, ":MP1#", response, 1); // probably doesn't work
@@ -543,7 +537,7 @@ static void position_timer_callback(indigo_device *device) {
 			} else if (ieq_command(device, ":SE?#", response, 1) && *response == '1') {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
-		} else if (PRIVATE_DATA->protocol == 0x0200) {
+		} else if (PRIVATE_DATA->protocol <= 0x0200) {
 			if (ieq_command(device, ":GAS#", response, sizeof(response))) {
 				switch (response[1]) {
 					case '0': // stopped (not at zero position)
@@ -760,7 +754,7 @@ static void mount_connect_callback(indigo_device *device) {
 			result = ieq_open(device);
 		}
 		if (result) {
-			if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100) {
+			if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100) {
 				if (ieq_command(device, ":Gt#", response, sizeof(response)))
 					MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
 				if (ieq_command(device, ":Gg#", response, sizeof(response))) {
@@ -897,7 +891,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
 				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
+			if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 				sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d:%02.0f"));
 			else if (PRIVATE_DATA->protocol <= 0x0205)
 				sprintf(command, ":St%+07.0f#", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * 60 * 60);
@@ -910,13 +904,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				double longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 				if (longitude > 180)
 					longitude -= 360;
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100)
+				if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 					sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f"));
 				else if (PRIVATE_DATA->protocol <= 0x0205)
 					sprintf(command, ":Sg%+07.0f#", longitude * 60 * 60);
 				else if (PRIVATE_DATA->protocol >= 0x0300)
 					sprintf(command, ":SLO%+09.0f#", longitude * 60 * 60 * 100);
-
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -936,7 +929,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (PRIVATE_DATA->gotonova) {
+				if (PRIVATE_DATA->hc8406) {
 					if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '0') {
 						ieq_command(device, ":STR0#", response, 1);
 						PRIVATE_DATA->lastTrackRate = '0';
@@ -966,7 +959,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 					ieq_command(device, ":ST1#", response, 1);
 				}
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
+				if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 					sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				else if (PRIVATE_DATA->protocol <= 0x0205)
 					sprintf(command, ":Sr%08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
@@ -976,7 +969,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100)
+					if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 						sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 					else if (PRIVATE_DATA->protocol >= 0x0200)
 						sprintf(command, ":Sd%+09.0f#", MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * 60 * 60 * 100);
@@ -1000,7 +993,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				char command[128], response[128];
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100)
+				if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 					sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				else if (PRIVATE_DATA->protocol >= 0x0200)
 					sprintf(command, ":Sr%08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
@@ -1008,7 +1001,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100)
+					if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 						sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 					else if (PRIVATE_DATA->protocol >= 0x0200)
 						sprintf(command, ":Sd%+08.0f#", MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * 60 * 60 * 100);
@@ -1016,7 +1009,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
-						if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0000) {
+						if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol == 0x0000) {
 							if (!ieq_command(device, ":CMR#", response, 1)) {
 								INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CMR# failed");
 								MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1041,11 +1034,15 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-				ieq_command(device, ":Q#", response, 1);
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100)
-					ieq_command(device, ":q#", NULL, 0);
-				else if (PRIVATE_DATA->protocol >= 0x0200)
-					ieq_command(device, ":q#", response, 1);
+				if (PRIVATE_DATA->hc8406) {
+					ieq_command(device, ":Q#", NULL, 0);
+				} else {
+					ieq_command(device, ":Q#", response, 1);
+					if (PRIVATE_DATA->protocol <= 0x0100)
+						ieq_command(device, ":q#", NULL, 0);
+					else if (PRIVATE_DATA->protocol >= 0x0200)
+						ieq_command(device, ":q#", response, 1);
+				}
 				PRIVATE_DATA->lastMotionDec = 0;
 				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
@@ -1071,7 +1068,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
-		} else {
+		} else if (!PRIVATE_DATA->hc8406) {
 			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '1') {
 				ieq_command(device, ":SR1#", response, 1);
@@ -1097,13 +1094,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					PRIVATE_DATA->lastMotionDec = 's';
 				}
 			} else {
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100)
+				if (PRIVATE_DATA->protocol <= 0x0100)
 					ieq_command(device, ":q#", NULL, 0);
 				else if (PRIVATE_DATA->protocol >= 0x0200)
 					ieq_command(device, ":qD#", response, 1);
 				PRIVATE_DATA->lastMotionDec = 0;
 			}
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+		} else {
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
@@ -1112,7 +1112,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
-		} else {
+		} else if (!PRIVATE_DATA->hc8406) {
 			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '1') {
 				ieq_command(device, ":SR1#", response, 1);
@@ -1138,13 +1138,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					PRIVATE_DATA->lastMotionRA = 'e';
 				}
 			} else {
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol == 0x0100)
+				if (PRIVATE_DATA->protocol <= 0x0100)
 					ieq_command(device, ":q#", NULL, 0);
 				else if (PRIVATE_DATA->protocol >= 0x0200)
 					ieq_command(device, ":qR#", response, 1);
 				PRIVATE_DATA->lastMotionRA = 0;
 			}
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		} else {
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
@@ -1154,23 +1157,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 			time_t secs = time(NULL);
 			struct tm tm = *localtime(&secs);
-			if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
+			if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 				sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
 			else if (PRIVATE_DATA->protocol >= 0x0200)
 				sprintf(command, ":SL%02d%02d%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
+				if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 					sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
 				else if (PRIVATE_DATA->protocol >= 0x0200)
 					sprintf(command, ":SC%02d%02d%02d#", tm.tm_year % 100, tm.tm_mon + 1, tm.tm_mday);
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol < 0x0100)
+				if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol < 0x0100)
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 				else if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					if (PRIVATE_DATA->gotonova)
+					if (PRIVATE_DATA->hc8406)
 						sprintf(command, ":SG%+03ld#", tm.tm_gmtoff / 60 / 60);
 					else if (PRIVATE_DATA->protocol <= 0x0100)
 						sprintf(command, ":SG%+03ld:00#", tm.tm_gmtoff / 60 / 60);
@@ -1179,7 +1182,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					if (!ieq_command(device, command, response, 1) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
-						if (PRIVATE_DATA->gotonova) {
+						if (PRIVATE_DATA->hc8406) {
 							MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 							MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -1211,7 +1214,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 		} else {
 			struct tm tm = *localtime(&secs);
-			if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
+			if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 				sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
 			else if (PRIVATE_DATA->protocol <= 0x0205)
 				sprintf(command, ":SL%02d%02d%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -1220,14 +1223,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				if (PRIVATE_DATA->gotonova || PRIVATE_DATA->protocol <= 0x0100)
+				if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol <= 0x0100)
 					sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year - 100);
 				else if (PRIVATE_DATA->protocol >= 0x0200)
 					sprintf(command, ":SC%02d%02d%02d#", tm.tm_year - 100, tm.tm_mon + 1, tm.tm_mday);
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else if (PRIVATE_DATA->protocol <= 0x0205) {
-					if (PRIVATE_DATA->gotonova)
+					if (PRIVATE_DATA->hc8406)
 						sprintf(command, ":SG%+03ld#", tm.tm_gmtoff / 60 / 60);
 					else if (PRIVATE_DATA->protocol <= 0x0100)
 						sprintf(command, ":SG%+03ld:00#", tm.tm_gmtoff / 60 / 60);
@@ -1253,7 +1256,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				else
 					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else if (PRIVATE_DATA->protocol >= 0x0205) {
-				sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 10000));
+				sprintf(command, ":RR%06d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e5));
 				if (ieq_command(device, command, response, 1) && *response == '1')
 					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
 				else
