@@ -456,7 +456,7 @@ static bool ieq_open(indigo_device *device) {
 			}
 			if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
-			sprintf(command, ":RR%06d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e5));
+			sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
 			if (ieq_command(device, command, response, 1) && *response == '1')
 				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
 			else
@@ -1256,7 +1256,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				else
 					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else if (PRIVATE_DATA->protocol >= 0x0205) {
-				sprintf(command, ":RR%06d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e5));
+				sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
 				if (ieq_command(device, command, response, 1) && *response == '1')
 					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
 				else
