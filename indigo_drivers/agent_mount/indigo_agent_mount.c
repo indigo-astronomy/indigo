@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -260,13 +260,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_LX200_SERVER_PROPERTY_NAME, "Agent", "LX200 Server state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_LX200_SERVER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		AGENT_LX200_SERVER_PROPERTY->hidden = true;
 		indigo_init_switch_item(AGENT_LX200_SERVER_STARTED_ITEM, AGENT_LX200_SERVER_STARTED_ITEM_NAME, "Start LX200 server", false);
 		indigo_init_switch_item(AGENT_LX200_SERVER_STOPPED_ITEM, AGENT_LX200_SERVER_STOPPED_ITEM_NAME, "Stop LX200 server", true);
 		AGENT_LX200_CONFIGURATION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LX200_CONFIGURATION_PROPERTY_NAME, "Agent", "LX200 Server configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_LX200_CONFIGURATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		AGENT_LX200_CONFIGURATION_PROPERTY->hidden = true;
 		indigo_init_number_item(AGENT_LX200_CONFIGURATION_PORT_ITEM, AGENT_LX200_CONFIGURATION_PORT_ITEM_NAME, "Server port", 0, 0xFFFF, 0, 4030);
 		// -------------------------------------------------------------------------------- AGENT_LIMITS
 		AGENT_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LIMITS_PROPERTY_NAME, "Agent", "Limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
@@ -327,13 +325,7 @@ static char * doubleToSexa(double value, char *format) {
 	return buffer;
 }
 
-static void unpark(indigo_device *device, char *mount_name) {
-	indigo_property *property = indigo_init_switch_property(NULL, mount_name, MOUNT_PARK_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-	indigo_init_switch_item(property->items, MOUNT_PARK_UNPARKED_ITEM_NAME, NULL, true);
-	property->access_token = indigo_get_device_or_master_token(property->device);
-	indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-	indigo_release_property(property);
-}
+static const char *COORDINATE_NAMES[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 
 static void worker_thread(handler_data *data) {
 	indigo_device *device = data->device;
@@ -342,14 +334,15 @@ static void worker_thread(handler_data *data) {
 	char buffer_out[128];
 	long result = 1;
 	char mount_name[INDIGO_NAME_SIZE];
-	indigo_property *property;
 	struct timeval tv;
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
 	setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
 	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", client_socket);
-	strcpy(mount_name, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
 	while (true) {
+		strcpy(mount_name, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
+		if (*mount_name == 0)
+			break;
 		*buffer_in = 0;
 		*buffer_out = 0;
 		result = read(client_socket, buffer_in, 1);
@@ -406,136 +399,59 @@ static void worker_thread(handler_data *data) {
 					strcpy(buffer_out, "0");
 				}
 			} else if (strncmp(buffer_in, "MS", 2) == 0) {
-				unpark(device, mount_name);
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
-				property = indigo_init_number_property(NULL, mount_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, 0, 0, 2);
-				indigo_init_number_item(property->items + 0, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_ra);
-				indigo_init_number_item(property->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_dec);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
+				double values[] = { DEVICE_PRIVATE_DATA->mount_target_ra, DEVICE_PRIVATE_DATA->mount_target_dec };
+				indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, COORDINATE_NAMES, values);
 				strcpy(buffer_out, "0");
 			} else if (strncmp(buffer_in, "CM", 2) == 0) {
-				unpark(device, mount_name);
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
-				property = indigo_init_number_property(NULL, mount_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, 0, 0, 2);
-				indigo_init_number_item(property->items + 0, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_ra);
-				indigo_init_number_item(property->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0, DEVICE_PRIVATE_DATA->mount_target_dec);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true);
+				double values[] = { DEVICE_PRIVATE_DATA->mount_target_ra, DEVICE_PRIVATE_DATA->mount_target_dec };
+				indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, COORDINATE_NAMES, values);
 				strcpy(buffer_out, "OK#");
 			} else if (strcmp(buffer_in, "RG") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, true);
 			} else if (strcmp(buffer_in, "RC") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true);
 			} else if (strcmp(buffer_in, "RM") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_FIND_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, true);
 			} else if (strcmp(buffer_in, "RS") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_MAX_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true);
+			} else if (strcmp(buffer_in, "Sw1") == 0) {
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, true);
+				strcpy(buffer_out, "1");
 			} else if (strcmp(buffer_in, "Sw2") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true);
 				strcpy(buffer_out, "1");
 			} else if (strcmp(buffer_in, "Sw3") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, true);
 				strcpy(buffer_out, "1");
 			} else if (strcmp(buffer_in, "Sw4") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_SLEW_RATE_MAX_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true);
 				strcpy(buffer_out, "1");
 			} else if (strcmp(buffer_in, "Mn") == 0) {
-				unpark(device, mount_name);
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_NORTH_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true);
 			} else if (strcmp(buffer_in, "Qn") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_NORTH_ITEM_NAME, NULL, false);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
 			} else if (strcmp(buffer_in, "Ms") == 0) {
-				unpark(device, mount_name);
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_SOUTH_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true);
 			} else if (strcmp(buffer_in, "Qs") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_SOUTH_ITEM_NAME, NULL, false);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false);
 			} else if (strcmp(buffer_in, "Mw") == 0) {
-				unpark(device, mount_name);
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_WEST_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true);
 			} else if (strcmp(buffer_in, "Qw") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_WEST_ITEM_NAME, NULL, false);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false);
 			} else if (strcmp(buffer_in, "Me") == 0) {
-				unpark(device, mount_name);
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_EAST_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true);
 			} else if (strcmp(buffer_in, "Qe") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_MOTION_EAST_ITEM_NAME, NULL, false);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false);
 			} else if (strcmp(buffer_in, "Q") == 0) {
-				property = indigo_init_switch_property(NULL, mount_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, NULL, NULL, 0, 0, 0, 1);
-				indigo_init_switch_item(property->items, MOUNT_ABORT_MOTION_ITEM_NAME, NULL, true);
-				property->access_token = indigo_get_device_or_master_token(property->device);
-				indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-				indigo_release_property(property);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, mount_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true);
 			} else if (strncmp(buffer_in, "SC", 2) == 0) {
 				strcpy(buffer_out, "1Updating        planetary data. #                              #");
 			} else if (strncmp(buffer_in, "S", 1) == 0) {
@@ -553,7 +469,6 @@ static void worker_thread(handler_data *data) {
 		}
 	}
 	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", client_socket);
-
 	close(client_socket);
 	free(data);
 }
@@ -899,24 +814,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, MOUNT_AGENT_NAME) && !strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) {
-		if (property->items->sw.value) {
-			if (!AGENT_LX200_SERVER_PROPERTY->hidden) {
-				indigo_delete_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
-				AGENT_LX200_SERVER_PROPERTY->hidden = true;
-			}
-			if (!AGENT_LX200_CONFIGURATION_PROPERTY->hidden) {
-				indigo_delete_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
-				AGENT_LX200_CONFIGURATION_PROPERTY->hidden = true;
-			}
-		} else {
-			if (AGENT_LX200_SERVER_PROPERTY->hidden) {
-				AGENT_LX200_SERVER_PROPERTY->hidden = false;
-				indigo_define_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
-			}
-			if (AGENT_LX200_CONFIGURATION_PROPERTY->hidden) {
-				AGENT_LX200_CONFIGURATION_PROPERTY->hidden = false;
-				indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
-			}
+		if (!property->items->sw.value && property->state == INDIGO_OK_STATE) {
 			indigo_property *device_selection_property;
 			if (indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME, &device_selection_property, NULL)) {
 				for (int i = 0; i < device_selection_property->count; i++) {
