@@ -120,13 +120,9 @@ static void save_config(indigo_device *device) {
 
 static void set_site_coordinates2(indigo_device *device, int index, double latitude, double longitude, double elevation) {
 	if (*FILTER_DEVICE_CONTEXT->device_name[index]) {
-		indigo_property *property = indigo_init_number_property(NULL, FILTER_DEVICE_CONTEXT->device_name[index], GEOGRAPHIC_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-		indigo_init_number_item(property->items + 0, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, NULL, 0, 0, 0, latitude);
-		indigo_init_number_item(property->items + 1, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, NULL, 0, 0, 0, longitude);
-		indigo_init_number_item(property->items + 2, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, NULL, 0, 0, 0, elevation);
-		property->access_token = indigo_get_device_or_master_token(property->device);
-		indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-		indigo_release_property(property);
+		static const char *names[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+		double values[] = { latitude, longitude, elevation };
+		indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[index], GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
 	}
 }
 
@@ -165,11 +161,7 @@ static void abort_capture(indigo_device *device) {
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
 		if (item->sw.value && !strncmp("Imager Agent", item->name, 12)) {
-			indigo_property *property = indigo_init_switch_property(NULL, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-			indigo_init_switch_item(property->items + 0, AGENT_ABORT_PROCESS_ITEM_NAME, NULL, true);
-			property->access_token = indigo_get_device_or_master_token(property->device);
-			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-			indigo_release_property(property);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
 		}
 	}
 }
@@ -179,11 +171,7 @@ static void abort_guiding(indigo_device *device) {
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
 		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
-			indigo_property *property = indigo_init_switch_property(NULL, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-			indigo_init_switch_item(property->items + 0, AGENT_ABORT_PROCESS_ITEM_NAME, NULL, true);
-			property->access_token = indigo_get_device_or_master_token(property->device);
-			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-			indigo_release_property(property);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
 		}
 	}
 }
@@ -655,12 +643,9 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 			}
 			if (property->state != INDIGO_ALERT_STATE) {
 				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && CLIENT_PRIVATE_DATA->dome_unparked) {
-					indigo_property *eq_property = indigo_init_number_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-					indigo_init_number_item(eq_property->items + 0, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 0, 0,  CLIENT_PRIVATE_DATA->mount_ra);
-					indigo_init_number_item(eq_property->items + 1, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, 0, 0, 0,  CLIENT_PRIVATE_DATA->mount_dec);
-					eq_property->access_token = indigo_get_device_or_master_token(eq_property->device);
-					indigo_change_property(FILTER_CLIENT_CONTEXT->client, eq_property);
-					indigo_release_property(eq_property);
+					static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+					double values[] = { CLIENT_PRIVATE_DATA->mount_ra, CLIENT_PRIVATE_DATA->mount_dec };
+					indigo_change_switch_property(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 				}
 			}
 			if (property->state == INDIGO_OK_STATE) {
@@ -672,23 +657,17 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
 				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX]) {
-					indigo_property *park_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-					indigo_property *shutter_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_SHUTTER_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+					char *dome_name = FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX];
 					for (int i = 0; i < property->count; i++) {
-						if (!strcmp(property->items[i].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
-							indigo_init_switch_item(park_property->items + 0, DOME_PARK_PARKED_ITEM_NAME, NULL, property->items[i].sw.value);
-							indigo_init_switch_item(shutter_property->items + 0, DOME_SHUTTER_CLOSED_ITEM_NAME, NULL, property->items[i].sw.value);
+						indigo_item *item = property->items + i;
+						if (!strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME) && item->sw.value) {
+							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, dome_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
+							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, dome_name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true);
 						} else if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
-							indigo_init_switch_item(park_property->items + 1, DOME_PARK_UNPARKED_ITEM_NAME, NULL, property->items[i].sw.value);
-							indigo_init_switch_item(shutter_property->items + 1, DOME_SHUTTER_OPENED_ITEM_NAME, NULL, property->items[i].sw.value);
+							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, dome_name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
+							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, dome_name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true);
 						}
 					}
-					park_property->access_token = indigo_get_device_or_master_token(park_property->device);
-					shutter_property->access_token = indigo_get_device_or_master_token(shutter_property->device);
-					indigo_change_property(FILTER_CLIENT_CONTEXT->client, park_property);
-					indigo_change_property(FILTER_CLIENT_CONTEXT->client, shutter_property);
-					indigo_release_property(park_property);
-					indigo_release_property(shutter_property);
 				}
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -735,11 +714,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 									if (park) {
 										abort_capture(FILTER_CLIENT_CONTEXT->device);
 										abort_guiding(FILTER_CLIENT_CONTEXT->device);
-										indigo_property *park_property = indigo_init_switch_property(NULL, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_PARK_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-										indigo_init_switch_item(park_property->items, MOUNT_PARK_PARKED_ITEM_NAME, NULL, true);
-										park_property->access_token = indigo_get_device_or_master_token(park_property->device);
-										indigo_change_property(FILTER_CLIENT_CONTEXT->client, park_property);
-										indigo_release_property(park_property);
+										indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 									}
 									break;
 								}
