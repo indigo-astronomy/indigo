@@ -141,6 +141,7 @@
 #include "wheel_qhy/indigo_wheel_qhy.h"
 #include "focuser_mypro2/indigo_focuser_mypro2.h"
 #include "agent_astrometry/indigo_agent_astrometry.h"
+#include "dome_skyroof/indigo_dome_skyroof.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -221,6 +222,7 @@ driver_entry_point static_drivers[] = {
 	indigo_dome_nexdome,
 	indigo_dome_nexdome3,
 	indigo_dome_simulator,
+	indigo_dome_skyroof,
 	indigo_focuser_asi,
 	indigo_focuser_efa,
 	indigo_focuser_dmfc,
