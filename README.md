@@ -113,6 +113,7 @@ This is the list of requirements taken into the consideration:
 84. NexStar AUX protocol mount driver
 85. Lunatico Astronomy AAG CloudWatcher driver
 86. MyFocuserPro 2 focuser driver
+87. Interactive Astronomy SkyRoof driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

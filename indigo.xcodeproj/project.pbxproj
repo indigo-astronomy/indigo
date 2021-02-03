@@ -440,6 +440,9 @@
 		598A1D15259BAE3B00C0B34C /* libindigo_m1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 598A1C9D259BA94A00C0B34C /* libindigo_m1.dylib */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
+		59958DFF25CB0DEB00BEFA1B /* indigo_dome_skyroof.c in Sources */ = {isa = PBXBuildFile; fileRef = 59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */; };
+		59958E0125CB0DEB00BEFA1B /* indigo_dome_skyroof.h in Headers */ = {isa = PBXBuildFile; fileRef = 59958DFE25CB0DEB00BEFA1B /* indigo_dome_skyroof.h */; };
+		59958E1025CB0E0300BEFA1B /* indigo_dome_skyroof.c in Sources */ = {isa = PBXBuildFile; fileRef = 59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */; };
 		5995A8CF25A9ABEC003987F1 /* indigo_platesolver.h in Headers */ = {isa = PBXBuildFile; fileRef = 5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */; };
 		5995A8D025A9ABEC003987F1 /* indigo_platesolver.h in Headers */ = {isa = PBXBuildFile; fileRef = 5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */; };
 		5995A8D825A9AC69003987F1 /* indigo_platesolver.c in Sources */ = {isa = PBXBuildFile; fileRef = 5995A8D725A9AC69003987F1 /* indigo_platesolver.c */; };
@@ -1803,6 +1806,11 @@
 		5992F7BA1E1EC9390035242E /* indigo_wheel_fli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_fli.h; sourceTree = "<group>"; };
 		5992F7BB1E1EC9580035242E /* indigo_wheel_fli_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_fli_main.c; sourceTree = "<group>"; };
 		5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof.c; sourceTree = "<group>"; };
+		59958DFC25CB0DEB00BEFA1B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59958DFD25CB0DEB00BEFA1B /* indigo_dome_skyroof_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof_main.c; sourceTree = "<group>"; };
+		59958DFE25CB0DEB00BEFA1B /* indigo_dome_skyroof.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_skyroof.h; sourceTree = "<group>"; };
+		59958E2025CB2DFF00BEFA1B /* skyroof_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = skyroof_simulator.ino; sourceTree = "<group>"; };
 		5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_platesolver.h; sourceTree = "<group>"; };
 		5995A8D725A9AC69003987F1 /* indigo_platesolver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_platesolver.c; sourceTree = "<group>"; };
 		5995A91D25AB358A003987F1 /* libc.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libc.tbd; path = usr/lib/libc.tbd; sourceTree = SDKROOT; };
@@ -6221,6 +6229,26 @@
 			path = wheel_fli;
 			sourceTree = "<group>";
 		};
+		59958DFA25CB0DEB00BEFA1B /* dome_skyroof */ = {
+			isa = PBXGroup;
+			children = (
+				59958DFC25CB0DEB00BEFA1B /* README.md */,
+				59958DFE25CB0DEB00BEFA1B /* indigo_dome_skyroof.h */,
+				59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */,
+				59958DFD25CB0DEB00BEFA1B /* indigo_dome_skyroof_main.c */,
+				59958E1F25CB2DFF00BEFA1B /* skyroof_simulator */,
+			);
+			path = dome_skyroof;
+			sourceTree = "<group>";
+		};
+		59958E1F25CB2DFF00BEFA1B /* skyroof_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59958E2025CB2DFF00BEFA1B /* skyroof_simulator.ino */,
+			);
+			path = skyroof_simulator;
+			sourceTree = "<group>";
+		};
 		5996216B21A7567B0067ED4C /* externals */ = {
 			isa = PBXGroup;
 			children = (
@@ -8242,6 +8270,7 @@
 				59B81EC82337AA2E00DFA81B /* dome_nexdome */,
 				9DB117902383F6FC002C1AB1 /* dome_nexdome3 */,
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
+				59958DFA25CB0DEB00BEFA1B /* dome_skyroof */,
 				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				5941355E232403F700ED5FF4 /* focuser_efa */,
 				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
@@ -12190,6 +12219,7 @@
 				9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */,
 				595F291B211E211100380EF4 /* DDHidKeyboard.h in Headers */,
 				595F2928211E211200380EF4 /* DDHidEvent.h in Headers */,
+				59958E0125CB0DEB00BEFA1B /* indigo_dome_skyroof.h in Headers */,
 				9D73E60521FF36C4003CEC15 /* indigo_ccd_uvc.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
 				59A5302221A35167000B6F27 /* libatik.h in Headers */,
@@ -12669,6 +12699,7 @@
 				598A1BB0259BA94A00C0B34C /* indigo_filter.c in Sources */,
 				598A1BB1259BA94A00C0B34C /* indigo_ccd_driver.c in Sources */,
 				598A1BB2259BA94A00C0B34C /* indigo_xml.c in Sources */,
+				59958E1025CB0E0300BEFA1B /* indigo_dome_skyroof.c in Sources */,
 				598A1BB3259BA94A00C0B34C /* indigo_dome_nexdome.c in Sources */,
 				598A1BB4259BA94A00C0B34C /* indigo_aux_rts.c in Sources */,
 				598A1BB5259BA94A00C0B34C /* duktape.c in Sources */,
@@ -12862,6 +12893,7 @@
 				593A3580219DBE5E00EDF481 /* indigo_filter.c in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,
+				59958DFF25CB0DEB00BEFA1B /* indigo_dome_skyroof.c in Sources */,
 				59B81ED22337AA2E00DFA81B /* indigo_dome_nexdome.c in Sources */,
 				59BBD18E218249CD008199D6 /* indigo_aux_rts.c in Sources */,
 				5910D9C72580284E0015D915 /* duktape.c in Sources */,
