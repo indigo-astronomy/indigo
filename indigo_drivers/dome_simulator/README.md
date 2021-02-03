@@ -22,4 +22,4 @@ or
 
 indigo_server -s
 
-## Status: Under development
+## Status: Stable
