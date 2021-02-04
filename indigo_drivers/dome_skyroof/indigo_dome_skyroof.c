@@ -108,6 +108,7 @@ static void skyroof_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = -1;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected");
 	}
 }
 
@@ -135,11 +136,11 @@ static void dome_connect_handler(indigo_device *device) {
 					PRIVATE_DATA->closed = false;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed", DEVICE_PORT_ITEM->text.value);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed", DEVICE_PORT_ITEM->text.value);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -152,11 +153,11 @@ static void dome_connect_handler(indigo_device *device) {
 					X_MOUNT_PARK_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed", DEVICE_PORT_ITEM->text.value);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed", DEVICE_PORT_ITEM->text.value);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
