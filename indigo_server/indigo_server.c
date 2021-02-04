@@ -142,6 +142,7 @@
 #include "focuser_mypro2/indigo_focuser_mypro2.h"
 #include "agent_astrometry/indigo_agent_astrometry.h"
 #include "dome_skyroof/indigo_dome_skyroof.h"
+#include "aux_skyalert/indigo_aux_skyalert.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -189,6 +190,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_mgbox,
 	indigo_aux_ppb,
 	indigo_aux_rts,
+	indigo_aux_skyalert,
 	indigo_aux_sqm,
 	indigo_aux_upb,
 	indigo_aux_usbdp,

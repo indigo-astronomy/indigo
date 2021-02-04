@@ -258,6 +258,8 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 5;
+		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyRoof");
 		// -------------------------------------------------------------------------------- standard properties
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
