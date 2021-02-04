@@ -79,8 +79,8 @@
 #define AUX_DEW_CONTROL_AUTOMATIC_ITEM	(AUX_DEW_CONTROL_PROPERTY->items + 1)
 
 #define AUX_INFO_PROPERTY	(PRIVATE_DATA->info_property)
-#define X_AUX_VOLTAGE_ITEM	(AUX_INFO_PROPERTY->items + 0)
-#define X_AUX_CURRENT_ITEM	(AUX_INFO_PROPERTY->items + 1)
+#define AUX_INFO_VOLTAGE_ITEM	(AUX_INFO_PROPERTY->items + 0)
+#define AUX_INFO_CURRENT_ITEM	(AUX_INFO_PROPERTY->items + 1)
 
 #define X_AUX_REBOOT_PROPERTY	(PRIVATE_DATA->reboot_property)
 #define X_AUX_REBOOT_ITEM	(X_AUX_REBOOT_PROPERTY->items + 0)
@@ -181,8 +181,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_AUX_VOLTAGE_ITEM, "X_AUX_VOLTAGE", "Voltage [V]", 0, 15, 0, 0);
-		indigo_init_number_item(X_AUX_CURRENT_ITEM, "X_AUX_CURRENT", "Current [A]", 0, 20, 0, 0);
+		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
+		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 20, 0, 0);
 		X_AUX_REBOOT_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_REBOOT", AUX_GROUP, "Reboot", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_AUX_REBOOT_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -249,16 +249,16 @@ static void aux_timer_callback(indigo_device *device) {
 		char *pnt, *token = strtok_r(response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 			double value = indigo_atod(token);
-			if (X_AUX_VOLTAGE_ITEM->number.value != value) {
+			if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
 				updateInfo = true;
-				X_AUX_VOLTAGE_ITEM->number.value = value;
+				AUX_INFO_VOLTAGE_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Current
 			double value =  indigo_atod(token) / 65.0;
-			if (X_AUX_CURRENT_ITEM->number.value != value) {
+			if (AUX_INFO_CURRENT_ITEM->number.value != value) {
 				updateInfo = true;
-				X_AUX_CURRENT_ITEM->number.value = value;
+				AUX_INFO_CURRENT_ITEM->number.value = value;
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
@@ -418,10 +418,10 @@ static void aux_connection_handler(indigo_device *device) {
 			if (ppb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "PPB", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
-					X_AUX_VOLTAGE_ITEM->number.value = indigo_atod(token);
+					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-					X_AUX_CURRENT_ITEM->number.value = indigo_atod(token) / 65.0;
+					AUX_INFO_CURRENT_ITEM->number.value = indigo_atod(token) / 65.0;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
 					AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(token);
