@@ -443,6 +443,10 @@
 		59958DFF25CB0DEB00BEFA1B /* indigo_dome_skyroof.c in Sources */ = {isa = PBXBuildFile; fileRef = 59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */; };
 		59958E0125CB0DEB00BEFA1B /* indigo_dome_skyroof.h in Headers */ = {isa = PBXBuildFile; fileRef = 59958DFE25CB0DEB00BEFA1B /* indigo_dome_skyroof.h */; };
 		59958E1025CB0E0300BEFA1B /* indigo_dome_skyroof.c in Sources */ = {isa = PBXBuildFile; fileRef = 59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */; };
+		59958E2F25CC833C00BEFA1B /* indigo_aux_skyalert.c in Sources */ = {isa = PBXBuildFile; fileRef = 59958E2925CC833B00BEFA1B /* indigo_aux_skyalert.c */; };
+		59958E3025CC833C00BEFA1B /* indigo_aux_skyalert.c in Sources */ = {isa = PBXBuildFile; fileRef = 59958E2925CC833B00BEFA1B /* indigo_aux_skyalert.c */; };
+		59958E3325CC833C00BEFA1B /* indigo_aux_skyalert.h in Headers */ = {isa = PBXBuildFile; fileRef = 59958E2E25CC833B00BEFA1B /* indigo_aux_skyalert.h */; };
+		59958E3425CC833C00BEFA1B /* indigo_aux_skyalert.h in Headers */ = {isa = PBXBuildFile; fileRef = 59958E2E25CC833B00BEFA1B /* indigo_aux_skyalert.h */; };
 		5995A8CF25A9ABEC003987F1 /* indigo_platesolver.h in Headers */ = {isa = PBXBuildFile; fileRef = 5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */; };
 		5995A8D025A9ABEC003987F1 /* indigo_platesolver.h in Headers */ = {isa = PBXBuildFile; fileRef = 5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */; };
 		5995A8D825A9AC69003987F1 /* indigo_platesolver.c in Sources */ = {isa = PBXBuildFile; fileRef = 5995A8D725A9AC69003987F1 /* indigo_platesolver.c */; };
@@ -1811,6 +1815,11 @@
 		59958DFD25CB0DEB00BEFA1B /* indigo_dome_skyroof_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof_main.c; sourceTree = "<group>"; };
 		59958DFE25CB0DEB00BEFA1B /* indigo_dome_skyroof.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_skyroof.h; sourceTree = "<group>"; };
 		59958E2025CB2DFF00BEFA1B /* skyroof_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = skyroof_simulator.ino; sourceTree = "<group>"; };
+		59958E2925CC833B00BEFA1B /* indigo_aux_skyalert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_skyalert.c; sourceTree = "<group>"; };
+		59958E2A25CC833B00BEFA1B /* indigo_aux_skyalert_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_skyalert_main.c; sourceTree = "<group>"; };
+		59958E2B25CC833B00BEFA1B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59958E2D25CC833B00BEFA1B /* skyalert_simulator.ino */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = skyalert_simulator.ino; sourceTree = "<group>"; };
+		59958E2E25CC833B00BEFA1B /* indigo_aux_skyalert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_skyalert.h; sourceTree = "<group>"; };
 		5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_platesolver.h; sourceTree = "<group>"; };
 		5995A8D725A9AC69003987F1 /* indigo_platesolver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_platesolver.c; sourceTree = "<group>"; };
 		5995A91D25AB358A003987F1 /* libc.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libc.tbd; path = usr/lib/libc.tbd; sourceTree = SDKROOT; };
@@ -6249,6 +6258,26 @@
 			path = skyroof_simulator;
 			sourceTree = "<group>";
 		};
+		59958E2825CC833B00BEFA1B /* aux_skyalert */ = {
+			isa = PBXGroup;
+			children = (
+				59958E2B25CC833B00BEFA1B /* README.md */,
+				59958E2E25CC833B00BEFA1B /* indigo_aux_skyalert.h */,
+				59958E2925CC833B00BEFA1B /* indigo_aux_skyalert.c */,
+				59958E2A25CC833B00BEFA1B /* indigo_aux_skyalert_main.c */,
+				59958E2C25CC833B00BEFA1B /* skyalert_simulator */,
+			);
+			path = aux_skyalert;
+			sourceTree = "<group>";
+		};
+		59958E2C25CC833B00BEFA1B /* skyalert_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59958E2D25CC833B00BEFA1B /* skyalert_simulator.ino */,
+			);
+			path = skyalert_simulator;
+			sourceTree = "<group>";
+		};
 		5996216B21A7567B0067ED4C /* externals */ = {
 			isa = PBXGroup;
 			children = (
@@ -8244,6 +8273,7 @@
 				59C565002464A13A00344C0C /* aux_mgbox */,
 				5996615022CF3E0F00330652 /* aux_ppb */,
 				59BBD189218246C8008199D6 /* aux_rts */,
+				59958E2825CC833B00BEFA1B /* aux_skyalert */,
 				9DC4969622C39A170052AB3E /* aux_sqm */,
 				9D6940822180B9F600AB112C /* aux_upb */,
 				5951E13F235CDBD900D2DEF1 /* aux_usbdp */,
@@ -12096,6 +12126,7 @@
 				598A1C37259BA94A00C0B34C /* libuvc_config.h in Headers */,
 				598A1C38259BA94A00C0B34C /* DDHidMouse.h in Headers */,
 				598A1C39259BA94A00C0B34C /* EFW_filter.h in Headers */,
+				59958E3425CC833C00BEFA1B /* indigo_aux_skyalert.h in Headers */,
 				598A1C3A259BA94A00C0B34C /* indigo_wheel_qhy.h in Headers */,
 				598A1C3B259BA94A00C0B34C /* indigo_guider_eqmac.h in Headers */,
 				598A1C3C259BA94A00C0B34C /* DDHidElement.h in Headers */,
@@ -12269,6 +12300,7 @@
 				595567C624B882DD00DF303D /* config.h in Headers */,
 				59F7E5ED245878C700EF273A /* indigo_token.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
+				59958E3325CC833C00BEFA1B /* indigo_aux_skyalert.h in Headers */,
 				9DAD522521246C18002FCC79 /* indigo_mount_synscan_private.h in Headers */,
 				5911B6CA22630FE900D6B9EC /* indigo_raw_utils.h in Headers */,
 				5979C87125473AE0005395BE /* indigo_avi.h in Headers */,
@@ -12617,6 +12649,7 @@
 				598A1B5F259BA94A00C0B34C /* indigo_agent_alignment.c in Sources */,
 				598A1B60259BA94A00C0B34C /* indigo_wheel_trutek.c in Sources */,
 				598A1B61259BA94A00C0B34C /* indigo_driver_json.c in Sources */,
+				59958E3025CC833C00BEFA1B /* indigo_aux_skyalert.c in Sources */,
 				598A1B62259BA94A00C0B34C /* indigo_aux_mgbox.c in Sources */,
 				598A1B63259BA94A00C0B34C /* indigo_ccd_sx.c in Sources */,
 				598A1B64259BA94A00C0B34C /* nex_open.c in Sources */,
@@ -12811,6 +12844,7 @@
 				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
+				59958E2F25CC833C00BEFA1B /* indigo_aux_skyalert.c in Sources */,
 				59C565072464A14C00344C0C /* indigo_aux_mgbox.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59C76F0E2378724D0091B966 /* nex_open.c in Sources */,
