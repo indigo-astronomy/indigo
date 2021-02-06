@@ -40,7 +40,7 @@ parameter *Subframe* used for better performance. This is an integer number mean
 around the selection should be downloaded from the camera. It has two main benefits - with a remote setup
 it decreases the network load and it also speeds up the image download time from the camera.
 
-3. **Multipoint** - It is the same as **Selection** but it uses the average of centroids of a given number of stars.
+3. **Multistar** - It is the same as **Selection** but it uses the average of centroids of a given number of stars.
 The only parameter is *Star count*. It doesn't use *Selection X*, *Selection Y* parameters, but selects first *Star count*
 of automatically detected stars.
 
