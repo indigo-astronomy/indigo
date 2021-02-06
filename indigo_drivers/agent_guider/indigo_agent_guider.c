@@ -241,6 +241,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			for (int i = 0; i < star_count; i++) {
 				if (stars[i].oversaturated || stars[i].nc_distance > 0.8)
 					continue;
+				if (AGENT_GUIDER_DETECTION_MULTISTAR_ITEM->sw.value && j == AGENT_GUIDER_SELECTION_MULTISTAR_COUNT_ITEM->number.value)
+					break;
 				DEVICE_PRIVATE_DATA->stars[j] = stars[i];
 				char name[8];
 				char label[32];
@@ -248,7 +250,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				snprintf(label, sizeof(label), "[%d, %d]", (int)DEVICE_PRIVATE_DATA->stars[j].x, (int)DEVICE_PRIVATE_DATA->stars[j].y);
 				indigo_init_switch_item(AGENT_GUIDER_STARS_PROPERTY->items + j++ + 1, name, label, false);
 			}
-			AGENT_GUIDER_STARS_PROPERTY->count = j + 2;
+			AGENT_GUIDER_STARS_PROPERTY->count = j + 1;
 			AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 			if (j == 1) {
