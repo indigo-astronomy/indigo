@@ -534,7 +534,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	/* Set threshold 10% above average value */
 	double threshold = 1.10 * sum / ((2 * radius + 1) * (2 * radius + 1));
 
-	INDIGO_DEBUG(indigo_debug("Selection: threshold = %.3f, max = %.3f", threshold, max));
+	//INDIGO_DEBUG(indigo_debug("Selection: threshold = %.3f, max = %.3f", threshold, max));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
