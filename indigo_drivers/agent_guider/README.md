@@ -40,7 +40,11 @@ parameter *Subframe* used for better performance. This is an integer number mean
 around the selection should be downloaded from the camera. It has two main benefits - with a remote setup
 it decreases the network load and it also speeds up the image download time from the camera.
 
-3. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
+3. **Multipoint** - It is the same as **Selection** but it uses the average of centroids of a given number of stars.
+The only parameter is *Star count*. It doesn't use *Selection X*, *Selection Y* parameters, but selects first *Star count*
+of automatically detected stars.
+
+4. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
 large portion of the frame like Moon and planets. It will **not work** with stars.
 
 For better performance sub-frames can be used with all three drift detection modes.
