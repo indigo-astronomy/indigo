@@ -1371,6 +1371,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (count != AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value) {
 			indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			AGENT_GUIDER_SELECTION_PROPERTY->count = (AGENT_GUIDER_SELECTION_X_ITEM - AGENT_GUIDER_SELECTION_PROPERTY->items) + 2 * AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
+			for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
+				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
+				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
+				item_x->number.value = item_x->number.target = 0;
+				item_y->number.value = item_y->number.target = 0;
+			}
 			indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		}
 		AGENT_GUIDER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
