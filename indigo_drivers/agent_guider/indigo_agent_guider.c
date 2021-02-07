@@ -259,7 +259,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			AGENT_GUIDER_STARS_PROPERTY->count = j + 1;
 			AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-			if (j == 1) {
+			if (j == 0 && !AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
 				indigo_send_message(device, "No stars detected");
 				return INDIGO_ALERT_STATE;
 			}
@@ -270,7 +270,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 				if (item_x->number.value == 0 || item_y->number.value == 0) {
-					if (j == AGENT_GUIDER_STARS_PROPERTY->count - 1) {
+					if (j == AGENT_GUIDER_STARS_PROPERTY->count - 1 && !AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
 						indigo_send_message(device, "Not enough stars detected");
 						return INDIGO_ALERT_STATE;
 					}
@@ -283,6 +283,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		}
 		if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
 			indigo_result result;
+			AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
 			AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
 			AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
 			for (int i = 0; i <= MAX_MULTISTAR_COUNT; i++)
@@ -298,8 +299,6 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->reference
 				);
 				AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
-				AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
-				AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
 				if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && DEVICE_PRIVATE_DATA->reference->snr < 9) {
 					if (exposure_attempt == 2)
 						indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
@@ -338,7 +337,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->reference->centroid_y /= count;
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-				} else if (result == INDIGO_GUIDE_ERROR) {
+				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
 					if (exposure_attempt == 2)
 						indigo_send_message(device, "Can not detect star in the selection");
 					state = INDIGO_ALERT_STATE;
@@ -354,6 +353,10 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+			} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == PREVIEW) {
+				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+				return INDIGO_OK_STATE;
 			} else {
 				return INDIGO_ALERT_STATE;
 			}
@@ -409,7 +412,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				digest.centroid_y /= count;
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-				} else if (result == INDIGO_GUIDE_ERROR) {
+				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
 					if (exposure_attempt < 2)
 						continue;
 					if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
@@ -457,6 +460,10 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->drift = sqrt(DEVICE_PRIVATE_DATA->drift_x * DEVICE_PRIVATE_DATA->drift_x + DEVICE_PRIVATE_DATA->drift_y * DEVICE_PRIVATE_DATA->drift_y);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx (%.4g, %.4g)", DEVICE_PRIVATE_DATA->drift, DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
 				}
+			} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == PREVIEW) {
+				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+				return INDIGO_OK_STATE;
 			} else {
 				return INDIGO_ALERT_STATE;
 			}
