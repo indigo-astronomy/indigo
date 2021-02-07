@@ -33,16 +33,12 @@ should be used. **Donuts** has one configuration parameter *Edge Clipping* (in p
 be used if the edge of the frame contains artifacts or dark areas.
 
 2. **Selection** - It uses the centroid of a small area around the star with
-a specified radius to detect the drift. This is universal method that should work in most of the cases.
+a specified radius to detect the drift. An average from given number of stars is used. This is universal methodthat should work in most of the cases.
 It is resilient to hot pixels, hot lines and hot columns. **Selection** has several configuration parameters,
-selection center given by *Selection X*, *Selection Y* and *Radius* all in pixels. It has one additional
+selection center given by *Selection X*, *Selection Y* and *Radius* all in pixels. If single star is used, it has one additional
 parameter *Subframe* used for better performance. This is an integer number meaning how many radii
 around the selection should be downloaded from the camera. It has two main benefits - with a remote setup
 it decreases the network load and it also speeds up the image download time from the camera.
-
-3. **Multistar** - It is the same as **Selection** but it uses the average of centroids of a given number of stars.
-The only parameter is *Star count*. It doesn't use *Selection X*, *Selection Y* parameters, but selects first *Star count*
-of automatically detected stars.
 
 4. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
 large portion of the frame like Moon and planets. It will **not work** with stars.
