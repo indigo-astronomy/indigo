@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -64,7 +64,7 @@ static bool rainbow_open(indigo_device *device) {
 		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
 		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
 	}
-	if (PRIVATE_DATA->handle >= 0) {
+	if (PRIVATE_DATA->handle > 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		return true;
 	} else {
@@ -105,7 +105,7 @@ static bool rainbow_sync_command(indigo_device *device, char *command, indigo_pr
 static void rainbow_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		PRIVATE_DATA->handle = -1;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -125,8 +125,8 @@ static void rainbow_reader(indigo_device *device) {
 			response[i] = 0;
 			if (i == sizeof(response) - 1)
 				break;
-//			if (select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv) <= 0)
-//				break;
+			if (select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv) <= 0)
+				break;
 			if (read(PRIVATE_DATA->handle, &c, 1) < 1)
 				break;
 			response[i++] = c;
@@ -364,9 +364,9 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 		rainbow_close(device);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->reader);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
