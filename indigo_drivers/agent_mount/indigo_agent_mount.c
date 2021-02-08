@@ -122,7 +122,7 @@ static void set_site_coordinates2(indigo_device *device, int index, double latit
 	if (*FILTER_DEVICE_CONTEXT->device_name[index]) {
 		static const char *names[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
 		double values[] = { latitude, longitude, elevation };
-		indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[index], GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
+		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[index], GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
 	}
 }
 
@@ -645,7 +645,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && CLIENT_PRIVATE_DATA->dome_unparked) {
 					static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 					double values[] = { CLIENT_PRIVATE_DATA->mount_ra, CLIENT_PRIVATE_DATA->mount_dec };
-					indigo_change_switch_property(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
+					indigo_change_number_property(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 				}
 			}
 			if (property->state == INDIGO_OK_STATE) {
