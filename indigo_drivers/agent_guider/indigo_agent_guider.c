@@ -1314,13 +1314,27 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match_w(FILTER_CCD_LIST_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- FILTER_CCD_LIST_PROPERTY
 		if (!FILTER_DEVICE_CONTEXT->running_process) {
-			for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
-				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
-				item_x->number.target = item_x->number.value = 0;
-				item_y->number.target = item_y->number.value = 0;
+			bool reset_selection = true;
+			for (int i = 0; i < property->count; i++) {
+				if (property->items[i].sw.value) {
+					for (int j = 0; j < FILTER_CCD_LIST_PROPERTY->count; j++) {
+						if (FILTER_CCD_LIST_PROPERTY->items[j].sw.value) {
+							if (!strcmp(property->items[i].name, FILTER_CCD_LIST_PROPERTY->items[j].name))
+								reset_selection = false;
+							break;
+						}
+					}
+				}
 			}
-			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+			if (reset_selection) {
+				for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
+					indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
+					indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
+					item_x->number.target = item_x->number.value = 0;
+					item_y->number.target = item_y->number.value = 0;
+				}
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+			}
 		}
 	} else if (indigo_property_match_w(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DETECTION_MODE
