@@ -273,7 +273,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 				if (item_x->number.value == 0 || item_y->number.value == 0) {
 					if (j == AGENT_GUIDER_STARS_PROPERTY->count - 1 && (!AGENT_GUIDER_START_PREVIEW_ITEM->sw.value || AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0)) {
-						indigo_send_message(device, "Not enough sutable stars detected");
+						indigo_send_message(device, "Not enough suitable stars detected");
 						AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 						indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 						return AGENT_GUIDER_START_PREVIEW_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
