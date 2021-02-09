@@ -226,7 +226,22 @@ static void create_frame(indigo_device *device) {
 				break;
 		}
 		int size = PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height * bpp / 8;
+#if 0 // move image
+		static int frame_counter = 0;
+		static int x_offset = 0;
+		static int y_offset = 0;
+		if (frame_counter++ % 2)
+			x_offset = (x_offset + 1) % 10;
+		else
+			y_offset = (y_offset + 1) % 10;
+		int offset = (y_offset * PRIVATE_DATA->file_image_header.width + x_offset) * bpp / 8;
+		memcpy(PRIVATE_DATA->file_image, PRIVATE_DATA->raw_file_image, FITS_HEADER_SIZE);
+		memcpy(PRIVATE_DATA->file_image + FITS_HEADER_SIZE, PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE + offset, size - offset);
+		if (offset)
+			memcpy(PRIVATE_DATA->file_image + FITS_HEADER_SIZE + size - offset, PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE, offset);
+#else
 		memcpy(PRIVATE_DATA->file_image, PRIVATE_DATA->raw_file_image, size + FITS_HEADER_SIZE);
+#endif
 		indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 	} else {
 		uint16_t *raw = (unsigned short *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
