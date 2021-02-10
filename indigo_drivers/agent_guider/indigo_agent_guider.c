@@ -244,7 +244,16 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			int star_count;
 			indigo_star_detection stars[MAX_STAR_COUNT];
 			indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-			indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, MAX_STAR_COUNT, (indigo_star_detection *)&stars, &star_count);
+			indigo_find_stars_precise(
+				header->signature,
+				(void*)header + sizeof(indigo_raw_header),
+				(int)AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+				header->width,
+				header->height,
+				MAX_STAR_COUNT,
+				(indigo_star_detection *)&stars,
+				&star_count
+			);
 			int j = 0;
 			for (int i = 0; i < star_count; i++) {
 				if (stars[i].oversaturated || stars[i].nc_distance > 0.8)
@@ -273,7 +282,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 				if (item_x->number.value == 0 || item_y->number.value == 0) {
 					if (j == AGENT_GUIDER_STARS_PROPERTY->count - 1 && (!AGENT_GUIDER_START_PREVIEW_ITEM->sw.value || AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0)) {
-						indigo_send_message(device, "Not enough suitable stars detected");
+						indigo_send_message(device, "Only %d suitable stars detected (%d required). Consider changing the star count!", (int)AGENT_GUIDER_STARS_PROPERTY->count - 1, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
 						AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 						indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 						return AGENT_GUIDER_START_PREVIEW_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -336,9 +345,12 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					);
 					DEVICE_PRIVATE_DATA->reference->centroid_x += DEVICE_PRIVATE_DATA->reference[i + 1].centroid_x;
 					DEVICE_PRIVATE_DATA->reference->centroid_y += DEVICE_PRIVATE_DATA->reference[i + 1].centroid_y;
+					//indigo_error("[%d] =\t%.2f\t%.2f", i, DEVICE_PRIVATE_DATA->reference[i + 1].centroid_x, DEVICE_PRIVATE_DATA->reference[i + 1].centroid_y);
 				}
 				DEVICE_PRIVATE_DATA->reference->centroid_x /= count;
 				DEVICE_PRIVATE_DATA->reference->centroid_y /= count;
+				//indigo_error("avg[R] =\t%.2f\t%.2f", DEVICE_PRIVATE_DATA->reference->centroid_x, DEVICE_PRIVATE_DATA->reference->centroid_y);
+
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
@@ -418,9 +430,11 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					);
 					digest.centroid_x += single_digest.centroid_x;
 					digest.centroid_y += single_digest.centroid_y;
+					//indigo_error("f[%d] =\t%.2f\t%.2f", i, single_digest.centroid_x, single_digest.centroid_y);
 				}
 				digest.centroid_x /= count;
 				digest.centroid_y /= count;
+				//indigo_error("avg[] =\t%.2f\t%.2f", digest.centroid_x, digest.centroid_y);
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
