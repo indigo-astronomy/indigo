@@ -1321,6 +1321,17 @@ indigo_result indigo_donuts_frame_digest2(indigo_raw_type raw_type, const void *
 }
 */
 
+indigo_result indigo_process_multistar_selection_digest(const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
+	// TO BE IMPLEMENTED - almost dummy
+	//if (count < 1 || ref[0].algorithm != centroid || new[0].algorithm != centroid || digest == NULL) return INDIGO_FAILED;
+	digest->algorithm = centroid;
+	digest->width = new[0].width;
+	digest->height = new[0].height;
+	digest->centroid_x = new[0].centroid_x;
+	digest->centroid_y = new[0].centroid_y;
+	return INDIGO_OK;
+}
+
 indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y) {
 	if (ref == NULL || new == NULL || drift_x == NULL || drift_y == NULL)
 		return INDIGO_FAILED;
