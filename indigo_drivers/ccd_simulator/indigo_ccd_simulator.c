@@ -226,7 +226,7 @@ static void create_frame(indigo_device *device) {
 				break;
 		}
 		int size = PRIVATE_DATA->file_image_header.width * PRIVATE_DATA->file_image_header.height * bpp / 8;
-#if 0 // move image
+#if 1 // move image
 		static int frame_counter = 0;
 		static int x_offset = 0;
 		static int y_offset = 0;

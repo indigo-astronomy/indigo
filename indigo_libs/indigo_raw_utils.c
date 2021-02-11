@@ -1338,23 +1338,61 @@ static double indigo_stddev(double set[], const int count) {
 	return sd;
 }
 
-indigo_result indigo_process_multistar_selection_digest(const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
+indigo_result indigo_process_multistar_selection_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
 	// TO BE IMPLEMENTED - almost dummy
+	double drifts[MAX_MULTISTAR_COUNT] = {0};
+	double drifts_x[MAX_MULTISTAR_COUNT] = {0};
+	double drifts_y[MAX_MULTISTAR_COUNT] = {0};
+	double average = 0;
+	double drift_x, drift_y;
+
 	if (count < 1 || ref[0].algorithm != centroid || new[0].algorithm != centroid || digest == NULL) return INDIGO_FAILED;
 
 	digest->algorithm = centroid;
 	digest->width = new[0].width;
 	digest->height = new[0].height;
-	digest->centroid_x = 0;
-	digest->centroid_y = 0;
+	digest->centroid_x = avg_ref->centroid_x;
+	digest->centroid_y = avg_ref->centroid_y;
 
 	for (int i = 0; i < count; i++) {
-		digest->centroid_x += new[i].centroid_x;
-		digest->centroid_y += new[i].centroid_y;
+		indigo_calculate_drift(&ref[i], &new[i], &drift_x, &drift_y);
+		drifts_x[i] = drift_x;
+		drifts_y[i] = drift_y;
+		drifts[i] = sqrt(drift_x * drift_x + drift_y * drift_y);
+		average += drifts[i];
+		indigo_error("## Prov star [%d] ref = ( %.3f, %.3f ) new = ( %.3f, %.3f )", i, ref[i].centroid_x, ref[i].centroid_y, new[i].centroid_x, new[i].centroid_y);
+	}
+	average /= count;
+
+	double stddev = indigo_stddev(drifts, count);
+
+	indigo_error("average = %.3f stddev = %.3f", average, stddev);
+
+	drift_x = 0;
+	drift_y = 0;
+	int used_count = 0;
+	// calculate average drift with removed outliers (cut off at 1.1 * stddev)
+	// for count <= 2 use simple average
+	for (int i = 0; i < count; i++) {
+		if (count <= 2 || fabs(average - drifts[i]) <= 1.1 * stddev) {
+			used_count++;
+			drift_x += drifts_x[i];
+			drift_y += drifts_y[i];
+			indigo_error("++ Used star [%d] drift = %.3f", i, drifts[i]);
+		} else {
+			indigo_error("-- Skip star [%d] drift = %.3f", i, drifts[i]);
+		}
 	}
 
-	digest->centroid_x /= count;
-	digest->centroid_y /= count;
+	if (used_count < 1) {
+		return INDIGO_FAILED;
+	}
+
+	drift_x /= used_count;
+	drift_y /= used_count;
+	digest->centroid_x += drift_x;
+	digest->centroid_y += drift_y;
+	indigo_error("== Calculated drifts = ( %.3f, %.3f ) digest = ( %.3f, %.3f )", drift_x, drift_y, digest->centroid_x, digest->centroid_y);
 	return INDIGO_OK;
 }
 

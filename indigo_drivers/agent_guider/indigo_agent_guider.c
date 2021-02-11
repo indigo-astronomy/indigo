@@ -94,7 +94,6 @@
 #define AGENT_GUIDER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
 #define AGENT_GUIDER_STARS_REFRESH_ITEM  			(AGENT_GUIDER_STARS_PROPERTY->items+0)
 
-#define MAX_MULTISTAR_COUNT									10
 #define AGENT_GUIDER_SELECTION_PROPERTY				(DEVICE_PRIVATE_DATA->agent_selection_property)
 #define AGENT_GUIDER_SELECTION_RADIUS_ITEM  	(AGENT_GUIDER_SELECTION_PROPERTY->items+0)
 #define AGENT_GUIDER_SELECTION_SUBFRAME_ITEM	(AGENT_GUIDER_SELECTION_PROPERTY->items+1)
@@ -434,7 +433,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 
 				indigo_error("dig[0] = %f %f %d %d", digests[0].centroid_x, digests[0].centroid_y, digests[0].width, digests[0].height);
 
-				result = indigo_process_multistar_selection_digest(DEVICE_PRIVATE_DATA->reference + 1, digests, count, &digest);
+				result = indigo_process_multistar_selection_digest(DEVICE_PRIVATE_DATA->reference, DEVICE_PRIVATE_DATA->reference + 1, digests, count, &digest);
 				indigo_error("res[0] = %f %f %d %d", digest.centroid_x, digest.centroid_y, digest.width, digest.height);
 
 				if (result == INDIGO_OK) {
