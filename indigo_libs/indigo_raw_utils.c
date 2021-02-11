@@ -1321,14 +1321,40 @@ indigo_result indigo_donuts_frame_digest2(indigo_raw_type raw_type, const void *
 }
 */
 
+static double indigo_stddev(double set[], const int count) {
+	double x = 0, d, sd, s = 0, m, sum = 0;
+
+	if (count < 1) return 0;
+
+	for (int i = 0; i < count; i++) {
+		x += set[i];
+		m = x / count;
+		d = set[i] - m;
+		sum += d * d;
+	}
+
+	s = sum / count;
+	sd = sqrt(s);
+	return sd;
+}
+
 indigo_result indigo_process_multistar_selection_digest(const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
 	// TO BE IMPLEMENTED - almost dummy
-	//if (count < 1 || ref[0].algorithm != centroid || new[0].algorithm != centroid || digest == NULL) return INDIGO_FAILED;
+	if (count < 1 || ref[0].algorithm != centroid || new[0].algorithm != centroid || digest == NULL) return INDIGO_FAILED;
+
 	digest->algorithm = centroid;
 	digest->width = new[0].width;
 	digest->height = new[0].height;
-	digest->centroid_x = new[0].centroid_x;
-	digest->centroid_y = new[0].centroid_y;
+	digest->centroid_x = 0;
+	digest->centroid_y = 0;
+
+	for (int i = 0; i < count; i++) {
+		digest->centroid_x += new[i].centroid_x;
+		digest->centroid_y += new[i].centroid_y;
+	}
+
+	digest->centroid_x /= count;
+	digest->centroid_y /= count;
 	return INDIGO_OK;
 }
 
