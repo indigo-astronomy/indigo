@@ -22,8 +22,6 @@
 #ifndef indigo_guider_utils_h
 #define indigo_guider_utils_h
 
-//#include <stdio.h>
-
 #define MAX_MULTISTAR_COUNT 12
 
 typedef struct {
