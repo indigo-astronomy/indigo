@@ -1107,220 +1107,6 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	return INDIGO_OK;
 }
 
-/*
-indigo_result indigo_donuts_frame_digest2(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *c) {
-	if ((width < 3) || (height < 3))
-		return INDIGO_FAILED;
-	if ((data == NULL) || (c == NULL))
-		return INDIGO_FAILED;
-
-	uint8_t *data8 = (uint8_t *)data;
-	uint16_t *data16 = (uint16_t *)data;
-	int size = width * height;
-	double sum = 0, max = 0;
-	double value;
-	switch (raw_type) {
-		case INDIGO_RAW_MONO8: {
-			for (int i = 0; i < size; i++) {
-				value = data8[i];
-				sum += value;
-				if (value > max) max = value;
-			}
-			break;
-		}
-		case INDIGO_RAW_MONO16: {
-			for (int i = 0; i < size; i++) {
-				value = data16[i];
-				sum += value;
-				if (value > max) max = value;
-			}
-			break;
-		}
-		case INDIGO_RAW_RGB24: {
-			for (int i = 0; i < 3 * size; i++) {
-				value = data8[i] + data8[i + 1] + data8[i + 2];
-				i += 2;
-				sum += value;
-				if (value > max) max = value;
-			}
-			break;
-		}
-		case INDIGO_RAW_RGBA32: {
-			for (int i = 0; i < 4 * size; i++) {
-				value = data8[i] + data8[i + 1] + data8[i + 2];
-				i += 3;
-				sum += value;
-				if (value > max) max = value;
-			}
-			break;
-		}
-		case INDIGO_RAW_ABGR32: {
-			for (int i = 0; i < 4 * size; i++) {
-				value = data8[i + 1] + data8[i + 2] + data8[i + 3];
-				i += 3;
-				sum += value;
-				if (value > max) max = value;
-			}
-			break;
-		}
-		case INDIGO_RAW_RGB48: {
-			for (int i = 0; i < 3 * size; i++) {
-				value = data16[i] + data16[i + 1] + data16[i + 2];
-				i += 2;
-				sum += value;
-				if (value > max) max = value;
-			}
-			break;
-		}
-	}
-
-	// Set threshold 10% above average value
-	double threshold = 1.10 * sum / size;
-
-	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f", threshold, max));
-
-	// If max is below the thresold no guiding is possible
-	if (max <= threshold) return INDIGO_GUIDE_ERROR;
-
-	c->width = next_power_2(width);
-	c->height = next_power_2(height);
-	double (*col_x)[2] = calloc(2 * width * sizeof(double), 1);
-	double (*col_y)[2] = calloc(2 * height * sizeof(double), 1);
-	double (*fcol_x)[2] = calloc(2 * c->width * sizeof(double), 1);
-	double (*fcol_y)[2] = calloc(2 * c->height * sizeof(double), 1);
-	c->fft_x = indigo_safe_malloc(2 * c->width * sizeof(double));
-	c->fft_y = indigo_safe_malloc(2 * c->height * sizeof(double));
-
-	int ci = 0, li = 0;
-	switch (raw_type) {
-		case INDIGO_RAW_MONO8: {
-			for (int i = 0; i < size; i++) {
-				value = clear_hot_pixel_8(data8, ci, li, width, height) - threshold;
-				// Set all values below the threshold to 0
-				if (value < 0) value = 0;
-
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
-				ci++;
-				if (ci == width) {
-					ci = 0;
-					li++;
-				}
-			}
-			break;
-		}
-		case INDIGO_RAW_MONO16: {
-			for (int i = 0; i < size; i++) {
-				value = clear_hot_pixel_16(data16, ci, li, width, height) - threshold;
-				// Set all values below the threshold to 0
-				if (value < 0) value = 0;
-
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
-				ci++;
-				if (ci == width) {
-					ci = 0;
-					li++;
-				}
-			}
-			break;
-		}
-		case INDIGO_RAW_RGB24: {
-			for (int i = 0; i < 3 * size; i++) {
-				value = data8[i] + data8[i + 1] + data8[i + 2] - threshold;
-				i += 2;
-				// Set all values below the threshold to 0
-				if (value < 0) value = 0;
-
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
-				ci++;
-				if (ci == width) {
-					ci = 0;
-					li++;
-				}
-			}
-			break;
-		}
-		case INDIGO_RAW_RGBA32: {
-			for (int i = 0; i < 4 * size; i++) {
-				value = data8[i] + data8[i + 1] + data8[i + 2] - threshold;
-				i += 3;
-				// Set all values below the threshold to 0
-				if (value < 0) value = 0;
-
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
-				ci++;
-				if (ci == width) {
-					ci = 0;
-					li++;
-				}
-			}
-			break;
-		}
-		case INDIGO_RAW_ABGR32: {
-			for (int i = 0; i < 4 * size; i++) {
-				value = data8[i + 1] + data8[i + 2] + data8[i + 3] - threshold;
-				i += 3;
-				// Set all values below the threshold to 0
-				if (value < 0) value = 0;
-
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
-				ci++;
-				if (ci == width) {
-					ci = 0;
-					li++;
-				}
-			}
-			break;
-		}
-		case INDIGO_RAW_RGB48: {
-			for (int i = 0; i < 3 * size; i++) {
-				value = data16[i] + data16[i + 1] + data16[i + 2] - threshold;
-				i += 2;
-				// Set all values below the threshold to 0
-				if (value < 0) value = 0;
-
-				col_x[ci][RE] += value;
-				col_y[li][RE] += value;
-				ci++;
-				if (ci == width) {
-					ci = 0;
-					li++;
-				}
-			}
-			break;
-		}
-	}
-
-	// Remove hot from the digest
-	fcol_x[0][RE] = median(0, col_x[0][RE], col_x[1][RE]);
-	for (int i = 1; i < width-1; i++) {
-		fcol_x[i][RE] = median(col_x[i - 1][RE], col_x[i][RE], col_x[i + 1][RE]);
-	}
-	fcol_x[width - 1][RE] = median(col_x[width - 2][RE], col_x[width - 1][RE], 0);
-
-	fcol_y[0][RE] = median(0, col_y[0][RE], col_y[1][RE]);
-	for (int i = 1; i < height-1; i++) {
-		fcol_y[i][RE] = median(col_y[i - 1][RE], col_y[i][RE], col_y[i + 1][RE]);
-	}
-	fcol_y[height - 1][RE] = median(col_y[height - 2][RE], col_y[height - 1][RE], 0);
-
-	c->snr = (calibrate_re(fcol_x, width) + calibrate_re(fcol_y, height)) / 2;
-
-	fft(c->width, fcol_x, c->fft_x);
-	fft(c->height, fcol_y, c->fft_y);
-	c->algorithm = donuts;
-	free(col_x);
-	free(col_y);
-	free(fcol_x);
-	free(fcol_y);
-	return INDIGO_OK;
-}
-*/
-
 static double indigo_stddev(double set[], const int count) {
 	double x = 0, d, sd, s = 0, m, sum = 0;
 
@@ -1328,7 +1114,10 @@ static double indigo_stddev(double set[], const int count) {
 
 	for (int i = 0; i < count; i++) {
 		x += set[i];
-		m = x / count;
+	}
+	m = x / count;
+
+	for (int i = 0; i < count; i++) {
 		d = set[i] - m;
 		sum += d * d;
 	}
@@ -1338,15 +1127,20 @@ static double indigo_stddev(double set[], const int count) {
 	return sd;
 }
 
-indigo_result indigo_process_multistar_selection_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
-	// TO BE IMPLEMENTED - almost dummy
+indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
 	double drifts[MAX_MULTISTAR_COUNT] = {0};
 	double drifts_x[MAX_MULTISTAR_COUNT] = {0};
 	double drifts_y[MAX_MULTISTAR_COUNT] = {0};
 	double average = 0;
 	double drift_x, drift_y;
 
-	if (count < 1 || ref[0].algorithm != centroid || new[0].algorithm != centroid || digest == NULL) return INDIGO_FAILED;
+	if (
+		count < 1 ||
+		avg_ref->algorithm != centroid ||
+		ref[0].algorithm != centroid ||
+		new[0].algorithm != centroid ||
+		digest == NULL
+	) return INDIGO_FAILED;
 
 	digest->algorithm = centroid;
 	digest->width = new[0].width;
@@ -1360,39 +1154,37 @@ indigo_result indigo_process_multistar_selection_digest(const indigo_frame_diges
 		drifts_y[i] = drift_y;
 		drifts[i] = sqrt(drift_x * drift_x + drift_y * drift_y);
 		average += drifts[i];
-		indigo_error("## Prov star [%d] ref = ( %.3f, %.3f ) new = ( %.3f, %.3f )", i, ref[i].centroid_x, ref[i].centroid_y, new[i].centroid_x, new[i].centroid_y);
 	}
 	average /= count;
-
 	double stddev = indigo_stddev(drifts, count);
 
-	indigo_error("average = %.3f stddev = %.3f", average, stddev);
+	INDIGO_DEBUG(indigo_debug("%s: average = %.3f stddev = %.3f", __FUNCTION__, average, stddev));
 
 	drift_x = 0;
 	drift_y = 0;
 	int used_count = 0;
-	// calculate average drift with removed outliers (cut off at 1.1 * stddev)
+	// calculate average drift with removed outliers (cut off at 1.5 * stddev)
 	// for count <= 2 use simple average
 	for (int i = 0; i < count; i++) {
-		if (count <= 2 || fabs(average - drifts[i]) <= 1.1 * stddev) {
+		if (count <= 2 || fabs(average - drifts[i]) <= 1.5 * stddev) {
 			used_count++;
 			drift_x += drifts_x[i];
 			drift_y += drifts_y[i];
-			indigo_error("++ Used star [%d] drift = %.3f", i, drifts[i]);
+			INDIGO_DEBUG(indigo_debug("%s: ++ Used star [%d] drift = %.3f", __FUNCTION__, i, drifts[i]));
 		} else {
-			indigo_error("-- Skip star [%d] drift = %.3f", i, drifts[i]);
+			INDIGO_DEBUG(indigo_debug("%s: -- Skip star [%d] drift = %.3f", __FUNCTION__, i, drifts[i]));
 		}
 	}
 
 	if (used_count < 1) {
-		return INDIGO_FAILED;
+		return INDIGO_GUIDE_ERROR;
 	}
 
 	drift_x /= used_count;
 	drift_y /= used_count;
 	digest->centroid_x += drift_x;
 	digest->centroid_y += drift_y;
-	indigo_error("== Calculated drifts = ( %.3f, %.3f ) digest = ( %.3f, %.3f )", drift_x, drift_y, digest->centroid_x, digest->centroid_y);
+	INDIGO_DEBUG(indigo_debug("%s: == Result using %d of %d stars. Drifts = ( %.3f, %.3f ) digest = ( %.3f, %.3f )", __FUNCTION__, used_count, count, drift_x, drift_y, digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
 }
 
