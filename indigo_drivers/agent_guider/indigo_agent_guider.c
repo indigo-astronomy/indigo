@@ -329,6 +329,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 				result = INDIGO_OK;
 				DEVICE_PRIVATE_DATA->reference->algorithm = centroid;
+				DEVICE_PRIVATE_DATA->reference->width = header->width;
+				DEVICE_PRIVATE_DATA->reference->height = header->height;
 				DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
 				DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
 				for (int i = 0; i < count && result == INDIGO_OK; i++) {
@@ -344,13 +346,9 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					);
 					DEVICE_PRIVATE_DATA->reference->centroid_x += DEVICE_PRIVATE_DATA->reference[i + 1].centroid_x;
 					DEVICE_PRIVATE_DATA->reference->centroid_y += DEVICE_PRIVATE_DATA->reference[i + 1].centroid_y;
-					//indigo_error("[%d] =\t%.2f\t%.2f", i, DEVICE_PRIVATE_DATA->reference[i + 1].centroid_x, DEVICE_PRIVATE_DATA->reference[i + 1].centroid_y);
 				}
-				DEVICE_PRIVATE_DATA->reference->width = header->width;
-				DEVICE_PRIVATE_DATA->reference->height = header->height;
 				DEVICE_PRIVATE_DATA->reference->centroid_x /= count;
 				DEVICE_PRIVATE_DATA->reference->centroid_y /= count;
-				//indigo_error("avg[R] =\t%.2f\t%.2f", DEVICE_PRIVATE_DATA->reference->centroid_x, DEVICE_PRIVATE_DATA->reference->centroid_y);
 
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
@@ -431,10 +429,9 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					);
 				}
 
-				indigo_error("dig[0] = %f %f %d %d", digests[0].centroid_x, digests[0].centroid_y, digests[0].width, digests[0].height);
-
-				result = indigo_process_multistar_selection_digest(DEVICE_PRIVATE_DATA->reference, DEVICE_PRIVATE_DATA->reference + 1, digests, count, &digest);
-				indigo_error("res[0] = %f %f %d %d", digest.centroid_x, digest.centroid_y, digest.width, digest.height);
+				if (result == INDIGO_OK) {
+					result = indigo_reduce_multistar_digest(DEVICE_PRIVATE_DATA->reference, DEVICE_PRIVATE_DATA->reference + 1, digests, count, &digest);
+				}
 
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
