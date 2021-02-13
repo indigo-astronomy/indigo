@@ -443,6 +443,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest, int converge_iterations) {
 	int result = INDIGO_FAILED;
 	while (converge_iterations--) {
+		// indigo_debug("%s: X = %.3f, Y= %3f", __FUNCTION__, *x, *y);
 		result = indigo_selection_frame_digest(raw_type, data, x, y, radius, width, height, digest);
 	}
 	return result;
@@ -1166,7 +1167,7 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 	average /= count;
 	double stddev = indigo_stddev(drifts, count);
 
-	INDIGO_DEBUG(indigo_debug("%s: average = %.3f stddev = %.3f", __FUNCTION__, average, stddev));
+	INDIGO_DEBUG(indigo_debug("%s: average = %.4f stddev = %.4f", __FUNCTION__, average, stddev));
 
 	drift_x = 0;
 	drift_y = 0;
@@ -1178,9 +1179,9 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 			used_count++;
 			drift_x += drifts_x[i];
 			drift_y += drifts_y[i];
-			INDIGO_DEBUG(indigo_debug("%s: ++ Used star [%d] drift = %.3f", __FUNCTION__, i, drifts[i]));
+			INDIGO_DEBUG(indigo_debug("%s: ++ Used star [%d] drift = %.4f", __FUNCTION__, i, drifts[i]));
 		} else {
-			INDIGO_DEBUG(indigo_debug("%s: -- Skip star [%d] drift = %.3f", __FUNCTION__, i, drifts[i]));
+			INDIGO_DEBUG(indigo_debug("%s: -- Skip star [%d] drift = %.4f", __FUNCTION__, i, drifts[i]));
 		}
 	}
 
@@ -1253,7 +1254,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
 
 	int  size = width * height;
-	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint32_t));
+	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
 	int star_size = 100;
 	const int clip_edge   = height >= FIND_STAR_EDGE_CLIPPING * 4 ? FIND_STAR_EDGE_CLIPPING : (height / 4);
 	int clip_width  = width - clip_edge;
@@ -1417,7 +1418,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			indigo_result res = INDIGO_FAILED;
 			if (radius >= 3) {
 				indigo_frame_digest center;
-				res = indigo_selection_frame_digest(raw_type, data, &star.x, &star.y, radius, width, height, &center);
+				res = indigo_selection_frame_digest_iterative(raw_type, data, &star.x, &star.y, radius, width, height, &center, 2);
 				star.x = center.centroid_x;
 				star.y = center.centroid_y;
 				indigo_delete_frame_digest(&center);
