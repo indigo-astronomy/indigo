@@ -257,7 +257,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			);
 			int j = 0;
 			for (int i = 0; i < star_count; i++) {
-				if (stars[i].oversaturated || stars[i].nc_distance > 0.8)
+				if (stars[i].oversaturated || stars[i].nc_distance > 0.9)
 					continue;
 				DEVICE_PRIVATE_DATA->stars[j] = stars[i];
 				char name[8];
