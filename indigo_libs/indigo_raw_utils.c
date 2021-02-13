@@ -440,6 +440,14 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	return INDIGO_OK;
 }
 
+indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest, int converge_iterations) {
+	int result = INDIGO_FAILED;
+	while (converge_iterations--) {
+		result = indigo_selection_frame_digest(raw_type, data, x, y, radius, width, height, digest);
+	}
+	return result;
+}
+
 indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest) {
 	const int xx = (int)round(*x);
 	const int yy = (int)round(*y);

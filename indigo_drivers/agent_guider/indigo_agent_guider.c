@@ -123,6 +123,8 @@
 
 #define BUSY_TIMEOUT 5
 
+#define DIGEST_CONVERGE_ITERATIONS 3
+
 typedef struct {
 	indigo_property *agent_guider_detection_mode_property;
 	indigo_property *agent_guider_dec_mode_property;
@@ -334,7 +336,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
 				DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
 				for (int i = 0; i < count && result == INDIGO_OK; i++) {
-					result = indigo_selection_frame_digest(
+					result = indigo_selection_frame_digest_iterative(
 						header->signature,
 						(void*)header + sizeof(indigo_raw_header),
 						&(AGENT_GUIDER_SELECTION_X_ITEM + 2 * i)->number.value,
@@ -342,7 +344,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
 						header->width,
 						header->height,
-						DEVICE_PRIVATE_DATA->reference + i + 1
+						DEVICE_PRIVATE_DATA->reference + i + 1,
+						DIGEST_CONVERGE_ITERATIONS
 					);
 					DEVICE_PRIVATE_DATA->reference->centroid_x += DEVICE_PRIVATE_DATA->reference[i + 1].centroid_x;
 					DEVICE_PRIVATE_DATA->reference->centroid_y += DEVICE_PRIVATE_DATA->reference[i + 1].centroid_y;
@@ -417,7 +420,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				digest.centroid_x = 0;
 				digest.centroid_y = 0;
 				for (int i = 0; i < count && result == INDIGO_OK; i++) {
-					result = indigo_selection_frame_digest(
+					result = indigo_selection_frame_digest_iterative(
 						header->signature,
 						(void*)header + sizeof(indigo_raw_header),
 						&(AGENT_GUIDER_SELECTION_X_ITEM + 2 * i)->number.value,
@@ -425,7 +428,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
 						header->width,
 						header->height,
-						&digests[i]
+						&digests[i],
+						DIGEST_CONVERGE_ITERATIONS
 					);
 				}
 
