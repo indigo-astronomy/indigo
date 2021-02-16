@@ -1116,7 +1116,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	return INDIGO_OK;
 }
 
-static double indigo_stddev(double set[], const int count) {
+double indigo_stddev(double set[], const int count) {
 	double x = 0, d, sd, s = 0, m, sum = 0;
 
 	if (count < 1) return 0;
