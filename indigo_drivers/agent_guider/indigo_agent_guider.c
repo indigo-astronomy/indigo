@@ -102,8 +102,8 @@
 #define AGENT_GUIDER_SELECTION_X_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+4)
 #define AGENT_GUIDER_SELECTION_Y_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+5)
 
-#define MAX_STACK															10
-#define MAX_DITHERING_RMSE_STACK							5
+#define MAX_STACK															15
+#define MAX_DITHERING_RMSE_STACK											5
 #define AGENT_GUIDER_STATS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stats_property)
 #define AGENT_GUIDER_STATS_PHASE_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+0)
 #define AGENT_GUIDER_STATS_FRAME_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+1)
@@ -458,24 +458,64 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				result = indigo_calculate_drift(DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
 				DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 				DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+
+				int count = (int)fmin(AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value, DEVICE_PRIVATE_DATA->stack_size);
+				double stddev_x = indigo_stddev(DEVICE_PRIVATE_DATA->stack_x, count);
+				double stddev_y = indigo_stddev(DEVICE_PRIVATE_DATA->stack_y, count);
+
 				double tmp[MAX_STACK - 1];
-				memcpy(tmp, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
-				memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, tmp, sizeof(double) * (MAX_STACK - 1));
-				memcpy(tmp, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
-				memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, tmp, sizeof(double) * (MAX_STACK - 1));
-				DEVICE_PRIVATE_DATA->stack_x[0] = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-				DEVICE_PRIVATE_DATA->stack_y[0] = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;;
+
+				/* Use Modified PID controller - Large random errors are not used in I, to prevent overshoots */
+				if (
+					fabs(DEVICE_PRIVATE_DATA->avg_drift_x - DEVICE_PRIVATE_DATA->drift_x) < 5 * stddev_x ||
+					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
+					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1
+				) {
+					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
+					memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, tmp, sizeof(double) * (MAX_STACK - 1));
+					DEVICE_PRIVATE_DATA->stack_x[0] = DEVICE_PRIVATE_DATA->drift_x;
+				} else {
+					indigo_debug(
+						"Drift X = %.3f (avg = %.3f, stddev = %.3f) jump detected - not used in the I-term",
+						DEVICE_PRIVATE_DATA->drift_x,
+						DEVICE_PRIVATE_DATA->avg_drift_x,
+						stddev_x
+					);
+				}
+
+				if (
+					fabs(DEVICE_PRIVATE_DATA->avg_drift_y - DEVICE_PRIVATE_DATA->drift_y) < 5 * stddev_y ||
+					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
+					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1
+				) {
+					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
+					memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, tmp, sizeof(double) * (MAX_STACK - 1));
+					DEVICE_PRIVATE_DATA->stack_y[0] = DEVICE_PRIVATE_DATA->drift_y;
+				} else {
+					indigo_debug(
+						"Drift Y = %.3f (avg = %.3f, stddev = %.3f) jump detected - not used in the I-term",
+						DEVICE_PRIVATE_DATA->drift_y,
+						DEVICE_PRIVATE_DATA->avg_drift_y,
+						stddev_y
+					);
+				}
+
 				if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK)
 					DEVICE_PRIVATE_DATA->stack_size++;
-				if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING || AGENT_GUIDER_STATS_DITHERING_ITEM->number.value) {
-					DEVICE_PRIVATE_DATA->avg_drift_x = DEVICE_PRIVATE_DATA->drift_x;
-					DEVICE_PRIVATE_DATA->avg_drift_y = DEVICE_PRIVATE_DATA->drift_y;
+				if (
+					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
+					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 ||
+					AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING ||
+					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value
+				) {
+					DEVICE_PRIVATE_DATA->avg_drift_x = 0;
+					DEVICE_PRIVATE_DATA->avg_drift_y = 0;
 				} else {
 					double avg_x, avg_y;
 					avg_x = DEVICE_PRIVATE_DATA->stack_x[0];
 					avg_y = DEVICE_PRIVATE_DATA->stack_y[0];
-					int count = (int)fmin(AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value, DEVICE_PRIVATE_DATA->stack_size);
-					for (int i = 1; i < count; i++) {
+
+					for (int i = 1; i < AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value; i++) {
 						avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
 						avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 					}
@@ -1237,8 +1277,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM, AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM_NAME, "Min error (px)", 0, 5, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM_NAME, "Min pulse (s)", 0, 1, 0.01, 0.02);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM_NAME, "Max pulse (s)", 0, 5, 0.01, 1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA aggressivity (%)", 0, 200, 5, 90);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "Dec aggressivity (%)", 0, 200, 5, 90);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA aggressivity (%)", 0, 900, 5, 90);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "Dec aggressivity (%)", 0, 900, 5, 90);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PW_RA_ITEM, AGENT_GUIDER_SETTINGS_PW_RA_ITEM_NAME,  "RA Proportional weight", 0, 1, 0.05, 0.75);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PW_DEC_ITEM, AGENT_GUIDER_SETTINGS_PW_DEC_ITEM_NAME, "Dec Proportional weight", 0, 1, 0.05, 0.75);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Integral stacking", 1, MAX_STACK, 1, 1);
