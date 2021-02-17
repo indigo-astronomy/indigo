@@ -1117,7 +1117,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 }
 
 double indigo_stddev(double set[], const int count) {
-	double x = 0, d, sd, s = 0, m, sum = 0;
+	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
 
@@ -1131,9 +1131,19 @@ double indigo_stddev(double set[], const int count) {
 		sum += d * d;
 	}
 
-	s = sum / count;
-	sd = sqrt(s);
-	return sd;
+	return sqrt(sum / count);
+}
+
+double indigo_rmse(double set[], const int count) {
+	double sum = 0;
+
+	if (count < 1) return 0;
+
+	for (int i = 0; i < count; i++) {
+		sum += set[i] * set[i];
+	}
+
+	return sqrt(sum / count);
 }
 
 indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
@@ -1195,6 +1205,13 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 	digest->centroid_y += drift_y;
 	INDIGO_DEBUG(indigo_debug("%s: == Result using %d of %d stars. Drifts = ( %.3f, %.3f ) digest = ( %.3f, %.3f )", __FUNCTION__, used_count, count, drift_x, drift_y, digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
+}
+
+double indigo_guider_reponse(double p_aggressiveness, double p_weight, double drift, double avg_drift) {
+	if (p_weight > 1) p_weight = 1;
+	if (p_weight < 0.01) p_weight = 0.01;
+
+	return (-1 * (p_aggressiveness * drift + p_aggressiveness * (1 / p_weight - 1) * avg_drift));
 }
 
 indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y) {
