@@ -102,7 +102,7 @@
 #define AGENT_GUIDER_SELECTION_X_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+4)
 #define AGENT_GUIDER_SELECTION_Y_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+5)
 
-#define MAX_STACK															15
+#define MAX_STACK															20
 #define MAX_DITHERING_RMSE_STACK											5
 #define AGENT_GUIDER_STATS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stats_property)
 #define AGENT_GUIDER_STATS_PHASE_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+0)
@@ -500,13 +500,13 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					);
 				}
 
-				if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK)
+				if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK) {
 					DEVICE_PRIVATE_DATA->stack_size++;
+				}
+
 				if (
-					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 ||
-					AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING ||
-					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value
+					AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING
 				) {
 					DEVICE_PRIVATE_DATA->avg_drift_x = 0;
 					DEVICE_PRIVATE_DATA->avg_drift_y = 0;
@@ -515,12 +515,15 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					avg_x = DEVICE_PRIVATE_DATA->stack_x[0];
 					avg_y = DEVICE_PRIVATE_DATA->stack_y[0];
 
-					for (int i = 1; i < AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value; i++) {
+					for (int i = 1; i < count; i++) {
 						avg_x += DEVICE_PRIVATE_DATA->stack_x[i];
 						avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 					}
-					DEVICE_PRIVATE_DATA->avg_drift_x = avg_x / count;
-					DEVICE_PRIVATE_DATA->avg_drift_y = avg_y / count;
+					/* Regardless if the stack is full we devide on stack size.
+					   This allows smooth error integration and proper I term operation at startup.
+					*/
+					DEVICE_PRIVATE_DATA->avg_drift_x = avg_x / AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value;
+					DEVICE_PRIVATE_DATA->avg_drift_y = avg_y / AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value;
 				}
 				if (result == INDIGO_OK) {
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
@@ -1086,7 +1089,6 @@ static void guide_process(indigo_device *device) {
 					avg_drift_ra
 				);
 				correction_ra = correction_ra / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value;
-				// correction_ra = - AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value * (drift_ra + avg_drift_ra * (1 - AGENT_GUIDER_SETTINGS_PW_RA_ITEM->number.value)) / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / 100;
 				if (correction_ra > max_pulse)
 					correction_ra = max_pulse;
 				else if (correction_ra < -max_pulse)
@@ -1102,7 +1104,6 @@ static void guide_process(indigo_device *device) {
 					avg_drift_dec
 				);
 				correction_dec = correction_dec / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value;
-				//correction_dec = - AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value * (drift_dec + avg_drift_dec * (1 - AGENT_GUIDER_SETTINGS_PW_DEC_ITEM->number.value))/ AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value / 100;
 				if (correction_dec > max_pulse)
 					correction_dec = max_pulse;
 				else if (correction_dec < -max_pulse)
