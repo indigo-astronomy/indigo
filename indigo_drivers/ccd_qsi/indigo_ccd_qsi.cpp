@@ -26,7 +26,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION    0x000A
+#define DRIVER_VERSION    0x000B
 #define DRIVER_NAME       "indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -671,8 +671,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
+		double temperature = CCD_TEMPERATURE_ITEM->number.value;
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
+		CCD_TEMPERATURE_ITEM->number.value = temperature;
 		try {
 			if (CCD_COOLER_OFF_ITEM->sw.value) {
 				cam.put_CoolerOn(true);
@@ -680,9 +682,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 			}
-			cam.put_SetCCDTemperature(CCD_TEMPERATURE_ITEM->number.value);
+			cam.put_SetCCDTemperature(CCD_TEMPERATURE_ITEM->number.target);
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", CCD_TEMPERATURE_ITEM->number.value);
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", CCD_TEMPERATURE_ITEM->number.target);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1012,7 +1014,7 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "QSI Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
