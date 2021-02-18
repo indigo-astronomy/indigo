@@ -35,19 +35,19 @@ Default value is 1 which means that pure *P controller* is used, but if a *PI co
 
 2. Start the guiding and after it settles set dithering offset to X (or Y) of several pixels (5 or 6 px is OK) to simulate a bump in the guiding as shown on the screenshot:
 
-![](1.ICP_dither.png)
+![](GUIDING_PI_CONTROLLER_TUNING/1.ICP_dither.png)
 
 3. Check the guiding response. If the response is too slow like on the picture, the **Aggressivity** for this axis should be increased. In this case the red line is Right Ascension so we need to boost **RA Aggressivity**.
 
-![](2.undershoot.png)
+![](GUIDING_PI_CONTROLLER_TUNING/2.undershoot.png)
 
 4. If the guiding response is overshooting, **Aggressivity** Should be decreased. Here we went too far with **RA Aggressivity** and we need to reduce it.
 
-![](3.overshoot.png)
+![](GUIDING_PI_CONTROLLER_TUNING/3.overshoot.png)
 
 5. Repeat the process until response is fast and accurate (as shown)
 
-![](4.ok_response.png)
+![](GUIDING_PI_CONTROLLER_TUNING/4.ok_response.png)
 
 With this the Proportional controller tuning is complete. And it is safe to stop here. It will perform excellent for most of the cases.
 
@@ -56,7 +56,7 @@ PI controller is needed in rare cases when there is are significant systematic e
 
 If this does not help and there is a drift or the mount PE is still visible in the guiding graph, as shown below then *PI controller* is here to help.
 
-![](6.P_only.png)
+![](GUIDING_PI_CONTROLLER_TUNING/6.P_only.png)
 
 ### Tuning Procedure
 1. Completete the P-only controller tuning procedure.
@@ -67,7 +67,7 @@ If this does not help and there is a drift or the mount PE is still visible in t
 
 4. Check the if the error is still there. If it is Repeat 2 until it is gone. Please be conservative with **Proportional weight** as bringing it way down may result in slow drifts or sudden jumps. It is preferable to leave a bit of the error not sacrificing the stability. This is how a well tuned controller should perform:
 
-![](7.tunned.png)
+![](GUIDING_PI_CONTROLLER_TUNING/7.tunned.png)
 
 5. Now we need to test its response to sudden jumps, as described above in the P-only controller tuning. If we have over reaction or slow reaction **Aggressivity** for the corresponding axis should be adjusted again.
 
