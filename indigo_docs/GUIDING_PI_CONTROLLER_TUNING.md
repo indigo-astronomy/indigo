@@ -65,11 +65,15 @@ If this does not help and there is a drift or the mount PE is still visible in t
 
 3. Set the **Proportional weight** to around 0.7 for the axis that shows the error (in this case RA is showing significant PE). Let it run for several minutes (a full PE cycle).
 
-4. Check the if the error is still there. If it is Repeat 2 until it is gone. Please be conservative with **Proportional weight** as bringing it way down may result in slow drifts or sudden jumps. It is preferable to leave a bit of the error not sacrificing the stability. This is how a well tuned controller should perform:
+4. Check the if the error is still there. If so, decrease **Proportional weight** with 0.05 - 0.1 step and let it run several more minutes.
+
+5. Repeat step 4 until the error is gone. Please be conservative with **Proportional weight** as bringing it way down may result in slow drifts or sudden jumps. It is preferable to leave a bit of the error but not sacrificing the stability.
+
+6. Now we need to test its response to sudden jumps again, as described above in the P-only controller tuning section. If we have over reaction or slow reaction **Aggressivity** for the corresponding axis should be adjusted again.
+
+This is how a well tuned controller should perform:
 
 ![](GUIDING_PI_CONTROLLER_TUNING/7.tunned.png)
-
-5. Now we need to test its response to sudden jumps, as described above in the P-only controller tuning. If we have over reaction or slow reaction **Aggressivity** for the corresponding axis should be adjusted again.
 
 Please note that if you have bad polar alignment guiding will not save you from field rotation.
 
