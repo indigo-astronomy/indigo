@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_ccd_touptek"
 
 #include <stdlib.h>
@@ -65,6 +65,7 @@ typedef struct {
 	indigo_device *camera;
 	indigo_device *guider;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
+	double current_temperature;
 	unsigned char *buffer;
 	int bits;
 	int mode;
@@ -140,7 +141,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	HRESULT result = Toupcam_get_Temperature(PRIVATE_DATA->handle, &temperature);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	if (result >= 0) {
-		CCD_TEMPERATURE_ITEM->number.value = temperature / 10.0;
+		PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = temperature / 10.0;
 		if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM && fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1.0) {
 			if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value)
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -431,7 +432,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					indigo_set_switch(CCD_COOLER_PROPERTY, value ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
 					result = Toupcam_get_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_TECTARGET, &value);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_Option(TOUPCAM_OPTION_TECTARGET, ->%d) -> %08x", value, result);
-					CCD_TEMPERATURE_ITEM->number.target = value / 10.0;
+					PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.target = value / 10.0;
 				}
 				indigo_set_timer(device, 5.0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			} else {
@@ -717,7 +718,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		result = Toupcam_put_Temperature(PRIVATE_DATA->handle, (short)(CCD_TEMPERATURE_ITEM->number.target * 10));
 		if (result >= 0) {
-			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value) {
 				result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_TEC, 1);
 				if (result >= 0) {
@@ -1076,7 +1078,7 @@ indigo_result indigo_ccd_touptek(indigo_driver_action action, indigo_driver_info
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "ToupTek Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
