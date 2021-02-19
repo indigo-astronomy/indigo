@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -72,6 +72,7 @@
 #define MOUNT_TYPE_AVALON_ITEM          (MOUNT_TYPE_PROPERTY->items+5)
 #define MOUNT_TYPE_AP_ITEM          		(MOUNT_TYPE_PROPERTY->items+6)
 #define MOUNT_TYPE_ON_STEP_ITEM         (MOUNT_TYPE_PROPERTY->items+7)
+#define MOUNT_TYPE_AGOTINO_ITEM         (MOUNT_TYPE_PROPERTY->items+8)
 
 #define MOUNT_TYPE_PROPERTY_NAME				"X_MOUNT_TYPE"
 #define MOUNT_TYPE_DETECT_ITEM_NAME			"DETECT"
@@ -82,6 +83,7 @@
 #define MOUNT_TYPE_AVALON_ITEM_NAME			"AVALON"
 #define MOUNT_TYPE_AP_ITEM_NAME					"AP"
 #define MOUNT_TYPE_ON_STEP_ITEM_NAME		"ONSTEP"
+#define MOUNT_TYPE_AGOTINO_ITEM_NAME		"AGOTINO"
 
 typedef struct {
 	bool parked;
@@ -467,7 +469,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(FORCE_FLIP_DISABLED_ITEM, FORCE_FLIP_DISABLED_ITEM_NAME, "Disabled", false);
 		FORCE_FLIP_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
-		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
 		if (MOUNT_TYPE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_TYPE_DETECT_ITEM, MOUNT_TYPE_DETECT_ITEM_NAME, "Autodetect", true);
@@ -478,6 +480,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_AVALON_ITEM, MOUNT_TYPE_AVALON_ITEM_NAME, "Avalon StarGO", false);
 		indigo_init_switch_item(MOUNT_TYPE_AP_ITEM, MOUNT_TYPE_AP_ITEM_NAME, "Astro-Physics GTO", false);
 		indigo_init_switch_item(MOUNT_TYPE_ON_STEP_ITEM, MOUNT_TYPE_ON_STEP_ITEM_NAME, "OnStep", false);
+		indigo_init_switch_item(MOUNT_TYPE_AGOTINO_ITEM, MOUNT_TYPE_AGOTINO_ITEM_NAME, "aGotino", false);
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -720,13 +723,31 @@ static void mount_connect_callback(indigo_device *device) {
 				meade_get_observatory(device);
 				meade_get_coords(device);
 				meade_get_utc(device);
+			} else if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
+				MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
+				MOUNT_UTC_TIME_PROPERTY->hidden = true;
+				MOUNT_TRACKING_PROPERTY->hidden = true;
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+				MOUNT_PARK_PROPERTY->hidden = true;
+				MOUNT_MOTION_RA_PROPERTY->hidden = true;
+				MOUNT_MOTION_DEC_PROPERTY->hidden = true;
+				MOUNT_SLEW_RATE_PROPERTY->hidden = true;
+				MOUNT_TRACK_RATE_PROPERTY->hidden = true;
+				MOUNT_INFO_PROPERTY->count = 1;
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "aGotino");
+				PRIVATE_DATA->parked = false;
+				meade_get_coords(device);
 			} else {
 				MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 				MOUNT_UTC_TIME_PROPERTY->hidden = true;
 				MOUNT_TRACKING_PROPERTY->hidden = true;
 				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 				MOUNT_PARK_PROPERTY->hidden = true;
+				MOUNT_MOTION_RA_PROPERTY->hidden = true;
+				MOUNT_MOTION_DEC_PROPERTY->hidden = true;
+				MOUNT_INFO_PROPERTY->count = 1;
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
+				PRIVATE_DATA->parked = false;
 				meade_get_coords(device);
 			}
 			// initialize target
@@ -804,19 +825,21 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-			if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
-				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"));
-			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
-				sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
+			if (!MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
+				if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+					MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
+					sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
+					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
+						MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				}
 			}
 			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
