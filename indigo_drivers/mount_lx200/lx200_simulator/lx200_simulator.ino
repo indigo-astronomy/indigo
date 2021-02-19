@@ -66,10 +66,10 @@ static char __buffer__[32];
 #define DEC_PER_SEC 1440
 #define RA_PER_SEC 96
 
-bool is_meade = false;
+bool is_meade = true;
 bool is_10micron = false;
 bool is_gemini = false;
-bool is_avalon = true;
+bool is_avalon = false;
 bool is_onestep = false;
 
 int date_day = 1;
@@ -264,23 +264,23 @@ void loop() {
         }
       } else if (!strncmp(buffer, "Sr", 2)) {
         if  (buffer[7] == '.') {
-          target_ra = atol(buffer + 2) * 360000L + atof(buffer + 5) * 60000L;
+          target_ra = atol(buffer + 2) * 360000L + atof(buffer + 5) * 6000L;
         } else {
           target_ra = atol(buffer + 2) * 360000L + atol(buffer + 5) * 6000L + atol(buffer + 8) * 100L;
         }
         Serial.print("1");
       } else if (!strcmp(buffer, "Gr")) {
         if (high_precision) {
-          sprintf(buffer, "%02d:%02d:%02d#", target_ra / 360000L, (target_ra / 6000L) % 60, (target_ra / 100L) % 60);
+          sprintf(buffer, "%02ld:%02ld:%02ld#", target_ra / 360000L, (target_ra / 6000L) % 60, (target_ra / 100L) % 60);
         } else {
-          sprintf(buffer, "%02d:%04.1f#", target_ra / 360000L, ((target_ra / 600L) % 600) / 10.0);
+          sprintf(buffer, "%02ld:%04.1f#", target_ra / 360000L, ((target_ra / 600L) % 600) / 10.0);
         }
         Serial.print(buffer);
       } else if (!strcmp(buffer, "GR")) {
         if (high_precision) {
-          sprintf(buffer, "%02d:%02d:%02d#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);
+          sprintf(buffer, "%02ld:%02ld:%02ld#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);
         } else {
-          sprintf(buffer, "%02d:%04.1f#", ra / 360000L, ((ra / 600L) % 600) / 10.0);
+          sprintf(buffer, "%02ld:%04.1f#", ra / 360000L, ((ra / 600L) % 600) / 10.0);
         }
         Serial.print(buffer);
       } else if (!strncmp(buffer, "Sd", 2)) {
@@ -300,16 +300,16 @@ void loop() {
         Serial.print("1");
       } else if (!strcmp(buffer, "Gd")) {
         if (high_precision) {
-          sprintf(buffer, "%+03d*%02d'%02d#", target_dec / 360000L, (abs(target_dec) / 6000L) % 60, (abs(target_dec) / 100L) % 60);
+          sprintf(buffer, "%+03ld*%02ld'%02ld#", target_dec / 360000L, (abs(target_dec) / 6000L) % 60, (abs(target_dec) / 100L) % 60);
         } else {
-          sprintf(buffer, "%+03d*%02d#", target_dec / 360000L, (abs(target_dec) / 600L) % 60);
+          sprintf(buffer, "%+03ld*%0l2d#", target_dec / 360000L, (abs(target_dec) / 600L) % 60);
         }
         Serial.print(buffer);
       } else if (!strcmp(buffer, "GD")) {
 				if (high_precision) {
-          sprintf(buffer, "%+03d*%02d'%02d#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
+          sprintf(buffer, "%+03ld*%02ld'%02ld#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
         } else {
-          sprintf(buffer, "%+03d*%02d#", dec / 360000L, (abs(dec) / 600L) % 60);
+          sprintf(buffer, "%+03ld*%02ld#", dec / 360000L, (abs(dec) / 600L) % 60);
         }
         Serial.print(buffer);
       } else if (!strcmp(buffer, "CM")) {
