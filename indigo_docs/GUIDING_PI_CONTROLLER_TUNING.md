@@ -52,14 +52,14 @@ Default value is 1 which means that pure *P controller* is used, but if a *PI co
 With this the Proportional controller tuning is complete. And it is safe to stop here. It will perform excellent for most of the cases.
 
 ## Tuning the Drift Controller (PI controller)
-PI controller is needed in rare cases when there is are significant systematic errors like periodic error (PE) or significant drift due to a bad polar alignment that can not be compensated by the *P-only* controller. This usually happens with long guiding cycles of more than 10 seconds and in most of the cases this can be fixed by reducing the cycle to 2-3 seconds.
+PI controller is needed in rare cases when there is are significant systematic errors like periodic error (PE) or significant drift due to a bad polar alignment that can not be compensated by the *P-only* controller. If the issue is bad polar alignment it is strongly advised to invest time in better alignment. In case of a periodic error it usually manifests when long guiding cycles of more than 10 seconds are used. In most of the cases this can be fixed by reducing the cycle to 2-3 seconds.
 
 If this does not help and there is a drift or the mount PE is still visible in the guiding graph, as shown below then *PI controller* is here to help.
 
 ![](GUIDING_PI_CONTROLLER_TUNING/6.P_only.png)
 
 ### Tuning Procedure
-1. Completete the P-only controller tuning procedure.
+1. Perform the P-only controller tuning procedure, if it is not completed, as described above.
 
 2. Set the **Integral stacking** to a reasonable value ~10-15 frames.
 
