@@ -4,7 +4,7 @@ Backend implementation of guiding process
 
 ## Supported devices
 
-This is a meta driver that can control all underlaying CCD and Guider drivers.
+This is a meta driver that can control all underlying CCD and Guider drivers.
 
 ## Supported platforms
 
@@ -87,9 +87,11 @@ drift would become an issue. A good exposure time to start is 1 or 2 seconds.
 
 * **RA Aggressivity** and **Dec Aggressivity** - This is how much of the accumulated drift for the last cycle for RA and Dec percents to compensate. A good initial value would be 80-90% for both axis. This is the *Proportional* component aggressivity or *P Aggressivity*.
 
-* **RA Proportional weight**, **Dec Proportional weight** - *P* component weights of RA and Dec axis (*P* weight means how much of the total aggressivity *P Aggressivity* + *I Aggressivity* will be due to *P Aggressivity* ). In other words they specify how much of the total aggressivity will be due to **RA Aggressivity** and **Dec Aggressivity** respectively. **RA Proportional weight** and **Dec Proportional weight** are numbers between 0 and 1 (1 - pure *P Controller*, 0.5 - equally *P* and *I Controller* and 0 - pure *I controller*). If *PI controller* is needed a good value to start with would be 0.7 for both RA and Dec.
+* **RA Proportional weight**, **Dec Proportional weight** - **(DEPRICATED and will be removed)** -*P* component weights of RA and Dec axis (*P* weight means how much of the total aggressivity *P Aggressivity* + *I Aggressivity* will be due to *P Aggressivity* ). In other words they specify how much of the total aggressivity will be due to **RA Aggressivity** and **Dec Aggressivity** respectively. **RA Proportional weight** and **Dec Proportional weight** are numbers between 0 and 1 (1 - pure *P Controller*, 0.5 - equally *P* and *I Controller* and 0 - pure *I controller*). If *PI controller* is needed a good value to start with would be 0.7 for both RA and Dec.
 
-* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Proportional weight** and **Dec Proportional weight**) the controller is pure *Proportional* as there is no history.
+* **RA Integral gain**, **Dec Integral gain** - these are the gains of the integral error. Or how strong should be the correction for the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral gain** or **Dec Integral gain** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be 0.5 for both RA and Dec and be conservative with Integral gains.
+
+* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Integral gain** and **Dec Integral gain**) the controller is pure *Proportional* as there is no history.
 Default value is 1, which means that pure *P controller* is used, but if a *PI controller* is needed a good initial value would be around 10.
 
 * **Dithering offset X** and  **Dithering offset Y** - Add constant offset from the reference during guiding in pixels. The values are reset to 0 when a guiding process is started.
@@ -102,8 +104,8 @@ Here are several tips and guide lines, how to fine tune the *PI controller*:
 
 * The *I Controller* is over-reacting to the random errors, which leads to oscillations around the set point. They will eventually slowly fade but in some cases these oscillations may continue for a long time or not fade at all. This is why a pure *I controller* is not a good idea. The good balance between proportional and integral components is essential for the smooth and accurate guiding. In INDIGO Guider Agent we use modified PI controller which will try to dampen any *I* over-reactions to random errors and in this case *P controller* will be 100% responsible for random error compensation.
 
-* Too much *I* component may result in over-corrections and steady drifts. This means that the real systematic drift is smaller and is being over corrected, in this case **RA Proportional weight** or **Dec Proportional weight**, depending on the axis, should be increased (take some power from *I*).
-**NB:** Be conservative with with *Integral* component, as guiding may start drifting or randomly over compensate.
+* Too much *I* component may result in over-corrections and steady drifts. This means that the real systematic drift is smaller and is being over corrected, in this case **RA Integral gain** or **Dec Integral gain**, depending on the axis, should be decreased.
+**NB:** Be conservative with with *Integral* component, as guiding may start drifting or randomly over compensating.
 
 * If the guiding is bumpy and scattered, the random error may be smaller and *P* component may be over reacting, then the corresponding **Aggressivity** should be decreased (take some power from *P*).
 
