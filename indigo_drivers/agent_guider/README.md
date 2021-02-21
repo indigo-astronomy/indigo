@@ -87,8 +87,6 @@ drift would become an issue. A good exposure time to start is 1 or 2 seconds.
 
 * **RA Aggressivity** and **Dec Aggressivity** - This is how much of the accumulated drift for the last cycle for RA and Dec percents to compensate. A good initial value would be 80-90% for both axis. This is the *Proportional* component aggressivity or *P Aggressivity*.
 
-* **RA Proportional weight**, **Dec Proportional weight** - **(DEPRICATED and will be removed)** -*P* component weights of RA and Dec axis (*P* weight means how much of the total aggressivity *P Aggressivity* + *I Aggressivity* will be due to *P Aggressivity* ). In other words they specify how much of the total aggressivity will be due to **RA Aggressivity** and **Dec Aggressivity** respectively. **RA Proportional weight** and **Dec Proportional weight** are numbers between 0 and 1 (1 - pure *P Controller*, 0.5 - equally *P* and *I Controller* and 0 - pure *I controller*). If *PI controller* is needed a good value to start with would be 0.7 for both RA and Dec.
-
 * **RA Integral gain**, **Dec Integral gain** - these are the gains of the integral error. Or how strong should be the correction for the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral gain** or **Dec Integral gain** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be 0.5 for both RA and Dec and be conservative with Integral gains.
 
 * **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Integral gain** and **Dec Integral gain**) the controller is pure *Proportional* as there is no history.
@@ -109,8 +107,8 @@ Here are several tips and guide lines, how to fine tune the *PI controller*:
 
 * If the guiding is bumpy and scattered, the random error may be smaller and *P* component may be over reacting, then the corresponding **Aggressivity** should be decreased (take some power from *P*).
 
-* If the error compensation for RA or Dec is too slow (it takes many frames) and is lazily approaching (from one side) the set point, most likely the **Aggressivity** for this axis should be increased. If this does not help and and over reactions start to appear. Then the **Proportional weight** for tat axis should be decreasrd (giving more power to *I*)
+* If the error compensation for RA or Dec is too slow (it takes many frames) and is lazily approaching (from one side) the set point, most likely the **Aggressivity** for this axis should be increased. If this does not help and and over reactions start to appear. Then the **Integral gain** for that axis should be increased.
 
-* If there are oscillations or over corrections then the **Aggressivity** for the corresponding axis is most likely to high and should be decreased.
+* If there are oscillations or over corrections then the **Aggressivity** for the corresponding axis is most likely too high and should be decreased.
 
 Fine tuning a *PI controller* is a tricky business and the defaults should produce good results in most cases, so our advise is to change the settings with care.
