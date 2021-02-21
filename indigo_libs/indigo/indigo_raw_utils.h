@@ -67,7 +67,7 @@ extern indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *a
 extern indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *digest);
 extern indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *digest);
 extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y);
-extern double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double p_weight, double drift, double avg_drift);
+extern double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
 #endif /* indigo_guider_utils_h */
