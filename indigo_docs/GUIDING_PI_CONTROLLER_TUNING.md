@@ -1,6 +1,6 @@
 # INDIGO Guider Agent - PI Controller Tuning
 
-Revision: 18.02.2021 (draft)
+Revision: 21.02.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -21,16 +21,16 @@ Here we will look only in *Proportional Integral* controller settings. Which are
 
 * **RA Aggressivity** and **Dec Aggressivity** - They are the only parameters that are related to *P controller*. In most of the cases those two parameters will be enough to set. They represent how many percent of the last measured drift will be corrected.
 
-* **RA Proportional weight**, **Dec Proportional weight** are numbers between 0 and 1 (1 - pure *P Controller*, 0.5 - equally *P* and *I Controller* and 0 - pure *I controller*). this is used to Setup the Aggressivity of the *I controller* In relation to P controller.
+* **RA Integral gain** and **Dec Integral gain** - These are the gains of the integral error. Or how strong should be the correction for the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral gain** or **Dec Integral gain** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be ~0.5 for both RA and Dec and be conservative with Integral gains.
 
-* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Proportional weight** and **Dec Proportional weight**) the controller is pure *Proportional* as there is no history.
+* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Integral gain** and **Dec Integral gain**) the controller is pure *Proportional* as there is no history.
 Default value is 1 which means that pure *P controller* is used, but if a *PI controller* is needed a good initial value would be around 10.
 
 * **Dithering offset X** and  **Dithering offset Y** - Add constant offset from the reference during guiding in pixels. The values are reset to 0 when a guiding process is started. We will need those to params to check the impulse response of the guider while tunning.
 
 ## Tuning the Drift Controller (P-only controller)
 
-1. Set **RA Proportional weight** and **Dec Proportional weight** to 1.
+1. Set **RA Integral gain** and **Dec Integral gain** to 0 and **Integral stacking** to 1.
 (P-only Controller). And set **RA Aggressivity** and **Dec Aggressivity** to ~90%.
 
 2. Start the guiding and after it settles set dithering offset to X (or Y) of several pixels (5 or 6 px is OK) to simulate a bump in the guiding as shown on the screenshot:
@@ -63,11 +63,11 @@ If this does not help and there is a drift or the mount PE is still visible in t
 
 2. Set the **Integral stacking** to a reasonable value ~10-15 frames.
 
-3. Set the **Proportional weight** to around 0.7 for the axis that shows the error (in this case RA is showing significant PE). Let it run for several minutes (a full PE cycle).
+3. Set the **Integral gain** to around 0.5 for the axis that shows the error (in this case RA is showing significant PE). Let it run for several minutes (a full PE cycle).
 
-4. Check the if the error is still there. If so, decrease **Proportional weight** with 0.05 - 0.1 step and let it run several more minutes.
+4. Check the if the error is still there. If so, increase **Integral gain** (in 0.05 - 0.1 steps) and let it run several more minutes.
 
-5. Repeat step 4 until the error is gone. Please be conservative with **Proportional weight** as bringing it way down may result in slow drifts or sudden jumps. It is preferable to leave a bit of the error but not sacrificing the stability.
+5. Repeat step 4 until the error is gone. Please be conservative with **Integral gain** as bringing it way up may result in slow drifts, jumps oscillations around the set point. Sometimes it is preferable to leave a bit of the error but not sacrificing the stability, how much depends on your setup, seeing and etc, as long as the stars look round on the imaging sensor is totally fine.
 
 6. Now we need to test its response to sudden jumps again, as described above in the P-only controller tuning section. If we have over reaction or slow reaction **Aggressivity** for the corresponding axis should be adjusted again.
 
