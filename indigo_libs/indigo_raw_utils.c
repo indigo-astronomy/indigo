@@ -1207,11 +1207,15 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 	return INDIGO_OK;
 }
 
-double indigo_guider_reponse(double p_aggressiveness, double p_weight, double drift, double avg_drift) {
-	if (p_weight > 1) p_weight = 1;
-	if (p_weight < 0.01) p_weight = 0.01;
-
-	return (-1 * (p_aggressiveness * drift + p_aggressiveness * (1 / p_weight - 1) * avg_drift));
+double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double p_weight, double drift, double avg_drift) {
+	if (i_gain < 0) {
+		if (p_weight > 1) p_weight = 1;
+		if (p_weight < 0.01) p_weight = 0.01;
+		i_gain = p_gain * (1 / p_weight - 1);
+	}
+	double response = -1 * (p_gain * drift + i_gain * avg_drift * guide_cycle_time);
+	INDIGO_DEBUG(indigo_debug("%s(): P = %.4f, I = %.4f, response = %.4f, drift = %.4f, avg_drift = %.4f", __FUNCTION__, p_gain, i_gain, response, drift, avg_drift));
+	return response;
 }
 
 indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y) {
