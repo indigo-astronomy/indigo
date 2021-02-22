@@ -19,29 +19,30 @@ to get the best performance one may need to tweak them.
 
 Here we will look only in *Proportional Integral* controller settings. Which are described in the Guider Angent readme (link here).
 
-* **RA Aggressivity** and **Dec Aggressivity** - They are the only parameters that are related to *P controller*. In most of the cases those two parameters will be enough to set. They represent how many percent of the last measured drift will be corrected.
+* **RA Proportional aggressivity** and **Dec Proportional aggressivity** - They are the only parameters that are related to *P controller*. In most of the cases those two parameters will be enough to set. They represent how many percent of the last measured drift will be corrected.
+The **Proportional aggressivity** is your primary term for controlling the error. this directly scales your error, so with a small **Proportional aggressivity** the controller will make small attempts to minimize the error, and with a large **Proportional aggressivity** the controller will make a larger attempt. If the **Proportional aggressivity** is too small you might never minimize the error and not be able to respond to changes affecting your system, and if it is too large you can have an unstable behavior and severely overshoot the desired value. A good initial value is ~90% for both RA and Dec.
 
-* **RA Integral gain** and **Dec Integral gain** - These are the gains of the integral error. Or how strong should be the correction for the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral gain** or **Dec Integral gain** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be ~0.5 for both RA and Dec and be conservative with Integral gains.
+* **RA Integral aggressivity** and **Dec Integral aggressivity** - These are the gains of the integral error. Or how strong should be the correction for the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral aggressivity** or **Dec Integral aggressivity** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be ~50% for both RA and Dec. Please note that 100% does not correspond to 100% of the systematic error, there are many reasons for that. For example **Proportional aggressivity** may have already corrected most of the systematic error. So think of it as how strong the Integral component should react to the residual errors (after Proportional correction) accumulated over time. Also note that this term is often the cause of instability in your controller, so be conservative with it.
 
-* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Integral gain** and **Dec Integral gain**) the controller is pure *Proportional* as there is no history.
+* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Integral aggressivity** and **Dec Integral aggressivity**) the controller is pure *Proportional* as there is no history.
 Default value is 1 which means that pure *P controller* is used, but if a *PI controller* is needed a good initial value would be around 10.
 
 * **Dithering offset X** and  **Dithering offset Y** - Add constant offset from the reference during guiding in pixels. The values are reset to 0 when a guiding process is started. We will need those to params to check the impulse response of the guider while tunning.
 
 ## Tuning the Drift Controller (P-only controller)
 
-1. Set **RA Integral gain** and **Dec Integral gain** to 0 and **Integral stacking** to 1.
-(P-only Controller). And set **RA Aggressivity** and **Dec Aggressivity** to ~90%.
+1. Set **RA Integral aggressivity** and **Dec Integral aggressivity** to 0 and **Integral stacking** to 1.
+(P-only Controller). And set **RA Proportional aggressivity** and **Dec Proportional aggressivity** to ~90%.
 
 2. Start the guiding and after it settles set dithering offset to X (or Y) of several pixels (5 or 6 px is OK) to simulate a bump in the guiding as shown on the screenshot:
 
 ![](GUIDING_PI_CONTROLLER_TUNING/1.ICP_dither.png)
 
-3. Check the guiding response. If the response is too slow like on the picture, the **Aggressivity** for this axis should be increased. In this case the red line is Right Ascension so we need to boost **RA Aggressivity**.
+3. Check the guiding response. If the response is too slow like on the picture, the **Proportional aggressivity** for this axis should be increased. In this case the red line is Right Ascension so we need to boost **RA Proportional aggressivity**.
 
 ![](GUIDING_PI_CONTROLLER_TUNING/2.undershoot.png)
 
-4. If the guiding response is overshooting, **Aggressivity** Should be decreased. Here we went too far with **RA Aggressivity** and we need to reduce it.
+4. If the guiding response is overshooting, **Proportional aggressivity** Should be decreased. Here we went too far with **RA Proportional aggressivity** and we need to reduce it.
 
 ![](GUIDING_PI_CONTROLLER_TUNING/3.overshoot.png)
 
@@ -63,13 +64,13 @@ If this does not help and there is a drift or the mount PE is still visible in t
 
 2. Set the **Integral stacking** to a reasonable value ~10-15 frames.
 
-3. Set the **Integral gain** to around 0.5 for the axis that shows the error (in this case RA is showing significant PE). Let it run for several minutes (a full PE cycle).
+3. Set the **Integral aggressivity** to around 50% for the axis that shows the error (in this case RA is showing significant PE). Let it run for several minutes (a full PE cycle).
 
-4. Check the if the error is still there. If so, increase **Integral gain** (in 0.05 - 0.1 steps) and let it run several more minutes.
+4. Check the if the error is still there. If so, increase **Integral aggressivity** (in 5 - 10% steps) and let it run several more minutes.
 
-5. Repeat step 4 until the error is gone. Please be conservative with **Integral gain** as bringing it way up may result in slow drifts, jumps oscillations around the set point. Sometimes it is preferable to leave a bit of the error but not sacrificing the stability, how much depends on your setup, seeing and etc, as long as the stars look round on the imaging sensor is totally fine.
+5. Repeat step 4 until the error is gone. Please be conservative with **Integral aggressivity** as bringing it way up may result in slow drifts, jumps or oscillations around the set point. Sometimes it is preferable to leave a bit of the error but not sacrificing the stability, how much depends on your setup, seeing and etc, as long as the stars look round on the imaging sensor is totally fine even if it shows some residual PE on the graph.
 
-6. Now we need to test its response to sudden jumps again, as described above in the P-only controller tuning section. If we have over reaction or slow reaction **Aggressivity** for the corresponding axis should be adjusted again.
+6. Now we need to test its response to sudden jumps again, as described above in the P-only controller tuning section but this time with the I component turned on. If we have over reaction or slow reaction the **Proportional aggressivity** for the corresponding axis should be adjusted again.
 
 This is how a well tuned controller should perform:
 
