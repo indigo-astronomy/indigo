@@ -85,11 +85,11 @@ drift would become an issue. A good exposure time to start is 1 or 2 seconds.
 
 * **Max pulse** - Maximum pulse length for a single correction in seconds. If the calculated correction pulse is longer it will be truncated to this value. With too much drift the guider may loose the star. Also with too long pulse the time between corrections may become enough to cause large tracking errors. Values around 1 second are OK.
 
-* **RA Aggressivity** and **Dec Aggressivity** - This is how much of the accumulated drift for the last cycle for RA and Dec percents to compensate. A good initial value would be 80-90% for both axis. This is the *Proportional* component aggressivity or *P Aggressivity*.
+* **RA Proportional aggressivity** and **Dec Proportional aggressivity** - This is how much of the accumulated drift for the last cycle for RA and Dec percents to compensate. A good initial value would be 80-90% for both axis. This is the *Proportional* component aggressivity or *P Aggressivity*.
 
-* **RA Integral gain**, **Dec Integral gain** - these are the gains of the integral error. Or how strong should be the correction for the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral gain** or **Dec Integral gain** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be 0.5 for both RA and Dec and be conservative with Integral gains.
+* **RA Integral aggressivity**, **Dec Integral aggressivity** - these are the gains of the integral error. Or how strong should be the correction for the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral aggressivity** or **Dec Integral aggressivity** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be 0.5 for both RA and Dec and be conservative with Integral aggressivity.
 
-* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Integral gain** and **Dec Integral gain**) the controller is pure *Proportional* as there is no history.
+* **Integral stacking** - the history length (in number of frames) to be used for the *Integral* component of the controller. If stacking is 1 (regardless of the values of the **RA Integral aggressivity** and **Dec Integral aggressivity**) the controller is pure *Proportional* as there is no history.
 Default value is 1, which means that pure *P controller* is used, but if a *PI controller* is needed a good initial value would be around 10.
 
 * **Dithering offset X** and  **Dithering offset Y** - Add constant offset from the reference during guiding in pixels. The values are reset to 0 when a guiding process is started.
@@ -98,17 +98,17 @@ Default value is 1, which means that pure *P controller* is used, but if a *PI c
 
 Here are several tips and guide lines, how to fine tune the *PI controller*:
 
-* The *P Controller* is stable and can be used alone. With sufficient **Aggressivity** and short exposures, will always compensate for any random and will perform good enough with systematic errors. The *P Controller* is easy to tune and gives reasonably good results. This is why it is the default in indigo_guider_agent. However the guiding will not be as smooth as the guiding of a well tuned *PI Controller*.
+* The *P Controller* is stable and can be used alone. With sufficient **Proportional aggressivity** and short exposures, it will always compensate for any random errors and will perform good enough with systematic errors. The *P Controller* is easy to tune and gives reasonably good results. This is why it is the default in indigo_guider_agent. However in some cases the guiding will not be as smooth as the guiding of a well tuned *PI Controller*.
 
 * The *I Controller* is over-reacting to the random errors, which leads to oscillations around the set point. They will eventually slowly fade but in some cases these oscillations may continue for a long time or not fade at all. This is why a pure *I controller* is not a good idea. The good balance between proportional and integral components is essential for the smooth and accurate guiding. In INDIGO Guider Agent we use modified PI controller which will try to dampen any *I* over-reactions to random errors and in this case *P controller* will be 100% responsible for random error compensation.
 
-* Too much *I* component may result in over-corrections and steady drifts. This means that the real systematic drift is smaller and is being over corrected, in this case **RA Integral gain** or **Dec Integral gain**, depending on the axis, should be decreased.
-**NB:** Be conservative with with *Integral* component, as guiding may start drifting or randomly over compensating.
+* Too much *I* component may result in over-corrections, steady drifts and instability in general. This means that the real systematic drift is smaller and is being over corrected, in this case **RA Integral aggressivity** or **Dec Integral aggressivity**, depending on the axis, should be decreased.
+**NB:** Be conservative with with *Integral* component, as guiding may become unstable.
 
-* If the guiding is bumpy and scattered, the random error may be smaller and *P* component may be over reacting, then the corresponding **Aggressivity** should be decreased (take some power from *P*).
+* If the guiding is bumpy and scattered, the random error may be smaller and *P* component may be over reacting, then the corresponding **Proportional aggressivity** should be decreased (take some power from *P*).
 
-* If the error compensation for RA or Dec is too slow (it takes many frames) and is lazily approaching (from one side) the set point, most likely the **Aggressivity** for this axis should be increased. If this does not help and and over reactions start to appear. Then the **Integral gain** for that axis should be increased.
+* If the error compensation for RA or Dec is too slow (it takes many frames) and is lazily approaching (from one side) the set point, most likely the **Proportional aggressivity** for this axis should be increased. If this does not help and and over reactions start to appear. Then the **Integral ** for that axis should be increased.
 
-* If there are oscillations or over corrections then the **Aggressivity** for the corresponding axis is most likely too high and should be decreased.
+* If there are oscillations or over corrections then the **Proportional aggressivity** for the corresponding axis is most likely too high and should be decreased.
 
 Fine tuning a *PI controller* is a tricky business and the defaults should produce good results in most cases, so our advise is to change the settings with care.

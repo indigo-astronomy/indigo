@@ -83,8 +83,8 @@
 #define AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+13)
 #define AGENT_GUIDER_SETTINGS_AGG_RA_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+14)
 #define AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+15)
-#define AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+16)
-#define AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
+#define AGENT_GUIDER_SETTINGS_I_AGG_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+16)
+#define AGENT_GUIDER_SETTINGS_I_AGG_DEC_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
 #define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
 #define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
 #define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
@@ -1084,7 +1084,7 @@ static void guide_process(indigo_device *device) {
 			if (fabs(drift_ra) > min_error) {
 				correction_ra = indigo_guider_reponse(
 					AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100,
-					AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value,
+					AGENT_GUIDER_SETTINGS_I_AGG_RA_ITEM->number.value / 100,
 					AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value,
 					drift_ra,
 					avg_drift_ra
@@ -1100,7 +1100,7 @@ static void guide_process(indigo_device *device) {
 			if (fabs(drift_dec) > min_error) {
 				correction_dec = indigo_guider_reponse(
 					AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100,
-					AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value,
+					AGENT_GUIDER_SETTINGS_I_AGG_DEC_ITEM->number.value / 100,
 					AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value,
 					drift_dec,
 					avg_drift_dec
@@ -1294,10 +1294,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM, AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM_NAME, "Min error (px)", 0, 5, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM_NAME, "Min pulse (s)", 0, 1, 0.01, 0.02);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM_NAME, "Max pulse (s)", 0, 5, 0.1, 1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA aggressivity (%)", 0, 500, 5, 100);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "Dec aggressivity (%)", 0, 500, 5, 100);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM_NAME, "RA Integral gain", 0, 10, 0.05, 0.5);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM_NAME, "Dec Integral gain", 0, 10, 0.05, 0.5);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA Proportional aggressivity (%)", 0, 500, 5, 100);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "Dec Proportional aggressivity (%)", 0, 500, 5, 100);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_I_AGG_RA_ITEM_NAME, "RA Integral aggressivity (%)", 0, 500, 5, 50);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_I_AGG_DEC_ITEM_NAME, "Dec Integral aggressivity (%)", 0, 500, 5, 50);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Integral stacking", 1, MAX_STACK, 1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_X_ITEM, AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, "Dithering offset X (px)", -15, 15, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME, "Dithering offset Y (px)", -15, 15, 1, 0);
