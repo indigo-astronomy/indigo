@@ -108,7 +108,7 @@ Here are several tips and guide lines, how to fine tune the *PI controller*:
 
 * If the guiding is bumpy and scattered, the random error may be smaller and *P* component may be over reacting, then the corresponding **Proportional aggressivity** should be decreased (take some power from *P*).
 
-* If the error compensation for RA or Dec is too slow (it takes many frames) and is lazily approaching (from one side) the set point, most likely the **Proportional aggressivity** for this axis should be increased. If this does not help and and over reactions start to appear. Then the **Integral ** for that axis should be increased.
+* If the error compensation for RA or Dec is too slow (it takes many frames) and is lazily approaching (from one side) the set point, most likely the **Proportional aggressivity** for this axis should be increased.
 
 * If there are oscillations or over corrections then the **Proportional aggressivity** for the corresponding axis is most likely too high and should be decreased.
 
