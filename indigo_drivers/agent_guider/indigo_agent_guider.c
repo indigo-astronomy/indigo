@@ -357,6 +357,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
 					indigo_send_message(device, "Can not detect star, reseting selection");
+					DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
+					DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
 					for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 						indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 						indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
