@@ -70,7 +70,7 @@ If this does not help and there is a drift or the mount PE is still visible in t
 
 5. Repeat step 4 until the error is gone. Please be conservative with **Integral gain** as bringing it way up may result in slow drifts, jumps or oscillations around the set point. Sometimes it is preferable to leave a bit of the error but not sacrificing the stability, how much depends on your setup, seeing and etc, as long as the stars look round on the imaging sensor is totally fine even if it shows some residual PE on the graph.
 
-6. Now we need to test its response to sudden jumps again, as described above in the P-only controller tuning section but this time with the I component turned on. If we have over reaction or slow reaction the **Proportional aggressivity** for the corresponding axis should be adjusted again.
+6. Now you need to test its response to sudden jumps again, as described above in the P-only controller tuning section but this time with the I component turned on. If we have over reaction the **Proportional aggressivity** for the corresponding axis should be decreased. Also if during the guiding, without large errors the graph looks scattered and rough, you may need to reduce the **Proportional aggressivity** even more, even if it tends to under correct a bit on large jumps. This is because INDIGO guider agent uses modified PI controller. Integral component kicks in only with small drifts to compensate the small residual errors. So on general, increasing the **Integral gain** for any axis may require reducing **Proportional aggressivity** for this axis. You have to find the best balance for your setup.
 
 This is how a well tuned controller should perform:
 
