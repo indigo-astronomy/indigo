@@ -31,14 +31,15 @@ hot lines and hot columns. However the limitation is that it may not work well i
 bright stars on the border of the frame. In this case **Selection** mode
 should be used. **Donuts** has one configuration parameter *Edge Clipping* (in pixels) and should
 be used if the edge of the frame contains artifacts or dark areas.
+**Donts** drift detection may be susceptible to bad polar alignment, it may lead to small drifts due to the field rotation.
 
 2. **Selection** - It uses the centroid of a small area around the star with
-a specified radius to detect the drift. An average from given number of stars is used. This is universal method that should work in most of the cases.
-It is resilient to hot pixels, hot lines and hot columns. **Selection** has several configuration parameters,
-selection center given by *Selection X*, *Selection Y* and *Radius* all in pixels. If single star is used, it has one additional
-parameter *Subframe* used for better performance. This is an integer number meaning how many radii
+a specified radius to detect the drift. In multi-star mode an average drift from a given number of stars is used.
+This is universal method that should work in most of the cases. It is resilient to hot pixels, hot lines and hot columns.
+**Selection** has several configuration parameters, selection center given by *Selection X*, *Selection Y* and *Radius* all in pixels. If single star is used, it has one additional parameter - *Subframe* used for better performance and lower network load. This is an integer number meaning how many radii
 around the selection should be downloaded from the camera. It has two main benefits - with a remote setup
 it decreases the network load and it also speeds up the image download time from the camera.
+In Multi-star mode **Selection** algorithm may be susceptible to bad polar alignment, it may lead to small drifts due to the field rotation.
 
 4. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
 large portion of the frame like Moon and planets. It will **not work** with stars.
