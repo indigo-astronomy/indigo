@@ -1,6 +1,6 @@
 # INDIGO Guider Agent - PI Controller Tuning
 
-Revision: 21.02.2021 (draft)
+Revision: 26.02.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -50,7 +50,10 @@ Default value is 1 which means that pure *P controller* is used, but if a *PI co
 
 ![](GUIDING_PI_CONTROLLER_TUNING/4.ok_response.png)
 
-With this the Proportional controller tuning is complete. And it is safe to stop here. It will perform excellent for most of the cases.
+**NB:** After the tuning is complete, if the graph during the guiding looks scattered and rough you may need to reduce **Proportional aggressivity**
+a but. If it drifts in one direction you may need to increase it.
+
+With this the Proportional controller tuning is complete. And it is safe to stop here. It will perform quite well for most of the cases.
 
 ## Tuning the Drift Controller (PI controller)
 PI controller is needed in rare cases when there is are significant systematic errors like periodic error (PE) or significant drift due to a bad polar alignment that can not be compensated by the *P-only* controller. If the issue is bad polar alignment it is strongly advised to invest time in better alignment. In case of a periodic error it usually manifests when long guiding cycles of more than 10 seconds are used. In most of the cases this can be fixed by reducing the cycle to 2-3 seconds.
