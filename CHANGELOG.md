@@ -2,6 +2,65 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-144] - Sun Feb 28 2021
+### Overall:
+- add conditional deb dependency to indigo-astrometry or astrometry.net
+- indigo_client: fix race condition
+- weather & sky conditions properties standardized
+- indigo_docs: GUIDING_PI_CONTROLLER_TUNING added
+
+### New Drivers:
+- indigo_dome_skyroof: Interactive Astronomy SkyRoof driver added
+- insigo_aux_skyalert: Interactive Astronomy SkyAlert driver added
+
+### Driver Fixes:
+- indigo_agent_imager:
+	- DSLR raw formats added to download code
+
+- indigo_agent_guider:
+	- multi-star selection mode added
+	- donuts will repeat 3x in case of poor SNR
+	- fix buffer size in indigo_find_stars_precise()
+	- make drift detection more precise
+	- new Proportional-Integral controller implementation, Proportional Weight is removed in favor of Integral gain
+
+- indigo_agent_mount:
+	- disconnect bug fixed
+	- lx200 server cleanup
+
+- indigo_mount_ioptron:
+	- GEM45EC support added
+	- MOUNT_CUSTOM_TRACKING_RATE support implemented
+	- lunar tracking rate fixed
+	- hc8407 support added
+	- GEM45 support added
+
+- indigo_mount_rainbow:
+	- SYNC fixed
+	- detach fixed
+
+- indigo_ccd_asi:
+	- BPP can be set from CCD_FRAME
+
+- indigo_ccd_qsi:
+	- fix CCD_TEMPERATURE handling
+
+- indigo_ccd_touptek:
+	- fix CCD_TEMPERATURE handling
+
+- indigo_ccd_altair:
+	- fix CCD_TEMPERATURE handling
+
+- indigo_mount_lx200:
+	- simulator fixed
+	- aGotino support added
+
+- indigo_ccd_simulator:
+	- cooler control is consistent with real ccd drivers now
+
+- indigo_dome_simulator:
+	- state fixes
+
 ## [2.0-142] - Sat Jan 23 2021
 ### Overall:
 - indigo_server: BLOB proxy added for remote servers
