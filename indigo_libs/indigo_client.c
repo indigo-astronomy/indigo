@@ -98,8 +98,8 @@ bool indigo_driver_initialized(char *driver_name) {
 }
 
 static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle, bool init, indigo_driver_entry **driver) {
-	int empty_slot = used_driver_slots; /* the first slot after the last used is a good candidate */
 	pthread_mutex_lock(&mutex);
+	int empty_slot = used_driver_slots; /* the first slot after the last used is a good candidate */
 	for (int dc = 0; dc < used_driver_slots;  dc++) {
 		if (indigo_available_drivers[dc].driver == entry_point) {
 			INDIGO_LOG(indigo_log("Driver %s already loaded", indigo_available_drivers[dc].name));
@@ -269,8 +269,8 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 }
 
 indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess) {
-	int empty_slot = used_subprocess_slots;
 	pthread_mutex_lock(&mutex);
+	int empty_slot = used_subprocess_slots;
 	for (int dc = 0; dc < used_subprocess_slots;  dc++) {
 		if (indigo_available_subprocesses[dc].thread_started && !strcmp(indigo_available_subprocesses[dc].executable, executable)) {
 			INDIGO_LOG(indigo_log("Subprocess %s already started", indigo_available_subprocesses[dc].executable));
@@ -461,8 +461,8 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
 }
 
 indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server) {
-	int empty_slot = used_server_slots;
 	pthread_mutex_lock(&mutex);
+	int empty_slot = used_server_slots;
 	for (int dc = 0; dc < used_server_slots; dc++) {
 		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port && indigo_available_servers[dc].connection_id == connection_id) {
 			INDIGO_LOG(indigo_log("Server %s:%d already connected (id=%d)", indigo_available_servers[dc].host, indigo_available_servers[dc].port, indigo_available_servers[dc].connection_id));
