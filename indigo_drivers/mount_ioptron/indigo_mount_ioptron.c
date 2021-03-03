@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -145,7 +145,7 @@ static void ieq_get_coords(indigo_device *device) {
 	} else if (PRIVATE_DATA->protocol >= 0x0300) {
 		long ra, dec;
 		char side_of_pier, pointing_state;
-		if (ieq_command(device, ":GEP#", response, sizeof(response)) && sscanf(response, "%9ld%8ld%c%c", &dec, &ra, &side_of_pier, &pointing_state) == 2) {
+		if (ieq_command(device, ":GEP#", response, sizeof(response)) && sscanf(response, "%9ld%8ld%c%c", &dec, &ra, &side_of_pier, &pointing_state) == 4) {
 			PRIVATE_DATA->currentDec = dec / 100.0 / 60.0 / 60.0;
 			PRIVATE_DATA->currentRA = ra / 1000.0 / 60.0 / 60.0;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -337,6 +337,10 @@ static bool ieq_open(indigo_device *device) {
 					PRIVATE_DATA->protocol = 0x0300;
 					PRIVATE_DATA->no_park = false;
 				}
+				if (strncmp("210105", response, 6) <= 0 && (product == 43  || product == 44)) {
+					PRIVATE_DATA->protocol = 0x0300;
+					PRIVATE_DATA->no_park = false;
+				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware #1:  %s", response);
 				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 				if (ieq_command(device, ":FW2#", response, sizeof(response))) {
@@ -453,6 +457,7 @@ static bool ieq_open(indigo_device *device) {
 				if (ieq_command(device, ":GTR#", response, sizeof(response))) {
 					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = atoi(response) / 10000.0;
 				}
+				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 			}
 			if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
