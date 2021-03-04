@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -110,6 +110,8 @@ static double index_diameters[][2] = {
 	{ 1400, 2000 }
 };
 
+static char base_dir[512];
+
 #define ASTROMETRY_DEVICE_PRIVATE_DATA				((astrometry_private_data *)device->private_data)
 #define ASTROMETRY_CLIENT_PRIVATE_DATA				((astrometry_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
@@ -161,7 +163,7 @@ typedef struct {
 // --------------------------------------------------------------------------------
 
 static bool execute_command(indigo_device *device, char *command, ...) {
-	char buffer[1024];
+	char buffer[8 * 1024];
 	va_list args;
 	va_start(args, command);
 	vsnprintf(buffer, sizeof(buffer), command, args);
@@ -178,7 +180,9 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
 			double d1, d2;
 			char s[16];
-			if (sscanf(line, "simplexy: nx=%d, ny=%d", &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width, &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) == 2) {
+			if (strstr(line, "message:")) {
+				indigo_send_message(device, line + 9);
+			} else if (sscanf(line, "simplexy: nx=%d, ny=%d", &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width, &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) == 2) {
 			} else if (sscanf(line, "Field center: (RA,Dec) = (%lg, %lg)", &d1, &d2) == 2) {
 				AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d1 / 15;
 				AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d2;
@@ -207,6 +211,8 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		}
 		pclose(output);
 		return true;
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute %s (%s)", command, strerror(errno));
 	}
 	return false;
 }
@@ -221,7 +227,8 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		void *intermediate_image = NULL;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-		char *base = tempnam(NULL, "image");
+		char base[512];
+		sprintf(base, "%s/%s_%lX", base_dir, "image", time(0));
 #pragma clang diagnostic pop
 		// convert any input image to FITS file
 		int handle = open(base, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -372,7 +379,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Running plate solver on \"%s\" ...", base);
 		char path[INDIGO_VALUE_SIZE];
-		snprintf(path, sizeof((path)), "%s/.indigo/astrometry/astrometry.cfg", getenv("HOME"));
+		snprintf(path, sizeof((path)), "%s/astrometry.cfg", base_dir);
 		handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -380,7 +387,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			goto cleanup;
 		}
 		char config[INDIGO_VALUE_SIZE];
-		snprintf(config, sizeof(config), "add_path %s/.indigo/astrometry\n", getenv("HOME"));
+		snprintf(config, sizeof(config), "add_path %s\n", base_dir);
 		indigo_write(handle, config, strlen(config));
 		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; k++) {
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
@@ -402,7 +409,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		if (AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value > 1) {
 			hints_index += sprintf(hints + hints_index, " -d %d", (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value);
 		}
-		if (!execute_command(device, "image2xy -O%s -o %s.xy %s", hints, base, base)) {
+		if (!execute_command(device, "image2xy -O%s -o \"%s.xy\" \"%s\"", hints, base, base)) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "image2xy failed");
 			goto cleanup;
@@ -422,7 +429,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value);
 		}
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
-		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config %s/.indigo/astrometry/astrometry.cfg --axy %s.axy %s.xy", hints, getenv("HOME"), base, base))
+		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config \"%s/astrometry.cfg\" --axy \"%s.axy\" \"%s.xy\"", hints, base_dir, base, base))
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed)
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -432,8 +439,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_OK_STATE)
 			indigo_platesolver_sync(device);
 	cleanup:
-		execute_command(device, "rm -rf %s %s.xy %s.axy %s.wcs %s.corr %s.match %s.rdls %s.solved %s-indx.xyls", base, base, base, base, base, base, base, base, base);
-		free(base);
+		execute_command(device, "rm -rf \"%s\" \"%s.xy\" \"%s.axy\" \"%s.wcs\" \"%s.corr\" \"%s.match\" \"%s.rdls\" \"%s.solved\" \"%s-indx.xyls\"", base, base, base, base, base, base, base, base, base);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
@@ -452,13 +458,13 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 		for (int j = 0; index_files[j]; j++) {
 			char *file_name = index_files[j];
 			if (!strncmp(file_name, item->name, 10)) {
-				snprintf(path, sizeof((path)), "%s/.indigo/astrometry/%s.fits", getenv("HOME"), file_name);
+				snprintf(path, sizeof((path)), "%s/%s.fits", base_dir, file_name);
 				if (item->sw.value) {
 					if (access(path, F_OK) == 0) {
 						continue;
 					}
 					indigo_send_message(device, "Downloading %s...", file_name);
-					if (!execute_command(device, "curl -L -s -o %s http://data.astrometry.net/%s/%s.fits", path, dir, file_name)) {
+					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/%s.fits", path, dir, file_name)) {
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
 						return;
@@ -533,7 +539,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
 				if (!strncmp(file_name, name, 10)) {
-					snprintf(path, sizeof((path)), "%s/.indigo/astrometry/%s.fits", getenv("HOME"), file_name);
+					snprintf(path, sizeof((path)), "%s/%s.fits", base_dir, file_name);
 					if (access(path, F_OK)) {
 						present = false;
 						break;
@@ -557,7 +563,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
 				if (!strncmp(file_name, name, 10)) {
-					snprintf(path, sizeof((path)), "%s/.indigo/astrometry/%s.fits", getenv("HOME"), file_name);
+					snprintf(path, sizeof((path)), "%s/%s.fits", base_dir, file_name);
 					if (access(path, F_OK)) {
 						present = false;
 						break;
@@ -571,8 +577,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.save_config = astrometry_save_config;
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.solve = astrometry_solve;
-		snprintf(path, sizeof((path)), "%s/.indigo/astrometry/", getenv("HOME"));
-		mkdir(path, 0777);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -656,6 +660,13 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			char *env = getenv("INDIGO_CACHE_BASE");
+			if (env) {
+				strcpy(base_dir, env);
+			} else {
+				snprintf(base_dir, sizeof((base_dir)), "%s/.indigo/astrometry", getenv("HOME"));
+			}
+			mkdir(base_dir, 0777);
 			void *private_data = indigo_safe_malloc(sizeof(astrometry_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
