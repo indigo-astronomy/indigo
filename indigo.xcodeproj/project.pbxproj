@@ -1028,6 +1028,10 @@
 		59463C1620DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main_bt.c; sourceTree = "<group>"; };
 		59463C1720DE6781004950F2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59463C1820DE6781004950F2 /* indigo_focuser_wemacro_bt.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_focuser_wemacro_bt.m; sourceTree = "<group>"; };
+		594A912925F4D1EB002691D0 /* common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
+		594A912B25F4D940002691D0 /* ioptron_8406_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_8406_simulator.ino; sourceTree = "<group>"; };
+		594A913525F52415002691D0 /* ioptron_8407_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_8407_simulator.ino; sourceTree = "<group>"; };
+		594A913D25F5420B002691D0 /* ioptron_1.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_1.0_simulator.ino; sourceTree = "<group>"; };
 		594C6FBB24DF2900000E4BF0 /* MAKEFILES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MAKEFILES.md; sourceTree = "<group>"; };
 		594C6FBC24DF2900000E4BF0 /* INDIGO_SERVER_AND_DRIVERS_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_SERVER_AND_DRIVERS_GUIDE.md; sourceTree = "<group>"; };
 		594C6FBD24DF2901000E4BF0 /* INDIGO_AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_AGENTS.md; sourceTree = "<group>"; };
@@ -1069,7 +1073,6 @@
 		595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_snoop.h; sourceTree = "<group>"; };
 		595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent.h; sourceTree = "<group>"; };
 		595AA1D01FC5EEFE00350E7B /* indigo_agent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent.c; sourceTree = "<group>"; };
-		595AEB0F230FDE0200AB5C99 /* ioptron_2.5_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.5_simulator.ino; sourceTree = "<group>"; };
 		595B88EB242CFEA2008CA4E2 /* indigo_token.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_token.c; sourceTree = "<group>"; };
 		595E9FBE233E65F7006E01D3 /* make_dslr_table.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = make_dslr_table.py; sourceTree = "<group>"; };
 		595E9FBF233E6607006E01D3 /* dslr.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = dslr.csv; path = data/dslr.csv; sourceTree = SOURCE_ROOT; };
@@ -2417,7 +2420,6 @@
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
-		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59AF31F621F25E7A0008CC52 /* d3.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.min.js; sourceTree = "<group>"; };
 		59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.geo.projection.min.js; sourceTree = "<group>"; };
 		59AF320721F262280008CC52 /* constellations.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.json; sourceTree = "<group>"; wrapsLines = 1; };
@@ -2443,6 +2445,9 @@
 		59B81ECC2337AA2E00DFA81B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59B81ECE2337AA2E00DFA81B /* indigo_dome_nexdome.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_nexdome.h; sourceTree = "<group>"; };
 		59B81ED02337AA2E00DFA81B /* nexdome_simulator.ino */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = nexdome_simulator.ino; sourceTree = "<group>"; };
+		59B9751425F5600300A6C3E7 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
+		59B9751C25F5654400A6C3E7 /* ioptron_2.5_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_2.5_simulator.ino; sourceTree = "<group>"; };
+		59B9752425F568FE00A6C3E7 /* ioptron_3.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_3.0_simulator.ino; sourceTree = "<group>"; };
 		59BBD17021823693008199D6 /* indigo_ccd_altair.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_altair.h; sourceTree = "<group>"; };
 		59BBD17121823693008199D6 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59BBD17221823693008199D6 /* indigo_ccd_altair_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_altair_main.c; sourceTree = "<group>"; };
@@ -5144,6 +5149,52 @@
 			path = focuser_wemacro_bt;
 			sourceTree = "<group>";
 		};
+		594A911625F38B62002691D0 /* ioptron_3.0_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59B9752425F568FE00A6C3E7 /* ioptron_3.0_simulator.ino */,
+			);
+			path = ioptron_3.0_simulator;
+			sourceTree = "<group>";
+		};
+		594A911F25F4300C002691D0 /* ioptron_1.0_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				594A913D25F5420B002691D0 /* ioptron_1.0_simulator.ino */,
+			);
+			path = ioptron_1.0_simulator;
+			sourceTree = "<group>";
+		};
+		594A912825F4D18E002691D0 /* ioptron_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				594A912A25F4D8B7002691D0 /* ioptron_8406_simulator */,
+				594A913325F52415002691D0 /* ioptron_8407_simulator */,
+				594A911F25F4300C002691D0 /* ioptron_1.0_simulator */,
+				59AEB117215446960008A729 /* ioptron_2.0_simulator */,
+				595AEB0E230FDE0200AB5C99 /* ioptron_2.5_simulator */,
+				594A911625F38B62002691D0 /* ioptron_3.0_simulator */,
+				594A912925F4D1EB002691D0 /* common.h */,
+			);
+			path = ioptron_simulator;
+			sourceTree = "<group>";
+		};
+		594A912A25F4D8B7002691D0 /* ioptron_8406_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				594A912B25F4D940002691D0 /* ioptron_8406_simulator.ino */,
+			);
+			path = ioptron_8406_simulator;
+			sourceTree = "<group>";
+		};
+		594A913325F52415002691D0 /* ioptron_8407_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				594A913525F52415002691D0 /* ioptron_8407_simulator.ino */,
+			);
+			path = ioptron_8407_simulator;
+			sourceTree = "<group>";
+		};
 		59519D421DB422E3008BAF29 /* ccd_ssag */ = {
 			isa = PBXGroup;
 			children = (
@@ -5217,7 +5268,7 @@
 		595AEB0E230FDE0200AB5C99 /* ioptron_2.5_simulator */ = {
 			isa = PBXGroup;
 			children = (
-				595AEB0F230FDE0200AB5C99 /* ioptron_2.5_simulator.ino */,
+				59B9751C25F5654400A6C3E7 /* ioptron_2.5_simulator.ino */,
 			);
 			path = ioptron_2.5_simulator;
 			sourceTree = "<group>";
@@ -7930,7 +7981,7 @@
 		59AEB117215446960008A729 /* ioptron_2.0_simulator */ = {
 			isa = PBXGroup;
 			children = (
-				59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */,
+				59B9751425F5600300A6C3E7 /* ioptron_2.0_simulator.ino */,
 			);
 			path = ioptron_2.0_simulator;
 			sourceTree = "<group>";
@@ -11617,8 +11668,7 @@
 				5956F662230BCE120016C7C2 /* Protocol_V2.5.pdf */,
 				5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */,
 				5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */,
-				59AEB117215446960008A729 /* ioptron_2.0_simulator */,
-				595AEB0E230FDE0200AB5C99 /* ioptron_2.5_simulator */,
+				594A912825F4D18E002691D0 /* ioptron_simulator */,
 			);
 			path = mount_ioptron;
 			sourceTree = "<group>";
