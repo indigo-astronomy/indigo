@@ -104,10 +104,10 @@ void parseCommand() {
       base_time = parseLong(command + 3, 10) - millis() / 1000;
       Serial.write('1');
     } else if (strncmp(command, "SLO", 3) == 0) {
-      strncpy(lon, command + 2, sizeof(lon) - 1);
+      strncpy(lon, command + 3, sizeof(lon) - 1);
       Serial.write('1');
     } else if (strncmp(command, "SLA", 3) == 0) {
-      strncpy(lat, command + 2, sizeof(lat) - 1);
+      strncpy(lat, command + 3, sizeof(lat) - 1);
       Serial.write('1');
     } else if (strncmp(command, "SHE", 3) == 0) {
       hemisphere = command[3];
