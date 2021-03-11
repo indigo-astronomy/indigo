@@ -951,12 +951,12 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	int socket = -1;
 	int res = false;
 	int count;
-	
+
 	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
 		INDIGO_DEBUG(indigo_debug("%s(): url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME));
 		goto clean_return;
 	}
-	
+
 	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
 	socket = indigo_open_tcp(host, port);
 	if (socket < 0) {
@@ -1397,9 +1397,8 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	double d = fabs(value);
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
-	if (value < 0)
-		d = -d;
-	static char string_1[128], string_2[128], string_3[128], string_4[128];
+
+	static char string_1[128], string_2[128], string_3[128], string_4[128], buf[128];
 	static char *string = string_4;
 	if (string == string_1)
 		string = string_2;
@@ -1410,11 +1409,16 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	else if (string == string_4)
 		string = string_1;
 	if (format == NULL)
-		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, (int)(s*100.0)/100.0);
+		snprintf(buf, 128, "%d:%02d:%05.2f", (int)d, (int)m, (int)(s*100.0)/100.0);
 	else if (format[strlen(format) - 1] == 'd')
-		snprintf(string, 128, format, (int)d, (int)m, (int)s);
+		snprintf(buf, 128, format, (int)d, (int)m, (int)s);
 	else
-		snprintf(string, 128, format, (int)d, (int)m, s);
+		snprintf(buf, 128, format, (int)d, (int)m, s);
+	if (value < 0) {
+		snprintf(string, 128, "-%s", buf);
+	} else {
+		snprintf(string, 128, "%s", buf);
+	}
 	return string;
 }
 
