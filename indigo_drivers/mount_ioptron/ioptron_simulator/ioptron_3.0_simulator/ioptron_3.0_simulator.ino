@@ -47,7 +47,7 @@ void parseCommand() {
       Serial.write("2017100120171001#");
     } else if (strncmp(command, "GLS", 3) == 0) {
       Serial.write(lon);
-      Serial.write(formatLong((atol(lat) / 100 + 90 * 60 * 60) * 100, false, 8));
+      Serial.write(formatLong((atol(lat) / 100L + 90L * 60L * 60L) * 100L, false, 8));
       Serial.write('0');
       if (parked)
         Serial.write('6');
@@ -104,10 +104,10 @@ void parseCommand() {
       base_time = parseLong(command + 3, 10) - millis() / 1000;
       Serial.write('1');
     } else if (strncmp(command, "SLO", 3) == 0) {
-      strncpy(lon, command + 2, sizeof(lon) - 1);
+      strncpy(lon, command + 3, sizeof(lon) - 1);
       Serial.write('1');
     } else if (strncmp(command, "SLA", 3) == 0) {
-      strncpy(lat, command + 2, sizeof(lat) - 1);
+      strncpy(lat, command + 3, sizeof(lat) - 1);
       Serial.write('1');
     } else if (strncmp(command, "SHE", 3) == 0) {
       hemisphere = command[3];

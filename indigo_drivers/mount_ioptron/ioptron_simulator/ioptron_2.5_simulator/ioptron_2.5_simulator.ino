@@ -49,7 +49,7 @@ void parseCommand() {
       Serial.write("2016110120161101#");
     } else if (strncmp(command, "GLS", 3) == 0) {
       Serial.write(lon);
-      Serial.write(formatLong(atol(lat) + 90 * 60 * 60, false, 6));
+      Serial.write(formatLong(atol(lat) + 90L * 60L * 60L, false, 6));
       Serial.write('0');
       if (parked)
         Serial.write('6');

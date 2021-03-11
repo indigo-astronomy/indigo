@@ -33,7 +33,7 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 int rates[] = { 1, 2, 8, 16, 64, 128, 256, 512, 1024 };
 
 unsigned long current_ra = 0, target_ra = 0, park_ra = 0; // in milliarcseconds
-long current_dec = 90 * 60 * 60 * 1000L, target_dec = 90 * 60 * 60 * 1000L, park_dec = 90 * 60 * 60 * 1000L; // in milliarcseconds
+long current_dec = 90L * 60L * 60L * 1000L, target_dec = 90L * 60L * 60L * 1000L, park_dec = 90L * 60L * 60L * 1000L; // in milliarcseconds
 
 int slew_rate = 20000L;
 int dec_rate = 0;
@@ -148,16 +148,16 @@ void loop() {
     }
   } else {
     if (!tracking)
-      current_ra = (current_ra + 15 * lapse) % (360 * 60 * 60 * 1000L);
+      current_ra = (current_ra + 15 * lapse) % (360L * 60L * 60L * 1000L);
     if (ra_rate)
-      current_ra = (current_ra + 15 * ra_rate * lapse) % (360 * 60 * 60 * 1000L);
+      current_ra = (current_ra + 15 * ra_rate * lapse) % (360L * 60L * 60L * 1000L);
     if (dec_rate) {
       current_dec = (current_dec + 15 * dec_rate * lapse);
-      if (current_dec < -90 * 60 * 60 * 1000) {
-        current_dec = -90 * 60 * 60 * 1000;
+      if (current_dec < -90L * 60L * 60L * 1000L) {
+        current_dec = -90L * 60L * 60L * 1000L;
         dec_rate = 0;
-      } else if (current_dec > 90 * 60 * 60 * 1000) {
-        current_dec = 90 * 60 * 60 * 1000;
+      } else if (current_dec > 90L * 60L * 60L * 1000L) {
+        current_dec = 90L * 60L * 60L * 1000L;
         dec_rate = 0;
       }
     }
