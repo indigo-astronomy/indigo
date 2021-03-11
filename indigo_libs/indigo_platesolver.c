@@ -202,7 +202,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 
 indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (property->state == INDIGO_OK_STATE) {
-		char *device_name = device->name;
+		char *device_name = property->device;
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			indigo_property *related_agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
