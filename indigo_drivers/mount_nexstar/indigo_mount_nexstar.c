@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -138,8 +138,15 @@ static void position_timer_callback(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	if (dev_id < 0)
 		return;
+
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if (tc_goto_in_progress(dev_id)) {
+	if (
+		tc_goto_in_progress(dev_id) ||
+		MOUNT_MOTION_NORTH_ITEM->sw.value ||
+		MOUNT_MOTION_SOUTH_ITEM->sw.value ||
+		MOUNT_MOTION_EAST_ITEM->sw.value ||
+		MOUNT_MOTION_WEST_ITEM->sw.value
+	) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
