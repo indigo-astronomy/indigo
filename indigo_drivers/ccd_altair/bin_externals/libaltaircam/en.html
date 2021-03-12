@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 48.17962.2020.1110</li></ul>
+<ul><li>Version: 49.18587.20210306</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -23,13 +23,13 @@
       </li>
 	  <li>WinRT: x86, x64, arm, arm64; Windows10 or above</li>
       <li>macOS: universal (x64 + x86); macOS 10.10 or above</li>
-      <li>Linux: kernel 2.6.27 or above
+      <li>Linux: kernel 2.6.27 or above; GLIBC 2.17 or above
 	    <ul>
-		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
-		  <li>x64: GLIBC 2.14 or above</li>
-		  <li>armel: GLIBC 2.17 or above; built by arm-linux-gnueabi (version 4.9.2)</li>
-		  <li>armhf: GLIBC 2.17 or above; built by arm-linux-gnueabihf (version 4.9.2)</li>
-		  <li>arm64: GLIBC 2.17 or above; built by aarch64-linux-gnu (version 4.9.2)</li>
+		  <li>x86: CPU supports SSE3 instruction set or above; built by gcc 5.4.0</li>
+		  <li>x64: built by gcc 5.4.0</li>
+		  <li>armel: built by arm-linux-gnueabi (version 4.9.2)</li>
+		  <li>armhf: built by arm-linux-gnueabihf (version 4.9.2)</li>
+		  <li>arm64: built by aarch64-linux-gnu (version 4.9.2)</li>
 		</ul>
 	  </li>
       <li>Android: arm, arm64, x86, x64; built by android-ndk-r18b; __ANDROID_API__ = 23</li>
@@ -161,8 +161,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <div align="center">
 <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
  <tr>
-   <td width="27%" valign="top">ALTAIRCAM_EVENT_EXPOSURE</td>
-   <td width="73%" valign="top">exposure time changed</td>
+   <td width="27%">ALTAIRCAM_EVENT_EXPOSURE</td>
+   <td width="73%">exposure time changed</td>
  </tr>
  <tr>
    <td>ALTAIRCAM_EVENT_TEMPTINT</td>
@@ -382,6 +382,11 @@ The SDK zip file contains all of the necessary resources and information:</p>
         <td>Device not functioning</td>
 		<td>0x8007001F</td>
 	  </tr>
+	  <tr>
+        <td>E_PENDING</td>
+        <td>The data necessary to complete this operation is not yet available</td>
+		<td>0x8000000a</td>
+	  </tr>
     </table>
   </div><br/>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
@@ -438,186 +443,194 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 <div align="center">
 <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
  <tr>
-   <td width="8%" valign="top">name</td>
-   <td colspan="2" valign="top">The name of this model</td>
+   <td width="8%">name</td>
+   <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="40" valign="top">flag</td>
-   <td colspan="2" valign="top">Bitwise flag</td>
+   <td width="8%" rowspan="42">flag</td>
+   <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
-   <td valign="top">ALTAIRCAM_FLAG_CMOS</td>
-   <td valign="top">cmos sensor</td>
+   <td>ALTAIRCAM_FLAG_CMOS</td>
+   <td>cmos sensor</td>
  </tr>
  <tr>
-   <td valign="top">ALTAIRCAM_FLAG_CCD_PROGRESSIVE</td>
-   <td valign="top">progressive ccd sensor</td>
+   <td>ALTAIRCAM_FLAG_CCD_PROGRESSIVE</td>
+   <td>progressive ccd sensor</td>
  </tr>
  <tr>
-   <td valign="top">ALTAIRCAM_FLAG_CCD_INTERLACED</td>
-   <td valign="top">interlaced ccd sensor</td>
+   <td>ALTAIRCAM_FLAG_CCD_INTERLACED</td>
+   <td>interlaced ccd sensor</td>
  </tr>
  <tr>
-   <td valign="top">ALTAIRCAM_FLAG_ROI_HARDWARE</td>
-   <td valign="top">support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
+   <td>ALTAIRCAM_FLAG_ROI_HARDWARE</td>
+   <td>support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_MONO</td>
-   <td width="63%" valign="top">monochromatic sensor</td>
+   <td width="29%">ALTAIRCAM_FLAG_MONO</td>
+   <td width="63%">monochromatic sensor</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_BINSKIP_SUPPORTED</td>
-   <td width="63%" valign="top">support bin/skip mode, see Altaircam_put_Mode and Altaircam_get_Mode</td>
+   <td width="29%">ALTAIRCAM_FLAG_BINSKIP_SUPPORTED</td>
+   <td width="63%">support bin/skip mode, see Altaircam_put_Mode and Altaircam_get_Mode</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_USB30</td>
-   <td width="63%" valign="top">usb3.0</td>
+   <td width="29%">ALTAIRCAM_FLAG_USB30</td>
+   <td width="63%">usb3.0</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_TEC</td>
-   <td width="63%" valign="top">Thermoelectric Cooler</td>
+   <td width="29%">ALTAIRCAM_FLAG_TEC</td>
+   <td width="63%">Thermoelectric Cooler</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_USB30_OVER_USB20</td>
-   <td width="63%" valign="top">usb3.0 camera connected to usb2.0 port</td>
+   <td width="29%">ALTAIRCAM_FLAG_USB30_OVER_USB20</td>
+   <td width="63%">usb3.0 camera connected to usb2.0 port</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_ST4</td>
-   <td width="63%" valign="top">ST4 port</td>
+   <td width="29%">ALTAIRCAM_FLAG_ST4</td>
+   <td width="63%">ST4 port</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_GETTEMPERATURE</td>
-   <td width="63%" valign="top">support to get the temperature of the sensor, Altaircam_get_Temperature</td>
+   <td width="29%">ALTAIRCAM_FLAG_GETTEMPERATURE</td>
+   <td width="63%">support to get the temperature of the sensor, Altaircam_get_Temperature</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW10</td>
-   <td width="63%" valign="top">Pixel format, RAW 10 bits</td>
+   <td width="29%">ALTAIRCAM_FLAG_RAW10</td>
+   <td width="63%">Pixel format, RAW 10 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW12</td>
-   <td width="63%" valign="top">Pixel format, RAW 12 bits</td>
+   <td width="29%">ALTAIRCAM_FLAG_RAW12</td>
+   <td width="63%">Pixel format, RAW 12 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW14</td>
-   <td width="63%" valign="top">Pixel format, RAW 14 bits</td>
+   <td width="29%">ALTAIRCAM_FLAG_RAW14</td>
+   <td width="63%">Pixel format, RAW 14 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW16</td>
-   <td width="63%" valign="top">Pixel format, RAW 16 bits</td>
+   <td width="29%">ALTAIRCAM_FLAG_RAW16</td>
+   <td width="63%">Pixel format, RAW 16 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_FAN</td>
-   <td width="63%" valign="top">cooling fan</td>
+   <td width="29%">ALTAIRCAM_FLAG_FAN</td>
+   <td width="63%">cooling fan</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">ALTAIRCAM_FLAG_TEC_ONOFF</td>
-   <td width="63%" valign="top">Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
+   <td width="29%">ALTAIRCAM_FLAG_TEC_ONOFF</td>
+   <td width="63%">Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
 							ALTAIRCAM_OPTION_TEC<br/>
 							ALTAIRCAM_OPTION_TECTARGET</td>
  </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_ISP</td>
-    <td valign="top">ISP (Image Signal Processing) chip</td>
+    <td>ALTAIRCAM_FLAG_ISP</td>
+    <td>ISP (Image Signal Processing) chip</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_TRIGGER_SOFTWARE</td>
-    <td valign="top">support software trigger</td>
+    <td>ALTAIRCAM_FLAG_TRIGGER_SOFTWARE</td>
+    <td>support software trigger</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_TRIGGER_EXTERNAL</td>
-    <td valign="top">support external trigger</td>
+    <td>ALTAIRCAM_FLAG_TRIGGER_EXTERNAL</td>
+    <td>support external trigger</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_TRIGGER_SINGLE</td>
-    <td valign="top">only support trigger single, one trigger, one image</td>
+    <td>ALTAIRCAM_FLAG_TRIGGER_SINGLE</td>
+    <td>only support trigger single, one trigger, one image</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_BLACKLEVEL</td>
-    <td valign="top">support set and get the black level</td>
+    <td>ALTAIRCAM_FLAG_BLACKLEVEL</td>
+    <td>support set and get the black level</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_FOCUSMOTOR</td>
-    <td valign="top">support focus motor</td>
+    <td>ALTAIRCAM_FLAG_FOCUSMOTOR</td>
+    <td>support focus motor</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_AUTO_FOCUS</td>
-    <td valign="top">support auto focus</td>
+    <td>ALTAIRCAM_FLAG_AUTO_FOCUS</td>
+    <td>support auto focus</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_BUFFER</td>
-    <td valign="top">frame buffer</td>
+    <td>ALTAIRCAM_FLAG_BUFFER</td>
+    <td>frame buffer</td>
   </tr>
   <tr>
-    <td valign="top"><a id="ddr">ALTAIRCAM_FLAG_DDR</a></td>
-    <td valign="top">use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</td>
+    <td><a id="ddr">ALTAIRCAM_FLAG_DDR</a></td>
+    <td>use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_CG</td>
-    <td valign="top">Conversion Gain: LCG, HCG</td>
+    <td>ALTAIRCAM_FLAG_CG</td>
+    <td>Conversion Gain: LCG, HCG</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_CGHDR</td>
-    <td valign="top">Conversion Gain: LCG, HCG, HDR</td>
+    <td>ALTAIRCAM_FLAG_CGHDR</td>
+    <td>Conversion Gain: LCG, HCG, HDR</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_EVENT_HARDWARE</td>
-    <td valign="top">hardware event, such as exposure start &amp; stop</td>
+    <td>ALTAIRCAM_FLAG_EVENT_HARDWARE</td>
+    <td>hardware event, such as exposure start &amp; stop</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_YUV411</td>
-    <td valign="top">pixel format, yuv411</td>
+    <td>ALTAIRCAM_FLAG_YUV411</td>
+    <td>pixel format, yuv411</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_YUV422</td>
-    <td valign="top">pixel format, yuv422</td>
+    <td>ALTAIRCAM_FLAG_YUV422</td>
+    <td>pixel format, yuv422</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_YUV444</td>
-    <td valign="top">pixel format, yuv444</td>
+    <td>ALTAIRCAM_FLAG_YUV444</td>
+    <td>pixel format, yuv444</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_RGB888</td>
-    <td valign="top">pixel format, RGB888</td>
+    <td>ALTAIRCAM_FLAG_RGB888</td>
+    <td>pixel format, RGB888</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_RAW8</td>
-    <td valign="top">pixel format, RAW 8 bits</td>
+    <td>ALTAIRCAM_FLAG_RAW8</td>
+    <td>pixel format, RAW 8 bits</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_GMCY8</td>
-    <td valign="top">pixel format, GMCY, 8bits</td>
+    <td>ALTAIRCAM_FLAG_GMCY8</td>
+    <td>pixel format, GMCY, 8bits</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_GMCY12</td>
-    <td valign="top">pixel format, GMCY, 12 btis</td>
+    <td>ALTAIRCAM_FLAG_GMCY12</td>
+    <td>pixel format, GMCY, 12 btis</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_GLOBALSHUTTER</td>
-    <td valign="top">global shutter</td>
+    <td>ALTAIRCAM_FLAG_GLOBALSHUTTER</td>
+    <td>global shutter</td>
   </tr>
   <tr>
-    <td valign="top">ALTAIRCAM_FLAG_PRECISE_FRAMERATE</td>
-    <td valign="top">support precise framerate &amp; bandwidth, see ALTAIRCAM_OPTION_PRECISE_FRAMERATE &amp; ALTAIRCAM_OPTION_BANDWIDTH</td>
+    <td>ALTAIRCAM_FLAG_PRECISE_FRAMERATE</td>
+    <td>support precise framerate &amp; bandwidth, see ALTAIRCAM_OPTION_PRECISE_FRAMERATE &amp; ALTAIRCAM_OPTION_BANDWIDTH</td>
   </tr>
   <tr>
-    <td valign="top"><a id="hwlevelrange">ALTAIRCAM_FLAG_LEVELRANGE_HARDWARE</a></td>
-    <td valign="top">hardware level range</td>
+    <td>ALTAIRCAM_FLAG_HEAT</td>
+    <td>support heat to prevent fogging up, see <a href="#heat">ALTAIRCAM_OPTION_HEAT</a> &amp; <a href="#heatmax">ALTAIRCAM_OPTION_HEAT_MAX</a></td>
+  </tr>
+  <tr>
+    <td>ALTAIRCAM_FLAG_LOW_NOISE</td>
+    <td>support low noise mode, see <a href="#lownoise">ALTAIRCAM_OPTION_LOW_NOISE</a></td>
+  </tr>
+  <tr>
+    <td><a id="hwlevelrange">ALTAIRCAM_FLAG_LEVELRANGE_HARDWARE</a></td>
+    <td>hardware level range</td>
   </tr>
  <tr>
-   <td width="8%" valign="top">maxspeed</td>
-   <td colspan="2" valign="top">Maximum speed level, same with Altaircam_get_MaxSpeed. The speed range is [0, maxspeed]. see Altaircam_put_Speed and Altaircam_get_Speed</td>
+   <td width="8%">maxspeed</td>
+   <td colspan="2">Maximum speed level, same with Altaircam_get_MaxSpeed. The speed range is [0, maxspeed]. see Altaircam_put_Speed and Altaircam_get_Speed</td>
    </tr>
  <tr>
-   <td width="8%" valign="top">preview</td>
-   <td colspan="2" valign="top">Number of preview resolution. Same with Altaircam_get_ResolutionNumber</td>
+   <td width="8%">preview</td>
+   <td colspan="2">Number of preview resolution. Same with Altaircam_get_ResolutionNumber</td>
    </tr>
  <tr>
-   <td width="8%" valign="top">still</td>
-   <td colspan="2" valign="top">Number of still resolution, zero means still capture is not supported. Same with Altaircam_get_StillResolutionNumber</td>
+   <td width="8%">still</td>
+   <td colspan="2">Number of still resolution, zero means still capture is not supported. Same with Altaircam_get_StillResolutionNumber</td>
    </tr>
   <tr>
-   <td width="8%" valign="top">res</td>
-   <td colspan="2" valign="top">Resolution, width and height</td>
+   <td width="8%">res</td>
+   <td colspan="2">Resolution, width and height</td>
    </tr>
 </table>
 </div>
@@ -651,6 +664,33 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   		<p>id: Altaircam camera instance, enumerated by Altaircam_EnumV2. <strong>If id is NULL, Altaircam_Open will open the first camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Altaircam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
   	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
+	<p><strong><a id="cfg">Camera Configuration</a>:</strong>No parameter is required after id parameter if automatic parameter saving or loading is not required.</p>
+	<p>Add the specific parameters after the id parameter when automatic parameter saving (when closing the camera) or loading (when starting the camera) is required, for example, Altaircam_Open(L"0-1010;registry=").</p>
+	<p>Please refer to the following description for details:</p>
+  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td width="20%">Registry (Windows only)</td>
+        <td width="20%">;registry=xxxx\yyyy</td>
+		<td width="60%">use the registry that the camera parameters are saved to or load from. Empty after “=” means that the default registry location will be used</td>
+      </tr>
+      <tr>
+        <td>ini file</td>
+        <td>;ini=x:\yyyy\zzzz.ini</td>
+		<td>indicates that x:\yyyy\zzzz.ini is the file where camera parameters are saved to or load from. Complete directory must be specified and empty is not allowed. Please Make sure that the target directory exists and is readable and writeable</td>
+      </tr>
+      <tr>
+        <td>json file</td>
+        <td>;json=x:\yyyy\zzzz.json</td>
+		<td>indicates that x:\yyyy\zzzz.json is the file where camera parameters are saved to or load from. Complete directory must be specified and empty is not allowed. Please Make sure that the target directory exists and is readable and writeable</td>
+      </tr>
+      <tr>
+        <td>EEPROM</td>
+        <td>;eeprom=xxxx</td>
+		<td>indicates that EEPROM is the device where the camera parameters are saved to or load from. xxxx is the starting address in EEPROM and empty means the starting address is 0</td>
+      </tr>
+    </table>
+  </div>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Altaircam_Close</font></h2>
     <p><strong>Return value:</strong> void</p>
@@ -679,13 +719,13 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="infov2">Altaircam_PullImageV2, Altaircam_PullStillImageV2, Altaircam_PullImageWithRowPitchV2, Altaircam_PullStillImageWithRowPitchV2</a>,
 			Altaircam_PullImage, Altaircam_PullStillImage, <a id="rowpitch1">Altaircam_PullImageWithRowPitch</a>, <a id="rowpitch2">Altaircam_PullStillImageWithRowPitch</a></font></h2>
-      <p><strong>Return value:</strong> HRESULT type means "success/ failure". Return E_FAIL when there isn't image ready for pull.</p>
+      <p><strong>Return value:</strong> HRESULT type means "success/ failure". Return E_PENDING when there isn't image ready for pull.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
     <p>HAltaircam h: instance handle opened by Altaircam_Open</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must >= rowPitch * nHeight.</p>
     <p>int bits: 24, 32, 48, 8, 16, means RGB24, RGB32, RGB48, 8 bits gray or 16 bits gray images. This parameter is ignored in RAW mode.</p>
-    <p>int rowPitch: the distance from one row to the next row. rowPitch = 0 means using the default row pitch.</p>
+    <p>int rowPitch: the distance from one row to the next row. rowPitch = 0 means using the default row pitch. rowPitch = -1 means zero padding</p>
     <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
 	<p>AltaircamFrameInfoV2* pInfo: out parameter, frame info. Some cameras support frame sequence and frame timestamp, for other unsigned cameras, sequence and timestamp are always 0</p>
 </blockquote>
@@ -694,34 +734,46 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <blockquote><div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td colspan="2" valign="top">Format</td>
-        <td width="63%" valign="top">Default Row Pitch</td>
+        <td colspan="2">Format</td>
+        <td>=0 means Default Row Pitch</td>
+        <td>=-1 means zero paddding</td>
       </tr>
       <tr>
-        <td width="10%" rowspan="4" valign="top">RGB</td>
-        <td width="27%" valign="top">RGB24</td>
-        <td width="63%" valign="top">TDIBWIDTHBYTES(24 * Width)</td>
+        <td width="10%" rowspan="5">RGB</td>
+        <td width="25%">RGB24</td>
+        <td width="35%">TDIBWIDTHBYTES(24 * Width)</td>
+        <td width="30%">Width * 3</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">RGB32</td>
-        <td width="63%" valign="top">Width * 4</td>
+        <td>RGB32</td>
+        <td>Width * 4</td>
+		<td>Width * 4</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">RGB48</td>
-        <td width="63%" valign="top">TDIBWIDTHBYTES(48 * Width)</td>
+        <td>RGB48</td>
+        <td>TDIBWIDTHBYTES(48 * Width)</td>
+        <td>Width * 6</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">RGB8 grey image</td>
-        <td width="63%" valign="top">TDIBWIDTHBYTES(8 * Width)</td>
+        <td>GREY8 grey image</td>
+        <td>TDIBWIDTHBYTES(8 * Width)</td>
+        <td>Width</td>
       </tr>
       <tr>
-        <td width="10%" rowspan="2" valign="top">RAW</td>
-        <td width="27%" valign="top">8bits Mode</td>
-        <td width="63%" valign="top">Width</td>
+        <td>GREY16 grey image</td>
+        <td>TDIBWIDTHBYTES(16 * Width)</td>
+        <td>Width * 2</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">10bits, 12bits, 14bits, 16bits Mode</td>
-        <td width="63%" valign="top">Width * 2</td>
+        <td rowspan="2">RAW</td>
+        <td>8bits Mode</td>
+        <td>Width</td>
+        <td>Width</td>
+      </tr>
+      <tr>
+        <td>10bits, 12bits, 14bits, 16bits Mode</td>
+        <td>Width * 2</td>
+        <td>Width * 2</td>
       </tr>
     </table>
   </div><br/>
@@ -873,8 +925,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td width="40%" valign="top">MAKEFOURCC('G', 'B', 'R', 'G')</td>
-        <td width="60%" valign="top">GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>...<br/>see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm">here</a></td>
+        <td width="40%">MAKEFOURCC('G', 'B', 'R', 'G')</td>
+        <td width="60%">GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>...<br/>see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm">here</a></td>
       </tr>
       <tr>
         <td>MAKEFOURCC('R', 'G', 'G', 'B')</td>
@@ -1009,6 +1061,13 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>limit the frame rate, range=[0, 63].<br/>frame rate control is disabled automatically in trigger mode.</td>
       	<td>0<br/>(means no limit)</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option after the camera is started)</td>
+      </tr>
+      <tr>
+      	<td><a id="blacklevel">ALTAIRCAM_OPTION_BLACKLEVEL</a></td>
+      	<td>Black Level<br/>
+      			Always return E_NOTIMPL for camera that don't support black level.</td>
+      	<td>0</td>
+      	<td>Yes</td>
       </tr>
       <tr>
       	<td>ALTAIRCAM_OPTION_MULTITHREAD</td>
@@ -1270,7 +1329,26 @@ for (unsigned i = 0; i &lt; cnt; ++i)
         <td>Denoise<br/>
 		strength range: [0, 100], 0 means disable</td>
 		<td>0</td>
-		<td>是</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td><a id="heatmax">ALTAIRCAM_OPTION_HEAT_MAX</a></td>
+        <td>get maximum level: heat to prevent fogging up<br/>
+		[0, max], 0 means off</td>
+		<td>NA</td>
+		<td>NA</td>
+      </tr>
+      <tr>
+        <td><a id="heat">ALTAIRCAM_OPTION_HEAT</a></td>
+        <td>heat to prevent fogging up</td>
+		<td>max level</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td><a id="lownoise">ALTAIRCAM_OPTION_LOW_NOISE</a></td>
+        <td>low noise mode (Higher signal noise ratio, lower frame rate)</td>
+		<td>0</td>
+		<td>Yes</td>
       </tr>
       <tr>
         <td>ALTAIRCAM_OPTION_THREAD_PRIORITY</td>
@@ -1332,11 +1410,29 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Yes</td>
       </tr>
       <tr>
-      	<td><a id="blacklevel">ALTAIRCAM_OPTION_BLACKLEVEL</a></td>
-      	<td>Black Level<br/>
-      			Always return E_NOTIMPL for camera that don't support black level.</td>
-      	<td>0</td>
-      	<td>Yes</td>
+      	<td><a id="blacklevel">ALTAIRCAM_OPTION_OPEN_USB_ERRORCODE</a></td>
+      	<td>open usb error code. get only</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td><a id="blacklevel">ALTAIRCAM_OPTION_FLUSH</a></td>
+      	<td>1: hard flush, discard frames cached by camera DDR (if any)<br/>
+		2: soft flush, discard frames cached by altaircam.dll (if any)<br/>
+		3: both<br/>
+		Altaircam_Flush means 'both'</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td><a id="blacklevel">ALTAIRCAM_OPTION_LINUX_USB_ZEROCOPY</a></td>
+      	<td>global option for linux platform:<br/>
+		enable or disable usb zerocopy (helps to reduce memory copy and improve efficiency. Requires kernel version >= 4.6 and hardware platform support).<br/>
+		if the image is wrong, this indicates that the hardware platform does not support this feature, please disable it when the program starts:<br/>
+		&nbsp;&nbsp;Altaircam_put_Option((this is a global option, the camera handle parameter is not required, use nullptr), ALTAIRCAM_OPTION_LINUX_USB_ZEROCOPY, 0)</td>
+      	<td>disable(0): android or arm32<br/>
+		enable(1):  others</td>
+      	<td>No<br/>(Must be set before open camera (Altaircam_Open))</td>
       </tr>
     </table>
   </div>
@@ -1605,8 +1701,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td width="28%" valign="top">ALTAIRCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
-        <td width="72%" valign="top">get the supported mode:<br/>0x01->&gt;Input<br/>0x02->&gt;Output<br/>(0x01 | 0x02)->&gt;support both Input and Output</td>
+        <td width="28%">ALTAIRCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
+        <td width="72%">get the supported mode:<br/>0x01->&gt;Input<br/>0x02->&gt;Output<br/>(0x01 | 0x02)->&gt;support both Input and Output</td>
       </tr>
       <tr>
         <td>ALTAIRCAM_IOCONTROLTYPE_GET_GPIODIR</td>
@@ -2048,6 +2144,7 @@ public bool Snap(uint nResolutionIndex)
 <hr/>
 <h1><font color="#0000FF">8. Changelog</font></h1>
 <hr/>
+<p>v49: Add support to save & load configuration. Please see <a href="#cfg">here</a></p>
 <p>v48: hardware event. Please see <a href="#hwevent">here</a></p>
 <p>v47: hardware level range. Please see <a href="#hwlevelrange">here</a> and <a href="#levelrangev2">here</a></p>
 <p>v46: Add support denose. Please see <a href="#denoise">here</a></p>
