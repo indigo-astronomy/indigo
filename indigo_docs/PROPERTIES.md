@@ -475,3 +475,4 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | DOME | yes | |
 | AGENT_LIMITS | number | no | yes | HA_TRACKING | yes | HA limit for tracking; park when reached; use 24:00:00 to turn it off |
 |  |  |  |  | LOCAL_TIME | yes | Time limit for tracking; park when reached; use 12:00:00 to turn it off  |
+|  |  |  |  | COORDINATES_CHANGE_THRESHOLD | yes | The minimal difference in geographic coordinates that trigger change propagation  |
