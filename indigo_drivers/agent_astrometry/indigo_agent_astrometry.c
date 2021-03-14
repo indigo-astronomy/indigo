@@ -459,13 +459,13 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 		for (int j = 0; index_files[j]; j++) {
 			char *file_name = index_files[j];
 			if (!strncmp(file_name, item->name, 10)) {
-				snprintf(path, sizeof((path)), "%s/%s.fits", base_dir, file_name);
+				snprintf(path, sizeof((path)), "%s/index-%s.fits", base_dir, file_name);
 				if (item->sw.value) {
 					if (access(path, F_OK) == 0) {
 						continue;
 					}
 					indigo_send_message(device, "Downloading %s...", file_name);
-					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/%s.fits", path, dir, file_name)) {
+					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", path, dir, file_name)) {
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
 						return;
