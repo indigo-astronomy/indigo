@@ -194,6 +194,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			} else if (sscanf(line, "Field rotation angle: up is %lg", &d1) == 1) {
 				AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d1;
 			} else if (sscanf(line, "Field 1: solved with index index-%lg", &d1) == 1) {
+				indigo_send_message(device, "Solved");
 				AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = d1;
 			} else if (sscanf(line, "Field parity: %3s", s) == 1) {
 				AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = !strcmp(s, "pos") ? 1 : -1;
