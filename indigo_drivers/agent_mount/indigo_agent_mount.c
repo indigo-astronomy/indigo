@@ -208,6 +208,11 @@ static void set_site_coordinates(indigo_device *device) {
 	AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 	set_site_coordinates3(device);
+	if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value)
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
+	if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value)
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
+
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -621,10 +626,10 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static void process_snooping(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])) {
-		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-			set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
-			if (CLIENT_PRIVATE_DATA->agent_set_host_time_property->items[0].sw.value)
-				indigo_change_switch_property_1(client, property->device, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
+				indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
+			}
 		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
 				bool changed = false;
@@ -640,7 +645,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					}
 				}
 				if (changed && CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[1].sw.value)
-					set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+					indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
 			}
 		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 			for (int i = 0; i < property->count; i++) {
@@ -736,9 +741,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])) {
 		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
-				set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
-				if (CLIENT_PRIVATE_DATA->agent_set_host_time_property->items[1].sw.value)
-					indigo_change_switch_property_1(client, property->device, DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
+				indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
 			}
 		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
@@ -755,7 +758,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					}
 				}
 				if (changed && CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[2].sw.value)
-					set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+					indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
 			}
 		} else if (!strcmp(property->name, DOME_PARK_PROPERTY_NAME)) {
 			CLIENT_PRIVATE_DATA->dome_unparked = false;
@@ -784,7 +787,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					}
 				}
 				if (changed && CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[3].sw.value)
-					set_site_coordinates(FILTER_CLIENT_CONTEXT->device);
+					indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
 			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX])) {
