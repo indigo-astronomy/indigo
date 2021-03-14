@@ -132,6 +132,8 @@ void parseCommand() {
     } else if (strncmp(command, "MP1", 3) == 0) {
       parking = true;
       slewing = true;
+			target_ra = park_ra;
+			target_dec = park_dec;
       Serial.write('1');
     } else if (strncmp(command, "MH", 2) == 0) {
       slewing = true;
