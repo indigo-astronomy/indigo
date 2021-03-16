@@ -79,6 +79,7 @@ static struct resource {
 	unsigned length;
 	const char *file_name;
 	char *content_type;
+	void (*handler)(int client_socket, char *method, char *path);
 	struct resource *next;
 } *resources = NULL;
 
@@ -231,7 +232,7 @@ static void start_worker_thread(int *client_socket) {
 					} else {
 						struct resource *resource = resources;
 						while (resource) {
-							if (!strcmp(resource->path, path))
+							if (!strncmp(resource->path, path, strlen(resource->path)))
 								break;
 							resource = resource->next;
 						}
@@ -241,6 +242,9 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_PRINTF(socket, "%s not found!\r\n", path);
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
+							keep_alive = false;
+						} else if (resource->handler) {
+							resource->handler(socket, "GET", path);
 							keep_alive = false;
 						} else if (resource->data) {
 							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
@@ -290,6 +294,28 @@ static void start_worker_thread(int *client_socket) {
 							}
 						}
 					}
+				} else if (!strncmp(request, "PUT /", 5)) {
+					char *path = request + 4;
+					char *space = strchr(path, ' ');
+					if (space)
+						*space = 0;
+					struct resource *resource = resources;
+					while (resource) {
+						if (!strncmp(resource->path, path, strlen(resource->path)))
+							break;
+						resource = resource->next;
+					}
+					if (resource == NULL) {
+						INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+						INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+						INDIGO_PRINTF(socket, "\r\n");
+						INDIGO_PRINTF(socket, "%s not found!\r\n", path);
+						INDIGO_LOG(indigo_log("%s -> Failed", request));
+						keep_alive = false;
+					} else if (resource->handler) {
+						resource->handler(socket, "PUT", path);
+						keep_alive = false;
+					}
 				}
 				if (!keep_alive) {
 					break;
@@ -322,6 +348,7 @@ void indigo_server_add_resource(const char *path, unsigned char *data, unsigned 
 	resource->data = data;
 	resource->length = length;
 	resource->content_type = (char *)content_type;
+	resource->handler = NULL;
 	resource->next = resources;
 	resources = resource;
 	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
@@ -332,9 +359,21 @@ void indigo_server_add_file_resource(const char *path, const char *file_name, co
 	resource->path = path;
 	resource->file_name = file_name;
 	resource->content_type = (char *)content_type;
+	resource->handler = NULL;
 	resource->next = resources;
 	resources = resource;
 	INDIGO_LOG(indigo_log("Resource %s (%s, %s) added", path, file_name, content_type));
+}
+
+void indigo_server_add_handler(const char *path, void (*handler)(int client_socket, char *method, char *path)) {
+	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
+	resource->path = path;
+	resource->file_name = NULL;
+	resource->content_type = NULL;
+	resource->handler = handler;
+	resource->next = resources;
+	resources = resource;
+	INDIGO_LOG(indigo_log("Resource %s handler added", path));
 }
 
 void indigo_server_remove_resource(const char *path) {
