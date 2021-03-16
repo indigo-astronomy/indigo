@@ -32,8 +32,11 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_io.h>
@@ -48,6 +51,10 @@
 #define AGENT_DISCOVERY_PROPERTY							(PRIVATE_DATA->discovery_property)
 #define AGENT_DISCOVERY_PORT_ITEM							(AGENT_DISCOVERY_PROPERTY->items+0)
 
+#define DISCOVERY_REQUEST											"alpacadiscovery1"
+#define DISCOVERY_RESPONSE										"{ \"AlpacaPort\":%d }"
+
+
 typedef struct {
 	indigo_property *discovery_property;
 	pthread_mutex_t mutex;
@@ -58,7 +65,67 @@ static agent_private_data *private_data = NULL;
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
 
+static int discovery_server_socket;
+
 // -------------------------------------------------------------------------------- ALPACA bridge implementation
+
+static void start_discovery_server(indigo_device *device) {
+	int port = (int)AGENT_DISCOVERY_PORT_ITEM->number.value;
+	discovery_server_socket = socket(PF_INET, SOCK_DGRAM, 0);
+	if (discovery_server_socket == -1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create socket (%s)", strerror(errno));
+		return;
+	}
+	int reuse = 1;
+	if (setsockopt(discovery_server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+		close(discovery_server_socket);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "setsockopt() failed (%s)", strerror(errno));
+		return;
+	}
+	struct sockaddr_in server_address;
+	unsigned int server_address_length = sizeof(server_address);
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(port);
+	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (bind(discovery_server_socket, (struct sockaddr *)&server_address, server_address_length) < 0) {
+		close(discovery_server_socket);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "bind() failed (%s)", strerror(errno));
+		return;
+	}
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery server started on port %d", port);
+	fd_set readfd;
+	struct sockaddr_in client_address;
+	unsigned int client_address_length = sizeof(client_address);
+	char buffer[128];
+	struct timeval tv;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	while (discovery_server_socket) {
+		FD_ZERO(&readfd);
+		FD_SET(discovery_server_socket, &readfd);
+		int ret = select(discovery_server_socket + 1, &readfd, NULL, NULL, &tv);
+		if (ret > 0) {
+			if (FD_ISSET(discovery_server_socket, &readfd)) {
+				recvfrom(discovery_server_socket, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_address, &client_address_length);
+				if (strstr(buffer, DISCOVERY_REQUEST)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery request from %s", inet_ntoa(client_address.sin_addr));
+					sprintf(buffer, DISCOVERY_RESPONSE, indigo_server_tcp_port);
+					sendto(discovery_server_socket, buffer, strlen(buffer), 0, (struct sockaddr*)&client_address, client_address_length);
+				}
+			}
+		}
+	}
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery server stopped on port %d", port);
+	return;
+}
+
+static void shutdown_discovery_server() {
+	if (discovery_server_socket) {
+		shutdown(discovery_server_socket, SHUT_RDWR);
+		close(discovery_server_socket);
+		discovery_server_socket = 0;
+	}
+}
 
 static void alpaca_setup_handler(int socket, char *method, char *path) {
 	INDIGO_PRINTF(socket, "HTTP/1.1 301 Moved Permanently\r\n");
@@ -86,6 +153,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_DISCOVERY_PORT_ITEM, "PORT", "Discovery port", 0, 0xFFFF, 0, 32227);
 		// --------------------------------------------------------------------------------
+		indigo_set_timer(device, 0, start_discovery_server, NULL);
 		indigo_server_add_handler("/setup", alpaca_setup_handler);
 		CONNECTION_PROPERTY->hidden = true;
 		CONFIG_PROPERTY->hidden = true;
@@ -113,7 +181,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_DISCOVERY_PROPERTY, property, false);
-		// TBD
+		shutdown_discovery_server();
+		indigo_set_timer(device, 0, start_discovery_server, NULL);
 		AGENT_DISCOVERY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
 	}
@@ -122,6 +191,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	shutdown_discovery_server();
 	indigo_server_remove_resource("/setup");
 	indigo_release_property(AGENT_DISCOVERY_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
@@ -186,9 +256,9 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 			private_data = indigo_safe_malloc(sizeof(agent_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
-			indigo_attach_device(agent_device);
 			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
 			agent_client->client_context = agent_device->device_context;
+			indigo_attach_device(agent_device);
 			indigo_attach_client(agent_client);
 			break;
 
