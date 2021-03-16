@@ -55,7 +55,11 @@ extern void indigo_server_add_resource(const char *path, unsigned char *data, un
 /** Add file document.
  */
 extern void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type);
-	
+
+/** Add URI handler.
+ */
+extern void indigo_server_add_handler(const char *path, void (*handler)(int client_socket, char *method, char *path));
+
 /** Remove document.
  */
 extern void indigo_server_remove_resource(const char *path);
