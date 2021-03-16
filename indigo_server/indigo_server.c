@@ -143,6 +143,7 @@
 #include "agent_astrometry/indigo_agent_astrometry.h"
 #include "dome_skyroof/indigo_dome_skyroof.h"
 #include "aux_skyalert/indigo_aux_skyalert.h"
+#include "agent_alpaca/indigo_agent_alpaca.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -170,6 +171,7 @@
 driver_entry_point static_drivers[] = {
 #ifdef STATIC_DRIVERS
 	indigo_agent_alignment,
+	indigo_agent_alpaca,
 	indigo_agent_astrometry,
 	indigo_agent_auxiliary,
 	indigo_agent_guider,
