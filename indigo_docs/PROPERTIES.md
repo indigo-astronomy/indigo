@@ -118,18 +118,18 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 |  DSLR_BATTERY_LEVEL | switch | yes | no | VALUE | yes | RO/RW status and items set depends on particular camera |
 |  DSLR_FOCAL_LENGTH | switch | yes | no | VALUE | yes | RO/RW status and items set depends on particular camera |
 |  DSLR_LOCK | switch | no | no | LOCK | yes | Lock camera UI |
-|   |  |  |  | UNLOCK | yes |  |
+|  |  |  |  | UNLOCK | yes |  |
 |  DSLR_MIRROR_LOCKUP | switch | no | no | LOCK | yes | Lock camera mirror |
-|   |  |  |  | UNLOCK | yes |  |
+|  |  |  |  | UNLOCK | yes |  |
 |  DSLR_AF | switch | no | no | AF | yes | Start autofocus |
 |  DSLR_AVOID_AF | switch | no | no | ON | yes | Avoid autofocus |
-|   |  |  |  | OF | yes |  |
+|  |  |  |  | OF | yes |  |
 |  DSLR_STREAMING_MODE | switch | no | no | LIVE_VIEW | yes | Operation used for streaming |
-|   |  |  |  | BURST_MODE | yes |  |
+|  |  |  |  | BURST_MODE | yes |  |
 |  DSLR_ZOOM_PREVIEW | switch | no | no | ON | yes | LiveView zoom |
-|   |  |  |  | OFF | yes |  |
+|  |  |  |  | OFF | yes |  |
 |  DSLR_DELETE_IMAGE | switch | no | no | ON | yes | Delete image from camera memory/card |
-|   |  |  |  | OFF | yes |  |
+|  |  |  |  | OFF | yes |  |
 
 A reference implementation is ICA driver [indigo_ccd_ica.m](https://github.com/indigo-astronomy/indigo/blob/master/indigo_mac_drivers/ccd_ica/indigo_ccd_ica.m).
 
@@ -140,7 +140,6 @@ A reference implementation is ICA driver [indigo_ccd_ica.m](https://github.com/i
 | WHEEL_SLOT | number | no | yes | SLOT | yes |  |
 | WHEEL_SLOT_NAME | switch | no | yes | SLOT_NAME_1, ... | yes |  |
 | WHEEL_SLOT_OFFSET | switch | no | yes | SLOT_OFFSET_1, ... | yes | Value is number of focuser steps |
-
 
 Properties are implemented by wheel driver base class in [indigo_wheel_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_wheel_driver.c).
 
@@ -237,7 +236,6 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 | GUIDER_RATE | number | no | no | RATE | yes | % of sidereal rate (RA or both) |
 |  | number | no | no | DEC_RATE | no | % of sidereal rate (DEC) |
 
-
 Properties are implemented by guider driver base class in [indigo_guider_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_guider_driver.c).
 
 ## AO specific properties
@@ -258,12 +256,12 @@ Properties are implemented by AO driver base class in [indigo_ao_driver.c](https
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| GPS_STATUS | light | yes | yes | NO_FIX | yes | GPS fix status |
+| GPS_STATUS | light | yes | no | NO_FIX | yes | GPS fix status |
 |  |  |  |  | 2D_FIX | yes | |
 |  |  |  |  | 3D_FIX | yes | |
-| GPS_ADVANCED | switch | no | yes | ENABLED | yes |  Enable advanced status report |
+| GPS_ADVANCED | switch | no | no | ENABLED | yes |  Enable advanced status report |
 |  |  |  |  | DISABLED | yes | |
-| GPS_ADVANCED_STATUS | number | yes | yes | SVS_IN_USE | yes | Advanced status report |
+| GPS_ADVANCED_STATUS | number | yes | no | SVS_IN_USE | yes | Advanced status report |
 |  |  |  |  | SVS_IN_VIEW | yes | |
 |  |  |  |  | PDOP | yes | |
 |  |  |  |  | HDOP | yes | |
@@ -273,36 +271,54 @@ Properties are implemented by GPS driver base class in [indigo_gps_driver.c](htt
 
 ## Dome specific properties
 
-TBD
-
-| Property name  | Type   | RO | Required | Item name        | Required | Comments |
+| Property name  | Type  | RO | Required | Item name  | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| DOME_SPEED     | number | no | no       | SPEED            | yes      |          |
-| DOME_ROTATION  | switch | no | no       | CLOCKWISE        | yes      |          |
-|                |        |    |          | COUNTERCLOCKWISE | yes      |          |
-| DOME_DIRECTION | switch | no | no       | CLOCKWISE        | yes      |          |
-|                |        |    |          | COUNTERCLOCKWISE | yes      |          |
-| DOME_ON_HORIZONTAL_COORDINATES_SET | switch | no | no       | GOTO        | yes      |          |
-|                |        |    |          | SYNC | yes      |          |
-
-For complete list see below:
+| DOME_SPEED  | number | no | no  | SPEED  | yes  |  |
+| DOME_DIRECTION | switch | no | no  | CLOCKWISE  | yes  |  |
+|  |  |  |  | COUNTERCLOCKWISE | yes  |  |
+| DOME_ON_HORIZONTAL_COORDINATES_SET  | switch | no | no  | GOTO  | yes  |  |
+|  |  |  |  | SYNC | yes  |  |
+| DOME_STEPS | number | no | no  | STEPS  | yes  |  |
+| DOME_EQUATORIAL_COORDINATES | number | no | no  | RA  | yes  |  |
+|  |  |  |  | DEC | yes  |  |
+| DOME_HORIZONTAL_COORDINATES | number | no | no  | AZ  | yes  |  |
+|  |  |  |  | ALT | yes  |  |
+| DOME_SLAVING | switch | no | no  | ENABLED  | yes  |  |
+|  |  |  |  | DISABLED | yes  |  |
+| DOME_SLAVING_PARAMETERS | number | no | no  | MOVE_THRESHOLD  | yes  |  |
+| DOME_ABORT_MOTION  | switch | no | no  | ABORT_MOTION  | yes  |  |
+| DOME_SHUTTER  | switch | no | no  | OPENED  | yes  |  |
+|  |  |  |  | CLOSED | yes  |  |
+| DOME_FLAP  | switch | no | no  | OPENED  | yes  |  |
+|  |  |  |  | CLOSED | yes  |  |
+| DOME_PARK  | switch | no | no  | PARKED  | yes  |  |
+|  |  |  |  | UNPARKED | yes  |  |
+| DOME_DIMENSION | number | no | no  | RADIUS  | yes  |  |
+|  |  |  |  | SHUTTER_WIDTH | yes  |  |
+|  |  |  |  | MOUNT_PIVOT_OFFSET_NS | yes  |  |
+|  |  |  |  | MOUNT_PIVOT_OFFSET_EW | yes  |  |
+|  |  |  |  | MOUNT_PIVOT_VERTICAL_OFFSET | yes  |  |
+|  |  |  |  | MOUNT_PIVOT_OTA_OFFSET | yes  |  |
+|  |  |  |  | MOUNT_PIVOT_VERTICAL_OFFSET | yes  |  |
+|  |  |  |  | MOUNT_PIVOT_VERTICAL_OFFSET | yes  |  |
+| DOME_SET_HOST_TIME  | switch | no | no  | SET  | yes  |  |
 
 Properties are implemented by dome driver base class in [indigo_dome_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_dome_driver.c)
 
 ## Rotator specific properties
 
-| Property name  | Type   | RO | Required | Item name        | Required | Comments |
+| Property name  | Type  | RO | Required | Item name  | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| ROTATOR_ON_POSITION_SET | switch | no  | no       | GOTO        | yes      |          |
-|                         |        |     |          | SYNC        | yes      |          |
-| ROTATOR_POSITION        | number | no  | yes      | POSITION    | yes      |          |
-| ROTATOR_DIRECTION       | switch | no  | no      | NORMAL      | yes      |          |
-|                         |        |     |          | REVERSED    | yes      |          |
-| ROTATOR_ABORT_MOTION    | switch | no  | yes      | ABORT_MOTION | yes     |          |
-| ROTATOR_BACKLASH        | number | no  | no       | BACKLASH     | yes     |          |
-| ROTATOR_LIMITS          | number | no  | no       | MIN_POSITION | yes     |          |
-|                         |        |     |          | MAX_POSITION | yes     |          |
-| ROTATOR_STEPS_PER_REVOLUTION | number | no | no | STEPS_PER_REVOLUTION| yes |         |
+| ROTATOR_ON_POSITION_SET | switch | no  | no  | GOTO  | yes  |  |
+|  |  |  |  | SYNC  | yes  |  |
+| ROTATOR_POSITION  | number | no  | yes  | POSITION  | yes  |  |
+| ROTATOR_DIRECTION  | switch | no  | no  | NORMAL  | yes  |  |
+|  |  |  |  | REVERSED  | yes  |  |
+| ROTATOR_ABORT_MOTION  | switch | no  | yes  | ABORT_MOTION | yes  |  |
+| ROTATOR_BACKLASH  | number | no  | no  | BACKLASH  | yes  |  |
+| ROTATOR_LIMITS  | number | no  | no  | MIN_POSITION | yes  |  |
+|  |  |  |  | MAX_POSITION | yes  |  |
+| ROTATOR_STEPS_PER_REVOLUTION | number | no | no | STEPS_PER_REVOLUTION| yes |  |
 
 Properties are implemented by rotator driver base class in [indigo_rotator_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_rotator_driver.c)
 
@@ -365,7 +381,7 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 
 ## Agent specific properties
 
-### Snoop agent
+### Snoop agent (obsoleted by various filter agents)
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
@@ -379,7 +395,7 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | TARGET_PROPERTY | yes | |
 | SNOOP_RULES | light | yes | yes | ... | yes | Lists all rules |
 
-### LX200 server agent
+### LX200 server agent (obsoleted by Mount Agent)
 
 | Property name | Type | RO | Required | Item name | Required | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
