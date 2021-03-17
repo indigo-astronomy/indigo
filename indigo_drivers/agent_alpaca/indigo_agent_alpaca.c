@@ -43,8 +43,9 @@
 #include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_alpaca.h"
+#include "alpaca_common.h"
 
-#define INDIGO_PRINTF(...) if (!indigo_printf(__VA_ARGS__)) goto failure
+//#define INDIGO_PRINTF(...) if (!indigo_printf(__VA_ARGS__)) goto failure
 
 #define PRIVATE_DATA													private_data
 
@@ -54,7 +55,6 @@
 #define DISCOVERY_REQUEST											"alpacadiscovery1"
 #define DISCOVERY_RESPONSE										"{ \"AlpacaPort\":%d }"
 
-
 typedef struct {
 	indigo_property *discovery_property;
 	pthread_mutex_t mutex;
@@ -62,10 +62,13 @@ typedef struct {
 
 static agent_private_data *private_data = NULL;
 
-static indigo_device *agent_device = NULL;
-static indigo_client *agent_client = NULL;
+static int discovery_server_socket = 0;
+static indigo_alpaca_device *alpaca_devices = NULL;
+static uint32_t server_transaction_id = 0;
 
-static int discovery_server_socket;
+indigo_device *indigo_agent_alpaca_device = NULL;
+indigo_client *indigo_agent_alpaca_client = NULL;
+
 
 // -------------------------------------------------------------------------------- ALPACA bridge implementation
 
@@ -127,16 +130,100 @@ static void shutdown_discovery_server() {
 	}
 }
 
-static void alpaca_setup_handler(int socket, char *method, char *path) {
-	INDIGO_PRINTF(socket, "HTTP/1.1 301 Moved Permanently\r\n");
-	INDIGO_PRINTF(socket, "Location: /mng.html\r\n");
-	INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
-	INDIGO_PRINTF(socket, "\r\n");
-	INDIGO_PRINTF(socket, "Redirecting to /mng.html\r\n", path);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> OK", path);
-	return;
-failure:
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> Failed", path);
+static void alpaca_setup_handler(int socket, char *method, char *path, char *params) {
+	if (indigo_printf(socket,
+			"HTTP/1.1 301 Moved Permanently\r\n"
+			"Location: /mng.html\r\n"
+			"Content-Type: text/plain\r\n"
+			"Content-Length: 0\r\n"
+			"\r\n"
+		))
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> OK", path);
+	else
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+}
+
+static void parseParams(char *params, uint32_t *client_id, uint32_t *client_transaction_id) {
+	if (params == NULL)
+		return;
+	while (true) {
+		char *token = strtok_r(params, "&", &params);
+		if (token == NULL)
+			break;
+		if (!strncmp(token, "ClientID", 8)) {
+			if ((token = strchr(token, '='))) {
+				*client_id = (uint32_t)atol(token + 1);
+			}
+		} else if (!strncmp(token, "ClientTransactionID", 19)) {
+			if ((token = strchr(token, '='))) {
+				*client_transaction_id = (uint32_t)atol(token + 1);
+			}
+		}
+	}
+}
+
+static void alpaca_apiversions_handler(int socket, char *method, char *path, char *params) {
+	uint32_t client_id = 0, client_transaction_id = 0;
+	char buffer[128];
+	parseParams(params, &client_id, &client_transaction_id);
+	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+	if (indigo_printf(socket,
+			"HTTP/1.1 200 OK\r\n"
+			"Content-Type: application/json\r\n"
+			"Content-Length: %d\r\n"
+			"\r\n"
+			"%s", strlen(buffer), buffer))
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> OK", path);
+	else
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+}
+
+static void alpaca_v1_description_handler(int socket, char *method, char *path, char *params) {
+	uint32_t client_id = 0, client_transaction_id = 0;
+	char buffer[512];
+	parseParams(params, &client_id, &client_transaction_id);
+	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-ALPACA Bridge\", \"ServerVersion\": \"%d.%d-%s\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerURL\": \"https://www.indigo-astronomy.org\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, client_transaction_id, server_transaction_id++);
+	if (indigo_printf(socket,
+			"HTTP/1.1 200 OK\r\n"
+			"Content-Type: application/json\r\n"
+			"Content-Length: %d\r\n"
+			"\r\n"
+			"%s", strlen(buffer), buffer))
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> OK", path);
+	else
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+}
+
+#define BUFFER_SIZE (128 * 1024)
+
+static void alpaca_v1_configureddevices_handler(int socket, char *method, char *path, char *params) {
+	uint32_t client_id = 0, client_transaction_id = 0;
+	char *buffer = indigo_safe_malloc(BUFFER_SIZE);
+	parseParams(params, &client_id, &client_transaction_id);
+	long index = snprintf(buffer, BUFFER_SIZE, "{ \"Value\": [ ");
+	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	while (alpaca_device) {
+		if (alpaca_device->device_type) {
+			index += snprintf(buffer + index, BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": \"%d\", \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
+			alpaca_device = alpaca_device->next;
+			if (alpaca_device)
+				buffer[index++] = ',';
+			buffer[index++] = ' ';
+		} else {
+			alpaca_device = alpaca_device->next;
+		}
+	}
+	snprintf(buffer + index, BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+	if (indigo_printf(socket,
+			"HTTP/1.1 200 OK\r\n"
+			"Content-Type: application/json\r\n"
+			"Content-Length: %d\r\n"
+			"\r\n"
+			"%s", strlen(buffer), buffer))
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> OK", path);
+	else
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+	free(buffer);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -153,8 +240,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_DISCOVERY_PORT_ITEM, "PORT", "Discovery port", 0, 0xFFFF, 0, 32227);
 		// --------------------------------------------------------------------------------
+		srand((unsigned)time(0));
 		indigo_set_timer(device, 0, start_discovery_server, NULL);
-		indigo_server_add_handler("/setup", alpaca_setup_handler);
+		indigo_server_add_handler("/ascom/setup", &alpaca_setup_handler);
+		indigo_server_add_handler("/ascom/management/apiversions", &alpaca_apiversions_handler);
+		indigo_server_add_handler("/ascom/management/v1/description", &alpaca_v1_description_handler);
+		indigo_server_add_handler("/ascom/management/v1/configureddevices", &alpaca_v1_configureddevices_handler);
 		CONNECTION_PROPERTY->hidden = true;
 		CONFIG_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
@@ -166,7 +257,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client == agent_client)
+	if (client == indigo_agent_alpaca_client)
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property))
 		indigo_define_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
@@ -177,7 +268,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (client == agent_client)
+	if (client == indigo_agent_alpaca_client)
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_DISCOVERY_PROPERTY, property, false);
@@ -201,23 +292,69 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	// --------------------------------------------------------------------------------
-	// TBD
-	// --------------------------------------------------------------------------------
+	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	while (alpaca_device) {
+		if (!strcmp(property->device, alpaca_device->indigo_device))
+			break;
+		alpaca_device = alpaca_device->next;
+	}
+	if (alpaca_device == NULL) {
+		static uint32_t device_number = 0;
+		alpaca_device = indigo_safe_malloc(sizeof(indigo_alpaca_device));
+		strcpy(alpaca_device->indigo_device, property->device);
+		alpaca_device->device_number = device_number++;
+		strcpy(alpaca_device->device_uid, "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx");
+		static char *hex = "0123456789ABCDEF";
+		for (char *c = alpaca_device->device_uid; *c; c++) {
+			int r = rand () % 16;
+			switch (*c) {
+				case 'x':
+					*c = hex[r];
+					break;
+				case 'y':
+					*c = hex[(r & 0x03) | 0x08];
+					break;
+				default:
+					break;
+			}
+		}
+		pthread_mutex_init(&alpaca_device->mutex, NULL);
+		alpaca_device->next = alpaca_devices;
+		alpaca_devices = alpaca_device;
+	}
+	indigo_alpaca_update_property(alpaca_device, property);
 	return INDIGO_OK;
 }
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	// --------------------------------------------------------------------------------
-	// TBD
-	// --------------------------------------------------------------------------------
+	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	while (alpaca_device) {
+		if (!strcmp(property->device, alpaca_device->indigo_device)) {
+			indigo_alpaca_update_property(alpaca_device, property);
+			break;
+		}
+		alpaca_device = alpaca_device->next;
+	}
 	return INDIGO_OK;
 }
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	// --------------------------------------------------------------------------------
-	// TBD
-	// --------------------------------------------------------------------------------
+	indigo_alpaca_device *alpaca_device = alpaca_devices, *previous = NULL;
+	while (alpaca_device) {
+		if (!strcmp(property->device, alpaca_device->indigo_device)) {
+			if (*property->name == 0 || !strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+				if (previous == NULL) {
+					alpaca_devices = alpaca_device->next;
+				} else {
+					previous->next = alpaca_device->next;
+				}
+				indigo_safe_free(alpaca_device);
+			}
+			break;
+		}
+		previous = alpaca_device;
+		alpaca_device = alpaca_device->next;
+	}
 	return INDIGO_OK;
 }
 
@@ -254,25 +391,25 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(agent_private_data));
-			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
-			agent_device->private_data = private_data;
-			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
-			agent_client->client_context = agent_device->device_context;
-			indigo_attach_device(agent_device);
-			indigo_attach_client(agent_client);
+			indigo_agent_alpaca_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
+			indigo_agent_alpaca_device->private_data = private_data;
+			indigo_agent_alpaca_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
+			indigo_agent_alpaca_client->client_context = indigo_agent_alpaca_device->device_context;
+			indigo_attach_device(indigo_agent_alpaca_device);
+			indigo_attach_client(indigo_agent_alpaca_client);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
-			if (agent_client != NULL) {
-				indigo_detach_client(agent_client);
-				free(agent_client);
-				agent_client = NULL;
+			if (indigo_agent_alpaca_client != NULL) {
+				indigo_detach_client(indigo_agent_alpaca_client);
+				free(indigo_agent_alpaca_client);
+				indigo_agent_alpaca_client = NULL;
 			}
-			if (agent_device != NULL) {
-				indigo_detach_device(agent_device);
-				free(agent_device);
-				agent_device = NULL;
+			if (indigo_agent_alpaca_device != NULL) {
+				indigo_detach_device(indigo_agent_alpaca_device);
+				free(indigo_agent_alpaca_device);
+				indigo_agent_alpaca_device = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);
