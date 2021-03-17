@@ -79,7 +79,7 @@ static struct resource {
 	unsigned length;
 	const char *file_name;
 	char *content_type;
-	void (*handler)(int client_socket, char *method, char *path);
+	void (*handler)(int client_socket, char *method, char *path, char *params);
 	struct resource *next;
 } *resources = NULL;
 
@@ -118,9 +118,9 @@ static void start_worker_thread(int *client_socket) {
 					char *space = strchr(path, ' ');
 					if (space)
 						*space = 0;
-					char *param = strchr(path, '?');
-					if (param)
-						*param = 0;
+					char *params = strchr(path, '?');
+					if (params)
+						*params++ = 0;
 					char websocket_key[256] = "";
 					while (indigo_read_line(socket, header, BUFFER_SIZE) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
@@ -244,7 +244,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
 							keep_alive = false;
 						} else if (resource->handler) {
-							resource->handler(socket, "GET", path);
+							resource->handler(socket, "GET", path, params);
 							keep_alive = false;
 						} else if (resource->data) {
 							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
@@ -313,7 +313,7 @@ static void start_worker_thread(int *client_socket) {
 						INDIGO_LOG(indigo_log("%s -> Failed", request));
 						keep_alive = false;
 					} else if (resource->handler) {
-						resource->handler(socket, "PUT", path);
+						resource->handler(socket, "PUT", path, NULL);
 						keep_alive = false;
 					}
 				}
@@ -365,7 +365,7 @@ void indigo_server_add_file_resource(const char *path, const char *file_name, co
 	INDIGO_LOG(indigo_log("Resource %s (%s, %s) added", path, file_name, content_type));
 }
 
-void indigo_server_add_handler(const char *path, void (*handler)(int client_socket, char *method, char *path)) {
+void indigo_server_add_handler(const char *path, void (*handler)(int client_socket, char *method, char *path, char *params)) {
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	resource->path = path;
 	resource->file_name = NULL;
