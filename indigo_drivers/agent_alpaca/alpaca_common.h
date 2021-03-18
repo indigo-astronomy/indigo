@@ -31,9 +31,18 @@
 #include <indigo/indigo_bus.h>
 
 #define ALPACA_INTERFACE_VERSION	1
+#define ALPACA_MAX_FILTERS				32
 
 typedef enum {
-	indigo_alpaca_error_OK = 0
+	indigo_alpaca_error_OK = 0x000,
+	indigo_alpaca_error_NotImplemented = 0x4000,
+	indigo_alpaca_error_InvalidValue = 0x4001,
+	indigo_alpaca_error_ValueNotSet = 0x4002,
+	indigo_alpaca_error_NotConnected = 0x4007,
+	indigo_alpaca_error_InvalidWhileParked = 0x4008,
+	indigo_alpaca_error_InvalidWhileSlaved = 0x4009,
+	indigo_alpaca_error_InvalidOperation = 0x400B,
+	indigo_alpaca_error_ActionNotImplemented = 0x400C
 } indigo_alpaca_error;
 
 typedef struct indigo_alpaca_device_struct {
@@ -49,28 +58,24 @@ typedef struct indigo_alpaca_device_struct {
 	bool connected;
 	union {
 		struct {
+			uint32_t count;
 			uint32_t position;
-			uint32_t focusoffsets[32];
-			char *names[32];
+			uint32_t focusoffsets[ALPACA_MAX_FILTERS];
+			char *names[ALPACA_MAX_FILTERS];
 		} filterwheel;
 	};
 	struct indigo_alpaca_device_struct *next;
 } indigo_alpaca_device;
 
+extern char *indigo_alpaca_error_string(int code);
+
 extern void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern indigo_alpaca_error indigo_alpaca_get_devicename(indigo_alpaca_device *device, int version, char *value);
-extern indigo_alpaca_error indigo_alpaca_get_description(indigo_alpaca_device *device, int version, char *value);
-extern indigo_alpaca_error indigo_alpaca_get_driverinfo(indigo_alpaca_device *device, int version, char *value);
-extern indigo_alpaca_error indigo_alpaca_get_driverversion(indigo_alpaca_device *device, int version, char *value);
-extern indigo_alpaca_error indigo_alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value);
-extern indigo_alpaca_error indigo_alpaca_get_connected(indigo_alpaca_device *device, int version, bool *value);
-extern indigo_alpaca_error indigo_alpaca_set_connected(indigo_alpaca_device *device, int version, bool value);
+extern long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern indigo_alpaca_error indigo_alpaca_wheel_get_position(indigo_alpaca_device *device, int version, uint32_t *value);
-extern indigo_alpaca_error indigo_alpaca_wheel_set_position(indigo_alpaca_device *device, int version, uint32_t value);
-extern indigo_alpaca_error indigo_alpaca_wheel_get_focusoffsets(indigo_alpaca_device *device, int version, uint32_t **value);
-extern indigo_alpaca_error indigo_alpaca_wheel_get_names(indigo_alpaca_device *device, int version, char **value);
+extern long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern indigo_device *indigo_agent_alpaca_device;
 extern indigo_client *indigo_agent_alpaca_client;

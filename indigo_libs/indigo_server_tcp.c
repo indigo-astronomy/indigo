@@ -108,7 +108,7 @@ static void start_worker_thread(int *client_socket) {
 			indigo_json_parse(NULL, protocol_adapter);
 			indigo_detach_client(protocol_adapter);
 			indigo_release_json_device_adapter(protocol_adapter);
-		} else if (c == 'G') {
+		} else if (c == 'G' || c == 'P') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
 			while ((res = indigo_read_line(socket, request, BUFFER_SIZE)) >= 0) {
