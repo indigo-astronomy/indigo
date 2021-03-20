@@ -63,6 +63,17 @@ typedef struct indigo_alpaca_device_struct {
 			uint32_t focusoffsets[ALPACA_MAX_FILTERS];
 			char *names[ALPACA_MAX_FILTERS];
 		} filterwheel;
+		struct {
+			bool absolute;
+			bool ismoving;
+			bool tempcompavailable;
+			bool tempcomp;
+			bool temperatureavailable;
+			uint32_t maxstep;
+			uint32_t maxincrement;
+			uint32_t position;
+			double temperature;
+		} focuser;
 	};
 	struct indigo_alpaca_device_struct *next;
 } indigo_alpaca_device;
@@ -76,6 +87,10 @@ extern long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int v
 extern void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 extern long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+
+extern void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+extern long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern indigo_device *indigo_agent_alpaca_device;
 extern indigo_client *indigo_agent_alpaca_client;
