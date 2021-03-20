@@ -1282,7 +1282,7 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void focuser_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
 static indigo_result focuser_attach(indigo_device *device) {
