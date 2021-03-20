@@ -82,6 +82,9 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 					case INDIGO_INTERFACE_GUIDER:
 						alpaca_device->device_type = "Telescope";
 						break;
+					case INDIGO_INTERFACE_AUX_LIGHTBOX:
+						alpaca_device->device_type = "CoverCalibrator";
+						break;
 					default:
 						alpaca_device->device_type = NULL;
 						interface = 0;
@@ -121,6 +124,8 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 		indigo_alpaca_wheel_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "FOCUSER_", 8)) {
 		indigo_alpaca_focuser_update_property(alpaca_device, property);
+	} else if (!strncmp(property->name, "AUX_", 4)) {
+		indigo_alpaca_lightbox_update_property(alpaca_device, property);
 	} // TBD other device types
 }
 
@@ -205,6 +210,8 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 		return result;
 	if (!strcmp(alpaca_device->device_type, "Focuser") && (result = indigo_alpaca_focuser_get_command(alpaca_device, version, command, buffer, buffer_length)))
 		return result;
+	if (!strcmp(alpaca_device->device_type, "CoverCalibrator") && (result = indigo_alpaca_lightbox_get_command(alpaca_device, version, command, buffer, buffer_length)))
+		return result;
 	// TBD other device types
 	return 0;
 }
@@ -219,6 +226,8 @@ long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version,
 	if (!strcmp(alpaca_device->device_type, "Filterwheel") && (result = indigo_alpaca_wheel_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
 		return result;
 	if (!strcmp(alpaca_device->device_type, "Focuser") && (result = indigo_alpaca_focuser_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
+		return result;
+	if (!strcmp(alpaca_device->device_type, "CoverCalibrator") && (result = indigo_alpaca_lightbox_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
 		return result;
 	return 0;
 }
