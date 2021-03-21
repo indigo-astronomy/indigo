@@ -82,6 +82,9 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 					case INDIGO_INTERFACE_GUIDER:
 						alpaca_device->device_type = "Telescope";
 						break;
+					case INDIGO_INTERFACE_AUX_LIGHTBOX:
+						alpaca_device->device_type = "CoverCalibrator";
+						break;
 					default:
 						alpaca_device->device_type = NULL;
 						interface = 0;
@@ -107,6 +110,11 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
 					alpaca_device->connected = item->sw.value;
+					break;
+				}
+				if (!strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME)) {
+					alpaca_device->connected = !item->sw.value;
+					break;
 				}
 			}
 		} else {
@@ -114,6 +122,10 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 		}
 	} else if (!strncmp(property->name, "WHEEL_", 6)) {
 		indigo_alpaca_wheel_update_property(alpaca_device, property);
+	} else if (!strncmp(property->name, "FOCUSER_", 8)) {
+		indigo_alpaca_focuser_update_property(alpaca_device, property);
+	} else if (!strncmp(property->name, "AUX_", 4)) {
+		indigo_alpaca_lightbox_update_property(alpaca_device, property);
 	} // TBD other device types
 }
 
@@ -157,7 +169,7 @@ static indigo_alpaca_error alpaca_get_connected(indigo_alpaca_device *device, in
 
 static indigo_alpaca_error alpaca_set_connected(indigo_alpaca_device *device, int version, bool value) {
 	pthread_mutex_lock(&device->mutex);
-	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, CONNECTION_PROPERTY_NAME, value ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -194,7 +206,11 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 		return snprintf(buffer, buffer_length, "\"Value:\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
 	}
 	long result;
-	if ((result = indigo_alpaca_wheel_get_command(alpaca_device, version, command, buffer, buffer_length)))
+	if (!strcmp(alpaca_device->device_type, "Filterwheel") && (result = indigo_alpaca_wheel_get_command(alpaca_device, version, command, buffer, buffer_length)))
+		return result;
+	if (!strcmp(alpaca_device->device_type, "Focuser") && (result = indigo_alpaca_focuser_get_command(alpaca_device, version, command, buffer, buffer_length)))
+		return result;
+	if (!strcmp(alpaca_device->device_type, "CoverCalibrator") && (result = indigo_alpaca_lightbox_get_command(alpaca_device, version, command, buffer, buffer_length)))
 		return result;
 	// TBD other device types
 	return 0;
@@ -202,12 +218,16 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 
 long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
 	if (!strcmp(command, "connected")) {
-		bool value = strcasecmp(param_1, "Connected=true");
+		bool value = !strcasecmp(param_1, "Connected=true");
 		indigo_alpaca_error result = alpaca_set_connected(alpaca_device, version, value);
 		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
 	}
 	long result;
-	if ((result = indigo_alpaca_wheel_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
+	if (!strcmp(alpaca_device->device_type, "Filterwheel") && (result = indigo_alpaca_wheel_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
+		return result;
+	if (!strcmp(alpaca_device->device_type, "Focuser") && (result = indigo_alpaca_focuser_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
+		return result;
+	if (!strcmp(alpaca_device->device_type, "CoverCalibrator") && (result = indigo_alpaca_lightbox_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
 		return result;
 	return 0;
 }
