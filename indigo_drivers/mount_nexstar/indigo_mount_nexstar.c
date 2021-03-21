@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -572,7 +572,7 @@ static void mount_handle_tracking(indigo_device *device) {
 	TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		int tracking_mode = 0;
-		if (TRACKING_EQ_ITEM->sw.value)
+		if (TRACKING_EQ_ITEM->sw.value || PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT)
 			tracking_mode = TC_TRACK_EQ;
 		else if (TRACKING_AA_ITEM->sw.value)
 			tracking_mode = TC_TRACK_ALT_AZ;
