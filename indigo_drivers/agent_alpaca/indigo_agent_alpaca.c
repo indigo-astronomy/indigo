@@ -162,7 +162,7 @@ static void send_json_response(int socket, char *path, int status_code, const ch
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %3d %s", path, status_code, status_text);
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%s", body);
 	} else {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "% -> Failed", path);
 	}
 }
 
@@ -179,7 +179,7 @@ static void send_text_response(int socket, char *path, int status_code, const ch
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %3d %s", path, status_code, status_text);
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%s", body);
 	} else {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "% -> Failed", path);
 	}
 }
 
@@ -241,6 +241,7 @@ int string_cmp(const void * a, const void * b) {
 }
 
 static void alpaca_v1_api_handler(int socket, char *method, char *path, char *params) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s %s %s", method, path, params);
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char *device_type = strstr(path, "/api/v1/");
 	if (device_type == NULL) {
@@ -265,7 +266,7 @@ static void alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 	uint32_t number = (uint32_t)atol(device_number);
 	while (alpaca_device) {
 		if (alpaca_device->device_number == number) {
-			if (!strcasecmp(alpaca_device->device_type, device_type)) {
+			if (alpaca_device->device_type && !strcasecmp(alpaca_device->device_type, device_type)) {
 				break;
 			}
 			send_text_response(socket, path, 400, "Bad Request", "Device type doesn't match");
@@ -284,6 +285,7 @@ static void alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		if (length > 0) {
 			index += length;
 			snprintf(buffer + index, BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 			send_json_response(socket, path, 200, "OK", buffer);
 		} else {
 			send_text_response(socket, path, 400, "Bad Request", "Unrecognised command");
@@ -297,6 +299,7 @@ static void alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		}
 		indigo_read_line(socket, buffer, content_length);
 		buffer[content_length] = 0;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", buffer);
 		char *params = buffer;
 		char args[5][128] = { 0 };
 		int count = 0;
@@ -323,6 +326,7 @@ static void alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		if (length > 0) {
 			index += length;
 			snprintf(buffer + index, BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 			send_json_response(socket, path, 200, "OK", buffer);
 		} else {
 			send_text_response(socket, path, 400, "Bad Request", "Unrecognised command");
@@ -430,6 +434,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		pthread_mutex_init(&alpaca_device->mutex, NULL);
 		alpaca_device->next = alpaca_devices;
 		alpaca_devices = alpaca_device;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device added: %s -> %d", property->device, alpaca_device->device_number);
 	}
 	indigo_alpaca_update_property(alpaca_device, property);
 	return INDIGO_OK;

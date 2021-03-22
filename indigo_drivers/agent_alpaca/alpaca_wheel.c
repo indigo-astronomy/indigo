@@ -27,7 +27,7 @@
 
 #include "alpaca_common.h"
 
-static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int version, int32_t *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -38,13 +38,13 @@ static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_set_position(indigo_alpaca_device *device, int version, uint32_t value) {
+static indigo_alpaca_error alpaca_set_position(indigo_alpaca_device *device, int version, int32_t value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (value > device->filterwheel.count) {
+	if (value < 0 || value >= device->filterwheel.count) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -84,49 +84,57 @@ static indigo_alpaca_error alpaca_get_focusoffsets(indigo_alpaca_device *device,
 
 void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
 	if (!strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			if (!strcmp(item->name, WHEEL_SLOT_ITEM_NAME)) {
-				alpaca_device->filterwheel.count = item->number.max;
-				alpaca_device->filterwheel.position = item->number.value - 1;
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, WHEEL_SLOT_ITEM_NAME)) {
+					alpaca_device->filterwheel.count = item->number.max;
+					alpaca_device->filterwheel.position = item->number.value - 1;
+				}
 			}
+		} else {
+			alpaca_device->filterwheel.position = - 1;
 		}
 	} else if (!strcmp(property->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME)) {
-		alpaca_device->filterwheel.count = property->count;
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			int index = 0;
-			sscanf(item->name, WHEEL_SLOT_OFFSET_ITEM_NAME, &index);
-			if (index <= ALPACA_MAX_FILTERS)
-				alpaca_device->filterwheel.focusoffsets[index - 1] = item->number.value;
+		if (property->state == INDIGO_OK_STATE) {
+			alpaca_device->filterwheel.count = property->count;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				int index = 0;
+				sscanf(item->name, WHEEL_SLOT_OFFSET_ITEM_NAME, &index);
+				if (index <= ALPACA_MAX_FILTERS)
+					alpaca_device->filterwheel.focusoffsets[index - 1] = item->number.value;
+			}
 		}
 	} else if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
-		alpaca_device->filterwheel.count = property->count;
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			int index = 0;
-			sscanf(item->name, WHEEL_SLOT_NAME_ITEM_NAME, &index);
-			if (index <= ALPACA_MAX_FILTERS)
-				alpaca_device->filterwheel.names[index - 1] = item->text.value;
+		if (property->state == INDIGO_OK_STATE) {
+			alpaca_device->filterwheel.count = property->count;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				int index = 0;
+				sscanf(item->name, WHEEL_SLOT_NAME_ITEM_NAME, &index);
+				if (index <= ALPACA_MAX_FILTERS)
+					alpaca_device->filterwheel.names[index - 1] = item->text.value;
+			}
 		}
 	}
 }
 
 long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
 	if (!strcmp(command, "actions")) {
-		return snprintf(buffer, buffer_length, "\"Value:\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "position")) {
-		uint32_t value = 0;
+		int32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value:\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "names")) {
 		char *value[ALPACA_MAX_FILTERS];
 		uint32_t count = 0;
 		indigo_alpaca_error result = alpaca_get_names(alpaca_device, version, value, &count);
 		if (result == indigo_alpaca_error_OK) {
-			long index = snprintf(buffer, buffer_length, "\"Value:\": [ ");
+			long index = snprintf(buffer, buffer_length, "\"Value\": [ ");
 			for (int i = 0; i < count; i++) {
 				index += snprintf(buffer + index, buffer_length - index, "%s\"%s\"", i == 0 ? "" : ", ", value[i]);
 			}
@@ -141,7 +149,7 @@ long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int ve
 		uint32_t count = 0;
 		indigo_alpaca_error result = alpaca_get_focusoffsets(alpaca_device, version, value, &count);
 		if (result == indigo_alpaca_error_OK) {
-			long index = snprintf(buffer, buffer_length, "\"Value:\": [ ");
+			long index = snprintf(buffer, buffer_length, "\"Value\": [ ");
 			for (int i = 0; i < count; i++) {
 				index += snprintf(buffer + index, buffer_length - index, "%s%u", i == 0 ? "" : ", ", value[i]);
 			}
@@ -156,7 +164,7 @@ long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int ve
 
 long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
 	if (!strcmp(command, "position")) {
-		uint32_t value = 1;
+		int32_t value = 1;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Position=%d", &value) == 1)
 			result = alpaca_set_position(alpaca_device, version, value);

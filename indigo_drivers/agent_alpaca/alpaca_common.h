@@ -35,14 +35,14 @@
 
 typedef enum {
 	indigo_alpaca_error_OK = 0x000,
-	indigo_alpaca_error_NotImplemented = 0x4000,
-	indigo_alpaca_error_InvalidValue = 0x4001,
-	indigo_alpaca_error_ValueNotSet = 0x4002,
-	indigo_alpaca_error_NotConnected = 0x4007,
-	indigo_alpaca_error_InvalidWhileParked = 0x4008,
-	indigo_alpaca_error_InvalidWhileSlaved = 0x4009,
-	indigo_alpaca_error_InvalidOperation = 0x400B,
-	indigo_alpaca_error_ActionNotImplemented = 0x400C
+	indigo_alpaca_error_NotImplemented = 0x400,
+	indigo_alpaca_error_InvalidValue = 0x401,
+	indigo_alpaca_error_ValueNotSet = 0x402,
+	indigo_alpaca_error_NotConnected = 0x407,
+	indigo_alpaca_error_InvalidWhileParked = 0x408,
+	indigo_alpaca_error_InvalidWhileSlaved = 0x409,
+	indigo_alpaca_error_InvalidOperation = 0x40B,
+	indigo_alpaca_error_ActionNotImplemented = 0x40C
 } indigo_alpaca_error;
 
 typedef struct indigo_alpaca_device_struct {
@@ -59,7 +59,7 @@ typedef struct indigo_alpaca_device_struct {
 	union {
 		struct {
 			uint32_t count;
-			uint32_t position;
+			int32_t position;
 			uint32_t focusoffsets[ALPACA_MAX_FILTERS];
 			char *names[ALPACA_MAX_FILTERS];
 		} filterwheel;

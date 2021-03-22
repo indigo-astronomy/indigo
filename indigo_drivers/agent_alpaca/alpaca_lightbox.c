@@ -202,27 +202,27 @@ void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device,
 
 long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
 	if (!strcmp(command, "actions")) {
-		return snprintf(buffer, buffer_length, "\"Value:\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "brightness")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_brightness(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value:\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "maxbrightness")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_maxbrightness(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value:\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "calibratorstate")) {
 		int value = 0;
 		indigo_alpaca_error result = alpaca_get_calibratorstate(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value:\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "coverstate")) {
 		int value = 0;
 		indigo_alpaca_error result = alpaca_get_coverstate(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value:\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	return 0;
 }
