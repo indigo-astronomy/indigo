@@ -88,6 +88,11 @@ static indigo_alpaca_error alpaca_calibratoron(indigo_alpaca_device *device, int
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true);
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, value);
+	for (int i = 0; i < 30; i++) {
+		if (device->covercalibrator.calibratorstate == 3)
+			break;
+		indigo_usleep(500000);
+	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -103,6 +108,11 @@ static indigo_alpaca_error alpaca_calibratoroff(indigo_alpaca_device *device, in
 		return indigo_alpaca_error_NotImplemented;
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true);
+	for (int i = 0; i < 30; i++) {
+		if (device->covercalibrator.calibratorstate == 0)
+			break;
+		indigo_usleep(500000);
+	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -178,6 +188,7 @@ void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device,
 				if (!strcmp(item->name, AUX_LIGHT_SWITCH_OFF_ITEM_NAME)) {
 					if (item->sw.value) {
 						alpaca_device->covercalibrator.calibratorstate = 1;
+						alpaca_device->covercalibrator.brightness = 0;
 						return;
 					}
 				} else if (!strcmp(item->name, AUX_LIGHT_SWITCH_ON_ITEM_NAME)) {
@@ -201,7 +212,7 @@ void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device,
 }
 
 long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
-	if (!strcmp(command, "actions")) {
+	if (!strcmp(command, "supportedactions")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "brightness")) {

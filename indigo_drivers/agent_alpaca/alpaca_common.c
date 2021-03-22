@@ -119,6 +119,11 @@ static indigo_alpaca_error alpaca_get_connected(indigo_alpaca_device *device, in
 static indigo_alpaca_error alpaca_set_connected(indigo_alpaca_device *device, int version, bool value) {
 	pthread_mutex_lock(&device->mutex);
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, CONNECTION_PROPERTY_NAME, value ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	for (int i = 0; i < 30; i++) {
+		if (device->connected == value)
+			break;
+		indigo_usleep(500000);
+	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }

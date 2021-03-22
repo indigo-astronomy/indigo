@@ -159,3 +159,75 @@ Conformance test complete
  
 No errors, warnings or issues found: your driver passes ASCOM validation!!
 
+--------------------------------------------------------------------------------------------------------------
+
+ConformanceCheck ASCOM Device Conformance Checker Version 6.5.7500.22515, Build time: 14/07/2020 13:30:30
+ConformanceCheck Running on: ASCOM Platform 6.5 SP1 6.5.1.3234
+
+ConformanceCheck Driver ProgID: ASCOM.AlpacaDynamic1.CoverCalibrator
+
+Error handling 
+Error number for "Not Implemented" is: 80040400
+Error number for "Invalid Value 1" is: 80040405
+Error number for "Value Not Set 1" is: 80040402
+Error number for "Value Not Set 2" is: 80040403
+Error messages will not be interpreted to infer state.
+
+22:31:33.433 Driver Access Checks              OK       
+22:31:34.348 AccessChecks                      OK       Successfully created driver using late binding
+22:31:37.085 AccessChecks                      OK       Successfully connected using late binding
+22:31:37.092 AccessChecks                      INFO     The driver is a COM object
+22:31:37.979 AccessChecks                      OK       Successfully created driver using early binding to ICoverCalibratorV1 interface
+22:31:40.672 AccessChecks                      OK       Successfully connected using early binding to ICoverCalibratorV1 interface
+22:31:40.703 AccessChecks                      OK       Successfully created driver using driver access toolkit
+22:31:43.263 AccessChecks                      OK       Successfully connected using driver access toolkit
+
+Conform is using ASCOM.DriverAccess.CoverCalibrator to get a CoverCalibrator object
+22:31:43.327 ConformanceCheck                  OK       Driver instance created successfully
+
+Pre-connect checks 
+
+Connect 
+22:31:45.990 ConformanceCheck                  OK       Connected OK
+
+Common Driver Methods 
+22:31:46.057 InterfaceVersion                  OK       1
+22:31:46.110 Connected                         OK       True
+22:31:46.160 Description                       OK       Flip-Flat
+22:31:46.204 DriverInfo                        OK       ASCOM Dynamic Driver v6.5.1.3234 - REMOTE DEVICE: indigo_aux_flipflat
+22:31:46.251 DriverVersion                     OK       2.0.0.4
+22:31:46.298 Name                              OK       Flip-Flat
+22:31:46.341 CommandString                     INFO     Conform cannot test the CommandString method
+22:31:46.349 CommandBlind                      INFO     Conform cannot test the CommandBlind method
+22:31:46.356 CommandBool                       INFO     Conform cannot test the CommandBool method
+22:31:46.366 Action                            INFO     Conform cannot test the Action method
+22:31:46.394 SupportedActions                  OK       Driver returned an empty action list
+
+Properties 
+22:31:46.604 CalibratorState                   OK       Off
+22:31:46.638 CoverState                        OK       Open
+22:31:46.666 MaxBrightness                     OK       255
+22:31:46.718 Brightness                        OK       255
+
+Methods 
+22:31:48.856 OpenCover                         OK       OpenCover was successful. The asynchronous open took 2.0 seconds
+22:31:50.964 CloseCover                        OK       CloseCover was successful. The asynchronous close took 2.1 seconds
+22:31:52.102 HaltCover                         ISSUE    CoverStatus indicates that the device has cover capability and a MethodNotImplementedException exception was thrown, this method must function per the ASCOM specification.
+22:31:52.156 CalibratorOn                      OK       CalibratorOn with brightness -1 threw an InvalidValueException as expected
+22:31:53.209 CalibratorOn                      OK       CalibratorOn with brightness 0 was successful. The synchronous operation took 1.0 seconds
+22:31:53.223 CalibratorOn                      OK       The Brightness property does return the value that was set
+22:31:53.276 CalibratorOn                      OK       CalibratorOn with brightness 63 was successful. The synchronous operation took 0.0 seconds
+22:31:53.295 CalibratorOn                      OK       The Brightness property does return the value that was set
+22:31:53.368 CalibratorOn                      OK       CalibratorOn with brightness 127 was successful. The synchronous operation took 0.0 seconds
+22:31:53.383 CalibratorOn                      OK       The Brightness property does return the value that was set
+22:31:53.430 CalibratorOn                      OK       CalibratorOn with brightness 191 was successful. The synchronous operation took 0.0 seconds
+22:31:53.444 CalibratorOn                      OK       The Brightness property does return the value that was set
+22:31:53.492 CalibratorOn                      OK       CalibratorOn with brightness 255 was successful. The synchronous operation took 0.0 seconds
+22:31:53.508 CalibratorOn                      OK       The Brightness property does return the value that was set
+22:31:53.565 CalibratorOn                      OK       CalibratorOn with brightness 256 threw an InvalidValueException as expected
+22:32:08.669 CalibratorOff                     OK       CalibratorOff was successful. The synchronous action took 15.1 seconds
+22:32:08.683 CalibratorOff                     OK       Brightness is set to zero when the calibrator is turned off
+
+Conformance test complete 
+
+Your driver had 0 errors, 0 warnings and 1 issues 
