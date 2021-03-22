@@ -121,7 +121,7 @@ void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, in
 }
 
 long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
-	if (!strcmp(command, "actions")) {
+	if (!strcmp(command, "supportedactions")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "position")) {
