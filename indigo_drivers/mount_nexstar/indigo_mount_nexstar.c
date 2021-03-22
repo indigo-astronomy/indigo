@@ -898,7 +898,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(TRACKING_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- TRACKING_MODE
-		if (IS_CONNECTED) { // TBD - I don't understand how it works!!?!?
+		if (IS_CONNECTED && !TRACKING_MODE_PROPERTY->hidden) { // TBD - I don't understand how it works!!?!?
 			indigo_property_copy_values(TRACKING_MODE_PROPERTY, property, false);
 			if (TRACKING_AUTO_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
