@@ -52,11 +52,14 @@
 #define AGENT_DISCOVERY_PROPERTY							(PRIVATE_DATA->discovery_property)
 #define AGENT_DISCOVERY_PORT_ITEM							(AGENT_DISCOVERY_PROPERTY->items+0)
 
+#define AGENT_DEVICES_PROPERTY								(PRIVATE_DATA->devices_property)
+
 #define DISCOVERY_REQUEST											"alpacadiscovery1"
 #define DISCOVERY_RESPONSE										"{ \"AlpacaPort\":%d }"
 
 typedef struct {
 	indigo_property *discovery_property;
+	indigo_property *devices_property;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
@@ -351,6 +354,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_DISCOVERY_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_DISCOVERY_PORT_ITEM, "PORT", "Discovery port", 0, 0xFFFF, 0, 32227);
+		AGENT_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_DEVICES", MAIN_GROUP, "Device mapping", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_MAX_ITEMS);
+		if (AGENT_DISCOVERY_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_DEVICES_PROPERTY->count = 0;
+
 		// --------------------------------------------------------------------------------
 		srand((unsigned)time(0));
 		indigo_set_timer(device, 0, start_discovery_server, NULL);
@@ -374,6 +382,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property))
 		indigo_define_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_DEVICES_PROPERTY, property))
+		indigo_define_property(device, AGENT_DEVICES_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
@@ -398,11 +408,29 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	shutdown_discovery_server();
 	indigo_server_remove_resource("/setup");
 	indigo_release_property(AGENT_DISCOVERY_PROPERTY);
+	indigo_release_property(AGENT_DEVICES_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_device_detach(device);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
+
+static void update_devices_property(indigo_device *device) {
+	indigo_delete_property(device, AGENT_DEVICES_PROPERTY, NULL);
+	int count = 0;
+	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	while (alpaca_device) {
+		if (alpaca_device->device_type) {
+			indigo_item *item = AGENT_DEVICES_PROPERTY->items + count++;
+			sprintf(item->name, "%d", alpaca_device->device_number);
+			sprintf(item->label, "%s/%d", alpaca_device->device_type, alpaca_device->device_number);
+			strcpy(item->text.value, alpaca_device->indigo_device);
+		}
+		alpaca_device = alpaca_device->next;
+	}
+	AGENT_DEVICES_PROPERTY->count = count;
+	indigo_define_property(device, AGENT_DEVICES_PROPERTY, NULL);
+}
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
@@ -413,30 +441,86 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	}
 	if (alpaca_device == NULL) {
 		static uint32_t device_number = 0;
+		unsigned char digest[15] = { 0 };
+		for (int i = 0, j = 0; property->device[i]; i++, j = (j + 1) % 15) {
+			digest[j] = digest[j] ^ property->device[i];
+		}
 		alpaca_device = indigo_safe_malloc(sizeof(indigo_alpaca_device));
 		strcpy(alpaca_device->indigo_device, property->device);
 		alpaca_device->device_number = device_number++;
-		strcpy(alpaca_device->device_uid, "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx");
+		strcpy(alpaca_device->device_uid, "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx");
 		static char *hex = "0123456789ABCDEF";
+		int i = 0;
 		for (char *c = alpaca_device->device_uid; *c; c++) {
-			int r = rand () % 16;
+			int r = i % 2 == 0 ? digest[i / 2] % 16 : digest[i / 2] / 16;
 			switch (*c) {
 				case 'x':
 					*c = hex[r];
 					break;
-				case 'y':
-					*c = hex[(r & 0x03) | 0x08];
-					break;
 				default:
 					break;
 			}
+			i++;
 		}
 		pthread_mutex_init(&alpaca_device->mutex, NULL);
 		alpaca_device->next = alpaca_devices;
 		alpaca_devices = alpaca_device;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device added: %s -> %d", property->device, alpaca_device->device_number);
 	}
-	indigo_alpaca_update_property(alpaca_device, property);
+	if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, INFO_DEVICE_INTERFACE_ITEM_NAME)) {
+				uint64_t interface = atoll(item->text.value);
+				switch (interface) {
+					case INDIGO_INTERFACE_CCD:
+						alpaca_device->device_type = "Camera";
+						break;
+					case INDIGO_INTERFACE_DOME:
+						alpaca_device->device_type = "Dome";
+						break;
+					case INDIGO_INTERFACE_WHEEL:
+						alpaca_device->device_type = "FilterWheel";
+						break;
+					case INDIGO_INTERFACE_FOCUSER:
+						alpaca_device->device_type = "Focuser";
+						break;
+					case INDIGO_INTERFACE_ROTATOR:
+						alpaca_device->device_type = "Rotator";
+						break;
+					case INDIGO_INTERFACE_AUX_POWERBOX:
+						alpaca_device->device_type = "Switch";
+						break;
+					case INDIGO_INTERFACE_AO:
+					case INDIGO_INTERFACE_MOUNT:
+					case INDIGO_INTERFACE_GUIDER:
+						alpaca_device->device_type = "Telescope";
+						break;
+					case INDIGO_INTERFACE_AUX_LIGHTBOX:
+						alpaca_device->device_type = "CoverCalibrator";
+						break;
+					default:
+						alpaca_device->device_type = NULL;
+						interface = 0;
+				}
+				if (alpaca_device->device_type)
+					update_devices_property(indigo_agent_alpaca_device);
+			} else if (!strcmp(item->name, INFO_DEVICE_NAME_ITEM_NAME)) {
+				pthread_mutex_lock(&alpaca_device->mutex);
+				strcpy(alpaca_device->device_name, item->text.value);
+				pthread_mutex_unlock(&alpaca_device->mutex);
+			} else if (!strcmp(item->name, INFO_DEVICE_DRVIER_ITEM_NAME)) {
+				pthread_mutex_lock(&alpaca_device->mutex);
+				strcpy(alpaca_device->driver_info, item->text.value);
+				pthread_mutex_unlock(&alpaca_device->mutex);
+			} else if (!strcmp(item->name, INFO_DEVICE_VERSION_ITEM_NAME)) {
+				pthread_mutex_lock(&alpaca_device->mutex);
+				strcpy(alpaca_device->driver_version, item->text.value);
+				pthread_mutex_unlock(&alpaca_device->mutex);
+			}
+		}
+	} else {
+		indigo_alpaca_update_property(alpaca_device, property);
+	}
 	return INDIGO_OK;
 }
 
@@ -462,6 +546,8 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 				} else {
 					previous->next = alpaca_device->next;
 				}
+				if (alpaca_device->device_type)
+					update_devices_property(indigo_agent_alpaca_device);
 				indigo_safe_free(alpaca_device);
 			}
 			break;
