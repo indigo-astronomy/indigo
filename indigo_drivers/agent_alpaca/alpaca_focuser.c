@@ -248,7 +248,7 @@ void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, 
 }
 
 long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
-	if (!strcmp(command, "actions")) {
+	if (!strcmp(command, "supportedactions")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "absolute")) {
