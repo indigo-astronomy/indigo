@@ -178,32 +178,32 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 	if (!strcmp(command, "devicename")) {
 		char value[INDIGO_NAME_SIZE];
 		indigo_alpaca_error result = alpaca_get_devicename(alpaca_device, version, value);
-		return snprintf(buffer, buffer_length, "\"Value:\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "description")) {
 		char value[INDIGO_NAME_SIZE];
 		indigo_alpaca_error result = alpaca_get_description(alpaca_device, version, value);
-		return snprintf(buffer, buffer_length, "\"Value:\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "driverinfo")) {
 		char value[INDIGO_VALUE_SIZE];
 		indigo_alpaca_error result = alpaca_get_driverinfo(alpaca_device, version, value);
-		return snprintf(buffer, buffer_length, "\"Value:\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "driverversion")) {
 		char value[INDIGO_VALUE_SIZE];
 		indigo_alpaca_error result = alpaca_get_driverversion(alpaca_device, version, value);
-		return snprintf(buffer, buffer_length, "\"Value:\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "interfaceversion")) {
 		uint32_t value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value:\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "connected")) {
 		bool value;
 		indigo_alpaca_error result = alpaca_get_connected(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value:\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
 	}
 	long result;
 	if (!strcmp(alpaca_device->device_type, "Filterwheel") && (result = indigo_alpaca_wheel_get_command(alpaca_device, version, command, buffer, buffer_length)))
