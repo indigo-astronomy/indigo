@@ -161,7 +161,7 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 			CFTypeRef cfs = IORegistryEntryCreateCFProperty (serial_device, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault,0);
 			if (cfs) {
 				CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
-				if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port") && strcmp(name, "/dev/cu.SSDC") && strstr(name, "-WirelessiAP") == NULL) {
+				if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port") && strcmp(name, "/dev/cu.SSDC") && strcmp(name, "/dev/cu.debug-console") && strcmp(name, "/dev/cu.wlan-debug") && strstr(name, "-WirelessiAP") == NULL) {
 					int i = property->count++;
 					indigo_init_switch_item(property->items + i, name, name, false);
 				}
