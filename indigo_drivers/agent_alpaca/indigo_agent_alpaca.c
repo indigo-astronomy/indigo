@@ -452,15 +452,11 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		static char *hex = "0123456789ABCDEF";
 		int i = 0;
 		for (char *c = alpaca_device->device_uid; *c; c++) {
-			int r = i % 2 == 0 ? digest[i / 2] % 16 : digest[i / 2] / 16;
-			switch (*c) {
-				case 'x':
-					*c = hex[r];
-					break;
-				default:
-					break;
+			if (*c == 'x') {
+				int r = i % 2 == 0 ? digest[i / 2] % 15 : digest[i / 2] / 15;
+				*c = hex[r];
+				i++;
 			}
-			i++;
 		}
 		pthread_mutex_init(&alpaca_device->mutex, NULL);
 		alpaca_device->next = alpaca_devices;
