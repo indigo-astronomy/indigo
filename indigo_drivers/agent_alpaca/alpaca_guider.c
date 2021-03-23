@@ -27,13 +27,18 @@
 
 #include "alpaca_common.h"
 
-static indigo_alpaca_error alpaca_get_canpuseguide(indigo_alpaca_device *device, int version, bool *value) {
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+	*value = 3;
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_canpulseguide(indigo_alpaca_device *device, int version, bool *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	*value = device->guider.cansetguiderates;
+	*value = device->guider.canpulseguide;
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -44,7 +49,119 @@ static indigo_alpaca_error alpaca_get_cansetguiderates(indigo_alpaca_device *dev
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
+	if (!device->guider.cansetguiderates) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
 	*value = device->guider.cansetguiderates;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_ispulseguiding(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->guider.canpulseguide) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->guider.ispulseguiding;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+
+static indigo_alpaca_error alpaca_get_guideratedeclination(indigo_alpaca_device *device, int version, double *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->guider.cansetguiderates) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->guider.guideratedeclination;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_guideraterightascension(indigo_alpaca_device *device, int version, double *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->guider.cansetguiderates) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->guider.guideraterightascension;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_set_guideratedeclination(indigo_alpaca_device *device, int version, double value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->guider.cansetguiderates) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, value);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_set_guideraterightascension(indigo_alpaca_device *device, int version, double value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->guider.cansetguiderates) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, value);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_pulseguide(indigo_alpaca_device *device, int version, int direction, double duration) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->guider.canpulseguide) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	switch (direction) {
+		case 0:
+			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, duration);
+			break;
+		case 1:
+			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, duration);
+			break;
+		case 2:
+			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, duration);
+			break;
+		case 3:
+			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, duration);
+			break;
+		default:
+			pthread_mutex_unlock(&device->mutex);
+			return indigo_alpaca_error_InvalidValue;
+	}
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, duration);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -64,6 +181,12 @@ void indigo_alpaca_guider_update_property(indigo_alpaca_device *alpaca_device, i
 				}
 			}
 		}
+	} else if (!strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME)) {
+		alpaca_device->guider.canpulseguide = true;
+		alpaca_device->guider.ispulseguiding = property->state == INDIGO_BUSY_STATE;
+	} else if (!strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME)) {
+		alpaca_device->guider.canpulseguide = true;
+		alpaca_device->guider.ispulseguiding = property->state == INDIGO_BUSY_STATE;
 	}
 }
 
@@ -71,15 +194,44 @@ long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int v
 	if (!strcmp(command, "supportedactions")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
-	if (!strcmp(command, "canpuseguide")) {
+	if (!strcmp(command, "interfaceversion")) {
+		uint32_t value;
+		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "canpulseguide")) {
 		bool value = false;
-		indigo_alpaca_error result = alpaca_get_canpuseguide(alpaca_device, version, &value);
+		indigo_alpaca_error result = alpaca_get_canpulseguide(alpaca_device, version, &value);
 		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "cansetguiderates")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_cansetguiderates(alpaca_device, version, &value);
 		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "ispulseguiding")) {
+		bool value = false;
+		indigo_alpaca_error result = alpaca_get_ispulseguiding(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "guideratedeclination")) {
+		double value = false;
+		indigo_alpaca_error result = alpaca_get_guideratedeclination(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "guideraterightascension")) {
+		double value = false;
+		indigo_alpaca_error result = alpaca_get_guideraterightascension(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "atpark")) {
+		return snprintf(buffer, buffer_length, "\"Value\": false, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
+	if (!strcmp(command, "trackingrates")) {
+		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
+	if (!strcmp(command, "axisrates")) {
+		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strncmp(command, "can", 3)) {
 		return snprintf(buffer, buffer_length, "\"Value\": false, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
@@ -90,13 +242,49 @@ long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int v
 	if (!strcmp(command, "rightascension")) {
 		return snprintf(buffer, buffer_length, "\"Value\": 0, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
+	if (!strcmp(command, "declinationrate")) {
+		return snprintf(buffer, buffer_length, "\"Value\": 0, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
+	if (!strcmp(command, "rightascensionrate")) {
+		return snprintf(buffer, buffer_length, "\"Value\": 0, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
 	if (!strcmp(command, "utcdate")) {
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_InvalidOperation, indigo_alpaca_error_string(indigo_alpaca_error_InvalidOperation));
+		char utc[64];
+		indigo_timetoisogm(time(NULL), utc, sizeof(utc));
+		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": 0, \"ErrorMessage\": \"\"", utc);
 	}
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
 
 long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
+	if (!strcmp(command, "guideratedeclination")) {
+		double value = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "GuideRateDeclination=%lf", &value) == 1)
+			result = alpaca_set_guideratedeclination(alpaca_device, version, value);
+		else
+			result = indigo_alpaca_error_InvalidValue;
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "guideraterightascensionrate")) {
+		double value = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "GuideRateRightAscension=%lf", &value) == 1)
+			result = alpaca_set_guideraterightascension(alpaca_device, version, value);
+		else
+			result = indigo_alpaca_error_InvalidValue;
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "pulseguide")) {
+		int direction = 0;
+		double duration = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "Direction=%d", &direction) == 1 && sscanf(param_2, "Duration=%lf", &duration) == 1)
+			result = alpaca_pulseguide(alpaca_device, version, direction, duration);
+		else
+			result = indigo_alpaca_error_InvalidValue;
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
 	if (!strncmp(command, "slew", 4)) {
 		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 	}

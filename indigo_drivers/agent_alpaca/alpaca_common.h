@@ -77,6 +77,7 @@ typedef struct indigo_alpaca_device_struct {
 			double temperature;
 		} focuser;
 		struct {
+			bool canpulseguide;
 			bool cansetguiderates;
 			bool ispulseguiding;
 			double guideratedeclination;

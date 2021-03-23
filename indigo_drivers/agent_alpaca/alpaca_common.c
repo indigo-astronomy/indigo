@@ -135,11 +135,6 @@ static indigo_alpaca_error alpaca_get_driverversion(indigo_alpaca_device *device
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
-	*value = ALPACA_INTERFACE_VERSION;
-	return indigo_alpaca_error_OK;
-}
-
 static indigo_alpaca_error alpaca_get_connected(indigo_alpaca_device *device, int version, bool *value) {
 	*value = device->connected;
 	return indigo_alpaca_error_OK;
@@ -172,11 +167,6 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 		char value[INDIGO_VALUE_SIZE];
 		indigo_alpaca_error result = alpaca_get_driverversion(alpaca_device, version, value);
 		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
-	}
-	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value;
-		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "connected")) {
 		bool value;
