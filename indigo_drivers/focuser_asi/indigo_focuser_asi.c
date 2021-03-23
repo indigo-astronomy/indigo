@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -401,39 +401,48 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = EAFResetPostion(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != EAF_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFResetPostion(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
 				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 				if (res != EAF_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			}
 		}
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
@@ -509,6 +518,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (res != EAF_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
@@ -866,7 +876,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "ZWO ASI Focuser", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
