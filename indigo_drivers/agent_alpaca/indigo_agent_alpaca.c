@@ -72,6 +72,23 @@ static uint32_t server_transaction_id = 0;
 indigo_device *indigo_agent_alpaca_device = NULL;
 indigo_client *indigo_agent_alpaca_client = NULL;
 
+static void save_config(indigo_device *device) {
+	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+		pthread_mutex_lock(&private_data->mutex);
+		indigo_save_property(device, NULL, AGENT_DEVICES_PROPERTY);
+		if (DEVICE_CONTEXT->property_save_file_handle) {
+			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+			close(DEVICE_CONTEXT->property_save_file_handle);
+			DEVICE_CONTEXT->property_save_file_handle = 0;
+		} else {
+			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		CONFIG_SAVE_ITEM->sw.value = false;
+		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+		pthread_mutex_unlock(&private_data->mutex);
+	}
+}
 
 // -------------------------------------------------------------------------------- ALPACA bridge implementation
 
@@ -354,11 +371,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_DISCOVERY_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_DISCOVERY_PORT_ITEM, "PORT", "Discovery port", 0, 0xFFFF, 0, 32227);
-		AGENT_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_DEVICES", MAIN_GROUP, "Device mapping", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_MAX_ITEMS);
+		AGENT_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_DEVICES", MAIN_GROUP, "Device mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_MAX_ITEMS);
 		if (AGENT_DISCOVERY_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		for (int i = 0; i <INDIGO_MAX_ITEMS; i++) {
+			sprintf(AGENT_DEVICES_PROPERTY->items[i].name, "%d", i);
+			sprintf(AGENT_DEVICES_PROPERTY->items[i].label, "Device #%d", i);
+		}
 		AGENT_DEVICES_PROPERTY->count = 0;
-
 		// --------------------------------------------------------------------------------
 		srand((unsigned)time(0));
 		indigo_set_timer(device, 0, start_discovery_server, NULL);
@@ -399,6 +419,19 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_set_timer(device, 0, start_discovery_server, NULL);
 		AGENT_DISCOVERY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
+	} else if (indigo_property_match(AGENT_DEVICES_PROPERTY, property)) {
+		AGENT_DEVICES_PROPERTY->count = INDIGO_MAX_ITEMS;
+		indigo_property_copy_values(AGENT_DEVICES_PROPERTY, property, false);
+		for (int i = INDIGO_MAX_ITEMS; i; i--) {
+			indigo_item *item = AGENT_DEVICES_PROPERTY->items + i - 1;
+			if (*item->text.value) {
+				AGENT_DEVICES_PROPERTY->count = i;
+				break;
+			}
+		}
+		AGENT_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_DEVICES_PROPERTY, NULL);
+		save_config(device);
 	}
 	return indigo_device_change_property(device, client, property);
 }
@@ -415,23 +448,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-static void update_devices_property(indigo_device *device) {
-	indigo_delete_property(device, AGENT_DEVICES_PROPERTY, NULL);
-	int count = 0;
-	indigo_alpaca_device *alpaca_device = alpaca_devices;
-	while (alpaca_device) {
-		if (alpaca_device->device_type) {
-			indigo_item *item = AGENT_DEVICES_PROPERTY->items + count++;
-			sprintf(item->name, "%d", alpaca_device->device_number);
-			sprintf(item->label, "%s/%d", alpaca_device->device_type, alpaca_device->device_number);
-			strcpy(item->text.value, alpaca_device->indigo_device);
-		}
-		alpaca_device = alpaca_device->next;
-	}
-	AGENT_DEVICES_PROPERTY->count = count;
-	indigo_define_property(device, AGENT_DEVICES_PROPERTY, NULL);
-}
-
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	while (alpaca_device) {
@@ -440,14 +456,13 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		alpaca_device = alpaca_device->next;
 	}
 	if (alpaca_device == NULL) {
-		static uint32_t device_number = 0;
 		unsigned char digest[15] = { 0 };
 		for (int i = 0, j = 0; property->device[i]; i++, j = (j + 1) % 15) {
 			digest[j] = digest[j] ^ property->device[i];
 		}
 		alpaca_device = indigo_safe_malloc(sizeof(indigo_alpaca_device));
 		strcpy(alpaca_device->indigo_device, property->device);
-		alpaca_device->device_number = device_number++;
+		alpaca_device->device_number = -1;
 		strcpy(alpaca_device->device_uid, "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx");
 		static char *hex = "0123456789ABCDEF";
 		int i = 0;
@@ -498,8 +513,35 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 						alpaca_device->device_type = NULL;
 						interface = 0;
 				}
-				if (alpaca_device->device_type)
-					update_devices_property(indigo_agent_alpaca_device);
+				if (alpaca_device->device_type) {
+					int device_number;
+					for (device_number = 0; device_number < private_data->devices_property->count; device_number++) {
+						indigo_item *item = private_data->devices_property->items + device_number;
+						if (!strcmp(property->device, item->text.value)) {
+							alpaca_device->device_number = device_number;
+							break;
+						}
+					}
+					if (alpaca_device->device_number < 0) {
+						for (device_number = 0; device_number < private_data->devices_property->count; device_number++) {
+							item = private_data->devices_property->items + device_number;
+							if (*private_data->devices_property->items[device_number].text.value == 0)
+								break;
+						}
+						if (device_number < INDIGO_MAX_ITEMS) {
+							indigo_item *item = private_data->devices_property->items + device_number;
+							strcpy(item->text.value, property->device);
+							alpaca_device->device_number = device_number;
+							indigo_delete_property(indigo_agent_alpaca_device, private_data->devices_property, NULL);
+							if (device_number == private_data->devices_property->count)
+								private_data->devices_property->count++;
+							indigo_define_property(indigo_agent_alpaca_device, private_data->devices_property, NULL);
+							save_config(indigo_agent_alpaca_device);
+						} else {
+							indigo_send_message(indigo_agent_alpaca_device, "Too many ALPACA devices configured");
+						}
+					}
+				}
 			} else if (!strcmp(item->name, INFO_DEVICE_NAME_ITEM_NAME)) {
 				pthread_mutex_lock(&alpaca_device->mutex);
 				strcpy(alpaca_device->device_name, item->text.value);
@@ -542,8 +584,6 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 				} else {
 					previous->next = alpaca_device->next;
 				}
-				if (alpaca_device->device_type)
-					update_devices_property(indigo_agent_alpaca_device);
 				indigo_safe_free(alpaca_device);
 			}
 			break;
