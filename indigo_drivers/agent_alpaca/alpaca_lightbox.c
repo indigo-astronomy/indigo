@@ -27,6 +27,11 @@
 
 #include "alpaca_common.h"
 
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+	*value = 1;
+	return indigo_alpaca_error_OK;
+}
+
 static indigo_alpaca_error alpaca_get_brightness(indigo_alpaca_device *device, int version, uint32_t *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
@@ -204,6 +209,11 @@ void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device,
 long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
 	if (!strcmp(command, "supportedactions")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
+	if (!strcmp(command, "interfaceversion")) {
+		uint32_t value;
+		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "brightness")) {
 		uint32_t value = 0;
