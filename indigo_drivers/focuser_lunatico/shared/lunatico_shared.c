@@ -2022,34 +2022,43 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (FOCUSER_POSITION_ITEM->number.target == PORT_DATA.f_current_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		} else { /* GOTO position */
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			PORT_DATA.f_target_position = FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position;
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (!lunatico_goto_position(device, (uint32_t)PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position, (uint32_t)FOCUSER_BACKLASH_ITEM->number.value);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				if(!lunatico_sync_position(device, PORT_DATA.f_target_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				int32_t position = 0;
 				if (!lunatico_get_position(device, &position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					FOCUSER_POSITION_ITEM->number.value = PORT_DATA.f_current_position = (double)position;
 				}
 			}
 		}
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
@@ -2096,8 +2105,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			int32_t position = 0;
 			if (!lunatico_get_position(device, &position)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_get_position(%d) failed", PRIVATE_DATA->handle);
@@ -2122,10 +2133,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (!lunatico_goto_position(device, (uint32_t)PORT_DATA.f_target_position, 0)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_goto_position(%d, %d, 0) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
