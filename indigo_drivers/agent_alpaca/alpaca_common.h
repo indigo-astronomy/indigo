@@ -69,6 +69,7 @@ typedef struct indigo_alpaca_device_struct {
 			bool tempcompavailable;
 			bool tempcomp;
 			bool temperatureavailable;
+			int32_t offset;
 			uint32_t maxstep;
 			uint32_t maxincrement;
 			uint32_t position;
@@ -85,6 +86,10 @@ typedef struct indigo_alpaca_device_struct {
 } indigo_alpaca_device;
 
 extern char *indigo_alpaca_error_string(int code);
+
+extern bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
+extern bool indigo_alpaca_wait_for_int32(int32_t *reference, int32_t value, int timeout);
+extern bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
 
 extern void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
