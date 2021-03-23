@@ -466,14 +466,11 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
 	PRIVATE_DATA->prev_temp = new_temp;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 }
