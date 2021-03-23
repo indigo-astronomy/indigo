@@ -192,7 +192,7 @@ static indigo_alpaca_error alpaca_halt(indigo_alpaca_device *device, int version
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return indigo_alpaca_wait_for_bool(&device->focuser.ismoving, false, 30);
 }
 
 void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {

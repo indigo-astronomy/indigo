@@ -69,6 +69,7 @@ typedef struct indigo_alpaca_device_struct {
 			bool tempcompavailable;
 			bool tempcomp;
 			bool temperatureavailable;
+			bool halted;
 			int32_t offset;
 			uint32_t maxstep;
 			uint32_t maxincrement;
