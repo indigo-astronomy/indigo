@@ -375,10 +375,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", PRIVATE_DATA->dev_id, res);
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
