@@ -52,7 +52,7 @@ typedef struct indigo_alpaca_device_struct {
 	char driver_info[INDIGO_VALUE_SIZE];
 	char driver_version[INDIGO_VALUE_SIZE];
 	char *device_type;
-	uint32_t device_number;
+	int device_number;
 	char device_uid[40];
 	pthread_mutex_t mutex;
 	bool connected;
