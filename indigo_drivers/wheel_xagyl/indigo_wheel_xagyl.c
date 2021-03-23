@@ -71,7 +71,8 @@ static bool xagyl_open(indigo_device *device) {
 			return false;
 		}
 		if (indigo_printf(PRIVATE_DATA->handle, "I8") && indigo_scanf(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
-			WHEEL_SLOT_ITEM->number.max = PRIVATE_DATA->slot;
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
+			
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read slot count");
 			return false;
