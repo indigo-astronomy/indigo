@@ -26,7 +26,7 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0009
+#define DRIVER_VERSION             0x000A
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -341,9 +341,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
 		return INDIGO_OK;
