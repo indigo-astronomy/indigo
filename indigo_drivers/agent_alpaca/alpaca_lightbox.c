@@ -88,13 +88,8 @@ static indigo_alpaca_error alpaca_calibratoron(indigo_alpaca_device *device, int
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true);
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, value);
-	for (int i = 0; i < 30; i++) {
-		if (device->covercalibrator.calibratorstate == 3)
-			break;
-		indigo_usleep(500000);
-	}
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return 	indigo_alpaca_wait_for_int32(&device->covercalibrator.calibratorstate, 3, 30);
 }
 
 static indigo_alpaca_error alpaca_calibratoroff(indigo_alpaca_device *device, int version) {
@@ -108,13 +103,8 @@ static indigo_alpaca_error alpaca_calibratoroff(indigo_alpaca_device *device, in
 		return indigo_alpaca_error_NotImplemented;
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true);
-	for (int i = 0; i < 30; i++) {
-		if (device->covercalibrator.calibratorstate == 0)
-			break;
-		indigo_usleep(500000);
-	}
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return indigo_alpaca_wait_for_int32(&device->covercalibrator.calibratorstate, 1, 30);
 }
 
 static indigo_alpaca_error alpaca_closecover(indigo_alpaca_device *device, int version) {

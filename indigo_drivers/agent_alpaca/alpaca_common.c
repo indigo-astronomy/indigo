@@ -78,6 +78,33 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 	} // TBD other device types
 }
 
+bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout) {
+	for (int i = 0; i < timeout; i++) {
+		if (*reference == value)
+			return indigo_alpaca_error_OK;
+		indigo_usleep(500000);
+	}
+	return indigo_alpaca_error_ValueNotSet;
+}
+
+bool indigo_alpaca_wait_for_int32(int32_t *reference, int32_t value, int timeout) {
+	for (int i = 0; i < timeout; i++) {
+		if (*reference == value)
+			return indigo_alpaca_error_OK;
+		indigo_usleep(500000);
+	}
+	return indigo_alpaca_error_ValueNotSet;
+}
+
+bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout) {
+	for (int i = 0; i < timeout; i++) {
+		if (*reference == value)
+			return indigo_alpaca_error_OK;
+		indigo_usleep(500000);
+	}
+	return indigo_alpaca_error_ValueNotSet;
+}
+
 static indigo_alpaca_error alpaca_get_name(indigo_alpaca_device *device, int version, char *value) {
 	pthread_mutex_lock(&device->mutex);
 	indigo_copy_name(value, device->device_name);
@@ -119,13 +146,8 @@ static indigo_alpaca_error alpaca_get_connected(indigo_alpaca_device *device, in
 static indigo_alpaca_error alpaca_set_connected(indigo_alpaca_device *device, int version, bool value) {
 	pthread_mutex_lock(&device->mutex);
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, CONNECTION_PROPERTY_NAME, value ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true);
-	for (int i = 0; i < 30; i++) {
-		if (device->connected == value)
-			break;
-		indigo_usleep(500000);
-	}
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return indigo_alpaca_wait_for_bool(&device->connected, value, 30);
 }
 
 long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
