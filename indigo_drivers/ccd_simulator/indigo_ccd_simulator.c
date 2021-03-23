@@ -1292,7 +1292,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE / FOCUSER_COMPENSATION
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_ITEM->number.value = 25;
@@ -1319,6 +1319,26 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
+		if (PRIVATE_DATA->target_position < PRIVATE_DATA->current_position) {
+			indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_MOVE_INWARD_ITEM, true);
+			FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		} else {
+			indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM, true);
+			FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		}
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_set_timer(device, 0.5, focuser_timer_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
