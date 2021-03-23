@@ -481,8 +481,8 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, INFO_DEVICE_INTERFACE_ITEM_NAME)) {
-				uint64_t interface = atoll(item->text.value);
-				switch (interface) {
+				alpaca_device->indigo_interface = atoll(item->text.value);
+				switch (alpaca_device->indigo_interface) {
 					case INDIGO_INTERFACE_CCD:
 						alpaca_device->device_type = "Camera";
 						break;
@@ -511,7 +511,6 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 						break;
 					default:
 						alpaca_device->device_type = NULL;
-						interface = 0;
 				}
 				if (alpaca_device->device_type) {
 					int device_number;
@@ -546,7 +545,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				pthread_mutex_lock(&alpaca_device->mutex);
 				strcpy(alpaca_device->device_name, item->text.value);
 				pthread_mutex_unlock(&alpaca_device->mutex);
-			} else if (!strcmp(item->name, INFO_DEVICE_DRVIER_ITEM_NAME)) {
+			} else if (!strcmp(item->name, INFO_DEVICE_DRIVER_ITEM_NAME)) {
 				pthread_mutex_lock(&alpaca_device->mutex);
 				strcpy(alpaca_device->driver_info, item->text.value);
 				pthread_mutex_unlock(&alpaca_device->mutex);

@@ -76,6 +76,12 @@ typedef struct indigo_alpaca_device_struct {
 			double temperature;
 		} focuser;
 		struct {
+			bool cansetguiderates;
+			bool ispulseguiding;
+			double guideratedeclination;
+			double guideraterightascension;
+		} guider;
+		struct {
 			int calibratorstate;
 			uint32_t brightness;
 			uint32_t maxbrightness;
@@ -102,6 +108,10 @@ extern long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device,
 extern void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 extern long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+
+extern void indigo_alpaca_guider_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+extern long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
