@@ -245,7 +245,6 @@ static void start_worker_thread(int *client_socket) {
 							keep_alive = false;
 						} else if (resource->handler) {
 							resource->handler(socket, "GET", path, params);
-							keep_alive = false;
 						} else if (resource->data) {
 							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
@@ -314,7 +313,6 @@ static void start_worker_thread(int *client_socket) {
 						keep_alive = false;
 					} else if (resource->handler) {
 						resource->handler(socket, "PUT", path, NULL);
-						keep_alive = false;
 					}
 				}
 				if (!keep_alive) {
