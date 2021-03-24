@@ -23,7 +23,7 @@
  \file indigo_ccd_qhy.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_wheel_qhy"
 
 #include <stdlib.h>
@@ -160,6 +160,8 @@ static void wheel_goto_handler(indigo_device *device) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == command[0];
 		}
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		/* Make sure move finished */
+		indigo_usleep(4*ONE_SECOND_DELAY);
 	} else {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
