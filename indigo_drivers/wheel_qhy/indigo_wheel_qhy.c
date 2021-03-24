@@ -78,8 +78,11 @@ static bool qhy_command(indigo_device *device, char *command, char *reply, int r
 	if (result > 0 && reply) {
 		for (int i = 0; i < read_timeout; i++) {
 			result = indigo_read(PRIVATE_DATA->handle, reply, reply_length);
-			if (result > 0)
+			if (result > 0) {
 				break;
+			} else {
+				indigo_usleep(ONE_SECOND_DELAY);
+			}
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -154,18 +157,13 @@ static void wheel_connect_callback(indigo_device *device) {
 static void wheel_goto_handler(indigo_device *device) {
 	char command[2] = { '0' + WHEEL_SLOT_ITEM->number.target - 1, 0 };
 	char reply[2];
-	if (qhy_command(device, command, reply, 1, 10)) {
+	if (qhy_command(device, command, reply, 1, 15)) {
 		if (X_MODEL_1_ITEM) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == '-';
 		} else if (X_MODEL_2_ITEM || X_MODEL_3_ITEM) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == command[0];
 		}
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		/* Make sure move finished */
-		int slots_to_go = WHEEL_SLOT_ITEM->number.target - PRIVATE_DATA->current_slot;
-		if (slots_to_go < 0) slots_to_go = slots_to_go + WHEEL_SLOT_ITEM->number.max;
-		indigo_usleep(3 * ONE_SECOND_DELAY * slots_to_go);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "current = %d, target = %d, slots_to_go = %d", PRIVATE_DATA->current_slot, WHEEL_SLOT_ITEM->number.target, slots_to_go);
 		PRIVATE_DATA->current_slot = WHEEL_SLOT_ITEM->number.target;
 	} else {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
