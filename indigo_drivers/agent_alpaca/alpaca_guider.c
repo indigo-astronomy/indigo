@@ -49,10 +49,6 @@ static indigo_alpaca_error alpaca_get_cansetguiderates(indigo_alpaca_device *dev
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (!device->guider.cansetguiderates) {
-		pthread_mutex_unlock(&device->mutex);
-		return indigo_alpaca_error_NotImplemented;
-	}
 	*value = device->guider.cansetguiderates;
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
@@ -247,11 +243,6 @@ long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int v
 	}
 	if (!strcmp(command, "rightascensionrate")) {
 		return snprintf(buffer, buffer_length, "\"Value\": 0, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
-	}
-	if (!strcmp(command, "utcdate")) {
-		char utc[64];
-		indigo_timetoisogm(time(NULL), utc, sizeof(utc));
-		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": 0, \"ErrorMessage\": \"\"", utc);
 	}
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
