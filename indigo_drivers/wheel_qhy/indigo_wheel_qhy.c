@@ -55,6 +55,7 @@
 
 typedef struct {
 	int handle;
+	int current_slot;
 	indigo_property *model;
 	pthread_mutex_t mutex;
 } qhy_private_data;
@@ -126,7 +127,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				if (!qhy_command(device, "0", NULL, 0, 0)) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 16;
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
 			}
 			if (X_MODEL_1_ITEM->sw.value) {
@@ -135,7 +136,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				if (!qhy_command(device, "0", NULL, 0, 0)) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 16;
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -161,7 +162,11 @@ static void wheel_goto_handler(indigo_device *device) {
 		}
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		/* Make sure move finished */
-		indigo_usleep(4*ONE_SECOND_DELAY);
+		int slots_to_go = WHEEL_SLOT_ITEM->number.target - PRIVATE_DATA->current_slot;
+		if (slots_to_go < 0) slots_to_go = slots_to_go + WHEEL_SLOT_ITEM->number.max;
+		indigo_usleep(3 * ONE_SECOND_DELAY * slots_to_go);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "current = %d, target = %d, slots_to_go = %d", PRIVATE_DATA->current_slot, WHEEL_SLOT_ITEM->number.target, slots_to_go);
+		PRIVATE_DATA->current_slot = WHEEL_SLOT_ITEM->number.target;
 	} else {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
