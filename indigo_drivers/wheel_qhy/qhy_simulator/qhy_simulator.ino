@@ -24,9 +24,9 @@
 #define Serial SerialUSB
 #endif
 
-//#define CFW1
+#define CFW1
 //#define CFW2
-#define CFW3
+//#define CFW3
 
 
 char current_filter = '0';
