@@ -121,9 +121,10 @@ static void start_discovery_server(indigo_device *device) {
 	unsigned int client_address_length = sizeof(client_address);
 	char buffer[128];
 	struct timeval tv;
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
+
 	while (discovery_server_socket) {
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 		FD_ZERO(&readfd);
 		FD_SET(discovery_server_socket, &readfd);
 		int ret = select(discovery_server_socket + 1, &readfd, NULL, NULL, &tv);
