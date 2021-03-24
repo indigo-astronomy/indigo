@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome.c
  */
 
-#define DRIVER_VERSION 0x00007
+#define DRIVER_VERSION 0x00008
 #define DRIVER_NAME	"indigo_dome_nexdome"
 
 #include <stdlib.h>
@@ -115,6 +115,7 @@ typedef struct {
 	nexdome_shutter_state_t shutter_state;
 	bool park_requested;
 	bool callibration_requested;
+	bool abort_requested;
 	float park_azimuth;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
@@ -579,7 +580,7 @@ static void dome_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		need_update = true;
 	} else if(need_update) {
-		if (!PRIVATE_DATA->callibration_requested && fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
+		if (!PRIVATE_DATA->callibration_requested && !PRIVATE_DATA->abort_requested && fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -613,6 +614,7 @@ static void dome_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->park_requested = false;
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 	}
+	PRIVATE_DATA->abort_requested = false;
 
 	/* Handle dome shutter */
 	bool raining;
@@ -978,6 +980,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
+		PRIVATE_DATA->abort_requested = true;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
