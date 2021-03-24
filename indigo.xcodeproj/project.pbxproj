@@ -124,6 +124,8 @@
 		597BD19E2606974900239274 /* alpaca_lightbox.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD19C2606974800239274 /* alpaca_lightbox.c */; };
 		597BD1B4260A597400239274 /* alpaca_guider.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD1B3260A597400239274 /* alpaca_guider.c */; };
 		597BD1B5260A597400239274 /* alpaca_guider.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD1B3260A597400239274 /* alpaca_guider.c */; };
+		597BD1C5260BBA5100239274 /* alpaca_mount.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD1C4260BBA5000239274 /* alpaca_mount.c */; };
+		597BD1C6260BBA5100239274 /* alpaca_mount.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD1C4260BBA5000239274 /* alpaca_mount.c */; };
 		597E79DF25A5DB7D009B0817 /* indigo_agent_astrometry.c in Sources */ = {isa = PBXBuildFile; fileRef = 597E79DE25A5DB6E009B0817 /* indigo_agent_astrometry.c */; };
 		5980010A22E4E76700021D67 /* libapogee.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598000FC22E4E6BD00021D67 /* libapogee.a */; };
 		598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598005FD22E4FFEA00021D67 /* libqsiapi.a */; };
@@ -1153,6 +1155,7 @@
 		597BD19226067B0100239274 /* alpaca_focuser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_focuser.c; sourceTree = "<group>"; };
 		597BD19C2606974800239274 /* alpaca_lightbox.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_lightbox.c; sourceTree = "<group>"; };
 		597BD1B3260A597400239274 /* alpaca_guider.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_guider.c; sourceTree = "<group>"; };
+		597BD1C4260BBA5000239274 /* alpaca_mount.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_mount.c; sourceTree = "<group>"; };
 		597E4F7623EEE637007E0BF8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		597E4F7A23EEE637007E0BF8 /* QHY21.HEX */ = {isa = PBXFileReference; lastKnownFileType = text; path = QHY21.HEX; sourceTree = "<group>"; };
 		597E4F7B23EEE637007E0BF8 /* QHY290.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY290.img; sourceTree = "<group>"; };
@@ -5384,6 +5387,7 @@
 				597BD18126025D1800239274 /* alpaca_common.c */,
 				597BD16D2602552900239274 /* alpaca_wheel.c */,
 				597BD19226067B0100239274 /* alpaca_focuser.c */,
+				597BD1C4260BBA5000239274 /* alpaca_mount.c */,
 				597BD1B3260A597400239274 /* alpaca_guider.c */,
 				597BD19C2606974800239274 /* alpaca_lightbox.c */,
 			);
@@ -12880,6 +12884,7 @@
 				598A1BE5259BA94A00C0B34C /* DDHidDevice.m in Sources */,
 				598A1BE6259BA94A00C0B34C /* indigo_guider_asi.c in Sources */,
 				598A1BE7259BA94A00C0B34C /* indigo_rotator_simulator.c in Sources */,
+				597BD1C6260BBA5100239274 /* alpaca_mount.c in Sources */,
 				598A1BE8259BA94A00C0B34C /* libascol.c in Sources */,
 				597BD18326025D1800239274 /* alpaca_common.c in Sources */,
 				598A1BE9259BA94A00C0B34C /* indigo_focuser_fcusb.c in Sources */,
@@ -13081,6 +13086,7 @@
 				595F2930211E211200380EF4 /* DDHidDevice.m in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
 				9D743A5923FD573E0093319F /* indigo_rotator_simulator.c in Sources */,
+				597BD1C5260BBA5100239274 /* alpaca_mount.c in Sources */,
 				59A242E322A2C6CE001C38F8 /* libascol.c in Sources */,
 				597BD18226025D1800239274 /* alpaca_common.c in Sources */,
 				9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */,
