@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome3.c
  */
 
-#define DRIVER_VERSION 0x00009
+#define DRIVER_VERSION 0x0000A
 #define DRIVER_NAME    "indigo_dome_nexdome3"
 
 #define FIRMWARE_VERSION_3_2 0x0302
@@ -333,8 +333,8 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 	}
 
 	if (PRIVATE_DATA->rotator_stop_requested) {
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->rotator_stop_requested = false;
 		if (PRIVATE_DATA->callibration_requested) {
 			NEXDOME_FIND_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
