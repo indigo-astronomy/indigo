@@ -131,7 +131,7 @@ static void wheel_connect_callback(indigo_device *device) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
-				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
 			}
 			if (X_MODEL_1_ITEM->sw.value) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW1");
@@ -140,7 +140,7 @@ static void wheel_connect_callback(indigo_device *device) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
-				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		} else {
@@ -157,28 +157,30 @@ static void wheel_connect_callback(indigo_device *device) {
 static void wheel_goto_handler(indigo_device *device) {
 	char command[2] = { '0' + WHEEL_SLOT_ITEM->number.target - 1, 0 };
 	char reply[2];
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "start move");
 	if (qhy_command(device, command, reply, 1, 15)) {
 		if (X_MODEL_1_ITEM) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == '-';
 		} else if (X_MODEL_2_ITEM || X_MODEL_3_ITEM) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == command[0];
 		}
+		if (X_MODEL_1_ITEM->sw.value) {
+			int slots_to_go = (int)(WHEEL_SLOT_ITEM->number.target - PRIVATE_DATA->current_slot);
+			if (slots_to_go < 0) slots_to_go = slots_to_go + WHEEL_SLOT_ITEM->number.max;
+			int timeout = (int)(ONE_SECOND_DELAY * (3 + 2 * (slots_to_go - 1)));
+			indigo_usleep(timeout);
+			/*
+			INDIGO_DRIVER_ERROR(
+				DRIVER_NAME,
+				"current = %d, target = %f, slots_to_go = %d (%d us), %f",
+				PRIVATE_DATA->current_slot,
+				WHEEL_SLOT_ITEM->number.target,
+				slots_to_go,
+				timeout,
+				WHEEL_SLOT_ITEM->number.max
+			);
+			*/
+		}
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		int slots_to_go = (int)(WHEEL_SLOT_ITEM->number.target - PRIVATE_DATA->current_slot);
-		if (slots_to_go < 0) slots_to_go = slots_to_go + WHEEL_SLOT_ITEM->number.max;
-		int timeout = (int)(ONE_SECOND_DELAY * (3 + 1.5 * slots_to_go));
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "before sleep");
-		indigo_usleep(timeout);
-		INDIGO_DRIVER_ERROR(
-			DRIVER_NAME,
-			"current = %d, target = %f, slots_to_go = %d (%d us), %f",
-			PRIVATE_DATA->current_slot,
-			WHEEL_SLOT_ITEM->number.target,
-			slots_to_go,
-			timeout,
-			WHEEL_SLOT_ITEM->number.max
-		);
 		PRIVATE_DATA->current_slot = WHEEL_SLOT_ITEM->number.target;
 	} else {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
