@@ -242,11 +242,12 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.target == slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			indigo_set_timer(device, 0, wheel_goto_handler, NULL);
 		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
