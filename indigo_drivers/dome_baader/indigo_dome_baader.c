@@ -23,7 +23,7 @@
  \file indigo_dome_baader.c
  */
 
-#define DRIVER_VERSION 0x00002
+#define DRIVER_VERSION 0x00003
 #define DRIVER_NAME	"indigo_dome_baader"
 
 #include <stdlib.h>
@@ -750,7 +750,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 
+			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
 			return INDIGO_OK;
 		}
@@ -758,6 +760,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		if ((rc = baader_goto_azimuth(device, PRIVATE_DATA->target_position)) != BD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_goto_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			if (rc == BD_DOME_ERROR) {
 				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Goto azimuth failed with DOME_ERROR. Please inspect the dome!");
 			} else {
@@ -765,7 +769,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 			return INDIGO_OK;
 		}
-
+		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
