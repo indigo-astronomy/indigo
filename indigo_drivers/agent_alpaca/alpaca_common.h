@@ -85,6 +85,7 @@ typedef struct indigo_alpaca_device_struct {
 			bool ismoving;
 			double mechanicalposition;
 			double position;
+			double targetposition;
 			bool reversed;
 			double stepsize;
 		} rotator;
